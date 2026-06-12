@@ -30,8 +30,8 @@ cd elph
 # Install dependencies
 make deps
 
-# Run development mode
-make dev
+# Run the application
+make run
 ```
 
 ## Documentation

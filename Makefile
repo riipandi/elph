@@ -1,4 +1,7 @@
-.PHONY: build run dev test test-unit test-integration test-coverage clean
+# Show help by default when `make` is run without arguments
+.DEFAULT_GOAL := help
+
+.PHONY: build run test test-unit test-integration test-coverage clean
 
 # Build variables
 BINARY_NAME=elph
@@ -9,18 +12,17 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
+TUICMD=$(shell which tui)
 
 # Build the application
 build:
 	$(GOBUILD) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
+	@echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1)  ($$(wc -c < $(BUILD_DIR)/$(BINARY_NAME) | tr -d ' ') bytes)"
 
 # Run the application
 run:
+	$(TUICMD) generate internal/views/
 	$(GOCMD) run ./cmd
-
-# Run the application in development mode
-dev:
-	go run ./cmd
 
 # Run all tests
 test:
@@ -66,7 +68,6 @@ help:
 	@echo "Available targets:"
 	@echo "  build             - Build the application"
 	@echo "  run               - Run the application"
-	@echo "  dev               - Run development mode"
 	@echo "  test              - Run all tests"
 	@echo "  test-unit         - Run unit tests only"
 	@echo "  test-integration  - Run integration tests"

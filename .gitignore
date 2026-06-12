@@ -48,6 +48,9 @@ release/
 .temp
 .tmp
 
+# Generated
+*_gsx.go
+
 # Envars
 .env.*
 !.env.example
