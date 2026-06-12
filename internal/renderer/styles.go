@@ -46,9 +46,3 @@ func inputStyle(w int, m constants.AgentMode) lipgloss.Style {
 		BorderForeground(modeBorderColor(m)).
 		Padding(0, 1)
 }
-
-func footerStyle(w int) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Width(w - 2).
-		Padding(0, 1)
-}

@@ -71,6 +71,7 @@ type Model struct {
 	vp            viewport.Model
 	messages      []string
 	modelName     string
+	provider      string
 	mode          constants.AgentMode
 	sessionID     string
 	workDir       string
@@ -96,6 +97,7 @@ func New() Model {
 	return Model{
 		input:         ti,
 		modelName:     "Claude Sonnet 4.6",
+		provider:      "anthropic",
 		mode:          constants.ModeBuild,
 		sessionID:     sid,
 		workDir:       wd,
