@@ -1,16 +1,11 @@
 package renderer
 
-import (
-	"fmt"
-	"os"
-
-	"github.com/riipandi/elph/internal/tui"
-)
+import "github.com/charmbracelet/bubbletea"
 
 // Render starts the TUI application using Bubble Tea.
-func Render() {
-	if err := tui.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+func Render() error {
+	m := New()
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	_, err := p.Run()
+	return err
 }
