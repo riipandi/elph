@@ -1,4 +1,4 @@
-package constants
+package agent
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 func TestActivityForTool(t *testing.T) {
 	tests := []struct {
 		tool string
-		want AgentActivity
+		want Activity
 	}{
 		{ToolRead, ActivityReading},
 		{ToolReadMediaFile, ActivityReading},
@@ -33,8 +33,8 @@ func TestActivityForTool(t *testing.T) {
 	}
 }
 
-func TestAgentTurnPhasesOrder(t *testing.T) {
-	want := []AgentActivity{
+func TestTurnPhasesOrder(t *testing.T) {
+	want := []Activity{
 		ActivityConnecting,
 		ActivityLoading,
 		ActivityThinking,
@@ -44,8 +44,29 @@ func TestAgentTurnPhasesOrder(t *testing.T) {
 		ActivityRunning,
 		ActivityStreaming,
 	}
-	require.Len(t, AgentTurnPhases, len(want))
+	require.Len(t, TurnPhases, len(want))
 	for i, phase := range want {
-		require.Equal(t, phase, AgentTurnPhases[i], "phase[%d]", i)
+		require.Equal(t, phase, TurnPhases[i], "phase[%d]", i)
 	}
+}
+
+func TestCommandsReturnMessages(t *testing.T) {
+	actCmd := SetActivity(ActivityWriting)
+	require.Equal(t, ActivityWriting, actCmd().(ActivityMsg).Activity)
+
+	toolCmd := SetActivityForTool("read")
+	require.NotEmpty(t, toolCmd().(ActivityMsg).Activity)
+
+	doneCmd := FinishTurn("response")
+	require.Equal(t, "response", doneCmd().(TurnDoneMsg).Response)
+}
+
+func TestPlaceholderResponse(t *testing.T) {
+	got := PlaceholderResponse("hello")
+	require.Contains(t, got, "hello")
+	require.Contains(t, got, "placeholder")
+}
+
+func TestRunTurnReturnsCommand(t *testing.T) {
+	require.NotNil(t, RunTurn("test prompt"))
 }

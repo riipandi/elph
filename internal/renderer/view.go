@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/config"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 // ─── Cached Styles ────────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ func (m Model) renderedViewHeight() int {
 
 func (m Model) chromeHeight() int {
 	h := lipgloss.Height(m.inputView()) + lipgloss.Height(m.footerView())
-	if m.activity != constants.ActivityIdle {
+	if m.activity != agent.ActivityIdle {
 		h += lipgloss.Height(m.activityView())
 	}
 	return h
@@ -278,7 +279,7 @@ func (m Model) bannerView() string {
 }
 
 func (m Model) activityView() string {
-	if m.activity == constants.ActivityIdle {
+	if m.activity == agent.ActivityIdle {
 		return ""
 	}
 	frame := spinnerFrames[m.spinnerFrame%len(spinnerFrames)]
@@ -309,7 +310,7 @@ func (m Model) inputView() string {
 		inner = prefix + inner
 	}
 	rendered := border.Width(boxW).Render(inner)
-	if m.activity == constants.ActivityIdle {
+	if m.activity == agent.ActivityIdle {
 		rendered = lipgloss.NewStyle().MarginTop(1).Render(rendered)
 	}
 	return rendered

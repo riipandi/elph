@@ -1,47 +1,57 @@
 package agent
 
-import (
-	tea "charm.land/bubbletea/v2"
-	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/renderer"
-)
+// Activity describes what the agent is doing during a turn.
+type Activity string
 
-// Activity is the working-indicator label shown above the input prompt.
-type Activity = constants.AgentActivity
-
-// Activity constants re-exported for agent runtime code.
 const (
-	ActivityIdle       = constants.ActivityIdle
-	ActivityConnecting = constants.ActivityConnecting
-	ActivityLoading    = constants.ActivityLoading
-	ActivityThinking   = constants.ActivityThinking
-	ActivitySearching  = constants.ActivitySearching
-	ActivityReading    = constants.ActivityReading
-	ActivityWriting    = constants.ActivityWriting
-	ActivityRunning    = constants.ActivityRunning
-	ActivityFetching   = constants.ActivityFetching
-	ActivityStreaming  = constants.ActivityStreaming
-	ActivityPlanning   = constants.ActivityPlanning
-	ActivityWaiting    = constants.ActivityWaiting
-	ActivityWorking    = constants.ActivityWorking
+	ActivityIdle       Activity = ""
+	ActivityConnecting Activity = "Connecting"
+	ActivityLoading    Activity = "Loading"
+	ActivityThinking   Activity = "Thinking"
+	ActivitySearching  Activity = "Searching"
+	ActivityReading    Activity = "Reading"
+	ActivityWriting    Activity = "Writing"
+	ActivityRunning    Activity = "Running"
+	ActivityFetching   Activity = "Fetching"
+	ActivityStreaming  Activity = "Streaming"
+	ActivityPlanning   Activity = "Planning"
+	ActivityWaiting    Activity = "Waiting"
+	ActivityWorking    Activity = "Working"
 )
 
-// ActivityForTool maps a built-in tool name to an indicator label.
+// TurnPhases is the default ordered progression shown while a turn runs.
+var TurnPhases = []Activity{
+	ActivityConnecting,
+	ActivityLoading,
+	ActivityThinking,
+	ActivitySearching,
+	ActivityReading,
+	ActivityWriting,
+	ActivityRunning,
+	ActivityStreaming,
+}
+
+var toolActivity = map[string]Activity{
+	ToolRead:          ActivityReading,
+	ToolReadMediaFile: ActivityReading,
+	ToolWrite:         ActivityWriting,
+	ToolEdit:          ActivityWriting,
+	ToolGrep:          ActivitySearching,
+	ToolGlob:          ActivitySearching,
+	ToolCodeSearch:    ActivitySearching,
+	ToolWebSearch:     ActivitySearching,
+	ToolBash:          ActivityRunning,
+	ToolFetchURL:      ActivityFetching,
+	ToolEnterPlanMode: ActivityPlanning,
+	ToolExitPlanMode:  ActivityPlanning,
+	ToolAskUser:       ActivityWaiting,
+}
+
+// ActivityForTool returns the indicator label for a tool call.
+// Unknown tools fall back to ActivityWorking.
 func ActivityForTool(tool string) Activity {
-	return constants.ActivityForTool(tool)
-}
-
-// SetActivity returns a Bubble Tea command that updates the working indicator.
-func SetActivity(activity Activity) tea.Cmd {
-	return renderer.ActivityCmd(activity)
-}
-
-// SetActivityForTool returns a command that sets the indicator from a tool name.
-func SetActivityForTool(tool string) tea.Cmd {
-	return renderer.ActivityForToolCmd(tool)
-}
-
-// FinishTurn returns a command that ends the turn and appends the response.
-func FinishTurn(response string) tea.Cmd {
-	return renderer.AgentDoneCmd(response)
+	if activity, ok := toolActivity[tool]; ok {
+		return activity
+	}
+	return ActivityWorking
 }

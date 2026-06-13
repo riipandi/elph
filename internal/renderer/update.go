@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 // Pre-computed key-binding map for O(1) lookup on every keystroke.
@@ -67,7 +68,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.contentDirty = true
 		m = m.syncLayout(false)
 
-	case ActivityMsg:
+	case agent.ActivityMsg:
 		m.activity = msg.Activity
 		m = m.syncLayout(m.content.AtBottom())
 
@@ -77,7 +78,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.spinnerTickCmd())
 		}
 
-	case AgentDoneMsg:
+	case agent.TurnDoneMsg:
 		m = m.finishAgentTurn(msg.Response)
 
 	case termFeaturesMsg:

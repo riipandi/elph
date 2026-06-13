@@ -10,6 +10,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/runtime"
+	"github.com/riipandi/elph/pkg/core/agent"
 	"go.jetify.com/typeid/v2"
 )
 
@@ -97,7 +99,8 @@ type Model struct {
 	mouseEnabled  bool // mouse capture for viewport wheel/scroll
 	selectingText bool // shift held — mouse released for terminal selection
 
-	activity     constants.AgentActivity // shown above input while agent works
+	activity     agent.Activity // shown above input while agent works
+	session      runtime.Session
 	spinnerFrame int
 	busy         bool // agent turn in progress
 
@@ -132,7 +135,7 @@ func noBgStyles() textarea.Styles {
 
 func New() Model {
 	wd, _ := os.Getwd()
-	sid := typeid.MustGenerate("sess")
+	session := runtime.NewSession()
 
 	vp := viewport.New()
 	vp.MouseWheelEnabled = true
@@ -157,7 +160,8 @@ func New() Model {
 		provider:         "anthropic",
 		mode:             constants.ModeBuild,
 		thinkingLevel:    constants.ThinkingHigh,
-		sessionID:        sid,
+		sessionID:        session.ID,
+		session:          session,
 		workDir:          wd,
 		branch:           "main",
 		messages:         []message{},

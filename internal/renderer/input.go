@@ -11,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 const (
@@ -228,7 +228,7 @@ func (m Model) maxInputHeight() int {
 	}
 	footerH := lipgloss.Height(m.footerView())
 	activityH := 0
-	if m.activity != constants.ActivityIdle {
+	if m.activity != agent.ActivityIdle {
 		activityH = lipgloss.Height(m.activityView())
 	}
 	avail := m.height - footerH - activityH - minViewportRows - inputChromeSlack

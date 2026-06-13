@@ -32,23 +32,6 @@ func TestInitReturnsCommands(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
-func TestAgentCommandsReturnMessages(t *testing.T) {
-	actCmd := ActivityCmd(constants.ActivityWriting)
-	require.Equal(t, constants.ActivityWriting, actCmd().(ActivityMsg).Activity)
-
-	toolCmd := ActivityForToolCmd("read")
-	require.NotEmpty(t, toolCmd().(ActivityMsg).Activity)
-
-	doneCmd := AgentDoneCmd("response")
-	require.Equal(t, "response", doneCmd().(AgentDoneMsg).Response)
-}
-
-func TestPlaceholderResponse(t *testing.T) {
-	got := placeholderResponse("hello")
-	require.Contains(t, got, "hello")
-	require.Contains(t, got, "placeholder")
-}
-
 func TestEnableAndDisableTerminalFeatures(t *testing.T) {
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()

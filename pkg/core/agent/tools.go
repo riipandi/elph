@@ -1,4 +1,4 @@
-package constants
+package agent
 
 // Built-in tool names (see docs/tools.md).
 const (
