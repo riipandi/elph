@@ -28,7 +28,6 @@ var (
 )
 
 // cachedInputBorder returns a border style for the given mode.
-// Called per render, but lipgloss reuses its internal cache for the color.
 func cachedInputBorder(m constants.AgentMode) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
@@ -46,30 +45,71 @@ func (m Model) View() string {
 		return "\n  Initializing..."
 	}
 
-	inputView := m.inputView()
-	footerView := m.footerView()
-
-	parts := []string{
-		inputView,
-		footerView,
-	}
-
-	return lipgloss.JoinVertical(lipgloss.Top, parts...)
+	return lipgloss.JoinVertical(lipgloss.Top,
+		m.content.View(),
+		m.inputView(),
+		m.footerView(),
+	)
 }
 
-// ─── Stream View ─────────────────────────────────────────────────────────────
+// syncLayout sizes chrome and viewport. Rebuilds scrollable content only when
+// dirty. When follow is true the viewport scrolls to the newest lines.
+func (m Model) syncLayout(follow bool) Model {
+	if !m.ready || m.width <= 0 || m.height <= 0 {
+		return m
+	}
 
-func (m Model) streamView() string {
+	m = m.syncInputWidth()
+
+	atBottom := m.content.AtBottom()
+	chromeH := lipgloss.Height(m.inputView()) + lipgloss.Height(m.footerView())
+	vpH := max(m.height-chromeH, 1)
+
+	sizeChanged := m.content.Width != m.width || m.content.Height != vpH
+	m.content.Width = m.width
+	m.content.Height = vpH
+	m.chromeH = chromeH
+
+	if m.contentDirty || sizeChanged {
+		m.content.SetContent(m.contentView())
+		m.contentDirty = false
+	}
+
+	if follow || atBottom {
+		m.content.GotoBottom()
+	}
+
+	return m
+}
+
+func (m Model) syncInputWidth() Model {
+	w := m.width
+	inputW := w - 6
+	if m.showPromptPrefix {
+		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
+		inputW -= lipgloss.Width(prefix)
+	}
+	if inputW < 1 {
+		inputW = 1
+	}
+	m.inputWidth = inputW
+	m.input.SetWidth(inputW)
+	return m
+}
+
+// contentView is the full scrollable region: banner + message history.
+func (m Model) contentView() string {
 	var b strings.Builder
 
-	// Banner (scrolls with content)
 	b.WriteString(m.bannerView())
-	b.WriteString("\n\n")
-
-	// Messages
-	for _, msg := range m.messages {
-		b.WriteString(m.renderMessage(msg))
-		b.WriteString("\n")
+	if len(m.messages) > 0 {
+		b.WriteString("\n\n")
+		for i, msg := range m.messages {
+			if i > 0 {
+				b.WriteString("\n")
+			}
+			b.WriteString(m.renderMessage(msg))
+		}
 	}
 
 	return b.String()
@@ -158,10 +198,8 @@ func (m Model) bannerView() string {
 	header := clampLine(topW, lipgloss.NewStyle().Bold(true).Render(versionLine))
 	subtitle := clampLine(topW, dimStyle.Render("Send /changelog to show version history."))
 
-	// Top section: logo + header/subtitle side by side.
 	topSection := lipgloss.JoinHorizontal(lipgloss.Top, logoBlock, lipgloss.JoinVertical(lipgloss.Left, header, subtitle))
 
-	// Metadata lines: left-aligned to banner edge (no logo offset).
 	meta := lipgloss.JoinVertical(lipgloss.Left,
 		"",
 		metaLine(innerW, "Directory:  ", m.workDir),
@@ -170,7 +208,6 @@ func (m Model) bannerView() string {
 		metaLine(innerW, "MCP Server: ", fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
 	)
 
-	// Tip: word-wraps within available width.
 	tipBody := dimStyle.Italic(true).Render(" " + m.tip)
 	tip := wrapLine(innerW, yellowSty.Render("Tip:")+tipBody)
 
@@ -184,11 +221,8 @@ func (m Model) inputView() string {
 	border := cachedInputBorder(m.mode)
 	if m.showPromptPrefix {
 		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
-		prefixW := lipgloss.Width(prefix)
-		m.input.SetWidth(w - 6 - prefixW)
 		return border.Width(w - 2).Render(prefix + m.input.View())
 	}
-	m.input.SetWidth(w - 6)
 	return border.Width(w - 2).Render(m.input.View())
 }
 
@@ -198,20 +232,16 @@ func (m Model) footerView() string {
 
 	cw := footerContentWidth(m.width)
 
-	// --- Line 1 left: model (thinking color) | provider | T: level | IMG ---
 	modelSty := lipgloss.NewStyle().Foreground(constants.ThinkingColor(m.thinkingLevel))
 	line1Left := modelSty.Render(m.modelName) + metaSty.Render(fmt.Sprintf(" | %s | T: %s | IMG", m.provider, m.thinkingLevel))
 
-	// --- Line 1 right: cost | context% (dynamic color) ---
 	ctxColor := constants.ContextUsageColor(m.contextUsed)
 	ctxSty := lipgloss.NewStyle().Foreground(ctxColor)
 	line1Right := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (262k)", m.contextUsed*100))
 
-	// --- Line 2 left: dir (white, bold) [session] mode (mode color) ---
 	modeSty := lipgloss.NewStyle().Foreground(constants.ModeBorderColor(m.mode)).Bold(true)
 	line2Left := whiteBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
 
-	// --- Line 2 right: turn | branch [+add -del] ---
 	gitStr := "[-]"
 	if m.gitAdded > 0 || m.gitDeleted > 0 {
 		gitStr = fmt.Sprintf("[+%d -%d]", m.gitAdded, m.gitDeleted)

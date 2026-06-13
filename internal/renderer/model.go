@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
@@ -81,6 +82,7 @@ type Model struct {
 	ready            bool
 	width            int
 	height           int
+	content          viewport.Model
 	input            textarea.Model
 	messages         []message
 	modelName        string
@@ -96,14 +98,16 @@ type Model struct {
 	gitDeleted       int
 	promptChar       string // >, /, $, #
 	showPromptPrefix bool   // show prompt prefix in input
+	inputWidth       int    // textarea width, synced in syncLayout
+	chromeH          int    // cached input + footer height
+	contentDirty     bool   // viewport content needs rebuilding
+
+	mouseEnabled   bool // mouse capture for viewport wheel/scroll
+	selectingText  bool // shift held — mouse released for terminal selection
 
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
-	bannerPrinted bool
-	oldScrollback string // banner + messages at previous width
-	oldView       string // input + footer at previous width
-	oldWidth      int
 }
 
 // Shared "no background" style reused in textarea init to reduce allocations.
@@ -127,6 +131,9 @@ func New() Model {
 	wd, _ := os.Getwd()
 	sid := typeid.MustGenerate("sess")
 
+	vp := viewport.New(0, 0)
+	vp.MouseWheelEnabled = true
+
 	ta := textarea.New()
 	ta.Placeholder = ""
 	ta.Prompt = ""
@@ -134,7 +141,6 @@ func New() Model {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
 	ta.MaxHeight = 6
-	// All fields share the same "no background" style — single allocation per focus state.
 	ta.FocusedStyle = noBgStyles()
 	ta.BlurredStyle = noBgStyles()
 	ta.KeyMap.InsertNewline.SetKeys(tea.KeyCtrlJ.String(), "shift+enter")
@@ -142,6 +148,7 @@ func New() Model {
 	ta.Focus()
 
 	return Model{
+		content:          vp,
 		input:            ta,
 		modelName:        "Claude Sonnet 4.6",
 		provider:         "anthropic",
@@ -155,6 +162,8 @@ func New() Model {
 		contextUsed:      0.0,
 		promptChar:       ">",
 		showPromptPrefix: false,
+		mouseEnabled:     true,
+		contentDirty:     true,
 		ctrlCNoticeID:    -1,
 	}
 }
@@ -162,5 +171,5 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return textarea.Blink
+	return tea.Batch(textarea.Blink, tea.EnableMouseCellMotion)
 }

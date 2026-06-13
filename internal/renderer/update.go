@@ -13,7 +13,6 @@ import (
 )
 
 // Pre-computed key-binding map for O(1) lookup on every keystroke.
-// Initialized once via sync.Once.
 var (
 	keyActionMap   map[tea.KeyType]constants.KeyAction
 	initKeyMapOnce sync.Once
@@ -28,7 +27,6 @@ func initKeyMap() {
 	}
 }
 
-// resolveKeyAction maps a tea.KeyMsg to our defined KeyAction in O(1).
 func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
 	initKeyMapOnce.Do(initKeyMap)
 	if action, ok := keyActionMap[msg.Type]; ok {
@@ -47,26 +45,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
+		m.contentDirty = true
+		m = m.syncLayout(false)
 
-		if !m.bannerPrinted {
-			m.bannerPrinted = true
-			cmds = append(cmds, tea.Println(m.streamView()))
-		} else if m.oldWidth > 0 && m.width > 0 && m.width != m.oldWidth {
-			// Repaint scrollback synchronously before the next view flush.
-			// Use old on-screen heights: the new view has not been flushed yet.
-			redrawScrollback(
-				lipgloss.Height(m.oldScrollback),
-				lipgloss.Height(m.oldView),
-				lipgloss.Height(m.View()),
-				m.width,
-				m.streamView(),
-			)
+	case mouseReenableMsg:
+		var cmd tea.Cmd
+		m, cmd = m.resumeMouseAfterSelection()
+		if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
+		m.contentDirty = true
+		m = m.syncLayout(false)
+
+	case tea.MouseMsg:
+		evt := tea.MouseEvent(msg)
+
+		// Wheel always scrolls the viewport. Resume capture first if a text
+		// selection just finished.
+		if evt.IsWheel() {
+			if m.selectingText || !m.mouseEnabled {
+				var cmd tea.Cmd
+				m, cmd = m.resumeMouseAfterSelection()
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+			}
+			var cmd tea.Cmd
+			m.content, cmd = m.content.Update(msg)
+			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
+		}
+
+		var mouseCmds []tea.Cmd
+		m, mouseCmds = m.handleMouse(msg)
+		cmds = append(cmds, mouseCmds...)
+		if m.selectingText {
+			return m, tea.Batch(cmds...)
+		}
+
+		var cmd tea.Cmd
+		if m.isInContentArea(evt.Y) {
+			m.content, cmd = m.content.Update(msg)
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
+		if m.selectingText {
+			var cmd tea.Cmd
+			m, cmd = m.resumeMouseAfterSelection()
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+
 		action := resolveKeyAction(msg)
 
 		switch action {
@@ -79,9 +114,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.promptChar = ">"
 				var cmd tea.Cmd
 				m, cmd = m.replaceNotice("Input cleared, press again to exit")
-				return m, tea.Batch(cmd, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
-					return ctrlCResetMsg{}
-				}))
+				return m, cmd
 			}
 
 			if m.ctrlCPress == 2 || (m.ctrlCPress == 1 && !hasInput) {
@@ -103,15 +136,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case constants.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
-			var cmd tea.Cmd
-			m, cmd = m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
-			cmds = append(cmds, cmd)
+			m, cmd := m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
+			return m, cmd
 
 		case constants.ActionCycleThink:
 			m.thinkingLevel = constants.NextThinkingLevel(m.thinkingLevel)
-			var cmd tea.Cmd
-			m, cmd = m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
-			cmds = append(cmds, cmd)
+			m, cmd := m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
+			return m, cmd
 
 		case constants.ActionSubmit:
 			if !m.input.Focused() {
@@ -126,76 +157,84 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			val = stripTrigger(val)
-			var cmd tea.Cmd
-			m, cmd = m.addUserMessage(val)
-			cmds = append(cmds, cmd)
+			m = m.addUserMessage(val)
 			m.input.SetValue("")
 			m.promptChar = ">"
+			m = m.syncLayout(true)
 
 		case constants.ActionCopy:
 			if len(m.messages) > 0 {
 				lastMsg := m.messages[len(m.messages)-1]
 				clipboard.Write(clipboard.FmtText, []byte(lastMsg.text))
-				var cmd tea.Cmd
-				m, cmd = m.withMessage("Copied to clipboard")
-				cmds = append(cmds, cmd)
+				m, cmd := m.withMessage("Copied to clipboard")
+				return m, cmd
 			}
 		}
 
 		m = m.cancelCtrlC()
 	}
 
-	// Update input component
 	var cmd tea.Cmd
+	m.content, cmd = m.content.Update(msg)
+	cmds = append(cmds, cmd)
+
 	m.input, cmd = m.input.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// Update prompt prefix based on input content.
+	prevPrefix := m.showPromptPrefix
 	m = m.syncPromptPrefix()
+	if m.showPromptPrefix != prevPrefix {
+		m = m.syncInputWidth()
+	}
 
-	// Store scrollback and pinned view for resize handling in the next frame.
-	m.oldScrollback = m.streamView()
-	m.oldView = m.View()
-	m.oldWidth = m.width
+	// Re-layout when the input area grows or shrinks (multiline).
+	chromeH := lipgloss.Height(m.inputView()) + lipgloss.Height(m.footerView())
+	if chromeH != m.chromeH {
+		m = m.syncLayout(m.content.AtBottom())
+	}
 
 	return m, tea.Batch(cmds...)
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-func (m Model) addUserMessage(msg string) (Model, tea.Cmd) {
-	newMsg := message{text: msg, kind: msgUser}
-	m.messages = append(m.messages, newMsg)
-	return m, tea.Println(m.renderMessage(newMsg))
+func (m Model) addUserMessage(text string) Model {
+	m.messages = append(m.messages, message{text: text, kind: msgUser})
+	m.contentDirty = true
+	return m
 }
 
-func (m Model) addAIMessage(msg string) (Model, tea.Cmd) {
-	newMsg := message{text: msg, kind: msgAI}
-	m.messages = append(m.messages, newMsg)
-	return m, tea.Println(m.renderMessage(newMsg))
+func (m Model) addAIMessage(text string) Model {
+	m.messages = append(m.messages, message{text: text, kind: msgAI})
+	m.contentDirty = true
+	return m
 }
 
-func (m Model) withMessage(msg string) (Model, tea.Cmd) {
-	newMsg := message{text: msg, kind: msgSystem}
-	m.messages = append(m.messages, newMsg)
-	return m, tea.Println(m.renderMessage(newMsg))
+func (m Model) withMessage(text string) (Model, tea.Cmd) {
+	m.messages = append(m.messages, message{text: text, kind: msgSystem})
+	m.contentDirty = true
+	m = m.syncLayout(true)
+	return m, nil
 }
 
-func (m Model) replaceNotice(msg string) (Model, tea.Cmd) {
-	newMsg := message{text: msg, kind: msgSystem}
+func (m Model) replaceNotice(text string) (Model, tea.Cmd) {
+	newMsg := message{text: text, kind: msgSystem}
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
 		m.messages[m.ctrlCNoticeID] = newMsg
 	} else {
 		m.messages = append(m.messages, newMsg)
 		m.ctrlCNoticeID = len(m.messages) - 1
 	}
-	return m, tea.Println(m.renderMessage(newMsg))
+	m.contentDirty = true
+	m = m.syncLayout(true)
+	return m, nil
 }
 
 func (m Model) cancelCtrlC() Model {
 	m.ctrlCPress = 0
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
 		m.messages = append(m.messages[:m.ctrlCNoticeID], m.messages[m.ctrlCNoticeID+1:]...)
+		m.contentDirty = true
 	}
 	m.ctrlCNoticeID = -1
 	return m
@@ -233,5 +272,3 @@ func stripTrigger(s string) string {
 	}
 	return s
 }
-
-

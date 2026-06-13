@@ -1,72 +1,112 @@
 package renderer
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-func TestScrollbackGeometry(t *testing.T) {
-	tests := []struct {
-		name                      string
-		onScreen, newTotal        int
-		wantClear, wantCursorUp   int
-	}{
-		{"grew scrollback", 15, 18, 18, 14},
-		{"shrank scrollback", 15, 11, 15, 14},
-		{"no prior scrollback", 4, 14, 14, 3},
-		{"single line", 2, 2, 2, 1},
-	}
+func TestResizeUpdatesViewportDimensions(t *testing.T) {
+	m := New()
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	m = updated.(Model)
 
-	for _, tt := range tests {
-		clearTotal, cursorUp := scrollbackGeometry(tt.onScreen, tt.newTotal)
-		if clearTotal != tt.wantClear || cursorUp != tt.wantCursorUp {
-			t.Fatalf("%s: got clear=%d cursorUp=%d, want clear=%d cursorUp=%d",
-				tt.name, clearTotal, cursorUp, tt.wantClear, tt.wantCursorUp)
-		}
+	if !m.ready {
+		t.Fatal("expected ready after WindowSizeMsg")
+	}
+	if m.content.Width != 80 {
+		t.Fatalf("viewport width %d, want 80", m.content.Width)
+	}
+	if m.content.Height <= 0 {
+		t.Fatal("viewport height must be positive")
+	}
+	if m.content.Height+m.chromeH > m.height {
+		t.Fatalf("viewport %d + chrome %d exceeds terminal %d",
+			m.content.Height, m.chromeH, m.height)
 	}
 }
 
-func TestStreamViewIncludesMessageHistory(t *testing.T) {
+func TestResizePreservesMessageHistory(t *testing.T) {
 	m := New()
 	m.width = 80
+	m.height = 30
+	m.ready = true
 	m.messages = []message{{text: "hello from user", kind: msgUser}}
 
-	stream := m.streamView()
-	if !containsAll(stream, "Welcome to", "hello from user") {
-		t.Fatalf("streamView missing banner or history: %q", stream)
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
+	m = updated.(Model)
+
+	if !strings.Contains(m.contentView(), "hello from user") {
+		t.Fatal("resize should preserve message history in viewport content")
 	}
 }
 
-func containsAll(s string, parts ...string) bool {
-	for _, p := range parts {
-		if !strings.Contains(s, p) {
-			return false
-		}
-	}
-	return true
-}
-
-func TestStreamViewHeightChangesWithWidth(t *testing.T) {
+func TestResizeBannerWidthAdapts(t *testing.T) {
 	m := New()
 	m.width = 120
-
-	wide := lipgloss.Height(m.streamView())
+	wide := lipgloss.Width(m.bannerView())
 
 	m.width = 40
-	narrow := lipgloss.Height(m.streamView())
+	narrow := lipgloss.Width(m.bannerView())
+
+	if narrow > 40 {
+		t.Fatalf("narrow banner %d exceeds terminal width 40", narrow)
+	}
+	if wide > 120 {
+		t.Fatalf("wide banner %d exceeds terminal width 120", wide)
+	}
+}
+
+func TestResizeBannerWrapsTallerAtNarrowWidth(t *testing.T) {
+	m := New()
+	m.width = 120
+	wide := lipgloss.Height(m.bannerView())
+
+	m.width = 40
+	narrow := lipgloss.Height(m.bannerView())
 
 	if narrow <= wide {
 		t.Fatalf("expected narrower terminal to wrap banner taller: wide=%d narrow=%d", wide, narrow)
 	}
 }
 
-func TestScrollbackLineCount(t *testing.T) {
-	if got := scrollbackLineCount("one\ntwo\n"); got != 2 {
-		t.Fatalf("got %d lines, want 2", got)
+func TestManyMessagesContentFitsInViewport(t *testing.T) {
+	m := New()
+	m.width = 80
+	m.height = 24
+	m.ready = true
+
+	for i := range 25 {
+		m.messages = append(m.messages, message{
+			text: fmt.Sprintf("message number %d from user", i),
+			kind: msgUser,
+		})
 	}
-	if got := scrollbackLineCount(""); got != 0 {
-		t.Fatalf("empty content should be 0 lines, got %d", got)
+
+	m = m.syncLayout(true)
+
+	if !strings.Contains(m.contentView(), "message number 24") {
+		t.Fatal("expected most recent message in content")
+	}
+	if m.content.Height < 1 {
+		t.Fatal("viewport should have positive height")
+	}
+}
+
+func TestLongPasteBannerAppearsOnce(t *testing.T) {
+	m := New()
+	m.width = 80
+	m.height = 24
+	m.ready = true
+
+	readme := strings.Repeat("Elph - minimalist AI agent companion. ", 80)
+	m.messages = []message{{text: readme, kind: msgUser}}
+
+	content := m.contentView()
+	if strings.Count(content, "Welcome to") != 1 {
+		t.Fatal("banner should appear exactly once in scrollable content")
 	}
 }
