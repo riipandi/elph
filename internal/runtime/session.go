@@ -18,8 +18,13 @@ type Session struct {
 	LogPath         string
 	RequestsLogPath string
 	Provider        provider.Provider
-	Model           string
+	ModelID         string
+	ModelName       string
+	ContextWindow   int
+	MaxTokens       int
 	ProviderID      string
+	ProviderName    string
+	Catalog         provider.Catalog
 }
 
 // NewSession creates a session with a generated typeid and assembled system prompt.
@@ -28,13 +33,17 @@ func NewSession(workDir string) Session {
 	logPath, _ := OpenLog(workDir, id)
 	cfg := ai.ResolveProvider()
 
-	model := cfg.Model
-	if model == "" {
-		model = "Claude Sonnet 4.6"
+	modelName := cfg.ModelName
+	if modelName == "" {
+		modelName = "No model configured"
 	}
-	providerID := cfg.ID
+	providerID := cfg.ProviderID
 	if providerID == "" {
 		providerID = "placeholder"
+	}
+	providerName := cfg.ProviderName
+	if providerName == "" {
+		providerName = providerID
 	}
 
 	return Session{
@@ -44,8 +53,13 @@ func NewSession(workDir string) Session {
 		LogPath:         logPath,
 		RequestsLogPath: RequestsLogPath(workDir, id),
 		Provider:        cfg.Provider,
-		Model:           model,
+		ModelID:         cfg.ModelID,
+		ModelName:       modelName,
+		ContextWindow:   cfg.ContextWindow,
+		MaxTokens:       cfg.MaxTokens,
 		ProviderID:      providerID,
+		ProviderName:    providerName,
+		Catalog:         cfg.Catalog,
 	}
 }
 
@@ -59,7 +73,7 @@ func (s Session) StartTurn(ctx context.Context, userPrompt string) <-chan agent.
 	return agent.RunTurn(ctx, agent.TurnOptions{
 		SystemPrompt: s.SystemPrompt,
 		UserPrompt:   userPrompt,
-		Model:        s.Model,
+		Model:        s.ModelID,
 		Provider:     s.Provider,
 	})
 }

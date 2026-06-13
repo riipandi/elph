@@ -4,17 +4,21 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 )
 
-const (
-	openAIAPIKeyEnv      = "OPENAI_API_KEY"
-	openAIModelEnv       = "OPENAI_MODEL"
-	openAIBaseURLEnv     = "OPENAI_BASE_URL"
-	defaultOpenAIBaseURL = "https://api.openai.com/v1"
-	defaultOpenAIModel   = "gpt-4o-mini"
-)
+const defaultOpenAIBaseURL = "https://api.openai.com/v1"
+
+// OpenAIOptions configures an OpenAI-compatible chat completions provider.
+type OpenAIOptions struct {
+	ID           string
+	APIKey       string
+	BaseURL      string
+	DefaultModel string
+	Headers      map[string]string
+	AuthHeader   bool
+	MaxTokens    int
+}
 
 // OpenAICompatible calls an OpenAI-style chat completions endpoint.
 type OpenAICompatible struct {
@@ -22,50 +26,47 @@ type OpenAICompatible struct {
 	APIKey       string
 	BaseURL      string
 	DefaultModel string
+	Headers      map[string]string
+	AuthHeader   bool
+	MaxTokens    int
 	client       *http.Client
 }
 
 // NewOpenAICompatible builds a provider for a compatible HTTP API.
-func NewOpenAICompatible(id, apiKey, baseURL, model string) *OpenAICompatible {
+func NewOpenAICompatible(opts OpenAIOptions) *OpenAICompatible {
+	baseURL := opts.BaseURL
 	if baseURL == "" {
 		baseURL = defaultOpenAIBaseURL
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
-	if model == "" {
-		model = defaultOpenAIModel
+
+	model := opts.DefaultModel
+	maxTokens := opts.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = defaultMaxTokens
 	}
+
 	return &OpenAICompatible{
-		IDName:       id,
-		APIKey:       apiKey,
+		IDName:       opts.ID,
+		APIKey:       opts.APIKey,
 		BaseURL:      baseURL,
 		DefaultModel: model,
+		Headers:      opts.Headers,
+		AuthHeader:   opts.AuthHeader,
+		MaxTokens:    maxTokens,
 		client:       newHTTPClient(),
 	}
 }
 
-// NewOpenAIFromEnv reads OPENAI_API_KEY and optional OPENAI_MODEL / OPENAI_BASE_URL.
-func NewOpenAIFromEnv() (*OpenAICompatible, error) {
-	apiKey := os.Getenv(openAIAPIKeyEnv)
-	if apiKey == "" {
-		return nil, ErrMissingAPIKey
-	}
-	return NewOpenAICompatible(
-		IDOpenAI,
-		apiKey,
-		os.Getenv(openAIBaseURLEnv),
-		os.Getenv(openAIModelEnv),
-	), nil
-}
-
 func (p *OpenAICompatible) ID() string {
 	if p.IDName == "" {
-		return IDOpenAI
+		return "openai"
 	}
 	return p.IDName
 }
 
 func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (string, error) {
-	if p.APIKey == "" {
+	if p.APIKey == "" && !p.AuthHeader {
 		return "", ErrMissingAPIKey
 	}
 
@@ -79,8 +80,9 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (strin
 		Content string `json:"content"`
 	}
 	type request struct {
-		Model    string    `json:"model"`
-		Messages []message `json:"messages"`
+		Model     string    `json:"model"`
+		Messages  []message `json:"messages"`
+		MaxTokens int       `json:"max_tokens,omitempty"`
 	}
 	type choice struct {
 		Message message `json:"message"`
@@ -97,11 +99,10 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (strin
 
 	var out response
 	url := p.BaseURL + "/chat/completions"
-	err := postJSON(ctx, p.client, url, map[string]string{
-		"Authorization": "Bearer " + p.APIKey,
-	}, request{
-		Model:    model,
-		Messages: messages,
+	err := postJSON(ctx, p.client, url, p.requestHeaders(), request{
+		Model:     model,
+		Messages:  messages,
+		MaxTokens: p.MaxTokens,
 	}, &out)
 	if err != nil {
 		return "", err
@@ -110,4 +111,15 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (strin
 		return "", fmt.Errorf("%s: empty response", p.ID())
 	}
 	return out.Choices[0].Message.Content, nil
+}
+
+func (p *OpenAICompatible) requestHeaders() map[string]string {
+	headers := make(map[string]string, len(p.Headers)+1)
+	for key, value := range p.Headers {
+		headers[key] = value
+	}
+	if p.AuthHeader || (p.APIKey != "" && headers["Authorization"] == "") {
+		headers["Authorization"] = "Bearer " + p.APIKey
+	}
+	return headers
 }

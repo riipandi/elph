@@ -86,6 +86,7 @@ type Model struct {
 	branch           string
 	tip              string
 	contextUsed      float64 // 0.0 – 1.0
+	contextWindow    int
 	gitAdded         int
 	gitDeleted       int
 	promptChar       string // >, /, $, #
@@ -94,6 +95,7 @@ type Model struct {
 	shell            ShellState
 	suggest          SuggestState
 	agent            AgentState
+	modelSelector    ModelSelectorState
 
 	mouseEnabled  bool // mouse capture for viewport wheel/scroll
 	selectingText bool // shift held — mouse released for terminal selection
@@ -157,8 +159,9 @@ func New() Model {
 	return Model{
 		content:          vp,
 		input:            ta,
-		modelName:        session.Model,
-		provider:         session.ProviderID,
+		modelName:        session.ModelName,
+		provider:         session.ProviderName,
+		contextWindow:    session.ContextWindow,
 		mode:             constants.ModeBuild,
 		thinkingLevel:    constants.ThinkingHigh,
 		sessionID:        session.ID,
@@ -171,9 +174,9 @@ func New() Model {
 		promptChar:       ">",
 		showPromptPrefix: false,
 		mouseEnabled:     true,
-		layout:        LayoutCache{ContentDirty: true},
-		shell:         ShellState{ToolMsgID: -1},
-		ctrlCNoticeID: -1,
+		layout:           LayoutCache{ContentDirty: true},
+		shell:            ShellState{ToolMsgID: -1},
+		ctrlCNoticeID:    -1,
 	}
 }
 
@@ -181,4 +184,8 @@ func New() Model {
 
 func (m Model) Init() tea.Cmd {
 	return enableTerminalFeatures()
+}
+
+func (m Model) availableModelCount() int {
+	return len(m.session.Catalog.AllModels())
 }

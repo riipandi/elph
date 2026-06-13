@@ -11,15 +11,16 @@ type KeyBinding struct {
 type KeyAction string
 
 const (
-	ActionQuit       KeyAction = "quit"
-	ActionExit       KeyAction = "exit"
-	ActionSwitchMode KeyAction = "switch_mode"
-	ActionCycleThink KeyAction = "cycle_thinking"
-	ActionSubmit     KeyAction = "submit"
-	ActionNewline    KeyAction = "newline"
-	ActionClearInput KeyAction = "clear_input"
-	ActionCopy       KeyAction = "copy"
-	ActionExport     KeyAction = "export"
+	ActionQuit              KeyAction = "quit"
+	ActionExit              KeyAction = "exit"
+	ActionSwitchMode        KeyAction = "switch_mode"
+	ActionCycleThink        KeyAction = "cycle_thinking"
+	ActionSubmit            KeyAction = "submit"
+	ActionNewline           KeyAction = "newline"
+	ActionClearInput        KeyAction = "clear_input"
+	ActionCopy              KeyAction = "copy"
+	ActionExport            KeyAction = "export"
+	ActionOpenModelSelector KeyAction = "open_model_selector"
 )
 
 // DefaultKeyBindings defines all keybindings for the TUI.
@@ -32,6 +33,7 @@ var DefaultKeyBindings = []KeyBinding{
 	{Key: "enter", Action: ActionSubmit, Label: "Send message"},
 	{Key: "ctrl+j", Action: ActionNewline, Label: "Insert newline in input"},
 	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last message"},
+	{Key: "ctrl+l", Action: ActionOpenModelSelector, Label: "Open model selector"},
 }
 
 // KeyBindingsByAction returns a map of action to keybinding for quick lookup.

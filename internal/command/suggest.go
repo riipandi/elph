@@ -51,9 +51,9 @@ func Suggest(query string) []SlashCommand {
 }
 
 // CompleteInput returns the full slash command input for the selected suggestion.
-func CompleteInput(selected SlashCommand) string {
+func CompleteInput(selected SlashCommand, ctx Context) string {
 	input := "/" + selected.Name
-	if len(selected.Args) > 0 {
+	if len(EffectiveArgs(selected, ctx)) > 0 {
 		input += " "
 	}
 	return input

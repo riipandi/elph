@@ -13,7 +13,7 @@ var builtin = []SlashCommand{
 	{
 		Name:        "model",
 		Description: "Switch the active AI model",
-		Handler:     notImplemented("model"),
+		Handler:     modelHandler,
 	},
 	{
 		Name:        "settings",
@@ -52,6 +52,6 @@ var builtin = []SlashCommand{
 		Aliases:     []string{"quit", "q"},
 		Description: "Exit the application",
 		Quits:       true,
-		Handler:     func(Context, string) string { return "" },
+		Handler:     func(*Context, string) string { return "" },
 	},
 }

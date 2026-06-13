@@ -13,9 +13,10 @@ var modeList = []constants.AgentMode{
 }
 
 var (
-	inputBorderByMode         = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
-	inputBorderAttachedByMode = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
-	paletteBorderByMode       = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
+	inputBorderByMode             = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
+	inputBorderAttachedByMode     = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
+	paletteBorderByMode           = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
+	modelSelectorListBorderByMode = make(map[constants.AgentMode]lipgloss.Style, len(modeList))
 )
 
 func init() {
@@ -35,6 +36,12 @@ func init() {
 			BorderForeground(color).
 			BorderBottom(false).
 			Padding(0, 1)
+		modelSelectorListBorderByMode[mode] = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(color).
+			BorderBottom(false).
+			Padding(0, 1).
+			PaddingBottom(1)
 	}
 }
 
@@ -57,4 +64,11 @@ func paletteBorder(mode constants.AgentMode) lipgloss.Style {
 		return style
 	}
 	return paletteBorderByMode[constants.ModeBuild]
+}
+
+func modelSelectorListBorder(mode constants.AgentMode) lipgloss.Style {
+	if style, ok := modelSelectorListBorderByMode[mode]; ok {
+		return style
+	}
+	return modelSelectorListBorderByMode[constants.ModeBuild]
 }

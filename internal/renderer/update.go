@@ -50,6 +50,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.agent.Busy && isShellCancelKey(key) {
 			return m.cancelAgentTurn()
 		}
+		if m.modelSelectorActive() {
+			var cmd tea.Cmd
+			var handled bool
+			m, cmd, handled = m.handleModelSelectorKey(key)
+			if handled {
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+					return m, tea.Batch(cmds...)
+				}
+				return m, nil
+			}
+		}
 	}
 
 	if m.input.Focused() && isNewlineInputMsg(msg) {
@@ -246,6 +258,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if isInputNewlineKey(msg) {
 				break
 			}
+			if m.modelSelectorActive() {
+				var cmd tea.Cmd
+				var handled bool
+				m, cmd, handled = m.confirmModelSelector()
+				if handled {
+					return m, cmd
+				}
+				break
+			}
 			if m.agent.Busy || m.shell.Running || !m.input.Focused() {
 				break
 			}
@@ -270,6 +291,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m, cmd := m.withMessage("Copied to clipboard")
 				return m, cmd
 			}
+
+		case constants.ActionOpenModelSelector:
+			return m.triggerModelSelector()
 		}
 
 		m = m.cancelCtrlC()

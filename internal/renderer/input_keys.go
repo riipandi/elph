@@ -68,7 +68,7 @@ func (m Model) handleInputWordDelete(msg tea.Msg) (Model, bool) {
 	}
 
 	// macOS Terminal/Ghostty: ESC then backspace (Meta-Backspace) as two events.
-	if isInputEscapeKey(key) && !m.shell.Running {
+	if isInputEscapeKey(key) && !m.shell.Running && !m.modelSelectorActive() {
 		m.inputPendingEsc = true
 		return m, true
 	}

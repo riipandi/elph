@@ -39,5 +39,5 @@ func TestSuggestLimitsResults(t *testing.T) {
 func TestCompleteInput(t *testing.T) {
 	cmd, ok := Get(DiagnosticListTools)
 	require.True(t, ok)
-	require.Equal(t, "/diagnostic:list-tools", CompleteInput(cmd))
+	require.Equal(t, "/diagnostic:list-tools", CompleteInput(cmd, Context{}))
 }

@@ -5,13 +5,6 @@ import (
 	"errors"
 )
 
-// Common provider identifiers used in UI and configuration.
-const (
-	IDAnthropic = "anthropic"
-	IDOpenAI    = "openai"
-	IDDeepSeek  = "deepseek"
-)
-
 // TurnRequest is a single non-streaming completion request.
 type TurnRequest struct {
 	SystemPrompt string

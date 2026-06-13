@@ -9,7 +9,7 @@ var Tips = []string{
 	"Type :q and press Enter to quit (vim-style exit).",
 	"Press Ctrl+D to exit the application.",
 	"Use Tab to switch focus between elements.",
-	"Type /model <name> to switch the active AI model.",
+	"Press Ctrl+L or type /model to switch the active AI model.",
 	"Use /settings to open the configuration panel.",
 	"Send /diagnostic:debug for diagnostic information.",
 	"Questions about code? Try /plan first for architecture-aware answers.",

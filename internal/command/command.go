@@ -3,6 +3,8 @@ package command
 import (
 	"fmt"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
 // Context carries session state needed by slash command handlers.
@@ -11,13 +13,38 @@ type Context struct {
 	SystemPrompt    string
 	LogPath         string
 	RequestsLogPath string
+	Catalog         provider.Catalog
+	ProviderID      string
+	ModelID         string
+	ModelName       string
+
+	pendingSwitch       *ModelSwitch
+	pendingOpenSelector bool
+	selectorCatalog     provider.Catalog
+	selectorQuery       string
+}
+
+// ModelSwitch applies a new active provider/model to the session.
+type ModelSwitch struct {
+	Provider      provider.Provider
+	ProviderID    string
+	ProviderName  string
+	ModelID       string
+	ModelName     string
+	ContextWindow int
+	MaxTokens     int
+	Catalog       provider.Catalog
 }
 
 // Result is the outcome of executing a slash command.
 type Result struct {
-	Output string
-	OK     bool
-	Quit   bool
+	Output            string
+	OK                bool
+	Quit              bool
+	Switch            *ModelSwitch
+	OpenModelSelector bool
+	SelectorCatalog   provider.Catalog
+	SelectorQuery     string
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
@@ -26,8 +53,9 @@ type SlashCommand struct {
 	Aliases     []string
 	Description string
 	Args        []ArgChoice
+	ArgsFunc    func(ctx Context) []ArgChoice
 	Quits       bool
-	Handler     func(ctx Context, args string) string
+	Handler     func(ctx *Context, args string) string
 }
 
 // Execute runs a slash command from raw user input (e.g. "/help", "/model sonnet").
@@ -39,10 +67,15 @@ func Execute(input string, ctx Context) Result {
 
 	for _, cmd := range builtin {
 		if matches(cmd, name) {
+			output := cmd.Handler(&ctx, args)
 			return Result{
-				Output: cmd.Handler(ctx, args),
-				OK:     true,
-				Quit:   cmd.Quits,
+				Output:            output,
+				OK:                true,
+				Quit:              cmd.Quits,
+				Switch:            ctx.pendingSwitch,
+				OpenModelSelector: ctx.pendingOpenSelector,
+				SelectorCatalog:   ctx.selectorCatalog,
+				SelectorQuery:     ctx.selectorQuery,
 			}
 		}
 	}
@@ -77,7 +110,7 @@ func HelpText() string {
 func init() {
 	for i := range builtin {
 		if builtin[i].Name == "help" {
-			builtin[i].Handler = func(Context, string) string { return FormatHelp(builtin) }
+			builtin[i].Handler = func(*Context, string) string { return FormatHelp(builtin) }
 			return
 		}
 	}
@@ -111,8 +144,8 @@ func matches(cmd SlashCommand, name string) bool {
 	return false
 }
 
-func notImplemented(name string) func(Context, string) string {
-	return func(Context, string) string {
+func notImplemented(name string) func(*Context, string) string {
+	return func(*Context, string) string {
 		return fmt.Sprintf("/%s: not yet implemented", name)
 	}
 }

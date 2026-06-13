@@ -80,5 +80,3 @@ func TestIsShellContextPrompt(t *testing.T) {
 	require.True(t, IsShellContextPrompt("Ran `git status`\n```\n```"))
 	require.False(t, IsShellContextPrompt("explain this code"))
 }
-
-

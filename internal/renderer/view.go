@@ -258,7 +258,7 @@ func (m Model) bannerView() string {
 	meta := lipgloss.JoinVertical(lipgloss.Left,
 		"",
 		metaLine(innerW, "Directory:  ", m.workDir),
-		metaLine(innerW, "Model:      ", fmt.Sprintf("%s [%s] (000 available)", m.modelName, m.provider)),
+		metaLine(innerW, "Model:      ", fmt.Sprintf("%s [%s] (%d available)", m.modelName, m.provider, m.availableModelCount())),
 		metaLine(innerW, "Stats:      ", fmt.Sprintf("%d exts, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
 		metaLine(innerW, "MCP Server: ", fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
 	)
@@ -325,6 +325,10 @@ func (m Model) inputBodyView() string {
 }
 
 func (m Model) inputChromeView() string {
+	if m.modelSelectorActive() {
+		return m.modelSelectorChromeView()
+	}
+
 	palette := m.commandPaletteView()
 	inputBox := m.inputBoxView(palette != "")
 
@@ -366,7 +370,7 @@ func (m Model) footerView() string {
 
 	ctxColor := constants.ContextUsageColor(m.contextUsed)
 	ctxSty := lipgloss.NewStyle().Foreground(ctxColor)
-	line1Right := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (262k)", m.contextUsed*100))
+	line1Right := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (%s)", m.contextUsed*100, m.contextWindowLabel()))
 
 	modeSty := lipgloss.NewStyle().Foreground(constants.ModeBorderColor(m.mode)).Bold(true)
 	line2Left := whiteBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))

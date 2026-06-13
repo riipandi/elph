@@ -83,7 +83,7 @@ func TestPaletteSitsFlushAboveInput(t *testing.T) {
 func TestCompleteInputUsesCatalogName(t *testing.T) {
 	cmd, ok := command.Get(command.DiagnosticListTools)
 	require.True(t, ok)
-	require.Equal(t, "/diagnostic:list-tools", command.CompleteInput(cmd))
+	require.Equal(t, "/diagnostic:list-tools", command.CompleteInput(cmd, command.Context{}))
 }
 
 func TestArgPaletteAppearsForOpenLog(t *testing.T) {

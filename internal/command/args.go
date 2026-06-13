@@ -13,6 +13,14 @@ type ArgChoice struct {
 	Description string
 }
 
+// EffectiveArgs returns static or context-derived argument choices.
+func EffectiveArgs(cmd SlashCommand, ctx Context) []ArgChoice {
+	if cmd.ArgsFunc != nil {
+		return cmd.ArgsFunc(ctx)
+	}
+	return cmd.Args
+}
+
 // ArgsHint returns a compact placeholder for command arguments.
 func ArgsHint(args []ArgChoice) string {
 	if len(args) == 0 {
@@ -62,17 +70,18 @@ func ArgExactMatch(args []ArgChoice, query string) bool {
 }
 
 // SuggestArgs returns argument choices that fuzzy-match query for cmd.
-func SuggestArgs(cmd SlashCommand, query string) []ArgChoice {
+func SuggestArgs(cmd SlashCommand, ctx Context, query string) []ArgChoice {
+	args := EffectiveArgs(cmd, ctx)
 	query = strings.ToLower(strings.TrimSpace(query))
-	if len(cmd.Args) == 0 {
+	if len(args) == 0 {
 		return nil
 	}
 	if query == "" {
-		return append([]ArgChoice(nil), cmd.Args...)
+		return append([]ArgChoice(nil), args...)
 	}
 
-	out := make([]ArgChoice, 0, len(cmd.Args))
-	for _, arg := range cmd.Args {
+	out := make([]ArgChoice, 0, len(args))
+	for _, arg := range args {
 		if argScore(query, arg) >= 0 {
 			out = append(out, arg)
 		}

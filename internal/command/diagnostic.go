@@ -21,7 +21,7 @@ var openLogArgs = []ArgChoice{
 	{Value: "system", Description: "Session events, notices, and command output"},
 }
 
-func diagnosticListTools(Context, string) string {
+func diagnosticListTools(*Context, string) string {
 	var b strings.Builder
 	b.WriteString("Available tools:\n")
 
@@ -36,7 +36,7 @@ func diagnosticListTools(Context, string) string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-func diagnosticSystemPrompt(ctx Context, _ string) string {
+func diagnosticSystemPrompt(ctx *Context, _ string) string {
 	if strings.TrimSpace(ctx.SystemPrompt) == "" {
 		return fmt.Sprintf("/%s: not yet implemented", DiagnosticSystemPrompt)
 	}
@@ -47,7 +47,7 @@ func diagnosticSystemPrompt(ctx Context, _ string) string {
 	return b.String()
 }
 
-func diagnosticOpenLog(ctx Context, args string) string {
+func diagnosticOpenLog(ctx *Context, args string) string {
 	args = strings.ToLower(strings.TrimSpace(args))
 	if args == "" {
 		return fmt.Sprintf("Usage: /%s <%s>", DiagnosticOpenLog, ArgsHint(openLogArgs))
@@ -105,6 +105,6 @@ func displayFilteredLog(path, kind string) string {
 	return b.String()
 }
 
-func diagnosticDebug(Context, string) string {
-	return notImplemented(DiagnosticDebug)(Context{}, "")
+func diagnosticDebug(*Context, string) string {
+	return notImplemented(DiagnosticDebug)(nil, "")
 }

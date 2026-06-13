@@ -238,11 +238,14 @@ func (m Model) maxInputHeight() int {
 	if m.showsActivity() {
 		activityH = lipgloss.Height(m.activityView())
 	}
-	paletteH := 0
-	if m.commandPaletteActive() {
-		paletteH = m.commandPaletteHeight()
+	overlayH := 0
+	switch {
+	case m.commandPaletteActive():
+		overlayH = m.commandPaletteHeight()
+	case m.modelSelectorActive():
+		overlayH = m.modelSelectorListHeight()
 	}
-	avail := m.height - footerH - activityH - paletteH - minViewportRows - inputChromeSlack
+	avail := m.height - footerH - activityH - overlayH - minViewportRows - inputChromeSlack
 	return min(max(avail, 1), maxInputLines)
 }
 
@@ -417,12 +420,12 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 	m = m.addUserMessage(strings.TrimSpace(raw))
 	m = m.resetInput()
 
-	result := command.Execute(raw, command.Context{
-		WorkDir:         m.workDir,
-		SystemPrompt:    m.session.SystemPrompt,
-		LogPath:         m.session.LogPath,
-		RequestsLogPath: m.session.RequestsLogPath,
-	})
+	result := command.Execute(raw, m.commandContext())
+	if result.OpenModelSelector {
+		m = m.openModelSelector(result.SelectorCatalog, result.SelectorQuery)
+		return m, nil, true
+	}
+	m = m.applyModelSwitch(result.Switch)
 	if result.Quit {
 		m.quitting = true
 		return m, tea.Sequence(disableTerminalFeatures(), tea.Quit), true

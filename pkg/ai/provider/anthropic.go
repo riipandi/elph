@@ -4,56 +4,62 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
+	"strings"
 )
 
-const (
-	anthropicAPIURL        = "https://api.anthropic.com/v1/messages"
-	anthropicVersion       = "2023-06-01"
-	defaultAnthropicModel  = "claude-sonnet-4-20250514"
-	anthropicAPIKeyEnv     = "ANTHROPIC_API_KEY"
-	anthropicModelEnv      = "ANTHROPIC_MODEL"
-)
+const anthropicVersion = "2023-06-01"
+
+// AnthropicOptions configures an Anthropic Messages API provider.
+type AnthropicOptions struct {
+	ID        string
+	APIKey    string
+	Model     string
+	BaseURL   string
+	Headers   map[string]string
+	MaxTokens int
+}
 
 // Anthropic calls the Anthropic Messages API.
 type Anthropic struct {
-	APIKey string
-	Model  string
-	APIURL string
-	client *http.Client
+	IDName    string
+	APIKey    string
+	Model     string
+	BaseURL   string
+	Headers   map[string]string
+	MaxTokens int
+	client    *http.Client
 }
 
 // NewAnthropic builds an Anthropic provider from explicit settings.
-func NewAnthropic(apiKey, model string) *Anthropic {
-	if model == "" {
-		model = defaultAnthropicModel
+func NewAnthropic(opts AnthropicOptions) *Anthropic {
+	maxTokens := opts.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = defaultMaxTokens
 	}
 	return &Anthropic{
-		APIKey: apiKey,
-		Model:  model,
-		APIURL: anthropicAPIURL,
-		client: newHTTPClient(),
+		IDName:    opts.ID,
+		APIKey:    opts.APIKey,
+		Model:     opts.Model,
+		BaseURL:   strings.TrimRight(opts.BaseURL, "/"),
+		Headers:   opts.Headers,
+		MaxTokens: maxTokens,
+		client:    newHTTPClient(),
 	}
 }
 
 func (p *Anthropic) apiURL() string {
-	if p.APIURL != "" {
-		return p.APIURL
+	if p.BaseURL == "" {
+		return ""
 	}
-	return anthropicAPIURL
+	return p.BaseURL + "/messages"
 }
 
-// NewAnthropicFromEnv reads ANTHROPIC_API_KEY and optional ANTHROPIC_MODEL.
-func NewAnthropicFromEnv() (*Anthropic, error) {
-	apiKey := os.Getenv(anthropicAPIKeyEnv)
-	if apiKey == "" {
-		return nil, ErrMissingAPIKey
+func (p *Anthropic) ID() string {
+	if p.IDName == "" {
+		return "anthropic"
 	}
-	model := os.Getenv(anthropicModelEnv)
-	return NewAnthropic(apiKey, model), nil
+	return p.IDName
 }
-
-func (p *Anthropic) ID() string { return IDAnthropic }
 
 func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, error) {
 	if p.APIKey == "" {
@@ -84,12 +90,9 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 	}
 
 	var out response
-	err := postJSON(ctx, p.client, p.apiURL(), map[string]string{
-		"x-api-key":         p.APIKey,
-		"anthropic-version": anthropicVersion,
-	}, request{
+	err := postJSON(ctx, p.client, p.apiURL(), p.requestHeaders(), request{
 		Model:     model,
-		MaxTokens: 4096,
+		MaxTokens: p.MaxTokens,
 		System:    req.SystemPrompt,
 		Messages:  []message{{Role: "user", Content: req.UserPrompt}},
 	}, &out)
@@ -107,7 +110,21 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 		}
 	}
 	if text == "" {
-		return "", fmt.Errorf("anthropic: empty response")
+		return "", fmt.Errorf("%s: empty response", p.ID())
 	}
 	return text, nil
+}
+
+func (p *Anthropic) requestHeaders() map[string]string {
+	headers := make(map[string]string, len(p.Headers)+2)
+	for key, value := range p.Headers {
+		headers[key] = value
+	}
+	if headers["x-api-key"] == "" {
+		headers["x-api-key"] = p.APIKey
+	}
+	if headers["anthropic-version"] == "" {
+		headers["anthropic-version"] = anthropicVersion
+	}
+	return headers
 }

@@ -27,7 +27,7 @@ func TestSuggestArgsFiltersByPrefix(t *testing.T) {
 	cmd, ok := Get(DiagnosticOpenLog)
 	require.True(t, ok)
 
-	got := SuggestArgs(cmd, "sys")
+	got := SuggestArgs(cmd, Context{}, "sys")
 	require.Len(t, got, 1)
 	require.Equal(t, "system", got[0].Value)
 }
@@ -35,7 +35,7 @@ func TestSuggestArgsFiltersByPrefix(t *testing.T) {
 func TestCompleteInputAddsSpaceForArgCommands(t *testing.T) {
 	cmd, ok := Get(DiagnosticOpenLog)
 	require.True(t, ok)
-	require.Equal(t, "/diagnostic:open-log ", CompleteInput(cmd))
+	require.Equal(t, "/diagnostic:open-log ", CompleteInput(cmd, Context{}))
 }
 
 func TestArgChoiceIndexExactMatch(t *testing.T) {

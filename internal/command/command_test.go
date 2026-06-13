@@ -5,6 +5,7 @@ import (
 
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/tools"
+	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/riipandi/elph/pkg/tool"
 	"github.com/stretchr/testify/require"
 )
@@ -31,9 +32,26 @@ func TestExecuteQuitAlias(t *testing.T) {
 }
 
 func TestExecuteWithArgs(t *testing.T) {
+	t.Setenv("ELPH_PROVIDERS_DIR", t.TempDir())
+
 	result := Execute("/model claude-sonnet", Context{})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "not yet implemented")
+	require.Contains(t, result.Output, "no providers found")
+
+	dir := t.TempDir()
+	writeProviderFile(t, dir, "opencode.json", `{
+		"baseUrl": "https://example.com/v1",
+		"api": "openai-completions",
+		"apiKey": "secret",
+		"models": [{"id": "claude-sonnet", "name": "Claude Sonnet"}]
+	}`)
+	catalog, err := provider.LoadCatalog(dir)
+	require.NoError(t, err)
+
+	result = Execute("/model claude", Context{Catalog: catalog})
+	require.True(t, result.OK)
+	require.True(t, result.OpenModelSelector)
+	require.Equal(t, "claude", result.SelectorQuery)
 }
 
 func TestExecuteAlias(t *testing.T) {

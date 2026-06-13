@@ -1,6 +1,98 @@
 {
-	"$schema": "http://json-schema.org/draft-07/schema#",
-	"title": "Elph AI provider configuration schema",
-	"type": "object",
-	"properties": {}
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Elph AI provider configuration",
+  "description": "One provider per JSON file in ~/.elph/providers. The provider id is the filename without .json.",
+  "type": "object",
+  "required": ["baseUrl", "api", "models"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Display name shown in the UI."
+    },
+    "baseUrl": {
+      "type": "string",
+      "description": "API endpoint base URL."
+    },
+    "api": {
+      "type": "string",
+      "enum": ["openai-completions", "anthropic-messages"],
+      "description": "Upstream API protocol."
+    },
+    "apiKey": {
+      "type": "string",
+      "description": "API key literal, $ENV_VAR / ${ENV_VAR} / env.ENV_VAR interpolation, or !command."
+    },
+    "authHeader": {
+      "type": "boolean",
+      "description": "Add Authorization: Bearer <apiKey> header for OpenAI-compatible APIs."
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Extra request headers. Values support $ENV_VAR, ${ENV_VAR}, env.ENV_VAR, and !command syntax."
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/model" }
+    }
+  },
+  "definitions": {
+    "model": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Model identifier sent to the upstream API."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable model name. Defaults to id."
+        },
+        "api": {
+          "type": "string",
+          "enum": ["openai-completions", "anthropic-messages"],
+          "description": "Override provider api for this model."
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "Override provider baseUrl for this model."
+        },
+        "reasoning": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the model supports extended thinking."
+        },
+        "input": {
+          "type": "array",
+          "items": { "enum": ["text", "image"] },
+          "default": ["text"]
+        },
+        "contextWindow": {
+          "type": "integer",
+          "default": 128000,
+          "description": "Maximum context window size in tokens for this model."
+        },
+        "maxTokens": {
+          "type": "integer",
+          "default": 16384,
+          "description": "Maximum output tokens per completion for this model."
+        },
+        "cost": {
+          "type": "object",
+          "properties": {
+            "input": { "type": "number" },
+            "output": { "type": "number" },
+            "cacheRead": { "type": "number" },
+            "cacheWrite": { "type": "number" }
+          }
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
 }

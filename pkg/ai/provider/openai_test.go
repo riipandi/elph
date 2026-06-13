@@ -14,6 +14,7 @@ func TestOpenAICompatibleComplete(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/chat/completions", r.URL.Path)
 		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+		require.Equal(t, "proxy", r.Header.Get("X-Proxy"))
 
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"choices": []map[string]any{{
@@ -23,7 +24,14 @@ func TestOpenAICompatibleComplete(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewOpenAICompatible(IDOpenAI, "test-key", srv.URL, "gpt-test")
+	p := NewOpenAICompatible(OpenAIOptions{
+		ID:           "openai",
+		APIKey:       "test-key",
+		BaseURL:      srv.URL,
+		DefaultModel: "gpt-test",
+		Headers:      map[string]string{"X-Proxy": "proxy"},
+		AuthHeader:   true,
+	})
 
 	got, err := p.Complete(context.Background(), TurnRequest{
 		SystemPrompt: "sys",

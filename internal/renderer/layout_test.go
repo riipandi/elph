@@ -55,6 +55,7 @@ func TestFooterRightSegmentFlush(t *testing.T) {
 	m := New()
 	m.width = 80
 	m.workDir = "/Users/dev/renderer"
+	m.contextWindow = 262144
 
 	lines := strings.Split(strings.TrimSpace(m.footerView()), "\n")
 	require.Len(t, lines, 2)

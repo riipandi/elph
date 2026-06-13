@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2/compat"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
 var (
@@ -49,6 +50,18 @@ func (m Model) slashQuery() string {
 }
 
 func (m Model) syncInputSuggestions() (Model, tea.Cmd) {
+	if m.modelSelectorActive() {
+		m = m.refreshModelSelectorItems()
+		m.suggest.CmdSuggestions = nil
+		m.suggest.CmdSuggestIndex = 0
+		m.suggest.ArgSuggestions = nil
+		m.suggest.ArgSuggestIndex = 0
+		m.suggest.MentionSuggestions = nil
+		m.suggest.MentionSuggestIndex = 0
+		m.suggest.MentionFilterQuery = ""
+		return m, nil
+	}
+
 	m = m.syncInputPlaceholder()
 
 	if !m.input.Focused() {
@@ -81,14 +94,35 @@ func (m Model) syncSlashSuggestions() Model {
 	return m
 }
 
+func (m Model) commandContext() command.Context {
+	catalog := m.session.Catalog
+	if cmd, _, ok := command.ResolveInput(m.input.Value()); ok && cmd.Name == "model" {
+		if reloaded, err := provider.LoadCatalog(""); err == nil {
+			catalog = reloaded
+		}
+	}
+	return command.Context{
+		WorkDir:         m.workDir,
+		SystemPrompt:    m.session.SystemPrompt,
+		LogPath:         m.session.LogPath,
+		RequestsLogPath: m.session.RequestsLogPath,
+		Catalog:         catalog,
+		ProviderID:      m.session.ProviderID,
+		ModelID:         m.session.ModelID,
+		ModelName:       m.session.ModelName,
+	}
+}
+
 func (m Model) syncSlashSuggestionsOnly() Model {
 	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
-	if ok && len(cmd.Args) > 0 && m.argInputReady(cmd) {
+	ctx := m.commandContext()
+	args := command.EffectiveArgs(cmd, ctx)
+	if ok && len(args) > 0 && m.argInputReady(cmd) {
 		m.suggest.CmdSuggestions = nil
 		m.suggest.CmdSuggestIndex = 0
-		m.suggest.ArgSuggestions = command.SuggestArgs(cmd, argQuery)
-		if argQuery != "" && command.ArgExactMatch(cmd.Args, argQuery) {
-			m.suggest.ArgSuggestions = append([]command.ArgChoice(nil), cmd.Args...)
+		m.suggest.ArgSuggestions = command.SuggestArgs(cmd, ctx, argQuery)
+		if argQuery != "" && command.ArgExactMatch(args, argQuery) {
+			m.suggest.ArgSuggestions = append([]command.ArgChoice(nil), args...)
 		}
 		m.suggest.ArgSuggestIndex = command.ArgChoiceIndex(m.suggest.ArgSuggestions, argQuery)
 		return m
@@ -112,10 +146,16 @@ func (m Model) argInputReady(cmd command.SlashCommand) bool {
 }
 
 func (m Model) syncInputPlaceholder() Model {
+	if m.modelSelectorActive() {
+		m.input.Placeholder = m.modelSelectorPlaceholderText()
+		return m
+	}
+
 	placeholder := ""
 	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
-	if ok && len(cmd.Args) > 0 && argQuery == "" && m.argInputReady(cmd) {
-		placeholder = command.ArgsHint(cmd.Args)
+	args := command.EffectiveArgs(cmd, m.commandContext())
+	if ok && len(args) > 0 && argQuery == "" && m.argInputReady(cmd) {
+		placeholder = command.ArgsHint(args)
 	}
 	m.input.Placeholder = placeholder
 	return m
@@ -126,7 +166,7 @@ func (m Model) applyCommandCompletion() Model {
 		return m
 	}
 	selected := m.suggest.CmdSuggestions[m.suggest.CmdSuggestIndex]
-	m.input.SetValue(command.CompleteInput(selected))
+	m.input.SetValue(command.CompleteInput(selected, m.commandContext()))
 	m = m.syncPromptPrefix()
 	m = m.syncInputWidth()
 	m = m.syncSlashSuggestions()
