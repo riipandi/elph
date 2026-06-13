@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/config"
+	"github.com/riipandi/elph/internal/constants"
 )
 
 // ─── View ────────────────────────────────────────────────────────────────────
@@ -81,22 +82,21 @@ func (m Model) bannerView() string {
 	)
 
 	dimStyle := lipgloss.NewStyle().Foreground(dimText)
+	valStyle := lipgloss.NewStyle().Foreground(brightText)
 
 	// Metadata lines: left-aligned to banner edge (no logo offset).
 	meta := lipgloss.JoinVertical(lipgloss.Left,
 		"",
-		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Directory:  %s", m.workDir)),
-		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Model:      %s [%s] (000 available)", m.modelName, m.provider)),
-		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Stats:      %d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
-		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("MCP Server: %d/%d connected (%d tools)", 0, 0, 0)),
+		dimStyle.MaxWidth(metaW).Render("Directory:  ")+valStyle.Render(m.workDir),
+		dimStyle.MaxWidth(metaW).Render("Model:      ")+valStyle.Render(fmt.Sprintf("%s [%s] (000 available)", m.modelName, m.provider)),
+		dimStyle.MaxWidth(metaW).Render("Stats:      ")+valStyle.Render(fmt.Sprintf("%d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
+		dimStyle.MaxWidth(metaW).Render("MCP:        ")+valStyle.Render(fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
 	)
 
 	// Tip: word-wraps within available width.
-	tipStyle := lipgloss.NewStyle().
-		Foreground(dimText).
-		Italic(true).
-		Width(tipW)
-	tip := tipStyle.Render("Tip: " + m.tip)
+	tipLabel := lipgloss.NewStyle().Foreground(yellowCol).Italic(true).Render("Tip:")
+	tipBody := lipgloss.NewStyle().Foreground(dimText).Italic(true).Render(" " + m.tip)
+	tip := lipgloss.NewStyle().Width(tipW).Render(tipLabel + tipBody)
 
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		topSection,
@@ -148,29 +148,53 @@ func (m Model) footerView() string {
 		sid = sid[:16]
 	}
 
-	s := lipgloss.NewStyle().Foreground(dimText)
+	// --- Line 1 left: model (thinking color) | provider | T: level | IMG ---
+	modelSty := lipgloss.NewStyle().Foreground(constants.ThinkingColor(m.thinkingLevel))
+	metaSty := lipgloss.NewStyle().Foreground(dimText)
+	line1LeftRendered := modelSty.Render(m.modelName) + metaSty.Render(fmt.Sprintf(" | %s | T: %s | IMG", m.provider, m.thinkingLevel))
 
-	line1Left := fmt.Sprintf("%s | %s | T: high | IMG", m.modelName, m.provider)
-	line1Right := "$0.00 | 0.0% (262k)"
+	// --- Line 1 right: cost | context% (dynamic color) ---
+	ctxColor := ContextUsageColor(m.contextUsed)
+	ctxSty := lipgloss.NewStyle().Foreground(ctxColor)
+	line1RightRendered := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (262k)", m.contextUsed*100))
 
-	line2Left := fmt.Sprintf("%s [%s]", wd, sid)
-	line2Right := fmt.Sprintf("turn: 0 | %s [+00 -00]", m.branch)
+	// --- Line 2 left: dir (white) [session] mode (mode color) ---
+	dirSty := lipgloss.NewStyle().Foreground(whiteCol)
+	sidSty := lipgloss.NewStyle().Foreground(dimText)
+	modeSty := lipgloss.NewStyle().Foreground(modeBorderColor(m.mode)).Bold(true)
+	line2LeftRendered := dirSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sid)) + modeSty.Render(string(m.mode))
 
-	// Line 1: left takes remaining space after right, with gap between them.
-	rightW1 := lipgloss.Width(line1Right)
+	// --- Line 2 right: turn | branch [+add -del] (white) ---
+	gitStr := "[-]"
+	if m.gitAdded > 0 || m.gitDeleted > 0 {
+		gitStr = fmt.Sprintf("[+%d -%d]", m.gitAdded, m.gitDeleted)
+	}
+	var gitColor lipgloss.Color
+	switch {
+	case m.gitAdded > 0 && m.gitDeleted == 0:
+		gitColor = lipgloss.Color("#22C55E") // green: only additions
+	case m.gitDeleted > 0 && m.gitAdded == 0:
+		gitColor = lipgloss.Color("#EF4444") // red: only deletions
+	case m.gitAdded > 0 && m.gitDeleted > 0:
+		gitColor = lipgloss.Color("#EAB308") // yellow: mixed changes
+	default:
+		gitColor = lipgloss.Color("#6B7280") // gray: no changes
+	}
+	gitSty := lipgloss.NewStyle().Foreground(gitColor)
+	line2RightRendered := lipgloss.NewStyle().Foreground(whiteCol).Render(fmt.Sprintf("turn: 0 | %s ", m.branch)) + gitSty.Render(gitStr)
+
+	// Line 1: left takes remaining space, right flush to edge.
+	rightW1 := lipgloss.Width(line1RightRendered)
 	left1W := max(cw-rightW1, 0)
-	left1 := s.Width(left1W).Render(line1Left)
-	right1 := s.Render(line1Right)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, left1, right1)
+	left1 := metaSty.Width(left1W).Render(line1LeftRendered)
+	row1 := lipgloss.JoinHorizontal(lipgloss.Top, left1, line1RightRendered)
 
 	// Line 2: same approach.
-	rightW2 := lipgloss.Width(line2Right)
+	rightW2 := lipgloss.Width(line2RightRendered)
 	left2W := max(cw-rightW2, 0)
-	left2 := s.Width(left2W).Render(line2Left)
-	right2 := s.Render(line2Right)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, right2)
+	left2 := metaSty.Width(left2W).Render(line2LeftRendered)
+	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, line2RightRendered)
 
 	footerContent := lipgloss.JoinVertical(lipgloss.Left, row1, row2)
-
 	return lipgloss.NewStyle().PaddingLeft(1).Render(footerContent)
 }

@@ -84,10 +84,14 @@ type Model struct {
 	modelName     string
 	provider      string
 	mode          constants.AgentMode
+	thinkingLevel constants.ThinkingLevel
 	sessionID     string
 	workDir       string
 	branch        string
 	tip           string
+	contextUsed   float64 // 0.0 – 1.0
+	gitAdded      int
+	gitDeleted    int
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
@@ -112,16 +116,18 @@ func New() Model {
 	ta.Focus()
 
 	return Model{
-		input:         ta,
-		modelName:     "Claude Sonnet 4.6",
-		provider:      "anthropic",
-		mode:          constants.ModeBuild,
-		sessionID:     sid,
-		workDir:       wd,
-		branch:        "main",
-		messages:      []message{},
-		tip:           randomTip(),
-		ctrlCNoticeID: -1,
+		input:          ta,
+		modelName:      "Claude Sonnet 4.6",
+		provider:       "anthropic",
+		mode:           constants.ModeBuild,
+		thinkingLevel:  constants.ThinkingHigh,
+		sessionID:      sid,
+		workDir:        wd,
+		branch:         "main",
+		messages:       []message{},
+		tip:            randomTip(),
+		contextUsed:    0.0,
+		ctrlCNoticeID:  -1,
 	}
 }
 
