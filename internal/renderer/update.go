@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"golang.design/x/hotkey"
 )
 
 // ─── Update ──────────────────────────────────────────────────────────────────
@@ -38,8 +39,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.cancelCtrlC()
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "ctrl+x":
+		// Get the key action from our keymap
+		action := resolveKeyAction(msg)
+
+		switch action {
+		case constants.ActionQuit:
 			hasInput := m.input.Value() != ""
 
 			if m.ctrlCPress == 1 && hasInput {
@@ -67,18 +71,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return ctrlCResetMsg{}
 			})
 
-		case "ctrl+d":
+		case constants.ActionExit:
 			m.quitting = true
 			return m, tea.Quit
 
-		case "ctrl+m":
+		case constants.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
 			m = m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
 
-		case "shift+tab":
+		case constants.ActionCycleThink:
 			m.thinkingLevel = constants.NextThinkingLevel(m.thinkingLevel)
 			m = m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
-		case "enter":
+
+		case constants.ActionSubmit:
 			// Only submit if textarea is single-line or Ctrl is not held.
 			// Ctrl+J is handled by textarea's InsertNewline keymap.
 			if !m.input.Focused() {
@@ -199,4 +204,223 @@ func stripTrigger(s string) string {
 		return strings.TrimPrefix(s, "/")
 	}
 	return s
+}
+
+// ─── Keymap Resolution ─────────────────────────────────────────────────────
+
+// resolveKeyAction maps a tea.KeyMsg to our defined KeyAction.
+// It provides a clean separation between raw key events and semantic actions.
+func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
+	// First, check for Ctrl combinations (these have dedicated KeyType constants)
+	if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyCtrlX {
+		return constants.ActionQuit
+	}
+	if msg.Type == tea.KeyCtrlD {
+		return constants.ActionExit
+	}
+	if msg.Type == tea.KeyCtrlM {
+		return constants.ActionSwitchMode
+	}
+	if msg.Type == tea.KeyShiftTab {
+		return constants.ActionCycleThink
+	}
+	if msg.Type == tea.KeyCtrlJ {
+		return constants.ActionNewline
+	}
+	if msg.Type == tea.KeyEnter {
+		return constants.ActionSubmit
+	}
+
+	// For other keys, check against our keymap bindings
+	bindings := constants.KeyBindingsByAction()
+	for action, kb := range bindings {
+		if matchKeyBinding(msg, kb) {
+			return action
+		}
+	}
+
+	return ""
+}
+
+// matchKeyBinding checks if a tea.KeyMsg matches a KeyBinding definition.
+func matchKeyBinding(msg tea.KeyMsg, kb constants.KeyBinding) bool {
+	// Convert hotkey binding to tea.KeyType for comparison
+	targetType := hotkeyKeyType(kb)
+
+	// Check if key type matches
+	if targetType == tea.KeyRunes {
+		// For letter keys, compare the rune
+		if len(msg.Runes) == 1 {
+			letter := string(msg.Runes[0])
+			targetLetter := hotkeyKeyToLetter(kb.Key)
+			return strings.EqualFold(letter, targetLetter)
+		}
+		return false
+	}
+
+	return msg.Type == targetType
+}
+
+// hasModifierInList checks if a modifier is in a list of hotkey.Modifier.
+func hasModifierInList(modifiers []hotkey.Modifier, target hotkey.Modifier) bool {
+	for _, m := range modifiers {
+		if m == target {
+			return true
+		}
+	}
+	return false
+}
+
+// hotkeyKeyType converts a hotkey.KeyBinding to the corresponding tea.KeyType.
+func hotkeyKeyType(kb constants.KeyBinding) tea.KeyType {
+	hasCtrl := hasModifierInList(kb.Modifiers, hotkey.ModCtrl)
+	hasShift := hasModifierInList(kb.Modifiers, hotkey.ModShift)
+
+	// Special combinations
+	if hasCtrl && hasShift {
+		switch kb.Key {
+		case hotkey.KeyTab:
+			return tea.KeyShiftTab // Best approximation for Ctrl+Shift+Tab
+		}
+	}
+
+	if hasCtrl {
+		switch kb.Key {
+		case hotkey.KeyA:
+			return tea.KeyCtrlA
+		case hotkey.KeyB:
+			return tea.KeyCtrlB
+		case hotkey.KeyC:
+			return tea.KeyCtrlC
+		case hotkey.KeyD:
+			return tea.KeyCtrlD
+		case hotkey.KeyE:
+			return tea.KeyCtrlE
+		case hotkey.KeyF:
+			return tea.KeyCtrlF
+		case hotkey.KeyG:
+			return tea.KeyCtrlG
+		case hotkey.KeyH:
+			return tea.KeyCtrlH
+		case hotkey.KeyI:
+			return tea.KeyCtrlI
+		case hotkey.KeyJ:
+			return tea.KeyCtrlJ
+		case hotkey.KeyK:
+			return tea.KeyCtrlK
+		case hotkey.KeyL:
+			return tea.KeyCtrlL
+		case hotkey.KeyM:
+			return tea.KeyCtrlM
+		case hotkey.KeyN:
+			return tea.KeyCtrlN
+		case hotkey.KeyO:
+			return tea.KeyCtrlO
+		case hotkey.KeyP:
+			return tea.KeyCtrlP
+		case hotkey.KeyQ:
+			return tea.KeyCtrlQ
+		case hotkey.KeyR:
+			return tea.KeyCtrlR
+		case hotkey.KeyS:
+			return tea.KeyCtrlS
+		case hotkey.KeyT:
+			return tea.KeyCtrlT
+		case hotkey.KeyU:
+			return tea.KeyCtrlU
+		case hotkey.KeyV:
+			return tea.KeyCtrlV
+		case hotkey.KeyW:
+			return tea.KeyCtrlW
+		case hotkey.KeyX:
+			return tea.KeyCtrlX
+		case hotkey.KeyY:
+			return tea.KeyCtrlY
+		case hotkey.KeyZ:
+			return tea.KeyCtrlZ
+		}
+	}
+
+	if hasShift {
+		switch kb.Key {
+		case hotkey.KeyTab:
+			return tea.KeyShiftTab
+		}
+	}
+
+	// No modifiers - plain keys
+	switch kb.Key {
+	case hotkey.KeyReturn:
+		return tea.KeyEnter
+	case hotkey.KeyTab:
+		return tea.KeyTab
+	case hotkey.KeyEscape:
+		return tea.KeyEsc
+	case hotkey.KeySpace:
+		return tea.KeySpace
+	}
+
+	// For letter keys without modifiers, return KeyRunes
+	// The actual rune comparison will be done separately
+	return tea.KeyRunes
+}
+
+// hotkeyKeyToLetter converts a hotkey.Key to its letter representation.
+func hotkeyKeyToLetter(k hotkey.Key) string {
+	switch k {
+	case hotkey.KeyA:
+		return "a"
+	case hotkey.KeyB:
+		return "b"
+	case hotkey.KeyC:
+		return "c"
+	case hotkey.KeyD:
+		return "d"
+	case hotkey.KeyE:
+		return "e"
+	case hotkey.KeyF:
+		return "f"
+	case hotkey.KeyG:
+		return "g"
+	case hotkey.KeyH:
+		return "h"
+	case hotkey.KeyI:
+		return "i"
+	case hotkey.KeyJ:
+		return "j"
+	case hotkey.KeyK:
+		return "k"
+	case hotkey.KeyL:
+		return "l"
+	case hotkey.KeyM:
+		return "m"
+	case hotkey.KeyN:
+		return "n"
+	case hotkey.KeyO:
+		return "o"
+	case hotkey.KeyP:
+		return "p"
+	case hotkey.KeyQ:
+		return "q"
+	case hotkey.KeyR:
+		return "r"
+	case hotkey.KeyS:
+		return "s"
+	case hotkey.KeyT:
+		return "t"
+	case hotkey.KeyU:
+		return "u"
+	case hotkey.KeyV:
+		return "v"
+	case hotkey.KeyW:
+		return "w"
+	case hotkey.KeyX:
+		return "x"
+	case hotkey.KeyY:
+		return "y"
+	case hotkey.KeyZ:
+		return "z"
+	default:
+		return ""
+	}
 }

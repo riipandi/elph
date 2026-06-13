@@ -11,6 +11,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/subosito/gotenv v1.6.0
 	go.jetify.com/typeid/v2 v2.0.0-alpha.3
+	golang.design/x/hotkey v0.6.1
 )
 
 require (
