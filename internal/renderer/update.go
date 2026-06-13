@@ -39,7 +39,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
+		case "ctrl+c", "ctrl+x":
 			hasInput := m.input.Value() != ""
 
 			if m.ctrlCPress == 1 && hasInput {
@@ -47,8 +47,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ctrlCPress = 2
 				m.input.SetValue("")
 				m.promptChar = ">"
-
-				m = m.replaceNotice("Input cleared, press ctrl+c again to exit")
+				m = m.replaceNotice("Input cleared, press again to exit")
 				return m, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
 					return ctrlCResetMsg{}
 				})
@@ -60,9 +59,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-			// First Ctrl+C
+			// First press
 			m.ctrlCPress = 1
-			m = m.withMessage("Press ctrl+c again to exit")
+			m = m.withMessage("Press again to exit")
 			m.ctrlCNoticeID = len(m.messages) - 1
 			return m, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
 				return ctrlCResetMsg{}

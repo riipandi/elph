@@ -199,6 +199,7 @@ project_dir [session_id] mode             turn: 0 | branch [+N -N]
 | Key           | Action                  |
 |---------------|-------------------------|
 | `Ctrl+C`      | Cancel / Quit           |
+| `Ctrl+X`      | Cancel / Quit           |
 | `Ctrl+D`      | Exit application        |
 | `Alt+M`        | Switch agent mode       |
 | `Enter`       | Send message            |
