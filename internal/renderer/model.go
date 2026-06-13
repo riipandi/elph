@@ -92,6 +92,8 @@ type Model struct {
 	contextUsed   float64 // 0.0 – 1.0
 	gitAdded      int
 	gitDeleted    int
+	promptChar    string      // >, /, $, #
+
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
@@ -103,14 +105,12 @@ func New() Model {
 
 	ta := textarea.New()
 	ta.Placeholder = "Type a message or /command..."
-	ta.Prompt = "> "
+	ta.Prompt = ""
 	ta.CharLimit = 4096
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
 	ta.MaxHeight = 6
-	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Foreground(highlight)
 	ta.FocusedStyle.Text = lipgloss.NewStyle()
-	ta.BlurredStyle.Prompt = lipgloss.NewStyle().Foreground(dimText)
 	ta.BlurredStyle.Text = lipgloss.NewStyle()
 	ta.KeyMap.InsertNewline.SetKeys("ctrl+j", "shift+enter")
 	ta.Focus()
@@ -127,6 +127,8 @@ func New() Model {
 		messages:       []message{},
 		tip:            randomTip(),
 		contextUsed:    0.0,
+		promptChar:     ">",
+
 		ctrlCNoticeID:  -1,
 	}
 }

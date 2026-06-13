@@ -45,6 +45,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Second press, input non-empty → clear input
 				m.ctrlCPress = 2
 				m.input.SetValue("")
+				m.promptChar = ">"
+
 				m = m.replaceNotice("Input cleared, press ctrl+c again to exit")
 				return m, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
 					return ctrlCResetMsg{}
@@ -91,8 +93,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
+			// Strip trigger prefix from submitted value.
+			val = stripTrigger(val)
 			m = m.addUserMessage(val)
 			m.input.SetValue("")
+			m.promptChar = ">"
 		}
 
 		// Any other key cancels the pending Ctrl+C state.
@@ -103,6 +108,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	cmds = append(cmds, cmd)
+
+	// Update prompt prefix based on input content.
+	m = m.syncPromptPrefix()
 
 	// Update viewport component
 	m.vp, cmd = m.vp.Update(msg)
@@ -152,4 +160,44 @@ func (m Model) cancelCtrlC() Model {
 	}
 	m.ctrlCNoticeID = -1
 	return m
+}
+
+// syncPromptPrefix sets the textarea prompt character and color based on input content.
+//
+//	> normal input
+//	/ slash command (starts with /)
+//	$ bash/shell command (starts with !)
+//	# bash repeat (starts with !!)
+func (m Model) syncPromptPrefix() Model {
+	trimmed := strings.TrimLeft(m.input.Value(), " ")
+
+	if trimmed == "" {
+		m.promptChar = ">"
+		return m
+	}
+
+	switch {
+	case strings.HasPrefix(trimmed, "!!"):
+		m.promptChar = "#"
+	case strings.HasPrefix(trimmed, "!"):
+		m.promptChar = "$"
+	case strings.HasPrefix(trimmed, "/"):
+		m.promptChar = "/"
+	}
+
+	return m
+}
+
+// stripTrigger removes the command prefix (/, !, !!) from the input.
+func stripTrigger(s string) string {
+	s = strings.TrimLeft(s, " ")
+	switch {
+	case strings.HasPrefix(s, "!!"):
+		return strings.TrimPrefix(s, "!!")
+	case strings.HasPrefix(s, "!"):
+		return strings.TrimPrefix(s, "!")
+	case strings.HasPrefix(s, "/"):
+		return strings.TrimPrefix(s, "/")
+	}
+	return s
 }

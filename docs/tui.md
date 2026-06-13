@@ -32,17 +32,17 @@ project_dir [sess_abcd12345] agent_mode          turn: 0 | main [-]
 
 ## Color Palette
 
-| Token         | Dark Mode | Light Mode | Usage                      |
-|---------------|-----------|------------|----------------------------|
-| `blueCol`     | `#3B82F6` | `#3B82F6`  | Banner border              |
-| `yellowCol`   | `#EAB308` | `#EAB308`  | Tip label, context warning |
-| `highlight`   | `#7C56DC` | `#874BFD`  | System message prefix `> ` |
-| `special`     | `#73F59F` | `#43BF6D`  | Braille logo               |
-| `dimText`     | `#5C5C5C` | `#9B9B9B`  | Labels, secondary info     |
-| `brightText`  | `#D1D5DB` | `#6B7280`  | Values, metadata content   |
-| `userPipeCol` | `#A78BFA` | `#7C56DC`  | User message pipe `|`      |
-| `aiPipeCol`   | `#9CA3AF` | `#6B7280`  | AI response pipe `|`       |
-| `whiteCol`    | `#FFFFFF` | `#FFFFFF`  | Project dir, turn info     |
+| Token         | Dark Mode | Light Mode | Usage                                 |
+|---------------|-----------|------------|---------------------------------------|
+| `blueCol`     | `#3B82F6` | `#3B82F6`  | Banner border                         |
+| `yellowCol`   | `#EAB308` | `#EAB308`  | Tip label, context warning            |
+| `highlight`   | `#7C56DC` | `#874BFD`  | System message prefix `> `            |
+| `special`     | `#73F59F` | `#43BF6D`  | Braille logo                          |
+| `dimText`     | `#5C5C5C` | `#9B9B9B`  | Labels, secondary info                |
+| `brightText`  | `#D1D5DB` | `#6B7280`  | Values, metadata content              |
+| `userPipeCol` | `#A78BFA` | `#7C56DC`  | User message pipe `|`                 |
+| `aiPipeCol`   | `#9CA3AF` | `#6B7280`  | AI response pipe `|`                  |
+| `whiteCol`    | `#FFFFFF` | `#FFFFFF`  | Project dir, turn info, prompt prefix |
 
 ---
 
@@ -102,7 +102,22 @@ project_dir [sess_abcd12345] agent_mode          turn: 0 | main [-]
 
 - **Multiline**: `Ctrl+J` or `Shift+Enter` inserts newline.
 - **Submit**: `Enter` sends message and clears input.
-- **Prompt**: `> ` prefix, colored with `highlight`.
+- **Prompt prefix**: Rendered as a separate element before the textarea (not using textarea's Prompt).
+- **Trigger stripped on submit**: `/cmd` → message is `cmd`, `!!rpt` → message is `rpt`.
+
+### Prompt Prefix (dynamic)
+
+The prompt character changes based on input content. Always **white**, **bold**.
+Leading spaces are trimmed before detection. Prefix resets to `>` when input is empty.
+
+| Input starts with | Prompt | Meaning                       |
+|-------------------|--------|-------------------------------|
+| (default)         | `>`    | Normal chat input             |
+| `/`               | `/`    | Slash command                 |
+| `!`               | `$`    | Shell command with context    |
+| `!!`              | `#`    | Shell command without context |
+
+Check order: `!!` → `!` → `/` → default (`>`).
 
 ---
 
