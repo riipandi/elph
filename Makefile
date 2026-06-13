@@ -16,7 +16,7 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-# ─── Test Flags ───────────────────────────────────────────────────────────────
+# ─── Test Flags ──────────────────────────────────────────────────────────────
 
 TEST_FLAGS := --format short-verbose -- -count=1 -v
 
@@ -24,10 +24,10 @@ TEST_FLAGS := --format short-verbose -- -count=1 -v
 .PHONY: test integration coverage
 .PHONY: clean prepare deps lint fmt vet help
 
-# ─── Build ────────────────────────────────────────────────────────────────────
+# ─── Build ───────────────────────────────────────────────────────────────────
 
-build: ## Build the application
-	@$(GO) build -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
+build: ## Build the application binary
+	@$(GO) build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
 	@echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"
 
 install: build ## Build and copy binary to ~/.local/bin
@@ -38,7 +38,7 @@ install: build ## Build and copy binary to ~/.local/bin
 run: ## Run the application
 	@$(GO) run ./cmd $(or $(_RESIDUAL_),$(ARGS))
 
-# ─── Testing ──────────────────────────────────────────────────────────────────
+# ─── Testing ─────────────────────────────────────────────────────────────────
 
 test: ## Run unit tests
 	@$(GOTEST) $(TEST_FLAGS) $(or $(addprefix ./,$(_RESIDUAL_)),$(PKG))
@@ -50,7 +50,7 @@ coverage: ## Run tests with coverage report
 	@$(GOTEST) ./internal/... -v -coverprofile=coverage.out
 	@$(GO) tool cover -html=coverage.out -o coverage.html
 
-# ─── Code Quality ─────────────────────────────────────────────────────────────
+# ─── Code Quality ────────────────────────────────────────────────────────────
 
 lint: ## Run linter (requires golangci-lint)
 	@golangci-lint run ./...
@@ -61,7 +61,7 @@ fmt: ## Format code
 vet: ## Analyzes code for suspicious patterns
 	@$(GO) vet ./...
 
-# ─── Maintenance ──────────────────────────────────────────────────────────────
+# ─── Maintenance ─────────────────────────────────────────────────────────────
 
 prepare: ## Install required toolchain
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
@@ -76,7 +76,7 @@ clean: ## Clean build artifacts
 	@rm -rf $(BUILD_DIR) vendor node_modules coverage.out coverage.html
 	@find internal -type f -name '*_gsx.go' -delete
 
-# ─── Help ─────────────────────────────────────────────────────────────────────
+# ─── Help ────────────────────────────────────────────────────────────────────
 
 help: ## Show this help
 	@printf '\033[33mUsage:\033[0m make \033[36m<target>\033[0m\n'

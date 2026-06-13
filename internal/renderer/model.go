@@ -20,8 +20,11 @@ const (
 	logoLine2 = "\u28FF\u28FF\u28FF\u28FF\u28FF\u28FF\u28FF"
 )
 
+// Dedicated random source for tips — avoids mutex contention on the global source.
+var rng = rand.New(rand.NewSource(42))
+
 func randomTip() string {
-	return constants.Tips[rand.Intn(len(constants.Tips))]
+	return constants.Tips[rng.Intn(len(constants.Tips))]
 }
 
 // ─── Mode Ordering ───────────────────────────────────────────────────────────
@@ -102,6 +105,23 @@ type Model struct {
 	oldWidth      int
 }
 
+// Shared "no background" style reused in textarea init to reduce allocations.
+var noBgStyle = lipgloss.NewStyle().Background(lipgloss.NoColor{})
+
+// noBgStyles returns a textarea.Style whose every field uses the shared noBgStyle.
+func noBgStyles() textarea.Style {
+	return textarea.Style{
+		Base:             noBgStyle,
+		CursorLine:       noBgStyle,
+		CursorLineNumber: noBgStyle,
+		EndOfBuffer:      noBgStyle,
+		LineNumber:       noBgStyle,
+		Placeholder:      noBgStyle,
+		Prompt:           noBgStyle,
+		Text:             noBgStyle,
+	}
+}
+
 func New() Model {
 	wd, _ := os.Getwd()
 	sid := typeid.MustGenerate("sess")
@@ -113,27 +133,9 @@ func New() Model {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
 	ta.MaxHeight = 6
-	// Reset all styles to remove backgrounds
-	ta.FocusedStyle = textarea.Style{
-		Base:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		CursorLine:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		CursorLineNumber: lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		EndOfBuffer:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		LineNumber:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Placeholder:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Prompt:           lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Text:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-	}
-	ta.BlurredStyle = textarea.Style{
-		Base:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		CursorLine:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		CursorLineNumber: lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		EndOfBuffer:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		LineNumber:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Placeholder:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Prompt:           lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-		Text:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
-	}
+	// All fields share the same "no background" style — single allocation per focus state.
+	ta.FocusedStyle = noBgStyles()
+	ta.BlurredStyle = noBgStyles()
 	ta.KeyMap.InsertNewline.SetKeys(tea.KeyCtrlJ.String(), "shift+enter")
 	ta.Cursor.SetMode(cursor.CursorStatic)
 	ta.Focus()

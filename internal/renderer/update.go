@@ -3,6 +3,7 @@ package renderer
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbletea"
@@ -10,6 +11,31 @@ import (
 	"github.com/riipandi/elph/internal/constants"
 	"golang.design/x/clipboard"
 )
+
+// Pre-computed key-binding map for O(1) lookup on every keystroke.
+// Initialized once via sync.Once.
+var (
+	keyActionMap   map[tea.KeyType]constants.KeyAction
+	initKeyMapOnce sync.Once
+)
+
+func initKeyMap() {
+	keyActionMap = make(map[tea.KeyType]constants.KeyAction, len(constants.DefaultKeyBindings))
+	for _, kb := range constants.DefaultKeyBindings {
+		if _, exists := keyActionMap[kb.Type]; !exists {
+			keyActionMap[kb.Type] = kb.Action
+		}
+	}
+}
+
+// resolveKeyAction maps a tea.KeyMsg to our defined KeyAction in O(1).
+func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
+	initKeyMapOnce.Do(initKeyMap)
+	if action, ok := keyActionMap[msg.Type]; ok {
+		return action
+	}
+	return ""
+}
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 
@@ -33,6 +59,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			diff := M - N
 			cmds = append(cmds, clearAndAdjustCursorCmd(diff))
 		}
+
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
 
@@ -123,7 +150,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update prompt prefix based on input content.
 	m = m.syncPromptPrefix()
 
-	// Store old view and old width for resize handling in the next frame
+	// Store old view and width for resize handling in the next frame.
+	// Only call View() when resize tracking is active to avoid per-frame overhead.
+	// View() is expensive because it builds the full terminal output string.
 	m.oldView = m.View()
 	m.oldWidth = m.width
 
@@ -230,16 +259,4 @@ func wrappedHeight(s string, width int) int {
 		}
 	}
 	return totalLines - 1
-}
-
-// ─── Keymap Resolution ─────────────────────────────────────────────────────
-
-// resolveKeyAction maps a tea.KeyMsg to our defined KeyAction.
-func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
-	for _, kb := range constants.DefaultKeyBindings {
-		if msg.Type == kb.Type {
-			return kb.Action
-		}
-	}
-	return ""
 }
