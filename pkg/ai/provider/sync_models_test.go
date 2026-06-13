@@ -121,15 +121,15 @@ func TestUpdateModelsFromModelsDevSyncsDeepSeekFromLiveAPI(t *testing.T) {
 				NPM:  "@ai-sdk/openai-compatible",
 				Models: map[string]ModelsDevModel{
 					"deepseek-chat": {
-						ID:   "deepseek-chat",
-						Name: "DeepSeek Chat",
+						ID:    "deepseek-chat",
+						Name:  "DeepSeek Chat",
 						Limit: ModelsDevLimit{Context: 1000000, Output: 8192},
 					},
 					"deepseek-reasoner": {
-						ID:   "deepseek-reasoner",
-						Name: "DeepSeek Reasoner",
+						ID:        "deepseek-reasoner",
+						Name:      "DeepSeek Reasoner",
 						Reasoning: true,
-						Limit: ModelsDevLimit{Context: 1000000, Output: 8192},
+						Limit:     ModelsDevLimit{Context: 1000000, Output: 8192},
 					},
 				},
 			},
@@ -345,16 +345,16 @@ func TestUpdateModelsFromModelsDevSyncsKimiViaMoonshotAlias(t *testing.T) {
 				NPM:  "@ai-sdk/openai-compatible",
 				Models: map[string]ModelsDevModel{
 					"kimi-k2.5": {
-						ID:   "kimi-k2.5",
-						Name: "Kimi K2.5",
-						Reasoning: true,
+						ID:         "kimi-k2.5",
+						Name:       "Kimi K2.5",
+						Reasoning:  true,
 						Modalities: ModelsDevModalities{Input: []string{"text", "image"}},
-						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
-						Cost: &ModelsDevCost{Input: 0.6, Output: 3, CacheRead: 0.1},
+						Limit:      ModelsDevLimit{Context: 262144, Output: 65536},
+						Cost:       &ModelsDevCost{Input: 0.6, Output: 3, CacheRead: 0.1},
 					},
 					"kimi-k2.6": {
-						ID:   "kimi-k2.6",
-						Name: "Kimi K2.6",
+						ID:    "kimi-k2.6",
+						Name:  "Kimi K2.6",
 						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
 					},
 				},
@@ -418,13 +418,13 @@ func TestUpdateModelsFromModelsDevKimiFallsBackWithoutAPIKey(t *testing.T) {
 				NPM:  "@ai-sdk/openai-compatible",
 				Models: map[string]ModelsDevModel{
 					"kimi-k2.5": {
-						ID:   "kimi-k2.5",
-						Name: "Kimi K2.5",
+						ID:    "kimi-k2.5",
+						Name:  "Kimi K2.5",
 						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
 					},
 					"kimi-k2.6": {
-						ID:   "kimi-k2.6",
-						Name: "Kimi K2.6",
+						ID:    "kimi-k2.6",
+						Name:  "Kimi K2.6",
 						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
 					},
 				},

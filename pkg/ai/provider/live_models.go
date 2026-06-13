@@ -16,8 +16,8 @@ const (
 
 // CompatibleModelsResponse is the OpenAI-compatible /models payload.
 type CompatibleModelsResponse struct {
-	Object string                    `json:"object"`
-	Data   []CompatibleModelEntry    `json:"data"`
+	Object string                 `json:"object"`
+	Data   []CompatibleModelEntry `json:"data"`
 }
 
 // CompatibleModelEntry is one model entry from a /models endpoint.
