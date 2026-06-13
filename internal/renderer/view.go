@@ -54,61 +54,61 @@ func (m Model) View() string {
 func (m Model) bannerView() string {
 	w := m.width
 
+	// Pre-compute available widths for line-clamp and wrap.
+	metaW := max(w-6, 20)
+	tipW := max(w-6, 10)
+
 	versionLine := fmt.Sprintf("Welcome to Elph v%s", config.AppVersion)
 	if config.BuildHash != "unknown" {
 		versionLine = fmt.Sprintf("Welcome to Elph v%s (%s)", config.AppVersion, config.BuildHash[:7])
 	}
 
 	header := lipgloss.NewStyle().Bold(true).Render(versionLine)
-	subtitle := lipgloss.NewStyle().Foreground(dimText).Render("Send /changelog to show version history.")
-
-	dirLine := fmt.Sprintf("Directory:  %s", m.workDir)
-	modelLine := fmt.Sprintf("Model:      %s [%s] (000 available)", m.modelName, m.provider)
-	statsLine := fmt.Sprintf("Stats:      %d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)
-	mcpLine := fmt.Sprintf("MCP Server: %d/%d connected (%d tools)", 0, 0, 0)
+	subtitle := lipgloss.NewStyle().Foreground(dimText).MaxWidth(metaW).Render("Send /changelog to show version history.")
 
 	logo := lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.NewStyle().Foreground(special).Render(logoLine1),
 		lipgloss.NewStyle().Foreground(special).Render(logoLine2),
 	)
 
-	// Line-clamp: limit the tip to the available width so it doesn't overflow
-	// on narrow terminals. The inner content width is w-2 (border) - 4 (padding) - 2 (logo+margin).
-	tipW := max(w-10, 10)
-	tipStyle := lipgloss.NewStyle().
-		Foreground(dimText).
-		Italic(true).
-		MaxWidth(tipW)
-	tip := tipStyle.Render("Tip: " + m.tip)
-
-	dimStyle := lipgloss.NewStyle().Foreground(dimText)
-
-	// Line-clamp metadata lines to prevent overflow on narrow terminals.
-	metaW := max(w-10, 20)
-
-	content := lipgloss.JoinHorizontal(lipgloss.Top,
+	// Top section: logo + header/subtitle side by side.
+	topSection := lipgloss.JoinHorizontal(lipgloss.Top,
 		lipgloss.NewStyle().MarginRight(2).Render(logo),
 		lipgloss.JoinVertical(lipgloss.Left,
 			header,
 			subtitle,
-			"",
-			dimStyle.MaxWidth(metaW).Render(dirLine),
-			dimStyle.MaxWidth(metaW).Render(modelLine),
-			dimStyle.MaxWidth(metaW).Render(statsLine),
-			dimStyle.MaxWidth(metaW).Render(mcpLine),
-			"",
-			tip,
 		),
+	)
+
+	dimStyle := lipgloss.NewStyle().Foreground(dimText)
+
+	// Metadata lines: left-aligned to banner edge (no logo offset).
+	meta := lipgloss.JoinVertical(lipgloss.Left,
+		"",
+		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Directory:  %s", m.workDir)),
+		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Model:      %s [%s] (000 available)", m.modelName, m.provider)),
+		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("Stats:      %d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
+		dimStyle.MaxWidth(metaW).Render(fmt.Sprintf("MCP Server: %d/%d connected (%d tools)", 0, 0, 0)),
+	)
+
+	// Tip: word-wraps within available width.
+	tipStyle := lipgloss.NewStyle().
+		Foreground(dimText).
+		Italic(true).
+		Width(tipW)
+	tip := tipStyle.Render("Tip: " + m.tip)
+
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		topSection,
+		meta,
+		"",
+		tip,
 	)
 
 	return bannerStyle(w).Render(content)
 }
 
 func (m Model) streamView() string {
-	if len(m.messages) == 0 {
-		return lipgloss.NewStyle().Foreground(dimText).Render("MCP: 0 servers connected (000 tools)")
-	}
-
 	var b strings.Builder
 	for i, msg := range m.messages {
 		if i > 0 {
@@ -141,7 +141,7 @@ func (m Model) footerView() string {
 	wd := filepath.Base(m.workDir)
 
 	w := m.width
-	cw := w
+	cw := w - 2 // account for PaddingLeft(1)
 
 	sid := m.sessionID
 	if len(sid) > 16 {
@@ -170,5 +170,7 @@ func (m Model) footerView() string {
 	right2 := s.Render(line2Right)
 	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, right2)
 
-	return lipgloss.JoinVertical(lipgloss.Left, row1, row2)
+	footerContent := lipgloss.JoinVertical(lipgloss.Left, row1, row2)
+
+	return lipgloss.NewStyle().PaddingLeft(1).Render(footerContent)
 }
