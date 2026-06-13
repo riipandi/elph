@@ -1,3 +1,5 @@
-// Package agent implements the coding-agent turn loop and runtime events.
-// TUI adapters in internal/renderer translate these events into Bubble Tea messages.
+// Package agent implements the framework-neutral coding-agent turn loop.
+//
+// RunTurn streams Event values on a channel. TUI adapters in
+// internal/renderer/agent_bridge.go translate those events into tea.Msg.
 package agent

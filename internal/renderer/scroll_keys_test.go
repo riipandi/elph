@@ -20,7 +20,7 @@ func scrollableTestModel(t *testing.T) Model {
 			kind: constants.MessageUser,
 		})
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	return m.syncLayout(false)
 }
 

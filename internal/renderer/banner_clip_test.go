@@ -18,7 +18,7 @@ func TestViewHeightFitsTerminal(t *testing.T) {
 
 			require.LessOrEqual(t, lipgloss.Height(viewContent(m)), h,
 				"w=%d h=%d view height exceeds terminal (chrome=%d vp=%d)",
-				w, h, m.chromeH, m.content.Height())
+				w, h, m.layout.ChromeH, m.content.Height())
 		}
 	}
 }

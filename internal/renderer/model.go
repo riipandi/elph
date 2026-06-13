@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"context"
 	"math/rand"
 	"os"
 	"time"
@@ -10,11 +9,8 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/mention"
 	"github.com/riipandi/elph/internal/runtime"
-	"github.com/riipandi/elph/pkg/core/agent"
 	"go.jetify.com/typeid/v2"
 )
 
@@ -94,44 +90,19 @@ type Model struct {
 	gitDeleted       int
 	promptChar       string // >, /, $, #
 	showPromptPrefix bool   // show prompt prefix in input
-	inputWidth       int    // textarea width, synced in syncLayout
-	inputScrollTop   int    // display rows scrolled above the input viewport
-	chromeH          int    // cached input + footer height
-	contentDirty     bool   // viewport content needs rebuilding
+	layout           LayoutCache
+	shell            ShellState
+	suggest          SuggestState
+	agent            AgentState
 
 	mouseEnabled  bool // mouse capture for viewport wheel/scroll
 	selectingText bool // shift held — mouse released for terminal selection
 
-	activity     agent.Activity // shown above input while agent works
-	session      runtime.Session
-	spinnerFrame int
-	busy         bool // agent turn in progress
-
-	shellRunning     bool
-	shellCommand     string
-	shellOutput      string
-	shellWithContext bool
-	shellToolMsgID   int
-	shellCancel      context.CancelFunc
-	shellOutputCh    chan string
-	shellDoneCh      chan runtime.ShellResult
+	session runtime.Session
 
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
-
-	cmdSuggestions  []command.SlashCommand
-	cmdSuggestIndex int
-	argSuggestions  []command.ArgChoice
-	argSuggestIndex int
-
-	mentionSuggestions  []mention.Entry
-	mentionSuggestIndex int
-	mentionIndex        []mention.Entry
-	mentionIndexDir     string
-	mentionIndexLoading bool
-	mentionActiveQuery  string
-	mentionFilterQuery  string
 
 	inputPendingEsc bool // macOS ESC+backspace Option+Delete pair
 }
@@ -186,8 +157,8 @@ func New() Model {
 	return Model{
 		content:          vp,
 		input:            ta,
-		modelName:        "Claude Sonnet 4.6",
-		provider:         "anthropic",
+		modelName:        session.Model,
+		provider:         session.ProviderID,
 		mode:             constants.ModeBuild,
 		thinkingLevel:    constants.ThinkingHigh,
 		sessionID:        session.ID,
@@ -200,9 +171,9 @@ func New() Model {
 		promptChar:       ">",
 		showPromptPrefix: false,
 		mouseEnabled:     true,
-		contentDirty:     true,
-		ctrlCNoticeID:    -1,
-		shellToolMsgID:   -1,
+		layout:        LayoutCache{ContentDirty: true},
+		shell:         ShellState{ToolMsgID: -1},
+		ctrlCNoticeID: -1,
 	}
 }
 

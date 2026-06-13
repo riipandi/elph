@@ -92,7 +92,7 @@ func waitForShellDone(t *testing.T, m Model, cmd tea.Cmd) Model {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		m = runTeaCmd(t, m, cmd)
-		if !m.shellRunning {
+		if !m.shell.Running {
 			return m
 		}
 		cmd = nil
@@ -108,14 +108,14 @@ func TestSubmitShellWithoutContext(t *testing.T) {
 
 	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
-	require.True(t, m.shellRunning)
+	require.True(t, m.shell.Running)
 	require.NotEmpty(t, m.activityView())
 	require.Contains(t, stripANSI(m.activityView()), "Running $ echo shell-no-ctx")
 	require.Contains(t, stripANSI(m.activityView()), "Esc to cancel")
 
 	m = waitForShellDone(t, m, cmd)
 
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Len(t, m.messages, 2)
 	require.Equal(t, constants.MessageUser, m.messages[0].kind)
 	require.Equal(t, "echo shell-no-ctx", m.messages[0].text)
@@ -133,12 +133,12 @@ func TestSubmitShellWithContext(t *testing.T) {
 
 	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
-	require.True(t, m.shellRunning)
+	require.True(t, m.shell.Running)
 
 	m = waitForShellDone(t, m, cmd)
 
 	require.Len(t, m.messages, 2, "shell context should not add placeholder AI echo")
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Equal(t, constants.MessageUser, m.messages[0].kind)
 	require.Equal(t, "echo shell-with-ctx", m.messages[0].text)
 	require.Equal(t, constants.MessageTool, m.messages[1].kind)
@@ -162,7 +162,7 @@ func TestCancelShellWithEscape(t *testing.T) {
 
 	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
-	require.True(t, m.shellRunning)
+	require.True(t, m.shell.Running)
 
 	startCmd, outCmd, doneCmd := splitShellBatchCmd(t, cmd)
 	_ = startCmd()
@@ -176,7 +176,7 @@ func TestCancelShellWithEscape(t *testing.T) {
 
 	m, _ = dispatchTeaMsg(t, m, doneCmd())
 
-	require.False(t, m.shellRunning)
+	require.False(t, m.shell.Running)
 	require.Equal(t, constants.MessageTool, m.messages[1].kind)
 	require.Contains(t, m.messages[1].text, "running")
 	require.Contains(t, m.messages[1].text, "(cancelled)")
@@ -199,14 +199,14 @@ func TestCancelShellWithCtrlC(t *testing.T) {
 
 	m, _ = dispatchTeaMsg(t, m, doneCmd())
 
-	require.False(t, m.shellRunning)
+	require.False(t, m.shell.Running)
 	require.Contains(t, m.messages[1].text, "running")
 	require.Contains(t, m.messages[1].text, "(cancelled)")
 }
 
 func TestShellWhileRunningBlocksSubmit(t *testing.T) {
 	m := testInputModel(t)
-	m.shellRunning = true
+	m.shell.Running = true
 	m.input.SetValue("hello")
 
 	updated, cmd := m.Update(keyEnter())

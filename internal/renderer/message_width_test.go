@@ -21,7 +21,7 @@ func TestUserMessageLinesFitContentViewportWithScrollbar(t *testing.T) {
 			kind: constants.MessageUser,
 		})
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(false)
 
 	require.True(t, m.contentScrollable())

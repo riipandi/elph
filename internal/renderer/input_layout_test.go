@@ -65,7 +65,7 @@ func TestInputScrollbarFlushOnShortLines(t *testing.T) {
 	m = m.syncInputWidth()
 
 	inner := m.inputBodyView()
-	require.Equal(t, m.inputWidth, lipgloss.Width(inner))
+	require.Equal(t, m.layout.InputWidth, lipgloss.Width(inner))
 	for _, line := range strings.Split(inner, "\n") {
 		plain := stripANSI(line)
 		require.True(t, strings.HasSuffix(plain, "░") || strings.HasSuffix(plain, "█"),

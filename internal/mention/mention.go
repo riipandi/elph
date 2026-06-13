@@ -3,7 +3,7 @@ package mention
 import (
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/riipandi/elph/internal/align"
 )
 
 // Entry is a file or directory that can be @-mentioned.
@@ -77,14 +77,11 @@ func Summary(entry Entry) string {
 
 // NameColumnWidth returns the display width of the widest path column.
 func NameColumnWidth(entries []Entry) int {
-	width := 0
-	for _, entry := range entries {
-		name := DisplayName(entry)
-		if w := lipgloss.Width(name); w > width {
-			width = w
-		}
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = DisplayName(entry)
 	}
-	return width
+	return align.ColumnWidth(names...)
 }
 
 // DisplayName returns the path shown in the mention palette.
@@ -97,10 +94,5 @@ func DisplayName(entry Entry) string {
 
 // AlignedRow splits an entry into a justified path and summary.
 func AlignedRow(entry Entry, nameColW int) (name, gap, summary string) {
-	name = DisplayName(entry)
-	gap = strings.Repeat(" ", max(nameColW-lipgloss.Width(name)+columnGap, columnGap))
-	summary = Summary(entry)
-	return name, gap, summary
+	return align.Row(DisplayName(entry), nameColW, Summary(entry))
 }
-
-const columnGap = 2

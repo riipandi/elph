@@ -66,7 +66,7 @@ func TestInputStaysEditableWhileBusy(t *testing.T) {
 	m.input.SetValue("hello")
 	updated, _ := m.Update(keyEnter())
 	m = updated.(Model)
-	require.True(t, m.busy)
+	require.True(t, m.agent.Busy)
 	require.True(t, m.input.Focused())
 
 	updated, cmd := m.Update(keyRune('x'))
@@ -84,7 +84,7 @@ func TestEnterDoesNotSubmitWhileBusy(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.True(t, m.busy)
+	require.True(t, m.agent.Busy)
 	require.Equal(t, "queued message", m.input.Value())
 	require.Empty(t, m.messages)
 }
@@ -97,7 +97,7 @@ func TestEnterSubmitsSingleLine(t *testing.T) {
 	m = updated.(Model)
 
 	require.NotNil(t, cmd)
-	require.True(t, m.busy)
+	require.True(t, m.agent.Busy)
 	require.Len(t, m.messages, 1)
 	require.Equal(t, "hello", m.messages[0].text)
 	require.Empty(t, m.input.Value())
@@ -218,7 +218,7 @@ type rawCSIMsgForTest []byte
 
 func TestDesiredInputHeightWrapsLongLine(t *testing.T) {
 	m := testInputModel(t)
-	m.input.SetValue(strings.Repeat("a", m.inputWidth*3))
+	m.input.SetValue(strings.Repeat("a", m.layout.InputWidth*3))
 	h := m.desiredInputHeight()
 	require.GreaterOrEqual(t, h, 3)
 	require.LessOrEqual(t, h, m.maxInputHeight())

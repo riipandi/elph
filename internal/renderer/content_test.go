@@ -30,7 +30,7 @@ func TestSyncLayoutFitsTerminalHeight(t *testing.T) {
 
 	require.Equal(t, 80, m.content.Width())
 	require.Positive(t, m.content.Height())
-	require.LessOrEqual(t, m.content.Height()+m.chromeH, m.height)
+	require.LessOrEqual(t, m.content.Height()+m.layout.ChromeH, m.height)
 }
 
 func TestContentViewLongPasteIncludesBannerOnce(t *testing.T) {

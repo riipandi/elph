@@ -10,8 +10,8 @@ import (
 )
 
 func seedMentionIndex(m Model, entries []mention.Entry) Model {
-	m.mentionIndex = entries
-	m.mentionIndexDir = m.workDir
+	m.suggest.MentionIndex = entries
+	m.suggest.MentionIndexDir = m.workDir
 	return m
 }
 
@@ -51,15 +51,15 @@ func TestTabCyclesMentionPreview(t *testing.T) {
 	updated, consumed := m.handleInputPaletteKey(keyTab())
 	require.True(t, consumed)
 	require.Equal(t, "see @internal/renderer/input.go", updated.input.Value())
-	require.Equal(t, 0, updated.mentionSuggestIndex)
+	require.Equal(t, 0, updated.suggest.MentionSuggestIndex)
 
 	updated, consumed = updated.handleInputPaletteKey(keyTab())
 	require.True(t, consumed)
 	require.Equal(t, "see @internal/command/args.go", updated.input.Value())
-	require.Equal(t, 1, updated.mentionSuggestIndex)
+	require.Equal(t, 1, updated.suggest.MentionSuggestIndex)
 
 	updated = updated.syncSlashSuggestions()
-	require.Equal(t, 1, updated.mentionSuggestIndex)
+	require.Equal(t, 1, updated.suggest.MentionSuggestIndex)
 
 	updated, consumed = updated.handleInputPaletteKey(keyShiftTab())
 	require.True(t, consumed)
@@ -93,7 +93,7 @@ func TestEnterConfirmsMentionWithoutSubmit(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Empty(t, m.messages)
 	require.Equal(t, "see @internal/renderer/input.go ", m.input.Value())
 	require.False(t, m.mentionPaletteActive())

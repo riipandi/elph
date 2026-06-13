@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -15,19 +16,19 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 type spinnerTickMsg struct{}
 
 func (m Model) showsActivity() bool {
-	return m.busy || m.shellRunning
+	return m.agent.Busy || m.shell.Running
 }
 
 func (m Model) beginAgentTurn() Model {
-	m.busy = true
-	m.activity = agent.ActivityConnecting
-	m.spinnerFrame = 0
+	m.agent.Busy = true
+	m.agent.Activity = agent.ActivityConnecting
+	m.agent.SpinnerFrame = 0
 	return m
 }
 
 func (m Model) beginShellActivity() Model {
-	m.activity = agent.ActivityRunning
-	m.spinnerFrame = 0
+	m.agent.Activity = agent.ActivityRunning
+	m.agent.SpinnerFrame = 0
 	return m
 }
 
@@ -35,13 +36,31 @@ func (m Model) clearActivity() Model {
 	if m.showsActivity() {
 		return m
 	}
-	m.activity = agent.ActivityIdle
-	m.spinnerFrame = 0
+	m.agent.Activity = agent.ActivityIdle
+	m.agent.SpinnerFrame = 0
 	return m
 }
 
-func (m Model) agentTurnCmds(prompt string) tea.Cmd {
-	return tea.Batch(m.session.RunTurn(prompt), m.spinnerTickCmd())
+func (m Model) agentTurnCmds(prompt string) (Model, tea.Cmd) {
+	ctx, cancel := context.WithCancel(context.Background())
+	m.agent.Cancel = cancel
+	events := m.session.StartTurn(ctx, prompt)
+	m.agent.Events = events
+	return m, tea.Batch(waitAgentEvent(events), m.spinnerTickCmd())
+}
+
+func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
+	m = m.cancelCtrlC()
+	if m.agent.Cancel != nil {
+		m.agent.Cancel()
+		m.agent.Cancel = nil
+	}
+	m.agent.Events = nil
+	m.agent.Busy = false
+	m.agent.Activity = agent.ActivityIdle
+	m.agent.SpinnerFrame = 0
+	m, cmd := m.withMessage("(agent turn cancelled)")
+	return m, cmd
 }
 
 func (m Model) spinnerTickCmd() tea.Cmd {
@@ -52,9 +71,11 @@ func (m Model) spinnerTickCmd() tea.Cmd {
 }
 
 func (m Model) finishAgentTurn(response string) Model {
-	m.busy = false
-	m.activity = agent.ActivityIdle
-	m.spinnerFrame = 0
+	m.agent.Cancel = nil
+	m.agent.Events = nil
+	m.agent.Busy = false
+	m.agent.Activity = agent.ActivityIdle
+	m.agent.SpinnerFrame = 0
 	if strings.TrimSpace(response) != "" {
 		m = m.addAIMessage(response)
 	}

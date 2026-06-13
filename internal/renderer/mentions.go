@@ -21,7 +21,7 @@ func loadMentionIndex(workDir string) tea.Cmd {
 }
 
 func (m Model) mentionPaletteActive() bool {
-	return len(m.mentionSuggestions) > 0
+	return len(m.suggest.MentionSuggestions) > 0
 }
 
 func (m Model) inputCursorOffset() int {
@@ -51,56 +51,56 @@ func (m Model) activeMention() (query string, start int, ok bool) {
 
 func (m Model) syncMentionSuggestions() (Model, tea.Cmd) {
 	if !m.input.Focused() || m.slashQueryActive() {
-		m.mentionSuggestions = nil
-		m.mentionSuggestIndex = 0
-		m.mentionActiveQuery = ""
-		m.mentionFilterQuery = ""
+		m.suggest.MentionSuggestions = nil
+		m.suggest.MentionSuggestIndex = 0
+		m.suggest.MentionActiveQuery = ""
+		m.suggest.MentionFilterQuery = ""
 		return m, nil
 	}
 
 	query, _, ok := m.activeMention()
 	if !ok {
-		m.mentionSuggestions = nil
-		m.mentionSuggestIndex = 0
-		m.mentionActiveQuery = ""
-		m.mentionFilterQuery = ""
+		m.suggest.MentionSuggestions = nil
+		m.suggest.MentionSuggestIndex = 0
+		m.suggest.MentionActiveQuery = ""
+		m.suggest.MentionFilterQuery = ""
 		return m, nil
 	}
 
 	var cmd tea.Cmd
-	if m.mentionIndexDir != m.workDir && !m.mentionIndexLoading {
-		m.mentionIndexLoading = true
+	if m.suggest.MentionIndexDir != m.workDir && !m.suggest.MentionIndexLoading {
+		m.suggest.MentionIndexLoading = true
 		cmd = loadMentionIndex(m.workDir)
 	}
 
-	if len(m.mentionIndex) > 0 && m.mentionIndexDir == m.workDir {
+	if len(m.suggest.MentionIndex) > 0 && m.suggest.MentionIndexDir == m.workDir {
 		filterQuery := query
-		if _, preview := mention.MatchSuggestionIndex(m.mentionIndex, query); preview {
-			filterQuery = m.mentionFilterQuery
+		if _, preview := mention.MatchSuggestionIndex(m.suggest.MentionIndex, query); preview {
+			filterQuery = m.suggest.MentionFilterQuery
 		} else {
-			m.mentionFilterQuery = query
+			m.suggest.MentionFilterQuery = query
 		}
 
-		m.mentionSuggestions = mention.Suggest(filterQuery, m.mentionIndex)
-		if query != m.mentionActiveQuery {
-			if idx, matched := mention.MatchSuggestionIndex(m.mentionSuggestions, query); matched {
-				m.mentionSuggestIndex = idx
+		m.suggest.MentionSuggestions = mention.Suggest(filterQuery, m.suggest.MentionIndex)
+		if query != m.suggest.MentionActiveQuery {
+			if idx, matched := mention.MatchSuggestionIndex(m.suggest.MentionSuggestions, query); matched {
+				m.suggest.MentionSuggestIndex = idx
 			} else {
-				m.mentionSuggestIndex = 0
+				m.suggest.MentionSuggestIndex = 0
 			}
 		}
-		if m.mentionSuggestIndex >= len(m.mentionSuggestions) {
-			m.mentionSuggestIndex = 0
+		if m.suggest.MentionSuggestIndex >= len(m.suggest.MentionSuggestions) {
+			m.suggest.MentionSuggestIndex = 0
 		}
-		m.mentionActiveQuery = query
+		m.suggest.MentionActiveQuery = query
 	} else {
-		m.mentionSuggestions = nil
+		m.suggest.MentionSuggestions = nil
 	}
 	return m, cmd
 }
 
 func (m Model) applyMentionPreview() Model {
-	if len(m.mentionSuggestions) == 0 {
+	if len(m.suggest.MentionSuggestions) == 0 {
 		return m
 	}
 
@@ -109,7 +109,7 @@ func (m Model) applyMentionPreview() Model {
 		return m
 	}
 
-	selected := m.mentionSuggestions[m.mentionSuggestIndex]
+	selected := m.suggest.MentionSuggestions[m.suggest.MentionSuggestIndex]
 	cursor := m.inputCursorOffset()
 	m.input.SetValue(mention.Complete(m.input.Value(), start, cursor, selected))
 	m = m.syncPromptPrefix()
@@ -118,7 +118,7 @@ func (m Model) applyMentionPreview() Model {
 }
 
 func (m Model) confirmMention() Model {
-	if len(m.mentionSuggestions) == 0 {
+	if len(m.suggest.MentionSuggestions) == 0 {
 		return m
 	}
 
@@ -127,7 +127,7 @@ func (m Model) confirmMention() Model {
 		return m
 	}
 
-	selected := m.mentionSuggestions[m.mentionSuggestIndex]
+	selected := m.suggest.MentionSuggestions[m.suggest.MentionSuggestIndex]
 	cursor := m.inputCursorOffset()
 	completed := mention.Complete(m.input.Value(), start, cursor, selected)
 	if !strings.HasSuffix(completed, " ") {
@@ -135,26 +135,26 @@ func (m Model) confirmMention() Model {
 	}
 
 	m.input.SetValue(completed)
-	m.mentionSuggestions = nil
-	m.mentionSuggestIndex = 0
-	m.mentionActiveQuery = ""
-	m.mentionFilterQuery = ""
+	m.suggest.MentionSuggestions = nil
+	m.suggest.MentionSuggestIndex = 0
+	m.suggest.MentionActiveQuery = ""
+	m.suggest.MentionFilterQuery = ""
 	m = m.syncPromptPrefix()
 	m = m.syncInputWidth()
 	return m
 }
 
 func (m Model) moveMentionSelection(delta int) Model {
-	if len(m.mentionSuggestions) == 0 {
+	if len(m.suggest.MentionSuggestions) == 0 {
 		return m
 	}
-	n := len(m.mentionSuggestions)
-	m.mentionSuggestIndex = (m.mentionSuggestIndex + delta%n + n) % n
+	n := len(m.suggest.MentionSuggestions)
+	m.suggest.MentionSuggestIndex = (m.suggest.MentionSuggestIndex + delta%n + n) % n
 	return m
 }
 
 func (m Model) cycleMentionSelection(delta int) Model {
-	if len(m.mentionSuggestions) == 0 {
+	if len(m.suggest.MentionSuggestions) == 0 {
 		return m
 	}
 
@@ -162,20 +162,20 @@ func (m Model) cycleMentionSelection(delta int) Model {
 	if !ok {
 		return m
 	}
-	_, preview := mention.MatchSuggestionIndex(m.mentionSuggestions, query)
+	_, preview := mention.MatchSuggestionIndex(m.suggest.MentionSuggestions, query)
 	if strings.TrimSpace(query) == "" || !preview {
 		m = m.applyMentionPreview()
 		if q, _, ok := m.activeMention(); ok {
-			m.mentionActiveQuery = q
+			m.suggest.MentionActiveQuery = q
 		}
 		return m
 	}
 
-	n := len(m.mentionSuggestions)
-	m.mentionSuggestIndex = (m.mentionSuggestIndex + delta%n + n) % n
+	n := len(m.suggest.MentionSuggestions)
+	m.suggest.MentionSuggestIndex = (m.suggest.MentionSuggestIndex + delta%n + n) % n
 	m = m.applyMentionPreview()
 	if q, _, ok := m.activeMention(); ok {
-		m.mentionActiveQuery = q
+		m.suggest.MentionActiveQuery = q
 	}
 	return m
 }
@@ -205,22 +205,11 @@ func (m Model) mentionPaletteView() string {
 		return ""
 	}
 
-	nameColW := mention.NameColumnWidth(m.mentionSuggestions)
-	lines := make([]string, len(m.mentionSuggestions))
-	for i, entry := range m.mentionSuggestions {
-		name, gap, summary := mention.AlignedRow(entry, nameColW)
-		var summaryStyled string
-		if i == m.mentionSuggestIndex {
-			name = cmdPaletteSelected.Render(name)
-			summaryStyled = cmdPaletteSummarySelected.Render(summary)
-		} else {
-			name = cmdPaletteName.Render(name)
-			summaryStyled = dimStyle.Render(summary)
-		}
-		lines[i] = name + gap + summaryStyled
+	nameColW := mention.NameColumnWidth(m.suggest.MentionSuggestions)
+	rows := make([]paletteRow, len(m.suggest.MentionSuggestions))
+	for i, entry := range m.suggest.MentionSuggestions {
+		name, _, summary := mention.AlignedRow(entry, nameColW)
+		rows[i] = paletteRow{name: name, summary: summary}
 	}
-
-	inner := strings.Join(lines, "\n")
-	boxW := borderedChromeWidth(m.chromeOuterWidth())
-	return cmdPaletteBorder(m.mode).Width(boxW).Render(inner)
+	return m.renderPaletteRows(rows, m.suggest.MentionSuggestIndex, nameColW)
 }

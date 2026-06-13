@@ -179,7 +179,7 @@ func TestSubmitEmptyInputIgnored(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 }
 
 func TestSubmitSlashCommandHelp(t *testing.T) {
@@ -190,7 +190,7 @@ func TestSubmitSlashCommandHelp(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Len(t, m.messages, 2)
 	require.Equal(t, constants.MessageUser, m.messages[0].kind)
 	require.Equal(t, "/help", m.messages[0].text)
@@ -227,7 +227,7 @@ func TestSuggestFuzzyQuitInPalette(t *testing.T) {
 	m = m.syncSlashSuggestions()
 
 	require.True(t, m.commandPaletteActive())
-	require.Equal(t, "exit", m.cmdSuggestions[0].Name)
+	require.Equal(t, "exit", m.suggest.CmdSuggestions[0].Name)
 }
 
 func TestSubmitDiagnosticOpenLogUsage(t *testing.T) {
@@ -238,7 +238,7 @@ func TestSubmitDiagnosticOpenLogUsage(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
 	require.Contains(t, m.messages[1].text, "Usage: /diagnostic:open-log")
 }
@@ -251,7 +251,7 @@ func TestSubmitDiagnosticOpenLogSystem(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
 	require.Contains(t, m.messages[1].text, ".elph/logs/")
 }
@@ -264,7 +264,7 @@ func TestSubmitDiagnosticListTools(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
 	require.Contains(t, m.messages[1].text, "Read")
 	require.Contains(t, m.messages[1].text, "diagnostic_list_tools")
@@ -278,7 +278,7 @@ func TestSubmitSlashCommandUnknown(t *testing.T) {
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.False(t, m.busy)
+	require.False(t, m.agent.Busy)
 	require.Contains(t, m.messages[1].text, "Unknown command")
 }
 
@@ -304,37 +304,37 @@ func TestSyncPromptPrefixChangesChar(t *testing.T) {
 func TestSpinnerTickWhenBusy(t *testing.T) {
 	m := testInputModel(t)
 	m = m.beginAgentTurn()
-	m.spinnerFrame = 0
+	m.agent.SpinnerFrame = 0
 
 	updated, cmd := m.Update(spinnerTickMsg{})
 	m = updated.(Model)
 
-	require.Equal(t, 1, m.spinnerFrame)
+	require.Equal(t, 1, m.agent.SpinnerFrame)
 	require.NotNil(t, cmd)
 }
 
 func TestSpinnerTickWhenIdleNoOp(t *testing.T) {
 	m := testInputModel(t)
-	m.spinnerFrame = 0
+	m.agent.SpinnerFrame = 0
 
 	updated, cmd := m.Update(spinnerTickMsg{})
 	m = updated.(Model)
 
-	require.Equal(t, 0, m.spinnerFrame)
+	require.Equal(t, 0, m.agent.SpinnerFrame)
 	require.Nil(t, cmd)
 }
 
 func TestSpinnerTickWhenShellRunning(t *testing.T) {
 	m := testInputModel(t)
-	m.shellRunning = true
-	m.shellCommand = "whois example.com"
+	m.shell.Running = true
+	m.shell.Command = "whois example.com"
 	m = m.beginShellActivity()
-	m.spinnerFrame = 0
+	m.agent.SpinnerFrame = 0
 
 	updated, cmd := m.Update(spinnerTickMsg{})
 	m = updated.(Model)
 
-	require.Equal(t, 1, m.spinnerFrame)
+	require.Equal(t, 1, m.agent.SpinnerFrame)
 	require.NotNil(t, cmd)
 }
 

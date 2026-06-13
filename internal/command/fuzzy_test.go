@@ -7,10 +7,12 @@ import (
 )
 
 func TestFuzzyScoreSubsequence(t *testing.T) {
-	require.Positive(t, fuzzyScore("quit", "quit"))
-	require.Positive(t, fuzzyScore("qt", "quit"))
-	require.Positive(t, fuzzyScore("diag", "diagnostic:list-tools"))
-	require.Equal(t, -1, fuzzyScore("zzz", "help"))
+	t.Run("delegates to internal/fuzzy", func(t *testing.T) {
+		cmd, ok := Get("help")
+		require.True(t, ok)
+		require.Positive(t, commandScore("h", cmd))
+		require.Equal(t, -1, commandScore("zzz", cmd))
+	})
 }
 
 func TestCommandScoreUsesAliases(t *testing.T) {

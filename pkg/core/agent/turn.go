@@ -1,11 +1,12 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
+	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
 const PhaseDelay = 400 * time.Millisecond
@@ -15,38 +16,99 @@ func IsShellContextPrompt(prompt string) bool {
 	return strings.HasPrefix(strings.TrimSpace(prompt), "Ran `")
 }
 
-// RunTurn returns commands that simulate an agent turn until a response is ready.
-// Real provider and tool integration will replace the placeholder completion.
-func RunTurn(prompt string) tea.Cmd {
-	if IsShellContextPrompt(prompt) {
-		return func() tea.Msg {
-			return TurnDoneMsg{Response: PlaceholderResponse(prompt)}
+// RunTurn executes an agent turn and streams framework-neutral events.
+// The channel is closed after the turn completes or ctx is cancelled.
+// When opts.Provider is nil, a local placeholder simulation is used.
+func RunTurn(ctx context.Context, opts TurnOptions) <-chan Event {
+	ch := make(chan Event, len(TurnPhases)+2)
+	go runTurn(ctx, opts, ch)
+	return ch
+}
+
+func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
+	defer close(ch)
+
+	if IsShellContextPrompt(opts.UserPrompt) {
+		sendEvent(ctx, ch, TurnDoneEvent(PlaceholderResponse(opts.UserPrompt)))
+		return
+	}
+
+	if opts.Provider == nil {
+		runPlaceholderTurn(ctx, opts.UserPrompt, ch)
+		return
+	}
+
+	if !sendEvent(ctx, ch, ActivityEvent(ActivityConnecting)) {
+		return
+	}
+	if !sendEvent(ctx, ch, ActivityEvent(ActivityThinking)) {
+		return
+	}
+
+	resp, err := opts.Provider.Complete(ctx, provider.TurnRequest{
+		SystemPrompt: opts.SystemPrompt,
+		UserPrompt:   opts.UserPrompt,
+		Model:        opts.Model,
+	})
+	if ctx.Err() != nil {
+		return
+	}
+	if err != nil {
+		sendEvent(ctx, ch, TurnDoneEvent(fmt.Sprintf("Provider error: %v", err)))
+		return
+	}
+	sendEvent(ctx, ch, TurnDoneEvent(resp))
+}
+
+func runPlaceholderTurn(ctx context.Context, prompt string, ch chan<- Event) {
+	start := time.Now()
+	for i, phase := range TurnPhases[1:] {
+		if !waitUntil(ctx, start, PhaseDelay*time.Duration(i+1)) {
+			return
+		}
+		if !sendEvent(ctx, ch, ActivityEvent(phase)) {
+			return
 		}
 	}
 
-	cmds := make([]tea.Cmd, 0, len(TurnPhases))
-
-	for i, phase := range TurnPhases[1:] {
-		delay := PhaseDelay * time.Duration(i+1)
-		activity := phase
-		cmds = append(cmds, tea.Tick(delay, func(time.Time) tea.Msg {
-			return ActivityMsg{Activity: activity}
-		}))
+	if !waitUntil(ctx, start, PhaseDelay*time.Duration(len(TurnPhases))) {
+		return
 	}
-
-	doneDelay := PhaseDelay * time.Duration(len(TurnPhases))
-	cmds = append(cmds, tea.Tick(doneDelay, func(time.Time) tea.Msg {
-		return TurnDoneMsg{Response: PlaceholderResponse(prompt)}
-	}))
-
-	return tea.Batch(cmds...)
+	sendEvent(ctx, ch, TurnDoneEvent(PlaceholderResponse(prompt)))
 }
 
-// PlaceholderResponse is a stub assistant reply used until provider integration lands.
+func waitUntil(ctx context.Context, start time.Time, target time.Duration) bool {
+	remaining := target - time.Since(start)
+	if remaining <= 0 {
+		return true
+	}
+	return wait(ctx, remaining)
+}
+
+func wait(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+// PlaceholderResponse is a stub assistant reply used when no provider is configured.
 func PlaceholderResponse(prompt string) string {
 	if IsShellContextPrompt(prompt) {
-		// Shell output is already shown in the chat; context is logged for the agent.
 		return ""
 	}
 	return fmt.Sprintf("Received: %s\n\n(Agent integration pending — this is a placeholder response.)", prompt)
+}
+
+func sendEvent(ctx context.Context, ch chan<- Event, evt Event) bool {
+	select {
+	case ch <- evt:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }

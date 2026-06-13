@@ -17,7 +17,7 @@ func TestActivityViewHiddenWhenIdle(t *testing.T) {
 
 func TestInputHasTopMarginWhenIdle(t *testing.T) {
 	m := testInputModel(t)
-	require.Equal(t, agent.ActivityIdle, m.activity)
+	require.Equal(t, agent.ActivityIdle, m.agent.Activity)
 	require.Greater(t, lipgloss.Height(m.inputView()), lipgloss.Height(m.inputBodyView())+1)
 
 	m = m.beginAgentTurn()
@@ -27,9 +27,9 @@ func TestInputHasTopMarginWhenIdle(t *testing.T) {
 func TestActivityViewShowsLabel(t *testing.T) {
 	m := New()
 	m.width = 80
-	m.busy = true
-	m.activity = agent.ActivityWriting
-	m.spinnerFrame = 0
+	m.agent.Busy = true
+	m.agent.Activity = agent.ActivityWriting
+	m.agent.SpinnerFrame = 0
 
 	view := m.activityView()
 	require.Contains(t, view, "Writing")
@@ -42,7 +42,7 @@ func TestInputStaysFocusedDuringAgentTurn(t *testing.T) {
 	updated, _ := m.Update(keyEnter())
 	m = updated.(Model)
 
-	require.True(t, m.busy)
+	require.True(t, m.agent.Busy)
 	require.True(t, m.input.Focused())
 }
 
@@ -58,8 +58,8 @@ func TestSubmitStartsAgentActivity(t *testing.T) {
 	m = updated.(Model)
 
 	require.NotNil(t, cmd)
-	require.True(t, m.busy)
-	require.Equal(t, agent.ActivityConnecting, m.activity)
+	require.True(t, m.agent.Busy)
+	require.Equal(t, agent.ActivityConnecting, m.agent.Activity)
 	require.NotEmpty(t, m.activityView())
 }
 
@@ -70,14 +70,14 @@ func TestActivityProgression(t *testing.T) {
 	m.ready = true
 	m = m.beginAgentTurn()
 
-	updated, _ := m.Update(agent.ActivityMsg{Activity: agent.ActivityReading})
+	updated, _ := m.Update(agentEventMsg{event: agent.ActivityEvent(agent.ActivityReading)})
 	m = updated.(Model)
-	require.Equal(t, agent.ActivityReading, m.activity)
+	require.Equal(t, agent.ActivityReading, m.agent.Activity)
 
-	updated, _ = m.Update(agent.TurnDoneMsg{Response: "done"})
+	updated, _ = m.Update(agentEventMsg{event: agent.TurnDoneEvent("done")})
 	m = updated.(Model)
-	require.False(t, m.busy)
-	require.Equal(t, agent.ActivityIdle, m.activity)
+	require.False(t, m.agent.Busy)
+	require.Equal(t, agent.ActivityIdle, m.agent.Activity)
 	require.Len(t, m.messages, 1)
 	require.Equal(t, constants.MessageAI, m.messages[0].kind)
 }
@@ -88,13 +88,13 @@ func TestBeginAgentTurnSwapsInputMarginForActivity(t *testing.T) {
 	m.height = 24
 	m.ready = true
 	idle := m.syncLayout(false)
-	idleChrome := idle.chromeH
+	idleChrome := idle.layout.ChromeH
 	idleVP := idle.content.Height()
 
 	busy := idle.beginAgentTurn().syncLayout(true)
 
 	require.NotEmpty(t, busy.activityView())
-	require.Equal(t, idleChrome, busy.chromeH, "activity line replaces idle input top margin")
+	require.Equal(t, idleChrome, busy.layout.ChromeH, "activity line replaces idle input top margin")
 	require.Equal(t, idleVP, busy.content.Height())
 }
 

@@ -20,20 +20,12 @@ var (
 	})
 )
 
-func cmdPaletteBorder(mode constants.AgentMode) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(constants.ModeBorderColor(mode)).
-		BorderBottom(false).
-		Padding(0, 1)
-}
-
 func (m Model) commandPaletteActive() bool {
-	return len(m.cmdSuggestions) > 0 && m.slashQueryActive()
+	return len(m.suggest.CmdSuggestions) > 0 && m.slashQueryActive()
 }
 
 func (m Model) argPaletteActive() bool {
-	return len(m.argSuggestions) > 0 && m.slashQueryActive()
+	return len(m.suggest.ArgSuggestions) > 0 && m.slashQueryActive()
 }
 
 func (m Model) inputPaletteActive() bool {
@@ -60,27 +52,27 @@ func (m Model) syncInputSuggestions() (Model, tea.Cmd) {
 	m = m.syncInputPlaceholder()
 
 	if !m.input.Focused() {
-		m.cmdSuggestions = nil
-		m.cmdSuggestIndex = 0
-		m.argSuggestions = nil
-		m.argSuggestIndex = 0
-		m.mentionSuggestions = nil
-		m.mentionSuggestIndex = 0
-		m.mentionFilterQuery = ""
+		m.suggest.CmdSuggestions = nil
+		m.suggest.CmdSuggestIndex = 0
+		m.suggest.ArgSuggestions = nil
+		m.suggest.ArgSuggestIndex = 0
+		m.suggest.MentionSuggestions = nil
+		m.suggest.MentionSuggestIndex = 0
+		m.suggest.MentionFilterQuery = ""
 		return m, nil
 	}
 
 	if m.slashQueryActive() {
-		m.mentionSuggestions = nil
-		m.mentionSuggestIndex = 0
-		m.mentionFilterQuery = ""
+		m.suggest.MentionSuggestions = nil
+		m.suggest.MentionSuggestIndex = 0
+		m.suggest.MentionFilterQuery = ""
 		return m.syncSlashSuggestionsOnly(), nil
 	}
 
-	m.cmdSuggestions = nil
-	m.cmdSuggestIndex = 0
-	m.argSuggestions = nil
-	m.argSuggestIndex = 0
+	m.suggest.CmdSuggestions = nil
+	m.suggest.CmdSuggestIndex = 0
+	m.suggest.ArgSuggestions = nil
+	m.suggest.ArgSuggestIndex = 0
 	return m.syncMentionSuggestions()
 }
 
@@ -92,18 +84,21 @@ func (m Model) syncSlashSuggestions() Model {
 func (m Model) syncSlashSuggestionsOnly() Model {
 	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
 	if ok && len(cmd.Args) > 0 && m.argInputReady(cmd) {
-		m.cmdSuggestions = nil
-		m.cmdSuggestIndex = 0
-		m.argSuggestions = append([]command.ArgChoice(nil), cmd.Args...)
-		m.argSuggestIndex = command.ArgChoiceIndex(cmd.Args, argQuery)
+		m.suggest.CmdSuggestions = nil
+		m.suggest.CmdSuggestIndex = 0
+		m.suggest.ArgSuggestions = command.SuggestArgs(cmd, argQuery)
+		if argQuery != "" && command.ArgExactMatch(cmd.Args, argQuery) {
+			m.suggest.ArgSuggestions = append([]command.ArgChoice(nil), cmd.Args...)
+		}
+		m.suggest.ArgSuggestIndex = command.ArgChoiceIndex(m.suggest.ArgSuggestions, argQuery)
 		return m
 	}
 
-	m.argSuggestions = nil
-	m.argSuggestIndex = 0
-	m.cmdSuggestions = command.Suggest(m.slashQuery())
-	if m.cmdSuggestIndex >= len(m.cmdSuggestions) {
-		m.cmdSuggestIndex = 0
+	m.suggest.ArgSuggestions = nil
+	m.suggest.ArgSuggestIndex = 0
+	m.suggest.CmdSuggestions = command.Suggest(m.slashQuery())
+	if m.suggest.CmdSuggestIndex >= len(m.suggest.CmdSuggestions) {
+		m.suggest.CmdSuggestIndex = 0
 	}
 	return m
 }
@@ -127,10 +122,10 @@ func (m Model) syncInputPlaceholder() Model {
 }
 
 func (m Model) applyCommandCompletion() Model {
-	if len(m.cmdSuggestions) == 0 {
+	if len(m.suggest.CmdSuggestions) == 0 {
 		return m
 	}
-	selected := m.cmdSuggestions[m.cmdSuggestIndex]
+	selected := m.suggest.CmdSuggestions[m.suggest.CmdSuggestIndex]
 	m.input.SetValue(command.CompleteInput(selected))
 	m = m.syncPromptPrefix()
 	m = m.syncInputWidth()
@@ -139,14 +134,14 @@ func (m Model) applyCommandCompletion() Model {
 }
 
 func (m Model) applyArgPreview() Model {
-	if len(m.argSuggestions) == 0 {
+	if len(m.suggest.ArgSuggestions) == 0 {
 		return m
 	}
 	cmd, _, ok := command.ResolveInput(m.input.Value())
 	if !ok {
 		return m
 	}
-	selected := m.argSuggestions[m.argSuggestIndex]
+	selected := m.suggest.ArgSuggestions[m.suggest.ArgSuggestIndex]
 	m.input.SetValue(command.CompleteArgInput(cmd, selected))
 	m = m.syncPromptPrefix()
 	m = m.syncInputWidth()
@@ -155,7 +150,7 @@ func (m Model) applyArgPreview() Model {
 }
 
 func (m Model) cycleArgSelection(delta int) Model {
-	if len(m.argSuggestions) == 0 {
+	if len(m.suggest.ArgSuggestions) == 0 {
 		return m
 	}
 
@@ -167,8 +162,8 @@ func (m Model) cycleArgSelection(delta int) Model {
 		return m.applyArgPreview()
 	}
 
-	n := len(m.argSuggestions)
-	m.argSuggestIndex = (m.argSuggestIndex + delta%n + n) % n
+	n := len(m.suggest.ArgSuggestions)
+	m.suggest.ArgSuggestIndex = (m.suggest.ArgSuggestIndex + delta%n + n) % n
 	return m.applyArgPreview()
 }
 
@@ -202,16 +197,16 @@ func (m Model) handleSlashPaletteKey(msg tea.KeyPressMsg) (Model, bool) {
 	case "tab", "right":
 		return m.applyCommandCompletion(), true
 	case "up":
-		if len(m.cmdSuggestions) == 0 {
+		if len(m.suggest.CmdSuggestions) == 0 {
 			return m, false
 		}
-		m.cmdSuggestIndex = (m.cmdSuggestIndex - 1 + len(m.cmdSuggestions)) % len(m.cmdSuggestions)
+		m.suggest.CmdSuggestIndex = (m.suggest.CmdSuggestIndex - 1 + len(m.suggest.CmdSuggestions)) % len(m.suggest.CmdSuggestions)
 		return m, true
 	case "down":
-		if len(m.cmdSuggestions) == 0 {
+		if len(m.suggest.CmdSuggestions) == 0 {
 			return m, false
 		}
-		m.cmdSuggestIndex = (m.cmdSuggestIndex + 1) % len(m.cmdSuggestions)
+		m.suggest.CmdSuggestIndex = (m.suggest.CmdSuggestIndex + 1) % len(m.suggest.CmdSuggestions)
 		return m, true
 	}
 	return m, false
@@ -232,45 +227,23 @@ func (m Model) commandPaletteView() string {
 }
 
 func (m Model) cmdPaletteView() string {
-	nameColW := command.NameColumnWidth(m.cmdSuggestions, false)
-	lines := make([]string, len(m.cmdSuggestions))
-	for i, cmd := range m.cmdSuggestions {
-		name, gap, summary := command.AlignedRow(cmd, nameColW, false)
-		var summaryStyled string
-		if i == m.cmdSuggestIndex {
-			name = cmdPaletteSelected.Render(name)
-			summaryStyled = cmdPaletteSummarySelected.Render(summary)
-		} else {
-			name = cmdPaletteName.Render(name)
-			summaryStyled = dimStyle.Render(summary)
-		}
-		lines[i] = name + gap + summaryStyled
+	nameColW := command.NameColumnWidth(m.suggest.CmdSuggestions, false)
+	rows := make([]paletteRow, len(m.suggest.CmdSuggestions))
+	for i, cmd := range m.suggest.CmdSuggestions {
+		name, _, summary := command.AlignedRow(cmd, nameColW, false)
+		rows[i] = paletteRow{name: name, summary: summary}
 	}
-
-	inner := strings.Join(lines, "\n")
-	boxW := borderedChromeWidth(m.chromeOuterWidth())
-	return cmdPaletteBorder(m.mode).Width(boxW).Render(inner)
+	return m.renderPaletteRows(rows, m.suggest.CmdSuggestIndex, nameColW)
 }
 
 func (m Model) argPaletteView() string {
-	nameColW := command.ArgColumnWidth(m.argSuggestions)
-	lines := make([]string, len(m.argSuggestions))
-	for i, arg := range m.argSuggestions {
-		name, gap, summary := command.AlignedArgRow(arg, nameColW)
-		var summaryStyled string
-		if i == m.argSuggestIndex {
-			name = cmdPaletteSelected.Render(name)
-			summaryStyled = cmdPaletteSummarySelected.Render(summary)
-		} else {
-			name = cmdPaletteName.Render(name)
-			summaryStyled = dimStyle.Render(summary)
-		}
-		lines[i] = name + gap + summaryStyled
+	nameColW := command.ArgColumnWidth(m.suggest.ArgSuggestions)
+	rows := make([]paletteRow, len(m.suggest.ArgSuggestions))
+	for i, arg := range m.suggest.ArgSuggestions {
+		name, _, summary := command.AlignedArgRow(arg, nameColW)
+		rows[i] = paletteRow{name: name, summary: summary}
 	}
-
-	inner := strings.Join(lines, "\n")
-	boxW := borderedChromeWidth(m.chromeOuterWidth())
-	return cmdPaletteBorder(m.mode).Width(boxW).Render(inner)
+	return m.renderPaletteRows(rows, m.suggest.ArgSuggestIndex, nameColW)
 }
 
 func (m Model) commandPaletteHeight() int {

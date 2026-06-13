@@ -51,15 +51,18 @@ func TestTurnPhasesOrder(t *testing.T) {
 	}
 }
 
-func TestCommandsReturnMessages(t *testing.T) {
-	actCmd := SetActivity(ActivityWriting)
-	require.Equal(t, ActivityWriting, actCmd().(ActivityMsg).Activity)
+func TestCommandsReturnEvents(t *testing.T) {
+	actEvt := SetActivity(ActivityWriting)
+	require.Equal(t, EventActivity, actEvt.Kind)
+	require.Equal(t, ActivityWriting, actEvt.Activity)
 
-	toolCmd := SetActivityForTool("read")
-	require.NotEmpty(t, toolCmd().(ActivityMsg).Activity)
+	toolEvt := SetActivityForTool("read")
+	require.Equal(t, EventActivity, toolEvt.Kind)
+	require.NotEmpty(t, toolEvt.Activity)
 
-	doneCmd := FinishTurn("response")
-	require.Equal(t, "response", doneCmd().(TurnDoneMsg).Response)
+	doneEvt := FinishTurn("response")
+	require.Equal(t, EventTurnDone, doneEvt.Kind)
+	require.Equal(t, "response", doneEvt.Response)
 }
 
 func TestPlaceholderResponse(t *testing.T) {
@@ -78,6 +81,4 @@ func TestIsShellContextPrompt(t *testing.T) {
 	require.False(t, IsShellContextPrompt("explain this code"))
 }
 
-func TestRunTurnReturnsCommand(t *testing.T) {
-	require.NotNil(t, RunTurn("test prompt"))
-}
+

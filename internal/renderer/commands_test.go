@@ -16,7 +16,7 @@ func TestCommandPaletteAppearsForSlashInput(t *testing.T) {
 	m = m.syncSlashSuggestions()
 	require.True(t, m.commandPaletteActive())
 	require.NotEmpty(t, m.commandPaletteView())
-	for _, cmd := range m.cmdSuggestions {
+	for _, cmd := range m.suggest.CmdSuggestions {
 		require.Contains(t, cmd.Name, "diagnostic:")
 	}
 }
@@ -33,19 +33,19 @@ func TestCommandPaletteTwoColumnLayout(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("/")
 	m = m.syncSlashSuggestions()
-	require.GreaterOrEqual(t, len(m.cmdSuggestions), 2)
+	require.GreaterOrEqual(t, len(m.suggest.CmdSuggestions), 2)
 
-	got := command.FormatList(m.cmdSuggestions)
+	got := command.FormatList(m.suggest.CmdSuggestions)
 	lines := strings.Split(got, "\n")
 	require.GreaterOrEqual(t, len(lines), 2)
 
-	firstSummary := strings.Index(lines[0], m.cmdSuggestions[0].Description)
-	secondSummary := strings.Index(lines[1], m.cmdSuggestions[1].Description)
+	firstSummary := strings.Index(lines[0], m.suggest.CmdSuggestions[0].Description)
+	secondSummary := strings.Index(lines[1], m.suggest.CmdSuggestions[1].Description)
 	require.Equal(t, firstSummary, secondSummary)
 
 	view := stripANSI(m.commandPaletteView())
-	require.Contains(t, view, "/"+m.cmdSuggestions[0].Name)
-	require.Contains(t, view, m.cmdSuggestions[0].Description)
+	require.Contains(t, view, "/"+m.suggest.CmdSuggestions[0].Name)
+	require.Contains(t, view, m.suggest.CmdSuggestions[0].Description)
 }
 
 func TestTabCompletesSelectedCommand(t *testing.T) {
@@ -62,11 +62,11 @@ func TestDownCyclesSuggestionSelection(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("/")
 	m = m.syncSlashSuggestions()
-	require.GreaterOrEqual(t, len(m.cmdSuggestions), 2)
+	require.GreaterOrEqual(t, len(m.suggest.CmdSuggestions), 2)
 
 	updated, consumed := m.handleSlashPaletteKey(keyDown())
 	require.True(t, consumed)
-	require.Equal(t, 1, updated.cmdSuggestIndex)
+	require.Equal(t, 1, updated.suggest.CmdSuggestIndex)
 }
 
 func TestPaletteSitsFlushAboveInput(t *testing.T) {
@@ -93,7 +93,7 @@ func TestArgPaletteAppearsForOpenLog(t *testing.T) {
 	m = m.syncSlashSuggestions()
 	require.True(t, m.argPaletteActive())
 	require.False(t, m.commandPaletteActive())
-	require.Len(t, m.argSuggestions, 2)
+	require.Len(t, m.suggest.ArgSuggestions, 2)
 }
 
 func TestOpenLogPlaceholderShowsArgHint(t *testing.T) {
@@ -120,6 +120,16 @@ func TestTabCyclesArgSelection(t *testing.T) {
 	updated, consumed = updated.handleSlashPaletteKey(keyTab())
 	require.True(t, consumed)
 	require.Equal(t, "/diagnostic:open-log requests", updated.input.Value())
+}
+
+func TestArgPaletteFiltersByQuery(t *testing.T) {
+	m := testInputModel(t)
+	m.input.SetValue("/diagnostic:open-log sys")
+	m = m.syncSlashSuggestions()
+
+	require.True(t, m.argPaletteActive())
+	require.Len(t, m.suggest.ArgSuggestions, 1)
+	require.Equal(t, "system", m.suggest.ArgSuggestions[0].Value)
 }
 
 func TestShiftTabCyclesArgSelectionBackward(t *testing.T) {

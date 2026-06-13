@@ -251,7 +251,7 @@ func (m Model) inputDisplayRows() int {
 	if val == "" {
 		return 1
 	}
-	w := max(m.inputWidth, 1)
+	w := max(m.layout.InputWidth, 1)
 	rows := 0
 	for _, line := range strings.Split(val, "\n") {
 		rows += wrappedInputRows(line, w)
@@ -283,7 +283,7 @@ func (m Model) syncInputHeight() Model {
 }
 
 func (m Model) inputCursorDisplayRow() int {
-	w := max(m.inputWidth, 1)
+	w := max(m.layout.InputWidth, 1)
 	lines := strings.Split(m.input.Value(), "\n")
 	row := 0
 	cur := m.input.Line()
@@ -300,25 +300,25 @@ func (m Model) syncInputScroll() Model {
 	total := m.inputDisplayRows()
 	visible := m.input.Height()
 	if total <= visible {
-		m.inputScrollTop = 0
+		m.layout.InputScrollTop = 0
 		return m
 	}
 
 	cursor := m.inputCursorDisplayRow()
-	min := m.inputScrollTop
+	min := m.layout.InputScrollTop
 	max := min + visible - 1
 	if cursor < min {
-		m.inputScrollTop = cursor
+		m.layout.InputScrollTop = cursor
 	} else if cursor > max {
-		m.inputScrollTop = cursor - visible + 1
+		m.layout.InputScrollTop = cursor - visible + 1
 	}
 
 	maxTop := total - visible
-	if m.inputScrollTop > maxTop {
-		m.inputScrollTop = maxTop
+	if m.layout.InputScrollTop > maxTop {
+		m.layout.InputScrollTop = maxTop
 	}
-	if m.inputScrollTop < 0 {
-		m.inputScrollTop = 0
+	if m.layout.InputScrollTop < 0 {
+		m.layout.InputScrollTop = 0
 	}
 	return m
 }
@@ -354,7 +354,7 @@ func (m Model) handleInputNewlineMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m.input, cmd = m.input.Update(ctrlJ)
 	}
 	m = m.syncInputWidth()
-	if chromeH := m.chromeHeight(); chromeH != m.chromeH {
+	if chromeH := m.chromeHeight(); chromeH != m.layout.ChromeH {
 		m = m.syncLayout(m.content.AtBottom())
 	}
 	return m, cmd
@@ -374,7 +374,7 @@ func normalizeInputForSubmit(s string) string {
 func (m Model) resetInput() Model {
 	m.input.SetValue("")
 	m.input.SetHeight(1)
-	m.inputScrollTop = 0
+	m.layout.InputScrollTop = 0
 	m.inputPendingEsc = false
 	m.promptChar = ">"
 	return m
@@ -391,18 +391,18 @@ func (m Model) finalizeInputEdit() (Model, tea.Cmd) {
 		m = m.syncInputWidth()
 	}
 
-	prevSuggest := len(m.cmdSuggestions) + len(m.mentionSuggestions)
+	prevSuggest := len(m.suggest.CmdSuggestions) + len(m.suggest.MentionSuggestions)
 	var syncCmd tea.Cmd
 	m, syncCmd = m.syncInputSuggestions()
 	if syncCmd != nil {
 		cmds = append(cmds, syncCmd)
 	}
-	if len(m.cmdSuggestions)+len(m.mentionSuggestions) != prevSuggest {
+	if len(m.suggest.CmdSuggestions)+len(m.suggest.MentionSuggestions) != prevSuggest {
 		m = m.syncLayout(m.content.AtBottom())
 	}
 
 	chromeH := m.chromeHeight()
-	if chromeH != m.chromeH {
+	if chromeH != m.layout.ChromeH {
 		m = m.syncLayout(m.content.AtBottom())
 	}
 
@@ -437,7 +437,7 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 }
 
 func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
-	if m.busy || m.shellRunning {
+	if m.agent.Busy || m.shell.Running {
 		return m, nil, false
 	}
 	val := normalizeInputForSubmit(m.input.Value())
@@ -463,5 +463,7 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 	m = m.resetInput()
 	m = m.beginAgentTurn()
 	m = m.syncLayout(true)
-	return m, m.agentTurnCmds(val), true
+	var agentCmd tea.Cmd
+	m, agentCmd = m.agentTurnCmds(val)
+	return m, agentCmd, true
 }

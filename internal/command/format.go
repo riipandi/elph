@@ -3,10 +3,8 @@ package command
 import (
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/riipandi/elph/internal/align"
 )
-
-const columnGap = 2
 
 // DisplayName returns the slash command id, including aliases when present.
 func DisplayName(cmd SlashCommand) string {
@@ -24,17 +22,15 @@ func CommandID(cmd SlashCommand) string {
 
 // NameColumnWidth returns the display width of the widest command id column.
 func NameColumnWidth(commands []SlashCommand, includeAliases bool) int {
-	width := 0
-	for _, cmd := range commands {
-		name := CommandID(cmd)
+	names := make([]string, len(commands))
+	for i, cmd := range commands {
 		if includeAliases {
-			name = DisplayName(cmd)
-		}
-		if w := lipgloss.Width(name); w > width {
-			width = w
+			names[i] = DisplayName(cmd)
+		} else {
+			names[i] = CommandID(cmd)
 		}
 	}
-	return width
+	return align.ColumnWidth(names...)
 }
 
 // AlignedRow splits a command into a justified command id and summary.
@@ -44,9 +40,7 @@ func AlignedRow(cmd SlashCommand, nameColW int, includeAliases bool) (name, gap,
 	} else {
 		name = CommandID(cmd)
 	}
-	gap = strings.Repeat(" ", max(nameColW-lipgloss.Width(name)+columnGap, columnGap))
-	summary = cmd.Description
-	return name, gap, summary
+	return align.Row(name, nameColW, cmd.Description)
 }
 
 // FormatList renders commands as a justified two-column list.

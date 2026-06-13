@@ -30,23 +30,6 @@ var (
 	metaSty      = lipgloss.NewStyle().Foreground(constants.DimText)
 )
 
-// cachedInputBorder returns a border style for the given mode.
-func cachedInputBorder(m constants.AgentMode) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(constants.ModeBorderColor(m)).
-		Padding(0, 1)
-}
-
-// cachedInputBorderAttached is the input border when a command palette sits directly above.
-func cachedInputBorderAttached(m constants.AgentMode) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(constants.ModeBorderColor(m)).
-		BorderTop(false).
-		Padding(0, 1)
-}
-
 // ─── View ────────────────────────────────────────────────────────────────────
 
 func (m Model) View() tea.View {
@@ -107,16 +90,16 @@ func (m Model) syncLayout(follow bool) Model {
 	prevContentW := m.content.Width()
 	targetW := m.targetContentWidth()
 	m.content.SetWidth(targetW)
-	needsRebuild := m.contentDirty || prevH != m.content.Height() || prevContentW != targetW
+	needsRebuild := m.layout.ContentDirty || prevH != m.content.Height() || prevContentW != targetW
 	if needsRebuild {
 		m.content.SetContent(m.contentView())
-		m.contentDirty = false
+		m.layout.ContentDirty = false
 	}
 	// First transition into scrollable content at full width.
 	if m.contentScrollable() && targetW == m.width {
 		m.content.SetWidth(max(m.width-scrollBarWidth, 1))
 		m.content.SetContent(m.contentView())
-		m.contentDirty = false
+		m.layout.ContentDirty = false
 	}
 
 	// Bubble Tea drops lines from the top when output exceeds terminal height,
@@ -125,7 +108,7 @@ func (m Model) syncLayout(follow bool) Model {
 		m.content.SetHeight(m.content.Height() - 1)
 	}
 
-	m.chromeH = m.chromeHeight()
+	m.layout.ChromeH = m.chromeHeight()
 	m = m.syncInputWidth()
 
 	if follow || atBottom {
@@ -148,7 +131,7 @@ func (m Model) syncInputWidth() Model {
 	if inputW < 1 {
 		inputW = 1
 	}
-	m.inputWidth = inputW
+	m.layout.InputWidth = inputW
 	m.input.SetWidth(inputW)
 	m = m.syncInputHeight()
 	return m.syncInputScroll()
@@ -292,7 +275,7 @@ func (m Model) activityView() string {
 	if !m.showsActivity() {
 		return ""
 	}
-	frame := spinnerFrames[m.spinnerFrame%len(spinnerFrames)]
+	frame := spinnerFrames[m.agent.SpinnerFrame%len(spinnerFrames)]
 	spinner := lipgloss.NewStyle().Foreground(constants.Yellow).Render(frame)
 	label := dimStyle.Render(" " + m.activityLabel() + "...")
 	return lipgloss.NewStyle().
@@ -302,8 +285,8 @@ func (m Model) activityView() string {
 }
 
 func (m Model) activityLabel() string {
-	if m.shellRunning {
-		cmd := m.shellCommand
+	if m.shell.Running {
+		cmd := m.shell.Command
 		if cmd == "" {
 			return string(agent.ActivityRunning)
 		}
@@ -318,10 +301,17 @@ func (m Model) activityLabel() string {
 		}
 		return prefix + cmd + suffix
 	}
-	if m.activity == agent.ActivityIdle {
+	if m.agent.Busy {
+		label := string(m.agent.Activity)
+		if m.agent.Activity == agent.ActivityIdle {
+			label = string(agent.ActivityWorking)
+		}
+		return label + " · Esc to cancel"
+	}
+	if m.agent.Activity == agent.ActivityIdle {
 		return string(agent.ActivityWorking)
 	}
-	return string(m.activity)
+	return string(m.agent.Activity)
 }
 
 func (m Model) inputBodyView() string {
@@ -331,7 +321,7 @@ func (m Model) inputBodyView() string {
 	}
 	// Draw the scrollbar in the last column of each line so we do not reserve a
 	// separate gutter column with visible trailing padding before the bar.
-	return overlayInputScrollBar(body, m.inputScrollBarView(), m.inputWidth)
+	return overlayInputScrollBar(body, m.inputScrollBarView(), m.layout.InputWidth)
 }
 
 func (m Model) inputChromeView() string {

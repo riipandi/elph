@@ -43,8 +43,13 @@ func resolveKeyAction(msg tea.KeyPressMsg) constants.KeyAction {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	if key, ok := msg.(tea.KeyPressMsg); ok && m.shellRunning && isShellCancelKey(key) {
-		return m.cancelShell()
+	if key, ok := msg.(tea.KeyPressMsg); ok {
+		if m.shell.Running && isShellCancelKey(key) {
+			return m.cancelShell()
+		}
+		if m.agent.Busy && isShellCancelKey(key) {
+			return m.cancelAgentTurn()
+		}
 	}
 
 	if m.input.Focused() && isNewlineInputMsg(msg) {
@@ -64,7 +69,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
-		m.contentDirty = true
+		m.layout.ContentDirty = true
 		m = m.syncLayout(false)
 
 	case mouseReenableMsg:
@@ -76,21 +81,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
-		m.contentDirty = true
+		m.layout.ContentDirty = true
 		m = m.syncLayout(false)
 
-	case agent.ActivityMsg:
-		m.activity = msg.Activity
-		m = m.syncLayout(m.content.AtBottom())
+	case agentEventMsg:
+		var cmd tea.Cmd
+		m, cmd = m.handleAgentEvent(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+
+	case agentTurnClosedMsg:
+		if m.agent.Busy {
+			m.agent.Cancel = nil
+			m.agent.Busy = false
+			m.agent.Activity = agent.ActivityIdle
+			m.agent.SpinnerFrame = 0
+			m = m.syncLayout(true)
+		}
+		m.agent.Events = nil
 
 	case spinnerTickMsg:
 		if m.showsActivity() {
-			m.spinnerFrame++
+			m.agent.SpinnerFrame++
 			cmds = append(cmds, m.spinnerTickCmd())
 		}
-
-	case agent.TurnDoneMsg:
-		m = m.finishAgentTurn(msg.Response)
 
 	case shellOutputMsg:
 		var cmd tea.Cmd
@@ -112,10 +127,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case mentionIndexMsg:
-		m.mentionIndexLoading = false
+		m.suggest.MentionIndexLoading = false
 		if msg.workDir == m.workDir {
-			m.mentionIndex = msg.entries
-			m.mentionIndexDir = msg.workDir
+			m.suggest.MentionIndex = msg.entries
+			m.suggest.MentionIndexDir = msg.workDir
 		}
 		var syncCmd tea.Cmd
 		m, syncCmd = m.syncInputSuggestions()
@@ -231,7 +246,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if isInputNewlineKey(msg) {
 				break
 			}
-			if m.busy || m.shellRunning || !m.input.Focused() {
+			if m.agent.Busy || m.shell.Running || !m.input.Focused() {
 				break
 			}
 			var cmd tea.Cmd
@@ -284,33 +299,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) addUserMessage(text string) Model {
 	m.messages = append(m.messages, message{text: text, kind: constants.MessageUser})
 	m.session.AppendLog("user", text)
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) addAIMessage(text string) Model {
 	m.messages = append(m.messages, message{text: text, kind: constants.MessageAI})
 	m.session.AppendLog("ai", text)
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) addToolMessage(text string) Model {
 	m.messages = append(m.messages, message{text: text, kind: constants.MessageTool})
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) addThinkingMessage(text string) Model {
 	m.messages = append(m.messages, message{text: text, kind: constants.MessageThinking})
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) withMessage(text string) (Model, tea.Cmd) {
 	m.messages = append(m.messages, message{text: text, kind: constants.MessageSystem})
 	m.session.AppendLog("system", text)
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
 	return m, nil
 }
@@ -323,7 +338,7 @@ func (m Model) replaceNotice(text string) (Model, tea.Cmd) {
 		m.messages = append(m.messages, newMsg)
 		m.ctrlCNoticeID = len(m.messages) - 1
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
 	return m, nil
 }
@@ -332,7 +347,7 @@ func (m Model) cancelCtrlC() Model {
 	m.ctrlCPress = 0
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
 		m.messages = append(m.messages[:m.ctrlCNoticeID], m.messages[m.ctrlCNoticeID+1:]...)
-		m.contentDirty = true
+		m.layout.ContentDirty = true
 	}
 	m.ctrlCNoticeID = -1
 	return m

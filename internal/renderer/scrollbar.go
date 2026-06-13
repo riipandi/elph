@@ -122,5 +122,5 @@ func (m Model) inputScrollable() bool {
 }
 
 func (m Model) inputScrollBarView() string {
-	return scrollBarFor(m.input.Height(), m.inputDisplayRows(), m.inputScrollTop)
+	return scrollBarFor(m.input.Height(), m.inputDisplayRows(), m.layout.InputScrollTop)
 }

@@ -35,7 +35,7 @@ func TestScrollBarVisibleWhenOverflow(t *testing.T) {
 			kind: constants.MessageUser,
 		})
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(false)
 
 	require.True(t, m.contentScrollable())
@@ -57,7 +57,7 @@ func TestScrollBarThumbMovesDown(t *testing.T) {
 	for i := range 40 {
 		m.messages = append(m.messages, message{text: fmt.Sprintf("msg %d", i), kind: constants.MessageUser})
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(false)
 
 	m.content.GotoTop()
@@ -80,7 +80,7 @@ func TestContentAreaWidthMatchesChromeWhenScrollable(t *testing.T) {
 	for i := range 25 {
 		m.messages = append(m.messages, message{text: fmt.Sprintf("overflow %d", i), kind: constants.MessageAI})
 	}
-	m.contentDirty = true
+	m.layout.ContentDirty = true
 	m = m.syncLayout(false)
 
 	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)

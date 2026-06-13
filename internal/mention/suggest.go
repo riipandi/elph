@@ -3,6 +3,8 @@ package mention
 import (
 	"sort"
 	"strings"
+
+	"github.com/riipandi/elph/internal/fuzzy"
 )
 
 const maxSuggestions = 8
@@ -51,8 +53,8 @@ func Suggest(query string, entries []Entry) []Entry {
 }
 
 func entryScore(query string, entry Entry) int {
-	pathScore := fuzzyScore(query, entry.Path)
-	baseScore := fuzzyScore(query, filepathBase(entry.Path))
+	pathScore := fuzzy.Score(query, entry.Path)
+	baseScore := fuzzy.Score(query, filepathBase(entry.Path))
 	if baseScore > pathScore {
 		return baseScore + 2
 	}
@@ -68,37 +70,4 @@ func filepathBase(path string) string {
 		return path[i+1:]
 	}
 	return path
-}
-
-// fuzzyScore returns a relevance score for query against target.
-func fuzzyScore(query, target string) int {
-	query = strings.ToLower(strings.TrimSpace(query))
-	target = strings.ToLower(target)
-	if query == "" {
-		return 0
-	}
-	if target == "" {
-		return -1
-	}
-
-	qi := 0
-	score := 0
-	prev := -2
-	for ti := 0; ti < len(target) && qi < len(query); ti++ {
-		if target[ti] == query[qi] {
-			score++
-			if ti == 0 {
-				score += 8
-			}
-			if ti == prev+1 {
-				score += 4
-			}
-			prev = ti
-			qi++
-		}
-	}
-	if qi != len(query) {
-		return -1
-	}
-	return score
 }

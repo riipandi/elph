@@ -18,6 +18,11 @@ func TestResolveInputMatchesCommandAndArgs(t *testing.T) {
 	require.Equal(t, "requests", argQuery)
 }
 
+func TestArgExactMatch(t *testing.T) {
+	require.True(t, ArgExactMatch(openLogArgs, "system"))
+	require.False(t, ArgExactMatch(openLogArgs, "sys"))
+}
+
 func TestSuggestArgsFiltersByPrefix(t *testing.T) {
 	cmd, ok := Get(DiagnosticOpenLog)
 	require.True(t, ok)

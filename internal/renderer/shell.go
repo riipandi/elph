@@ -45,31 +45,31 @@ func isShellCancelKey(msg tea.KeyPressMsg) bool {
 }
 
 func (m Model) handleShellSubmit(command string, withContext bool) (Model, tea.Cmd, bool) {
-	if m.shellRunning {
+	if m.shell.Running {
 		return m, nil, false
 	}
 
 	m = m.addUserMessage(command)
 	m = m.resetInput()
 
-	m.shellRunning = true
-	m.shellCommand = command
-	m.shellWithContext = withContext
-	m.shellOutput = ""
+	m.shell.Running = true
+	m.shell.Command = command
+	m.shell.WithContext = withContext
+	m.shell.Output = ""
 	m = m.beginShellActivity()
 	m = m.addToolMessage(shellRunningDisplay(command))
-	m.shellToolMsgID = len(m.messages) - 1
-	m.contentDirty = true
+	m.shell.ToolMsgID = len(m.messages) - 1
+	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	m.shellCancel = cancel
+	m.shell.Cancel = cancel
 
-	m.shellOutputCh = make(chan string, 64)
-	m.shellDoneCh = make(chan runtime.ShellResult, 1)
+	m.shell.OutputCh = make(chan string, 64)
+	m.shell.DoneCh = make(chan runtime.ShellResult, 1)
 
-	outCh := m.shellOutputCh
-	doneCh := m.shellDoneCh
+	outCh := m.shell.OutputCh
+	doneCh := m.shell.DoneCh
 	workDir := m.workDir
 
 	start := func() tea.Msg {
@@ -139,60 +139,62 @@ func waitShellDone(ch <-chan runtime.ShellResult, command string, withContext bo
 }
 
 func (m Model) cancelShell() (Model, tea.Cmd) {
-	if !m.shellRunning || m.shellCancel == nil {
+	if !m.shell.Running || m.shell.Cancel == nil {
 		return m, nil
 	}
 	m = m.cancelCtrlC()
-	m.shellCancel()
+	m.shell.Cancel()
 	return m, nil
 }
 
 func (m Model) updateShellToolMessage(running bool, result *runtime.ShellResult) Model {
-	if m.shellToolMsgID < 0 || m.shellToolMsgID >= len(m.messages) {
+	if m.shell.ToolMsgID < 0 || m.shell.ToolMsgID >= len(m.messages) {
 		return m
 	}
 
 	var text string
 	if result != nil {
 		text = runtime.FormatShellDisplay(
-			m.shellCommand,
+			m.shell.Command,
 			result.Output,
 			result.ExitCode,
 			result.Err,
 			result.Cancelled,
 		)
 	} else {
-		output := runtime.TrimStreamOutput(m.shellOutput)
-		text = runtime.FormatShellDisplay(m.shellCommand, output, 0, nil, false)
+		output := runtime.TrimStreamOutput(m.shell.Output)
+		text = runtime.FormatShellDisplay(m.shell.Command, output, 0, nil, false)
 	}
 
-	m.messages[m.shellToolMsgID].text = text
-	m.contentDirty = true
+	m.messages[m.shell.ToolMsgID].text = text
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) finishShellDone(msg shellDoneMsg) (Model, tea.Cmd) {
-	m.shellCancel = nil
-	m.shellOutputCh = nil
-	m.shellDoneCh = nil
+	m.shell.Cancel = nil
+	m.shell.OutputCh = nil
+	m.shell.DoneCh = nil
 
-	m.shellOutput = msg.result.Output
+	m.shell.Output = msg.result.Output
 	m = m.updateShellToolMessage(false, &msg.result)
 
-	if m.shellToolMsgID >= 0 && m.shellToolMsgID < len(m.messages) {
-		m.session.AppendLog("shell", m.messages[m.shellToolMsgID].text)
+	if m.shell.ToolMsgID >= 0 && m.shell.ToolMsgID < len(m.messages) {
+		m.session.AppendLog("shell", m.messages[m.shell.ToolMsgID].text)
 	}
-	m.shellToolMsgID = -1
-	m.shellCommand = ""
-	m.shellOutput = ""
-	m.shellRunning = false
+	m.shell.ToolMsgID = -1
+	m.shell.Command = ""
+	m.shell.Output = ""
+	m.shell.Running = false
 
 	if msg.withContext && !msg.result.Cancelled {
 		prompt := runtime.FormatShellContext(msg.command, msg.result.Output, msg.result.ExitCode)
 		m.session.AppendLog("shell_context", prompt)
 		m = m.beginAgentTurn()
 		m = m.syncLayout(true)
-		return m, m.agentTurnCmds(prompt)
+		var agentCmd tea.Cmd
+		m, agentCmd = m.agentTurnCmds(prompt)
+		return m, agentCmd
 	}
 
 	m = m.clearActivity()
@@ -201,13 +203,13 @@ func (m Model) finishShellDone(msg shellDoneMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleShellOutput(msg shellOutputMsg) (Model, tea.Cmd) {
-	m.shellOutput += msg.chunk
+	m.shell.Output += msg.chunk
 	m = m.updateShellToolMessage(true, nil)
 	m = m.syncLayout(true)
 
 	var cmd tea.Cmd
-	if m.shellOutputCh != nil {
-		cmd = waitShellOutput(m.shellOutputCh)
+	if m.shell.OutputCh != nil {
+		cmd = waitShellOutput(m.shell.OutputCh)
 	}
 	return m, cmd
 }

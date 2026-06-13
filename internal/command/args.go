@@ -3,7 +3,8 @@ package command
 import (
 	"strings"
 
-	"charm.land/lipgloss/v2"
+	"github.com/riipandi/elph/internal/align"
+	"github.com/riipandi/elph/internal/fuzzy"
 )
 
 // ArgChoice describes one accepted argument for a slash command.
@@ -49,6 +50,17 @@ func ResolveInput(input string) (cmd SlashCommand, argQuery string, ok bool) {
 	return cmd, argQuery, true
 }
 
+// ArgExactMatch reports whether query matches an argument value exactly.
+func ArgExactMatch(args []ArgChoice, query string) bool {
+	query = strings.ToLower(strings.TrimSpace(query))
+	for _, arg := range args {
+		if arg.Value == query {
+			return true
+		}
+	}
+	return false
+}
+
 // SuggestArgs returns argument choices that fuzzy-match query for cmd.
 func SuggestArgs(cmd SlashCommand, query string) []ArgChoice {
 	query = strings.ToLower(strings.TrimSpace(query))
@@ -75,21 +87,16 @@ func CompleteArgInput(cmd SlashCommand, selected ArgChoice) string {
 
 // ArgColumnWidth returns the display width of the widest argument value column.
 func ArgColumnWidth(args []ArgChoice) int {
-	width := 0
-	for _, arg := range args {
-		if w := lipgloss.Width(arg.Value); w > width {
-			width = w
-		}
+	values := make([]string, len(args))
+	for i, arg := range args {
+		values[i] = arg.Value
 	}
-	return width
+	return align.ColumnWidth(values...)
 }
 
 // AlignedArgRow splits an argument choice into a justified value and summary.
 func AlignedArgRow(arg ArgChoice, nameColW int) (name, gap, summary string) {
-	name = arg.Value
-	gap = strings.Repeat(" ", max(nameColW-lipgloss.Width(name)+columnGap, columnGap))
-	summary = arg.Description
-	return name, gap, summary
+	return align.Row(arg.Value, nameColW, arg.Description)
 }
 
 // ArgChoiceIndex returns the best palette index for a partial or exact argument query.
@@ -120,8 +127,8 @@ func ArgChoiceIndex(args []ArgChoice, query string) int {
 }
 
 func argScore(query string, arg ArgChoice) int {
-	score := fuzzyScore(query, arg.Value)
-	if desc := fuzzyScore(query, arg.Description); desc > score {
+	score := fuzzy.Score(query, arg.Value)
+	if desc := fuzzy.Score(query, arg.Description); desc > score {
 		score = desc
 	}
 	return score
