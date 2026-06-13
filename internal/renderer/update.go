@@ -48,6 +48,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	if m.input.Focused() {
+		if updated, handled := m.handleInputWordDelete(msg); handled {
+			m, cmd := updated.finalizeInputEdit()
+			return m, cmd
+		}
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -80,6 +87,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case agent.TurnDoneMsg:
 		m = m.finishAgentTurn(msg.Response)
+
+	case mentionIndexMsg:
+		m.mentionIndexLoading = false
+		if msg.workDir == m.workDir {
+			m.mentionIndex = msg.entries
+			m.mentionIndexDir = msg.workDir
+		}
+		var syncCmd tea.Cmd
+		m, syncCmd = m.syncInputSuggestions()
+		if syncCmd != nil {
+			cmds = append(cmds, syncCmd)
+		}
 
 	case termFeaturesMsg:
 		// Terminal feature setup complete.
@@ -132,13 +151,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.input.Focused() {
 			var consumed bool
-			m, consumed = m.handleSlashPaletteKey(msg)
+			m, consumed = m.handleInputPaletteKey(msg)
 			if consumed {
-				prevChrome := m.chromeH
-				m = m.syncSlashSuggestions()
-				if m.chromeHeight() != prevChrome {
-					m = m.syncLayout(m.content.AtBottom())
-				}
 				return m, nil
 			}
 		}
@@ -224,31 +238,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.content, cmd = m.content.Update(msg)
-	cmds = append(cmds, cmd)
+	if !m.input.Focused() || !isInputEditingKey(msg) {
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
+	}
 
 	if m.input.Focused() {
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
-		m = m.syncInputWidth()
 	}
 
-	prevPrefix := m.showPromptPrefix
-	m = m.syncPromptPrefix()
-	if m.showPromptPrefix != prevPrefix {
-		m = m.syncInputWidth()
-	}
-
-	prevSuggest := len(m.cmdSuggestions)
-	m = m.syncSlashSuggestions()
-	if len(m.cmdSuggestions) != prevSuggest {
-		m = m.syncLayout(m.content.AtBottom())
-	}
-
-	// Re-layout when chrome height changes (activity, multiline input, etc.).
-	chromeH := m.chromeHeight()
-	if chromeH != m.chromeH {
-		m = m.syncLayout(m.content.AtBottom())
+	m, finCmd := m.finalizeInputEdit()
+	if finCmd != nil {
+		cmds = append(cmds, finCmd)
 	}
 
 	return m, tea.Batch(cmds...)

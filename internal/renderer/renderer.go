@@ -4,6 +4,7 @@ import tea "charm.land/bubbletea/v2"
 
 // Render starts the TUI application using Bubble Tea.
 func Render() error {
+	activateTerminalFeaturesSync()
 	m := New()
 	// Alt screen and mouse mode are declared declaratively in View().
 	p := tea.NewProgram(m)

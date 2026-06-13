@@ -37,7 +37,7 @@ func (m Model) argPaletteActive() bool {
 }
 
 func (m Model) inputPaletteActive() bool {
-	return m.commandPaletteActive() || m.argPaletteActive()
+	return m.mentionPaletteActive() || m.commandPaletteActive() || m.argPaletteActive()
 }
 
 func (m Model) slashQueryActive() bool {
@@ -56,7 +56,7 @@ func (m Model) slashQuery() string {
 	return strings.ToLower(strings.TrimSpace(query))
 }
 
-func (m Model) syncSlashSuggestions() Model {
+func (m Model) syncInputSuggestions() (Model, tea.Cmd) {
 	m = m.syncInputPlaceholder()
 
 	if !m.input.Focused() {
@@ -64,17 +64,32 @@ func (m Model) syncSlashSuggestions() Model {
 		m.cmdSuggestIndex = 0
 		m.argSuggestions = nil
 		m.argSuggestIndex = 0
-		return m
+		m.mentionSuggestions = nil
+		m.mentionSuggestIndex = 0
+		m.mentionFilterQuery = ""
+		return m, nil
 	}
 
-	if !m.slashQueryActive() {
-		m.cmdSuggestions = nil
-		m.cmdSuggestIndex = 0
-		m.argSuggestions = nil
-		m.argSuggestIndex = 0
-		return m
+	if m.slashQueryActive() {
+		m.mentionSuggestions = nil
+		m.mentionSuggestIndex = 0
+		m.mentionFilterQuery = ""
+		return m.syncSlashSuggestionsOnly(), nil
 	}
 
+	m.cmdSuggestions = nil
+	m.cmdSuggestIndex = 0
+	m.argSuggestions = nil
+	m.argSuggestIndex = 0
+	return m.syncMentionSuggestions()
+}
+
+func (m Model) syncSlashSuggestions() Model {
+	m, _ = m.syncInputSuggestions()
+	return m
+}
+
+func (m Model) syncSlashSuggestionsOnly() Model {
 	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
 	if ok && len(cmd.Args) > 0 && m.argInputReady(cmd) {
 		m.cmdSuggestions = nil
@@ -157,6 +172,13 @@ func (m Model) cycleArgSelection(delta int) Model {
 	return m.applyArgPreview()
 }
 
+func (m Model) handleInputPaletteKey(msg tea.KeyPressMsg) (Model, bool) {
+	if m.mentionPaletteActive() {
+		return m.handleMentionPaletteKey(msg)
+	}
+	return m.handleSlashPaletteKey(msg)
+}
+
 func (m Model) handleSlashPaletteKey(msg tea.KeyPressMsg) (Model, bool) {
 	if m.argPaletteActive() {
 		switch msg.String() {
@@ -200,6 +222,9 @@ func (m Model) commandPaletteView() string {
 		return ""
 	}
 
+	if m.mentionPaletteActive() {
+		return m.mentionPaletteView()
+	}
 	if m.argPaletteActive() {
 		return m.argPaletteView()
 	}

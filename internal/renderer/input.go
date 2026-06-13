@@ -37,12 +37,20 @@ var (
 
 type termFeaturesMsg struct{}
 
+// activateTerminalFeaturesSync enables enhanced key reporting before the program
+// starts so the first keystroke already uses modifyOtherKeys / Kitty protocol.
+func activateTerminalFeaturesSync() {
+	// modifyOtherKeys makes Option+Delete report as CSI 27;3;127~ in xterm-compatible
+	// terminals (Ghostty, VS Code). Kitty keyboard protocol disabled here because it
+	// can prevent those legacy/modifyOtherKeys sequences from being delivered.
+	_, _ = fmt.Fprint(os.Stdout, ansi.SetModifyOtherKeys2)
+}
+
 // enableTerminalFeatures requests enhanced key reporting so Shift+Enter can be
 // distinguished from Enter. Uses push semantics to preserve user terminal cfg.
 func enableTerminalFeatures() tea.Cmd {
 	return func() tea.Msg {
-		_, _ = fmt.Fprint(os.Stdout, ansi.SetModifyOtherKeys2)
-		_, _ = fmt.Fprint(os.Stdout, ansi.PushKittyKeyboard(ansi.KittyDisambiguateEscapeCodes))
+		activateTerminalFeaturesSync()
 		return termFeaturesMsg{}
 	}
 }
@@ -50,7 +58,6 @@ func enableTerminalFeatures() tea.Cmd {
 func disableTerminalFeatures() tea.Cmd {
 	return func() tea.Msg {
 		_, _ = fmt.Fprint(os.Stdout, ansi.ResetModifyOtherKeys)
-		_, _ = fmt.Fprint(os.Stdout, ansi.PopKittyKeyboard(1))
 		return nil
 	}
 }
@@ -369,8 +376,38 @@ func (m Model) resetInput() Model {
 	m.input.SetValue("")
 	m.input.SetHeight(1)
 	m.inputScrollTop = 0
+	m.inputPendingEsc = false
 	m.promptChar = ">"
 	return m
+}
+
+func (m Model) finalizeInputEdit() (Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	m = m.syncInputWidth()
+
+	prevPrefix := m.showPromptPrefix
+	m = m.syncPromptPrefix()
+	if m.showPromptPrefix != prevPrefix {
+		m = m.syncInputWidth()
+	}
+
+	prevSuggest := len(m.cmdSuggestions) + len(m.mentionSuggestions)
+	var syncCmd tea.Cmd
+	m, syncCmd = m.syncInputSuggestions()
+	if syncCmd != nil {
+		cmds = append(cmds, syncCmd)
+	}
+	if len(m.cmdSuggestions)+len(m.mentionSuggestions) != prevSuggest {
+		m = m.syncLayout(m.content.AtBottom())
+	}
+
+	chromeH := m.chromeHeight()
+	if chromeH != m.chromeH {
+		m = m.syncLayout(m.content.AtBottom())
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func isSlashCommand(s string) bool {

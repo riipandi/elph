@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/command"
+	"github.com/riipandi/elph/internal/mention"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/pkg/core/agent"
@@ -113,6 +114,16 @@ type Model struct {
 	cmdSuggestIndex int
 	argSuggestions  []command.ArgChoice
 	argSuggestIndex int
+
+	mentionSuggestions  []mention.Entry
+	mentionSuggestIndex int
+	mentionIndex        []mention.Entry
+	mentionIndexDir     string
+	mentionIndexLoading bool
+	mentionActiveQuery  string
+	mentionFilterQuery  string
+
+	inputPendingEsc bool // macOS ESC+backspace Option+Delete pair
 }
 
 // Shared "no background" style reused in textarea init to reduce allocations.
@@ -159,6 +170,7 @@ func New() Model {
 	// content can grow past the viewport cap (syncInputHeight).
 	ta.SetStyles(noBgStyles())
 	ta.KeyMap.InsertNewline.SetKeys("ctrl+j", "shift+enter")
+	configureInputKeyMap(&ta)
 	ta.Focus()
 
 	return Model{

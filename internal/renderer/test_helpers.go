@@ -34,6 +34,10 @@ func keyDown() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyDown}
 }
 
+func keyUp() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: tea.KeyUp}
+}
+
 func keyTab() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyTab}
 }
