@@ -182,25 +182,6 @@ func TestSubmitEmptyInputIgnored(t *testing.T) {
 	require.False(t, m.busy)
 }
 
-func TestSubmitStripsTriggerPrefixes(t *testing.T) {
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{"!ls", "ls"},
-		{"!!rm -rf", "rm -rf"},
-	}
-	for _, tc := range cases {
-		m := testInputModel(t)
-		m.input.SetValue(tc.input)
-		updated, cmd := m.Update(keyEnter())
-		m = updated.(Model)
-		require.NotNil(t, cmd, "input %q", tc.input)
-		require.Len(t, m.messages, 1, "input %q", tc.input)
-		require.Equal(t, tc.want, m.messages[0].text, "input %q", tc.input)
-	}
-}
-
 func TestSubmitSlashCommandHelp(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("/help")
@@ -341,6 +322,20 @@ func TestSpinnerTickWhenIdleNoOp(t *testing.T) {
 
 	require.Equal(t, 0, m.spinnerFrame)
 	require.Nil(t, cmd)
+}
+
+func TestSpinnerTickWhenShellRunning(t *testing.T) {
+	m := testInputModel(t)
+	m.shellRunning = true
+	m.shellCommand = "whois example.com"
+	m = m.beginShellActivity()
+	m.spinnerFrame = 0
+
+	updated, cmd := m.Update(spinnerTickMsg{})
+	m = updated.(Model)
+
+	require.Equal(t, 1, m.spinnerFrame)
+	require.NotNil(t, cmd)
 }
 
 func TestTermFeaturesMsgHandled(t *testing.T) {

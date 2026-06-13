@@ -4,15 +4,15 @@ import (
 	"regexp"
 	"strconv"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 )
 
 const (
-	ctrlWCode      = 0x17 // EM (^W), common macOS Option+Delete encoding
-	xtermMetaMod   = 9    // CSI 3;9~ — Cmd+Delete on Ghostty
-	kittyModAlt    = 2
-	kittyModMeta   = 8
+	ctrlWCode    = 0x17 // EM (^W), common macOS Option+Delete encoding
+	xtermMetaMod = 9    // CSI 3;9~ — Cmd+Delete on Ghostty
+	kittyModAlt  = 2
+	kittyModMeta = 8
 )
 
 var (
@@ -68,7 +68,7 @@ func (m Model) handleInputWordDelete(msg tea.Msg) (Model, bool) {
 	}
 
 	// macOS Terminal/Ghostty: ESC then backspace (Meta-Backspace) as two events.
-	if isInputEscapeKey(key) {
+	if isInputEscapeKey(key) && !m.shellRunning {
 		m.inputPendingEsc = true
 		return m, true
 	}

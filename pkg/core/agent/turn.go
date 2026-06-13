@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,9 +10,20 @@ import (
 
 const PhaseDelay = 400 * time.Millisecond
 
+// IsShellContextPrompt reports Pi-style shell output queued for the agent (!cmd).
+func IsShellContextPrompt(prompt string) bool {
+	return strings.HasPrefix(strings.TrimSpace(prompt), "Ran `")
+}
+
 // RunTurn returns commands that simulate an agent turn until a response is ready.
 // Real provider and tool integration will replace the placeholder completion.
 func RunTurn(prompt string) tea.Cmd {
+	if IsShellContextPrompt(prompt) {
+		return func() tea.Msg {
+			return TurnDoneMsg{Response: PlaceholderResponse(prompt)}
+		}
+	}
+
 	cmds := make([]tea.Cmd, 0, len(TurnPhases))
 
 	for i, phase := range TurnPhases[1:] {
@@ -32,5 +44,9 @@ func RunTurn(prompt string) tea.Cmd {
 
 // PlaceholderResponse is a stub assistant reply used until provider integration lands.
 func PlaceholderResponse(prompt string) string {
+	if IsShellContextPrompt(prompt) {
+		// Shell output is already shown in the chat; context is logged for the agent.
+		return ""
+	}
 	return fmt.Sprintf("Received: %s\n\n(Agent integration pending — this is a placeholder response.)", prompt)
 }

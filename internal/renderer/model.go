@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"context"
 	"math/rand"
 	"os"
 	"time"
@@ -10,8 +11,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/command"
-	"github.com/riipandi/elph/internal/mention"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/mention"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/pkg/core/agent"
 	"go.jetify.com/typeid/v2"
@@ -106,6 +107,15 @@ type Model struct {
 	spinnerFrame int
 	busy         bool // agent turn in progress
 
+	shellRunning     bool
+	shellCommand     string
+	shellOutput      string
+	shellWithContext bool
+	shellToolMsgID   int
+	shellCancel      context.CancelFunc
+	shellOutputCh    chan string
+	shellDoneCh      chan runtime.ShellResult
+
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
@@ -140,8 +150,8 @@ func noBgStyles() textarea.Styles {
 		Placeholder: lipgloss.NewStyle().
 			Foreground(constants.DimText).
 			Background(lipgloss.NoColor{}),
-		Prompt:           noBgStyle,
-		Text:             noBgStyle,
+		Prompt: noBgStyle,
+		Text:   noBgStyle,
 	}
 	return textarea.Styles{
 		Focused: blank,
@@ -192,6 +202,7 @@ func New() Model {
 		mouseEnabled:     true,
 		contentDirty:     true,
 		ctrlCNoticeID:    -1,
+		shellToolMsgID:   -1,
 	}
 }
 

@@ -68,6 +68,16 @@ func TestPlaceholderResponse(t *testing.T) {
 	require.Contains(t, got, "placeholder")
 }
 
+func TestPlaceholderResponseShellContextEmpty(t *testing.T) {
+	got := PlaceholderResponse("Ran `ls`\n```\nfile\n```")
+	require.Empty(t, got)
+}
+
+func TestIsShellContextPrompt(t *testing.T) {
+	require.True(t, IsShellContextPrompt("Ran `git status`\n```\n```"))
+	require.False(t, IsShellContextPrompt("explain this code"))
+}
+
 func TestRunTurnReturnsCommand(t *testing.T) {
 	require.NotNil(t, RunTurn("test prompt"))
 }

@@ -168,7 +168,7 @@ func (m Model) cycleArgSelection(delta int) Model {
 	}
 
 	n := len(m.argSuggestions)
-	m.argSuggestIndex = (m.argSuggestIndex+delta%n+n) % n
+	m.argSuggestIndex = (m.argSuggestIndex + delta%n + n) % n
 	return m.applyArgPreview()
 }
 

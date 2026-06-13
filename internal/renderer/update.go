@@ -43,6 +43,10 @@ func resolveKeyAction(msg tea.KeyPressMsg) constants.KeyAction {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	if key, ok := msg.(tea.KeyPressMsg); ok && m.shellRunning && isShellCancelKey(key) {
+		return m.cancelShell()
+	}
+
 	if m.input.Focused() && isNewlineInputMsg(msg) {
 		m, cmd := m.handleInputNewlineMsg(msg)
 		return m, cmd
@@ -80,13 +84,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m = m.syncLayout(m.content.AtBottom())
 
 	case spinnerTickMsg:
-		if m.busy {
+		if m.showsActivity() {
 			m.spinnerFrame++
 			cmds = append(cmds, m.spinnerTickCmd())
 		}
 
 	case agent.TurnDoneMsg:
 		m = m.finishAgentTurn(msg.Response)
+
+	case shellOutputMsg:
+		var cmd tea.Cmd
+		m, cmd = m.handleShellOutput(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
+
+	case shellOutputClosedMsg:
+		// Output channel closed; shellDoneMsg follows.
+
+	case shellDoneMsg:
+		var cmd tea.Cmd
+		m, cmd = m.finishShellDone(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+		return m, tea.Batch(cmds...)
 
 	case mentionIndexMsg:
 		m.mentionIndexLoading = false
@@ -208,7 +231,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if isInputNewlineKey(msg) {
 				break
 			}
-			if m.busy || !m.input.Focused() {
+			if m.busy || m.shellRunning || !m.input.Focused() {
 				break
 			}
 			var cmd tea.Cmd

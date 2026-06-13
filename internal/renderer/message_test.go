@@ -146,6 +146,7 @@ func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
 		constants.MessageUser,
 		constants.MessageAI,
 		constants.MessageSystem,
+		constants.MessageTool,
 	} {
 		renderedW := lipgloss.Width(m.renderMessage(message{text: "hello", kind: kind}))
 		require.Equal(t, msgW, renderedW, "kind %d width", kind)
@@ -156,6 +157,20 @@ func TestUserMessageHorizontalPadding(t *testing.T) {
 	m := testModel()
 	rendered := stripANSI(m.renderMessage(message{text: "hello", kind: constants.MessageUser}))
 	require.True(t, strings.HasPrefix(rendered, "  "), "user message should have horizontal padding: %q", rendered)
+}
+
+func TestToolMessageBlockPadding(t *testing.T) {
+	m := testModel()
+	rendered := m.renderMessage(message{text: "$ ls\nfile.txt", kind: constants.MessageTool})
+	require.GreaterOrEqual(t, lipgloss.Height(rendered), 4,
+		"multiline tool message should include vertical padding")
+	plain := stripANSI(rendered)
+	require.Contains(t, plain, "$ ls")
+	require.Contains(t, plain, "file.txt")
+	require.True(t, strings.HasPrefix(plain, "  "), "tool message should have horizontal padding: %q", plain)
+
+	msgW := m.messageAreaWidth()
+	require.Equal(t, msgW, lipgloss.Width(rendered))
 }
 
 func TestUserMsgBgConstant(t *testing.T) {

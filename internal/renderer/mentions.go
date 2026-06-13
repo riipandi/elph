@@ -149,7 +149,7 @@ func (m Model) moveMentionSelection(delta int) Model {
 		return m
 	}
 	n := len(m.mentionSuggestions)
-	m.mentionSuggestIndex = (m.mentionSuggestIndex+delta%n+n) % n
+	m.mentionSuggestIndex = (m.mentionSuggestIndex + delta%n + n) % n
 	return m
 }
 
@@ -172,7 +172,7 @@ func (m Model) cycleMentionSelection(delta int) Model {
 	}
 
 	n := len(m.mentionSuggestions)
-	m.mentionSuggestIndex = (m.mentionSuggestIndex+delta%n+n) % n
+	m.mentionSuggestIndex = (m.mentionSuggestIndex + delta%n + n) % n
 	m = m.applyMentionPreview()
 	if q, _, ok := m.activeMention(); ok {
 		m.mentionActiveQuery = q

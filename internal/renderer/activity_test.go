@@ -27,6 +27,7 @@ func TestInputHasTopMarginWhenIdle(t *testing.T) {
 func TestActivityViewShowsLabel(t *testing.T) {
 	m := New()
 	m.width = 80
+	m.busy = true
 	m.activity = agent.ActivityWriting
 	m.spinnerFrame = 0
 

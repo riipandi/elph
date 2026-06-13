@@ -12,7 +12,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/command"
-	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 const (
@@ -236,7 +235,7 @@ func (m Model) maxInputHeight() int {
 	}
 	footerH := lipgloss.Height(m.footerView())
 	activityH := 0
-	if m.activity != agent.ActivityIdle {
+	if m.showsActivity() {
 		activityH = lipgloss.Height(m.activityView())
 	}
 	paletteH := 0
@@ -438,7 +437,7 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 }
 
 func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
-	if m.busy {
+	if m.busy || m.shellRunning {
 		return m, nil, false
 	}
 	val := normalizeInputForSubmit(m.input.Value())
@@ -451,6 +450,13 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 	}
 	if isSlashCommand(val) {
 		return m.handleSlashCommand(val)
+	}
+	if strings.HasPrefix(strings.TrimLeft(val, " \t"), "!") {
+		cmd, withContext, ok := parseShellCommand(val)
+		if !ok {
+			return m, nil, false
+		}
+		return m.handleShellSubmit(cmd, withContext)
 	}
 	val = stripTrigger(val)
 	m = m.addUserMessage(val)

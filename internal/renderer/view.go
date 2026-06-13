@@ -82,7 +82,7 @@ func (m Model) renderedViewHeight() int {
 
 func (m Model) chromeHeight() int {
 	h := lipgloss.Height(m.inputChromeView()) + lipgloss.Height(m.footerView())
-	if m.activity != agent.ActivityIdle {
+	if m.showsActivity() {
 		h += lipgloss.Height(m.activityView())
 	}
 	return h
@@ -184,7 +184,8 @@ func (m Model) renderMessage(msg message) string {
 
 // renderStyledMessage paints each line using the palette for its message kind.
 func renderStyledMessage(width int, kind constants.MessageKind, text string) string {
-	if kind == constants.MessageUser {
+	switch kind {
+	case constants.MessageUser, constants.MessageTool:
 		return constants.MessageStyle(kind).
 			Padding(1, 2).
 			Width(width).
@@ -288,16 +289,39 @@ func (m Model) bannerView() string {
 }
 
 func (m Model) activityView() string {
-	if m.activity == agent.ActivityIdle {
+	if !m.showsActivity() {
 		return ""
 	}
 	frame := spinnerFrames[m.spinnerFrame%len(spinnerFrames)]
 	spinner := lipgloss.NewStyle().Foreground(constants.Yellow).Render(frame)
-	label := dimStyle.Render(" " + string(m.activity) + "...")
+	label := dimStyle.Render(" " + m.activityLabel() + "...")
 	return lipgloss.NewStyle().
 		PaddingLeft(1).
 		Width(m.width).
 		Render(spinner + label)
+}
+
+func (m Model) activityLabel() string {
+	if m.shellRunning {
+		cmd := m.shellCommand
+		if cmd == "" {
+			return string(agent.ActivityRunning)
+		}
+		prefix := "Running $ "
+		suffix := " · Esc to cancel"
+		maxCmd := m.width - lipgloss.Width(prefix+suffix+"...") - 2
+		if maxCmd < 8 {
+			maxCmd = 8
+		}
+		if lipgloss.Width(cmd) > maxCmd {
+			cmd = clampLine(maxCmd, cmd)
+		}
+		return prefix + cmd + suffix
+	}
+	if m.activity == agent.ActivityIdle {
+		return string(agent.ActivityWorking)
+	}
+	return string(m.activity)
 }
 
 func (m Model) inputBodyView() string {
@@ -317,7 +341,7 @@ func (m Model) inputChromeView() string {
 	if palette != "" {
 		return lipgloss.JoinVertical(lipgloss.Top, palette, inputBox)
 	}
-	if m.activity == agent.ActivityIdle {
+	if !m.showsActivity() {
 		return lipgloss.NewStyle().MarginTop(1).Render(inputBox)
 	}
 	return inputBox
