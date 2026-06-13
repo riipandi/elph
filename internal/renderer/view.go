@@ -74,9 +74,13 @@ func (m Model) bannerView() string {
 	metaW := max(w-6, 20)
 	tipW := max(w-6, 10)
 
-	versionLine := fmt.Sprintf("Welcome to Elph v%s", config.AppVersion)
-	if config.BuildHash != "unknown" {
-		versionLine = fmt.Sprintf("Welcome to Elph v%s (%s)", config.AppVersion, config.BuildHash[:7])
+	// TODO: replace with actual value
+	updateAvailable := false
+
+	versionLine := fmt.Sprintf("Welcome to %s v%s", config.AppName, config.AppVersion)
+	if updateAvailable {
+		updateNotice := lipgloss.NewStyle().Foreground(constants.Yellow).Italic(true).Bold(false).Render("(update available)")
+		versionLine = fmt.Sprintf("Welcome to %s v%s %s", config.AppName, config.AppVersion, updateNotice)
 	}
 
 	header := lipgloss.NewStyle().Bold(true).Render(versionLine)

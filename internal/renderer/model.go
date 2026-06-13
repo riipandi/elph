@@ -7,7 +7,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
@@ -80,7 +79,6 @@ type Model struct {
 	width            int
 	height           int
 	input            textarea.Model
-	vp               viewport.Model
 	messages         []message
 	modelName        string
 	provider         string
