@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUserMessageLinesFitContentViewportWithScrollbar(t *testing.T) {
@@ -23,9 +24,7 @@ func TestUserMessageLinesFitContentViewportWithScrollbar(t *testing.T) {
 	m.contentDirty = true
 	m = m.syncLayout(false)
 
-	if !m.contentScrollable() {
-		t.Fatal("expected scrollable content")
-	}
+	require.True(t, m.contentScrollable())
 
 	content := m.contentView()
 	maxLineW := 0
@@ -34,19 +33,11 @@ func TestUserMessageLinesFitContentViewportWithScrollbar(t *testing.T) {
 			maxLineW = w
 		}
 	}
-	if maxLineW > m.content.Width {
-		t.Fatalf("content line width %d exceeds viewport %d", maxLineW, m.content.Width)
-	}
+	require.LessOrEqual(t, maxLineW, m.content.Width, "content line width vs viewport")
 
 	userW := lipgloss.Width(m.renderMessage(m.messages[len(m.messages)-1]))
 	msgW := m.messageAreaWidth()
-	if userW != msgW {
-		t.Fatalf("user message width %d != messageAreaWidth %d", userW, msgW)
-	}
-	if userW >= m.content.Width {
-		t.Fatalf("user message width %d should be narrower than viewport %d", userW, m.content.Width)
-	}
-	if lipgloss.Width(m.contentAreaView()) > m.width {
-		t.Fatalf("content area %d exceeds terminal %d", lipgloss.Width(m.contentAreaView()), m.width)
-	}
+	require.Equal(t, msgW, userW)
+	require.Less(t, userW, m.content.Width, "user message should be narrower than viewport")
+	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
 }

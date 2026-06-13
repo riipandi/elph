@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResizeUpdatesViewportDimensions(t *testing.T) {
@@ -15,19 +16,10 @@ func TestResizeUpdatesViewportDimensions(t *testing.T) {
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
 	m = updated.(Model)
 
-	if !m.ready {
-		t.Fatal("expected ready after WindowSizeMsg")
-	}
-	if m.content.Width != 80 {
-		t.Fatalf("viewport width %d, want 80", m.content.Width)
-	}
-	if m.content.Height <= 0 {
-		t.Fatal("viewport height must be positive")
-	}
-	if m.content.Height+m.chromeH > m.height {
-		t.Fatalf("viewport %d + chrome %d exceeds terminal %d",
-			m.content.Height, m.chromeH, m.height)
-	}
+	require.True(t, m.ready)
+	require.Equal(t, 80, m.content.Width)
+	require.Positive(t, m.content.Height)
+	require.LessOrEqual(t, m.content.Height+m.chromeH, m.height)
 }
 
 func TestResizePreservesMessageHistory(t *testing.T) {
@@ -40,9 +32,7 @@ func TestResizePreservesMessageHistory(t *testing.T) {
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 60, Height: 24})
 	m = updated.(Model)
 
-	if !strings.Contains(m.contentView(), "hello from user") {
-		t.Fatal("resize should preserve message history in viewport content")
-	}
+	require.Contains(t, m.contentView(), "hello from user")
 }
 
 func TestResizeBannerWidthAdapts(t *testing.T) {
@@ -53,12 +43,8 @@ func TestResizeBannerWidthAdapts(t *testing.T) {
 	m.width = 40
 	narrow := lipgloss.Width(m.bannerView())
 
-	if narrow > 40 {
-		t.Fatalf("narrow banner %d exceeds terminal width 40", narrow)
-	}
-	if wide > 120 {
-		t.Fatalf("wide banner %d exceeds terminal width 120", wide)
-	}
+	require.LessOrEqual(t, narrow, 40)
+	require.LessOrEqual(t, wide, 120)
 }
 
 func TestResizeBannerWrapsTallerAtNarrowWidth(t *testing.T) {
@@ -69,9 +55,7 @@ func TestResizeBannerWrapsTallerAtNarrowWidth(t *testing.T) {
 	m.width = 40
 	narrow := lipgloss.Height(m.bannerView())
 
-	if narrow <= wide {
-		t.Fatalf("expected narrower terminal to wrap banner taller: wide=%d narrow=%d", wide, narrow)
-	}
+	require.Greater(t, narrow, wide)
 }
 
 func TestManyMessagesContentFitsInViewport(t *testing.T) {
@@ -89,12 +73,8 @@ func TestManyMessagesContentFitsInViewport(t *testing.T) {
 
 	m = m.syncLayout(true)
 
-	if !strings.Contains(m.contentView(), "message number 24") {
-		t.Fatal("expected most recent message in content")
-	}
-	if m.content.Height < 1 {
-		t.Fatal("viewport should have positive height")
-	}
+	require.Contains(t, m.contentView(), "message number 24")
+	require.GreaterOrEqual(t, m.content.Height, 1)
 }
 
 func TestLongPasteBannerAppearsOnce(t *testing.T) {
@@ -107,7 +87,5 @@ func TestLongPasteBannerAppearsOnce(t *testing.T) {
 	m.messages = []message{{text: readme, kind: constants.MessageUser}}
 
 	content := m.contentView()
-	if strings.Count(content, "Welcome to") != 1 {
-		t.Fatal("banner should appear exactly once in scrollable content")
-	}
+	require.Equal(t, 1, strings.Count(content, "Welcome to"))
 }

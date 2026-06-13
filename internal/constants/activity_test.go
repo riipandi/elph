@@ -1,6 +1,10 @@
 package constants
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestActivityForTool(t *testing.T) {
 	tests := []struct {
@@ -25,9 +29,7 @@ func TestActivityForTool(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		if got := ActivityForTool(tc.tool); got != tc.want {
-			t.Fatalf("ActivityForTool(%q) = %q, want %q", tc.tool, got, tc.want)
-		}
+		require.Equal(t, tc.want, ActivityForTool(tc.tool), "ActivityForTool(%q)", tc.tool)
 	}
 }
 
@@ -42,12 +44,8 @@ func TestAgentTurnPhasesOrder(t *testing.T) {
 		ActivityRunning,
 		ActivityStreaming,
 	}
-	if len(AgentTurnPhases) != len(want) {
-		t.Fatalf("got %d phases, want %d", len(AgentTurnPhases), len(want))
-	}
+	require.Len(t, AgentTurnPhases, len(want))
 	for i, phase := range want {
-		if AgentTurnPhases[i] != phase {
-			t.Fatalf("phase[%d] = %q, want %q", i, AgentTurnPhases[i], phase)
-		}
+		require.Equal(t, phase, AgentTurnPhases[i], "phase[%d]", i)
 	}
 }

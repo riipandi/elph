@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestContentViewIncludesBannerAndMessages(t *testing.T) {
@@ -15,9 +16,8 @@ func TestContentViewIncludesBannerAndMessages(t *testing.T) {
 	m.messages = []message{{text: "hello from user", kind: constants.MessageUser}}
 
 	content := m.contentView()
-	if !strings.Contains(content, "Welcome to") || !strings.Contains(content, "hello from user") {
-		t.Fatalf("content missing banner or message: %q", content)
-	}
+	require.Contains(t, content, "Welcome to")
+	require.Contains(t, content, "hello from user")
 }
 
 func TestSyncLayoutFitsTerminalHeight(t *testing.T) {
@@ -28,16 +28,9 @@ func TestSyncLayoutFitsTerminalHeight(t *testing.T) {
 
 	m = m.syncLayout(false)
 
-	if m.content.Width != 80 {
-		t.Fatalf("viewport width %d, want 80", m.content.Width)
-	}
-	if m.content.Height <= 0 {
-		t.Fatal("viewport height must be positive")
-	}
-	if m.content.Height+m.chromeH > m.height {
-		t.Fatalf("viewport %d + chrome %d exceeds terminal height %d",
-			m.content.Height, m.chromeH, m.height)
-	}
+	require.Equal(t, 80, m.content.Width)
+	require.Positive(t, m.content.Height)
+	require.LessOrEqual(t, m.content.Height+m.chromeH, m.height)
 }
 
 func TestContentViewLongPasteIncludesBannerOnce(t *testing.T) {
@@ -50,9 +43,7 @@ func TestContentViewLongPasteIncludesBannerOnce(t *testing.T) {
 	m.messages = []message{{text: readme, kind: constants.MessageUser}}
 
 	content := m.contentView()
-	if strings.Count(content, "Welcome to") != 1 {
-		t.Fatal("banner should appear exactly once in scrollable content")
-	}
+	require.Equal(t, 1, strings.Count(content, "Welcome to"))
 }
 
 func TestBannerWidthMatchesTerminal(t *testing.T) {
@@ -61,9 +52,7 @@ func TestBannerWidthMatchesTerminal(t *testing.T) {
 	m.workDir = strings.Repeat("x", 80)
 
 	banner := m.bannerView()
-	if lipgloss.Width(banner) > m.width {
-		t.Fatalf("banner wider than terminal: %d > %d", lipgloss.Width(banner), m.width)
-	}
+	require.LessOrEqual(t, lipgloss.Width(banner), m.width)
 }
 
 func TestManyMessagesViewportContent(t *testing.T) {
@@ -80,10 +69,6 @@ func TestManyMessagesViewportContent(t *testing.T) {
 	}
 
 	m = m.syncLayout(true)
-	if !strings.Contains(m.contentView(), "message 24") {
-		t.Fatal("content should include latest messages")
-	}
-	if m.content.Height < 1 {
-		t.Fatal("viewport should have height")
-	}
+	require.Contains(t, m.contentView(), "message 24")
+	require.GreaterOrEqual(t, m.content.Height, 1)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestScrollBarHiddenWhenContentFits(t *testing.T) {
@@ -16,15 +17,10 @@ func TestScrollBarHiddenWhenContentFits(t *testing.T) {
 	m.ready = true
 	m = m.syncLayout(false)
 
-	if m.contentScrollable() {
-		t.Fatal("banner-only content should not be scrollable in tall terminal")
-	}
-	if m.contentScrollBarView() != "" {
-		t.Fatal("scrollbar should be hidden when content fits")
-	}
-	if m.contentAreaView() != lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(m.content.View()) {
-		t.Fatal("content area should equal viewport without gutter")
-	}
+	require.False(t, m.contentScrollable(), "banner-only content should not be scrollable in tall terminal")
+	require.Empty(t, m.contentScrollBarView())
+	want := lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(m.content.View())
+	require.Equal(t, want, m.contentAreaView(), "content area should equal viewport without gutter")
 }
 
 func TestScrollBarVisibleWhenOverflow(t *testing.T) {
@@ -42,29 +38,15 @@ func TestScrollBarVisibleWhenOverflow(t *testing.T) {
 	m.contentDirty = true
 	m = m.syncLayout(false)
 
-	if !m.contentScrollable() {
-		t.Fatal("expected scrollable content")
-	}
-	if m.contentAreaWidth() != m.width-scrollBarWidth {
-		t.Fatalf("contentAreaWidth %d, want %d", m.contentAreaWidth(), m.width-scrollBarWidth)
-	}
-	if m.content.Width != m.contentAreaWidth() {
-		t.Fatalf("viewport width %d != contentAreaWidth %d", m.content.Width, m.contentAreaWidth())
-	}
-	if lipgloss.Width(m.contentAreaView()) > m.width {
-		t.Fatalf("content area wider than terminal: %d > %d", lipgloss.Width(m.contentAreaView()), m.width)
-	}
+	require.True(t, m.contentScrollable())
+	require.Equal(t, m.width-scrollBarWidth, m.contentAreaWidth())
+	require.Equal(t, m.contentAreaWidth(), m.content.Width)
+	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
 
 	bar := m.contentScrollBarView()
-	if lipgloss.Height(bar) != m.content.Height {
-		t.Fatalf("scrollbar height %d, want %d", lipgloss.Height(bar), m.content.Height)
-	}
-	if !strings.Contains(bar, "█") {
-		t.Fatal("scrollbar should contain thumb")
-	}
-	if !strings.Contains(m.contentAreaView(), "█") {
-		t.Fatal("content area should include scrollbar")
-	}
+	require.Equal(t, m.content.Height, lipgloss.Height(bar))
+	require.Contains(t, bar, "█")
+	require.Contains(t, m.contentAreaView(), "█")
 }
 
 func TestScrollBarThumbMovesDown(t *testing.T) {
@@ -86,12 +68,8 @@ func TestScrollBarThumbMovesDown(t *testing.T) {
 	bottomBar := m.contentScrollBarView()
 	bottomOffset := m.content.YOffset
 
-	if topOffset >= bottomOffset {
-		t.Fatalf("expected scroll offset to increase: top=%d bottom=%d", topOffset, bottomOffset)
-	}
-	if topBar == bottomBar {
-		t.Fatal("scrollbar thumb should move when scrolled")
-	}
+	require.Less(t, topOffset, bottomOffset)
+	require.NotEqual(t, topBar, bottomBar)
 }
 
 func TestContentAreaWidthMatchesChromeWhenScrollable(t *testing.T) {
@@ -105,12 +83,8 @@ func TestContentAreaWidthMatchesChromeWhenScrollable(t *testing.T) {
 	m.contentDirty = true
 	m = m.syncLayout(false)
 
-	if lipgloss.Width(m.contentAreaView()) > m.width {
-		t.Fatalf("content area %d exceeds terminal %d", lipgloss.Width(m.contentAreaView()), m.width)
-	}
-	if m.chromeOuterWidth() != m.content.Width {
-		t.Fatalf("chrome width %d != viewport width %d", m.chromeOuterWidth(), m.content.Width)
-	}
+	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
+	require.Equal(t, m.content.Width, m.chromeOuterWidth())
 }
 
 func TestInputScrollBarVisibleWhenOverflow(t *testing.T) {
@@ -122,15 +96,9 @@ func TestInputScrollBarVisibleWhenOverflow(t *testing.T) {
 	m.input.SetValue(strings.Join(lines, "\n"))
 	m = m.syncInputWidth()
 
-	if !m.inputScrollable() {
-		t.Fatal("expected scrollable input")
-	}
-	if m.inputScrollBarView() == "" {
-		t.Fatal("input scrollbar should be visible")
-	}
-	if !strings.Contains(m.inputView(), "█") {
-		t.Fatal("input view should include scrollbar thumb")
-	}
+	require.True(t, m.inputScrollable())
+	require.NotEmpty(t, m.inputScrollBarView())
+	require.Contains(t, m.inputView(), "█")
 }
 
 func TestInputScrollBarHiddenWhenFits(t *testing.T) {
@@ -138,7 +106,5 @@ func TestInputScrollBarHiddenWhenFits(t *testing.T) {
 	m.input.SetValue("short")
 	m = m.syncInputWidth()
 
-	if m.inputScrollBarView() != "" {
-		t.Fatal("input scrollbar should be hidden for short text")
-	}
+	require.Empty(t, m.inputScrollBarView())
 }

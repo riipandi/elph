@@ -1,17 +1,18 @@
 package constants
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestMessageStyleKindsDiffer(t *testing.T) {
 	user := MessageStyle(MessageUser).GetForeground()
 	tool := MessageStyle(MessageTool).GetForeground()
-	if user == tool {
-		t.Fatal("user and tool foreground colors should differ")
-	}
+	require.NotEqual(t, user, tool, "user and tool foreground colors should differ")
 }
 
 func TestThinkingUsesDimText(t *testing.T) {
-	if MessageStyle(MessageThinking).GetForeground() != DimText {
-		t.Fatal("thinking messages should use dim gray foreground")
-	}
+	require.Equal(t, DimText, MessageStyle(MessageThinking).GetForeground(),
+		"thinking messages should use dim gray foreground")
 }

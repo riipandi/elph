@@ -1,10 +1,10 @@
 package renderer
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/stretchr/testify/require"
 )
 
 func TestViewHeightFitsTerminal(t *testing.T) {
@@ -16,10 +16,9 @@ func TestViewHeightFitsTerminal(t *testing.T) {
 			m.ready = true
 			m = m.syncLayout(false)
 
-			if lipgloss.Height(m.View()) > h {
-				t.Fatalf("w=%d h=%d view height %d exceeds terminal (chrome=%d vp=%d)",
-					w, h, lipgloss.Height(m.View()), m.chromeH, m.content.Height)
-			}
+			require.LessOrEqual(t, lipgloss.Height(m.View()), h,
+				"w=%d h=%d view height exceeds terminal (chrome=%d vp=%d)",
+				w, h, m.chromeH, m.content.Height)
 		}
 	}
 }
@@ -31,14 +30,10 @@ func TestBannerTopVisibleAtStart(t *testing.T) {
 	m.ready = true
 	m = m.syncLayout(false)
 
-	if m.content.YOffset != 0 {
-		t.Fatalf("YOffset %d, want 0 so banner starts at top", m.content.YOffset)
-	}
+	require.Equal(t, 0, m.content.YOffset)
 
 	vp := m.content.View()
-	if !strings.Contains(vp, "Welcome to") {
-		t.Fatalf("banner header not visible in viewport")
-	}
+	require.Contains(t, vp, "Welcome to")
 }
 
 func TestViewOmitsEmptyActivityLayer(t *testing.T) {
@@ -49,7 +44,5 @@ func TestViewOmitsEmptyActivityLayer(t *testing.T) {
 	m = m.syncLayout(false)
 
 	parts := m.viewParts()
-	if len(parts) != 3 {
-		t.Fatalf("expected 3 view parts without activity, got %d", len(parts))
-	}
+	require.Len(t, parts, 3, "expected 3 view parts without activity")
 }

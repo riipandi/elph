@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbletea"
+	"github.com/stretchr/testify/require"
 )
 
 func testModelWithLayout(t *testing.T) Model {
@@ -27,19 +28,14 @@ func TestContentClickDisablesCapture(t *testing.T) {
 	})
 	m = updated.(Model)
 
-	if m.mouseEnabled {
-		t.Fatal("left-click in content should disable mouse capture for selection")
-	}
-	if !m.selectingText {
-		t.Fatal("expected selectingText after content click")
-	}
+	require.False(t, m.mouseEnabled)
+	require.True(t, m.selectingText)
 }
 
 func TestInputClickKeepsCapture(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = true
 
-	// Y below the content viewport is the input chrome area.
 	updated, _ := m.Update(tea.MouseMsg{
 		X: 1, Y: m.content.Height + 1,
 		Action: tea.MouseActionPress,
@@ -47,12 +43,8 @@ func TestInputClickKeepsCapture(t *testing.T) {
 	})
 	m = updated.(Model)
 
-	if !m.mouseEnabled {
-		t.Fatal("click in input area should keep mouse capture for wheel scroll")
-	}
-	if m.selectingText {
-		t.Fatal("input click should not enter selection mode")
-	}
+	require.True(t, m.mouseEnabled)
+	require.False(t, m.selectingText)
 }
 
 func TestWheelAfterSelectionResumesCapture(t *testing.T) {
@@ -67,12 +59,8 @@ func TestWheelAfterSelectionResumesCapture(t *testing.T) {
 	})
 	m = updated.(Model)
 
-	if !m.mouseEnabled {
-		t.Fatal("wheel should resume mouse capture")
-	}
-	if m.selectingText {
-		t.Fatal("wheel should clear selection mode")
-	}
+	require.True(t, m.mouseEnabled)
+	require.False(t, m.selectingText)
 }
 
 func TestShiftClickDisablesCapture(t *testing.T) {
@@ -86,12 +74,8 @@ func TestShiftClickDisablesCapture(t *testing.T) {
 	})
 	m = updated.(Model)
 
-	if m.mouseEnabled {
-		t.Fatal("shift+click should disable mouse capture")
-	}
-	if !m.selectingText {
-		t.Fatal("expected selectingText after shift+click")
-	}
+	require.False(t, m.mouseEnabled)
+	require.True(t, m.selectingText)
 }
 
 func TestResumeMouseAfterSelection(t *testing.T) {
@@ -102,15 +86,9 @@ func TestResumeMouseAfterSelection(t *testing.T) {
 	updated, cmd := m.resumeMouseAfterSelection()
 	m = updated
 
-	if !m.mouseEnabled {
-		t.Fatal("expected mouse re-enabled")
-	}
-	if m.selectingText {
-		t.Fatal("expected selectingText cleared")
-	}
-	if cmd == nil {
-		t.Fatal("expected EnableMouseCellMotion command")
-	}
+	require.True(t, m.mouseEnabled)
+	require.False(t, m.selectingText)
+	require.NotNil(t, cmd)
 }
 
 func TestKeyAfterSelectionResumesMouse(t *testing.T) {
@@ -121,10 +99,6 @@ func TestKeyAfterSelectionResumesMouse(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	m = updated.(Model)
 
-	if !m.mouseEnabled {
-		t.Fatal("key press should resume mouse capture")
-	}
-	if m.selectingText {
-		t.Fatal("selectingText should be cleared after key press")
-	}
+	require.True(t, m.mouseEnabled)
+	require.False(t, m.selectingText)
 }

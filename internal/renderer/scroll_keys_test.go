@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbletea"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func scrollableTestModel(t *testing.T) Model {
@@ -32,9 +33,7 @@ func TestPlainArrowDoesNotScrollContent(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyDown})
 	m = updated.(Model)
 
-	if m.content.YOffset != offset {
-		t.Fatalf("plain down arrow scrolled content: %d -> %d", offset, m.content.YOffset)
-	}
+	require.Equal(t, offset, m.content.YOffset)
 }
 
 func TestPlainJKHLDoesNotScrollContent(t *testing.T) {
@@ -47,12 +46,8 @@ func TestPlainJKHLDoesNotScrollContent(t *testing.T) {
 		m = updated.(Model)
 	}
 
-	if m.content.YOffset != offset {
-		t.Fatalf("j/k/h/l scrolled content: %d -> %d", offset, m.content.YOffset)
-	}
-	if m.input.Value() != "jkhl" {
-		t.Fatalf("input value %q, want jkhl", m.input.Value())
-	}
+	require.Equal(t, offset, m.content.YOffset)
+	require.Equal(t, "jkhl", m.input.Value())
 }
 
 func TestShiftArrowScrollsContent(t *testing.T) {
@@ -65,12 +60,8 @@ func TestShiftArrowScrollsContent(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftDown})
 	m = updated.(Model)
 
-	if m.content.YOffset <= offset {
-		t.Fatalf("shift+down should scroll content: %d -> %d", offset, m.content.YOffset)
-	}
-	if m.input.Value() != "typed" {
-		t.Fatalf("shift+down changed input: %q", m.input.Value())
-	}
+	require.Greater(t, m.content.YOffset, offset)
+	require.Equal(t, "typed", m.input.Value())
 }
 
 func TestShiftArrowScrollsUp(t *testing.T) {
@@ -82,7 +73,5 @@ func TestShiftArrowScrollsUp(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftUp})
 	m = updated.(Model)
 
-	if m.content.YOffset >= offset {
-		t.Fatalf("shift+up should scroll content up: %d -> %d", offset, m.content.YOffset)
-	}
+	require.Less(t, m.content.YOffset, offset)
 }

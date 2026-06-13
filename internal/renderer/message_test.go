@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func testModel() Model {
@@ -27,34 +28,28 @@ func TestMessageKindsNoPipePrefix(t *testing.T) {
 	}
 	for _, kind := range kinds {
 		rendered := m.renderMessage(message{text: "sample text", kind: kind})
-		if strings.Contains(stripANSI(rendered), "| ") {
-			t.Fatalf("kind %d should not use pipe prefix: %q", kind, stripANSI(rendered))
-		}
+		require.NotContains(t, stripANSI(rendered), "| ",
+			"kind %d should not use pipe prefix", kind)
 	}
 }
 
 func TestMessageKindsNoChevronPrefix(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "Copied to clipboard", kind: constants.MessageSystem})
-	if strings.HasPrefix(strings.TrimSpace(stripANSI(rendered)), ">") {
-		t.Fatalf("system message should not use > prefix: %q", stripANSI(rendered))
-	}
+	require.False(t, strings.HasPrefix(strings.TrimSpace(stripANSI(rendered)), ">"),
+		"system message should not use > prefix: %q", stripANSI(rendered))
 }
 
 func TestUserMessageStyled(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "hello from user", kind: constants.MessageUser})
-	if !strings.Contains(rendered, "hello from user") {
-		t.Fatalf("missing message text: %q", rendered)
-	}
+	require.Contains(t, rendered, "hello from user")
 }
 
 func TestAIMessageRendersText(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "response from agent", kind: constants.MessageAI})
-	if !strings.Contains(rendered, "response from agent") {
-		t.Fatalf("missing message text: %q", rendered)
-	}
+	require.Contains(t, rendered, "response from agent")
 }
 
 func TestUserMessageVerticalSpacing(t *testing.T) {
@@ -68,27 +63,21 @@ func TestUserMessageVerticalSpacing(t *testing.T) {
 	agentEnd := strings.Index(content, "from agent")
 	userStart := strings.Index(content, "from user")
 	replyStart := strings.Index(content, "reply")
-	if agentEnd < 0 || userStart < 0 || replyStart < 0 {
-		t.Fatalf("missing messages in content:\n%q", content)
-	}
-	if !strings.Contains(content[agentEnd:userStart], "\n\n") {
-		t.Fatal("expected blank line between AI and user message")
-	}
-	if !strings.Contains(content[userStart:replyStart], "\n\n") {
-		t.Fatal("expected blank line between user and AI message")
-	}
+	require.GreaterOrEqual(t, agentEnd, 0)
+	require.GreaterOrEqual(t, userStart, 0)
+	require.GreaterOrEqual(t, replyStart, 0)
+	require.Contains(t, content[agentEnd:userStart], "\n\n", "blank line between AI and user message")
+	require.Contains(t, content[userStart:replyStart], "\n\n", "blank line between user and AI message")
 }
 
 func TestUserMessageMultiline(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "line one\nline two", kind: constants.MessageUser})
-	if lipgloss.Height(rendered) < 4 {
-		t.Fatalf("multiline user message should include vertical padding: h=%d", lipgloss.Height(rendered))
-	}
+	require.GreaterOrEqual(t, lipgloss.Height(rendered), 4,
+		"multiline user message should include vertical padding")
 	plain := stripANSI(rendered)
-	if !strings.Contains(plain, "line one") || !strings.Contains(plain, "line two") {
-		t.Fatalf("missing line text: %q", plain)
-	}
+	require.Contains(t, plain, "line one")
+	require.Contains(t, plain, "line two")
 }
 
 func TestUserMessageWidthMatchesChrome(t *testing.T) {
@@ -117,15 +106,9 @@ func assertChromeWidthsMatch(t *testing.T, m Model) {
 	bannerW := lipgloss.Width(m.bannerView())
 	inputW := lipgloss.Width(m.inputView())
 	msgW := m.messageAreaWidth()
-	if userW != msgW {
-		t.Fatalf("user message width %d != messageAreaWidth %d", userW, msgW)
-	}
-	if bannerW != m.chromeOuterWidth() {
-		t.Fatalf("banner width %d != chromeOuterWidth %d", bannerW, m.chromeOuterWidth())
-	}
-	if inputW != bannerW {
-		t.Fatalf("input width %d != banner width %d", inputW, bannerW)
-	}
+	require.Equal(t, msgW, userW, "user message width vs messageAreaWidth")
+	require.Equal(t, m.chromeOuterWidth(), bannerW, "banner width vs chromeOuterWidth")
+	require.Equal(t, bannerW, inputW, "input width vs banner width")
 }
 
 func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
@@ -142,36 +125,27 @@ func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
 
 	areaW := m.contentAreaWidth()
 	msgW := m.messageAreaWidth()
-	if areaW != m.width-scrollBarWidth {
-		t.Fatalf("contentAreaWidth %d, want %d", areaW, m.width-scrollBarWidth)
-	}
-	if msgW != areaW-messageScrollInset {
-		t.Fatalf("messageAreaWidth %d, want %d", msgW, areaW-messageScrollInset)
-	}
+	require.Equal(t, m.width-scrollBarWidth, areaW)
+	require.Equal(t, areaW-messageScrollInset, msgW)
 	for _, kind := range []constants.MessageKind{
 		constants.MessageUser,
 		constants.MessageAI,
 		constants.MessageSystem,
 	} {
 		renderedW := lipgloss.Width(m.renderMessage(message{text: "hello", kind: kind}))
-		if renderedW != msgW {
-			t.Fatalf("kind %d width %d != messageAreaWidth %d", kind, renderedW, msgW)
-		}
+		require.Equal(t, msgW, renderedW, "kind %d width", kind)
 	}
 }
 
 func TestUserMessageHorizontalPadding(t *testing.T) {
 	m := testModel()
 	rendered := stripANSI(m.renderMessage(message{text: "hello", kind: constants.MessageUser}))
-	if !strings.HasPrefix(rendered, "  ") {
-		t.Fatalf("user message should have horizontal padding: %q", rendered)
-	}
+	require.True(t, strings.HasPrefix(rendered, "  "), "user message should have horizontal padding: %q", rendered)
 }
 
 func TestUserMsgBgConstant(t *testing.T) {
-	if constants.UserMsgBg == constants.DimText {
-		t.Fatal("user message background should differ from dim text")
-	}
+	require.NotEqual(t, constants.DimText, constants.UserMsgBg,
+		"user message background should differ from dim text")
 	_ = lipgloss.NewStyle().Background(constants.UserMsgBg).Render("x")
 }
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/bubbletea"
+	"github.com/stretchr/testify/require"
 )
 
 func testInputModel(t *testing.T) Model {
@@ -23,12 +24,8 @@ func TestCtrlJInsertsNewlineAndGrows(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	m = updated.(Model)
 
-	if m.input.Value() != "\n" {
-		t.Fatalf("value %q, want single newline", m.input.Value())
-	}
-	if m.input.Height() < 2 {
-		t.Fatalf("height %d, want at least 2", m.input.Height())
-	}
+	require.Equal(t, "\n", m.input.Value())
+	require.GreaterOrEqual(t, m.input.Height(), 2)
 }
 
 func TestEnterSubmitsEvenWhenMultiline(t *testing.T) {
@@ -39,38 +36,29 @@ func TestEnterSubmitsEvenWhenMultiline(t *testing.T) {
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(Model)
 
-	if cmd == nil {
-		t.Fatal("enter should submit")
-	}
-	if len(m.messages) != 1 || m.messages[0].text != "line one\nline two" {
-		t.Fatalf("messages = %#v", m.messages)
-	}
+	require.NotNil(t, cmd)
+	require.Len(t, m.messages, 1)
+	require.Equal(t, "line one\nline two", m.messages[0].text)
 }
 
 func TestMultilinePreservesContentOnSubmit(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("alpha\nbeta")
 	m, cmd, ok := m.trySubmitInput()
-	if !ok || cmd == nil {
-		t.Fatal("expected multiline submit via trySubmitInput")
-	}
-	if len(m.messages) != 1 || m.messages[0].text != "alpha\nbeta" {
-		t.Fatalf("message = %#v", m.messages)
-	}
+	require.True(t, ok)
+	require.NotNil(t, cmd)
+	require.Len(t, m.messages, 1)
+	require.Equal(t, "alpha\nbeta", m.messages[0].text)
 }
 
 func TestMultilineInputShrinksAfterClear(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("line one\nline two")
 	m = m.syncInputHeight()
-	if m.input.Height() < 2 {
-		t.Fatalf("height %d, want at least 2 before reset", m.input.Height())
-	}
+	require.GreaterOrEqual(t, m.input.Height(), 2)
 
 	m = m.resetInput()
-	if m.input.Height() != 1 {
-		t.Fatalf("height %d, want 1 after reset", m.input.Height())
-	}
+	require.Equal(t, 1, m.input.Height())
 }
 
 func TestEnterSubmitsSingleLine(t *testing.T) {
@@ -80,18 +68,11 @@ func TestEnterSubmitsSingleLine(t *testing.T) {
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated.(Model)
 
-	if cmd == nil {
-		t.Fatal("expected submit command")
-	}
-	if !m.busy {
-		t.Fatal("expected busy after submit")
-	}
-	if len(m.messages) != 1 || m.messages[0].text != "hello" {
-		t.Fatalf("messages = %#v", m.messages)
-	}
-	if m.input.Value() != "" {
-		t.Fatalf("input not cleared: %q", m.input.Value())
-	}
+	require.NotNil(t, cmd)
+	require.True(t, m.busy)
+	require.Len(t, m.messages, 1)
+	require.Equal(t, "hello", m.messages[0].text)
+	require.Empty(t, m.input.Value())
 }
 
 func TestShiftEnterCSIInsertsNewline(t *testing.T) {
@@ -100,12 +81,8 @@ func TestShiftEnterCSIInsertsNewline(t *testing.T) {
 
 	updated, cmd := m.Update(csiMsg("27;2;13~"))
 	m = updated.(Model)
-	if cmd != nil {
-		t.Fatal("shift+enter should not submit")
-	}
-	if m.input.LineCount() < 2 {
-		t.Fatalf("expected newline from shift+enter CSI, value=%q", m.input.Value())
-	}
+	require.Nil(t, cmd)
+	require.GreaterOrEqual(t, m.input.LineCount(), 2, "value=%q", m.input.Value())
 }
 
 func TestKittyShiftEnterCSIInsertsNewline(t *testing.T) {
@@ -114,17 +91,11 @@ func TestKittyShiftEnterCSIInsertsNewline(t *testing.T) {
 
 	updated, _ := m.Update(csiMsg("13;1u"))
 	m = updated.(Model)
-	if m.input.LineCount() < 2 {
-		t.Fatalf("expected newline from kitty shift+enter, value=%q", m.input.Value())
-	}
+	require.GreaterOrEqual(t, m.input.LineCount(), 2, "value=%q", m.input.Value())
 }
 
 func TestNormalizeInputTrimsOuterWhitespaceOnly(t *testing.T) {
-	got := normalizeInputForSubmit("  hello \n  world  \n")
-	want := "hello\n  world"
-	if got != want {
-		t.Fatalf("got %q, want %q", got, want)
-	}
+	require.Equal(t, "hello\n  world", normalizeInputForSubmit("  hello \n  world  \n"))
 }
 
 func TestShiftEnterCSIDetection(t *testing.T) {
@@ -132,17 +103,15 @@ func TestShiftEnterCSIDetection(t *testing.T) {
 		payload string
 		want    bool
 	}{
-		{"27;2;13~", true},  // xterm modifyOtherKeys shift
-		{"27;3;13~", false}, // xterm alt — not shift
-		{"13;1u", true},     // kitty shift
-		{"13;2u", true},     // Ghostty shift+enter keybind CSI
-		{"13;2~", true},     // legacy
-		{"13;5u", true},     // kitty shift+ctrl still has shift bit
+		{"27;2;13~", true},
+		{"27;3;13~", false},
+		{"13;1u", true},
+		{"13;2u", true},
+		{"13;2~", true},
+		{"13;5u", true},
 	}
 	for _, tc := range cases {
-		if got := isShiftEnterMsg(csiMsg(tc.payload)); got != tc.want {
-			t.Fatalf("payload %q: got %v want %v", tc.payload, got, tc.want)
-		}
+		require.Equal(t, tc.want, isShiftEnterMsg(csiMsg(tc.payload)), "payload %q", tc.payload)
 	}
 }
 
@@ -151,18 +120,16 @@ func TestCtrlJCSIDetection(t *testing.T) {
 		payload string
 		want    bool
 	}{
-		{"27;5;10~", true},  // xterm modifyOtherKeys
-		{"27;5;106~", true}, // xterm, letter j
-		{"10;4u", true},     // kitty line-feed + ctrl
-		{"106;4u", true},    // kitty j + ctrl
-		{"106;5u", true},    // kitty ctrl+shift+j
-		{"27;2;13~", false}, // shift+enter, not ctrl+j
-		{"13;2u", false},    // shift+enter kitty
+		{"27;5;10~", true},
+		{"27;5;106~", true},
+		{"10;4u", true},
+		{"106;4u", true},
+		{"106;5u", true},
+		{"27;2;13~", false},
+		{"13;2u", false},
 	}
 	for _, tc := range cases {
-		if got := isCtrlJPayload(tc.payload); got != tc.want {
-			t.Fatalf("payload %q: got %v want %v", tc.payload, got, tc.want)
-		}
+		require.Equal(t, tc.want, isCtrlJPayload(tc.payload), "payload %q", tc.payload)
 	}
 }
 
@@ -172,22 +139,14 @@ func TestCtrlJCSIInsertsNewline(t *testing.T) {
 
 	updated, cmd := m.Update(rawCSIMsg([]byte("\x1b[10;4u")))
 	m = updated.(Model)
-	if cmd != nil {
-		t.Fatal("ctrl+j CSI should not submit")
-	}
-	if m.input.LineCount() < 2 {
-		t.Fatalf("expected newline from ctrl+j CSI, value=%q", m.input.Value())
-	}
+	require.Nil(t, cmd)
+	require.GreaterOrEqual(t, m.input.LineCount(), 2, "value=%q", m.input.Value())
 }
 
 func TestShiftEnterRawCSIBytes(t *testing.T) {
 	raw := []byte("\x1b[27;2;13~")
-	if !isShiftEnterMsg(rawCSIMsg(raw)) {
-		t.Fatalf("raw xterm CSI not detected: %q", raw)
-	}
-	if got := csiPayload(rawCSIMsg(raw)); got != "27;2;13~" {
-		t.Fatalf("payload %q, want 27;2;13~", got)
-	}
+	require.True(t, isShiftEnterMsg(rawCSIMsg(raw)), "raw xterm CSI: %q", raw)
+	require.Equal(t, "27;2;13~", csiPayload(rawCSIMsg(raw)))
 }
 
 func TestLiteralNewlineInsertsAndKeepsFirstLine(t *testing.T) {
@@ -196,18 +155,10 @@ func TestLiteralNewlineInsertsAndKeepsFirstLine(t *testing.T) {
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
 	m = updated.(Model)
-	if cmd != nil {
-		t.Fatal("literal newline should not submit")
-	}
-	if !strings.HasPrefix(m.input.Value(), "hello") {
-		t.Fatalf("first line lost: %q", m.input.Value())
-	}
-	if m.input.LineCount() < 2 {
-		t.Fatalf("expected two lines, value=%q", m.input.Value())
-	}
-	if m.input.Height() < 2 {
-		t.Fatalf("height %d, want at least 2 to keep first line visible", m.input.Height())
-	}
+	require.Nil(t, cmd)
+	require.True(t, strings.HasPrefix(m.input.Value(), "hello"))
+	require.GreaterOrEqual(t, m.input.LineCount(), 2)
+	require.GreaterOrEqual(t, m.input.Height(), 2)
 }
 
 func TestNewlinePreservesFirstLineWithExistingText(t *testing.T) {
@@ -217,12 +168,8 @@ func TestNewlinePreservesFirstLineWithExistingText(t *testing.T) {
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	m = updated.(Model)
 
-	if !strings.HasPrefix(m.input.Value(), "first line") {
-		t.Fatalf("first line hidden/lost: %q", m.input.Value())
-	}
-	if m.input.Height() < 2 {
-		t.Fatalf("height %d, want at least 2", m.input.Height())
-	}
+	require.True(t, strings.HasPrefix(m.input.Value(), "first line"))
+	require.GreaterOrEqual(t, m.input.Height(), 2)
 }
 
 func csiMsg(payload string) csiMsgForTest {
@@ -245,12 +192,8 @@ func TestDesiredInputHeightWrapsLongLine(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue(strings.Repeat("a", m.inputWidth*3))
 	h := m.desiredInputHeight()
-	if h < 3 {
-		t.Fatalf("height %d, want at least 3 for wrapped line", h)
-	}
-	if h > m.maxInputHeight() {
-		t.Fatalf("height %d exceeds max %d", h, m.maxInputHeight())
-	}
+	require.GreaterOrEqual(t, h, 3)
+	require.LessOrEqual(t, h, m.maxInputHeight())
 }
 
 func TestNewlineWorksWhenViewportFull(t *testing.T) {
@@ -262,34 +205,20 @@ func TestNewlineWorksWhenViewportFull(t *testing.T) {
 	m.input.SetValue(strings.Join(lines, "\n"))
 	m = m.syncInputHeight()
 
-	if m.input.Height() != maxInputLines {
-		t.Fatalf("viewport height %d, want %d", m.input.Height(), maxInputLines)
-	}
-	if m.input.LineCount() != maxInputLines {
-		t.Fatalf("line count %d, want %d", m.input.LineCount(), maxInputLines)
-	}
+	require.Equal(t, maxInputLines, m.input.Height())
+	require.Equal(t, maxInputLines, m.input.LineCount())
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
 	m = updated.(Model)
-	if cmd != nil {
-		t.Fatal("newline at cap should not submit")
-	}
-	if m.input.LineCount() != maxInputLines+1 {
-		t.Fatalf("line count %d, want %d; value=%q", m.input.LineCount(), maxInputLines+1, m.input.Value())
-	}
-	if m.input.Height() != maxInputLines {
-		t.Fatalf("viewport should stay at %d rows, got %d", maxInputLines, m.input.Height())
-	}
+	require.Nil(t, cmd)
+	require.Equal(t, maxInputLines+1, m.input.LineCount(), "value=%q", m.input.Value())
+	require.Equal(t, maxInputLines, m.input.Height())
 }
 
 func TestMaxInputHeightRespectsTerminal(t *testing.T) {
 	m := testInputModel(t)
 	m.height = 12
 	maxH := m.maxInputHeight()
-	if maxH < 1 {
-		t.Fatalf("max height %d must be positive", maxH)
-	}
-	if maxH > maxInputLines {
-		t.Fatalf("max height %d exceeds cap %d", maxH, maxInputLines)
-	}
+	require.GreaterOrEqual(t, maxH, 1)
+	require.LessOrEqual(t, maxH, maxInputLines)
 }
