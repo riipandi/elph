@@ -111,8 +111,27 @@ func New() Model {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
 	ta.MaxHeight = 6
-	ta.FocusedStyle.Text = lipgloss.NewStyle()
-	ta.BlurredStyle.Text = lipgloss.NewStyle()
+	// Reset all styles to remove backgrounds
+	ta.FocusedStyle = textarea.Style{
+		Base:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		CursorLine:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		CursorLineNumber: lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		EndOfBuffer:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		LineNumber:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Placeholder:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Prompt:           lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Text:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+	}
+	ta.BlurredStyle = textarea.Style{
+		Base:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		CursorLine:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		CursorLineNumber: lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		EndOfBuffer:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		LineNumber:       lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Placeholder:      lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Prompt:           lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+		Text:             lipgloss.NewStyle().Background(lipgloss.NoColor{}),
+	}
 	ta.KeyMap.InsertNewline.SetKeys("ctrl+j", "shift+enter")
 	ta.Focus()
 

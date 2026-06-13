@@ -224,9 +224,6 @@ func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
 	if msg.Type == tea.KeyCtrlJ {
 		return constants.ActionNewline
 	}
-	if msg.Type == tea.KeyTab {
-		return constants.ActionSwitchMode
-	}
 	if msg.Type == tea.KeyEnter {
 		return constants.ActionSubmit
 	}

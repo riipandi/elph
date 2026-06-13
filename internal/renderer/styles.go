@@ -8,6 +8,10 @@ import (
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 var (
+	// Detect terminal background
+	isDarkBackground = lipgloss.HasDarkBackground()
+
+	// Adaptive colors based on terminal background
 	blueCol     = lipgloss.Color("#3B82F6")
 	yellowCol   = lipgloss.Color("#EAB308")
 	highlight   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7C56DC"}
@@ -53,7 +57,7 @@ func ContextUsageColor(pct float64) lipgloss.Color {
 
 func bannerStyle(w int) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Width(w - 2).
+		Width(w-2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(blueCol).
 		Padding(1, 2)
@@ -61,7 +65,7 @@ func bannerStyle(w int) lipgloss.Style {
 
 func inputStyle(w int, m constants.AgentMode) lipgloss.Style {
 	return lipgloss.NewStyle().
-		Width(w - 2).
+		Width(w-2).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(modeBorderColor(m)).
 		Padding(0, 1)
