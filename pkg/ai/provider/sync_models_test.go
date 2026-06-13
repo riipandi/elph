@@ -112,6 +112,76 @@ func TestUpdateModelsFromModelsDev(t *testing.T) {
 	require.Equal(t, 3.0, model.Cost.Input)
 }
 
+func TestUpdateModelsFromModelsDevSyncsDeepSeekFromLiveAPI(t *testing.T) {
+	catalog := ModelsDevCatalog{
+		Providers: map[string]ModelsDevProvider{
+			"deepseek": {
+				ID:   "deepseek",
+				Name: "DeepSeek",
+				NPM:  "@ai-sdk/openai-compatible",
+				Models: map[string]ModelsDevModel{
+					"deepseek-chat": {
+						ID:   "deepseek-chat",
+						Name: "DeepSeek Chat",
+						Limit: ModelsDevLimit{Context: 1000000, Output: 8192},
+					},
+					"deepseek-reasoner": {
+						ID:   "deepseek-reasoner",
+						Name: "DeepSeek Reasoner",
+						Reasoning: true,
+						Limit: ModelsDevLimit{Context: 1000000, Output: 8192},
+					},
+				},
+			},
+		},
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/models", r.URL.Path)
+		require.Equal(t, "Bearer sk-deepseek", r.Header.Get("Authorization"))
+		require.NoError(t, json.NewEncoder(w).Encode(CompatibleModelsResponse{
+			Object: "list",
+			Data: []CompatibleModelEntry{
+				{ID: "deepseek-chat"},
+				{ID: "deepseek-reasoner"},
+			},
+		}))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	initial := FileConfig{
+		Name:       "DeepSeek",
+		BaseURL:    srv.URL,
+		API:        APIOpenAICompletions,
+		APIKey:     "sk-deepseek",
+		AuthHeader: true,
+		Models: []ModelConfig{
+			{ID: "deepseek-chat", Name: "Old Chat"},
+		},
+	}
+	raw, err := json.MarshalIndent(initial, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "deepseek.json"), append(raw, '\n'), 0o644))
+
+	result, err := UpdateModelsFromModelsDev(UpdateModelsOptions{
+		Dir:        dir,
+		HTTPClient: srv.Client(),
+		Data: ModelsDevData{
+			Catalog: catalog,
+			Models:  map[string]ModelsDevModel{},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"deepseek.json"}, result.Updated)
+
+	updated, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, updated.Providers[0].Models, 2)
+	require.Equal(t, "DeepSeek Chat", updated.Providers[0].Models[0].Name)
+	require.Equal(t, "DeepSeek Reasoner", updated.Providers[0].Models[1].Name)
+}
+
 func TestUpdateModelsFromModelsDevSyncsOpenCodeFromLiveAPI(t *testing.T) {
 	catalog := ModelsDevCatalog{
 		Providers: map[string]ModelsDevProvider{
@@ -144,9 +214,9 @@ func TestUpdateModelsFromModelsDevSyncsOpenCodeFromLiveAPI(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/models", r.URL.Path)
-		require.NoError(t, json.NewEncoder(w).Encode(OpenCodeModelsResponse{
+		require.NoError(t, json.NewEncoder(w).Encode(CompatibleModelsResponse{
 			Object: "list",
-			Data: []OpenCodeModelEntry{
+			Data: []CompatibleModelEntry{
 				{ID: "big-pickle"},
 				{ID: "gpt-5.4"},
 				{ID: "claude-sonnet-4-6"},
@@ -264,6 +334,135 @@ func TestUpdateModelsFromModelsDevAddsMissingCatalogModels(t *testing.T) {
 	updated, err := LoadCatalog(dir)
 	require.NoError(t, err)
 	require.Len(t, updated.Providers[0].Models, 2)
+}
+
+func TestUpdateModelsFromModelsDevSyncsKimiViaMoonshotAlias(t *testing.T) {
+	catalog := ModelsDevCatalog{
+		Providers: map[string]ModelsDevProvider{
+			"moonshotai": {
+				ID:   "moonshotai",
+				Name: "Moonshot AI",
+				NPM:  "@ai-sdk/openai-compatible",
+				Models: map[string]ModelsDevModel{
+					"kimi-k2.5": {
+						ID:   "kimi-k2.5",
+						Name: "Kimi K2.5",
+						Reasoning: true,
+						Modalities: ModelsDevModalities{Input: []string{"text", "image"}},
+						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
+						Cost: &ModelsDevCost{Input: 0.6, Output: 3, CacheRead: 0.1},
+					},
+					"kimi-k2.6": {
+						ID:   "kimi-k2.6",
+						Name: "Kimi K2.6",
+						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
+					},
+				},
+			},
+		},
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/models", r.URL.Path)
+		require.Equal(t, "Bearer sk-moonshot", r.Header.Get("Authorization"))
+		require.NoError(t, json.NewEncoder(w).Encode(CompatibleModelsResponse{
+			Object: "list",
+			Data: []CompatibleModelEntry{
+				{ID: "kimi-k2.5"},
+				{ID: "kimi-k2.6"},
+			},
+		}))
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	initial := FileConfig{
+		Name:       "Kimi",
+		BaseURL:    srv.URL,
+		API:        APIOpenAICompletions,
+		APIKey:     "sk-moonshot",
+		AuthHeader: true,
+		Models: []ModelConfig{
+			{ID: "kimi-k2.5", Name: "Old K2.5"},
+		},
+	}
+	raw, err := json.MarshalIndent(initial, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "kimi.json"), append(raw, '\n'), 0o644))
+
+	result, err := UpdateModelsFromModelsDev(UpdateModelsOptions{
+		Dir:        dir,
+		HTTPClient: srv.Client(),
+		Data: ModelsDevData{
+			Catalog: catalog,
+			Models:  map[string]ModelsDevModel{},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"kimi.json"}, result.Updated)
+
+	updated, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, updated.Providers, 1)
+	require.Len(t, updated.Providers[0].Models, 2)
+	require.Equal(t, "Kimi K2.5", updated.Providers[0].Models[0].Name)
+	require.Equal(t, 65536, updated.Providers[0].Models[0].MaxTokens)
+}
+
+func TestUpdateModelsFromModelsDevKimiFallsBackWithoutAPIKey(t *testing.T) {
+	catalog := ModelsDevCatalog{
+		Providers: map[string]ModelsDevProvider{
+			"moonshotai": {
+				ID:   "moonshotai",
+				Name: "Moonshot AI",
+				NPM:  "@ai-sdk/openai-compatible",
+				Models: map[string]ModelsDevModel{
+					"kimi-k2.5": {
+						ID:   "kimi-k2.5",
+						Name: "Kimi K2.5",
+						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
+					},
+					"kimi-k2.6": {
+						ID:   "kimi-k2.6",
+						Name: "Kimi K2.6",
+						Limit: ModelsDevLimit{Context: 262144, Output: 65536},
+					},
+				},
+			},
+		},
+	}
+
+	dir := t.TempDir()
+	initial := FileConfig{
+		Name:       "Kimi",
+		BaseURL:    "https://api.moonshot.ai/v1",
+		API:        APIOpenAICompletions,
+		APIKey:     "env.MOONSHOT_API_KEY",
+		AuthHeader: true,
+		Models: []ModelConfig{
+			{ID: "kimi-k2.5", Name: "Old K2.5"},
+		},
+	}
+	raw, err := json.MarshalIndent(initial, "", "  ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "kimi.json"), append(raw, '\n'), 0o644))
+
+	result, err := UpdateModelsFromModelsDev(UpdateModelsOptions{
+		Dir: dir,
+		Data: ModelsDevData{
+			Catalog: catalog,
+			Models:  map[string]ModelsDevModel{},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"kimi.json"}, result.Updated)
+	require.Contains(t, result.Warnings[0], "env.MOONSHOT_API_KEY")
+	require.Contains(t, result.Warnings[0], "models.dev catalog only")
+
+	updated, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, updated.Providers[0].Models, 2)
+	require.Equal(t, "Kimi K2.5", updated.Providers[0].Models[0].Name)
 }
 
 func TestUpdateModelsFromModelsDevSkipsUnknownProvider(t *testing.T) {

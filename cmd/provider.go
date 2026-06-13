@@ -21,11 +21,13 @@ var providerUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Prefill primary provider templates in ~/.elph/providers",
 	Long: strings.TrimSpace(`
-Write starter provider files for OpenAI, Anthropic, OpenCode Zen, and OpenCode Go.
+Write starter provider files for OpenAI, Anthropic, OpenCode Zen, OpenCode Go,
+DeepSeek, and Kimi.
 
 Existing files are left untouched unless --force is passed.
 Set API keys via environment variables referenced in the JSON files:
-  OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENCODE_API_KEY
+  OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENCODE_API_KEY,
+  DEEPSEEK_API_KEY, MOONSHOT_API_KEY
 `),
 	RunE: runProviderUpdate,
 }
@@ -37,8 +39,9 @@ var providerUpdateModelsCmd = &cobra.Command{
 Fetch model metadata from https://models.dev/catalog.json and
 https://models.dev/models.json, then update provider files under ~/.elph/providers.
 
-OpenCode Zen and OpenCode Go model lists come from their live /models endpoints;
-models.dev supplies context window, pricing, and other metadata only.
+OpenCode Zen, OpenCode Go, DeepSeek, and Kimi model lists come from live /models
+endpoints (DeepSeek and Kimi require API keys); models.dev supplies context window,
+pricing, and other metadata only.
 
 Other providers use the models.dev catalog for both discovery and metadata.
 

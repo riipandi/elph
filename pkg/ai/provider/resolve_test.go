@@ -46,6 +46,21 @@ func TestResolveValueCommand(t *testing.T) {
 	require.Equal(t, "token-123", got)
 }
 
+func TestResolveValueAllowMissingEnv(t *testing.T) {
+	got, err := ResolveValueAllowMissingEnv("env.MISSING_API_KEY")
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	got, err = ResolveValueAllowMissingEnv("$MISSING_API_KEY")
+	require.NoError(t, err)
+	require.Empty(t, got)
+
+	t.Setenv("PRESENT", "yes")
+	got, err = ResolveValueAllowMissingEnv("env.PRESENT")
+	require.NoError(t, err)
+	require.Equal(t, "yes", got)
+}
+
 func TestIsConfigured(t *testing.T) {
 	require.False(t, IsConfigured(""))
 	require.True(t, IsConfigured("!echo hi"))

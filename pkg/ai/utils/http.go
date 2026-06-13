@@ -57,6 +57,11 @@ func PostJSON(ctx context.Context, client *http.Client, url string, headers map[
 
 // GetJSON sends a GET request and decodes a JSON response.
 func GetJSON(ctx context.Context, client *http.Client, url string, out any) error {
+	return GetJSONWithHeaders(ctx, client, url, nil, out)
+}
+
+// GetJSONWithHeaders sends a GET request with optional headers and decodes JSON.
+func GetJSONWithHeaders(ctx context.Context, client *http.Client, url string, headers map[string]string, out any) error {
 	if client == nil {
 		client = NewHTTPClient()
 	}
@@ -64,6 +69,9 @@ func GetJSON(ctx context.Context, client *http.Client, url string, out any) erro
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 
 	resp, err := client.Do(req)

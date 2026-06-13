@@ -73,8 +73,9 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 			continue
 		}
 
-		catalogProvider, inCatalog := data.Catalog.Providers[providerID]
-		if !isOpenCodeProvider(providerID) && !inCatalog {
+		catalogID := modelsDevProviderID(providerID)
+		catalogProvider, inCatalog := data.Catalog.Providers[catalogID]
+		if !isLiveModelsProvider(providerID) && !inCatalog {
 			result.Skipped = append(result.Skipped, entry.Name()+": provider not in models.dev catalog")
 			continue
 		}
@@ -91,13 +92,13 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 		}
 
 		var changed bool
-		if isOpenCodeProvider(providerID) {
-			cfg, changed, err = syncOpenCodeProviderModels(ctx, client, providerID, cfg, data, catalogProvider, &result, entry.Name())
+		if isLiveModelsProvider(providerID) {
+			cfg, changed, err = syncLiveProviderModels(ctx, client, providerID, catalogID, cfg, data, catalogProvider, &result, entry.Name())
 			if err != nil {
 				return result, fmt.Errorf("provider %q: %w", providerID, err)
 			}
 		} else {
-			cfg, changed = syncCatalogProviderModels(providerID, cfg, data, catalogProvider, &result, entry.Name())
+			cfg, changed = syncCatalogProviderModels(catalogID, cfg, data, catalogProvider, &result, entry.Name())
 		}
 
 		if !changed {
@@ -124,7 +125,7 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 }
 
 func syncCatalogProviderModels(
-	providerID string,
+	catalogID string,
 	cfg FileConfig,
 	data ModelsDevData,
 	catalogProvider ModelsDevProvider,
@@ -135,7 +136,7 @@ func syncCatalogProviderModels(
 	existing := make(map[string]struct{}, len(cfg.Models))
 	for i, model := range cfg.Models {
 		existing[model.ID] = struct{}{}
-		src, ok := data.lookupModel(providerID, model.ID)
+		src, ok := data.lookupModel(catalogID, model.ID)
 		if !ok {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: model %q not found in models.dev", entryName, model.ID))
 			continue
@@ -179,10 +180,11 @@ func syncCatalogProviderModels(
 	return cfg, changed
 }
 
-func syncOpenCodeProviderModels(
+func syncLiveProviderModels(
 	ctx context.Context,
 	client *http.Client,
 	providerID string,
+	catalogID string,
 	cfg FileConfig,
 	data ModelsDevData,
 	catalogProvider ModelsDevProvider,
@@ -191,10 +193,30 @@ func syncOpenCodeProviderModels(
 ) (FileConfig, bool, error) {
 	baseURL := strings.TrimSpace(cfg.BaseURL)
 	if baseURL == "" {
-		baseURL = defaultOpenCodeBaseURL(providerID)
+		baseURL = defaultLiveModelsBaseURL(providerID)
 	}
 
-	liveIDs, err := FetchOpenCodeModels(ctx, client, baseURL)
+	apiKey, err := ResolveValueAllowMissingEnv(cfg.APIKey)
+	if err != nil {
+		return cfg, false, fmt.Errorf("resolve apiKey: %w", err)
+	}
+	headers, err := resolveHeadersAllowMissingEnv(cfg.Headers)
+	if err != nil {
+		return cfg, false, err
+	}
+
+	if liveModelsProviderRequiresAuth(providerID) && strings.TrimSpace(apiKey) == "" {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("%s: API key unavailable for live /models (%s); using models.dev catalog only", entryName, strings.TrimSpace(cfg.APIKey)))
+		cfg, changed := syncCatalogProviderModels(catalogID, cfg, data, catalogProvider, result, entryName)
+		return cfg, changed, nil
+	}
+
+	liveIDs, err := FetchLiveModels(ctx, client, LiveModelsOptions{
+		BaseURL:    baseURL,
+		APIKey:     apiKey,
+		AuthHeader: cfg.AuthHeader,
+		Headers:    headers,
+	})
 	if err != nil {
 		return cfg, false, err
 	}
@@ -217,7 +239,7 @@ func syncOpenCodeProviderModels(
 			model = ModelConfig{ID: modelID}
 		}
 
-		if src, ok := data.lookupModel(providerID, modelID); ok {
+		if src, ok := data.lookupModel(catalogID, modelID); ok {
 			fresh := modelConfigFromModelsDev(src, providerNPM)
 			model = mergeModelConfig(model, fresh)
 		} else {
@@ -234,7 +256,7 @@ func syncOpenCodeProviderModels(
 		if _, ok := liveSet[modelID]; ok {
 			continue
 		}
-		result.Warnings = append(result.Warnings, fmt.Sprintf("%s: removed model %q not returned by OpenCode API", entryName, modelID))
+		result.Warnings = append(result.Warnings, fmt.Sprintf("%s: removed model %q not returned by live /models API", entryName, modelID))
 	}
 
 	changed := !modelConfigListsEqual(cfg.Models, updatedModels)
