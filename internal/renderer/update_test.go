@@ -137,15 +137,16 @@ func TestCtrlYNoMessagesNoOp(t *testing.T) {
 	require.Empty(t, m.messages)
 }
 
-func TestBusyBlocksNewline(t *testing.T) {
+func TestNewlineWorksWhileBusy(t *testing.T) {
 	m := testInputModel(t)
 	m = m.beginAgentTurn()
+	m.input.SetValue("draft")
 
 	updated, cmd := m.Update(keyCtrlJ())
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
-	require.Empty(t, m.input.Value())
+	require.Equal(t, "draft\n", m.input.Value())
 }
 
 func TestSubmitColonQQuits(t *testing.T) {

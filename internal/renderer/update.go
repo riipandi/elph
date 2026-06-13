@@ -43,7 +43,7 @@ func resolveKeyAction(msg tea.KeyPressMsg) constants.KeyAction {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
-	if !m.busy && m.input.Focused() && isNewlineInputMsg(msg) {
+	if m.input.Focused() && isNewlineInputMsg(msg) {
 		m, cmd := m.handleInputNewlineMsg(msg)
 		return m, cmd
 	}
@@ -125,12 +125,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if !m.busy && m.input.Focused() && isInputNewlineKey(msg) {
+		if m.input.Focused() && isInputNewlineKey(msg) {
 			m, cmd := m.handleInputNewlineMsg(msg)
 			return m, cmd
 		}
 
-		if !m.busy && m.input.Focused() {
+		if m.input.Focused() {
 			var consumed bool
 			m, consumed = m.handleSlashPaletteKey(msg)
 			if consumed {
@@ -205,7 +205,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case constants.ActionNewline:
-			if m.busy || !m.input.Focused() {
+			if !m.input.Focused() {
 				break
 			}
 			m, cmd := m.handleInputNewlineMsg(msg)
@@ -227,7 +227,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.content, cmd = m.content.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if !m.busy {
+	if m.input.Focused() {
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
 		m = m.syncInputWidth()

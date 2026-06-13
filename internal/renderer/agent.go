@@ -17,7 +17,6 @@ func (m Model) beginAgentTurn() Model {
 	m.busy = true
 	m.activity = agent.ActivityConnecting
 	m.spinnerFrame = 0
-	m.input.Blur()
 	return m
 }
 
@@ -36,7 +35,6 @@ func (m Model) finishAgentTurn(response string) Model {
 	m.busy = false
 	m.activity = agent.ActivityIdle
 	m.spinnerFrame = 0
-	m.input.Focus()
 	m = m.addAIMessage(response)
 	m = m.syncLayout(true)
 	return m

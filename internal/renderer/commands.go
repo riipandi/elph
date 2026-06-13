@@ -59,7 +59,7 @@ func (m Model) slashQuery() string {
 func (m Model) syncSlashSuggestions() Model {
 	m = m.syncInputPlaceholder()
 
-	if m.busy || !m.input.Focused() {
+	if !m.input.Focused() {
 		m.cmdSuggestions = nil
 		m.cmdSuggestIndex = 0
 		m.argSuggestions = nil

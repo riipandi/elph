@@ -401,6 +401,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 }
 
 func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
+	if m.busy {
+		return m, nil, false
+	}
 	val := normalizeInputForSubmit(m.input.Value())
 	if val == "" {
 		return m, nil, false

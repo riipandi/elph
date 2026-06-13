@@ -61,6 +61,34 @@ func TestMultilineInputShrinksAfterClear(t *testing.T) {
 	require.Equal(t, 1, m.input.Height())
 }
 
+func TestInputStaysEditableWhileBusy(t *testing.T) {
+	m := testInputModel(t)
+	m.input.SetValue("hello")
+	updated, _ := m.Update(keyEnter())
+	m = updated.(Model)
+	require.True(t, m.busy)
+	require.True(t, m.input.Focused())
+
+	updated, cmd := m.Update(keyRune('x'))
+	m = updated.(Model)
+	require.Nil(t, cmd)
+	require.Equal(t, "x", m.input.Value())
+}
+
+func TestEnterDoesNotSubmitWhileBusy(t *testing.T) {
+	m := testInputModel(t)
+	m = m.beginAgentTurn()
+	m.input.SetValue("queued message")
+
+	updated, cmd := m.Update(keyEnter())
+	m = updated.(Model)
+
+	require.Nil(t, cmd)
+	require.True(t, m.busy)
+	require.Equal(t, "queued message", m.input.Value())
+	require.Empty(t, m.messages)
+}
+
 func TestEnterSubmitsSingleLine(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("hello")

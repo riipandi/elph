@@ -35,6 +35,16 @@ func TestActivityViewShowsLabel(t *testing.T) {
 	require.Equal(t, 1, lipgloss.Height(view), "activity view should be 1 line")
 }
 
+func TestInputStaysFocusedDuringAgentTurn(t *testing.T) {
+	m := testInputModel(t)
+	m.input.SetValue("hello")
+	updated, _ := m.Update(keyEnter())
+	m = updated.(Model)
+
+	require.True(t, m.busy)
+	require.True(t, m.input.Focused())
+}
+
 func TestSubmitStartsAgentActivity(t *testing.T) {
 	m := New()
 	m.width = 80
