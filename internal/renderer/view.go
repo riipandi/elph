@@ -101,7 +101,7 @@ func (m Model) bannerView() string {
 		"",
 		dimStyle.MaxWidth(metaW).Render("Directory:  ")+valStyle.Render(m.workDir),
 		dimStyle.MaxWidth(metaW).Render("Model:      ")+valStyle.Render(fmt.Sprintf("%s [%s] (000 available)", m.modelName, m.provider)),
-		dimStyle.MaxWidth(metaW).Render("Stats:      ")+valStyle.Render(fmt.Sprintf("%d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
+		dimStyle.MaxWidth(metaW).Render("Stats:      ")+valStyle.Render(fmt.Sprintf("%d exts, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
 		dimStyle.MaxWidth(metaW).Render("MCP:        ")+valStyle.Render(fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
 	)
 

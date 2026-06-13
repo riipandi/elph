@@ -10,7 +10,7 @@
 │                                                                 │
 │  Directory:  ~/some/path/to/project_dir                         │
 │  Model:      Claude Sonnet 4.6 [anthropic] (000 available)      │   <- BANNER (line-clamp if not enough width)
-│  Stats:      00 ext, 00 commands, 00 skills, 00 tools           │
+│  Stats:      00 exts, 00 commands, 00 skills, 00 tools          │
 │  MCP:        0/0 connected (000 tools)                          │
 │                                                                 │
 │  Tip: Use --no-session for ephemeral mode — no session file is  │   <- TIPS can be wrapped
