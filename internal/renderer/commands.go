@@ -5,13 +5,19 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
 )
 
 var (
-	cmdPaletteSelected = lipgloss.NewStyle().Foreground(constants.Highlight).Bold(true)
+	cmdPaletteSelected = lipgloss.NewStyle().Foreground(constants.Blue).Bold(true)
 	cmdPaletteName     = lipgloss.NewStyle().Foreground(constants.White)
+	// Lifted gray for selected summary — softer than command highlight.
+	cmdPaletteSummarySelected = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{
+		Light: lipgloss.Color("#6B7280"),
+		Dark:  lipgloss.Color("#9B9B9B"),
+	})
 )
 
 func cmdPaletteBorder(mode constants.AgentMode) lipgloss.Style {
@@ -107,12 +113,15 @@ func (m Model) commandPaletteView() string {
 	lines := make([]string, len(m.cmdSuggestions))
 	for i, cmd := range m.cmdSuggestions {
 		name, gap, summary := command.AlignedRow(cmd, nameColW, false)
+		var summaryStyled string
 		if i == m.cmdSuggestIndex {
 			name = cmdPaletteSelected.Render(name)
+			summaryStyled = cmdPaletteSummarySelected.Render(summary)
 		} else {
 			name = cmdPaletteName.Render(name)
+			summaryStyled = dimStyle.Render(summary)
 		}
-		lines[i] = name + gap + dimStyle.Render(summary)
+		lines[i] = name + gap + summaryStyled
 	}
 
 	inner := strings.Join(lines, "\n")
