@@ -1,0 +1,6 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Elph settings configuration schema",
+	"type": "object",
+	"properties": {}
+}

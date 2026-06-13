@@ -52,13 +52,13 @@
         "editor.formatOnSave": true
     },
     "[json]": {
-        "editor.defaultFormatter": "oxc.oxc-vscode"
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[jsonc]": {
-        "editor.defaultFormatter": "oxc.oxc-vscode"
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[jsonl]": {
-        "editor.defaultFormatter": "oxc.oxc-vscode"
+        "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[markdown]": {
         "editor.defaultFormatter": "darkriszty.markdown-table-prettify"
