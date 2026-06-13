@@ -218,9 +218,6 @@ func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
 	if msg.Type == tea.KeyCtrlD {
 		return constants.ActionExit
 	}
-	if msg.Type == tea.KeyCtrlM {
-		return constants.ActionSwitchMode
-	}
 	if msg.Type == tea.KeyShiftTab {
 		return constants.ActionCycleThink
 	}
