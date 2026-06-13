@@ -19,27 +19,15 @@ func (m Model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
-	
+
 	inputView := m.inputView()
 	footerView := m.footerView()
-	
-	inputH := lipgloss.Height(inputView)
-	footerH := lipgloss.Height(footerView)
-	
-	// Calculate viewport height - banner takes space only when content is short
-	vpHeight := max(m.height-inputH-footerH-2, 1)
-	
-	m.vp.Width = m.width
-	m.vp.Height = vpHeight
-	m.vp.SetContent(m.streamView())
-	
+
 	parts := []string{
-		m.vp.View(),
-		"",
 		inputView,
 		footerView,
 	}
-	
+
 	return lipgloss.JoinVertical(lipgloss.Top, parts...)
 }
 

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/riipandi/elph/internal/constants"
 	"golang.design/x/clipboard"
@@ -21,15 +20,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
-		
-		// Only create viewport once, then resize
-		if m.vp.Width == 0 || m.vp.Height == 0 {
-			vpHeight := max(m.height-18, 3)
-			m.vp = viewport.New(msg.Width, vpHeight)
-		} else {
-			m.vp.Width = msg.Width
-			m.vp.Height = max(m.height-18, 3)
-		}
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
 
@@ -44,10 +34,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ctrlCPress = 2
 				m.input.SetValue("")
 				m.promptChar = ">"
-				m = m.replaceNotice("Input cleared, press again to exit")
-				return m, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
+				var cmd tea.Cmd
+				m, cmd = m.replaceNotice("Input cleared, press again to exit")
+				return m, tea.Batch(cmd, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
 					return ctrlCResetMsg{}
-				})
+				}))
 			}
 
 			if m.ctrlCPress == 2 || (m.ctrlCPress == 1 && !hasInput) {
@@ -56,11 +47,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.ctrlCPress = 1
-			m = m.withMessage("Press again to exit")
+			var cmd tea.Cmd
+			m, cmd = m.withMessage("Press again to exit")
 			m.ctrlCNoticeID = len(m.messages) - 1
-			return m, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
+			return m, tea.Batch(cmd, tea.Tick(doubleTapTimeout, func(t time.Time) tea.Msg {
 				return ctrlCResetMsg{}
-			})
+			}))
 
 		case constants.ActionExit:
 			m.quitting = true
@@ -68,11 +60,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case constants.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
-			m = m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
+			var cmd tea.Cmd
+			m, cmd = m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
+			cmds = append(cmds, cmd)
 
 		case constants.ActionCycleThink:
 			m.thinkingLevel = constants.NextThinkingLevel(m.thinkingLevel)
-			m = m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
+			var cmd tea.Cmd
+			m, cmd = m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
+			cmds = append(cmds, cmd)
 
 		case constants.ActionSubmit:
 			if !m.input.Focused() {
@@ -87,7 +83,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			val = stripTrigger(val)
-			m = m.addUserMessage(val)
+			var cmd tea.Cmd
+			m, cmd = m.addUserMessage(val)
+			cmds = append(cmds, cmd)
 			m.input.SetValue("")
 			m.promptChar = ">"
 
@@ -95,19 +93,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.messages) > 0 {
 				lastMsg := m.messages[len(m.messages)-1]
 				clipboard.Write(clipboard.FmtText, []byte(lastMsg.text))
-				m = m.withMessage("Copied to clipboard")
+				var cmd tea.Cmd
+				m, cmd = m.withMessage("Copied to clipboard")
+				cmds = append(cmds, cmd)
 			}
 		}
 
 		m = m.cancelCtrlC()
 	}
 
-	// Update viewport FIRST (before textarea consumes keys)
-	var cmd tea.Cmd
-	m.vp, cmd = m.vp.Update(msg)
-	cmds = append(cmds, cmd)
-
 	// Update input component
+	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -119,32 +115,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-func (m Model) addUserMessage(msg string) Model {
-	m.messages = append(m.messages, message{text: msg, kind: msgUser})
-	m.vp.GotoBottom()
-	return m
+func (m Model) addUserMessage(msg string) (Model, tea.Cmd) {
+	newMsg := message{text: msg, kind: msgUser}
+	m.messages = append(m.messages, newMsg)
+	return m, tea.Println(m.renderMessage(newMsg))
 }
 
-func (m Model) addAIMessage(msg string) Model {
-	m.messages = append(m.messages, message{text: msg, kind: msgAI})
-	m.vp.GotoBottom()
-	return m
+func (m Model) addAIMessage(msg string) (Model, tea.Cmd) {
+	newMsg := message{text: msg, kind: msgAI}
+	m.messages = append(m.messages, newMsg)
+	return m, tea.Println(m.renderMessage(newMsg))
 }
 
-func (m Model) withMessage(msg string) Model {
-	m.messages = append(m.messages, message{text: msg, kind: msgSystem})
-	m.vp.GotoBottom()
-	return m
+func (m Model) withMessage(msg string) (Model, tea.Cmd) {
+	newMsg := message{text: msg, kind: msgSystem}
+	m.messages = append(m.messages, newMsg)
+	return m, tea.Println(m.renderMessage(newMsg))
 }
 
-func (m Model) replaceNotice(msg string) Model {
+func (m Model) replaceNotice(msg string) (Model, tea.Cmd) {
+	newMsg := message{text: msg, kind: msgSystem}
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
-		m.messages[m.ctrlCNoticeID] = message{text: msg, kind: msgSystem}
+		m.messages[m.ctrlCNoticeID] = newMsg
 	} else {
-		m.messages = append(m.messages, message{text: msg, kind: msgSystem})
+		m.messages = append(m.messages, newMsg)
 		m.ctrlCNoticeID = len(m.messages) - 1
 	}
-	return m
+	return m, tea.Println(m.renderMessage(newMsg))
 }
 
 func (m Model) cancelCtrlC() Model {
