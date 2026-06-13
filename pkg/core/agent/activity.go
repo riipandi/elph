@@ -1,5 +1,7 @@
 package agent
 
+import "github.com/riipandi/elph/pkg/tool"
+
 // Activity describes what the agent is doing during a turn.
 type Activity string
 
@@ -32,19 +34,19 @@ var TurnPhases = []Activity{
 }
 
 var toolActivity = map[string]Activity{
-	ToolRead:          ActivityReading,
-	ToolReadMediaFile: ActivityReading,
-	ToolWrite:         ActivityWriting,
-	ToolEdit:          ActivityWriting,
-	ToolGrep:          ActivitySearching,
-	ToolGlob:          ActivitySearching,
-	ToolCodeSearch:    ActivitySearching,
-	ToolWebSearch:     ActivitySearching,
-	ToolBash:          ActivityRunning,
-	ToolFetchURL:      ActivityFetching,
-	ToolEnterPlanMode: ActivityPlanning,
-	ToolExitPlanMode:  ActivityPlanning,
-	ToolAskUser:       ActivityWaiting,
+	tool.Read:          ActivityReading,
+	tool.ReadMediaFile: ActivityReading,
+	tool.Write:         ActivityWriting,
+	tool.Edit:          ActivityWriting,
+	tool.Grep:          ActivitySearching,
+	tool.Glob:          ActivitySearching,
+	tool.CodeSearch:    ActivitySearching,
+	tool.WebSearch:     ActivitySearching,
+	tool.Bash:          ActivityRunning,
+	tool.FetchURL:      ActivityFetching,
+	tool.EnterPlanMode: ActivityPlanning,
+	tool.ExitPlanMode:  ActivityPlanning,
+	tool.AskUser:       ActivityWaiting,
 }
 
 // ActivityForTool returns the indicator label for a tool call.

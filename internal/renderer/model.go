@@ -135,7 +135,7 @@ func noBgStyles() textarea.Styles {
 
 func New() Model {
 	wd, _ := os.Getwd()
-	session := runtime.NewSession()
+	session := runtime.NewSession(wd)
 
 	vp := viewport.New()
 	vp.MouseWheelEnabled = true

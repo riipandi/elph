@@ -3,6 +3,7 @@ package agent
 import (
 	"testing"
 
+	"github.com/riipandi/elph/pkg/tool"
 	"github.com/stretchr/testify/require"
 )
 
@@ -11,19 +12,19 @@ func TestActivityForTool(t *testing.T) {
 		tool string
 		want Activity
 	}{
-		{ToolRead, ActivityReading},
-		{ToolReadMediaFile, ActivityReading},
-		{ToolWrite, ActivityWriting},
-		{ToolEdit, ActivityWriting},
-		{ToolGrep, ActivitySearching},
-		{ToolGlob, ActivitySearching},
-		{ToolCodeSearch, ActivitySearching},
-		{ToolWebSearch, ActivitySearching},
-		{ToolBash, ActivityRunning},
-		{ToolFetchURL, ActivityFetching},
-		{ToolEnterPlanMode, ActivityPlanning},
-		{ToolExitPlanMode, ActivityPlanning},
-		{ToolAskUser, ActivityWaiting},
+		{tool.Read, ActivityReading},
+		{tool.ReadMediaFile, ActivityReading},
+		{tool.Write, ActivityWriting},
+		{tool.Edit, ActivityWriting},
+		{tool.Grep, ActivitySearching},
+		{tool.Glob, ActivitySearching},
+		{tool.CodeSearch, ActivitySearching},
+		{tool.WebSearch, ActivitySearching},
+		{tool.Bash, ActivityRunning},
+		{tool.FetchURL, ActivityFetching},
+		{tool.EnterPlanMode, ActivityPlanning},
+		{tool.ExitPlanMode, ActivityPlanning},
+		{tool.AskUser, ActivityWaiting},
 		{"UnknownTool", ActivityWorking},
 		{"", ActivityWorking},
 	}
