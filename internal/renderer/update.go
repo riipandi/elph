@@ -52,15 +52,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.bannerPrinted = true
 			cmds = append(cmds, tea.Println(m.streamView()))
 		} else if m.oldWidth > 0 && m.width > 0 && m.width != m.oldWidth {
-			// Banner and messages are printed via tea.Println and do not
-			// re-render on resize like the pinned View(). Clear the stale
-			// scrollback, then queue a full repaint at the new width.
-			scrollH := lipgloss.Height(m.oldScrollback)
-			viewH := lipgloss.Height(m.oldView)
-			cmds = append(cmds, tea.Sequence(
-				redrawAboveViewCmd(scrollH, viewH),
-				tea.Println(m.streamView()),
-			))
+			// Repaint scrollback synchronously before the next view flush.
+			// Use old on-screen heights: the new view has not been flushed yet.
+			redrawScrollback(
+				lipgloss.Height(m.oldScrollback),
+				lipgloss.Height(m.oldView),
+				lipgloss.Height(m.View()),
+				m.width,
+				m.streamView(),
+			)
 		}
 
 	case ctrlCResetMsg:
@@ -234,15 +234,4 @@ func stripTrigger(s string) string {
 	return s
 }
 
-// redrawAboveViewCmd moves the cursor up past the previous scrollback and
-// pinned view, then clears everything below so tea.Println can repaint.
-func redrawAboveViewCmd(scrollbackLines, viewLines int) tea.Cmd {
-	return func() tea.Msg {
-		linesUp := scrollbackLines + viewLines - 1
-		if linesUp > 0 {
-			fmt.Printf("\x1b[%dA", linesUp)
-		}
-		fmt.Print("\x1b[J")
-		return nil
-	}
-}
+
