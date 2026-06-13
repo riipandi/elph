@@ -77,5 +77,6 @@ func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&rootEnvFile, "env-file", "", "Environment variable file (e.g., .env.local)")
 
-	// TODO: Register subcommand here
+	// Register subcommand
+	rootCmd.AddCommand(doctorCmd)
 }

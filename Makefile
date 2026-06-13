@@ -5,6 +5,17 @@ BUILD_DIR   := ./build/release
 GO          := go
 GOTEST      := gotestsum
 
+# ─── Args / Flags ────────────────────────────────────────────────────────────
+
+# Named args:  make run ARGS="--port 8080"  /  make test PKG=./internal/...
+ARGS :=
+PKG  ?= ./...
+
+# Positional args:  make test ./...  (captures words after the target)
+_RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+$(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
+$(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
+
 # ─── Test Flags ───────────────────────────────────────────────────────────────
 
 TEST_FLAGS := --format short-verbose -- -count=1 -v
@@ -25,12 +36,12 @@ install: build ## Build and copy binary to ~/.local/bin
 	@echo "Installed: $$(command -v $(HOME)/.local/bin/$(BINARY_NAME) 2>/dev/null || echo $(HOME)/.local/bin/$(BINARY_NAME))"
 
 run: ## Run the application
-	@$(GO) run ./cmd
+	@$(GO) run ./cmd $(or $(_RESIDUAL_),$(ARGS))
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
 test: ## Run unit tests
-	@$(GOTEST) $(TEST_FLAGS) ./internal/... ./pkg/...
+	@$(GOTEST) $(TEST_FLAGS) $(or $(addprefix ./,$(_RESIDUAL_)),$(PKG))
 
 integration: ## Run integration tests
 	@$(GOTEST) $(TEST_FLAGS) -tags=integration ./internal/...

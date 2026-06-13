@@ -14,4 +14,5 @@ var Tips = []string{
 	"Send /debug for diagnostic information.",
 	"Questions about code? Try /plan first for architecture-aware answers.",
 	"Use Tab and Shift+Tab to switch between agent modes.",
+	"Use /diff to view uncommitted changes in your workspace.",
 }
