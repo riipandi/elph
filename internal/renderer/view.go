@@ -64,13 +64,27 @@ func (m Model) bannerView() string {
 
 	dirLine := fmt.Sprintf("Directory:  %s", m.workDir)
 	modelLine := fmt.Sprintf("Model:      %s [%s] (000 available)", m.modelName, m.provider)
-	statsLine := fmt.Sprintf("Stats:      00 ext, 00 commands, 00 skills, 00 tools")
-	mcpLine := fmt.Sprintf("MCP Server: 0/0 connected (000 tools)")
+	statsLine := fmt.Sprintf("Stats:      %d ext, %d commands, %d skills, %d tools", 0, 0, 0, 0)
+	mcpLine := fmt.Sprintf("MCP Server: %d/%d connected (%d tools)", 0, 0, 0)
 
 	logo := lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.NewStyle().Foreground(special).Render(logoLine1),
 		lipgloss.NewStyle().Foreground(special).Render(logoLine2),
 	)
+
+	// Line-clamp: limit the tip to the available width so it doesn't overflow
+	// on narrow terminals. The inner content width is w-2 (border) - 4 (padding) - 2 (logo+margin).
+	tipW := max(w-10, 10)
+	tipStyle := lipgloss.NewStyle().
+		Foreground(dimText).
+		Italic(true).
+		MaxWidth(tipW)
+	tip := tipStyle.Render("Tip: " + m.tip)
+
+	dimStyle := lipgloss.NewStyle().Foreground(dimText)
+
+	// Line-clamp metadata lines to prevent overflow on narrow terminals.
+	metaW := max(w-10, 20)
 
 	content := lipgloss.JoinHorizontal(lipgloss.Top,
 		lipgloss.NewStyle().MarginRight(2).Render(logo),
@@ -78,12 +92,12 @@ func (m Model) bannerView() string {
 			header,
 			subtitle,
 			"",
-			lipgloss.NewStyle().Foreground(dimText).Render(dirLine),
-			lipgloss.NewStyle().Foreground(dimText).Render(modelLine),
-			lipgloss.NewStyle().Foreground(dimText).Render(statsLine),
-			lipgloss.NewStyle().Foreground(dimText).Render(mcpLine),
+			dimStyle.MaxWidth(metaW).Render(dirLine),
+			dimStyle.MaxWidth(metaW).Render(modelLine),
+			dimStyle.MaxWidth(metaW).Render(statsLine),
+			dimStyle.MaxWidth(metaW).Render(mcpLine),
 			"",
-			lipgloss.NewStyle().Foreground(dimText).Italic(true).Render("Tip: "+m.tip),
+			tip,
 		),
 	)
 
@@ -96,29 +110,39 @@ func (m Model) streamView() string {
 	}
 
 	var b strings.Builder
-	for _, msg := range m.messages {
-		b.WriteString(msg)
-		b.WriteString("\n")
+	for i, msg := range m.messages {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		switch msg.kind {
+		case msgUser:
+			b.WriteString(lipgloss.NewStyle().Foreground(userPipeCol).Render("|"))
+			b.WriteString(" ")
+			b.WriteString(msg.text)
+		case msgAI:
+			b.WriteString(lipgloss.NewStyle().Foreground(aiPipeCol).Render("|"))
+			b.WriteString(" ")
+			b.WriteString(msg.text)
+		case msgSystem:
+			b.WriteString(lipgloss.NewStyle().Foreground(highlight).Render("> "))
+			b.WriteString(msg.text)
+		}
 	}
-	return strings.TrimRight(b.String(), "\n")
+	return b.String()
 }
 
 func (m Model) inputView() string {
 	w := m.width
-	m.input.Width = w - 6
-	borderColor := modeBorderColor(m.mode)
-	m.input.PromptStyle = lipgloss.NewStyle().Foreground(borderColor)
+	m.input.SetWidth(w - 6)
 	return inputStyle(w, m.mode).Render(m.input.View())
 }
 
 func (m Model) footerView() string {
-	w := m.width
 	wd := filepath.Base(m.workDir)
 
-	// Content width: footer has no border, just plain text
+	w := m.width
 	cw := w
 
-	// Truncate session ID to fit (keep prefix + first 8 chars)
 	sid := m.sessionID
 	if len(sid) > 16 {
 		sid = sid[:16]
@@ -132,14 +156,19 @@ func (m Model) footerView() string {
 	line2Left := fmt.Sprintf("%s [%s]", wd, sid)
 	line2Right := fmt.Sprintf("turn: 0 | %s [+00 -00]", m.branch)
 
-	// Build each row: left takes remaining space, right is flush to edge
+	// Line 1: left takes remaining space after right, with gap between them.
 	rightW1 := lipgloss.Width(line1Right)
-	left1 := s.Width(max(cw-rightW1, 0)).Render(line1Left)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, left1, s.Render(line1Right))
+	left1W := max(cw-rightW1, 0)
+	left1 := s.Width(left1W).Render(line1Left)
+	right1 := s.Render(line1Right)
+	row1 := lipgloss.JoinHorizontal(lipgloss.Top, left1, right1)
 
+	// Line 2: same approach.
 	rightW2 := lipgloss.Width(line2Right)
-	left2 := s.Width(max(cw-rightW2, 0)).Render(line2Left)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, s.Render(line2Right))
+	left2W := max(cw-rightW2, 0)
+	left2 := s.Width(left2W).Render(line2Left)
+	right2 := s.Render(line2Right)
+	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, right2)
 
 	return lipgloss.JoinVertical(lipgloss.Left, row1, row2)
 }

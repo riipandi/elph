@@ -8,10 +8,12 @@ import (
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 var (
-	blueCol   = lipgloss.Color("#3B82F6")
-	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7C56DC"}
-	special   = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-	dimText   = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	blueCol     = lipgloss.Color("#3B82F6")
+	highlight   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7C56DC"}
+	special     = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+	dimText     = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	userPipeCol = lipgloss.AdaptiveColor{Light: "#7C56DC", Dark: "#A78BFA"}
+	aiPipeCol   = lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#9CA3AF"}
 )
 
 // ─── Mode Border Color ───────────────────────────────────────────────────────

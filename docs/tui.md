@@ -16,10 +16,8 @@
 │                                                                 │
 ╰─────────────────────────────────────────────────────────────────╯
 
- -----------------------------------------------------------------
- > This is an example input message from user                         <- MAIN_AREA / RESPONSE_STREAM
- -----------------------------------------------------------------
- This is an example response from AI agent
+ | This is an example input message from user                         <- MAIN_AREA / RESPONSE_STREAM
+ | This is an example response from AI agent
 
 ╭─────────────────────────────────────────────────────────────────╮
 │ >                                                               │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)

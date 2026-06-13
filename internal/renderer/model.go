@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -61,15 +61,26 @@ const doubleTapTimeout = 3 * time.Second
 
 type ctrlCResetMsg struct{}
 
-// ─── Model ───────────────────────────────────────────────────────────────────
+type msgKind int
+
+const (
+	msgUser   msgKind = iota // User input message
+	msgAI                    // AI response message
+	msgSystem                // System/status message
+)
+
+type message struct {
+	text string
+	kind msgKind
+}
 
 type Model struct {
 	ready         bool
 	width         int
 	height        int
-	input         textinput.Model
+	input         textarea.Model
 	vp            viewport.Model
-	messages      []string
+	messages      []message
 	modelName     string
 	provider      string
 	mode          constants.AgentMode
@@ -86,23 +97,29 @@ func New() Model {
 	wd, _ := os.Getwd()
 	sid := typeid.MustGenerate("sess").String()
 
-	ti := textinput.New()
-	ti.Placeholder = "Type a message or /command..."
-	ti.Focus()
-	ti.CharLimit = 4096
-	ti.Width = 60
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(highlight)
-	ti.TextStyle = lipgloss.NewStyle()
+	ta := textarea.New()
+	ta.Placeholder = "Type a message or /command..."
+	ta.Prompt = "> "
+	ta.CharLimit = 4096
+	ta.ShowLineNumbers = false
+	ta.SetHeight(1)
+	ta.MaxHeight = 6
+	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Foreground(highlight)
+	ta.FocusedStyle.Text = lipgloss.NewStyle()
+	ta.BlurredStyle.Prompt = lipgloss.NewStyle().Foreground(dimText)
+	ta.BlurredStyle.Text = lipgloss.NewStyle()
+	ta.KeyMap.InsertNewline.SetKeys("ctrl+j", "shift+enter")
+	ta.Focus()
 
 	return Model{
-		input:         ti,
+		input:         ta,
 		modelName:     "Claude Sonnet 4.6",
 		provider:      "anthropic",
 		mode:          constants.ModeBuild,
 		sessionID:     sid,
 		workDir:       wd,
 		branch:        "main",
-		messages:      []string{},
+		messages:      []message{},
 		tip:           randomTip(),
 		ctrlCNoticeID: -1,
 	}
@@ -111,5 +128,5 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return textinput.Blink
+	return textarea.Blink
 }

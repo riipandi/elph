@@ -21,7 +21,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 
-		reserved := 9 + 3 + 3 + 2
+		// Banner(~12) + input(3) + footer(2) + gaps(2) = ~19 initial estimate
+		// Actual heights are recalculated in View() on every frame.
+		reserved := 12 + 3 + 2 + 2
 		vpHeight := msg.Height - reserved
 		if vpHeight < 3 {
 			vpHeight = 3
@@ -76,6 +78,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
 
 		case "enter":
+			// Only submit if textarea is single-line or Ctrl is not held.
+			// Ctrl+J is handled by textarea's InsertNewline keymap.
+			if !m.input.Focused() {
+				break
+			}
 			val := strings.TrimSpace(m.input.Value())
 			if val == "" {
 				break
@@ -84,7 +91,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.quitting = true
 				return m, tea.Quit
 			}
-			m.messages = append(m.messages, val)
+			m = m.addUserMessage(val)
 			m.input.SetValue("")
 		}
 
@@ -106,19 +113,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+// addUserMessage appends a user input message (no separators, just | prefix).
+func (m Model) addUserMessage(msg string) Model {
+	m.messages = append(m.messages, message{text: msg, kind: msgUser})
+	m.vp.GotoBottom()
+	return m
+}
+
+// addAIMessage appends an AI response message (| prefix in different color).
+func (m Model) addAIMessage(msg string) Model {
+	m.messages = append(m.messages, message{text: msg, kind: msgAI})
+	m.vp.GotoBottom()
+	return m
+}
+
+// withMessage adds a system/status message (for notices, mode switches, etc).
 func (m Model) withMessage(msg string) Model {
-	styled := lipgloss.NewStyle().Foreground(highlight).Render("> ") + msg
-	m.messages = append(m.messages, styled)
+	m.messages = append(m.messages, message{text: msg, kind: msgSystem})
 	return m
 }
 
 // replaceNotice replaces the existing Ctrl+C notice with a new message.
 func (m Model) replaceNotice(msg string) Model {
-	styled := lipgloss.NewStyle().Foreground(highlight).Render("> ") + msg
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
-		m.messages[m.ctrlCNoticeID] = styled
+		m.messages[m.ctrlCNoticeID] = message{text: msg, kind: msgSystem}
 	} else {
-		m.messages = append(m.messages, styled)
+		m.messages = append(m.messages, message{text: msg, kind: msgSystem})
 		m.ctrlCNoticeID = len(m.messages) - 1
 	}
 	return m
