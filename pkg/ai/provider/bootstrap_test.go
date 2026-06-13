@@ -31,6 +31,11 @@ func TestBootstrapProvidersCreatesStarterFiles(t *testing.T) {
 			require.Greater(t, model.ContextWindow, 0, "%s missing contextWindow", name)
 			require.Greater(t, model.MaxTokens, 0, "%s missing maxTokens", name)
 		}
+		if name == "openai.json" {
+			require.Contains(t, string(raw), `"input": 2.50`)
+			require.Contains(t, string(raw), `"output": 10.00`)
+			require.Contains(t, string(raw), `"cacheRead": 0.075`)
+		}
 	}
 }
 

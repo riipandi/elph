@@ -1,25 +1,26 @@
-package provider
+package ai
 
 import (
 	"testing"
 
+	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildSelectorGroups(t *testing.T) {
-	catalog := Catalog{
-		Providers: []RegisteredProvider{
+	catalog := provider.Catalog{
+		Providers: []provider.RegisteredProvider{
 			{
 				ID:     "alpha",
-				Config: FileConfig{Name: "Alpha"},
-				Models: []ResolvedModel{
+				Config: provider.FileConfig{Name: "Alpha"},
+				Models: []provider.ResolvedModel{
 					{ID: "a1", Name: "Alpha One", ProviderID: "alpha", ProviderName: "Alpha"},
 				},
 			},
 			{
 				ID:     "beta",
-				Config: FileConfig{Name: "Beta"},
-				Models: []ResolvedModel{
+				Config: provider.FileConfig{Name: "Beta"},
+				Models: []provider.ResolvedModel{
 					{ID: "b1", Name: "Beta One", ProviderID: "beta", ProviderName: "Beta"},
 					{ID: "b2", Name: "Beta Two", ProviderID: "beta", ProviderName: "Beta"},
 				},
@@ -36,10 +37,10 @@ func TestBuildSelectorGroups(t *testing.T) {
 }
 
 func TestBuildSelectorGroupsFuzzyFilter(t *testing.T) {
-	catalog := Catalog{
-		Providers: []RegisteredProvider{{
+	catalog := provider.Catalog{
+		Providers: []provider.RegisteredProvider{{
 			ID: "opencode",
-			Models: []ResolvedModel{
+			Models: []provider.ResolvedModel{
 				{ID: "model-a", Name: "Fast Model", ProviderID: "opencode", ProviderName: "OpenCode"},
 				{ID: "model-b", Name: "Smart Model", ProviderID: "opencode", ProviderName: "OpenCode"},
 			},
@@ -54,8 +55,8 @@ func TestBuildSelectorGroupsFuzzyFilter(t *testing.T) {
 
 func TestFlattenSelectorGroups(t *testing.T) {
 	groups := []SelectorGroup{
-		{ProviderID: "alpha", Models: []ResolvedModel{{ID: "a1"}}},
-		{ProviderID: "beta", Models: []ResolvedModel{{ID: "b1"}, {ID: "b2"}}},
+		{ProviderID: "alpha", Models: []provider.ResolvedModel{{ID: "a1"}}},
+		{ProviderID: "beta", Models: []provider.ResolvedModel{{ID: "b1"}, {ID: "b2"}}},
 	}
 
 	all := FlattenSelectorGroups(groups, "")
@@ -87,7 +88,7 @@ func TestNormalizeProviderFilter(t *testing.T) {
 }
 
 func TestSelectorPickIndex(t *testing.T) {
-	flat := []ResolvedModel{
+	flat := []provider.ResolvedModel{
 		{ProviderID: "alpha", ID: "a1"},
 		{ProviderID: "beta", ID: "b1"},
 	}

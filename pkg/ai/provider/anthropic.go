@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
 const anthropicVersion = "2023-06-01"
@@ -16,7 +18,8 @@ type AnthropicOptions struct {
 	Model     string
 	BaseURL   string
 	Headers   map[string]string
-	MaxTokens int
+	MaxTokens   int
+	Temperature float64
 }
 
 // Anthropic calls the Anthropic Messages API.
@@ -25,9 +28,10 @@ type Anthropic struct {
 	APIKey    string
 	Model     string
 	BaseURL   string
-	Headers   map[string]string
-	MaxTokens int
-	client    *http.Client
+	Headers     map[string]string
+	MaxTokens   int
+	Temperature float64
+	client      *http.Client
 }
 
 // NewAnthropic builds an Anthropic provider from explicit settings.
@@ -37,13 +41,14 @@ func NewAnthropic(opts AnthropicOptions) *Anthropic {
 		maxTokens = defaultMaxTokens
 	}
 	return &Anthropic{
-		IDName:    opts.ID,
-		APIKey:    opts.APIKey,
-		Model:     opts.Model,
-		BaseURL:   strings.TrimRight(opts.BaseURL, "/"),
-		Headers:   opts.Headers,
-		MaxTokens: maxTokens,
-		client:    newHTTPClient(),
+		IDName:      opts.ID,
+		APIKey:      opts.APIKey,
+		Model:       opts.Model,
+		BaseURL:     strings.TrimRight(opts.BaseURL, "/"),
+		Headers:     opts.Headers,
+		MaxTokens:   maxTokens,
+		Temperature: opts.Temperature,
+		client:      utils.NewHTTPClient(),
 	}
 }
 
@@ -77,8 +82,9 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 	}
 	type request struct {
 		Model     string    `json:"model"`
-		MaxTokens int       `json:"max_tokens"`
-		System    string    `json:"system,omitempty"`
+		MaxTokens   int       `json:"max_tokens"`
+		Temperature float64   `json:"temperature"`
+		System      string    `json:"system,omitempty"`
 		Messages  []message `json:"messages"`
 	}
 	type contentBlock struct {
@@ -90,10 +96,11 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 	}
 
 	var out response
-	err := postJSON(ctx, p.client, p.apiURL(), p.requestHeaders(), request{
+	err := utils.PostJSON(ctx, p.client, p.apiURL(), p.requestHeaders(), request{
 		Model:     model,
-		MaxTokens: p.MaxTokens,
-		System:    req.SystemPrompt,
+		MaxTokens:   p.MaxTokens,
+		Temperature: p.Temperature,
+		System:      req.SystemPrompt,
 		Messages:  []message{{Role: "user", Content: req.UserPrompt}},
 	}, &out)
 	if err != nil {

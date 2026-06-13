@@ -1,10 +1,15 @@
 package provider
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/riipandi/elph/pkg/ai/utils"
+)
 
 const (
 	defaultContextWindow = 128000
 	defaultMaxTokens     = 16384
+	defaultTemperature   = 0.4
 )
 
 func normalizeProvider(id string, cfg FileConfig) (RegisteredProvider, error) {
@@ -80,12 +85,17 @@ func normalizeModel(providerID, providerName string, cfg FileConfig, model Model
 		maxTokens = defaultMaxTokens
 	}
 
+	temperature := defaultTemperature
+	if model.Temperature != nil {
+		temperature = *model.Temperature
+	}
+
 	cost := Cost{}
 	if model.Cost != nil {
 		cost = *model.Cost
 	}
 
-	headers := mergeStringMaps(cfg.Headers, model.Headers)
+	headers := utils.MergeStringMaps(cfg.Headers, model.Headers)
 
 	return ResolvedModel{
 		ID:            model.ID,
@@ -98,21 +108,10 @@ func normalizeModel(providerID, providerName string, cfg FileConfig, model Model
 		Input:         input,
 		ContextWindow: contextWindow,
 		MaxTokens:     maxTokens,
+		Temperature:   temperature,
 		Cost:          cost,
 		Headers:       headers,
 	}, nil
 }
 
-func mergeStringMaps(base, override map[string]string) map[string]string {
-	if len(base) == 0 && len(override) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(base)+len(override))
-	for key, value := range base {
-		out[key] = value
-	}
-	for key, value := range override {
-		out[key] = value
-	}
-	return out
-}
+

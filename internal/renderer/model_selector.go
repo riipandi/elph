@@ -9,6 +9,7 @@ import (
 	"github.com/riipandi/elph/internal/align"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
@@ -26,7 +27,7 @@ type ModelSelectorState struct {
 	Active           bool
 	Query            string
 	ProviderFilterID string
-	Groups           []provider.SelectorGroup
+	Groups           []ai.SelectorGroup
 	Flat             []provider.ResolvedModel
 	Selected         int
 	Scroll           int
@@ -57,14 +58,14 @@ func (m Model) triggerModelSelector() (Model, tea.Cmd) {
 }
 
 func (m Model) openModelSelector(catalog provider.Catalog, query string) Model {
-	groups, flat := provider.BuildSelectorGroups(catalog, query)
+	groups, flat := ai.BuildSelectorGroups(catalog, query)
 	m.modelSelector = ModelSelectorState{
 		Active:           true,
 		Query:            query,
 		ProviderFilterID: "",
 		Groups:           groups,
 		Flat:             flat,
-		Selected:         provider.SelectorPickIndex(flat, m.session.ProviderID, m.session.ModelID),
+		Selected:         ai.SelectorPickIndex(flat, m.session.ProviderID, m.session.ModelID),
 		Catalog:          catalog,
 	}
 	m.modelSelector = m.syncModelSelectorScroll(m.modelSelector)
@@ -89,14 +90,14 @@ func (m Model) closeModelSelector() Model {
 func (m Model) refreshModelSelectorItems() Model {
 	prev := m.modelSelector.selectedModel()
 	m.modelSelector.Query = m.input.Value()
-	groups, _ := provider.BuildSelectorGroups(m.modelSelector.Catalog, m.modelSelector.Query)
+	groups, _ := ai.BuildSelectorGroups(m.modelSelector.Catalog, m.modelSelector.Query)
 	m.modelSelector.Groups = groups
-	m.modelSelector.ProviderFilterID = provider.NormalizeProviderFilter(m.modelSelector.ProviderFilterID, groups)
-	flat := provider.FlattenSelectorGroups(groups, m.modelSelector.ProviderFilterID)
+	m.modelSelector.ProviderFilterID = ai.NormalizeProviderFilter(m.modelSelector.ProviderFilterID, groups)
+	flat := ai.FlattenSelectorGroups(groups, m.modelSelector.ProviderFilterID)
 
 	selected := m.modelSelector.Selected
 	if prev.ProviderID != "" {
-		selected = provider.SelectorPickIndex(flat, prev.ProviderID, prev.ID)
+		selected = ai.SelectorPickIndex(flat, prev.ProviderID, prev.ID)
 	} else if selected >= len(flat) {
 		if len(flat) > 0 {
 			selected = len(flat) - 1
@@ -118,12 +119,12 @@ func (m Model) cycleModelSelectorProvider(delta int) Model {
 	}
 
 	prev := m.modelSelector.selectedModel()
-	m.modelSelector.ProviderFilterID = provider.CycleProviderFilter(m.modelSelector.ProviderFilterID, delta, m.modelSelector.Groups)
-	m.modelSelector.Flat = provider.FlattenSelectorGroups(m.modelSelector.Groups, m.modelSelector.ProviderFilterID)
+	m.modelSelector.ProviderFilterID = ai.CycleProviderFilter(m.modelSelector.ProviderFilterID, delta, m.modelSelector.Groups)
+	m.modelSelector.Flat = ai.FlattenSelectorGroups(m.modelSelector.Groups, m.modelSelector.ProviderFilterID)
 
 	selected := 0
 	if prev.ProviderID != "" {
-		selected = provider.SelectorPickIndex(m.modelSelector.Flat, prev.ProviderID, prev.ID)
+		selected = ai.SelectorPickIndex(m.modelSelector.Flat, prev.ProviderID, prev.ID)
 	}
 	m.modelSelector.Selected = selected
 	m.modelSelector = m.syncModelSelectorScroll(m.modelSelector)

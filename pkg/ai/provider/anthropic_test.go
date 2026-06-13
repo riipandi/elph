@@ -19,6 +19,7 @@ func TestAnthropicComplete(t *testing.T) {
 		var body map[string]any
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		require.Equal(t, "sys", body["system"])
+		require.Equal(t, 0.4, body["temperature"])
 
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"content": []map[string]string{{"type": "text", "text": "hello from claude"}},
@@ -27,12 +28,13 @@ func TestAnthropicComplete(t *testing.T) {
 	defer srv.Close()
 
 	p := NewAnthropic(AnthropicOptions{
-		ID:        "anthropic",
-		APIKey:    "test-key",
-		Model:     "claude-test",
-		BaseURL:   srv.URL + "/v1",
-		Headers:   map[string]string{"x-custom": "custom"},
-		MaxTokens: 1024,
+		ID:          "anthropic",
+		APIKey:      "test-key",
+		Model:       "claude-test",
+		BaseURL:     srv.URL + "/v1",
+		Headers:     map[string]string{"x-custom": "custom"},
+		MaxTokens:   1024,
+		Temperature: 0.4,
 	})
 
 	got, err := p.Complete(context.Background(), TurnRequest{

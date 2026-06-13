@@ -1,4 +1,4 @@
-package provider
+package utils
 
 import (
 	"bytes"
@@ -12,11 +12,13 @@ import (
 
 const defaultHTTPTimeout = 120 * time.Second
 
-func newHTTPClient() *http.Client {
+// NewHTTPClient returns a client with the default upstream timeout.
+func NewHTTPClient() *http.Client {
 	return &http.Client{Timeout: defaultHTTPTimeout}
 }
 
-func postJSON(ctx context.Context, client *http.Client, url string, headers map[string]string, body any, out any) error {
+// PostJSON sends a JSON request and decodes a JSON response.
+func PostJSON(ctx context.Context, client *http.Client, url string, headers map[string]string, body any, out any) error {
 	payload, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("encode request: %w", err)

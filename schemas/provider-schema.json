@@ -79,6 +79,13 @@
           "default": 16384,
           "description": "Maximum output tokens per completion for this model."
         },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.4,
+          "description": "Sampling temperature for this model."
+        },
         "cost": {
           "type": "object",
           "properties": {

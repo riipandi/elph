@@ -16,6 +16,10 @@ func TestOpenAICompatibleComplete(t *testing.T) {
 		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
 		require.Equal(t, "proxy", r.Header.Get("X-Proxy"))
 
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, 0.7, body["temperature"])
+
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"choices": []map[string]any{{
 				"message": map[string]string{"content": "hello from gpt"},
@@ -31,6 +35,7 @@ func TestOpenAICompatibleComplete(t *testing.T) {
 		DefaultModel: "gpt-test",
 		Headers:      map[string]string{"X-Proxy": "proxy"},
 		AuthHeader:   true,
+		Temperature:  0.7,
 	})
 
 	got, err := p.Complete(context.Background(), TurnRequest{

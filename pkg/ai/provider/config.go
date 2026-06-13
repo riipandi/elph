@@ -26,6 +26,7 @@ type ModelConfig struct {
 	Input         []string          `json:"input,omitempty"`
 	ContextWindow int               `json:"contextWindow,omitempty"`
 	MaxTokens     int               `json:"maxTokens,omitempty"`
+	Temperature   *float64          `json:"temperature,omitempty"`
 	Cost          *Cost             `json:"cost,omitempty"`
 	Headers       map[string]string `json:"headers,omitempty"`
 }
@@ -53,6 +54,7 @@ type ResolvedModel struct {
 	Input         []string
 	ContextWindow int
 	MaxTokens     int
+	Temperature   float64
 	Cost          Cost
 	Headers       map[string]string
 }

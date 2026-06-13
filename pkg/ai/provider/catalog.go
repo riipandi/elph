@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/riipandi/elph/internal/fuzzy"
+	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
 // Catalog holds all user-defined providers loaded from disk.
@@ -62,7 +62,7 @@ func NewProvider(provider RegisteredProvider, model ResolvedModel) (Provider, er
 		return nil, ErrMissingAPIKey
 	}
 
-	headers, err := ResolveHeaders(mergeStringMaps(provider.Config.Headers, model.Headers))
+	headers, err := ResolveHeaders(utils.MergeStringMaps(provider.Config.Headers, model.Headers))
 	if err != nil {
 		return nil, fmt.Errorf("provider %q: %w", provider.ID, err)
 	}
@@ -77,15 +77,17 @@ func NewProvider(provider RegisteredProvider, model ResolvedModel) (Provider, er
 			Headers:      headers,
 			AuthHeader:   provider.Config.AuthHeader,
 			MaxTokens:    model.MaxTokens,
+			Temperature:  model.Temperature,
 		}), nil
 	case APIAnthropicMessages:
 		return NewAnthropic(AnthropicOptions{
-			ID:        provider.ID,
-			APIKey:    apiKey,
-			Model:     model.ID,
-			BaseURL:   model.BaseURL,
-			Headers:   headers,
-			MaxTokens: model.MaxTokens,
+			ID:          provider.ID,
+			APIKey:      apiKey,
+			Model:       model.ID,
+			BaseURL:     model.BaseURL,
+			Headers:     headers,
+			MaxTokens:   model.MaxTokens,
+			Temperature: model.Temperature,
 		}), nil
 	default:
 		return nil, fmt.Errorf("provider %q: unsupported api %q", provider.ID, model.API)
@@ -103,95 +105,4 @@ func (c Catalog) AllModels() []ResolvedModel {
 		out = append(out, provider.Models...)
 	}
 	return out
-}
-
-// ModelRef is the canonical provider/model selector string.
-func ModelRef(providerID, modelID string) string {
-	return providerID + "/" + modelID
-}
-
-// MatchModel finds a model by provider/model ref, id, or fuzzy name match.
-func (c Catalog) MatchModel(query string) (RegisteredProvider, ResolvedModel, bool) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return RegisteredProvider{}, ResolvedModel{}, false
-	}
-
-	if providerID, modelID, ok := strings.Cut(query, "/"); ok {
-		provider, ok := c.Provider(providerID)
-		if !ok {
-			return RegisteredProvider{}, ResolvedModel{}, false
-		}
-		if model, ok := matchProviderModel(provider, modelID); ok {
-			return provider, model, true
-		}
-		return RegisteredProvider{}, ResolvedModel{}, false
-	}
-
-	bestScore := -1
-	var bestProvider RegisteredProvider
-	var bestModel ResolvedModel
-	lower := strings.ToLower(query)
-
-	for _, provider := range c.Providers {
-		for _, model := range provider.Models {
-			if exactModelMatch(lower, provider.ID, model) {
-				return provider, model, true
-			}
-			score := modelMatchScore(lower, provider.ID, model)
-			if score > bestScore {
-				bestScore = score
-				bestProvider = provider
-				bestModel = model
-			}
-		}
-	}
-	if bestScore < 0 {
-		return RegisteredProvider{}, ResolvedModel{}, false
-	}
-	return bestProvider, bestModel, true
-}
-
-func matchProviderModel(provider RegisteredProvider, query string) (ResolvedModel, bool) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		if len(provider.Models) > 0 {
-			return provider.Models[0], true
-		}
-		return ResolvedModel{}, false
-	}
-	lower := strings.ToLower(query)
-	for _, model := range provider.Models {
-		if exactModelMatch(lower, provider.ID, model) {
-			return model, true
-		}
-	}
-	for _, model := range provider.Models {
-		if modelMatchScore(lower, provider.ID, model) >= 0 {
-			return model, true
-		}
-	}
-	return ResolvedModel{}, false
-}
-
-func exactModelMatch(lowerQuery, providerID string, model ResolvedModel) bool {
-	return lowerQuery == strings.ToLower(model.ID) ||
-		lowerQuery == strings.ToLower(model.Name) ||
-		lowerQuery == strings.ToLower(ModelRef(providerID, model.ID))
-}
-
-func modelMatchScore(lowerQuery, providerID string, model ResolvedModel) int {
-	scores := []int{
-		fuzzy.Score(lowerQuery, model.ID),
-		fuzzy.Score(lowerQuery, model.Name),
-		fuzzy.Score(lowerQuery, ModelRef(providerID, model.ID)),
-		fuzzy.Score(lowerQuery, providerID),
-	}
-	best := -1
-	for _, score := range scores {
-		if score > best {
-			best = score
-		}
-	}
-	return best
 }

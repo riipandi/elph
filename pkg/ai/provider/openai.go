@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
 const defaultOpenAIBaseURL = "https://api.openai.com/v1"
@@ -18,6 +20,7 @@ type OpenAIOptions struct {
 	Headers      map[string]string
 	AuthHeader   bool
 	MaxTokens    int
+	Temperature  float64
 }
 
 // OpenAICompatible calls an OpenAI-style chat completions endpoint.
@@ -29,6 +32,7 @@ type OpenAICompatible struct {
 	Headers      map[string]string
 	AuthHeader   bool
 	MaxTokens    int
+	Temperature  float64
 	client       *http.Client
 }
 
@@ -45,7 +49,6 @@ func NewOpenAICompatible(opts OpenAIOptions) *OpenAICompatible {
 	if maxTokens == 0 {
 		maxTokens = defaultMaxTokens
 	}
-
 	return &OpenAICompatible{
 		IDName:       opts.ID,
 		APIKey:       opts.APIKey,
@@ -54,7 +57,8 @@ func NewOpenAICompatible(opts OpenAIOptions) *OpenAICompatible {
 		Headers:      opts.Headers,
 		AuthHeader:   opts.AuthHeader,
 		MaxTokens:    maxTokens,
-		client:       newHTTPClient(),
+		Temperature:  opts.Temperature,
+		client:       utils.NewHTTPClient(),
 	}
 }
 
@@ -80,9 +84,10 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (strin
 		Content string `json:"content"`
 	}
 	type request struct {
-		Model     string    `json:"model"`
-		Messages  []message `json:"messages"`
-		MaxTokens int       `json:"max_tokens,omitempty"`
+		Model       string    `json:"model"`
+		Messages    []message `json:"messages"`
+		MaxTokens   int       `json:"max_tokens,omitempty"`
+		Temperature float64   `json:"temperature"`
 	}
 	type choice struct {
 		Message message `json:"message"`
@@ -99,10 +104,11 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (strin
 
 	var out response
 	url := p.BaseURL + "/chat/completions"
-	err := postJSON(ctx, p.client, url, p.requestHeaders(), request{
-		Model:     model,
-		Messages:  messages,
-		MaxTokens: p.MaxTokens,
+	err := utils.PostJSON(ctx, p.client, url, p.requestHeaders(), request{
+		Model:       model,
+		Messages:    messages,
+		MaxTokens:   p.MaxTokens,
+		Temperature: p.Temperature,
 	}, &out)
 	if err != nil {
 		return "", err

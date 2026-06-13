@@ -1,26 +1,27 @@
-package provider
+package ai
 
 import (
 	"strings"
 
 	"github.com/riipandi/elph/internal/fuzzy"
+	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
 // SelectorGroup is a provider bucket in the model picker.
 type SelectorGroup struct {
 	ProviderID   string
 	ProviderName string
-	Models       []ResolvedModel
+	Models       []provider.ResolvedModel
 }
 
 // BuildSelectorGroups returns filtered provider groups and a flat model list.
-func BuildSelectorGroups(catalog Catalog, query string) ([]SelectorGroup, []ResolvedModel) {
+func BuildSelectorGroups(catalog provider.Catalog, query string) ([]SelectorGroup, []provider.ResolvedModel) {
 	query = strings.TrimSpace(query)
 	groups := make([]SelectorGroup, 0, len(catalog.Providers))
-	flat := make([]ResolvedModel, 0)
+	flat := make([]provider.ResolvedModel, 0)
 
 	for _, reg := range catalog.Providers {
-		matched := make([]ResolvedModel, 0, len(reg.Models))
+		matched := make([]provider.ResolvedModel, 0, len(reg.Models))
 		for _, model := range reg.Models {
 			if selectorMatches(query, reg.ID, model) {
 				matched = append(matched, model)
@@ -44,12 +45,11 @@ func BuildSelectorGroups(catalog Catalog, query string) ([]SelectorGroup, []Reso
 	return groups, flat
 }
 
-// SelectorPickIndex returns the best flat index for the active model.
 // FlattenSelectorGroups returns models for a provider filter. An empty providerID
 // includes models from every group.
-func FlattenSelectorGroups(groups []SelectorGroup, providerID string) []ResolvedModel {
+func FlattenSelectorGroups(groups []SelectorGroup, providerID string) []provider.ResolvedModel {
 	if providerID == "" {
-		flat := make([]ResolvedModel, 0)
+		flat := make([]provider.ResolvedModel, 0)
 		for _, group := range groups {
 			flat = append(flat, group.Models...)
 		}
@@ -57,7 +57,7 @@ func FlattenSelectorGroups(groups []SelectorGroup, providerID string) []Resolved
 	}
 	for _, group := range groups {
 		if group.ProviderID == providerID {
-			return append([]ResolvedModel(nil), group.Models...)
+			return append([]provider.ResolvedModel(nil), group.Models...)
 		}
 	}
 	return nil
@@ -98,7 +98,8 @@ func NormalizeProviderFilter(providerID string, groups []SelectorGroup) string {
 	return ""
 }
 
-func SelectorPickIndex(flat []ResolvedModel, providerID, modelID string) int {
+// SelectorPickIndex returns the best flat index for the active model.
+func SelectorPickIndex(flat []provider.ResolvedModel, providerID, modelID string) int {
 	for i, model := range flat {
 		if model.ProviderID == providerID && model.ID == modelID {
 			return i
@@ -110,7 +111,7 @@ func SelectorPickIndex(flat []ResolvedModel, providerID, modelID string) int {
 	return 0
 }
 
-func selectorMatches(query, providerID string, model ResolvedModel) bool {
+func selectorMatches(query, providerID string, model provider.ResolvedModel) bool {
 	if query == "" {
 		return true
 	}

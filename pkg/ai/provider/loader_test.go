@@ -49,7 +49,28 @@ func TestLoadCatalogFromDir(t *testing.T) {
 	require.Equal(t, "https://api.opencode.ai/v1", model.BaseURL)
 	require.Equal(t, defaultContextWindow, model.ContextWindow)
 	require.Equal(t, defaultMaxTokens, model.MaxTokens)
+	require.Equal(t, defaultTemperature, model.Temperature)
 	require.Equal(t, map[string]string{"X-Custom": "value"}, model.Headers)
+}
+
+func TestLoadCatalogModelTemperatureOverride(t *testing.T) {
+	dir := t.TempDir()
+	writeProviderFile(t, dir, "openai.json", `{
+		"baseUrl": "https://api.openai.com/v1",
+		"api": "openai-completions",
+		"apiKey": "test",
+		"models": [
+			{"id": "default-temp"},
+			{"id": "custom-temp", "temperature": 0.2}
+		]
+	}`)
+
+	catalog, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, catalog.Providers, 1)
+	require.Len(t, catalog.Providers[0].Models, 2)
+	require.Equal(t, defaultTemperature, catalog.Providers[0].Models[0].Temperature)
+	require.Equal(t, 0.2, catalog.Providers[0].Models[1].Temperature)
 }
 
 func TestLoadCatalogSkipsInvalidFiles(t *testing.T) {
