@@ -291,7 +291,7 @@ func (m Model) inputBodyView() string {
 	}
 	// Draw the scrollbar in the last column of each line so we do not reserve a
 	// separate gutter column with visible trailing padding before the bar.
-	return overlayInputScrollBar(body, m.inputScrollBarView())
+	return overlayInputScrollBar(body, m.inputScrollBarView(), m.inputWidth)
 }
 
 func (m Model) inputView() string {

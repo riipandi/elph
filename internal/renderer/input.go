@@ -60,8 +60,9 @@ func inputContentWidth(outer int) int {
 }
 
 // overlayInputScrollBar replaces the last column of each textarea line with the
-// scrollbar track/thumb so the bar sits flush against the right edge.
-func overlayInputScrollBar(body, bar string) string {
+// scrollbar track/thumb. Lines are padded to targetWidth so the bar sits flush
+// against the right border padding even when textarea lines are shorter.
+func overlayInputScrollBar(body, bar string, targetWidth int) string {
 	bodyLines := strings.Split(body, "\n")
 	barLines := strings.Split(bar, "\n")
 	if len(bodyLines) > 0 && bodyLines[len(bodyLines)-1] == "" {
@@ -71,18 +72,20 @@ func overlayInputScrollBar(body, bar string) string {
 		barLines = barLines[:len(barLines)-1]
 	}
 
+	textW := max(targetWidth-1, 0)
+
 	out := make([]string, len(bodyLines))
 	for i, line := range bodyLines {
 		if i >= len(barLines) || barLines[i] == "" {
 			out[i] = line
 			continue
 		}
-		w := lipgloss.Width(line)
-		if w == 0 {
-			out[i] = barLines[i]
-			continue
+		truncated := ansi.Truncate(line, textW, "")
+		pad := textW - lipgloss.Width(truncated)
+		if pad < 0 {
+			pad = 0
 		}
-		out[i] = ansi.Truncate(line, w-1, "") + barLines[i]
+		out[i] = truncated + strings.Repeat(" ", pad) + barLines[i]
 	}
 	return strings.Join(out, "\n")
 }

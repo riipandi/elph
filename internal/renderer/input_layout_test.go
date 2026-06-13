@@ -55,10 +55,28 @@ func TestInputScrollbarSitsFlushToRightPadding(t *testing.T) {
 	require.Equal(t, m.chromeOuterWidth(), lipgloss.Width(rendered))
 }
 
+func TestInputScrollbarFlushOnShortLines(t *testing.T) {
+	m := testInputModel(t)
+	lines := make([]string, maxInputLines+2)
+	for i := range lines {
+		lines[i] = "x"
+	}
+	m.input.SetValue(strings.Join(lines, "\n"))
+	m = m.syncInputWidth()
+
+	inner := m.inputBodyView()
+	require.Equal(t, m.inputWidth, lipgloss.Width(inner))
+	for _, line := range strings.Split(inner, "\n") {
+		plain := stripANSI(line)
+		require.True(t, strings.HasSuffix(plain, "░") || strings.HasSuffix(plain, "█"),
+			"scrollbar should sit on the right edge: %q", plain)
+	}
+}
+
 func TestOverlayInputScrollBarShortLine(t *testing.T) {
 	body := "hi" + strings.Repeat(" ", 10)
 	bar := scrollBarFor(1, 2, 0)
-	got := overlayInputScrollBar(body, bar)
+	got := overlayInputScrollBar(body, bar, lipgloss.Width(body))
 	require.Equal(t, lipgloss.Width(body), lipgloss.Width(got))
 	plain := stripANSI(got)
 	require.True(t, strings.HasSuffix(plain, "░") || strings.HasSuffix(plain, "█"),

@@ -3,6 +3,7 @@ package renderer
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/bubbletea"
@@ -184,11 +185,12 @@ func TestSyncInputChrome(t *testing.T) {
 func TestOverlayInputScrollBarEdgeCases(t *testing.T) {
 	body := "short"
 	bar := ""
-	require.Equal(t, body, overlayInputScrollBar(body, bar))
+	require.Equal(t, body, overlayInputScrollBar(body, bar, lipgloss.Width(body)))
 
-	// Zero-width line uses the scrollbar glyph as the whole row.
-	got := overlayInputScrollBar("\n", "░\n")
-	require.Contains(t, got, "░")
+	// Short lines pad so the scrollbar sits on the right edge.
+	got := overlayInputScrollBar("hi", "░", 10)
+	require.Equal(t, 10, lipgloss.Width(got))
+	require.True(t, strings.HasSuffix(stripANSI(got), "░"))
 }
 
 func TestIsShiftEnterKeyMsg(t *testing.T) {
