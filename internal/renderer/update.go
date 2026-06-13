@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
 	"golang.design/x/clipboard"
 )
@@ -20,6 +21,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
+
+		if !m.bannerPrinted {
+			m.bannerPrinted = true
+			cmds = append(cmds, tea.Println(m.bannerView()))
+		}
+
+		if m.oldWidth > 0 && m.width > 0 && m.width != m.oldWidth && m.oldView != "" {
+			N := strings.Count(m.oldView, "\n")
+			M := wrappedHeight(m.oldView, m.width)
+			diff := M - N
+			cmds = append(cmds, clearAndAdjustCursorCmd(diff))
+		}
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
 
@@ -110,6 +123,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update prompt prefix based on input content.
 	m = m.syncPromptPrefix()
 
+	// Store old view and old width for resize handling in the next frame
+	m.oldView = m.View()
+	m.oldWidth = m.width
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -184,6 +201,35 @@ func stripTrigger(s string) string {
 		return strings.TrimPrefix(s, "/")
 	}
 	return s
+}
+
+func clearAndAdjustCursorCmd(diff int) tea.Cmd {
+	return func() tea.Msg {
+		if diff > 0 {
+			fmt.Printf("\x1b[%dA", diff)
+		} else if diff < 0 {
+			fmt.Printf("\x1b[%dB", -diff)
+		}
+		fmt.Print("\x1b[J")
+		return nil
+	}
+}
+
+func wrappedHeight(s string, width int) int {
+	if width <= 0 {
+		return 0
+	}
+	lines := strings.Split(s, "\n")
+	totalLines := 0
+	for _, line := range lines {
+		w := lipgloss.Width(line)
+		if w == 0 {
+			totalLines += 1
+		} else {
+			totalLines += (w + width - 1) / width
+		}
+	}
+	return totalLines - 1
 }
 
 // ─── Keymap Resolution ─────────────────────────────────────────────────────

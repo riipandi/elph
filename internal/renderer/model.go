@@ -99,6 +99,9 @@ type Model struct {
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
+	bannerPrinted bool
+	oldView       string
+	oldWidth      int
 }
 
 func New() Model {
