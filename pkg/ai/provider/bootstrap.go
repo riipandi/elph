@@ -107,7 +107,7 @@ func primaryTemplates() []bootstrapTemplate {
 			ID: "opencode",
 			Config: FileConfig{
 				Name:       "OpenCode Zen",
-				BaseURL:    "https://opencode.ai/zen/v1",
+				BaseURL:    OpenCodeZenBaseURL,
 				API:        APIOpenAICompletions,
 				APIKey:     "env.OPENCODE_API_KEY",
 				AuthHeader: true,
@@ -146,6 +146,32 @@ func primaryTemplates() []bootstrapTemplate {
 						ContextWindow: 128000,
 						MaxTokens:     8192,
 						Cost:          &Cost{Input: 0.14, Output: 0.28, CacheRead: 0.028, CacheWrite: 0},
+					},
+				},
+			},
+		},
+		{
+			ID: "opencode-go",
+			Config: FileConfig{
+				Name:       "OpenCode Go",
+				BaseURL:    OpenCodeGoBaseURL,
+				API:        APIOpenAICompletions,
+				APIKey:     "env.OPENCODE_API_KEY",
+				AuthHeader: true,
+				Models: []ModelConfig{
+					{
+						ID:            "kimi-k2.5",
+						Name:          "Kimi K2.5",
+						Reasoning:     true,
+						Input:         []string{"text", "image"},
+						ContextWindow: 262144,
+						MaxTokens:     65536,
+					},
+					{
+						ID:            "deepseek-v4-flash",
+						Name:          "DeepSeek V4 Flash",
+						ContextWindow: 1000000,
+						MaxTokens:     384000,
 					},
 				},
 			},

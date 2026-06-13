@@ -55,6 +55,39 @@ func PostJSON(ctx context.Context, client *http.Client, url string, headers map[
 	return nil
 }
 
+// GetJSON sends a GET request and decodes a JSON response.
+func GetJSON(ctx context.Context, client *http.Client, url string, out any) error {
+	if client == nil {
+		client = NewHTTPClient()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("upstream %s: %s", resp.Status, trimBody(raw))
+	}
+	if out == nil {
+		return nil
+	}
+	if err := json.Unmarshal(raw, out); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+	return nil
+}
+
 func trimBody(raw []byte) string {
 	text := string(bytes.TrimSpace(raw))
 	if len(text) > 240 {

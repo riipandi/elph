@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/spf13/cobra"
 )
@@ -20,13 +21,33 @@ var providerUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Prefill primary provider templates in ~/.elph/providers",
 	Long: strings.TrimSpace(`
-Write starter provider files for OpenAI, Anthropic, and OpenCode Zen.
+Write starter provider files for OpenAI, Anthropic, OpenCode Zen, and OpenCode Go.
 
 Existing files are left untouched unless --force is passed.
 Set API keys via environment variables referenced in the JSON files:
   OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENCODE_API_KEY
 `),
 	RunE: runProviderUpdate,
+}
+
+var providerUpdateModelsCmd = &cobra.Command{
+	Use:   "models",
+	Short: "Refresh model metadata from models.dev",
+	Long: strings.TrimSpace(`
+Fetch model metadata from https://models.dev/catalog.json and
+https://models.dev/models.json, then update provider files under ~/.elph/providers.
+
+OpenCode Zen and OpenCode Go model lists come from their live /models endpoints;
+models.dev supplies context window, pricing, and other metadata only.
+
+Other providers use the models.dev catalog for both discovery and metadata.
+
+Provider credentials, headers, and per-model overrides such as temperature are preserved.
+
+Records the sync time in ~/.elph/settings.json. The TUI checks this timestamp
+on startup and auto-syncs when models.syncInterval has elapsed (default 24h).
+`),
+	RunE: runProviderUpdateModels,
 }
 
 func runProviderUpdate(cmd *cobra.Command, args []string) error {
@@ -48,7 +69,30 @@ func runProviderUpdate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func runProviderUpdateModels(cmd *cobra.Command, args []string) error {
+	result, err := settings.RunModelsSync()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Providers directory: %s\n", result.Dir)
+	if len(result.Updated) > 0 {
+		fmt.Printf("Updated: %s\n", strings.Join(result.Updated, ", "))
+	}
+	if len(result.Skipped) > 0 {
+		fmt.Printf("Skipped: %s\n", strings.Join(result.Skipped, ", "))
+	}
+	for _, warning := range result.Warnings {
+		fmt.Fprintf(os.Stderr, "Warning: %s\n", warning)
+	}
+	if len(result.Updated) == 0 {
+		fmt.Fprintln(os.Stderr, "No provider files were updated.")
+	}
+	return nil
+}
+
 func init() {
 	providerUpdateCmd.Flags().BoolVar(&providerForce, "force", false, "Overwrite existing provider files")
+	providerUpdateCmd.AddCommand(providerUpdateModelsCmd)
 	providerCmd.AddCommand(providerUpdateCmd)
 }

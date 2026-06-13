@@ -64,7 +64,7 @@ func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
 }
 
 func (m Model) spinnerTickCmd() tea.Cmd {
-	if !m.showsActivity() {
+	if !m.showsActivity() && !m.modelsSyncingActive() {
 		return nil
 	}
 	return tea.Tick(spinnerInterval, func(time.Time) tea.Msg { return spinnerTickMsg{} })

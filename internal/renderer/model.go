@@ -106,6 +106,9 @@ type Model struct {
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
 
+	modelsSyncing   bool
+	modelsSyncMsgID int // index in messages of models.dev sync status (-1 = none)
+
 	inputPendingEsc bool // macOS ESC+backspace Option+Delete pair
 }
 
@@ -183,7 +186,7 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return enableTerminalFeatures()
+	return tea.Batch(enableTerminalFeatures(), checkModelsSyncDueCmd())
 }
 
 func (m Model) availableModelCount() int {

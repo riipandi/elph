@@ -13,21 +13,21 @@ const anthropicVersion = "2023-06-01"
 
 // AnthropicOptions configures an Anthropic Messages API provider.
 type AnthropicOptions struct {
-	ID        string
-	APIKey    string
-	Model     string
-	BaseURL   string
-	Headers   map[string]string
+	ID          string
+	APIKey      string
+	Model       string
+	BaseURL     string
+	Headers     map[string]string
 	MaxTokens   int
 	Temperature float64
 }
 
 // Anthropic calls the Anthropic Messages API.
 type Anthropic struct {
-	IDName    string
-	APIKey    string
-	Model     string
-	BaseURL   string
+	IDName      string
+	APIKey      string
+	Model       string
+	BaseURL     string
 	Headers     map[string]string
 	MaxTokens   int
 	Temperature float64
@@ -81,11 +81,11 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 		Content string `json:"content"`
 	}
 	type request struct {
-		Model     string    `json:"model"`
+		Model       string    `json:"model"`
 		MaxTokens   int       `json:"max_tokens"`
 		Temperature float64   `json:"temperature"`
 		System      string    `json:"system,omitempty"`
-		Messages  []message `json:"messages"`
+		Messages    []message `json:"messages"`
 	}
 	type contentBlock struct {
 		Type string `json:"type"`
@@ -97,11 +97,11 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (string, erro
 
 	var out response
 	err := utils.PostJSON(ctx, p.client, p.apiURL(), p.requestHeaders(), request{
-		Model:     model,
+		Model:       model,
 		MaxTokens:   p.MaxTokens,
 		Temperature: p.Temperature,
 		System:      req.SystemPrompt,
-		Messages:  []message{{Role: "user", Content: req.UserPrompt}},
+		Messages:    []message{{Role: "user", Content: req.UserPrompt}},
 	}, &out)
 	if err != nil {
 		return "", err

@@ -114,8 +114,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.agent.Events = nil
 
 	case spinnerTickMsg:
-		if m.showsActivity() {
+		if m.showsActivity() || m.modelsSyncingActive() {
 			m.agent.SpinnerFrame++
+			if m.modelsSyncingActive() {
+				m = m.refreshModelsSyncStatus()
+			}
 			cmds = append(cmds, m.spinnerTickCmd())
 		}
 
@@ -152,6 +155,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case termFeaturesMsg:
 		// Terminal feature setup complete.
+
+	case modelsSyncDueMsg:
+		var cmd tea.Cmd
+		m, cmd = m.startModelsSync()
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+
+	case modelsSyncDoneMsg:
+		m = m.finishModelsSync(msg)
 
 	case tea.MouseWheelMsg:
 		// Wheel always scrolls the viewport. Resume capture first if a text

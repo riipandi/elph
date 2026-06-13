@@ -113,5 +113,3 @@ func normalizeModel(providerID, providerName string, cfg FileConfig, model Model
 		Headers:       headers,
 	}, nil
 }
-
-
