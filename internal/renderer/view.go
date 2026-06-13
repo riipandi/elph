@@ -18,12 +18,13 @@ var (
 				BorderForeground(constants.Blue).
 				Padding(1, 2)
 
-	dimStyle  = lipgloss.NewStyle().Foreground(constants.DimText)
-	valStyle  = lipgloss.NewStyle().Foreground(constants.BrightText)
-	whiteSty  = lipgloss.NewStyle().Foreground(constants.White)
-	sidSty    = lipgloss.NewStyle().Foreground(constants.DimText)
-	yellowSty = lipgloss.NewStyle().Foreground(constants.Yellow).Italic(true)
-	metaSty   = lipgloss.NewStyle().Foreground(constants.DimText)
+	dimStyle     = lipgloss.NewStyle().Foreground(constants.DimText)
+	valStyle     = lipgloss.NewStyle().Foreground(constants.BrightText)
+	whiteSty     = lipgloss.NewStyle().Foreground(constants.White)
+	whiteBoldSty = lipgloss.NewStyle().Foreground(constants.White).Bold(true)
+	sidSty       = lipgloss.NewStyle().Foreground(constants.DimText)
+	yellowSty    = lipgloss.NewStyle().Foreground(constants.Yellow).Italic(true)
+	metaSty      = lipgloss.NewStyle().Foreground(constants.DimText)
 )
 
 // cachedInputBorder returns a border style for the given mode.
@@ -90,14 +91,53 @@ func padLine(width int, content string) string {
 	return lipgloss.NewStyle().Padding(0, 1).Width(width).Render(content)
 }
 
+// bannerContentWidth is the usable text width inside the banner border and padding.
+func bannerContentWidth(terminalW int) int {
+	return max(terminalW-6, 10)
+}
+
+// footerContentWidth is the usable text width for footer rows (1-char left padding).
+func footerContentWidth(terminalW int) int {
+	return max(terminalW-2, 1)
+}
+
+// clampLine truncates styled content to a single line (line-clamp).
+func clampLine(maxW int, s string) string {
+	if maxW <= 0 {
+		return ""
+	}
+	return lipgloss.NewStyle().MaxWidth(maxW).Inline(true).Render(s)
+}
+
+// metaLine renders a dim label + bright value, truncated as one line.
+func metaLine(maxW int, label, value string) string {
+	return clampLine(maxW, dimStyle.Render(label)+valStyle.Render(value))
+}
+
+// wrapLine word-wraps styled content within the given width.
+func wrapLine(width int, s string) string {
+	if width <= 0 {
+		return s
+	}
+	return lipgloss.NewStyle().Width(width).Inline(true).Render(s)
+}
+
+// footerRow renders a status line with a truncated left segment and a right segment
+// flush to the edge.
+func footerRow(contentW int, left, right string) string {
+	rightW := lipgloss.Width(right)
+	if rightW >= contentW {
+		return clampLine(contentW, right)
+	}
+	leftW := contentW - rightW
+	return lipgloss.JoinHorizontal(lipgloss.Top, clampLine(leftW, left), right)
+}
+
 // ─── Sub-views ───────────────────────────────────────────────────────────────
 
 func (m Model) bannerView() string {
 	w := m.width
-
-	// Pre-compute available widths for line-clamp and wrap.
-	metaW := max(w-6, 20)
-	tipW := max(w-6, 10)
+	innerW := bannerContentWidth(w)
 
 	// TODO: replace with actual value
 	updateAvailable := false
@@ -108,32 +148,31 @@ func (m Model) bannerView() string {
 		versionLine = fmt.Sprintf("Welcome to %s v%s %s", config.AppName, config.AppVersion, updateNotice)
 	}
 
-	header := lipgloss.NewStyle().Bold(true).Render(versionLine)
-	subtitle := dimStyle.MaxWidth(metaW).Render("Send /changelog to show version history.")
-
 	logo := lipgloss.JoinVertical(lipgloss.Left,
 		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(logoLine1),
 		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(logoLine2),
 	)
+	logoBlock := lipgloss.NewStyle().MarginRight(2).Render(logo)
+	topW := max(innerW-lipgloss.Width(logoBlock), 10)
+
+	header := clampLine(topW, lipgloss.NewStyle().Bold(true).Render(versionLine))
+	subtitle := clampLine(topW, dimStyle.Render("Send /changelog to show version history."))
 
 	// Top section: logo + header/subtitle side by side.
-	topSection := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().MarginRight(2).Render(logo),
-		lipgloss.JoinVertical(lipgloss.Left, header, subtitle),
-	)
+	topSection := lipgloss.JoinHorizontal(lipgloss.Top, logoBlock, lipgloss.JoinVertical(lipgloss.Left, header, subtitle))
 
 	// Metadata lines: left-aligned to banner edge (no logo offset).
 	meta := lipgloss.JoinVertical(lipgloss.Left,
 		"",
-		dimStyle.MaxWidth(metaW).Render("Directory:  ")+valStyle.Render(m.workDir),
-		dimStyle.MaxWidth(metaW).Render("Model:      ")+valStyle.Render(fmt.Sprintf("%s [%s] (000 available)", m.modelName, m.provider)),
-		dimStyle.MaxWidth(metaW).Render("Stats:      ")+valStyle.Render(fmt.Sprintf("%d exts, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
-		dimStyle.MaxWidth(metaW).Render("MCP:        ")+valStyle.Render(fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
+		metaLine(innerW, "Directory:  ", m.workDir),
+		metaLine(innerW, "Model:      ", fmt.Sprintf("%s [%s] (000 available)", m.modelName, m.provider)),
+		metaLine(innerW, "Stats:      ", fmt.Sprintf("%d exts, %d commands, %d skills, %d tools", 0, 0, 0, 0)),
+		metaLine(innerW, "MCP Server: ", fmt.Sprintf("%d/%d connected (%d tools)", 0, 0, 0)),
 	)
 
 	// Tip: word-wraps within available width.
 	tipBody := dimStyle.Italic(true).Render(" " + m.tip)
-	tip := lipgloss.NewStyle().Width(tipW).Render(yellowSty.Render("Tip:") + tipBody)
+	tip := wrapLine(innerW, yellowSty.Render("Tip:")+tipBody)
 
 	content := lipgloss.JoinVertical(lipgloss.Left, topSection, meta, "", tip)
 
@@ -157,23 +196,22 @@ func (m Model) footerView() string {
 	wd := filepath.Base(m.workDir)
 	sidVal := m.sessionID.Suffix()
 
-	w := m.width
-	cw := w - 2 // account for PaddingLeft(1)
+	cw := footerContentWidth(m.width)
 
 	// --- Line 1 left: model (thinking color) | provider | T: level | IMG ---
 	modelSty := lipgloss.NewStyle().Foreground(constants.ThinkingColor(m.thinkingLevel))
-	line1LeftRendered := modelSty.Render(m.modelName) + metaSty.Render(fmt.Sprintf(" | %s | T: %s | IMG", m.provider, m.thinkingLevel))
+	line1Left := modelSty.Render(m.modelName) + metaSty.Render(fmt.Sprintf(" | %s | T: %s | IMG", m.provider, m.thinkingLevel))
 
 	// --- Line 1 right: cost | context% (dynamic color) ---
 	ctxColor := constants.ContextUsageColor(m.contextUsed)
 	ctxSty := lipgloss.NewStyle().Foreground(ctxColor)
-	line1RightRendered := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (262k)", m.contextUsed*100))
+	line1Right := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (262k)", m.contextUsed*100))
 
-	// --- Line 2 left: dir (white) [session] mode (mode color) ---
+	// --- Line 2 left: dir (white, bold) [session] mode (mode color) ---
 	modeSty := lipgloss.NewStyle().Foreground(constants.ModeBorderColor(m.mode)).Bold(true)
-	line2LeftRendered := whiteSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
+	line2Left := whiteBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
 
-	// --- Line 2 right: turn | branch [+add -del] (white) ---
+	// --- Line 2 right: turn | branch [+add -del] ---
 	gitStr := "[-]"
 	if m.gitAdded > 0 || m.gitDeleted > 0 {
 		gitStr = fmt.Sprintf("[+%d -%d]", m.gitAdded, m.gitDeleted)
@@ -190,19 +228,10 @@ func (m Model) footerView() string {
 		gitColor = constants.Gray
 	}
 	gitSty := lipgloss.NewStyle().Foreground(gitColor)
-	line2RightRendered := whiteSty.Render(fmt.Sprintf("turn: 0 | %s ", m.branch)) + gitSty.Render(gitStr)
+	line2Right := whiteSty.Render(fmt.Sprintf("turn: 0 | %s ", m.branch)) + gitSty.Render(gitStr)
 
-	// Line 1: left takes remaining space, right flush to edge.
-	rightW1 := lipgloss.Width(line1RightRendered)
-	left1W := max(cw-rightW1, 0)
-	left1 := metaSty.Width(left1W).Render(line1LeftRendered)
-	row1 := lipgloss.JoinHorizontal(lipgloss.Top, left1, line1RightRendered)
-
-	// Line 2: same approach.
-	rightW2 := lipgloss.Width(line2RightRendered)
-	left2W := max(cw-rightW2, 0)
-	left2 := metaSty.Width(left2W).Render(line2LeftRendered)
-	row2 := lipgloss.JoinHorizontal(lipgloss.Top, left2, line2RightRendered)
+	row1 := footerRow(cw, line1Left, line1Right)
+	row2 := footerRow(cw, line2Left, line2Right)
 
 	footerContent := lipgloss.JoinVertical(lipgloss.Left, row1, row2)
 	return lipgloss.NewStyle().PaddingLeft(1).Render(footerContent)

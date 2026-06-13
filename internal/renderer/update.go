@@ -50,14 +50,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if !m.bannerPrinted {
 			m.bannerPrinted = true
-			cmds = append(cmds, tea.Println(m.bannerView()))
-		}
-
-		if m.oldWidth > 0 && m.width > 0 && m.width != m.oldWidth && m.oldView != "" {
-			N := strings.Count(m.oldView, "\n")
-			M := wrappedHeight(m.oldView, m.width)
-			diff := M - N
-			cmds = append(cmds, clearAndAdjustCursorCmd(diff))
+			cmds = append(cmds, tea.Println(m.streamView()))
+		} else if m.oldWidth > 0 && m.width > 0 && m.width != m.oldWidth {
+			// Banner and messages are printed via tea.Println and do not
+			// re-render on resize like the pinned View(). Clear the stale
+			// scrollback, then queue a full repaint at the new width.
+			scrollH := lipgloss.Height(m.oldScrollback)
+			viewH := lipgloss.Height(m.oldView)
+			cmds = append(cmds, tea.Sequence(
+				redrawAboveViewCmd(scrollH, viewH),
+				tea.Println(m.streamView()),
+			))
 		}
 
 	case ctrlCResetMsg:
@@ -150,9 +153,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update prompt prefix based on input content.
 	m = m.syncPromptPrefix()
 
-	// Store old view and width for resize handling in the next frame.
-	// Only call View() when resize tracking is active to avoid per-frame overhead.
-	// View() is expensive because it builds the full terminal output string.
+	// Store scrollback and pinned view for resize handling in the next frame.
+	m.oldScrollback = m.streamView()
 	m.oldView = m.View()
 	m.oldWidth = m.width
 
@@ -232,31 +234,15 @@ func stripTrigger(s string) string {
 	return s
 }
 
-func clearAndAdjustCursorCmd(diff int) tea.Cmd {
+// redrawAboveViewCmd moves the cursor up past the previous scrollback and
+// pinned view, then clears everything below so tea.Println can repaint.
+func redrawAboveViewCmd(scrollbackLines, viewLines int) tea.Cmd {
 	return func() tea.Msg {
-		if diff > 0 {
-			fmt.Printf("\x1b[%dA", diff)
-		} else if diff < 0 {
-			fmt.Printf("\x1b[%dB", -diff)
+		linesUp := scrollbackLines + viewLines - 1
+		if linesUp > 0 {
+			fmt.Printf("\x1b[%dA", linesUp)
 		}
 		fmt.Print("\x1b[J")
 		return nil
 	}
-}
-
-func wrappedHeight(s string, width int) int {
-	if width <= 0 {
-		return 0
-	}
-	lines := strings.Split(s, "\n")
-	totalLines := 0
-	for _, line := range lines {
-		w := lipgloss.Width(line)
-		if w == 0 {
-			totalLines += 1
-		} else {
-			totalLines += (w + width - 1) / width
-		}
-	}
-	return totalLines - 1
 }

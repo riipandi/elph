@@ -101,7 +101,8 @@ type Model struct {
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
 	ctrlCNoticeID int // index in messages of the notice (-1 = none)
 	bannerPrinted bool
-	oldView       string
+	oldScrollback string // banner + messages at previous width
+	oldView       string // input + footer at previous width
 	oldWidth      int
 }
 
