@@ -91,6 +91,16 @@ func TestResumeMouseAfterSelection(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
+func TestResumeMouseWhenAlreadyEnabled(t *testing.T) {
+	m := New()
+	m.mouseEnabled = true
+	m.selectingText = false
+
+	updated, cmd := m.resumeMouseAfterSelection()
+	require.Equal(t, m, updated)
+	require.Nil(t, cmd)
+}
+
 func TestKeyAfterSelectionResumesMouse(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = false
@@ -101,4 +111,17 @@ func TestKeyAfterSelectionResumesMouse(t *testing.T) {
 
 	require.True(t, m.mouseEnabled)
 	require.False(t, m.selectingText)
+}
+
+func TestContentMouseReleaseUpdatesViewport(t *testing.T) {
+	m := testModelWithLayout(t)
+	m.mouseEnabled = true
+
+	updated, _ := m.Update(tea.MouseMsg{
+		X: 1, Y: 1,
+		Action: tea.MouseActionRelease,
+		Button: tea.MouseButtonLeft,
+	})
+	m = updated.(Model)
+	require.NotNil(t, updated)
 }
