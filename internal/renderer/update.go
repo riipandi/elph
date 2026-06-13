@@ -39,6 +39,11 @@ func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	if !m.busy && m.input.Focused() && isNewlineInputMsg(msg) {
+		m, cmd := m.handleInputNewlineMsg(msg)
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -71,6 +76,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AgentDoneMsg:
 		m = m.finishAgentTurn(msg.Response)
+
+	case termFeaturesMsg:
+		// Terminal feature setup complete.
 
 	case tea.MouseMsg:
 		evt := tea.MouseEvent(msg)
@@ -114,6 +122,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		if !m.busy && m.input.Focused() && isInputNewlineKey(msg) {
+			m, cmd := m.handleInputNewlineMsg(msg)
+			return m, cmd
+		}
+
 		action := resolveKeyAction(msg)
 
 		switch action {
@@ -122,8 +135,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.ctrlCPress == 1 && hasInput {
 				m.ctrlCPress = 2
-				m.input.SetValue("")
-				m.promptChar = ">"
+				m = m.resetInput()
 				var cmd tea.Cmd
 				m, cmd = m.replaceNotice("Input cleared, press again to exit")
 				return m, cmd
@@ -131,7 +143,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.ctrlCPress == 2 || (m.ctrlCPress == 1 && !hasInput) {
 				m.quitting = true
-				return m, tea.Quit
+				return m, tea.Sequence(disableTerminalFeatures(), tea.Quit)
 			}
 
 			m.ctrlCPress = 1
@@ -144,7 +156,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case constants.ActionExit:
 			m.quitting = true
-			return m, tea.Quit
+			return m, tea.Sequence(disableTerminalFeatures(), tea.Quit)
 
 		case constants.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
@@ -157,27 +169,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case constants.ActionSubmit:
-			if m.busy {
+			if isInputNewlineKey(msg) {
 				break
 			}
-			if !m.input.Focused() {
+			if m.busy || !m.input.Focused() {
 				break
 			}
-			val := strings.TrimSpace(m.input.Value())
-			if val == "" {
+			var cmd tea.Cmd
+			var ok bool
+			m, cmd, ok = m.trySubmitInput()
+			if ok {
+				return m, cmd
+			}
+
+		case constants.ActionNewline:
+			if m.busy || !m.input.Focused() {
 				break
 			}
-			if val == ":q" || val == ":q!" {
-				m.quitting = true
-				return m, tea.Quit
-			}
-			val = stripTrigger(val)
-			m = m.addUserMessage(val)
-			m.input.SetValue("")
-			m.promptChar = ">"
-			m = m.beginAgentTurn()
-			m = m.syncLayout(true)
-			return m, m.agentTurnCmds(val)
+			m, cmd := m.handleInputNewlineMsg(msg)
+			return m, cmd
 
 		case constants.ActionCopy:
 			if len(m.messages) > 0 {
@@ -196,8 +206,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	if !m.busy {
+		prevInputH := m.input.Height()
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
+		m = m.syncInputHeight()
+		if m.input.Height() != prevInputH {
+			m = m.syncInputWidth()
+		}
 	}
 
 	prevPrefix := m.showPromptPrefix

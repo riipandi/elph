@@ -136,7 +136,7 @@ func New() Model {
 	ta.CharLimit = 4096
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
-	ta.MaxHeight = 6
+	ta.MaxHeight = maxInputLines
 	ta.FocusedStyle = noBgStyles()
 	ta.BlurredStyle = noBgStyles()
 	ta.KeyMap.InsertNewline.SetKeys(tea.KeyCtrlJ.String(), "shift+enter")
@@ -167,5 +167,5 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, tea.EnableMouseCellMotion)
+	return tea.Batch(textarea.Blink, tea.EnableMouseCellMotion, enableTerminalFeatures())
 }

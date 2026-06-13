@@ -1,0 +1,291 @@
+package renderer
+
+import (
+	"fmt"
+	"os"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/riipandi/elph/internal/constants"
+)
+
+const (
+	maxInputLines    = 8
+	minViewportRows  = 6
+	inputChromeSlack = 2
+
+	kittyModShift = 1
+	xtermModShift = 2
+)
+
+var (
+	kittyEnterModsRe   = regexp.MustCompile(`13;(\d+)u`)
+	xtermEnterModsRe   = regexp.MustCompile(`27;(\d+);13`)
+	legacyShiftEnterRe = regexp.MustCompile(`13;2~`)
+	csiByteListRe      = regexp.MustCompile(`^\[([0-9]+(?: [0-9]+)*)\]$`)
+)
+
+type termFeaturesMsg struct{}
+
+// enableTerminalFeatures requests enhanced key reporting so Shift+Enter can be
+// distinguished from Enter. Uses push semantics to preserve user terminal cfg.
+func enableTerminalFeatures() tea.Cmd {
+	return func() tea.Msg {
+		_, _ = fmt.Fprint(os.Stdout, ansi.SetModifyOtherKeys2)
+		_, _ = fmt.Fprint(os.Stdout, ansi.PushKittyKeyboard(ansi.KittyDisambiguateEscapeCodes))
+		return termFeaturesMsg{}
+	}
+}
+
+func disableTerminalFeatures() tea.Cmd {
+	return func() tea.Msg {
+		_, _ = fmt.Fprint(os.Stdout, ansi.ResetModifyOtherKeys)
+		_, _ = fmt.Fprint(os.Stdout, ansi.PopKittyKeyboard(1))
+		return nil
+	}
+}
+
+// inputContentWidth is the textarea width inside the input border and padding.
+func inputContentWidth(outer int) int {
+	return max(outer-4, 1)
+}
+
+func isInputNewlineKey(msg tea.KeyMsg) bool {
+	if msg.Type == tea.KeyCtrlJ {
+		return true
+	}
+	return isShiftEnterKeyMsg(msg) || isLiteralNewlineKeyMsg(msg)
+}
+
+func isShiftEnterKeyMsg(msg tea.KeyMsg) bool {
+	return msg.String() == "shift+enter"
+}
+
+// isLiteralNewlineKeyMsg matches Ghostty's `keybind = shift+enter=text:\n` and
+// VS Code's configured Shift+Enter that inject a newline rune.
+func isLiteralNewlineKeyMsg(msg tea.KeyMsg) bool {
+	return msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == '\n'
+}
+
+func rawCSIPayload(msg tea.Msg) (string, bool) {
+	v := reflect.ValueOf(msg)
+	if v.Kind() != reflect.Slice || v.Type().Elem().Kind() != reflect.Uint8 {
+		return "", false
+	}
+	b := v.Bytes()
+	if len(b) < 3 || b[0] != '\x1b' || b[1] != '[' {
+		return "", false
+	}
+	return string(b[2:]), true
+}
+
+func csiPayloadFromString(text string) string {
+	i := strings.Index(text, "CSI")
+	if i < 0 {
+		return ""
+	}
+	payload := strings.TrimSuffix(text[i+3:], "?")
+	if m := csiByteListRe.FindStringSubmatch(payload); len(m) == 2 {
+		return decodeCSIByteList(m[1])
+	}
+	return payload
+}
+
+func decodeCSIByteList(list string) string {
+	parts := strings.Fields(list)
+	buf := make([]byte, 0, len(parts))
+	for _, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 || n > 255 {
+			return ""
+		}
+		buf = append(buf, byte(n))
+	}
+	return string(buf)
+}
+
+func csiPayload(msg tea.Msg) string {
+	if payload, ok := rawCSIPayload(msg); ok {
+		return payload
+	}
+	if s, ok := msg.(interface{ String() string }); ok {
+		return csiPayloadFromString(s.String())
+	}
+	return ""
+}
+
+func isShiftEnterPayload(payload string) bool {
+	if payload == "" {
+		return false
+	}
+	// Kitty: ESC [ 13 ; <mods> u — bit 1 is shift.
+	if m := kittyEnterModsRe.FindStringSubmatch(payload); len(m) == 2 {
+		mods, err := strconv.Atoi(m[1])
+		if err == nil && mods&kittyModShift != 0 {
+			return true
+		}
+		// Ghostty commonly emits 13;2u for Shift+Enter keybind CSI mode.
+		if mods == 2 {
+			return true
+		}
+	}
+	// xterm modifyOtherKeys: ESC [ 27 ; <mod> ; 13 ~
+	if m := xtermEnterModsRe.FindStringSubmatch(payload); len(m) == 2 {
+		mod, err := strconv.Atoi(m[1])
+		if err == nil && (mod == xtermModShift || mod == 4) {
+			return true
+		}
+	}
+	// Legacy xterm: ESC [ 13 ; 2 ~
+	return legacyShiftEnterRe.MatchString(payload)
+}
+
+// isShiftEnterMsg reports newline CSI sequences for Shift+Enter across xterm
+// modifyOtherKeys, Kitty keyboard protocol, and Ghostty keybind encodings.
+func isShiftEnterMsg(msg tea.Msg) bool {
+	if k, ok := msg.(tea.KeyMsg); ok {
+		return isShiftEnterKeyMsg(k) || isLiteralNewlineKeyMsg(k)
+	}
+	return isShiftEnterPayload(csiPayload(msg))
+}
+
+func isNewlineInputMsg(msg tea.Msg) bool {
+	if k, ok := msg.(tea.KeyMsg); ok {
+		return isInputNewlineKey(k)
+	}
+	return isShiftEnterPayload(csiPayload(msg))
+}
+
+func (m Model) maxInputHeight() int {
+	if !m.ready || m.height <= 0 {
+		return maxInputLines
+	}
+	footerH := lipgloss.Height(m.footerView())
+	activityH := 0
+	if m.activity != constants.ActivityIdle {
+		activityH = lipgloss.Height(m.activityView())
+	}
+	avail := m.height - footerH - activityH - minViewportRows - inputChromeSlack
+	return min(max(avail, 1), maxInputLines)
+}
+
+func (m Model) inputDisplayRows() int {
+	val := m.input.Value()
+	if val == "" {
+		return 1
+	}
+	w := max(m.inputWidth, 1)
+	rows := 0
+	for _, line := range strings.Split(val, "\n") {
+		rows += wrappedInputRows(line, w)
+	}
+	return max(rows, 1)
+}
+
+func wrappedInputRows(line string, width int) int {
+	if width < 1 {
+		width = 1
+	}
+	if line == "" {
+		return 1
+	}
+	wrapped := ansi.Hardwrap(ansi.Wordwrap(line, width, ""), width, false)
+	return max(1, strings.Count(wrapped, "\n")+1)
+}
+
+func (m Model) desiredInputHeight() int {
+	return min(m.inputDisplayRows(), m.maxInputHeight())
+}
+
+func (m Model) syncInputLimits() Model {
+	maxH := m.maxInputHeight()
+	if m.input.MaxHeight != maxH {
+		m.input.MaxHeight = maxH
+	}
+	return m
+}
+
+func (m Model) syncInputHeight() Model {
+	m = m.syncInputLimits()
+	h := m.desiredInputHeight()
+	if m.input.Height() != h {
+		m.input.SetHeight(h)
+	}
+	return m
+}
+
+func (m Model) syncInputChrome() Model {
+	m = m.syncInputWidth()
+	m = m.syncInputHeight()
+	return m
+}
+
+// prepareInputHeightForNewline grows the textarea viewport before inserting a
+// newline so the prior line stays visible (avoids stale YOffset scroll).
+func (m Model) prepareInputHeightForNewline() Model {
+	nextH := min(max(m.input.LineCount()+1, 1), m.maxInputHeight())
+	if m.input.Height() < nextH {
+		m.input.SetHeight(nextH)
+	}
+	return m
+}
+
+func (m Model) handleInputNewlineMsg(msg tea.Msg) (Model, tea.Cmd) {
+	m = m.prepareInputHeightForNewline()
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		if isLiteralNewlineKeyMsg(msg) {
+			m.input, cmd = m.input.Update(msg)
+		} else {
+			m.input, cmd = m.input.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+		}
+	default:
+		m.input, cmd = m.input.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	}
+	m = m.syncInputHeight()
+	if chromeH := m.chromeHeight(); chromeH != m.chromeH {
+		m = m.syncLayout(m.content.AtBottom())
+	}
+	return m, cmd
+}
+
+func normalizeInputForSubmit(s string) string {
+	if s == "" {
+		return ""
+	}
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	return strings.Trim(strings.Join(lines, "\n"), " \t\n")
+}
+
+func (m Model) resetInput() Model {
+	m.input.SetValue("")
+	m.input.SetHeight(1)
+	m.promptChar = ">"
+	return m
+}
+
+func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
+	val := normalizeInputForSubmit(m.input.Value())
+	if val == "" {
+		return m, nil, false
+	}
+	if val == ":q" || val == ":q!" {
+		m.quitting = true
+		return m, tea.Sequence(disableTerminalFeatures(), tea.Quit), true
+	}
+	val = stripTrigger(val)
+	m = m.addUserMessage(val)
+	m = m.resetInput()
+	m = m.beginAgentTurn()
+	m = m.syncLayout(true)
+	return m, m.agentTurnCmds(val), true
+}

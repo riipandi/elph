@@ -109,6 +109,7 @@ func (m Model) syncLayout(follow bool) Model {
 	}
 
 	m.chromeH = m.chromeHeight()
+	m = m.syncInputWidth()
 
 	if follow || atBottom {
 		m.content.GotoBottom()
@@ -120,8 +121,7 @@ func (m Model) syncLayout(follow bool) Model {
 }
 
 func (m Model) syncInputWidth() Model {
-	w := m.width
-	inputW := w - 6
+	inputW := inputContentWidth(m.chromeOuterWidth())
 	if m.showPromptPrefix {
 		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
 		inputW -= lipgloss.Width(prefix)
@@ -131,6 +131,7 @@ func (m Model) syncInputWidth() Model {
 	}
 	m.inputWidth = inputW
 	m.input.SetWidth(inputW)
+	m = m.syncInputHeight()
 	return m
 }
 
