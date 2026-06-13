@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/riipandi/elph/internal/constants"
-	"golang.design/x/clipboard"
 )
 
 // Pre-computed key-binding map for O(1) lookup on every keystroke.
@@ -165,7 +165,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case constants.ActionCopy:
 			if len(m.messages) > 0 {
 				lastMsg := m.messages[len(m.messages)-1]
-				clipboard.Write(clipboard.FmtText, []byte(lastMsg.text))
+				_ = clipboard.WriteAll(lastMsg.text)
 				m, cmd := m.withMessage("Copied to clipboard")
 				return m, cmd
 			}
