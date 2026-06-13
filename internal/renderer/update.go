@@ -21,12 +21,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.ready = true
-
-		vpHeight := max(m.height-18, 3)
-
-		m.vp = viewport.New(msg.Width, vpHeight)
-		m.vp.YPosition = 0
-
+		
+		// Only create viewport once, then resize
+		if m.vp.Width == 0 || m.vp.Height == 0 {
+			vpHeight := max(m.height-18, 3)
+			m.vp = viewport.New(msg.Width, vpHeight)
+		} else {
+			m.vp.Width = msg.Width
+			m.vp.Height = max(m.height-18, 3)
+		}
 	case ctrlCResetMsg:
 		m = m.cancelCtrlC()
 
@@ -130,6 +133,7 @@ func (m Model) addAIMessage(msg string) Model {
 
 func (m Model) withMessage(msg string) Model {
 	m.messages = append(m.messages, message{text: msg, kind: msgSystem})
+	m.vp.GotoBottom()
 	return m
 }
 
