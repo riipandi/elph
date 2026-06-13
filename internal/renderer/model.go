@@ -5,11 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/bubbles/cursor"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"go.jetify.com/typeid/v2"
 )
@@ -110,9 +109,9 @@ type Model struct {
 // Shared "no background" style reused in textarea init to reduce allocations.
 var noBgStyle = lipgloss.NewStyle().Background(lipgloss.NoColor{})
 
-// noBgStyles returns a textarea.Style whose every field uses the shared noBgStyle.
-func noBgStyles() textarea.Style {
-	return textarea.Style{
+// noBgStyles returns textarea styles with transparent backgrounds and a static cursor.
+func noBgStyles() textarea.Styles {
+	blank := textarea.StyleState{
 		Base:             noBgStyle,
 		CursorLine:       noBgStyle,
 		CursorLineNumber: noBgStyle,
@@ -122,13 +121,20 @@ func noBgStyles() textarea.Style {
 		Prompt:           noBgStyle,
 		Text:             noBgStyle,
 	}
+	return textarea.Styles{
+		Focused: blank,
+		Blurred: blank,
+		Cursor: textarea.CursorStyle{
+			Blink: false,
+		},
+	}
 }
 
 func New() Model {
 	wd, _ := os.Getwd()
 	sid := typeid.MustGenerate("sess")
 
-	vp := viewport.New(0, 0)
+	vp := viewport.New()
 	vp.MouseWheelEnabled = true
 	vp.KeyMap = contentViewportKeyMap()
 
@@ -140,10 +146,8 @@ func New() Model {
 	ta.SetHeight(1)
 	// MaxHeight limits total line count in bubbles textarea; leave unset so
 	// content can grow past the viewport cap (syncInputHeight).
-	ta.FocusedStyle = noBgStyles()
-	ta.BlurredStyle = noBgStyles()
-	ta.KeyMap.InsertNewline.SetKeys(tea.KeyCtrlJ.String(), "shift+enter")
-	ta.Cursor.SetMode(cursor.CursorStatic)
+	ta.SetStyles(noBgStyles())
+	ta.KeyMap.InsertNewline.SetKeys("ctrl+j", "shift+enter")
 	ta.Focus()
 
 	return Model{
@@ -170,5 +174,5 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, tea.EnableMouseCellMotion, enableTerminalFeatures())
+	return enableTerminalFeatures()
 }

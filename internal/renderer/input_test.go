@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
+	"charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,7 @@ func testInputModel(t *testing.T) Model {
 func TestCtrlJInsertsNewlineAndGrows(t *testing.T) {
 	m := testInputModel(t)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	updated, _ := m.Update(keyCtrlJ())
 	m = updated.(Model)
 
 	require.Equal(t, "\n", m.input.Value())
@@ -33,7 +33,7 @@ func TestEnterSubmitsEvenWhenMultiline(t *testing.T) {
 	m.input.SetValue("line one\nline two")
 	m = m.syncInputHeight()
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.NotNil(t, cmd)
@@ -65,7 +65,7 @@ func TestEnterSubmitsSingleLine(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("hello")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.NotNil(t, cmd)
@@ -153,7 +153,7 @@ func TestLiteralNewlineInsertsAndKeepsFirstLine(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("hello")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'\n'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: '\n', Text: "\n"})
 	m = updated.(Model)
 	require.Nil(t, cmd)
 	require.True(t, strings.HasPrefix(m.input.Value(), "hello"))
@@ -165,7 +165,7 @@ func TestNewlinePreservesFirstLineWithExistingText(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("first line")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	updated, _ := m.Update(keyCtrlJ())
 	m = updated.(Model)
 
 	require.True(t, strings.HasPrefix(m.input.Value(), "first line"))
@@ -208,7 +208,7 @@ func TestNewlineWorksWhenViewportFull(t *testing.T) {
 	require.Equal(t, maxInputLines, m.input.Height())
 	require.Equal(t, maxInputLines, m.input.LineCount())
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	updated, cmd := m.Update(keyCtrlJ())
 	m = updated.(Model)
 	require.Nil(t, cmd)
 	require.Equal(t, maxInputLines+1, m.input.LineCount(), "value=%q", m.input.Value())

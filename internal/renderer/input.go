@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
 )
@@ -90,21 +90,21 @@ func overlayInputScrollBar(body, bar string, targetWidth int) string {
 	return strings.Join(out, "\n")
 }
 
-func isInputNewlineKey(msg tea.KeyMsg) bool {
-	if msg.Type == tea.KeyCtrlJ {
+func isInputNewlineKey(msg tea.KeyPressMsg) bool {
+	if msg.String() == "ctrl+j" || (msg.Code == 'j' && msg.Mod.Contains(tea.ModCtrl)) {
 		return true
 	}
 	return isShiftEnterKeyMsg(msg) || isLiteralNewlineKeyMsg(msg)
 }
 
-func isShiftEnterKeyMsg(msg tea.KeyMsg) bool {
+func isShiftEnterKeyMsg(msg tea.KeyPressMsg) bool {
 	return msg.String() == "shift+enter"
 }
 
 // isLiteralNewlineKeyMsg matches Ghostty's `keybind = shift+enter=text:\n` and
 // VS Code's configured Shift+Enter that inject a newline rune.
-func isLiteralNewlineKeyMsg(msg tea.KeyMsg) bool {
-	return msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == '\n'
+func isLiteralNewlineKeyMsg(msg tea.KeyPressMsg) bool {
+	return len(msg.Text) == 1 && msg.Text[0] == '\n'
 }
 
 func rawCSIPayload(msg tea.Msg) (string, bool) {
@@ -209,14 +209,14 @@ func isNewlineCSIPayload(payload string) bool {
 // isShiftEnterMsg reports newline CSI sequences for Shift+Enter across xterm
 // modifyOtherKeys, Kitty keyboard protocol, and Ghostty keybind encodings.
 func isShiftEnterMsg(msg tea.Msg) bool {
-	if k, ok := msg.(tea.KeyMsg); ok {
+	if k, ok := msg.(tea.KeyPressMsg); ok {
 		return isShiftEnterKeyMsg(k) || isLiteralNewlineKeyMsg(k)
 	}
 	return isShiftEnterPayload(csiPayload(msg))
 }
 
 func isNewlineInputMsg(msg tea.Msg) bool {
-	if k, ok := msg.(tea.KeyMsg); ok {
+	if k, ok := msg.(tea.KeyPressMsg); ok {
 		return isInputNewlineKey(k)
 	}
 	return isNewlineCSIPayload(csiPayload(msg))
@@ -331,15 +331,16 @@ func (m Model) prepareInputHeightForNewline() Model {
 func (m Model) handleInputNewlineMsg(msg tea.Msg) (Model, tea.Cmd) {
 	m = m.prepareInputHeightForNewline()
 	var cmd tea.Cmd
+	ctrlJ := tea.KeyPressMsg{Code: 'j', Mod: tea.ModCtrl}
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if isLiteralNewlineKeyMsg(msg) {
 			m.input, cmd = m.input.Update(msg)
 		} else {
-			m.input, cmd = m.input.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+			m.input, cmd = m.input.Update(ctrlJ)
 		}
 	default:
-		m.input, cmd = m.input.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+		m.input, cmd = m.input.Update(ctrlJ)
 	}
 	m = m.syncInputWidth()
 	if chromeH := m.chromeHeight(); chromeH != m.chromeH {

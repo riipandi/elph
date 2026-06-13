@@ -3,7 +3,7 @@ package renderer
 import (
 	"time"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 const mouseReenableDelay = 2 * time.Second
@@ -12,40 +12,41 @@ const mouseReenableDelay = 2 * time.Second
 type mouseReenableMsg struct{}
 
 func (m Model) isInContentArea(y int) bool {
-	if !m.ready || m.content.Height <= 0 {
+	if !m.ready || m.content.Height() <= 0 {
 		return false
 	}
-	return y >= 0 && y < m.content.Height
+	return y >= 0 && y < m.content.Height()
 }
 
-func (m Model) shouldReleaseMouseForSelection(evt tea.MouseEvent) bool {
-	if evt.IsWheel() || !m.mouseEnabled {
+func (m Model) shouldReleaseMouseForSelection(msg tea.MouseMsg) bool {
+	if !m.mouseEnabled {
 		return false
 	}
-	if evt.Action != tea.MouseActionPress || evt.Button != tea.MouseButtonLeft {
+	click, ok := msg.(tea.MouseClickMsg)
+	if !ok {
+		return false
+	}
+	if click.Button != tea.MouseLeft {
 		return false
 	}
 	// Left-click in the scrollable content area, or Shift+click anywhere.
-	return m.isInContentArea(evt.Y) || evt.Shift
+	return m.isInContentArea(click.Y) || click.Mod.Contains(tea.ModShift)
 }
 
 func (m Model) beginTextSelection() (Model, []tea.Cmd) {
 	m.mouseEnabled = false
 	m.selectingText = true
 	return m, []tea.Cmd{
-		tea.DisableMouse,
 		tea.Tick(mouseReenableDelay, func(time.Time) tea.Msg { return mouseReenableMsg{} }),
 	}
 }
 
 func (m Model) handleMouse(msg tea.MouseMsg) (Model, []tea.Cmd) {
-	evt := tea.MouseEvent(msg)
-
 	if m.selectingText {
 		return m, nil
 	}
 
-	if m.shouldReleaseMouseForSelection(evt) {
+	if m.shouldReleaseMouseForSelection(msg) {
 		return m.beginTextSelection()
 	}
 
@@ -58,5 +59,5 @@ func (m Model) resumeMouseAfterSelection() (Model, tea.Cmd) {
 	}
 	m.mouseEnabled = true
 	m.selectingText = false
-	return m, tea.EnableMouseCellMotion
+	return m, nil
 }

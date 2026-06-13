@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -33,11 +33,11 @@ func TestUserMessageLinesFitContentViewportWithScrollbar(t *testing.T) {
 			maxLineW = w
 		}
 	}
-	require.LessOrEqual(t, maxLineW, m.content.Width, "content line width vs viewport")
+	require.LessOrEqual(t, maxLineW, m.content.Width(), "content line width vs viewport")
 
 	userW := lipgloss.Width(m.renderMessage(m.messages[len(m.messages)-1]))
 	msgW := m.messageAreaWidth()
 	require.Equal(t, msgW, userW)
-	require.Less(t, userW, m.content.Width, "user message should be narrower than viewport")
+	require.Less(t, userW, m.content.Width(), "user message should be narrower than viewport")
 	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
 }

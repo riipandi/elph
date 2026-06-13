@@ -3,13 +3,13 @@ package renderer
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 )
 
 const (
-	scrollBarWidth      = 1
-	messageScrollInset  = 1 // extra inset so message backgrounds stay clear of the bar
+	scrollBarWidth     = 1
+	messageScrollInset = 1 // extra inset so message backgrounds stay clear of the bar
 )
 
 var (
@@ -18,18 +18,18 @@ var (
 )
 
 func (m Model) contentScrollable() bool {
-	if !m.ready || m.content.Height <= 0 {
+	if !m.ready || m.content.Height() <= 0 {
 		return false
 	}
-	return m.content.TotalLineCount() > m.content.Height
+	return m.content.TotalLineCount() > m.content.Height()
 }
 
 // contentAreaWidth is the rendered width of stream message backgrounds and the
 // scrollable content column. Uses the settled viewport width so message blocks
 // never extend under the scrollbar gutter.
 func (m Model) contentAreaWidth() int {
-	if m.content.Width > 0 {
-		return m.content.Width
+	if m.content.Width() > 0 {
+		return m.content.Width()
 	}
 	return max(m.width, 1)
 }
@@ -56,10 +56,10 @@ func (m Model) chromeOuterWidth() int {
 	return m.contentAreaWidth()
 }
 
-// borderedChromeWidth is the lipgloss Width for rounded-border chrome whose
-// rendered outer size equals chromeOuterWidth.
+// borderedChromeWidth is the lipgloss Width for rounded-border chrome.
+// In Lip Gloss v2, Style.Width sets the total rendered width including border.
 func borderedChromeWidth(outer int) int {
-	return max(outer-2, 1)
+	return max(outer, 1)
 }
 
 func scrollBarFor(viewportH, total, scrollTop int) string {
@@ -108,13 +108,13 @@ func (m Model) contentAreaView() string {
 		return lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(vp)
 	}
 
-	vpBox := lipgloss.NewStyle().Width(m.content.Width).MaxWidth(m.content.Width).Render(vp)
+	vpBox := lipgloss.NewStyle().Width(m.content.Width()).MaxWidth(m.content.Width()).Render(vp)
 	row := lipgloss.JoinHorizontal(lipgloss.Top, vpBox, m.contentScrollBarView())
 	return lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(row)
 }
 
 func (m Model) contentScrollBarView() string {
-	return scrollBarFor(m.content.Height, m.content.TotalLineCount(), m.content.YOffset)
+	return scrollBarFor(m.content.Height(), m.content.TotalLineCount(), m.content.YOffset())
 }
 
 func (m Model) inputScrollable() bool {

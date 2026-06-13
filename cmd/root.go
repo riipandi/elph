@@ -79,4 +79,5 @@ func init() {
 
 	// Register subcommand
 	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(updateProvidersCmd)
 }

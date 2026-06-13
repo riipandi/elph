@@ -3,7 +3,6 @@ package renderer
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -12,7 +11,7 @@ func TestCtrlCFirstPressWithInputShowsNotice(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("hello")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, cmd := m.Update(keyCtrl('c'))
 	m = updated.(Model)
 
 	require.Equal(t, 1, m.ctrlCPress)
@@ -24,9 +23,9 @@ func TestCtrlCSecondPressClearsInput(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("hello")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(keyCtrl('c'))
 	m = updated.(Model)
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ = m.Update(keyCtrl('c'))
 	m = updated.(Model)
 
 	require.Equal(t, 2, m.ctrlCPress)
@@ -38,7 +37,7 @@ func TestCtrlCThirdPressQuits(t *testing.T) {
 	m.input.SetValue("hello")
 
 	for range 3 {
-		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+		updated, _ := m.Update(keyCtrl('c'))
 		m = updated.(Model)
 		if m.quitting {
 			break
@@ -51,11 +50,11 @@ func TestCtrlCThirdPressQuits(t *testing.T) {
 func TestCtrlCWithoutInputQuitsOnSecondPress(t *testing.T) {
 	m := testInputModel(t)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(keyCtrl('c'))
 	m = updated.(Model)
 	require.Equal(t, 1, m.ctrlCPress)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, cmd := m.Update(keyCtrl('c'))
 	m = updated.(Model)
 
 	require.True(t, m.quitting)
@@ -81,7 +80,7 @@ func TestOtherKeyCancelsCtrlCNotice(t *testing.T) {
 	m.messages = []message{{text: "Press again to exit", kind: constants.MessageSystem}}
 	m.ctrlCNoticeID = 0
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, _ := m.Update(keyRune('a'))
 	m = updated.(Model)
 
 	require.Equal(t, 0, m.ctrlCPress)
@@ -91,7 +90,7 @@ func TestOtherKeyCancelsCtrlCNotice(t *testing.T) {
 func TestCtrlDExitsImmediately(t *testing.T) {
 	m := testInputModel(t)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	updated, cmd := m.Update(keyCtrl('d'))
 	m = updated.(Model)
 
 	require.True(t, m.quitting)
@@ -102,7 +101,7 @@ func TestCtrlASwitchesMode(t *testing.T) {
 	m := testInputModel(t)
 	prev := m.mode
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ := m.Update(keyCtrl('a'))
 	m = updated.(Model)
 
 	require.NotEqual(t, prev, m.mode)
@@ -113,7 +112,7 @@ func TestShiftTabCyclesThinking(t *testing.T) {
 	m := testInputModel(t)
 	prev := m.thinkingLevel
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ := m.Update(keyShiftTab())
 	m = updated.(Model)
 
 	require.NotEqual(t, prev, m.thinkingLevel)
@@ -123,7 +122,7 @@ func TestCtrlYCopiesLastMessage(t *testing.T) {
 	m := testInputModel(t)
 	m.messages = []message{{text: "last reply", kind: constants.MessageAI}}
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlY})
+	updated, _ := m.Update(keyCtrl('y'))
 	m = updated.(Model)
 
 	require.GreaterOrEqual(t, len(m.messages), 2)
@@ -132,7 +131,7 @@ func TestCtrlYCopiesLastMessage(t *testing.T) {
 func TestCtrlYNoMessagesNoOp(t *testing.T) {
 	m := testInputModel(t)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlY})
+	updated, _ := m.Update(keyCtrl('y'))
 	m = updated.(Model)
 
 	require.Empty(t, m.messages)
@@ -142,7 +141,7 @@ func TestBusyBlocksNewline(t *testing.T) {
 	m := testInputModel(t)
 	m = m.beginAgentTurn()
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	updated, cmd := m.Update(keyCtrlJ())
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
@@ -153,7 +152,7 @@ func TestSubmitColonQQuits(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue(":q")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.True(t, m.quitting)
@@ -164,7 +163,7 @@ func TestSubmitColonQBangQuits(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue(":q!")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.True(t, m.quitting)
@@ -175,7 +174,7 @@ func TestSubmitEmptyInputIgnored(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("   ")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.Nil(t, cmd)
@@ -194,7 +193,7 @@ func TestSubmitStripsTriggerPrefixes(t *testing.T) {
 	for _, tc := range cases {
 		m := testInputModel(t)
 		m.input.SetValue(tc.input)
-		updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, cmd := m.Update(keyEnter())
 		m = updated.(Model)
 		require.NotNil(t, cmd, "input %q", tc.input)
 		require.Len(t, m.messages, 1, "input %q", tc.input)
@@ -263,7 +262,7 @@ func TestMouseReenableMsgResumesCapture(t *testing.T) {
 
 	require.True(t, m.mouseEnabled)
 	require.False(t, m.selectingText)
-	require.NotNil(t, cmd)
+	require.Nil(t, cmd)
 }
 
 func TestReplaceNoticeUpdatesExisting(t *testing.T) {

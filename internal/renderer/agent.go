@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
 )
 

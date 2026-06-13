@@ -1,11 +1,8 @@
 package constants
 
-import "github.com/charmbracelet/bubbletea"
-
 // KeyBinding defines a single keybinding.
 type KeyBinding struct {
-	Type   tea.KeyType // Key type (e.g. tea.KeyCtrlC)
-	Rune   rune        // For letter keys (e.g. 'a' for Ctrl+A)
+	Key    string // Keystroke string (e.g. "ctrl+c")
 	Action KeyAction
 	Label  string
 }
@@ -27,14 +24,14 @@ const (
 
 // DefaultKeyBindings defines all keybindings for the TUI.
 var DefaultKeyBindings = []KeyBinding{
-	{Type: tea.KeyCtrlC, Action: ActionQuit, Label: "Cancel / Quit"},
-	{Type: tea.KeyCtrlX, Action: ActionQuit, Label: "Cancel / Quit"},
-	{Type: tea.KeyCtrlD, Action: ActionExit, Label: "Exit application"},
-	{Type: tea.KeyCtrlA, Action: ActionSwitchMode, Label: "Switch agent mode"},
-	{Type: tea.KeyShiftTab, Action: ActionCycleThink, Label: "Cycle thinking level"},
-	{Type: tea.KeyEnter, Action: ActionSubmit, Label: "Send message"},
-	{Type: tea.KeyCtrlJ, Action: ActionNewline, Label: "Insert newline in input"},
-	{Type: tea.KeyCtrlY, Action: ActionCopy, Label: "Copy last message"},
+	{Key: "ctrl+c", Action: ActionQuit, Label: "Cancel / Quit"},
+	{Key: "ctrl+x", Action: ActionQuit, Label: "Cancel / Quit"},
+	{Key: "ctrl+d", Action: ActionExit, Label: "Exit application"},
+	{Key: "ctrl+a", Action: ActionSwitchMode, Label: "Switch agent mode"},
+	{Key: "shift+tab", Action: ActionCycleThink, Label: "Cycle thinking level"},
+	{Key: "enter", Action: ActionSubmit, Label: "Send message"},
+	{Key: "ctrl+j", Action: ActionNewline, Label: "Insert newline in input"},
+	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last message"},
 }
 
 // KeyBindingsByAction returns a map of action to keybinding for quick lookup.

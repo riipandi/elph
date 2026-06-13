@@ -3,7 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,9 +16,9 @@ func TestViewHeightFitsTerminal(t *testing.T) {
 			m.ready = true
 			m = m.syncLayout(false)
 
-			require.LessOrEqual(t, lipgloss.Height(m.View()), h,
+			require.LessOrEqual(t, lipgloss.Height(viewContent(m)), h,
 				"w=%d h=%d view height exceeds terminal (chrome=%d vp=%d)",
-				w, h, m.chromeH, m.content.Height)
+				w, h, m.chromeH, m.content.Height())
 		}
 	}
 }
@@ -30,7 +30,7 @@ func TestBannerTopVisibleAtStart(t *testing.T) {
 	m.ready = true
 	m = m.syncLayout(false)
 
-	require.Equal(t, 0, m.content.YOffset)
+	require.Equal(t, 0, m.content.YOffset())
 
 	vp := m.content.View()
 	require.Contains(t, vp, "Welcome to")

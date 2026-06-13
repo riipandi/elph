@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -17,9 +17,9 @@ func TestResizeUpdatesViewportDimensions(t *testing.T) {
 	m = updated.(Model)
 
 	require.True(t, m.ready)
-	require.Equal(t, 80, m.content.Width)
-	require.Positive(t, m.content.Height)
-	require.LessOrEqual(t, m.content.Height+m.chromeH, m.height)
+	require.Equal(t, 80, m.content.Width())
+	require.Positive(t, m.content.Height())
+	require.LessOrEqual(t, m.content.Height()+m.chromeH, m.height)
 }
 
 func TestResizePreservesMessageHistory(t *testing.T) {
@@ -74,7 +74,7 @@ func TestManyMessagesContentFitsInViewport(t *testing.T) {
 	m = m.syncLayout(true)
 
 	require.Contains(t, m.contentView(), "message number 24")
-	require.GreaterOrEqual(t, m.content.Height, 1)
+	require.GreaterOrEqual(t, m.content.Height(), 1)
 }
 
 func TestLongPasteBannerAppearsOnce(t *testing.T) {

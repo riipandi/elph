@@ -1,6 +1,11 @@
 package constants
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
+)
 
 // ─── UI Colors ───────────────────────────────────────────────────────────────
 
@@ -24,14 +29,14 @@ var (
 // ─── Adaptive Colors ─────────────────────────────────────────────────────────
 
 var (
-	DimText    = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
-	BrightText = lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#D1D5DB"}
-	Highlight  = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7C56DC"}
+	DimText    = compat.AdaptiveColor{Light: lipgloss.Color("#9B9B9B"), Dark: lipgloss.Color("#5C5C5C")}
+	BrightText = compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#D1D5DB")}
+	Highlight  = compat.AdaptiveColor{Light: lipgloss.Color("#874BFD"), Dark: lipgloss.Color("#7C56DC")}
 )
 
 // ─── Thinking Level Colors ──────────────────────────────────────────────────
 
-func ThinkingColor(lvl ThinkingLevel) lipgloss.Color {
+func ThinkingColor(lvl ThinkingLevel) color.Color {
 	switch lvl {
 	case ThinkingOff:
 		return Gray
@@ -52,7 +57,7 @@ func ThinkingColor(lvl ThinkingLevel) lipgloss.Color {
 
 // ─── Mode Colors ─────────────────────────────────────────────────────────────
 
-func ModeBorderColor(m AgentMode) lipgloss.Color {
+func ModeBorderColor(m AgentMode) color.Color {
 	switch m {
 	case ModeBrave:
 		return Red
@@ -67,7 +72,7 @@ func ModeBorderColor(m AgentMode) lipgloss.Color {
 
 // ─── Context Usage Colors ────────────────────────────────────────────────────
 
-func ContextUsageColor(pct float64) lipgloss.Color {
+func ContextUsageColor(pct float64) color.Color {
 	switch {
 	case pct <= 0.50:
 		return White

@@ -3,8 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -15,6 +14,15 @@ func TestActivityViewHiddenWhenIdle(t *testing.T) {
 	require.Empty(t, m.activityView())
 }
 
+func TestInputHasTopMarginWhenIdle(t *testing.T) {
+	m := testInputModel(t)
+	require.Equal(t, constants.ActivityIdle, m.activity)
+	require.Greater(t, lipgloss.Height(m.inputView()), lipgloss.Height(m.inputBodyView())+1)
+
+	m = m.beginAgentTurn()
+	require.GreaterOrEqual(t, lipgloss.Height(m.inputView()), lipgloss.Height(m.inputBodyView()))
+}
+
 func TestActivityViewShowsLabel(t *testing.T) {
 	m := New()
 	m.width = 80
@@ -23,7 +31,7 @@ func TestActivityViewShowsLabel(t *testing.T) {
 
 	view := m.activityView()
 	require.Contains(t, view, "Writing")
-	require.Equal(t, 2, lipgloss.Height(view), "activity view should be 2 lines (margin + label)")
+	require.Equal(t, 1, lipgloss.Height(view), "activity view should be 1 line")
 }
 
 func TestSubmitStartsAgentActivity(t *testing.T) {
@@ -34,7 +42,7 @@ func TestSubmitStartsAgentActivity(t *testing.T) {
 	m = m.syncLayout(false)
 
 	m.input.SetValue("hello")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 
 	require.NotNil(t, cmd)
@@ -62,19 +70,20 @@ func TestActivityProgression(t *testing.T) {
 	require.Equal(t, constants.MessageAI, m.messages[0].kind)
 }
 
-func TestBeginAgentTurnIncreasesChrome(t *testing.T) {
+func TestBeginAgentTurnSwapsInputMarginForActivity(t *testing.T) {
 	m := New()
 	m.width = 80
 	m.height = 24
 	m.ready = true
 	idle := m.syncLayout(false)
 	idleChrome := idle.chromeH
-	idleVP := idle.content.Height
+	idleVP := idle.content.Height()
 
 	busy := idle.beginAgentTurn().syncLayout(true)
 
-	require.Greater(t, busy.chromeH, idleChrome)
-	require.Less(t, busy.content.Height, idleVP)
+	require.NotEmpty(t, busy.activityView())
+	require.Equal(t, idleChrome, busy.chromeH, "activity line replaces idle input top margin")
+	require.Equal(t, idleVP, busy.content.Height())
 }
 
 func TestAgentPhaseDelaysAreOrdered(t *testing.T) {

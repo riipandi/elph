@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -28,9 +28,9 @@ func TestSyncLayoutFitsTerminalHeight(t *testing.T) {
 
 	m = m.syncLayout(false)
 
-	require.Equal(t, 80, m.content.Width)
-	require.Positive(t, m.content.Height)
-	require.LessOrEqual(t, m.content.Height+m.chromeH, m.height)
+	require.Equal(t, 80, m.content.Width())
+	require.Positive(t, m.content.Height())
+	require.LessOrEqual(t, m.content.Height()+m.chromeH, m.height)
 }
 
 func TestContentViewLongPasteIncludesBannerOnce(t *testing.T) {
@@ -70,5 +70,5 @@ func TestManyMessagesViewportContent(t *testing.T) {
 
 	m = m.syncLayout(true)
 	require.Contains(t, m.contentView(), "message 24")
-	require.GreaterOrEqual(t, m.content.Height, 1)
+	require.GreaterOrEqual(t, m.content.Height(), 1)
 }

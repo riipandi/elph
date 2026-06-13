@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,7 +63,7 @@ func TestFooterRightSegmentFlush(t *testing.T) {
 	for i, line := range lines {
 		require.LessOrEqual(t, lipgloss.Width(line), maxLineW, "footer line %d", i+1)
 	}
-	require.True(t, strings.HasSuffix(lines[0], "(262k)"))
-	require.True(t, strings.HasSuffix(strings.TrimRight(lines[1], " "), "[-]"))
+	require.True(t, strings.HasSuffix(stripANSI(lines[0]), "(262k)"), "line0=%q", stripANSI(lines[0]))
+	require.True(t, strings.HasSuffix(strings.TrimRight(stripANSI(lines[1]), " "), "[-]"), "line1=%q", stripANSI(lines[1]))
 	require.NotContains(t, lines[1], "buildturn")
 }

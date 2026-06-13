@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -40,11 +40,11 @@ func TestScrollBarVisibleWhenOverflow(t *testing.T) {
 
 	require.True(t, m.contentScrollable())
 	require.Equal(t, m.width-scrollBarWidth, m.contentAreaWidth())
-	require.Equal(t, m.contentAreaWidth(), m.content.Width)
+	require.Equal(t, m.contentAreaWidth(), m.content.Width())
 	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
 
 	bar := m.contentScrollBarView()
-	require.Equal(t, m.content.Height, lipgloss.Height(bar))
+	require.Equal(t, m.content.Height(), lipgloss.Height(bar))
 	require.Contains(t, bar, "█")
 	require.Contains(t, m.contentAreaView(), "█")
 }
@@ -62,11 +62,11 @@ func TestScrollBarThumbMovesDown(t *testing.T) {
 
 	m.content.GotoTop()
 	topBar := m.contentScrollBarView()
-	topOffset := m.content.YOffset
+	topOffset := m.content.YOffset()
 
 	m.content.GotoBottom()
 	bottomBar := m.contentScrollBarView()
-	bottomOffset := m.content.YOffset
+	bottomOffset := m.content.YOffset()
 
 	require.Less(t, topOffset, bottomOffset)
 	require.NotEqual(t, topBar, bottomBar)
@@ -84,7 +84,7 @@ func TestContentAreaWidthMatchesChromeWhenScrollable(t *testing.T) {
 	m = m.syncLayout(false)
 
 	require.LessOrEqual(t, lipgloss.Width(m.contentAreaView()), m.width)
-	require.Equal(t, m.content.Width, m.chromeOuterWidth())
+	require.Equal(t, m.content.Width(), m.chromeOuterWidth())
 }
 
 func TestInputScrollBarVisibleWhenOverflow(t *testing.T) {

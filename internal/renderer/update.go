@@ -6,29 +6,32 @@ import (
 	"sync"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbletea"
 	"github.com/riipandi/elph/internal/constants"
 )
 
 // Pre-computed key-binding map for O(1) lookup on every keystroke.
 var (
-	keyActionMap   map[tea.KeyType]constants.KeyAction
+	keyActionMap   map[string]constants.KeyAction
 	initKeyMapOnce sync.Once
 )
 
 func initKeyMap() {
-	keyActionMap = make(map[tea.KeyType]constants.KeyAction, len(constants.DefaultKeyBindings))
+	keyActionMap = make(map[string]constants.KeyAction, len(constants.DefaultKeyBindings))
 	for _, kb := range constants.DefaultKeyBindings {
-		if _, exists := keyActionMap[kb.Type]; !exists {
-			keyActionMap[kb.Type] = kb.Action
+		if _, exists := keyActionMap[kb.Key]; !exists {
+			keyActionMap[kb.Key] = kb.Action
 		}
 	}
 }
 
-func resolveKeyAction(msg tea.KeyMsg) constants.KeyAction {
+func resolveKeyAction(msg tea.KeyPressMsg) constants.KeyAction {
 	initKeyMapOnce.Do(initKeyMap)
-	if action, ok := keyActionMap[msg.Type]; ok {
+	if action, ok := keyActionMap[msg.String()]; ok {
+		return action
+	}
+	if action, ok := keyActionMap[msg.Keystroke()]; ok {
 		return action
 	}
 	return ""
@@ -80,24 +83,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case termFeaturesMsg:
 		// Terminal feature setup complete.
 
-	case tea.MouseMsg:
-		evt := tea.MouseEvent(msg)
-
+	case tea.MouseWheelMsg:
 		// Wheel always scrolls the viewport. Resume capture first if a text
 		// selection just finished.
-		if evt.IsWheel() {
-			if m.selectingText || !m.mouseEnabled {
-				var cmd tea.Cmd
-				m, cmd = m.resumeMouseAfterSelection()
-				if cmd != nil {
-					cmds = append(cmds, cmd)
-				}
-			}
+		if m.selectingText || !m.mouseEnabled {
 			var cmd tea.Cmd
-			m.content, cmd = m.content.Update(msg)
-			cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
+			m, cmd = m.resumeMouseAfterSelection()
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
+		var cmd tea.Cmd
+		m.content, cmd = m.content.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
+	case tea.MouseMsg:
+		mouse := msg.Mouse()
 
 		var mouseCmds []tea.Cmd
 		m, mouseCmds = m.handleMouse(msg)
@@ -107,13 +109,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		var cmd tea.Cmd
-		if m.isInContentArea(evt.Y) {
+		if m.isInContentArea(mouse.Y) {
 			m.content, cmd = m.content.Update(msg)
 			cmds = append(cmds, cmd)
 		}
 		return m, tea.Batch(cmds...)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.selectingText {
 			var cmd tea.Cmd
 			m, cmd = m.resumeMouseAfterSelection()

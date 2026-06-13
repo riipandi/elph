@@ -2,10 +2,12 @@ package renderer
 
 import (
 	"fmt"
+	"image/color"
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/config"
 	"github.com/riipandi/elph/internal/constants"
 )
@@ -37,15 +39,20 @@ func cachedInputBorder(m constants.AgentMode) lipgloss.Style {
 
 // ─── View ────────────────────────────────────────────────────────────────────
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	if m.quitting {
-		return ""
+		return tea.NewView("")
 	}
 	if !m.ready {
-		return "\n  Initializing..."
+		return tea.NewView("\n  Initializing...")
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Top, m.viewParts()...)
+	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Top, m.viewParts()...))
+	v.AltScreen = true
+	if m.mouseEnabled && !m.selectingText {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
+	return v
 }
 
 // viewParts returns the stacked UI layers below the scrollable viewport.
@@ -82,30 +89,30 @@ func (m Model) syncLayout(follow bool) Model {
 
 	atBottom := m.content.AtBottom()
 
-	prevH := m.content.Height
-	m.content.Height = max(m.height-m.chromeHeight(), 1)
+	prevH := m.content.Height()
+	m.content.SetHeight(max(m.height-m.chromeHeight(), 1))
 
 	// When already scrollable, build at guttered width immediately so message
 	// backgrounds never span the scrollbar column.
-	prevContentW := m.content.Width
+	prevContentW := m.content.Width()
 	targetW := m.targetContentWidth()
-	m.content.Width = targetW
-	needsRebuild := m.contentDirty || prevH != m.content.Height || prevContentW != targetW
+	m.content.SetWidth(targetW)
+	needsRebuild := m.contentDirty || prevH != m.content.Height() || prevContentW != targetW
 	if needsRebuild {
 		m.content.SetContent(m.contentView())
 		m.contentDirty = false
 	}
 	// First transition into scrollable content at full width.
 	if m.contentScrollable() && targetW == m.width {
-		m.content.Width = max(m.width-scrollBarWidth, 1)
+		m.content.SetWidth(max(m.width-scrollBarWidth, 1))
 		m.content.SetContent(m.contentView())
 		m.contentDirty = false
 	}
 
 	// Bubble Tea drops lines from the top when output exceeds terminal height,
 	// which clips the banner border. Shrink the viewport until the frame fits.
-	for m.renderedViewHeight() > m.height && m.content.Height > 1 {
-		m.content.Height--
+	for m.renderedViewHeight() > m.height && m.content.Height() > 1 {
+		m.content.SetHeight(m.content.Height() - 1)
 	}
 
 	m.chromeH = m.chromeHeight()
@@ -147,7 +154,7 @@ func (m Model) contentView() string {
 		for i, msg := range m.messages {
 			if i > 0 {
 				b.WriteString("\n")
-				if msg.kind == constants.MessageUser {
+				if msg.kind == constants.MessageUser || msg.kind == constants.MessageSystem {
 					b.WriteString("\n")
 				}
 			}
@@ -278,7 +285,6 @@ func (m Model) activityView() string {
 	spinner := lipgloss.NewStyle().Foreground(constants.Yellow).Render(frame)
 	label := dimStyle.Render(" " + string(m.activity) + "...")
 	return lipgloss.NewStyle().
-		MarginTop(1).
 		PaddingLeft(1).
 		Width(m.width).
 		Render(spinner + label)
@@ -302,7 +308,11 @@ func (m Model) inputView() string {
 		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
 		inner = prefix + inner
 	}
-	return border.Width(boxW).Render(inner)
+	rendered := border.Width(boxW).Render(inner)
+	if m.activity == constants.ActivityIdle {
+		rendered = lipgloss.NewStyle().MarginTop(1).Render(rendered)
+	}
+	return rendered
 }
 
 func (m Model) footerView() string {
@@ -325,7 +335,7 @@ func (m Model) footerView() string {
 	if m.gitAdded > 0 || m.gitDeleted > 0 {
 		gitStr = fmt.Sprintf("[+%d -%d]", m.gitAdded, m.gitDeleted)
 	}
-	var gitColor lipgloss.Color
+	var gitColor color.Color
 	switch {
 	case m.gitAdded > 0 && m.gitDeleted == 0:
 		gitColor = constants.Green

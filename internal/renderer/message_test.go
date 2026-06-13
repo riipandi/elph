@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +13,7 @@ import (
 func testModel() Model {
 	m := New()
 	m.width = 80
-	m.content.Width = 80
+	m.content.SetWidth(80)
 	return m
 }
 
@@ -68,6 +68,21 @@ func TestUserMessageVerticalSpacing(t *testing.T) {
 	require.GreaterOrEqual(t, replyStart, 0)
 	require.Contains(t, content[agentEnd:userStart], "\n\n", "blank line between AI and user message")
 	require.Contains(t, content[userStart:replyStart], "\n\n", "blank line between user and AI message")
+}
+
+func TestSystemMessageVerticalSpacing(t *testing.T) {
+	m := testModel()
+	m.messages = []message{
+		{text: "from agent", kind: constants.MessageAI},
+		{text: "Copied to clipboard", kind: constants.MessageSystem},
+	}
+	content := stripANSI(m.contentView())
+	agentEnd := strings.Index(content, "from agent")
+	systemStart := strings.Index(content, "Copied to clipboard")
+	require.GreaterOrEqual(t, agentEnd, 0)
+	require.GreaterOrEqual(t, systemStart, 0)
+	require.Contains(t, content[agentEnd:systemStart], "\n\n",
+		"blank line above system message")
 }
 
 func TestUserMessageMultiline(t *testing.T) {

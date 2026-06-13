@@ -1,16 +1,12 @@
 package renderer
 
-import (
-	"github.com/charmbracelet/bubbletea"
-)
+import tea "charm.land/bubbletea/v2"
 
 // Render starts the TUI application using Bubble Tea.
 func Render() error {
 	m := New()
-	// Alt screen keeps redraws stable (no scrollback ghosting). Mouse capture
-	// is enabled for viewport wheel scrolling; hold Shift while dragging to
-	// select text (mouse capture is released temporarily).
-	p := tea.NewProgram(m, tea.WithAltScreen())
+	// Alt screen and mouse mode are declared declaratively in View().
+	p := tea.NewProgram(m)
 	_, err := p.Run()
 	return err
 }

@@ -3,7 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,11 +21,7 @@ func TestContentClickDisablesCapture(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = true
 
-	updated, _ := m.Update(tea.MouseMsg{
-		X: 1, Y: 1,
-		Action: tea.MouseActionPress,
-		Button: tea.MouseButtonLeft,
-	})
+	updated, _ := m.Update(mouseClick(1, 1, tea.MouseLeft, 0))
 	m = updated.(Model)
 
 	require.False(t, m.mouseEnabled)
@@ -36,11 +32,7 @@ func TestInputClickKeepsCapture(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = true
 
-	updated, _ := m.Update(tea.MouseMsg{
-		X: 1, Y: m.content.Height + 1,
-		Action: tea.MouseActionPress,
-		Button: tea.MouseButtonLeft,
-	})
+	updated, _ := m.Update(mouseClick(1, m.content.Height()+1, tea.MouseLeft, 0))
 	m = updated.(Model)
 
 	require.True(t, m.mouseEnabled)
@@ -52,11 +44,7 @@ func TestWheelAfterSelectionResumesCapture(t *testing.T) {
 	m.mouseEnabled = false
 	m.selectingText = true
 
-	updated, _ := m.Update(tea.MouseMsg{
-		X: 1, Y: 1,
-		Action: tea.MouseActionPress,
-		Button: tea.MouseButtonWheelDown,
-	})
+	updated, _ := m.Update(mouseWheel(1, 1, tea.MouseWheelDown))
 	m = updated.(Model)
 
 	require.True(t, m.mouseEnabled)
@@ -67,11 +55,7 @@ func TestShiftClickDisablesCapture(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = true
 
-	updated, _ := m.Update(tea.MouseMsg{
-		X: 1, Y: m.content.Height + 1, Shift: true,
-		Action: tea.MouseActionPress,
-		Button: tea.MouseButtonLeft,
-	})
+	updated, _ := m.Update(mouseClick(1, m.content.Height()+1, tea.MouseLeft, tea.ModShift))
 	m = updated.(Model)
 
 	require.False(t, m.mouseEnabled)
@@ -88,7 +72,7 @@ func TestResumeMouseAfterSelection(t *testing.T) {
 
 	require.True(t, m.mouseEnabled)
 	require.False(t, m.selectingText)
-	require.NotNil(t, cmd)
+	require.Nil(t, cmd)
 }
 
 func TestResumeMouseWhenAlreadyEnabled(t *testing.T) {
@@ -97,7 +81,8 @@ func TestResumeMouseWhenAlreadyEnabled(t *testing.T) {
 	m.selectingText = false
 
 	updated, cmd := m.resumeMouseAfterSelection()
-	require.Equal(t, m, updated)
+	require.True(t, updated.mouseEnabled)
+	require.False(t, updated.selectingText)
 	require.Nil(t, cmd)
 }
 
@@ -106,7 +91,7 @@ func TestKeyAfterSelectionResumesMouse(t *testing.T) {
 	m.mouseEnabled = false
 	m.selectingText = true
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, _ := m.Update(keyRune('a'))
 	m = updated.(Model)
 
 	require.True(t, m.mouseEnabled)
@@ -117,11 +102,7 @@ func TestContentMouseReleaseUpdatesViewport(t *testing.T) {
 	m := testModelWithLayout(t)
 	m.mouseEnabled = true
 
-	updated, _ := m.Update(tea.MouseMsg{
-		X: 1, Y: 1,
-		Action: tea.MouseActionRelease,
-		Button: tea.MouseButtonLeft,
-	})
+	updated, _ := m.Update(mouseRelease(1, 1, tea.MouseLeft))
 	m = updated.(Model)
 	require.NotNil(t, updated)
 }

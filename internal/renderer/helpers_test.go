@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -89,16 +89,16 @@ func TestStripTrigger(t *testing.T) {
 
 func TestViewStates(t *testing.T) {
 	m := New()
-	require.Equal(t, "\n  Initializing...", m.View())
+	require.Equal(t, "\n  Initializing...", viewContent(m))
 
 	m.ready = true
 	m.width = 80
 	m.height = 24
 	m = m.syncLayout(false)
-	require.NotEmpty(t, m.View())
+	require.NotEmpty(t, viewContent(m))
 
 	m.quitting = true
-	require.Empty(t, m.View())
+	require.Empty(t, viewContent(m))
 }
 
 func TestClampAndWrapEdgeCases(t *testing.T) {
@@ -137,7 +137,7 @@ func TestIsInContentAreaEdgeCases(t *testing.T) {
 	require.False(t, m.isInContentArea(0))
 
 	m.ready = true
-	m.content.Height = 10
+	m.content.SetHeight(10)
 	require.True(t, m.isInContentArea(5))
 	require.False(t, m.isInContentArea(10))
 	require.False(t, m.isInContentArea(-1))
@@ -145,25 +145,18 @@ func TestIsInContentAreaEdgeCases(t *testing.T) {
 
 func TestShouldReleaseMouseForSelection(t *testing.T) {
 	m := testInputModel(t)
-	require.False(t, m.shouldReleaseMouseForSelection(tea.MouseEvent{
-		Action: tea.MouseActionPress, Button: tea.MouseButtonRight,
-	}))
-
-	require.False(t, m.shouldReleaseMouseForSelection(tea.MouseEvent{
-		Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown,
-	}))
+	require.False(t, m.shouldReleaseMouseForSelection(mouseClick(1, 1, tea.MouseRight, 0)))
+	require.False(t, m.shouldReleaseMouseForSelection(mouseWheel(1, 1, tea.MouseWheelDown)))
 
 	m.mouseEnabled = false
-	require.False(t, m.shouldReleaseMouseForSelection(tea.MouseEvent{
-		X: 1, Y: 1, Action: tea.MouseActionPress, Button: tea.MouseButtonLeft,
-	}))
+	require.False(t, m.shouldReleaseMouseForSelection(mouseClick(1, 1, tea.MouseLeft, 0)))
 }
 
 func TestHandleMouseWhileSelecting(t *testing.T) {
 	m := testInputModel(t)
 	m.selectingText = true
-	updated, cmds := m.handleMouse(tea.MouseMsg{})
-	require.Equal(t, m, updated)
+	updated, cmds := m.handleMouse(mouseClick(1, 1, tea.MouseLeft, 0))
+	require.True(t, updated.selectingText)
 	require.Nil(t, cmds)
 }
 
@@ -172,7 +165,7 @@ func TestBeginTextSelection(t *testing.T) {
 	updated, cmds := m.beginTextSelection()
 	require.False(t, updated.mouseEnabled)
 	require.True(t, updated.selectingText)
-	require.Len(t, cmds, 2)
+	require.Len(t, cmds, 1)
 }
 
 func TestSyncInputChrome(t *testing.T) {
@@ -194,7 +187,7 @@ func TestOverlayInputScrollBarEdgeCases(t *testing.T) {
 }
 
 func TestIsShiftEnterKeyMsg(t *testing.T) {
-	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	msg := keyEnter()
 	// bubbletea may not expose shift+enter as a distinct type; test via String override path.
 	require.False(t, isShiftEnterKeyMsg(msg))
 }

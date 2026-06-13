@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/renderer"
 )
