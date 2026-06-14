@@ -11,6 +11,8 @@ import (
 
 func testInputModel(t *testing.T) Model {
 	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	m := New()
 	m.width = 80
 	m.height = 24
