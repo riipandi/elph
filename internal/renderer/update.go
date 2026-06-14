@@ -97,6 +97,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.layout.ContentDirty = true
 		m = m.syncLayout(false)
 
+	case glamourRenderMsg:
+		return m.handleGlamourRenderMsg(msg)
+
 	case agentEventMsg:
 		var cmd tea.Cmd
 		m, cmd = m.handleAgentEvent(msg)

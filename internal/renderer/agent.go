@@ -82,7 +82,7 @@ func (m Model) spinnerTickCmd() tea.Cmd {
 	return tea.Tick(spinnerInterval, func(time.Time) tea.Msg { return spinnerTickMsg{} })
 }
 
-func (m Model) finishAgentTurn(thinking, response string) Model {
+func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 	m.agent.Cancel = nil
 	m.agent.Events = nil
 	m.agent.Busy = false
@@ -93,19 +93,28 @@ func (m Model) finishAgentTurn(thinking, response string) Model {
 		m = m.addThinkingMessage(thinking)
 		m.session.AppendLog("thinking", thinking)
 	}
+
+	responseIdx := m.agent.ResponseMsgID
 	switch {
-	case m.agent.ResponseMsgID >= 0 && strings.TrimSpace(response) != "":
-		m.messages[m.agent.ResponseMsgID].text = response
+	case responseIdx >= 0 && strings.TrimSpace(response) != "":
+		m.messages[responseIdx].text = response
+		m.messages[responseIdx].renderCache = messageRenderCache{}
+		m.messages[responseIdx].glamourPending = false
 		m.session.AppendLog("ai", response)
 		m.layout.ContentDirty = true
-	case m.agent.ResponseMsgID < 0 && strings.TrimSpace(response) != "":
+	case responseIdx < 0 && strings.TrimSpace(response) != "":
 		m = m.addAIMessage(response)
+		responseIdx = len(m.messages) - 1
 	}
 
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
 	m = m.syncLayout(true)
-	return m
+
+	if responseIdx >= 0 {
+		return m.scheduleGlamourRender(responseIdx)
+	}
+	return m, nil
 }
 
 func (m Model) appendAgentThinkingDelta(delta string) Model {
@@ -131,7 +140,9 @@ func (m Model) appendAgentResponseDelta(delta string) Model {
 		m.agent.ResponseMsgID = len(m.messages) - 1
 		m.layout.ContentDirty = true
 	} else {
-		m.messages[m.agent.ResponseMsgID].text += delta
+		idx := m.agent.ResponseMsgID
+		m.messages[idx].text += delta
+		m.messages[idx].renderCache = messageRenderCache{}
 		m.layout.ContentDirty = true
 	}
 	m.agent.Activity = agent.ActivityStreaming

@@ -35,8 +35,7 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 		m = m.appendAgentResponseDelta(msg.event.Delta)
 		m = m.syncLayout(m.content.AtBottom())
 	case agent.EventTurnDone:
-		m = m.finishAgentTurn(msg.event.Thinking, msg.event.Response)
-		return m, nil
+		return m.finishAgentTurn(msg.event.Thinking, msg.event.Response)
 	}
 	if m.agent.Events != nil {
 		return m, waitAgentEvent(m.agent.Events)

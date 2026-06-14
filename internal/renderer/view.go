@@ -158,17 +158,47 @@ func (m Model) messagesView() string {
 		return ""
 	}
 	var b strings.Builder
-	for i, msg := range m.messages {
+	for i := range m.messages {
 		if i > 0 {
 			b.WriteString(messageBlockGap)
 		}
-		b.WriteString(m.renderMessage(msg))
+		b.WriteString(m.renderMessageAt(i))
 	}
 	return b.String()
 }
 
 func (m Model) renderMessage(msg message) string {
-	return renderStyledMessage(m.messageAreaWidth(), msg.kind, msg.text)
+	width := m.messageAreaWidth()
+	if msg.kind == constants.MessageAI {
+		return renderAIMessage(width, msg.text, false, false)
+	}
+	return renderStyledMessage(width, msg.kind, msg.text)
+}
+
+func (m Model) renderMessageAt(index int) string {
+	msg := m.messages[index]
+	width := m.messageAreaWidth()
+	streaming := m.isStreamingAIMessageAt(index)
+
+	if c := msg.renderCache; c.hit(width, streaming, len(msg.text)) {
+		return c.output
+	}
+
+	var out string
+	switch msg.kind {
+	case constants.MessageAI:
+		out = renderAIMessage(width, msg.text, streaming, msg.glamourPending)
+	default:
+		out = renderStyledMessage(width, msg.kind, msg.text)
+	}
+
+	m.messages[index].renderCache = messageRenderCache{
+		width:     width,
+		sourceLen: len(msg.text),
+		streaming: streaming,
+		output:    out,
+	}
+	return out
 }
 
 func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) {
