@@ -202,11 +202,16 @@ func (m Model) handleModelSelectorKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool
 		}
 		return m, nil, true
 	case msg.Code == tea.KeyLeft:
-		m = m.cycleModelSelectorProvider(-1)
-		return m, nil, true
+		// Only cycle provider when nothing to navigate in the filter.
+		if len(m.input.Value()) == 0 {
+			m = m.cycleModelSelectorProvider(-1)
+			return m, nil, true
+		}
 	case msg.Code == tea.KeyRight:
-		m = m.cycleModelSelectorProvider(1)
-		return m, nil, true
+		if len(m.input.Value()) == 0 {
+			m = m.cycleModelSelectorProvider(1)
+			return m, nil, true
+		}
 	}
 	return m, nil, false
 }
@@ -410,11 +415,4 @@ func (m Model) modelSelectorListHeight() int {
 		return 0
 	}
 	return lipgloss.Height(m.modelSelectorListBox())
-}
-
-func (m Model) modelSelectorHeight() int {
-	if view := m.modelSelectorView(); view != "" {
-		return lipgloss.Height(view)
-	}
-	return 0
 }

@@ -28,7 +28,7 @@ var DefaultKeyBindings = []KeyBinding{
 	{Key: "ctrl+c", Action: ActionQuit, Label: "Cancel / Quit"},
 	{Key: "ctrl+x", Action: ActionQuit, Label: "Cancel / Quit"},
 	{Key: "ctrl+d", Action: ActionExit, Label: "Exit application"},
-	{Key: "alt+a", Action: ActionSwitchMode, Label: "Switch agent mode"},
+	{Key: "ctrl+a", Action: ActionSwitchMode, Label: "Switch agent mode"},
 	{Key: "shift+tab", Action: ActionCycleThink, Label: "Cycle thinking level"},
 	{Key: "enter", Action: ActionSubmit, Label: "Send message"},
 	{Key: "ctrl+j", Action: ActionNewline, Label: "Insert newline in input"},

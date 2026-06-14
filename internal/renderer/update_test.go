@@ -97,11 +97,11 @@ func TestCtrlDExitsImmediately(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
-func TestAltASwitchesMode(t *testing.T) {
+func TestCtrlASwitchesMode(t *testing.T) {
 	m := testInputModel(t)
 	prev := m.mode
 
-	updated, _ := m.Update(keyAlt('a'))
+	updated, _ := m.Update(keyCtrl('a'))
 	m = updated.(Model)
 
 	require.NotEqual(t, prev, m.mode)
