@@ -121,11 +121,22 @@ Turn-time limits and sizes are listed in [agent-runtime.md § In-memory history]
 | `~/.elph/prompts/`, project `.elph/prompts/` | [prompt-templates.md](./prompt-templates.md)                                                            |
 | Env vars (`ELPH_*`, API keys)                | [configuration.md](./configuration.md)                                                                  |
 
-## MCP (planned)
+## External tools (planned)
 
-- JSON schema: `schemas/mcp-schema.json` — **not loaded by runtime**
-- System prompt supports `prompt.ExternalEntry` for future MCP tools
-- TUI banner: `MCP Server: 0/0 connected (0 tools)` — hardcoded placeholder
+Built-ins (`pkg/tool`) are the core. Two **combined** extension mechanisms — different purpose, shared host pipeline:
+
+| Mechanism | Library | Role |
+|-----------|---------|------|
+| **MCP** | `modelcontextprotocol/go-sdk` | Ecosystem tool servers (stdio/SSE); config `schemas/mcp-schema.json` |
+| **Go plugins** | `hashicorp/go-plugin` | Local compiled binaries under `~/.elph/plugins/`; gRPC subprocess |
+| **WASM plugins** (alt, later) | `tetratelabs/wazero` | Sandboxed `.wasm` modules — optional third local backend; see [consideration.md](./consideration.md) |
+
+Runtime will merge definitions from all sources, apply the same exposure/approval rules ([tools.md](./tools.md)), and dispatch in `internal/runtime.ExecuteTool` by prefix (`mcp_*`, `plugin_*`, built-in names). System prompt uses `prompt.ExternalEntry` for non-built-in tools.
+
+- MCP JSON schema exists — **not loaded by runtime yet**
+- TUI banner: `MCP Server: 0/0 connected (0 tools)` — placeholder until MCP client lands
+
+See [consideration.md § Extension model](./consideration.md#extension-model-mcp--go-plugins-combined).
 
 ## Diagnostic vs agent tools
 
