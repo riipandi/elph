@@ -47,6 +47,7 @@ var toolActivity = map[string]Activity{
 	tool.EnterPlanMode: ActivityPlanning,
 	tool.ExitPlanMode:  ActivityPlanning,
 	tool.AskUser:       ActivityWaiting,
+	tool.Skill:         ActivityLoading,
 }
 
 // ActivityForTool returns the indicator label for a tool call.

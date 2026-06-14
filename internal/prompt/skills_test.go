@@ -76,5 +76,9 @@ func TestFormatSkillsSectionEscapesXML(t *testing.T) {
 	require.Contains(t, got, "<name>x&lt;y</name>")
 	require.Contains(t, got, "<description>Use &amp; verify</description>")
 	require.Contains(t, got, "<location>/tmp/a&lt;b/SKILL.md</location>")
-	require.Contains(t, got, "Use the Read tool to load a skill's file")
+	require.Contains(t, got, "call the Skill tool with the skill's name")
+	require.Contains(t, got, "never prefix with skill names")
+	require.Contains(t, got, "back to task")
+	require.Contains(t, got, "overrides skill templates and examples")
+	require.Contains(t, got, "not a script for user-visible text")
 }

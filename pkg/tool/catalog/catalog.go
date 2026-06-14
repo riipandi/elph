@@ -89,6 +89,12 @@ var builtin = []Definition{
 		DefaultApproval: ApprovalAutoAllow,
 		Description:     "Ask the user a question to gather structured input",
 	},
+	{
+		Name:            Skill,
+		Category:        CategoryCollaboration,
+		DefaultApproval: ApprovalAutoAllow,
+		Description:     "Invoke a registered inline Skill",
+	},
 }
 
 var builtinByName = func() map[string]Definition {

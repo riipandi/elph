@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/riipandi/elph/pkg/ai/provider"
+	"github.com/riipandi/elph/pkg/skill"
 )
 
 const truncateNotice = "\n\n(output truncated)"
@@ -70,7 +71,11 @@ func historyUTF8Size(messages []provider.ChatMessage) int {
 func truncateHistoryMessage(msg provider.ChatMessage) provider.ChatMessage {
 	switch msg.Role {
 	case "tool":
-		msg.Content = TruncateWithNotice(msg.Content, MaxProviderToolBytes)
+		limit := MaxProviderToolBytes
+		if skill.IsActivationContent(msg.Content) {
+			limit = MaxProviderToolBytes * 4
+		}
+		msg.Content = TruncateWithNotice(msg.Content, limit)
 	case "assistant":
 		if len(msg.Content) > MaxAssistantHistoryBytes {
 			msg.Content = TruncateWithNotice(msg.Content, MaxAssistantHistoryBytes)

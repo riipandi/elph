@@ -7,7 +7,7 @@ import (
 )
 
 func TestBuiltinCatalogMatchesDocs(t *testing.T) {
-	require.Len(t, All(), 13)
+	require.Len(t, All(), 14)
 
 	cases := []struct {
 		name                 string
@@ -29,6 +29,7 @@ func TestBuiltinCatalogMatchesDocs(t *testing.T) {
 		{EnterPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Enter Plan mode", false},
 		{ExitPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Exit Plan mode and submit the plan", true},
 		{AskUser, CategoryCollaboration, ApprovalAutoAllow, "Ask the user a question to gather structured input", false},
+		{Skill, CategoryCollaboration, ApprovalAutoAllow, "Invoke a registered inline Skill", false},
 	}
 
 	for _, tc := range cases {
@@ -46,7 +47,7 @@ func TestByCategory(t *testing.T) {
 	require.Len(t, ByCategory(CategoryShell), 1)
 	require.Len(t, ByCategory(CategoryWeb), 3)
 	require.Len(t, ByCategory(CategoryPlanMode), 2)
-	require.Len(t, ByCategory(CategoryCollaboration), 1)
+	require.Len(t, ByCategory(CategoryCollaboration), 2)
 }
 
 func TestRequiresApproval(t *testing.T) {
@@ -69,6 +70,6 @@ func TestNamesPreservesCatalogOrder(t *testing.T) {
 		Bash,
 		FetchURL, WebSearch, CodeSearch,
 		EnterPlanMode, ExitPlanMode,
-		AskUser,
+		AskUser, Skill,
 	}, Names())
 }

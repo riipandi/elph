@@ -47,6 +47,7 @@ const (
 	EnterPlanMode = catalog.EnterPlanMode
 	ExitPlanMode  = catalog.ExitPlanMode
 	AskUser       = catalog.AskUser
+	Skill         = catalog.Skill
 )
 
 func Get(name string) (Definition, bool)                    { return catalog.Get(name) }

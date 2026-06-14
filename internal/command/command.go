@@ -28,6 +28,7 @@ type Context struct {
 	pendingDetailExpanded bool
 
 	PromptTemplates []prompttemplate.Template
+	Skills          []SlashSkill
 }
 
 // ModelSwitch applies a new active provider/model to the session.
@@ -69,6 +70,7 @@ type SlashCommand struct {
 	ArgsFunc     func(ctx Context) []ArgChoice
 	Quits        bool
 	Prompt       bool
+	Skill        bool
 	Handler      func(ctx *Context, args string) string
 }
 
@@ -95,6 +97,21 @@ func Execute(input string, ctx Context) Result {
 				}
 			}
 			return Result{OK: true, AgentPrompt: expanded}
+		}
+		if cmd.Skill {
+			expanded, err := expandSkillSlash(ctx, cmd, args)
+			if err != nil {
+				return Result{
+					Output: fmt.Sprintf("/%s: %v", cmd.Name, err),
+					OK:     false,
+				}
+			}
+			return Result{
+				OK:          true,
+				AgentPrompt: expanded.AgentPrompt,
+				DetailLabel: expanded.DetailLabel,
+				DetailBody:  expanded.DetailBody,
+			}
 		}
 		if cmd.Handler == nil {
 			return Result{
@@ -153,6 +170,14 @@ func allCommands(ctx Context) []SlashCommand {
 			continue
 		}
 		out = append(out, templateCommand(t))
+		seen[key] = true
+	}
+	for _, cmd := range skillCommands(ctx.Skills) {
+		key := strings.ToLower(cmd.Name)
+		if seen[key] {
+			continue
+		}
+		out = append(out, cmd)
 		seen[key] = true
 	}
 	return out

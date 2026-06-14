@@ -102,6 +102,24 @@ func TestThinkingCollapsedShowsSpinnerWhileAwaitingContent(t *testing.T) {
 	require.Contains(t, rendered, "Thinking...")
 }
 
+func TestThinkingExpandedShowsLiveBodyWhileStreaming(t *testing.T) {
+	m := testInputModel(t)
+	m.agent.Busy = true
+	m.agent.SpinnerFrame = 1
+	m.messages = []message{{
+		kind:           constants.MessageThinking,
+		detailLabel:    "Thinking",
+		text:           "reasoning step one\nreasoning step two",
+		detailExpanded: true,
+	}}
+	m.agent.ThinkingMsgID = 0
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, rendered, "reasoning step one")
+	require.Contains(t, rendered, "reasoning step two")
+	require.Contains(t, rendered, "click or ctrl+o to collapse")
+}
+
 func TestThinkingExpandedEmptyShowsSpinnerWhileStreaming(t *testing.T) {
 	m := testInputModel(t)
 	m.agent.Busy = true
@@ -117,7 +135,7 @@ func TestThinkingExpandedEmptyShowsSpinnerWhileStreaming(t *testing.T) {
 	require.Contains(t, rendered, "Thinking...")
 }
 
-func TestThinkingCollapsedShowsLiveBodyWhileStreaming(t *testing.T) {
+func TestThinkingCollapsedShowsPreviewWhileStreaming(t *testing.T) {
 	m := testInputModel(t)
 	m.agent.Busy = true
 	m.agent.SpinnerFrame = 1
@@ -127,11 +145,11 @@ func TestThinkingCollapsedShowsLiveBodyWhileStreaming(t *testing.T) {
 	rendered := stripANSI(m.renderMessageAt(0))
 	require.Contains(t, rendered, "Thinking")
 	require.Contains(t, rendered, "reasoning step one")
-	require.Contains(t, rendered, "reasoning step two")
+	require.NotContains(t, rendered, "reasoning step two")
 	require.Contains(t, rendered, "click or ctrl+o to expand")
 }
 
-func TestThinkingCollapsedShowsLiveBodyWhileResponseStreams(t *testing.T) {
+func TestThinkingCollapsedShowsPreviewWhileResponseStreams(t *testing.T) {
 	m := testInputModel(t)
 	m.width = 80
 	m.agent.Busy = true

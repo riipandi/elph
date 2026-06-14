@@ -62,6 +62,10 @@ func (m Model) syncInputSuggestions() (Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if m.slashQueryActive() {
+		m = m.ensurePromptTemplates()
+	}
+
 	m = m.syncInputPlaceholder()
 
 	if !m.input.Focused() {
@@ -76,7 +80,6 @@ func (m Model) syncInputSuggestions() (Model, tea.Cmd) {
 	}
 
 	if m.slashQueryActive() {
-		m = m.ensurePromptTemplates()
 		m.suggest.MentionSuggestions = nil
 		m.suggest.MentionSuggestIndex = 0
 		m.suggest.MentionFilterQuery = ""
@@ -107,6 +110,7 @@ func (m Model) commandContext() command.Context {
 		ModelID:         m.session.ModelID,
 		ModelName:       m.session.ModelName,
 		PromptTemplates: m.promptTemplates,
+		Skills:          m.slashSkills,
 	}
 	if cmd, _, ok := command.ResolveInput(m.input.Value(), base); ok && cmd.Name == "model" {
 		if reloaded, err := provider.LoadCatalog(""); err == nil && len(reloaded.Providers) > 0 {
@@ -121,7 +125,7 @@ func (m Model) syncSlashSuggestionsOnly() Model {
 	ctx := m.commandContext()
 	cmd, argQuery, ok := command.ResolveInput(m.input.Value(), ctx)
 	args := command.EffectiveArgs(cmd, ctx)
-	if ok && len(args) > 0 && m.argInputReady(cmd) {
+	if ok && command.HasStructuredArgs(cmd, ctx) && m.argInputReady(cmd) {
 		m.suggest.CmdSuggestions = nil
 		m.suggest.CmdSuggestIndex = 0
 		m.suggest.ArgSuggestions = command.SuggestArgs(cmd, ctx, argQuery)
@@ -129,6 +133,14 @@ func (m Model) syncSlashSuggestionsOnly() Model {
 			m.suggest.ArgSuggestions = append([]command.ArgChoice(nil), args...)
 		}
 		m.suggest.ArgSuggestIndex = command.ArgChoiceIndex(m.suggest.ArgSuggestions, argQuery)
+		return m
+	}
+
+	if ok && !command.HasStructuredArgs(cmd, ctx) && m.argInputReady(cmd) {
+		m.suggest.CmdSuggestions = nil
+		m.suggest.CmdSuggestIndex = 0
+		m.suggest.ArgSuggestions = nil
+		m.suggest.ArgSuggestIndex = 0
 		return m
 	}
 

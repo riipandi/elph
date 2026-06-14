@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/prompttemplate"
 	"github.com/riipandi/elph/internal/runtime"
@@ -112,6 +113,7 @@ type Model struct {
 
 	session         runtime.Session
 	promptTemplates []prompttemplate.Template
+	slashSkills     []command.SlashSkill
 
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
@@ -241,5 +243,6 @@ func (m Model) ensurePromptTemplates() Model {
 		return m
 	}
 	m.promptTemplates = prompttemplate.Load(m.workDir)
+	m.slashSkills = command.LoadSlashSkills(m.workDir)
 	return m
 }

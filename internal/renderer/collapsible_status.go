@@ -14,6 +14,9 @@ func (m Model) thinkingShowsLiveBody(msg message, index int) bool {
 	if msg.kind != constants.MessageThinking {
 		return false
 	}
+	if !msg.detailExpanded {
+		return false
+	}
 	if strings.TrimSpace(msg.text) == "" {
 		return false
 	}

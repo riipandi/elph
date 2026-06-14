@@ -154,11 +154,50 @@ func isRunningDetailPlaceholder(body string) bool {
 
 func firstDetailLine(body string) string {
 	for _, line := range strings.Split(body, "\n") {
-		if trimmed := strings.TrimSpace(line); trimmed != "" {
-			return trimmed
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
 		}
+		if detailPreviewSkipLine(trimmed) {
+			continue
+		}
+		return trimmed
 	}
 	return strings.TrimSpace(body)
+}
+
+func detailPreviewSkipLine(line string) bool {
+	lower := strings.ToLower(line)
+	switch lower {
+	case "---", "agent prompt:", "user prompt:", "instructions":
+		return true
+	}
+	if strings.HasPrefix(lower, "<skill_content") ||
+		strings.HasPrefix(lower, "<skill_resources") ||
+		strings.HasPrefix(lower, "<user_args") ||
+		strings.HasPrefix(lower, "<file>") ||
+		strings.HasPrefix(lower, "skill directory:") {
+		return true
+	}
+	if strings.HasPrefix(lower, "follow the skill instructions below") {
+		return true
+	}
+	if strings.HasPrefix(lower, "apply this skill's workflow internally") {
+		return true
+	}
+	if strings.HasPrefix(lower, "relative paths in this skill are relative to the skill directory") {
+		return true
+	}
+	if strings.HasPrefix(line, "#") {
+		i := 0
+		for i < len(line) && line[i] == '#' {
+			i++
+		}
+		if i < len(line) && line[i] == ' ' {
+			return true
+		}
+	}
+	return false
 }
 
 func collapsibleHeaderChip(style lipgloss.Style, _ constants.MessageKind, label string, expanded bool) string {

@@ -431,8 +431,19 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
 		at := time.Now()
 		m = m.addUserMessageAt(trimmed, at)
-		m = m.addDetailMessageAt("Prompt", prompt, at)
-		m.session.AppendLog("prompt", prompt)
+		detailLabel := strings.TrimSpace(result.DetailLabel)
+		detailBody := strings.TrimSpace(result.DetailBody)
+		if detailLabel != "" && detailBody != "" {
+			m = m.addDetailMessageAt(detailLabel, detailBody, at)
+			if result.DetailExpanded {
+				m.messages[len(m.messages)-1].detailExpanded = true
+				m.layout.ContentDirty = true
+			}
+			m.session.AppendLog("detail", detailLabel)
+		} else {
+			m = m.addDetailMessageAt("Prompt", prompt, at)
+			m.session.AppendLog("prompt", prompt)
+		}
 		m = m.resetInput()
 		m = m.beginAgentTurn()
 		m = m.syncLayout(true)

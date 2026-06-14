@@ -127,6 +127,17 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		}, "command"), true
 	case catalog.AskUser:
 		return askUserSchema(), true
+	case catalog.Skill:
+		return objectSchema(map[string]propertySpec{
+			"skill": {
+				typ:         "string",
+				description: "Skill name (agentskills.io SKILL.md name field)",
+			},
+			"args": {
+				typ:         "string",
+				description: "Optional additional argument text appended to the skill instructions",
+			},
+		}, "skill"), true
 	case catalog.EnterPlanMode, catalog.ExitPlanMode:
 		return objectSchema(map[string]propertySpec{
 			"reason": {typ: "string", description: "Short reason for the mode change"},

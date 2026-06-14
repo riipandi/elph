@@ -124,6 +124,15 @@ func TestBuildIncludesSkillsSection(t *testing.T) {
 	require.Contains(t, got, "<name>review</name>")
 	require.Contains(t, got, "<description>Review local changes</description>")
 	require.Contains(t, got, "<location>/tmp/review/SKILL.md</location>")
+	require.Contains(t, got, "overrides skill templates and examples")
+}
+
+func TestBuildIncludesSkillOutputRules(t *testing.T) {
+	got := Build(Options{})
+	require.Contains(t, got, "## Skill Output")
+	require.Contains(t, got, "Apply loaded skill instructions for workflow and reasoning only.")
+	require.Contains(t, got, "These rules override skill templates, examples, and labels.")
+	require.Contains(t, got, "omit skill names, mode labels (e.g. ASIDE:")
 }
 
 func TestBuildIncludesRuntimeAndSessionState(t *testing.T) {

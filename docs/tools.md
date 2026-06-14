@@ -47,6 +47,17 @@ and modification tasks.
 
 `ExitPlanMode` will requires user to confirm the plan.
 
+## State Management
+
+| Tool     | Default Approval | Description              |
+|----------|------------------|--------------------------|
+| TodoList | Auto-allow       | Manage a task to-do list |
+
+TodoList maintains a visible subtask list across multi-step operations; state is stored within
+the Agent session. The `todos` parameter accepts an array where each item has a `title` and status
+(`pending` / `in_progress` / `done`). Omitting `todos` queries the current list; passing an empty
+array clears it.
+
 ## Collaboration Tools
 
 Collaboration tools handle inter-Agent coordination, user interaction, and Skill invocation.
@@ -54,6 +65,11 @@ Collaboration tools handle inter-Agent coordination, user interaction, and Skill
 | Tool    | Default Approval | Description                                        |
 |---------|------------------|----------------------------------------------------|
 | AskUser | Auto-allow       | Ask the user a question to gather structured input |
+| Skill   | Auto-allow       | Invoke a registered inline Skill                   |
+
+`Skill` allows the Agent to actively invoke a registered inline-type Skill. Accepts `skill` (the Skill name)
+and optional `args` (additional argument text). Only `type = "inline"` Skills can be called via this tool;
+Skills with `disableModelInvocation: true` are rejected. Maximum nesting depth is 3 levels.
 
 ## Provider API exposure
 
@@ -65,7 +81,7 @@ Three layers decide what the model can see and what the runtime can run:
 
 | Layer            | Purpose                                       | Source                         |
 |------------------|-----------------------------------------------|--------------------------------|
-| **Catalog**      | Shown in prompts and UI; full built-in list   | `pkg/tool/catalog`           |
+| **Catalog**      | Shown in prompts and UI; full built-in list   | `pkg/tool/catalog`             |
 | **Provider API** | JSON schemas sent to OpenAI / Anthropic       | `ProviderDefinitions()`        |
 | **Runtime**      | Actually executed when the model calls a tool | `internal/runtime.ExecuteTool` |
 
@@ -181,15 +197,15 @@ tools.
 
 ### Key functions
 
-| Function                | Package            | Role                                                     |
-|-------------------------|--------------------|----------------------------------------------------------|
-| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered                          |
-| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`                  |
-| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check                           |
-| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool                         |
-| `ProviderSchema()`      | `pkg/tool/schema`  | JSON Schema per built-in                                   |
-| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                         |
-| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                    |
+| Function                | Package            | Role                                                                 |
+|-------------------------|--------------------|----------------------------------------------------------------------|
+| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered                                      |
+| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`                              |
+| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check                                       |
+| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool                                     |
+| `ProviderSchema()`      | `pkg/tool/schema`  | JSON Schema per built-in                                             |
+| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                                     |
+| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                                |
 | `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / WebSearch / Bash |
 
 Provider adapters map definitions to API formats:

@@ -2,9 +2,14 @@ package command
 
 import "strings"
 
+// HasStructuredArgs reports whether a slash command accepts palette-picked arguments.
+func HasStructuredArgs(cmd SlashCommand, ctx Context) bool {
+	return len(EffectiveArgs(cmd, ctx)) > 0
+}
+
 // RequiresArgs reports whether a slash command expects user-provided arguments.
 func RequiresArgs(cmd SlashCommand, ctx Context) bool {
-	if len(EffectiveArgs(cmd, ctx)) > 0 {
+	if HasStructuredArgs(cmd, ctx) {
 		return true
 	}
 	return strings.TrimSpace(cmd.ArgumentHint) != ""

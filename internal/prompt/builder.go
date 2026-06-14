@@ -51,6 +51,11 @@ const thinkingSection = `You can use <think> tags to think through problems step
 
 Use the provider-native tools exposed to this session when you need to read files, search, or fetch information. Do not invent XML-like tool tags such as <toolcall>, <function>, or <parameter> in assistant text.`
 
+const skillOutputSection = `## Skill Output
+- Apply loaded skill instructions for workflow and reasoning only. User-visible replies are always a direct answer in your normal voice — never a skill transcript.
+- These rules override skill templates, examples, and labels. Even when a skill shows a response format, omit skill names, mode labels (e.g. ASIDE:, [code-review], Skill: aside), and meta footers (e.g. "back to task", "returning to main task") unless the user explicitly asked for that exact phrasing.
+- Never announce loading, activating, invoking, or completing a skill.`
+
 // Build assembles the system prompt:
 //  1. base system prompt (built-in or custom Go template with {{.AvailableTools}})
 //  2. additional hardcoded, always injected
@@ -81,6 +86,7 @@ func Build(opts Options) string {
 	if skillsSection := formatSkillsSection(skills); skillsSection != "" {
 		sections = append(sections, skillsSection)
 	}
+	sections = append(sections, skillOutputSection)
 
 	date := strings.TrimSpace(opts.CurrentDate)
 	if date == "" {

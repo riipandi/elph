@@ -31,19 +31,6 @@ make run
 
 Documentation lives in [`docs/`](./docs/). Start with [docs/README.md](./docs/README.md).
 
-| Topic            | Document                                               |
-|------------------|--------------------------------------------------------|
-| Overview         | [docs/README.md](./docs/README.md)                     |
-| Architecture     | [docs/architecture.md](./docs/architecture.md)         |
-| Configuration    | [docs/configuration.md](./docs/configuration.md)       |
-| CLI              | [docs/cli.md](./docs/cli.md)                           |
-| Agent runtime    | [docs/agent-runtime.md](./docs/agent-runtime.md)       |
-| Built-in tools   | [docs/tools.md](./docs/tools.md)                       |
-| Slash commands   | [docs/slash-commands.md](./docs/slash-commands.md)     |
-| Prompt templates | [docs/prompt-templates.md](./docs/prompt-templates.md) |
-| TUI layout       | [docs/tui.md](./docs/tui.md)                           |
-| Development log  | [docs/progress.md](./docs/progress.md)                 |
-
 ## License
 
 This project licensed under the [MIT license][license-mit]. See the [LICENSE](./LICENSE) file for more information.

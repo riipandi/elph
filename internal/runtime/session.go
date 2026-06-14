@@ -9,6 +9,7 @@ import (
 	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/riipandi/elph/pkg/core/agent"
+	"github.com/riipandi/elph/pkg/skill"
 	"go.jetify.com/typeid/v2"
 )
 
@@ -93,6 +94,7 @@ func (s Session) AppendRequestsLog(kind, text string) {
 
 // StartTurn starts an agent turn and streams framework-neutral events.
 func (s Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan agent.Event {
+	ctx = skill.WithDepthHolder(ctx)
 	opts.SystemPrompt = s.SystemPrompt
 	if opts.Model == "" {
 		opts.Model = s.ModelID

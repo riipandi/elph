@@ -15,4 +15,5 @@ const (
 	EnterPlanMode = "EnterPlanMode"
 	ExitPlanMode  = "ExitPlanMode"
 	AskUser       = "AskUser"
+	Skill         = "Skill"
 )

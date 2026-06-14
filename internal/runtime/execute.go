@@ -69,6 +69,8 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 		return executeFetchURL(ctx, args)
 	case tool.CodeSearch:
 		return executeCodeSearch(ctx, args)
+	case tool.Skill:
+		return executeSkill(ctx, workDir, args)
 	default:
 		return ToolResult{Err: fmt.Errorf("%w: %s", ErrToolNotImplemented, canonical)}
 	}

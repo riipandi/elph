@@ -25,6 +25,7 @@ func TestActivityForTool(t *testing.T) {
 		{tool.EnterPlanMode, ActivityPlanning},
 		{tool.ExitPlanMode, ActivityPlanning},
 		{tool.AskUser, ActivityWaiting},
+		{tool.Skill, ActivityLoading},
 		{"UnknownTool", ActivityWorking},
 		{"", ActivityWorking},
 	}
