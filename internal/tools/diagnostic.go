@@ -2,26 +2,26 @@ package tools
 
 // Diagnostic tool names (coding-agent only, not published in pkg/tool).
 const (
-	ListTools    = "diagnostic_list_tools"
-	SystemPrompt = "diagnostic_system_prompt"
-	OpenLog      = "diagnostic_open_log"
+	DiagnosticListTools    = "DiagnosticListTools"
+	DiagnosticSystemPrompt = "DiagnosticSystemPrompt"
+	DiagnosticOpenLog      = "DiagnosticOpenLog"
 )
 
 var diagnostic = []Definition{
 	{
-		Name:            ListTools,
+		Name:            DiagnosticListTools,
 		Category:        CategoryDiagnostic,
 		DefaultApproval: ApprovalAutoAllow,
 		Description:     "List all tools currently available to the agent",
 	},
 	{
-		Name:            SystemPrompt,
+		Name:            DiagnosticSystemPrompt,
 		Category:        CategoryDiagnostic,
 		DefaultApproval: ApprovalAutoAllow,
 		Description:     "Show the assembled system prompt for this session",
 	},
 	{
-		Name:            OpenLog,
+		Name:            DiagnosticOpenLog,
 		Category:        CategoryDiagnostic,
 		DefaultApproval: ApprovalAutoAllow,
 		Description:     "Open a session log (requests or system)",

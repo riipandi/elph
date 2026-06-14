@@ -155,11 +155,11 @@ func diagnosticUnavailableMessage(name string) string {
 
 func diagnosticSlashHint(name string) string {
 	switch name {
-	case inttools.ListTools:
+	case inttools.DiagnosticListTools:
 		return "/diagnostic:list-tools"
-	case inttools.SystemPrompt:
+	case inttools.DiagnosticSystemPrompt:
 		return "/diagnostic:system-prompt"
-	case inttools.OpenLog:
+	case inttools.DiagnosticOpenLog:
 		return "/diagnostic:open-log"
 	default:
 		return ""

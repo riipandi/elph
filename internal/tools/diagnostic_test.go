@@ -9,14 +9,14 @@ import (
 func TestDiagnosticCatalog(t *testing.T) {
 	require.Len(t, Diagnostic(), 3)
 	require.Equal(t, []string{
-		ListTools,
-		SystemPrompt,
-		OpenLog,
+		DiagnosticListTools,
+		DiagnosticSystemPrompt,
+		DiagnosticOpenLog,
 	}, names(Diagnostic()))
 }
 
 func TestGetDiagnosticTool(t *testing.T) {
-	def, ok := Get(ListTools)
+	def, ok := Get(DiagnosticListTools)
 	require.True(t, ok)
 	require.Equal(t, CategoryDiagnostic, def.Category)
 	require.Equal(t, ApprovalAutoAllow, def.DefaultApproval)
@@ -26,6 +26,12 @@ func TestGetDiagnosticTool(t *testing.T) {
 func TestGetUnknownTool(t *testing.T) {
 	_, ok := Get("diagnostic_unknown")
 	require.False(t, ok)
+}
+
+func TestResolveNameLegacyAliases(t *testing.T) {
+	name, ok := ResolveName("diagnostic_list_tools")
+	require.True(t, ok)
+	require.Equal(t, DiagnosticListTools, name)
 }
 
 func names(defs []Definition) []string {

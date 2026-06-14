@@ -1,6 +1,10 @@
-package tool
+package exposure
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/riipandi/elph/pkg/tool/catalog"
+)
 
 // ResolveName maps a model-supplied tool name to the canonical built-in name.
 func ResolveName(raw string) (canonical string, known bool) {
@@ -9,7 +13,7 @@ func ResolveName(raw string) (canonical string, known bool) {
 		return "Tool", false
 	}
 	lower := strings.ToLower(trimmed)
-	for _, def := range builtin {
+	for _, def := range catalog.All() {
 		if strings.ToLower(def.Name) == lower {
 			return def.Name, true
 		}
@@ -17,32 +21,16 @@ func ResolveName(raw string) (canonical string, known bool) {
 	return titleCaseToolName(trimmed), false
 }
 
-// IsProviderExposed reports whether a built-in tool should be sent to the model API.
-// Requires auto-allow or requires-approval (gated at runtime), a provider schema, and IsExecutable. See docs/tools.md.
-func IsProviderExposed(name string) bool {
-	def, ok := Get(name)
-	if !ok {
-		return false
-	}
-	if def.DefaultApproval != ApprovalAutoAllow && def.DefaultApproval != ApprovalRequiresApproval {
-		return false
-	}
-	if !IsExecutable(name) {
-		return false
-	}
-	_, ok = providerSchema(name)
-	return ok
-}
-
 // IsExecutable reports whether the agent runtime can run a built-in tool by name.
 // Returns false for unknown tools. See docs/tools.md for the exposure matrix.
 func IsExecutable(name string) bool {
-	def, ok := Get(name)
+	def, ok := catalog.Get(name)
 	if !ok {
 		return false
 	}
 	switch def.Name {
-	case Read, Write, Edit, Grep, Glob, ReadMediaFile, Bash, AskUser:
+	case catalog.Read, catalog.Write, catalog.Edit, catalog.Grep, catalog.Glob,
+		catalog.ReadMediaFile, catalog.Bash, catalog.WebSearch, catalog.AskUser:
 		return true
 	default:
 		return false

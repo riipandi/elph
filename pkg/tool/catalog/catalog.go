@@ -1,21 +1,4 @@
-package tool
-
-// Built-in tool names (see docs/tools.md).
-const (
-	Read          = "Read"
-	Write         = "Write"
-	Edit          = "Edit"
-	Grep          = "Grep"
-	Glob          = "Glob"
-	ReadMediaFile = "ReadMediaFile"
-	Bash          = "Bash"
-	FetchURL      = "FetchURL"
-	WebSearch     = "WebSearch"
-	CodeSearch    = "CodeSearch"
-	EnterPlanMode = "EnterPlanMode"
-	ExitPlanMode  = "ExitPlanMode"
-	AskUser       = "AskUser"
-)
+package catalog
 
 var builtin = []Definition{
 	// File tools
@@ -115,3 +98,40 @@ var builtinByName = func() map[string]Definition {
 	}
 	return m
 }()
+
+// All returns every built-in tool in catalog order.
+func All() []Definition {
+	return append([]Definition(nil), builtin...)
+}
+
+// Get returns a built-in tool definition by name.
+func Get(name string) (Definition, bool) {
+	def, ok := builtinByName[name]
+	return def, ok
+}
+
+// ByCategory returns built-in tools in the given category, in catalog order.
+func ByCategory(category Category) []Definition {
+	out := make([]Definition, 0)
+	for _, def := range builtin {
+		if def.Category == category {
+			out = append(out, def)
+		}
+	}
+	return out
+}
+
+// Names returns built-in tool names in catalog order.
+func Names() []string {
+	names := make([]string, len(builtin))
+	for i, def := range builtin {
+		names[i] = def.Name
+	}
+	return names
+}
+
+// RequiresApproval reports whether a tool defaults to requiring user approval.
+func RequiresApproval(name string) bool {
+	def, ok := builtinByName[name]
+	return ok && def.DefaultApproval == ApprovalRequiresApproval
+}

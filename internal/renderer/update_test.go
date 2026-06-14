@@ -276,7 +276,7 @@ func TestSubmitDiagnosticListTools(t *testing.T) {
 	require.Equal(t, "Available tools", m.messages[1].detailLabel)
 	require.True(t, m.messages[1].detailExpanded)
 	require.Contains(t, m.messages[1].text, "Read")
-	require.Contains(t, m.messages[1].text, "diagnostic_list_tools")
+	require.Contains(t, m.messages[1].text, "DiagnosticListTools")
 }
 
 func TestSubmitPromptTemplateStartsAgentTurn(t *testing.T) {

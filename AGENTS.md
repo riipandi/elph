@@ -16,14 +16,14 @@ Run focused tests before wide `go test ./...`. Check `git status` — provider r
 
 ## Layout
 
-| Path                | Role                                                 |
-|---------------------|------------------------------------------------------|
-| `cmd/coding-agent/` | CLI (Cobra)                                          |
-| `internal/`         | App-private: renderer, runtime, prompt, settings     |
-| `pkg/core/agent/`   | Turn loop, history limits, tool loop                 |
-| `pkg/tool/`         | Built-in tools + provider schemas                    |
-| `pkg/ai/`           | Provider facade (`LoadProviders`, `ResolveProvider`) |
-| `docs/`             | Architecture, runtime, tools, config                 |
+| Path                | Role                                                                                     |
+|---------------------|------------------------------------------------------------------------------------------|
+| `cmd/coding-agent/` | CLI (Cobra)                                                                              |
+| `internal/`         | App-private: renderer, runtime, prompt, settings                                         |
+| `pkg/core/agent/`   | Turn loop, history limits, tool loop                                                     |
+| `pkg/tool/`         | Built-in catalog (`catalog/`), exposure (`exposure/`), schemas (`schema/`), `websearch/` |
+| `pkg/ai/`           | Provider facade (`LoadProviders`, `ResolveProvider`)                                     |
+| `docs/`             | Architecture, runtime, tools, config                                                     |
 
 Diagnostic slash helpers live in `internal/tools` — not model-callable. Agent tools live in `pkg/tool`.
 

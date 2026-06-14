@@ -49,9 +49,9 @@ These internal names are **not** agent-executable (`internal/tools`):
 
 | Internal name              | Use instead                 |
 |----------------------------|-----------------------------|
-| `diagnostic_list_tools`    | `/diagnostic:list-tools`    |
-| `diagnostic_system_prompt` | `/diagnostic:system-prompt` |
-| `diagnostic_open_log`      | `/diagnostic:open-log`      |
+| `DiagnosticListTools`    | `/diagnostic:list-tools`    |
+| `DiagnosticSystemPrompt` | `/diagnostic:system-prompt` |
+| `DiagnosticOpenLog`      | `/diagnostic:open-log`      |
 
 If the model emits them as text-markup tool calls, the UI shows a message pointing to the slash command.
 

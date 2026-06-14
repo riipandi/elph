@@ -90,7 +90,7 @@ func TestDiagnosticListTools(t *testing.T) {
 	require.Equal(t, "Available tools", result.DetailLabel)
 	require.True(t, result.DetailExpanded)
 	require.Contains(t, result.DetailBody, tool.Read)
-	require.Contains(t, result.DetailBody, tools.ListTools)
+	require.Contains(t, result.DetailBody, tools.DiagnosticListTools)
 }
 
 func TestDiagnosticSystemPrompt(t *testing.T) {

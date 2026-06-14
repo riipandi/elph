@@ -63,6 +63,8 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 		return executeReadMediaFile(workDir, args)
 	case tool.Bash:
 		return executeBash(ctx, workDir, args, onChunk)
+	case tool.WebSearch:
+		return executeWebSearch(ctx, args)
 	default:
 		return ToolResult{Err: fmt.Errorf("%w: %s", ErrToolNotImplemented, canonical)}
 	}

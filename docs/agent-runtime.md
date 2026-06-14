@@ -56,7 +56,7 @@ Provider adapters:
 
 Only tools passing `IsProviderExposed` are sent to the provider:
 
-- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **AskUser**, **Bash**
+- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**, **Bash**
 - Details: [tools.md § Provider API exposure](./tools.md#provider-api-exposure)
 
 ## Runtime execution
@@ -71,6 +71,7 @@ Only tools passing `IsProviderExposed` are sent to the provider:
 | Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`) |
 | Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)     |
 | ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)    |
+| WebSearch     | Multi-engine search (`pkg/tool/websearch`); 128 KB cap     |
 | Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr     |
 
 `ExecuteToolStream` (`session.toolExecuteStream`) passes chunks to `EventToolCallOutputDelta` for

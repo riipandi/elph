@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	inttools "github.com/riipandi/elph/internal/tools"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +68,7 @@ func TestResolveToolRequestRequiresApproval(t *testing.T) {
 
 func TestResolveToolRequestDiagnostic(t *testing.T) {
 	got := ResolveToolRequest("diagnostic_list_tools", nil)
-	require.Equal(t, "diagnostic_list_tools", got.Name)
+	require.Equal(t, inttools.DiagnosticListTools, got.Name)
 	require.Equal(t, UnavailableDiagnosticOnly, got.Reason)
 	require.Contains(t, got.Body, "/diagnostic:list-tools")
 }

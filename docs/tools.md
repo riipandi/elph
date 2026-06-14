@@ -65,7 +65,7 @@ Three layers decide what the model can see and what the runtime can run:
 
 | Layer            | Purpose                                       | Source                         |
 |------------------|-----------------------------------------------|--------------------------------|
-| **Catalog**      | Shown in prompts and UI; full built-in list   | `pkg/tool` `builtin`           |
+| **Catalog**      | Shown in prompts and UI; full built-in list   | `pkg/tool/catalog`           |
 | **Provider API** | JSON schemas sent to OpenAI / Anthropic       | `ProviderDefinitions()`        |
 | **Runtime**      | Actually executed when the model calls a tool | `internal/runtime.ExecuteTool` |
 
@@ -77,11 +77,11 @@ A tool is sent to the provider API only when **all** of the following are true
 3. The runtime can execute it (`IsExecutable`).
 4. It has a provider JSON schema (`providerSchema`).
 
-Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **AskUser**, and **Bash** are exposed.
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**, and **Bash** are exposed.
 **AskUser** opens a huh question dialog. **Write**, **Edit**, and **Bash** show an approval dialog
 unless agent mode is
 **brave** or the user chose **allow for session** earlier in the TUI session. Auto-allow tools like
-WebSearch stay out until `IsExecutable` returns true for them.
+**FetchURL** and **CodeSearch** stay out until `IsExecutable` returns true for them.
 
 ### User approval (huh)
 
@@ -112,7 +112,7 @@ the body is long (see [tui.md § Detail blocks](./tui.md#input-modes)).
 | Glob          | Auto-allow        | Yes          | Yes                      |
 | ReadMediaFile | Auto-allow        | Yes          | Yes                      |
 | FetchURL      | Auto-allow        | No           | No                       |
-| WebSearch     | Auto-allow        | No           | No                       |
+| WebSearch     | Auto-allow        | Yes          | Yes                      |
 | CodeSearch    | Auto-allow        | No           | No                       |
 | EnterPlanMode | Auto-allow        | No           | No                       |
 | ExitPlanMode  | Auto-allow        | No           | No                       |
@@ -145,6 +145,14 @@ Up to **4** images per message; each is downscaled (max dimension 1568) and re-e
 the model does not support vision, pasted paths are appended to the text prompt instead so the agent
 can call **ReadMediaFile**. See [tui.md § Image attachments](./tui.md#image-attachments).
 
+**WebSearch** queries the web via `pkg/tool/websearch` (ranking aligned with
+[pi-extended/websearch](https://github.com/riipandi/pi-extended/tree/main/packages/websearch)). Engines:
+**duckduckgo** (always available fallback), **jina** (optional `JINA_API_KEY`), **brave**
+(`BRAVE_SEARCH_API_KEY`), **serpapi** (`SERPAPI_KEY`), **tavily** (`TAVILY_API_KEY`), **firecrawl**
+(`FIRECRAWL_API_KEY`), **perplexity** (`PERPLEXITY_API_KEY`), **exa** (`EXA_API_KEY`). Omit `engine`
+to auto-select the best configured backend; on failure, tries other configured engines and falls back
+to DuckDuckGo last.
+
 ### Request flow
 
 ```mermaid
@@ -157,7 +165,7 @@ sequenceDiagram
 
     Session->>Loop: StartTurn (ToolsEnabled, ExecuteTool)
     Loop->>Tool: FilterProviderTools / ProviderDefinitions
-    Tool-->>Loop: Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash schemas
+    Tool-->>Loop: Read, Write, Edit, Grep, Glob, ReadMediaFile, WebSearch, AskUser, Bash schemas
     Loop->>Provider: Complete(TurnRequest.Tools)
     Provider-->>Loop: tool_calls / tool_use
     Loop->>Loop: InteractTool (AskUser / approval)
@@ -179,10 +187,10 @@ tools.
 | `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`                  |
 | `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check                           |
 | `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool                         |
-| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)                       |
+| `ProviderSchema()`      | `pkg/tool/schema`  | JSON Schema per built-in                                   |
 | `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                         |
 | `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                    |
-| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / Bash |
+| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / WebSearch / Bash |
 
 Provider adapters map definitions to API formats:
 
@@ -194,14 +202,14 @@ Provider adapters map definitions to API formats:
 
 To expose a built-in to the model API end-to-end:
 
-1. **Schema** — Add or extend `providerSchema()` in `pkg/tool/schema.go`.
+1. **Schema** — Add or extend `ProviderSchema()` in `pkg/tool/schema/schema.go`.
 2. **Execution** — Implement the handler in `internal/runtime/execute.go` and add the name to
-   `IsExecutable()` in `pkg/tool/availability.go`.
+   `IsExecutable()` in `pkg/tool/exposure/exposure.go`.
 3. **Approval** — If the tool should require user approval, keep
-   `DefaultApproval: ApprovalRequiresApproval` in `pkg/tool/builtin.go`; it will not be API-exposed
+   `DefaultApproval: ApprovalRequiresApproval` in `pkg/tool/catalog/catalog.go`; it will not be API-exposed
    until approval is wired. Use `auto-allow` only for safe, read-only (or otherwise pre-approved)
    operations.
-4. **Tests** — Update `pkg/tool/schema_test.go` and runtime tests for the new executable.
+4. **Tests** — Update `pkg/tool/schema/schema_test.go`, `pkg/tool/exposure/exposure_test.go`, and runtime tests for the new executable.
 
 No change to `ProviderDefinitions()` is required: filtering is driven by `IsProviderExposed`.
 

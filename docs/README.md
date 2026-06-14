@@ -64,7 +64,7 @@ Prefer code when they disagree until docs or behavior are updated.
 | Agent modes (`build`/`plan`/`ask`)                      | UI + settings only; no runtime effect yet                                                    | `agent-runtime.md`             |
 | Agent mode **brave**                                    | Skips tool approval (`SkipToolApproval`)                                                     | `agent-runtime.md`, `tools.md` |
 | `internal/datastore`                                    | Empty package stub                                                                           | `architecture.md`              |
-| WebSearch, FetchURL, plan mode, …                       | Catalog only or not executable yet                                                           | `tools.md`                     |
+| FetchURL, plan mode, …                                  | Catalog only or not executable yet                                                           | `tools.md`                     |
 
 ### Contributing
 

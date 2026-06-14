@@ -1,70 +1,63 @@
 // Package tool defines built-in coding-agent tools as a publishable library.
-// Tool execution and approval UI live in internal/ (coding-agent); this package
-// holds names, categories, and default approval policy from docs/tools.md.
+//
+// Layout:
+//
+//	catalog/   — tool names, categories, and the built-in catalog
+//	exposure/  — name resolution and runtime executability
+//	schema/    — provider API JSON schemas and exposure filter
+//	websearch/ — reusable multi-engine web search
+//
+// Tool execution and approval UI live in internal/ (coding-agent).
 package tool
 
-// Category groups built-in tools by capability area.
-type Category string
-
-const (
-	CategoryFile          Category = "file"
-	CategoryShell         Category = "shell"
-	CategoryWeb           Category = "web"
-	CategoryPlanMode      Category = "plan_mode"
-	CategoryCollaboration Category = "collaboration"
+import (
+	"github.com/riipandi/elph/pkg/ai/provider"
+	"github.com/riipandi/elph/pkg/tool/catalog"
+	"github.com/riipandi/elph/pkg/tool/exposure"
+	"github.com/riipandi/elph/pkg/tool/schema"
 )
 
-// Approval is the default policy before a tool runs.
-type Approval string
-
-const (
-	ApprovalAutoAllow        Approval = "auto-allow"
-	ApprovalRequiresApproval Approval = "requires-approval"
-	ApprovalAlwaysApprove    Approval = "always-approve"
+type (
+	Category   = catalog.Category
+	Approval   = catalog.Approval
+	Definition = catalog.Definition
 )
 
-// Definition describes a built-in tool's metadata.
-type Definition struct {
-	Name                 string
-	Category             Category
-	DefaultApproval      Approval
-	Description          string
-	RequiresConfirmation bool // extra user confirmation after the tool completes
-}
+const (
+	CategoryFile          = catalog.CategoryFile
+	CategoryShell         = catalog.CategoryShell
+	CategoryWeb           = catalog.CategoryWeb
+	CategoryPlanMode      = catalog.CategoryPlanMode
+	CategoryCollaboration = catalog.CategoryCollaboration
 
-// Get returns a built-in tool definition by name.
-func Get(name string) (Definition, bool) {
-	def, ok := builtinByName[name]
-	return def, ok
-}
+	ApprovalAutoAllow        = catalog.ApprovalAutoAllow
+	ApprovalRequiresApproval = catalog.ApprovalRequiresApproval
+	ApprovalAlwaysApprove    = catalog.ApprovalAlwaysApprove
 
-// All returns every built-in tool in catalog order.
-func All() []Definition {
-	return append([]Definition(nil), builtin...)
-}
+	Read          = catalog.Read
+	Write         = catalog.Write
+	Edit          = catalog.Edit
+	Grep          = catalog.Grep
+	Glob          = catalog.Glob
+	ReadMediaFile = catalog.ReadMediaFile
+	Bash          = catalog.Bash
+	FetchURL      = catalog.FetchURL
+	WebSearch     = catalog.WebSearch
+	CodeSearch    = catalog.CodeSearch
+	EnterPlanMode = catalog.EnterPlanMode
+	ExitPlanMode  = catalog.ExitPlanMode
+	AskUser       = catalog.AskUser
+)
 
-// ByCategory returns built-in tools in the given category, in catalog order.
-func ByCategory(category Category) []Definition {
-	out := make([]Definition, 0)
-	for _, def := range builtin {
-		if def.Category == category {
-			out = append(out, def)
-		}
-	}
-	return out
-}
-
-// Names returns built-in tool names in catalog order.
-func Names() []string {
-	names := make([]string, len(builtin))
-	for i, def := range builtin {
-		names[i] = def.Name
-	}
-	return names
-}
-
-// RequiresApproval reports whether a tool defaults to requiring user approval.
-func RequiresApproval(name string) bool {
-	def, ok := builtinByName[name]
-	return ok && def.DefaultApproval == ApprovalRequiresApproval
+func Get(name string) (Definition, bool)                    { return catalog.Get(name) }
+func All() []Definition                                     { return catalog.All() }
+func ByCategory(category Category) []Definition             { return catalog.ByCategory(category) }
+func Names() []string                                       { return catalog.Names() }
+func RequiresApproval(name string) bool                     { return catalog.RequiresApproval(name) }
+func ResolveName(raw string) (canonical string, known bool) { return exposure.ResolveName(raw) }
+func IsExecutable(name string) bool                         { return exposure.IsExecutable(name) }
+func IsProviderExposed(name string) bool                    { return schema.IsProviderExposed(name) }
+func ProviderDefinitions() []provider.ToolDefinition        { return schema.ProviderDefinitions() }
+func FilterProviderTools(tools []provider.ToolDefinition) []provider.ToolDefinition {
+	return schema.FilterProviderTools(tools)
 }

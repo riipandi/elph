@@ -28,13 +28,14 @@ func TestBuildIncludesDynamicTools(t *testing.T) {
 	require.Contains(t, got, "- Glob (auto-allow):")
 	require.Contains(t, got, "### Shell Tools")
 	require.Contains(t, got, "- Bash (requires-approval):")
+	require.Contains(t, got, "### Web Tools")
+	require.Contains(t, got, "- WebSearch (auto-allow): Web search with multiple engines")
 	require.Contains(t, got, "### Collaboration Tools")
 	require.Contains(t, got, "- AskUser (auto-allow):")
-	require.NotContains(t, got, "- WebSearch (")
 	require.Contains(t, got, "### Diagnostic Tools")
-	require.Contains(t, got, "- diagnostic_list_tools (auto-allow): List all tools currently available to the agent")
-	require.Contains(t, got, "- diagnostic_system_prompt (auto-allow):")
-	require.Contains(t, got, "- diagnostic_open_log (auto-allow):")
+	require.Contains(t, got, "- DiagnosticListTools (auto-allow): List all tools currently available to the agent")
+	require.Contains(t, got, "- DiagnosticSystemPrompt (auto-allow):")
+	require.Contains(t, got, "- DiagnosticOpenLog (auto-allow):")
 }
 
 func TestBuildRespectsToolFilter(t *testing.T) {
@@ -44,7 +45,7 @@ func TestBuildRespectsToolFilter(t *testing.T) {
 	got := Build(Options{Tools: []Entry{EntryFromBuiltin(read)}})
 	require.Contains(t, got, "- Read (auto-allow): Read a text file's contents")
 	require.NotContains(t, got, "- Bash (")
-	require.Contains(t, got, "- diagnostic_list_tools (auto-allow):")
+	require.Contains(t, got, "- DiagnosticListTools (auto-allow):")
 }
 
 func TestBuildIncludesExternalTools(t *testing.T) {
