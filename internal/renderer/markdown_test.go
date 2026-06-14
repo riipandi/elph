@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -80,17 +79,16 @@ func TestMessageRenderCacheAvoidsRepeatWork(t *testing.T) {
 	require.True(t, m.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(m.messages[0].text)))
 }
 
-func TestLargeMarkdownSchedulesAsyncGlamour(t *testing.T) {
+func TestMarkdownSchedulesAsyncGlamour(t *testing.T) {
 	m := testModel()
-	body := "## Report\n\n" + strings.Repeat("detail line with **bold** text.\n", 80)
-	m.messages = []message{{text: body, kind: constants.MessageAI}}
+	m.messages = []message{{text: "**hello**", kind: constants.MessageAI}}
 
 	updated, cmd := m.scheduleGlamourRender(0)
 	require.NotNil(t, cmd)
 	require.True(t, updated.messages[0].glamourPending)
 
 	preview := stripANSI(updated.renderMessageAt(0))
-	require.Contains(t, preview, "## Report")
+	require.Contains(t, preview, "**hello**")
 }
 
 func TestGlamourRenderMsgUpdatesCache(t *testing.T) {

@@ -109,6 +109,9 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
+	m.layout.StreamFlushPending = false
+	m = m.clearStreamPrefixCache()
+	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
 
 	if responseIdx >= 0 {
@@ -125,7 +128,9 @@ func (m Model) appendAgentThinkingDelta(delta string) Model {
 		m = m.addThinkingMessage(delta)
 		m.agent.ThinkingMsgID = len(m.messages) - 1
 	} else {
-		m.messages[m.agent.ThinkingMsgID].text += delta
+		idx := m.agent.ThinkingMsgID
+		m.messages[idx].text += delta
+		m.messages[idx].renderCache = messageRenderCache{}
 		m.layout.ContentDirty = true
 	}
 	return m

@@ -42,6 +42,14 @@ type LayoutCache struct {
 	InputScrollTop int
 	ChromeH        int
 	ContentDirty   bool
+
+	// StreamPrefix caches rendered messages before the active stream index so
+	// only the tail message is repainted during token delivery.
+	StreamPrefix          string
+	StreamPrefixUpTo      int
+	StreamPrefixWidth     int
+	StreamPrefixBeforeLen int
+	StreamFlushPending    bool
 }
 
 // AgentState tracks agent turn progress and activity UI.

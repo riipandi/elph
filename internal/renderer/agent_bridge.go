@@ -29,11 +29,11 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 	case agent.EventThinkingDelta:
 		if m.showThinkingEnabled() {
 			m = m.appendAgentThinkingDelta(msg.event.Delta)
-			m = m.syncLayout(m.content.AtBottom())
+			return m.markStreamDirty()
 		}
 	case agent.EventResponseDelta:
 		m = m.appendAgentResponseDelta(msg.event.Delta)
-		m = m.syncLayout(m.content.AtBottom())
+		return m.markStreamDirty()
 	case agent.EventTurnDone:
 		return m.finishAgentTurn(msg.event.Thinking, msg.event.Response)
 	}

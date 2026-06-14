@@ -100,6 +100,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case glamourRenderMsg:
 		return m.handleGlamourRenderMsg(msg)
 
+	case streamFlushMsg:
+		return m.handleStreamFlush()
+
 	case agentEventMsg:
 		var cmd tea.Cmd
 		m, cmd = m.handleAgentEvent(msg)

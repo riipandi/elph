@@ -5,13 +5,15 @@ import (
 	"strings"
 	"sync"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
-	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
 )
 
-const glamourAsyncMinLen = 1024
+// All markdown formatting runs off the UI thread so stream completion never
+// blocks the event loop, regardless of response size.
+const glamourAsyncMinLen = 1
 
 type markdownRenderCache struct {
 	mu       sync.Mutex
@@ -158,16 +160,6 @@ func (m Model) handleGlamourRenderMsg(msg glamourRenderMsg) (Model, tea.Cmd) {
 	m.layout.ContentDirty = true
 	m = m.syncLayout(m.content.AtBottom())
 	return m, nil
-}
-
-func (m Model) isStreamingAIMessageAt(index int) bool {
-	if index < 0 || !m.agent.Busy || m.agent.ResponseMsgID != index {
-		return false
-	}
-	if index >= len(m.messages) {
-		return false
-	}
-	return m.messages[index].kind == constants.MessageAI
 }
 
 func (m Model) scheduleGlamourRender(index int) (Model, tea.Cmd) {

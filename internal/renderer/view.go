@@ -92,6 +92,11 @@ func (m Model) syncLayout(follow bool) Model {
 	m.content.SetWidth(targetW)
 	needsRebuild := m.layout.ContentDirty || prevH != m.content.Height() || prevContentW != targetW
 	if needsRebuild {
+		if m.streamingMessageIndex() >= 0 {
+			m = m.refreshStreamPrefixCache()
+		} else {
+			m = m.clearStreamPrefixCache()
+		}
 		m.content.SetContent(m.contentView())
 		m.layout.ContentDirty = false
 	}
@@ -153,10 +158,30 @@ func (m Model) contentView() string {
 }
 
 // messagesView renders chat history with one blank line between every block.
+// While a message is streaming, previously rendered prefix blocks are reused.
 func (m Model) messagesView() string {
-	if len(m.messages) == 0 {
+	n := len(m.messages)
+	if n == 0 {
 		return ""
 	}
+
+	streamIdx := m.streamingMessageIndex()
+	if streamIdx >= 0 &&
+		m.layout.StreamPrefixUpTo == streamIdx &&
+		streamIdx < n {
+		var b strings.Builder
+		b.WriteString(m.layout.StreamPrefix)
+		if streamIdx > 0 {
+			b.WriteString(messageBlockGap)
+		}
+		b.WriteString(m.renderMessageAt(streamIdx))
+		for i := streamIdx + 1; i < n; i++ {
+			b.WriteString(messageBlockGap)
+			b.WriteString(m.renderMessageAt(i))
+		}
+		return b.String()
+	}
+
 	var b strings.Builder
 	for i := range m.messages {
 		if i > 0 {
@@ -178,16 +203,18 @@ func (m Model) renderMessage(msg message) string {
 func (m Model) renderMessageAt(index int) string {
 	msg := m.messages[index]
 	width := m.messageAreaWidth()
-	streaming := m.isStreamingAIMessageAt(index)
+	streaming := m.isStreamingMessageAt(index)
 
 	if c := msg.renderCache; c.hit(width, streaming, len(msg.text)) {
 		return c.output
 	}
 
 	var out string
-	switch msg.kind {
-	case constants.MessageAI:
-		out = renderAIMessage(width, msg.text, streaming, msg.glamourPending)
+	switch {
+	case streaming:
+		out = renderStreamingMessage(width, msg.kind, msg.text)
+	case msg.kind == constants.MessageAI:
+		out = renderAIMessage(width, msg.text, false, msg.glamourPending)
 	default:
 		out = renderStyledMessage(width, msg.kind, msg.text)
 	}
