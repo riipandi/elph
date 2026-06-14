@@ -53,10 +53,19 @@ and modification tasks.
 |----------|------------------|--------------------------|
 | TodoList | Auto-allow       | Manage a task to-do list |
 
-TodoList maintains a visible subtask list across multi-step operations; state is stored within
-the Agent session. The `todos` parameter accepts an array where each item has a `title` and status
+TodoList maintains a visible **Tasks** panel in the TUI across multi-step operations. State is stored
+in-memory on `Session.todoStore` and persisted to
+`<workDir>/.agents/elph/metadata/<sess_id>/todos.jsonl` (latest snapshot only — the file is
+overwritten on change and removed when the list is empty). A new session ID does not inherit another
+session's todos.
+
+The `todos` parameter accepts an array where each item has a `title` and status
 (`pending` / `in_progress` / `done`). Omitting `todos` queries the current list; passing an empty
-array clears it.
+array clears it. When all items reach `done`, the Tasks panel hides and the TUI posts a system
+notice in the chat area listing completed tasks.
+
+Implementation: `pkg/tools/todolist` (apply/parse), `internal/runtime/todolist.go` (execute +
+persist), `internal/renderer/todo_panel.go` (panel UI).
 
 ## Collaboration Tools
 
@@ -93,7 +102,8 @@ A tool is sent to the provider API only when **all** of the following are true
 3. The runtime can execute it (`IsExecutable`).
 4. It has a provider JSON schema (`providerSchema`).
 
-Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**, and **Bash** are exposed.
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**,
+**Bash**, **TodoList**, and **Skill** are exposed.
 **AskUser** opens a huh question dialog. **Write**, **Edit**, and **Bash** show an approval dialog
 unless agent mode is
 **brave** or the user chose **allow for session** earlier in the TUI session. Auto-allow tools like
@@ -133,6 +143,8 @@ the body is long (see [tui.md § Detail blocks](./tui.md#input-modes)).
 | EnterPlanMode | Auto-allow        | No           | No                       |
 | ExitPlanMode  | Auto-allow        | No           | No                       |
 | AskUser       | Auto-allow        | Yes          | Yes (huh question)       |
+| TodoList      | Auto-allow        | Yes          | Yes                      |
+| Skill         | Auto-allow        | Yes          | Yes                      |
 | Write         | Requires approval | Yes          | Yes (huh confirm/brave)  |
 | Edit          | Requires approval | Yes          | Yes (huh confirm/brave)  |
 | Bash          | Requires approval | Yes          | Yes (huh confirm/brave)  |
@@ -175,7 +187,7 @@ to DuckDuckGo last.
 sequenceDiagram
     participant Session as internal/runtime/session
     participant Loop as pkg/core/agent/loop
-    participant Tool as pkg/tool
+    participant Tool as pkg/tools
     participant Provider as pkg/ai/provider
     participant Runtime as internal/runtime/execute
 
@@ -197,16 +209,16 @@ tools.
 
 ### Key functions
 
-| Function                | Package            | Role                                                                 |
-|-------------------------|--------------------|----------------------------------------------------------------------|
-| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered                                      |
-| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`                              |
-| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check                                       |
-| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool                                     |
-| `ProviderSchema()`      | `pkg/tools/schema` | JSON Schema per built-in                                             |
-| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                                     |
-| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                                |
-| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / WebSearch / Bash |
+| Function                | Package            | Role                                                                                    |
+|-------------------------|--------------------|-----------------------------------------------------------------------------------------|
+| `ProviderDefinitions()` | `pkg/tools`        | Built-in schemas, then filtered                                                         |
+| `FilterProviderTools()` | `pkg/tools`        | Filters any `[]provider.ToolDefinition`                                                 |
+| `IsProviderExposed()`   | `pkg/tools`        | Single-tool API exposure check                                                          |
+| `IsExecutable()`        | `pkg/tools`        | Whether runtime can run the tool                                                        |
+| `ProviderSchema()`      | `pkg/tools/schema` | JSON Schema per built-in                                                                |
+| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                                                        |
+| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                                                   |
+| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / WebSearch / TodoList / Skill / Bash |
 
 Provider adapters map definitions to API formats:
 

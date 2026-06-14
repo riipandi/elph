@@ -38,7 +38,7 @@ See: [tools.md](./tools.md), [architecture.md](./architecture.md).
 
 Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **Bash**, and **AskUser** run end-to-end
 (Write/Edit/Bash via huh approval; AskUser via question UI). User vision paste uses
-`golang.design/x/clipboard` in the TUI. Rest of catalog in `pkg/tool` awaits handlers + (for some) approval UI.
+`golang.design/x/clipboard` in the TUI. Rest of catalog in `pkg/tools` awaits handlers + (for some) approval UI.
 
 | Package                                                                                   | Status    | Tool / area                                               |
 |-------------------------------------------------------------------------------------------|-----------|-----------------------------------------------------------|
@@ -82,7 +82,7 @@ Shared host responsibilities (one code path):
 ```mermaid
 flowchart TB
     subgraph catalog [Unified catalog]
-        BL[pkg/tool built-ins]
+        BL[pkg/tools built-ins]
         MC[mcp tools via go-sdk]
         PL[plugin tools via go-plugin]
     end

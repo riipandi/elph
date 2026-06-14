@@ -47,8 +47,8 @@ Leading `/` is stripped on submit for slash commands. `!!` is checked before `!`
 
 These internal names are **not** agent-executable (`internal/tools`):
 
-| Internal name              | Use instead                 |
-|----------------------------|-----------------------------|
+| Internal name            | Use instead                 |
+|--------------------------|-----------------------------|
 | `DiagnosticListTools`    | `/diagnostic:list-tools`    |
 | `DiagnosticSystemPrompt` | `/diagnostic:system-prompt` |
 | `DiagnosticOpenLog`      | `/diagnostic:open-log`      |
@@ -86,15 +86,15 @@ On success, diagnostic slash commands show a **user message** (the slash input) 
 
 `/diagnostic:open-log` args:
 
-| Arg              | Log file         | Filter                     |
-|------------------|------------------|----------------------------|
-| `system`         | `events.jsonl`   | `[system]` entries         |
-| `thinking`       | `events.jsonl`   | `[thinking]` entries       |
-| `ai`             | `events.jsonl`   | `[ai]` entries             |
-| `requests`       | `requests.jsonl` | Full requests trace        |
-| `thinking_delta` | `requests.jsonl` | `[thinking_delta]` entries |
+| Arg              | Log file            | Filter                     |
+|------------------|---------------------|----------------------------|
+| `system`         | `log_events.json`   | `[system]` entries         |
+| `thinking`       | `log_events.json`   | `[thinking]` entries       |
+| `ai`             | `log_events.json`   | `[ai]` entries             |
+| `requests`       | `log_requests.json` | Full requests trace        |
+| `thinking_delta` | `log_requests.json` | `[thinking_delta]` entries |
 
-Paths: `<workDir>/.agents/elph/logs/<sess_id>/` — see [configuration.md](./configuration.md).
+Paths: `<workDir>/.agents/elph/metadata/<sess_id>/` — see [configuration.md](./configuration.md).
 
 Expand or collapse any block with `Ctrl+O` or by clicking the header. Usage errors, unknown args,
 and missing log paths still appear as normal system notices.

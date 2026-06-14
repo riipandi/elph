@@ -74,7 +74,7 @@ flowchart LR
     subgraph Pkg
         AG[agent.RunTurn]
         PV[provider.Complete]
-        TL[tool.ProviderDefinitions]
+        TL[tools.ProviderDefinitions]
     end
     E --> R
     R --> RT
@@ -124,7 +124,7 @@ Turn-time limits and sizes are listed in [agent-runtime.md § In-memory history]
 
 ## External tools (planned)
 
-Built-ins (`pkg/tool`) are the core. Two **combined** extension mechanisms — different purpose, shared host pipeline:
+Built-ins (`pkg/tools`) are the core. Two **combined** extension mechanisms — different purpose, shared host pipeline:
 
 | Mechanism                     | Library                       | Role                                                                                                 |
 |-------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------|
@@ -143,7 +143,7 @@ See [consideration.md § Extension model](./consideration.md#extension-model-mcp
 
 | Namespace            | Package          | Callable by model?                        |
 |----------------------|------------------|-------------------------------------------|
-| Built-in agent tools | `pkg/tool`       | Yes (when API-exposed + executable)       |
+| Built-in agent tools | `pkg/tools`      | Yes (when API-exposed + executable)       |
 | Diagnostic helpers   | `internal/tools` | No — use slash commands (`/diagnostic:*`) |
 
 ## Related docs

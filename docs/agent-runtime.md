@@ -63,16 +63,18 @@ Only tools passing `IsProviderExposed` are sent to the provider:
 
 `ExecuteTool` (`internal/runtime/execute.go`):
 
-| Tool          | Implementation                                             |
-|---------------|------------------------------------------------------------|
-| Read          | Read file under workspace (256 KB cap)                     |
-| Write         | Create parent dirs and write file contents                 |
-| Edit          | Exact string replace; `replace_all` for multi-match        |
-| Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`) |
-| Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)     |
-| ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)    |
-| WebSearch     | Multi-engine search (`pkg/tools/websearch`); 128 KB cap    |
-| Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr     |
+| Tool          | Implementation                                              |
+|---------------|-------------------------------------------------------------|
+| Read          | Read file under workspace (256 KB cap)                      |
+| Write         | Create parent dirs and write file contents                  |
+| Edit          | Exact string replace; `replace_all` for multi-match         |
+| Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`)  |
+| Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)      |
+| ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)     |
+| WebSearch     | Multi-engine search (`pkg/tools/websearch`); 128 KB cap     |
+| TodoList      | Session task list (`pkg/tools/todolist`); persists snapshot |
+| Skill         | Load and return skill body from registered `SKILL.md`       |
+| Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr      |
 
 `ExecuteToolStream` (`session.toolExecuteStream`) passes chunks to `EventToolCallOutputDelta` for
 live TUI updates. Bash validates syntax with `mvdan.cc/sh` before spawn and times out after 120s by
@@ -80,7 +82,7 @@ default.
 
 Errors:
 
-- `ErrToolUnknown` — not in `pkg/tool` catalog
+- `ErrToolUnknown` — not in `pkg/tools` catalog
 - `ErrToolUnavailable` — known but `!IsExecutable`
 - `ErrToolNotImplemented` — should not occur for current executables
 
@@ -100,15 +102,15 @@ Native tool calling is the primary path when a provider is configured.
 
 `internal/renderer/agent_bridge.go`:
 
-| Event                      | TUI effect                                                               |
-|----------------------------|--------------------------------------------------------------------------|
-| `EventActivity`            | Activity line + stopwatch                                                |
-| `EventThinkingDelta`       | Append to thinking block                                                 |
-| `EventResponseDelta`       | Append to AI message (markdown async)                                    |
-| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash)                       |
-| `EventToolCallOutputDelta` | Append streamed shell output to detail box                               |
-| `EventToolCallDone`        | Finalize detail status/body; expand/collapse via `tool_detail_expand.go` |
-| `EventTurnDone`            | Finalize turn, apply history, token/cost footer                          |
+| Event                      | TUI effect                                                             |
+|----------------------------|------------------------------------------------------------------------|
+| `EventActivity`            | Activity line + stopwatch                                              |
+| `EventThinkingDelta`       | Append to thinking block                                               |
+| `EventResponseDelta`       | Append to AI message (markdown async)                                  |
+| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash); TodoList skips box |
+| `EventToolCallOutputDelta` | Append streamed shell output to detail box                             |
+| `EventToolCallDone`        | Finalize detail status/body; TodoList updates Tasks panel / completion |
+| `EventTurnDone`            | Finalize turn, apply history, token/cost footer                        |
 
 Native tool UI: `agent_native.go`, `tool_interact.go` (huh approval / AskUser). Text-markup tool
 UI: `agent_toolcall.go`.
@@ -173,9 +175,22 @@ in `pkg/ai/providers/openai` and `pkg/ai/providers/anthropic` map these blocks t
 Pasted files live under `<workDir>/.agents/elph/attachments/` (gitignored). Non-vision models receive
 attachment paths in the text prompt instead. UI: [tui.md § Image attachments](./tui.md#image-attachments).
 
+### Session metadata
+
+Per-session files live under `<workDir>/.agents/elph/metadata/<sess_id>/`:
+
+| File                | Role                                                       |
+|---------------------|------------------------------------------------------------|
+| `todos.jsonl`       | Latest TodoList snapshot (single line; deleted when empty) |
+| `log_events.json`   | User/system/AI/shell events                                |
+| `log_requests.json` | Provider and tool trace                                    |
+
+`internal/projectdir` helpers: `MetadataDir`, `SessionMetadataDir`, `SessionTodosPath`,
+`EnsureSessionMetadataDir`.
+
 ### Session log
 
-Path: `<workDir>/.agents/elph/logs/<sess_id>/events.jsonl`
+Path: `<workDir>/.agents/elph/metadata/<sess_id>/log_events.json`
 
 Each line is JSON written via `log/slog` (`time`, `level`, `msg`, `kind`). `/diagnostic:open-log` formats records for display.
 
@@ -194,7 +209,15 @@ Kinds written in production (`runtime.AppendLog`):
 
 ### Requests log
 
-Path: `<workDir>/.agents/elph/logs/<sess_id>/requests.jsonl` — provider and tool trace written during agent turns. Both logs use `log/slog` JSONL records with a `kind` attribute for filtering.
+Path: `<workDir>/.agents/elph/metadata/<sess_id>/log_requests.json` — provider and tool trace written during agent turns. Both logs use `log/slog` JSONL records with a `kind` attribute for filtering.
+
+### TodoList session state
+
+- In-memory store: `Session.todoStore` (heap pointer; survives `Model` copies).
+- New sessions load todos only from their own `metadata/<sess_id>/todos.jsonl` (a new TypeID starts empty).
+- `SaveTodosSnapshot` overwrites the file on each change; clearing todos deletes the file.
+- TUI **Tasks** panel (`internal/renderer/todo_panel.go`) shows pending/in-progress items above the input.
+  When every item becomes `done`, the panel hides and a system notice lists completed tasks in the chat area.
 
 ## Related docs
 

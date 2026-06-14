@@ -31,14 +31,15 @@ Prefer code when they disagree until docs or behavior are updated.
 
 ### Accurate
 
-- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash) — `tools.md`, `progress.md`, `agent-runtime.md`
+- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash, TodoList, Skill) — `tools.md`, `progress.md`, `agent-runtime.md`
+- TodoList Tasks panel, per-session `metadata/<sess_id>/todos.jsonl`, completion notice — `tools.md`, `tui.md`, `agent-runtime.md`
 - ReadMediaFile execution, user vision paste (Ctrl/Cmd+V), attachment shortcuts — `tools.md`, `tui.md`, `agent-runtime.md`
 - Write/Edit/Bash approval (huh), streaming shell output, deny cache — `tools.md`, `tui.md`, `agent-runtime.md`
 - Native tool detail expand rules (shell expanded; long non-shell collapsed) — `tui.md`
 - Prompt template paths and placeholders — `prompt-templates.md`
 - System prompt assembly, skills paths, `preferedResponseLanguage` — `configuration.md`, `agent-runtime.md`
 - Slash palette `Enter` behavior and diagnostic detail boxes — `slash-commands.md`, `tui.md`
-- Project runtime paths (`<workDir>/.agents/elph`, JSONL session logs) — `configuration.md`, `agent-runtime.md`
+- Project runtime paths (`<workDir>/.agents/elph/metadata/<sess_id>/`, todos + `log_*.json`) — `configuration.md`, `agent-runtime.md`
 - Provider CLI (`connect`, `update`, `list`, enable/disable) — `cli.md`, `configuration.md`
 - Git footer (lazy branch refresh + on-demand line stats) — `tui.md`, `architecture.md`, `internal/git`
 - Memory limits and idle RSS — `architecture.md`, `agent-runtime.md`, `progress.md`
@@ -46,6 +47,8 @@ Prefer code when they disagree until docs or behavior are updated.
 
 ### Fixed in this audit
 
+- Session metadata layout (`metadata/<sess_id>/todos.jsonl`, `log_events.json`, `log_requests.json`) — `configuration.md`, `agent-runtime.md`, `slash-commands.md`
+- `pkg/tools` package layout (`catalog/`, `exposure/`, `schema/`, `todolist/`, `websearch/`) — `tools.md`, `architecture.md`, `AGENTS.md`
 - `tui.md` keybindings (`Ctrl+A` not `Ctrl+M`; added `Ctrl+L`, `Ctrl+Y`, `Ctrl+Shift+T`)
 - `tui.md` `showPromptPrefix` default (`false` in code)
 - Stale `notExecutableToolMessage` text in `internal/runtime/tool.go`

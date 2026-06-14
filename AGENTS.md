@@ -21,11 +21,11 @@ Run focused tests before wide `go test ./...`. Check `git status` — provider r
 | `cmd/coding-agent/` | CLI (Cobra)                                                                              |
 | `internal/`         | App-private: renderer, runtime, prompt, settings                                         |
 | `pkg/core/agent/`   | Turn loop, history limits, tool loop                                                     |
-| `pkg/tools/`        | Built-in catalog (`catalog/`), exposure (`exposure/`), schemas (`schema/`), `websearch/` |
+| `pkg/tools/`        | Built-in catalog (`catalog/`), exposure (`exposure/`), schemas (`schema/`), `todolist/`, `websearch/` |
 | `pkg/ai/`           | Provider facade (`LoadProviders`, `ResolveProvider`)                                     |
 | `docs/`             | Architecture, runtime, tools, config                                                     |
 
-Diagnostic slash helpers live in `internal/tools` — not model-callable. Agent tools live in `pkg/tool`.
+Diagnostic slash helpers live in `internal/tools` — not model-callable. Agent tools live in `pkg/tools`.
 
 ## AI provider stack (Pi / fantasy-style)
 

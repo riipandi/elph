@@ -323,6 +323,20 @@ During agent activity (connecting, thinking, tool work), a stopwatch shows elaps
 
 Type `@` in input to fuzzy-search workspace files and directories (`internal/mention`). Skips `.git`, `node_modules`, and similar directories.
 
+## Tasks panel (TodoList)
+
+When the agent maintains todos via **TodoList**, a **Tasks** panel appears above the input
+(`internal/renderer/todo_panel.go`). It lists pending and in-progress items with status markers
+(`○` pending, spinner/`◐` in progress, `✓` done). The panel width matches the input chrome border.
+
+- Hidden when there are no active (non-done) tasks.
+- When the last item is marked `done`, the panel closes and a system notice in the chat area lists
+  completed tasks (`All tasks completed.` plus `✓` lines).
+- TodoList tool calls do not open a collapsible detail box (unlike Bash/Read).
+
+Persisted per session at `<workDir>/.agents/elph/metadata/<sess_id>/todos.jsonl` — see
+[agent-runtime.md § TodoList session state](./agent-runtime.md#todolist-session-state).
+
 ## Shell input
 
 | Prefix  | Meaning                                          |
@@ -343,6 +357,8 @@ chrome (replacing the normal prompt until you answer).
 
 Write and Edit use the same huh select as Bash (`Allow once` / `Allow for session` / `Deny`). The
 description shows tool arguments (`path`, `contents`, `old_string`, `new_string`, or `command`).
+Long Bash commands and argument text are word-wrapped and capped to a few lines so the dialog fits
+the terminal (`internal/renderer/tool_interact.go`).
 
 | Input     | Action                                  |
 |-----------|-----------------------------------------|

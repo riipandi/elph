@@ -202,9 +202,9 @@ Flow per iteration:
 | **Bash**          | `bash -c`, streamed output, 120s timeout                   |
 | **ReadMediaFile** | Image decode/resize → PNG + base64 metadata (32 KB cap)    |
 
-`pkg/tools/availability.go` — `IsExecutable` returns true for Read, Write, Edit,
-Grep, Glob, ReadMediaFile, Bash, and AskUser (AskUser returns the huh answer without subprocess
-execution).
+`pkg/tools/exposure/exposure.go` — `IsExecutable` returns true for Read, Write, Edit,
+Grep, Glob, ReadMediaFile, Bash, AskUser, TodoList, and Skill (AskUser returns the huh answer
+without subprocess execution).
 
 Tests: `internal/runtime/tool_test.go`, `internal/runtime/execute_file_test.go`.
 
@@ -212,10 +212,12 @@ Tests: `internal/runtime/tool_test.go`, `internal/runtime/execute_file_test.go`.
 
 | File                                 | Role                                                         |
 |--------------------------------------|--------------------------------------------------------------|
-| `internal/renderer/agent_native.go`  | Native tool detail boxes; Bash `$ cmd` + streamed raw output |
-| `internal/renderer/tool_interact.go` | huh AskUser / approval; session allow; per-turn deny cache   |
+| `internal/renderer/agent_native.go`  | Native tool detail boxes; Bash `$ cmd`; TodoList panel hooks |
+| `internal/renderer/todo_panel.go`    | Tasks panel above input; hides on all-done + chat notice     |
+| `internal/renderer/tool_interact.go` | huh AskUser / approval; truncated long descriptions          |
 | `internal/renderer/agent_bridge.go`  | Maps agent events to TUI updates (incl. output deltas)       |
-| `internal/runtime/shell.go`          | `ApplyStreamChunk` — `\r` overwrite + preserved `\n`         |
+| `internal/runtime/shell.go`          | `ApplyStreamChunk`; `cmd.Cancel` for parallel test safety    |
+| `internal/runtime/todos_log.go`      | Per-session `metadata/<sess_id>/todos.jsonl` snapshots       |
 
 Native tool messages are tracked by `NativeToolMsgIDs` in `AgentState`
 (`internal/renderer/state.go`).
@@ -237,18 +239,18 @@ run. Models called unavailable tools and got errors.
 3. `IsExecutable(name)`
 4. Has a provider JSON schema
 
-| Function              | Location                    | Role                             |
-|-----------------------|-----------------------------|----------------------------------|
-| `IsProviderExposed`   | `pkg/tools/availability.go` | Single-tool gate                 |
-| `FilterProviderTools` | `pkg/tools/schema.go`       | Filter any tool list             |
-| `ProviderDefinitions` | `pkg/tools/schema.go`       | Built-in schemas → filtered      |
-| Loop integration      | `pkg/core/agent/loop.go`    | Always filters before `Complete` |
+| Function              | Location                         | Role                             |
+|-----------------------|----------------------------------|----------------------------------|
+| `IsProviderExposed`   | `pkg/tools/exposure/exposure.go` | Single-tool gate                 |
+| `FilterProviderTools` | `pkg/tools/schema/schema.go`     | Filter any tool list             |
+| `ProviderDefinitions` | `pkg/tools/schema/schema.go`     | Built-in schemas → filtered      |
+| Loop integration      | `pkg/core/agent/loop.go`         | Always filters before `Complete` |
 
-**Currently API-exposed:** Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash.
+**Currently API-exposed:** Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash, TodoList, Skill.
 
 Detailed reference: [docs/tools.md § Provider API exposure](./tools.md#provider-api-exposure).
 
-Tests: `pkg/tools/schema_test.go`, `pkg/tools/availability_test.go`.
+Tests: `pkg/tools/schema/schema_test.go`, `pkg/tools/exposure/exposure_test.go`.
 
 ---
 
@@ -269,7 +271,7 @@ flowchart TB
         EV[Events]
     end
 
-    subgraph ToolPkg["Tool catalog (pkg/tool)"]
+    subgraph ToolPkg["Tool catalog (pkg/tools)"]
         BD[builtin definitions]
         PE[IsProviderExposed filter]
         PD[ProviderDefinitions]
@@ -309,10 +311,11 @@ flowchart TB
 - `toolrun.go` — tool result formatting
 - `event.go`, `options.go`, `turn.go` — events and turn routing
 
-### `pkg/tool`
+### `pkg/tools`
 
-- `schema.go`, `schema_test.go` — provider schemas and API filter
-- `availability.go`, `availability_test.go` — `IsExecutable`, `IsProviderExposed`
+- `schema/schema.go` — provider schemas and API filter
+- `exposure/exposure.go` — `IsExecutable`, `IsProviderExposed`
+- `todolist/` — TodoList tool state and argument handling
 
 ### `pkg/ai/provider`
 
@@ -324,11 +327,12 @@ flowchart TB
 
 - `session.go` — history, tools enabled, execute hook
 - `execute.go`, `tool.go`, `tool_test.go`, `execute_file_test.go` — execution and errors
-- `log.go`, `log_test.go` — JSONL session/requests logs via `slog`
+- `log.go`, `log_test.go` — `log_events.json` / `log_requests.json` via `slog`
+- `todos_log.go` — per-session `todos.jsonl` snapshots
 
 ### `internal/projectdir`
 
-- `paths.go` — `<workDir>/.agents/elph`, prompts/skills/logs, `.gitignore`
+- `paths.go` — `<workDir>/.agents/elph`, `metadata/<sess_id>/`, `.gitignore`
 
 ### `internal/renderer`
 
@@ -471,12 +475,12 @@ Updated (memory pass): `architecture.md` performance table; `configuration.md` /
 
 Project-local state moved from `<workDir>/.elph` to `<workDir>/.agents/elph`.
 
-| Area           | Implementation                                                                                  |
-|----------------|-------------------------------------------------------------------------------------------------|
-| Paths          | `internal/projectdir/paths.go` — `Root`, `PromptsDir`, `SkillsDir`, `LogsDir`, `AttachmentsDir` |
-| Session logs   | `logs/<sess_id>/events.jsonl` and `requests.jsonl` via `internal/runtime/log.go`                |
-| `.gitignore`   | `EnsureRoot` writes ignores for `logs/`, `settings.json`, `settings/`, `mcp/`, `attachments/`   |
-| Renderer tests | `setup_test.go` `TestMain` chdirs to temp dir; removes stale `.agents`/`.elph`                  |
+| Area           | Implementation                                                                                                     |
+|----------------|--------------------------------------------------------------------------------------------------------------------|
+| Paths          | `internal/projectdir/paths.go` — `Root`, `MetadataDir`, `SessionMetadataDir`, `SessionTodosPath`, `AttachmentsDir` |
+| Session files  | `metadata/<sess_id>/todos.jsonl`, `log_events.json`, `log_requests.json` via `internal/runtime/`                   |
+| `.gitignore`   | `EnsureRoot` writes ignores for `metadata/`, `settings.json`, `settings/`, `mcp/`, `attachments/`                  |
+| Renderer tests | `setup_test.go` `TestMain` chdirs to temp dir; removes stale `.agents`/`.elph`                                     |
 
 Docs: [configuration.md § Directory layout](./configuration.md#directory-layout), [agent-runtime.md § Session and logging](./agent-runtime.md#session-and-logging).
 
@@ -491,7 +495,7 @@ Docs: [configuration.md § Directory layout](./configuration.md#directory-layout
 | Glob  | `executeGlob`  | `github.com/bmatcuk/doublestar/v4` — `**`, files only         |
 
 `IsProviderExposed` and `IsExecutable` include Write and Edit. Provider schemas in
-`pkg/tools/schema.go`.
+`pkg/tools/schema/schema.go`.
 
 Docs: [tools.md § Provider API exposure](./tools.md#provider-api-exposure), [consideration.md § Built-in tools](./consideration.md#built-in-tools).
 

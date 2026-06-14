@@ -21,14 +21,15 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 └── <name>/SKILL.md          # global agent skills (listed in system prompt)
 
 <workDir>/.agents/elph/
-├── .gitignore               # ignores logs/, settings, mcp/, attachments/, and itself; prompts/skills stay committable
+├── .gitignore               # ignores metadata/, settings, mcp/, attachments/, and itself; prompts/skills stay committable
 ├── prompts/*.md             # project templates (override global by filename)
 ├── skills/<name>/SKILL.md   # project skills (override global by name)
 ├── attachments/             # pasted images per session (gitignored; created on first paste)
-└── logs/
+└── metadata/
     └── <session_id>/
-        ├── events.jsonl     # session events (user, system, ai, thinking, shell, …)
-        └── requests.jsonl   # provider and tool trace
+        ├── todos.jsonl      # latest TodoList snapshot (overwrite, not append)
+        ├── log_events.json  # session events (user, system, ai, thinking, shell, …)
+        └── log_requests.json # provider and tool trace
 ```
 
 ## Environment variables
@@ -123,13 +124,15 @@ tools with `/diagnostic:list-tools` or tail logs with `/diagnostic:open-log` (bo
 
 ## Session persistence
 
-| Persisted                    | Location                                               | Notes                                         |
-|------------------------------|--------------------------------------------------------|-----------------------------------------------|
-| Provider/model/mode/thinking | `settings.json`                                        | Across TUI restarts                           |
-| Conversation history         | In-memory `Session.History`                            | Provider messages for multi-turn native tools |
-| Session log                  | `<workDir>/.agents/elph/logs/<sess_id>/events.jsonl`   | Structured JSONL via `slog`                   |
-| Requests log                 | `<workDir>/.agents/elph/logs/<sess_id>/requests.jsonl` | Provider/tool trace JSONL                     |
-| Full chat export             | —                                                      | Not implemented                               |
+| Persisted                    | Location                                     | Notes                                         |
+|------------------------------|----------------------------------------------|-----------------------------------------------|
+| Provider/model/mode/thinking | `settings.json`                              | Across TUI restarts                           |
+| Conversation history         | In-memory `Session.History`                  | Provider messages for multi-turn native tools |
+| Session metadata dir         | `<workDir>/.agents/elph/metadata/<sess_id>/` | Per-session todos + logs                      |
+| TodoList snapshot            | `…/metadata/<sess_id>/todos.jsonl`           | Latest task list; removed when empty          |
+| Session log                  | `…/metadata/<sess_id>/log_events.json`       | Structured JSONL via `slog`                   |
+| Requests log                 | `…/metadata/<sess_id>/log_requests.json`     | Provider/tool trace JSONL                     |
+| Full chat export             | —                                            | Not implemented                               |
 
 ### `--no-session`
 
