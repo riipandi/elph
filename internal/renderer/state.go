@@ -57,12 +57,16 @@ type LayoutCache struct {
 
 // AgentState tracks agent turn progress and activity UI.
 type AgentState struct {
-	Activity      agent.Activity
-	SpinnerFrame  int
-	Stopwatch     stopwatch.Model
-	Busy          bool
-	Events        <-chan agent.Event
-	Cancel        context.CancelFunc
-	ThinkingMsgID int
-	ResponseMsgID int
+	Activity         agent.Activity
+	SpinnerFrame     int
+	Stopwatch        stopwatch.Model
+	ToolCallFilter   agent.ToolCallStreamFilter
+	TurnToolCalls    []agent.ParsedToolCall
+	NativeToolMsgIDs map[string]int
+	SeenToolCalls    map[string]struct{}
+	Busy             bool
+	Events           <-chan agent.Event
+	Cancel           context.CancelFunc
+	ThinkingMsgID    int
+	ResponseMsgID    int
 }

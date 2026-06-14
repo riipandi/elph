@@ -26,6 +26,7 @@ type Session struct {
 	ProviderID      string
 	ProviderName    string
 	Catalog         provider.Catalog
+	History         []provider.ChatMessage
 }
 
 // NewSession creates a session with a generated typeid and assembled system prompt.
@@ -82,5 +83,31 @@ func (s Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan a
 	if opts.Provider == nil {
 		opts.Provider = s.Provider
 	}
+	if opts.WorkDir == "" {
+		opts.WorkDir = s.WorkDir
+	}
+	if len(opts.Messages) == 0 && len(s.History) > 0 {
+		opts.Messages = append([]provider.ChatMessage(nil), s.History...)
+	}
+	if opts.Provider != nil {
+		opts.ToolsEnabled = true
+		opts.ExecuteTool = func(ctx context.Context, name string, args map[string]any) agent.ToolRunResult {
+			result := ExecuteTool(ctx, s.WorkDir, name, args)
+			return agent.ToolRunResult{
+				Output:    result.Output,
+				Err:       result.Err,
+				Cancelled: result.Cancelled,
+			}
+		}
+	}
 	return agent.RunTurn(ctx, opts)
+}
+
+// ApplyHistory replaces the session conversation history used for provider calls.
+func (s *Session) ApplyHistory(history []provider.ChatMessage) {
+	if len(history) == 0 {
+		s.History = nil
+		return
+	}
+	s.History = append([]provider.ChatMessage(nil), history...)
 }

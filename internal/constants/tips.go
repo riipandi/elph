@@ -2,17 +2,17 @@ package constants
 
 // Tips is a collection of tips shown in the TUI banner on random.
 var Tips = []string{
-	"Use --no-session for ephemeral mode — no session file is saved, useful for one-off queries.",
-	"Send /changelog to show version history.",
-	"Use /help to see all available commands.",
+	"Use /help to see all available slash commands.",
 	"Press Ctrl+C once to cancel, twice to exit.",
 	"Type :q and press Enter to quit (vim-style exit).",
 	"Press Ctrl+D to exit the application.",
-	"Use Tab to switch focus between elements.",
 	"Press Ctrl+L or type /model to switch the active AI model.",
-	"Use /settings to open the configuration panel.",
-	"Send /diagnostic:debug for diagnostic information.",
-	"Questions about code? Try /plan first for architecture-aware answers.",
-	"Use Tab and Shift+Tab to switch between agent modes.",
-	"Use /diff to view uncommitted changes in your workspace.",
+	"Press Ctrl+A to cycle agent modes (build, plan, ask, brave).",
+	"Press Shift+Tab to cycle thinking level.",
+	"Press Ctrl+Shift+T to cycle theme (auto, dark, light).",
+	"Press Ctrl+Y to copy the last message.",
+	"Use /diagnostic:system-prompt to inspect the assembled system prompt.",
+	"Use /diagnostic:list-tools to see tools available to the agent.",
+	"Session logs are written to <workDir>/.elph/logs/ — see /diagnostic:open-log.",
+	"Run elph provider connect to create starter provider configs under ~/.elph/providers.",
 }

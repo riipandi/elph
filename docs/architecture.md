@@ -1,0 +1,120 @@
+# Architecture
+
+High-level map of the Elph codebase. Module: `github.com/riipandi/elph` (Go 1.26). Binary: `elph` from `cmd/coding-agent`.
+
+## Repository layout
+
+```
+elph/
+├── cmd/coding-agent/     CLI entry (Cobra): TUI, provider management, version
+├── internal/             Application-private packages (not importable externally)
+├── pkg/                  Reusable libraries (agent, tools, AI providers)
+├── docs/                 Documentation
+├── schemas/              JSON schemas for provider/MCP/config formats
+└── Makefile              build, test, lint, install
+```
+
+## `cmd/coding-agent`
+
+| File / area             | Role                                                   |
+|-------------------------|--------------------------------------------------------|
+| `main.go`, `root.go`    | Default: launch TUI; global `--env-file`               |
+| `provider.go`           | `elph provider connect|update|list`                    |
+| `provider_enable.go`    | `elph provider enable|disable`, `model enable|disable` |
+| `provider_progress*.go` | Terminal progress UI for connect/update                |
+| `doctor.go`             | Stub — not implemented                                 |
+| `version`               | Build metadata from `internal/config`                  |
+
+## `internal/` packages
+
+| Package          | Responsibility                                              |
+|------------------|-------------------------------------------------------------|
+| `align`          | Column alignment for command palettes                       |
+| `command`        | Slash commands, fuzzy suggest, `/model` handler             |
+| `config`         | Build-time version/hash/date (Makefile ldflags)             |
+| `constants`      | Agent modes, thinking levels, colors, keybindings, tips     |
+| `datastore`      | **Stub** — empty package, reserved                          |
+| `git`            | Branch name and `+N -N` line stats via go-git               |
+| `mention`        | `@` file/path autocomplete in input                         |
+| `prompt`         | System prompt assembly, `AGENTS.md`, tool list formatting   |
+| `prompttemplate` | Load `*.md` templates with frontmatter and `$1` args        |
+| `renderer`       | Bubble Tea v2 TUI (viewport, input, agent bridge, markdown) |
+| `runtime`        | Session, tool execution, shell, session logs                |
+| `settings`       | `~/.elph/settings.json` persistence                         |
+| `theme`          | `auto` / `dark` / `light` lipgloss themes                   |
+| `tools`          | Diagnostic helpers (not agent-executable)                   |
+
+## `pkg/` packages
+
+| Package       | Responsibility                                                                |
+|---------------|-------------------------------------------------------------------------------|
+| `ai`          | Facade: `LoadProviders`, `ResolveProvider`                                    |
+| `ai/provider` | Provider catalog, OpenAI/Anthropic adapters, models.dev sync, thinking/compat |
+| `ai/utils`    | HTTP and stream helpers                                                       |
+| `core/agent`  | Turn loop, events, text-markup tool parser, native tool loop                  |
+| `core/fuzzy`  | Subsequence fuzzy matching                                                    |
+| `tool`        | Built-in tool catalog, provider schemas, `IsProviderExposed`                  |
+
+## Runtime data flow
+
+```mermaid
+flowchart LR
+    subgraph CLI
+        E[elph TUI]
+    end
+    subgraph Internal
+        R[renderer]
+        RT[runtime.Session]
+        PR[prompt.Build]
+    end
+    subgraph Pkg
+        AG[agent.RunTurn]
+        PV[provider.Complete]
+        TL[tool.ProviderDefinitions]
+    end
+    E --> R
+    R --> RT
+    RT --> PR
+    RT --> AG
+    AG --> TL
+    AG --> PV
+    PV --> AG
+    AG --> R
+```
+
+1. User submits input in `internal/renderer`.
+2. Slash commands → `internal/command`; shell `!`/`!!` → `runtime.RunShell`; else → `Session.StartTurn`.
+3. Session builds system prompt, attaches history, enables `ExecuteTool`.
+4. `agent.RunTurn` runs single-shot or multi-round native tool loop.
+5. Provider HTTP adapters stream deltas; events update the TUI.
+
+See [agent-runtime.md](./agent-runtime.md) for the full turn pipeline.
+
+## Configuration surfaces
+
+| Surface                                      | Doc                                                                                                     |
+|----------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| `~/.elph/settings.json`                      | [configuration.md](./configuration.md)                                                                  |
+| `~/.elph/providers/*.json`                   | [configuration.md](./configuration.md), [schemas/provider-schema.json](../schemas/provider-schema.json) |
+| `~/.elph/prompts/`, project `.elph/prompts/` | [prompt-templates.md](./prompt-templates.md)                                                            |
+| Env vars (`ELPH_*`, API keys)                | [configuration.md](./configuration.md)                                                                  |
+
+## MCP (planned)
+
+- JSON schema: `schemas/mcp-schema.json` — **not loaded by runtime**
+- System prompt supports `prompt.ExternalEntry` for future MCP tools
+- TUI banner: `MCP Server: 0/0 connected (0 tools)` — hardcoded placeholder
+
+## Diagnostic vs agent tools
+
+| Namespace            | Package          | Callable by model?                        |
+|----------------------|------------------|-------------------------------------------|
+| Built-in agent tools | `pkg/tool`       | Yes (when API-exposed + executable)       |
+| Diagnostic helpers   | `internal/tools` | No — use slash commands (`/diagnostic:*`) |
+
+## Related docs
+
+- [agent-runtime.md](./agent-runtime.md) — sessions, logging, tool loop
+- [tools.md](./tools.md) — tool catalog and API filter
+- [cli.md](./cli.md) — non-TUI commands
+- [progress.md](./progress.md) — recent feature development log

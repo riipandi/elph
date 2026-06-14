@@ -83,22 +83,8 @@ func (p *OpenAICompatible) Complete(ctx context.Context, req TurnRequest) (TurnR
 }
 
 func (p *OpenAICompatible) completeOnce(ctx context.Context, req TurnRequest) (TurnResult, error) {
-	type message struct {
-		Role             string `json:"role"`
-		Content          string `json:"content"`
-		ReasoningContent string `json:"reasoning_content,omitempty"`
-	}
-	type request struct {
-		Model       string    `json:"model"`
-		Messages    []message `json:"messages"`
-		MaxTokens   int       `json:"max_tokens,omitempty"`
-		Temperature float64   `json:"temperature"`
-	}
-	type choice struct {
-		Message message `json:"message"`
-	}
 	type response struct {
-		Choices []choice `json:"choices"`
+		Choices []openAIChoice `json:"choices"`
 	}
 
 	body, err := p.buildRequest(req, false)
@@ -115,11 +101,8 @@ func (p *OpenAICompatible) completeOnce(ctx context.Context, req TurnRequest) (T
 		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 
-	result := TurnResult{
-		Thinking: strings.TrimSpace(out.Choices[0].Message.ReasoningContent),
-		Content:  strings.TrimSpace(out.Choices[0].Message.Content),
-	}
-	if result.Thinking == "" && result.Content == "" {
+	result := parseOpenAIChoice(out.Choices[0])
+	if !openAIResultValid(result) {
 		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
@@ -133,6 +116,8 @@ func (p *OpenAICompatible) completeStream(ctx context.Context, req TurnRequest) 
 
 	var thinking, content strings.Builder
 	var usage TurnUsage
+	toolAcc := newOpenAIStreamToolAccumulator()
+	var finishReason string
 	err = utils.PostSSE(ctx, p.client, p.BaseURL+"/chat/completions", p.requestHeaders(), body, func(data []byte) error {
 		var chunk openAIStreamChunk
 		if err := json.Unmarshal(data, &chunk); err != nil {
@@ -145,7 +130,11 @@ func (p *OpenAICompatible) completeStream(ctx context.Context, req TurnRequest) 
 		if len(chunk.Choices) == 0 {
 			return nil
 		}
-		delta := chunk.Choices[0].Delta
+		choice := chunk.Choices[0]
+		if choice.FinishReason != "" {
+			finishReason = choice.FinishReason
+		}
+		delta := choice.Delta
 		if delta.ReasoningContent != "" {
 			thinking.WriteString(delta.ReasoningContent)
 			req.Stream.emitThinking(delta.ReasoningContent)
@@ -158,6 +147,9 @@ func (p *OpenAICompatible) completeStream(ctx context.Context, req TurnRequest) 
 			content.WriteString(delta.Content)
 			req.Stream.emitContent(delta.Content)
 		}
+		if len(delta.ToolCalls) > 0 {
+			toolAcc.absorb(delta.ToolCalls)
+		}
 		return nil
 	})
 	if err != nil {
@@ -165,11 +157,17 @@ func (p *OpenAICompatible) completeStream(ctx context.Context, req TurnRequest) 
 	}
 
 	result := TurnResult{
-		Thinking: strings.TrimSpace(thinking.String()),
-		Content:  strings.TrimSpace(content.String()),
-		Usage:    usage,
+		Thinking:  strings.TrimSpace(thinking.String()),
+		Content:   strings.TrimSpace(content.String()),
+		Usage:     usage,
+		ToolCalls: toolAcc.result(),
 	}
-	if result.Thinking == "" && result.Content == "" {
+	if finishReason == "tool_calls" || len(result.ToolCalls) > 0 {
+		result.StopReason = StopReasonToolUse
+	} else {
+		result.StopReason = StopReasonEndTurn
+	}
+	if !openAIResultValid(result) {
 		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
@@ -181,13 +179,15 @@ type openAIStreamUsage struct {
 }
 
 type openAIStreamDelta struct {
-	Content          string `json:"content"`
-	ReasoningContent string `json:"reasoning_content"`
-	Reasoning        string `json:"reasoning"`
+	Content          string                 `json:"content"`
+	ReasoningContent string                 `json:"reasoning_content"`
+	Reasoning        string                 `json:"reasoning"`
+	ToolCalls        []openAIStreamToolCall `json:"tool_calls"`
 }
 
 type openAIStreamChoice struct {
-	Delta openAIStreamDelta `json:"delta"`
+	Delta        openAIStreamDelta `json:"delta"`
+	FinishReason string            `json:"finish_reason"`
 }
 
 type openAIStreamChunk struct {
@@ -201,19 +201,9 @@ func (p *OpenAICompatible) buildRequest(req TurnRequest, stream bool) (map[strin
 		model = p.DefaultModel
 	}
 
-	messages := make([]map[string]string, 0, 2)
-	if strings.TrimSpace(req.SystemPrompt) != "" {
-		role := "system"
-		if req.Thinking.Enabled && req.Compat.supportsDeveloperRole() {
-			role = "developer"
-		}
-		messages = append(messages, map[string]string{"role": role, "content": req.SystemPrompt})
-	}
-	messages = append(messages, map[string]string{"role": "user", "content": req.UserPrompt})
-
 	body := map[string]any{
 		"model":       model,
-		"messages":    messages,
+		"messages":    OpenAIMessages(req.SystemPrompt, BuildMessages(req), req.Thinking, req.Compat),
 		"temperature": p.Temperature,
 		"top_p":       p.TopP,
 	}
@@ -225,6 +215,10 @@ func (p *OpenAICompatible) buildRequest(req TurnRequest, stream bool) (map[strin
 		body[maxField] = p.MaxTokens
 	}
 	applyOpenAIThinking(body, req.Thinking, req.Compat)
+	if tools := OpenAITools(req.Tools); len(tools) > 0 {
+		body["tools"] = tools
+		body["tool_choice"] = "auto"
+	}
 	if stream {
 		body["stream"] = true
 		if req.Compat.supportsUsageInStreaming() {

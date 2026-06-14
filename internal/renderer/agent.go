@@ -28,6 +28,7 @@ func (m Model) beginAgentTurn() Model {
 	m.agent.SpinnerFrame = 0
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
+	m = m.resetToolCallStreamFilter()
 	return m
 }
 
@@ -118,15 +119,40 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 		m.session.AppendLog("thinking", thinking)
 	}
 
+	response, calls := m.finalizeAgentResponseText(response)
+	m = m.recordToolCallRequests(calls)
+	response = agent.StripExtractedPayloads(response, m.agent.TurnToolCalls)
+
 	responseIdx := m.agent.ResponseMsgID
+	if responseIdx >= 0 && strings.TrimSpace(response) == "" {
+		clean, extra := agent.StripToolCalls(m.messages[responseIdx].text)
+		m = m.recordToolCallRequests(extra)
+		response = agent.StripExtractedPayloads(clean, m.agent.TurnToolCalls)
+	}
+
 	switch {
 	case responseIdx >= 0 && strings.TrimSpace(response) != "":
+		clean, extra := agent.StripToolCalls(response)
+		m = m.recordToolCallRequests(extra)
+		response = agent.StripExtractedPayloads(clean, m.agent.TurnToolCalls)
+		if strings.TrimSpace(response) == "" {
+			m = m.removeMessageAt(responseIdx)
+			responseIdx = -1
+			break
+		}
 		m.messages[responseIdx].text = response
 		m.messages[responseIdx].renderCache = messageRenderCache{}
 		m.messages[responseIdx].glamourPending = true
 		m.session.AppendLog("ai", response)
 		m.layout.ContentDirty = true
+	case responseIdx >= 0 && strings.TrimSpace(response) == "":
+		m = m.removeMessageAt(responseIdx)
+		responseIdx = -1
 	case responseIdx < 0 && strings.TrimSpace(response) != "":
+		response = agent.StripExtractedPayloads(response, m.agent.TurnToolCalls)
+		if strings.TrimSpace(response) == "" {
+			break
+		}
 		m = m.addAIMessage(response)
 		responseIdx = len(m.messages) - 1
 	}
@@ -166,13 +192,23 @@ func (m Model) appendAgentResponseDelta(delta string) Model {
 	if delta == "" {
 		return m
 	}
+
+	safe, calls := m.filterAgentResponseDelta(delta)
+	m = m.recordToolCallRequests(calls)
+	safe, extra := agent.StripToolCalls(safe)
+	m = m.recordToolCallRequests(extra)
+	if safe == "" {
+		m.agent.Activity = agent.ActivityStreaming
+		return m
+	}
+
 	if m.agent.ResponseMsgID < 0 {
-		m.messages = append(m.messages, message{text: delta, kind: constants.MessageAI})
+		m.messages = append(m.messages, message{text: safe, kind: constants.MessageAI})
 		m.agent.ResponseMsgID = len(m.messages) - 1
 		m.layout.ContentDirty = true
 	} else {
 		idx := m.agent.ResponseMsgID
-		m.messages[idx].text += delta
+		m.messages[idx].text += safe
 		m.messages[idx].renderCache = messageRenderCache{}
 		m.layout.ContentDirty = true
 	}

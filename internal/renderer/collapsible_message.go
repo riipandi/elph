@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 func isCollapsibleKind(kind constants.MessageKind) bool {
@@ -104,6 +105,17 @@ func collapsibleStatusPreview(kind constants.MessageKind, status constants.Detai
 	if label == "" {
 		return ""
 	}
+
+	useSpinner := kind == constants.MessageThinking || status == constants.DetailStatusRunning
+	if !useSpinner {
+		plain := label
+		if maxWidth > 0 {
+			plain = ansi.Truncate(plain, maxWidth, "...")
+		}
+		accent := constants.DetailStatusAccent(status).GetForeground()
+		return foregroundOnBox(box, accent).Render(plain)
+	}
+
 	frame := spinnerFrames[spinnerFrame%len(spinnerFrames)]
 
 	var spinnerFG, labelFG color.Color
@@ -255,6 +267,7 @@ func renderDetailMessage(blockWidth int, label, body string, expanded bool, stat
 }
 
 func renderThinkingMessage(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
+	body = agent.SanitizeAssistantDisplay(body)
 	return renderThinkingCollapsible(blockWidth, label, body, expanded, opts)
 }
 

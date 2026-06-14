@@ -1,12 +1,14 @@
 # Built-in Tools
 
+See also: [agent-runtime.md](./agent-runtime.md) (execution flow), [slash-commands.md](./slash-commands.md) (diagnostic helpers).
+
 ## Permissions
 
-| Permission          | Description                                              |
-|---------------------|----------------------------------------------------------|
-| `auto-allow`        | Runs without approval by default; user can require it    |
-| `requires-approval` | Requires user approval before each run                   |
-| `always-approve`    | Always runs without approval; cannot be restricted       |
+| Permission          | Description                                           |
+|---------------------|-------------------------------------------------------|
+| `auto-allow`        | Runs without approval by default; user can require it |
+| `requires-approval` | Requires user approval before each run                |
+| `always-approve`    | Always runs without approval; cannot be restricted    |
 
 ## File Tools
 
@@ -52,3 +54,114 @@ Collaboration tools handle inter-Agent coordination, user interaction, and Skill
 | Tool    | Default Approval | Description                                        |
 |---------|------------------|----------------------------------------------------|
 | AskUser | Auto-allow       | Ask the user a question to gather structured input |
+
+## Provider API exposure
+
+Elph uses **native tool calling** (OpenAI `tools` / Anthropic `tools`) when a provider is
+configured. The model receives only a filtered subset of built-in tools—not every tool listed
+above.
+
+Three layers decide what the model can see and what the runtime can run:
+
+| Layer            | Purpose                                       | Source                         |
+|------------------|-----------------------------------------------|--------------------------------|
+| **Catalog**      | Shown in prompts and UI; full built-in list   | `pkg/tool` `builtin`           |
+| **Provider API** | JSON schemas sent to OpenAI / Anthropic       | `ProviderDefinitions()`        |
+| **Runtime**      | Actually executed when the model calls a tool | `internal/runtime.ExecuteTool` |
+
+A tool is sent to the provider API only when **all** of the following are true
+(`IsProviderExposed`):
+
+1. It is a known built-in (`Get`).
+2. Its default approval is `auto-allow`.
+3. The runtime can execute it (`IsExecutable`).
+4. It has a provider JSON schema (`providerSchema`).
+
+Today that means only **Read**, **Grep**, and **Glob** are exposed to the API, even though
+tools like WebSearch or FetchURL are `auto-allow` in the catalog. Exposing a tool before the
+runtime can run it would let the model call it and receive `tool unavailable` errors.
+
+### Exposure vs approval vs execution
+
+| Tool          | Default approval  | Provider API | Runtime (`IsExecutable`) |
+|---------------|-------------------|--------------|--------------------------|
+| Read          | Auto-allow        | Yes          | Yes                      |
+| Grep          | Auto-allow        | Yes          | Yes                      |
+| Glob          | Auto-allow        | Yes          | Yes                      |
+| ReadMediaFile | Auto-allow        | No           | No                       |
+| FetchURL      | Auto-allow        | No           | No                       |
+| WebSearch     | Auto-allow        | No           | No                       |
+| CodeSearch    | Auto-allow        | No           | No                       |
+| EnterPlanMode | Auto-allow        | No           | No                       |
+| ExitPlanMode  | Auto-allow        | No           | No                       |
+| AskUser       | Auto-allow        | No           | No                       |
+| Write         | Requires approval | No           | No                       |
+| Edit          | Requires approval | No           | No                       |
+| Bash          | Requires approval | No           | No                       |
+
+Tools with `requires-approval` stay out of the API until an approval UI can gate each call.
+Auto-allow tools stay out until `IsExecutable` returns true for them.
+
+### Request flow
+
+```mermaid
+sequenceDiagram
+    participant Session as internal/runtime/session
+    participant Loop as pkg/core/agent/loop
+    participant Tool as pkg/tool
+    participant Provider as pkg/ai/provider
+    participant Runtime as internal/runtime/execute
+
+    Session->>Loop: StartTurn (ToolsEnabled, ExecuteTool)
+    Loop->>Tool: FilterProviderTools / ProviderDefinitions
+    Tool-->>Loop: Read, Grep, Glob schemas
+    Loop->>Provider: Complete(TurnRequest.Tools)
+    Provider-->>Loop: tool_calls / tool_use
+    Loop->>Runtime: ExecuteTool(name, args)
+    Runtime->>Tool: IsExecutable(name)
+    Runtime-->>Loop: output or error
+    Loop->>Provider: tool_result follow-up message
+```
+
+The agent loop runs up to eight tool rounds (`maxToolIterations`). Each round: completion with
+tools → execute calls → append tool results → complete again until the model stops calling
+tools.
+
+### Key functions
+
+| Function                | Package            | Role                                    |
+|-------------------------|--------------------|-----------------------------------------|
+| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered         |
+| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition` |
+| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check          |
+| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool        |
+| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)      |
+| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                        |
+| `ExecuteTool()`         | `internal/runtime` | Read / Grep / Glob execution            |
+
+Provider adapters map definitions to API formats:
+
+- OpenAI: `pkg/ai/provider.OpenAITools`
+- Anthropic: `pkg/ai/provider.AnthropicTools`
+
+### Adding a new API-exposed tool
+
+To expose a built-in to the model API end-to-end:
+
+1. **Schema** — Add or extend `providerSchema()` in `pkg/tool/schema.go`.
+2. **Execution** — Implement the handler in `internal/runtime/execute.go` and add the name to
+   `IsExecutable()` in `pkg/tool/availability.go`.
+3. **Approval** — If the tool should require user approval, keep
+   `DefaultApproval: ApprovalRequiresApproval` in `pkg/tool/builtin.go`; it will not be API-exposed
+   until approval is wired. Use `auto-allow` only for safe, read-only (or otherwise pre-approved)
+   operations.
+4. **Tests** — Update `pkg/tool/schema_test.go` and runtime tests for the new executable.
+
+No change to `ProviderDefinitions()` is required: filtering is driven by `IsProviderExposed`.
+
+### Text markup fallback
+
+When native tools are disabled or the model emits XML-style `<toolcall>` markup in text, a separate
+parser path (`pkg/core/agent/toolcall*.go`) still handles legacy invocations. That path is
+independent of provider API filtering; keeping the API list aligned with `IsExecutable` avoids the
+model calling tools that cannot run.

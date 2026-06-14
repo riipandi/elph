@@ -83,31 +83,21 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (TurnResult, 
 	return p.completeOnce(ctx, req)
 }
 
-type anthropicContentBlock struct {
-	Type     string `json:"type"`
-	Text     string `json:"text"`
-	Thinking string `json:"thinking"`
-}
-
 func (p *Anthropic) completeOnce(ctx context.Context, req TurnRequest) (TurnResult, error) {
-	type response struct {
-		Content []anthropicContentBlock `json:"content"`
-	}
-
 	model := req.Model
 	if model == "" {
 		model = p.Model
 	}
 
-	var out response
+	var out anthropicResponse
 	body := p.buildRequestBody(req, model, false)
 	err := utils.PostJSON(ctx, p.client, p.apiURL(), p.requestHeaders(), body, &out)
 	if err != nil {
 		return TurnResult{}, err
 	}
 
-	result := parseAnthropicContent(out.Content)
-	if result.Thinking == "" && result.Content == "" {
+	result := parseAnthropicResponse(out)
+	if !anthropicResultValid(result) {
 		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
@@ -123,6 +113,9 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 
 	var thinking, content strings.Builder
 	var usage TurnUsage
+	var toolCalls []ToolCall
+	var currentTool *ToolCall
+	var toolInput strings.Builder
 	err := p.postAnthropicSSE(ctx, body, func(eventType string, data []byte) error {
 		switch eventType {
 		case "message_start":
@@ -145,6 +138,21 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 			if err := json.Unmarshal(data, &evt); err == nil && evt.Usage.OutputTokens > 0 {
 				usage.OutputTokens = evt.Usage.OutputTokens
 			}
+		case "content_block_start":
+			var evt struct {
+				ContentBlock anthropicToolUseBlock `json:"content_block"`
+			}
+			if err := json.Unmarshal(data, &evt); err == nil && evt.ContentBlock.Type == "tool_use" {
+				currentTool = &ToolCall{
+					ID:   evt.ContentBlock.ID,
+					Name: evt.ContentBlock.Name,
+				}
+				toolInput.Reset()
+				if evt.ContentBlock.Input != nil {
+					raw, _ := json.Marshal(evt.ContentBlock.Input)
+					toolInput.Write(raw)
+				}
+			}
 		case "content_block_delta":
 			var evt anthropicDeltaEvent
 			if err := json.Unmarshal(data, &evt); err != nil {
@@ -161,6 +169,20 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 					content.WriteString(evt.Delta.Text)
 					req.Stream.emitContent(evt.Delta.Text)
 				}
+			case "input_json_delta":
+				if evt.Delta.PartialJSON != "" {
+					toolInput.WriteString(evt.Delta.PartialJSON)
+				}
+			}
+		case "content_block_stop":
+			if currentTool != nil {
+				args := json.RawMessage(toolInput.String())
+				if len(args) == 0 {
+					args = json.RawMessage("{}")
+				}
+				currentTool.Arguments = args
+				toolCalls = append(toolCalls, *currentTool)
+				currentTool = nil
 			}
 		}
 		return nil
@@ -170,47 +192,31 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 	}
 
 	result := TurnResult{
-		Thinking: strings.TrimSpace(thinking.String()),
-		Content:  strings.TrimSpace(content.String()),
-		Usage:    usage,
+		Thinking:  strings.TrimSpace(thinking.String()),
+		Content:   strings.TrimSpace(content.String()),
+		Usage:     usage,
+		ToolCalls: toolCalls,
 	}
-	if result.Thinking == "" && result.Content == "" {
+	if len(result.ToolCalls) > 0 {
+		result.StopReason = StopReasonToolUse
+	} else {
+		result.StopReason = StopReasonEndTurn
+	}
+	if !anthropicResultValid(result) {
 		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
 }
 
 type anthropicDelta struct {
-	Type     string `json:"type"`
-	Text     string `json:"text"`
-	Thinking string `json:"thinking"`
+	Type        string `json:"type"`
+	Text        string `json:"text"`
+	Thinking    string `json:"thinking"`
+	PartialJSON string `json:"partial_json"`
 }
 
 type anthropicDeltaEvent struct {
 	Delta anthropicDelta `json:"delta"`
-}
-
-func parseAnthropicContent(blocks []anthropicContentBlock) TurnResult {
-	var result TurnResult
-	for _, block := range blocks {
-		switch block.Type {
-		case "thinking":
-			if block.Thinking != "" {
-				if result.Thinking != "" {
-					result.Thinking += "\n"
-				}
-				result.Thinking += block.Thinking
-			}
-		case "text":
-			if block.Text != "" {
-				if result.Content != "" {
-					result.Content += "\n"
-				}
-				result.Content += block.Text
-			}
-		}
-	}
-	return result
 }
 
 func (p *Anthropic) postAnthropicSSE(ctx context.Context, body map[string]any, onEvent func(eventType string, data []byte) error) error {
@@ -272,13 +278,16 @@ func (p *Anthropic) buildRequestBody(req TurnRequest, model string, stream bool)
 		"max_tokens":  p.MaxTokens,
 		"temperature": p.Temperature,
 		"top_p":       p.TopP,
-		"messages":    []map[string]string{{"role": "user", "content": req.UserPrompt}},
+		"messages":    AnthropicMessages(BuildMessages(req)),
 	}
 	if stream {
 		body["stream"] = true
 	}
 	if strings.TrimSpace(req.SystemPrompt) != "" {
 		body["system"] = req.SystemPrompt
+	}
+	if tools := AnthropicTools(req.Tools); len(tools) > 0 {
+		body["tools"] = tools
 	}
 	applyAnthropicThinking(body, req.Thinking)
 	return body

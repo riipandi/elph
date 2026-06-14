@@ -10,7 +10,14 @@ func (m Model) collapsibleShowsStatusPreview(msg message, index int) bool {
 	case constants.MessageThinking:
 		return m.isStreamingMessageAt(index)
 	case constants.MessageDetail:
-		return msg.detailStatus == constants.DetailStatusRunning
+		switch msg.detailStatus {
+		case constants.DetailStatusRunning:
+			return true
+		case constants.DetailStatusError, constants.DetailStatusWarning, constants.DetailStatusUnavailable:
+			return true
+		default:
+			return false
+		}
 	default:
 		return false
 	}

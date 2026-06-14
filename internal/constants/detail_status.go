@@ -15,6 +15,7 @@ const (
 	DetailStatusSuccess
 	DetailStatusWarning
 	DetailStatusError
+	DetailStatusUnavailable
 )
 
 type detailStatusColors struct {
@@ -49,6 +50,12 @@ func detailPalette(status DetailStatus) detailStatusColors {
 			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
 			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F0E8E8"), Dark: lipgloss.Color("#3C2828")},
 		}
+	case DetailStatusUnavailable:
+		return detailStatusColors{
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#8A7A3A"), Dark: lipgloss.Color("#C9B458")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
+			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F7F2E3"), Dark: lipgloss.Color("#353024")},
+		}
 	default:
 		return detailStatusColors{
 			accent: compat.AdaptiveColor{Light: lipgloss.Color("#5A8080"), Dark: lipgloss.Color("#8ABEB7")},
@@ -81,6 +88,12 @@ func DetailStatusPreviewLabel(status DetailStatus) string {
 	switch status {
 	case DetailStatusRunning:
 		return "Running..."
+	case DetailStatusError:
+		return "Failed"
+	case DetailStatusWarning:
+		return "Cancelled"
+	case DetailStatusUnavailable:
+		return "Unavailable"
 	default:
 		return ""
 	}

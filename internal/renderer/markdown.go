@@ -10,6 +10,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/theme"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 // All markdown formatting runs off the UI thread so stream completion never
@@ -288,6 +289,7 @@ func renderAIMessageGlamour(blockWidth int, text string) string {
 // still running in the background. Full markdown formatting runs once after the
 // response is complete (sync for small messages, async for large ones).
 func renderAIMessage(blockWidth int, text string, streaming, glamourPending bool) string {
+	text = agent.SanitizeAssistantDisplay(text)
 	if strings.TrimSpace(text) == "" {
 		return ""
 	}

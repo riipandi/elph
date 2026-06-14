@@ -13,6 +13,8 @@ type TurnRequest struct {
 	Thinking     ThinkingConfig
 	Compat       Compat
 	Stream       *TurnStream
+	Messages     []ChatMessage
+	Tools        []ToolDefinition
 }
 
 // Provider completes one agent turn against an upstream model API.

@@ -34,9 +34,21 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 	case agent.EventResponseDelta:
 		m = m.appendAgentResponseDelta(msg.event.Delta)
 		return m.markStreamDirty()
+	case agent.EventToolCallStart:
+		m.agent.Activity = agent.ActivityForTool(msg.event.ToolCall.Name)
+		m = m.beginNativeToolCall(msg.event.ToolCall)
+		m = m.syncLayout(m.content.AtBottom())
+		return m, nil
+	case agent.EventToolCallDone:
+		m = m.finishNativeToolCall(msg.event.ToolCall, msg.event.ToolResult)
+		m = m.syncLayout(m.content.AtBottom())
+		return m, nil
 	case agent.EventTurnDone:
 		m.turnCount++
 		m = m.applyTurnUsage(msg.event.Usage)
+		if len(msg.event.History) > 0 {
+			m = m.applySessionHistory(msg.event.History)
+		}
 		return m.finishAgentTurn(msg.event.Thinking, msg.event.Response)
 	}
 	if m.agent.Events != nil {

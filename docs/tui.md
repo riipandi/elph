@@ -10,8 +10,8 @@
 │                                                                 │
 │  Directory:  ~/some/path/to/project_dir                         │
 │  Model:      Claude Sonnet 4.6 [anthropic] (000 available)      │   <- BANNER (line-clamp if not enough width)
-│  Stats:      00 exts, 00 commands, 00 skills, 00 tools          │
-│  MCP:        0/0 connected (000 tools)                          │
+│  Stats:      00 exts, 00 commands, 00 skills, 00 tools          │   <- placeholder zeros (not wired)
+│  MCP Server: 0/0 connected (0 tools)                            │   <- placeholder (MCP not implemented)
 │                                                                 │
 │  Tip: Use --no-session for ephemeral mode — no session file is  │   <- TIPS can be wrapped
 │  saved, useful for one-off queries.                             │
@@ -104,7 +104,7 @@ project_dir [sess_abcd12345] agent_mode          turn: 0 | main [-]
 - **Submit**: `Enter` sends message and clears input.
 - **Prompt prefix**: Rendered as a separate element before the textarea (not using textarea's Prompt).
 - **Trigger stripped on submit**: `/cmd` → message is `cmd`, `!!rpt` → message is `rpt`.
-- **Configurable**: `showPromptPrefix` (default: `true`). When `false`, prefix is hidden.
+- **Configurable**: `showPromptPrefix` (default: `false` in `internal/renderer/model.go`). When `false`, prefix is hidden.
 
 ### Prompt Prefix (dynamic)
 
@@ -211,26 +211,61 @@ project_dir [session_id] mode             turn: 0 | branch [+N -N]
 
 ## Keybindings
 
-| Key           | Action                  |
-|---------------|-------------------------|
-| `Ctrl+C`      | Cancel / Quit           |
-| `Ctrl+X`      | Cancel / Quit           |
-| `Ctrl+D`      | Exit application        |
-| `Ctrl+M`      | Switch agent mode       |
-| `Enter`       | Send message            |
-| `Ctrl+J`      | Insert newline in input |
-| `Shift+Enter` | Insert newline in input |
-| `Shift+Tab`   | Cycle thinking level    |
-| `Ctrl+O`      | Expand/collapse newest collapsible block |
-| Click header/footer | Expand/collapse that specific block |
-| `:q` / `:q!`  | Quit (vim-style)        |
+Source of truth: `internal/constants/keymap.go`.
+
+| Key                 | Action                                   |
+|---------------------|------------------------------------------|
+| `Ctrl+C`            | Cancel / Quit                            |
+| `Ctrl+X`            | Cancel / Quit                            |
+| `Ctrl+D`            | Exit application                         |
+| `Ctrl+A`            | Switch agent mode                        |
+| `Shift+Tab`         | Cycle thinking level                     |
+| `Enter`             | Send message                             |
+| `Ctrl+J`            | Insert newline in input                  |
+| `Shift+Enter`       | Insert newline in input                  |
+| `Ctrl+L`            | Open model selector                      |
+| `Ctrl+Y`            | Copy last message                        |
+| `Ctrl+O`            | Expand/collapse newest collapsible block |
+| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)            |
+| Click header/footer | Expand/collapse that specific block      |
+| `:q` / `:q!`        | Quit (vim-style)                         |
+
+Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
+
+## Message timestamps
+
+User and assistant blocks can show a compact local timestamp (`internal/renderer/message_time.go`):
+
+- Today: `15:04:05`
+- Other days: `Jan 2 15:04:05`
+
+## Activity stopwatch
+
+During agent activity (connecting, thinking, tool work), a stopwatch shows elapsed time (`internal/renderer/activity_stopwatch.go`). Updates every 100ms while active.
+
+## Model selector
+
+`Ctrl+L` or `/model` opens a fuzzy overlay (`internal/renderer/model_selector.go`). Filter providers with arrow keys; select with Enter.
+
+## @-mentions
+
+Type `@` in input to fuzzy-search workspace files and directories (`internal/mention`). Skips `.git`, `node_modules`, and similar directories.
+
+## Shell input
+
+| Prefix  | Meaning                                          |
+|---------|--------------------------------------------------|
+| `!cmd`  | Run shell; output can be queued as agent context |
+| `!!cmd` | Run shell without agent context                  |
+
+Output appears in a collapsible detail box with status colors (running / success / error / cancelled).
 
 ## Stream Messages
 
-| Type   | Prefix | Color         |
-|--------|--------|---------------|
-| User   | `\|`   | `userPipeCol` |
-| AI     | `\|`   | `aiPipeCol`   |
-| System | `> `   | `highlight`   |
-| Detail   | —      | Soft status-colored box — neutral, running, success, warning, error |
+| Type     | Prefix | Color                                                                  |
+|----------|--------|------------------------------------------------------------------------|
+| User     | `\|`   | `userPipeCol`                                                          |
+| AI       | `\|`   | `aiPipeCol`                                                            |
+| System   | `> `   | `highlight`                                                            |
+| Detail   | —      | Soft status-colored box — neutral, running, success, warning, error    |
 | Thinking | —      | Neutral dim gray box; `autoExpandThinking` in settings (default false) |

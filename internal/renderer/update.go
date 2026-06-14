@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/internal/theme"
 	"github.com/riipandi/elph/pkg/core/agent"
@@ -459,7 +460,16 @@ func (m Model) addAIMessage(text string) Model {
 }
 
 func (m Model) addToolDetailMessage(toolName, body string) Model {
-	return m.addDetailMessageWithStatus(toolName, body, constants.DetailStatusSuccess)
+	return m.addToolDetailMessageWithStatus(toolName, body, constants.DetailStatusSuccess)
+}
+
+func (m Model) addToolDetailMessageWithStatus(toolName, body string, status constants.DetailStatus) Model {
+	return m.addDetailMessageWithStatusAt(toolName, body, status, time.Now())
+}
+
+func (m Model) addToolDetailFromResult(toolName string, result runtime.ToolResult) Model {
+	body := runtime.FormatToolDetailBodyFromResult(result)
+	return m.addToolDetailMessageWithStatus(toolName, body, toolDetailStatus(result))
 }
 
 func (m Model) thinkingExpandedByDefault() bool {

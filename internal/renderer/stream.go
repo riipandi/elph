@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 const streamFlushInterval = 40 * time.Millisecond
@@ -137,6 +138,9 @@ func (m Model) handleStreamFlush() (Model, tea.Cmd) {
 // renderStreamingMessage paints an in-flight message in one pass. Avoids
 // per-line Lip Gloss work on every token while the response grows.
 func renderStreamingMessage(blockWidth int, kind constants.MessageKind, text string) string {
+	if kind == constants.MessageAI || kind == constants.MessageThinking {
+		text = agent.SanitizeAssistantDisplay(text)
+	}
 	vPad, hPad := messageBlockPadding(kind)
 	return constants.MessageStyle(kind).
 		Padding(vPad, hPad).

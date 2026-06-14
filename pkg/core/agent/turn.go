@@ -38,6 +38,11 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		return
 	}
 
+	if opts.ToolsEnabled && opts.ExecuteTool != nil {
+		runProviderLoop(ctx, opts, ch)
+		return
+	}
+
 	if !sendEvent(ctx, ch, ActivityEvent(ActivityConnecting)) {
 		return
 	}
@@ -63,6 +68,7 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		Thinking:     opts.Thinking,
 		Compat:       opts.Compat,
 		Stream:       stream,
+		Messages:     opts.Messages,
 	})
 	if ctx.Err() != nil {
 		return

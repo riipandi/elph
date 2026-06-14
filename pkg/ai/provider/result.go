@@ -2,9 +2,11 @@ package provider
 
 // TurnResult is a completed provider turn with optional reasoning output.
 type TurnResult struct {
-	Thinking string
-	Content  string
-	Usage    TurnUsage
+	Thinking   string
+	Content    string
+	Usage      TurnUsage
+	ToolCalls  []ToolCall
+	StopReason StopReason
 }
 
 // TurnStream receives incremental thinking and response text during a turn.
