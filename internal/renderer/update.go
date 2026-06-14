@@ -45,6 +45,9 @@ func resolveKeyAction(msg tea.KeyPressMsg) constants.KeyAction {
 // ─── Update ──────────────────────────────────────────────────────────────────
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.toolInteractDialogActive() {
+		return m.updateToolInteractForm(msg)
+	}
 	if m.modelsSyncDialogActive() {
 		return m.updateModelsSyncForm(msg)
 	}
@@ -125,11 +128,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleStreamFlush()
 
 	case agentEventMsg:
+		return m.handleAgentEvent(msg)
+
+	case toolInteractOfferMsg:
 		var cmd tea.Cmd
-		m, cmd = m.handleAgentEvent(msg)
+		m, cmd = m.offerToolInteract(msg)
+		m.layout.ContentDirty = true
+		m = m.syncLayout(true)
 		if cmd != nil {
-			cmds = append(cmds, cmd)
+			return m, cmd
 		}
+		return m, nil
 
 	case agentTurnClosedMsg:
 		if m.agent.Busy {

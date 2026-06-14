@@ -63,8 +63,9 @@ func anthropicMessages(messages []provider.ChatMessage) []anthropic.MessageParam
 				blocks = append(blocks, anthropic.NewTextBlock(msg.Content))
 			}
 			for _, call := range msg.ToolCalls {
+				args := provider.NormalizeToolArguments(call.Arguments)
 				var input map[string]any
-				_ = json.Unmarshal(call.Arguments, &input)
+				_ = json.Unmarshal(args, &input)
 				if input == nil {
 					input = map[string]any{}
 				}
@@ -104,14 +105,10 @@ func turnResultFromMessage(msg *anthropic.Message) provider.TurnResult {
 			if variant.ID == "" || variant.Name == "" {
 				continue
 			}
-			args := variant.Input
-			if len(args) == 0 {
-				args = json.RawMessage("{}")
-			}
 			result.ToolCalls = append(result.ToolCalls, provider.ToolCall{
 				ID:        variant.ID,
 				Name:      variant.Name,
-				Arguments: args,
+				Arguments: provider.NormalizeToolArguments(variant.Input),
 			})
 		}
 	}

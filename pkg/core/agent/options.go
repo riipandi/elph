@@ -22,5 +22,8 @@ type TurnOptions struct {
 	WorkDir      string
 	Messages     []provider.ChatMessage
 	Tools        []provider.ToolDefinition
-	ExecuteTool  ToolExecuteFunc
+	ExecuteTool       ToolExecuteFunc
+	InteractTool      ToolInteractFunc
+	SkipToolApproval  bool // brave mode — skip approval dialogs for requires-approval tools
+	LogProvider       TurnLogFunc // optional provider/tool trace (requests log)
 }

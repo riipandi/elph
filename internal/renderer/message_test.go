@@ -70,10 +70,10 @@ func TestResponseMessageVerticalSpacing(t *testing.T) {
 	}
 }
 
-func TestAIMessageNoExtraVerticalPadding(t *testing.T) {
+func TestAIMessageHasBottomPaddingOnly(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "line one\nline two", kind: constants.MessageAI})
-	require.Equal(t, 2, lipgloss.Height(rendered))
+	require.Equal(t, 3, lipgloss.Height(rendered), "AI blocks add one line below the last row")
 }
 
 func TestThinkingMessageUsesCollapsibleBox(t *testing.T) {
@@ -117,7 +117,7 @@ func TestSystemMessageVerticalSpacing(t *testing.T) {
 		{text: "Copied to clipboard", kind: constants.MessageSystem},
 	}
 	content := normalizeSpacingLines(stripANSI(m.messagesView()))
-	require.Contains(t, content, "from agent\n\nCopied to clipboard")
+	require.Contains(t, content, "from agent\n\n\nCopied to clipboard")
 }
 
 func TestUserMessageMultiline(t *testing.T) {

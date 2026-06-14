@@ -16,15 +16,16 @@ const (
 
 // Event is a framework-neutral agent runtime message.
 type Event struct {
-	Kind       EventKind
-	Activity   Activity
-	Delta      string
-	Thinking   string
-	Response   string
-	Usage      provider.TurnUsage
-	ToolCall   provider.ToolCall
-	ToolResult ToolRunResult
-	History    []provider.ChatMessage
+	Kind        EventKind
+	Activity    Activity
+	Delta       string
+	Thinking    string
+	Response    string
+	Usage       provider.TurnUsage
+	ToolCall    provider.ToolCall
+	ToolResult  ToolRunResult
+	History     []provider.ChatMessage
+	ProviderErr error
 }
 
 // ActivityEvent returns an activity phase update.
@@ -70,5 +71,15 @@ func TurnDoneWithHistoryEvent(result provider.TurnResult, history []provider.Cha
 		Response: result.Content,
 		Usage:    result.Usage,
 		History:  history,
+	}
+}
+
+// TurnDoneProviderErrorEvent returns a failed turn with provider error details.
+func TurnDoneProviderErrorEvent(err error, history []provider.ChatMessage) Event {
+	return Event{
+		Kind:        EventTurnDone,
+		Response:    provider.ProviderErrorSummary(err),
+		History:     history,
+		ProviderErr: err,
 	}
 }

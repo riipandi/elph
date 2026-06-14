@@ -69,12 +69,13 @@ func TestPromptTemplateShowsSeparateUserAndDetailMessages(t *testing.T) {
 	updated, cmd := m.Update(keyEnter())
 	m = updated.(Model)
 	require.NotNil(t, cmd)
-	require.Len(t, m.messages, 2)
+	require.Len(t, m.messages, 3)
 	require.Equal(t, constants.MessageUser, m.messages[0].kind)
 	require.Equal(t, "/identify auth", m.messages[0].text)
 	require.Equal(t, constants.MessageDetail, m.messages[1].kind)
 	require.Equal(t, "Prompt", m.messages[1].detailLabel)
 	require.Contains(t, m.messages[1].text, "focusing on auth")
+	require.Equal(t, constants.MessageThinking, m.messages[2].kind)
 }
 
 func TestCtrlOTogglesDetailBlock(t *testing.T) {

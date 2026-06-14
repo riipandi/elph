@@ -57,6 +57,14 @@ func TestResolveToolRequestUnknown(t *testing.T) {
 	require.Contains(t, got.Body, "Mcp_search")
 }
 
+func TestResolveToolRequestRequiresApproval(t *testing.T) {
+	got := ResolveToolRequest("bash", map[string]string{"command": "rm -rf /"})
+	require.Equal(t, "Bash", got.Name)
+	require.Equal(t, UnavailableNotExecutable, got.Reason)
+	require.Contains(t, got.Body, "requires approval")
+	require.Contains(t, got.Body, "command: rm -rf /")
+}
+
 func TestResolveToolRequestDiagnostic(t *testing.T) {
 	got := ResolveToolRequest("diagnostic_list_tools", nil)
 	require.Equal(t, "diagnostic_list_tools", got.Name)

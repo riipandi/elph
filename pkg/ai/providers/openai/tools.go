@@ -52,10 +52,7 @@ func chatMessages(systemPrompt string, messages []provider.ChatMessage, thinking
 				}
 			}
 			for _, call := range msg.ToolCalls {
-				args := string(call.Arguments)
-				if args == "" {
-					args = "{}"
-				}
+				args := string(provider.NormalizeToolArguments(call.Arguments))
 				asst.ToolCalls = append(asst.ToolCalls, openaisdk.ChatCompletionMessageToolCallUnionParam{
 					OfFunction: &openaisdk.ChatCompletionMessageFunctionToolCallParam{
 						ID: call.ID,
@@ -91,14 +88,10 @@ func turnResultFromChatChoice(choice openaisdk.ChatCompletionChoice, hooks Hooks
 		if strings.TrimSpace(fn.ID) == "" || strings.TrimSpace(fn.Function.Name) == "" {
 			continue
 		}
-		args := json.RawMessage(fn.Function.Arguments)
-		if len(args) == 0 {
-			args = json.RawMessage("{}")
-		}
 		result.ToolCalls = append(result.ToolCalls, provider.ToolCall{
 			ID:        fn.ID,
 			Name:      fn.Function.Name,
-			Arguments: args,
+			Arguments: provider.NormalizeToolArguments(json.RawMessage(fn.Function.Arguments)),
 		})
 	}
 	switch choice.FinishReason {
@@ -128,15 +121,25 @@ func streamReasoningText(delta openaisdk.ChatCompletionChunkChoiceDelta) string 
 }
 
 func reasoningText(extra map[string]respjson.Field, rawJSON string) string {
-	if text := extraFieldString(extra, "reasoning_content"); text != "" {
-		return text
-	}
-	if text := extraFieldString(extra, "reasoning"); text != "" {
-		return text
+	for _, key := range []string{
+		"reasoning_content",
+		"reasoning",
+		"reasoning_details",
+		"thinking",
+		"thought",
+		"reasoning_text",
+	} {
+		if text := extraFieldString(extra, key); text != "" {
+			return text
+		}
 	}
 	var vendor struct {
-		ReasoningContent string `json:"reasoning_content"`
-		Reasoning        string `json:"reasoning"`
+		ReasoningContent string          `json:"reasoning_content"`
+		Reasoning        json.RawMessage `json:"reasoning"`
+		ReasoningDetails json.RawMessage `json:"reasoning_details"`
+		Thinking         string          `json:"thinking"`
+		Thought          string          `json:"thought"`
+		ReasoningText    string          `json:"reasoning_text"`
 	}
 	if err := json.Unmarshal([]byte(rawJSON), &vendor); err != nil {
 		return ""
@@ -144,7 +147,23 @@ func reasoningText(extra map[string]respjson.Field, rawJSON string) string {
 	if vendor.ReasoningContent != "" {
 		return vendor.ReasoningContent
 	}
-	return vendor.Reasoning
+	if vendor.Thinking != "" {
+		return vendor.Thinking
+	}
+	if len(vendor.Reasoning) > 0 {
+		if text := decodeJSONString(string(vendor.Reasoning)); text != "" {
+			return text
+		}
+	}
+	if len(vendor.ReasoningDetails) > 0 {
+		if text := decodeJSONString(string(vendor.ReasoningDetails)); text != "" {
+			return text
+		}
+	}
+	if vendor.Thought != "" {
+		return vendor.Thought
+	}
+	return vendor.ReasoningText
 }
 
 func extraFieldString(fields map[string]respjson.Field, key string) string {
@@ -166,6 +185,35 @@ func decodeJSONString(raw string) string {
 	if err := json.Unmarshal([]byte(raw), &value); err == nil {
 		return value
 	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &obj); err == nil {
+		for _, key := range []string{"content", "text", "summary", "reasoning"} {
+			part, ok := obj[key]
+			if !ok {
+				continue
+			}
+			if text := decodeJSONString(string(part)); text != "" {
+				return text
+			}
+		}
+		return ""
+	}
+	var arr []map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &arr); err == nil {
+		var b strings.Builder
+		for _, item := range arr {
+			for _, key := range []string{"text", "content", "summary"} {
+				part, ok := item[key]
+				if !ok {
+					continue
+				}
+				if text := decodeJSONString(string(part)); text != "" {
+					b.WriteString(text)
+				}
+			}
+		}
+		return b.String()
+	}
 	return raw
 }
 
@@ -175,6 +223,23 @@ type streamToolAccumulator struct {
 
 func newStreamToolAccumulator() *streamToolAccumulator {
 	return &streamToolAccumulator{calls: make(map[int]*provider.ToolCall)}
+}
+
+func (a *streamToolAccumulator) absorbJSON(index int, id, name, args string) {
+	call := a.calls[index]
+	if call == nil {
+		call = &provider.ToolCall{Arguments: json.RawMessage("{}")}
+		a.calls[index] = call
+	}
+	if id != "" {
+		call.ID = id
+	}
+	if name != "" {
+		call.Name = name
+	}
+	if args != "" {
+		call.Arguments = appendJSONFragment(call.Arguments, args)
+	}
 }
 
 func (a *streamToolAccumulator) absorbSDK(delta []openaisdk.ChatCompletionChunkChoiceDeltaToolCall) {
@@ -210,9 +275,7 @@ func (a *streamToolAccumulator) result() []provider.ToolCall {
 	out := make([]provider.ToolCall, 0, len(a.calls))
 	for i := 0; i <= max; i++ {
 		if call := a.calls[i]; call != nil && call.Name != "" {
-			if len(call.Arguments) == 0 {
-				call.Arguments = json.RawMessage("{}")
-			}
+			call.Arguments = provider.NormalizeToolArguments(call.Arguments)
 			out = append(out, *call)
 		}
 	}

@@ -36,6 +36,21 @@ func (m Model) isStreamingMessageAt(index int) bool {
 	return index >= 0 && index == m.streamingMessageIndex()
 }
 
+// streamPrefixEndIndex is the first message index excluded from the frozen
+// stream prefix. In-flight thinking is always repainted so its detail box and
+// live reasoning text stay current while the response streams.
+func (m Model) streamPrefixEndIndex() int {
+	streamIdx := m.streamingMessageIndex()
+	if streamIdx < 0 {
+		return -1
+	}
+	thinkIdx := m.agent.ThinkingMsgID
+	if thinkIdx >= 0 && thinkIdx < streamIdx && m.thinkingInFlight(thinkIdx) {
+		return thinkIdx
+	}
+	return streamIdx
+}
+
 func (m Model) messagesBeforeStreamLen(streamIdx int) int {
 	var n int
 	for i := 0; i < streamIdx && i < len(m.messages); i++ {
@@ -69,15 +84,15 @@ func (m Model) streamPrefixDetailSig(streamIdx int) uint64 {
 }
 
 func (m Model) refreshStreamPrefixCache() Model {
-	streamIdx := m.streamingMessageIndex()
-	if streamIdx <= 0 {
+	prefixEnd := m.streamPrefixEndIndex()
+	if prefixEnd < 0 {
 		return m.clearStreamPrefixCache()
 	}
 
 	width := m.messageAreaWidth()
-	beforeLen := m.messagesBeforeStreamLen(streamIdx)
-	detailSig := m.streamPrefixDetailSig(streamIdx)
-	if m.layout.StreamPrefixUpTo == streamIdx &&
+	beforeLen := m.messagesBeforeStreamLen(prefixEnd)
+	detailSig := m.streamPrefixDetailSig(prefixEnd)
+	if m.layout.StreamPrefixUpTo == prefixEnd &&
 		m.layout.StreamPrefixWidth == width &&
 		m.layout.StreamPrefixBeforeLen == beforeLen &&
 		m.layout.StreamPrefixDetailSig == detailSig {
@@ -85,14 +100,14 @@ func (m Model) refreshStreamPrefixCache() Model {
 	}
 
 	var b strings.Builder
-	for i := 0; i < streamIdx; i++ {
+	for i := 0; i < prefixEnd; i++ {
 		if i > 0 {
 			b.WriteString(messageBlockGap)
 		}
 		b.WriteString(m.renderMessageAt(i))
 	}
 	m.layout.StreamPrefix = b.String()
-	m.layout.StreamPrefixUpTo = streamIdx
+	m.layout.StreamPrefixUpTo = prefixEnd
 	m.layout.StreamPrefixWidth = width
 	m.layout.StreamPrefixBeforeLen = beforeLen
 	m.layout.StreamPrefixDetailSig = detailSig
@@ -106,13 +121,33 @@ func (m Model) markStreamDirty() (Model, tea.Cmd) {
 		m.layout.StreamFlushPending = true
 		cmds = append(cmds, streamFlushTick())
 	}
-	if m.agent.Events != nil {
-		cmds = append(cmds, waitAgentEvent(m.agent.Events))
-	}
+	return m.batchAgentDrain(cmds...)
+}
+
+// flushThinkingStreamNow repaints the thinking detail box immediately instead of
+// waiting for the throttled stream flush tick.
+func (m Model) flushThinkingStreamNow() (Model, tea.Cmd) {
+	m.layout.ContentDirty = true
+	m = m.refreshStreamPrefixCache()
+	m = m.syncLayout(m.content.AtBottom())
+	return m.batchAgentDrain()
+}
+
+func (m Model) batchAgentDrain(cmds ...tea.Cmd) (Model, tea.Cmd) {
+	cmds = append(cmds, m.drainAgentEvents()...)
 	if len(cmds) == 0 {
 		return m, nil
 	}
 	return m, tea.Batch(cmds...)
+}
+
+// drainAgentEvents schedules channel reads while a turn is active so provider
+// stream callbacks never block on a full event buffer.
+func (m Model) drainAgentEvents() []tea.Cmd {
+	if m.agent.Events == nil {
+		return nil
+	}
+	return []tea.Cmd{waitAgentEvent(m.agent.Events)}
 }
 
 func (m Model) handleStreamFlush() (Model, tea.Cmd) {
@@ -129,6 +164,7 @@ func (m Model) handleStreamFlush() (Model, tea.Cmd) {
 		m.layout.StreamFlushPending = true
 		cmds = append(cmds, streamFlushTick())
 	}
+	cmds = append(cmds, m.drainAgentEvents()...)
 	if len(cmds) == 0 {
 		return m, nil
 	}
@@ -140,6 +176,9 @@ func (m Model) handleStreamFlush() (Model, tea.Cmd) {
 func renderStreamingMessage(blockWidth int, kind constants.MessageKind, text string) string {
 	if kind == constants.MessageAI || kind == constants.MessageThinking {
 		text = agent.SanitizeAssistantDisplay(text)
+	}
+	if kind == constants.MessageAI {
+		return renderAIBlock(blockWidth, text, false)
 	}
 	vPad, hPad := messageBlockPadding(kind)
 	return constants.MessageStyle(kind).

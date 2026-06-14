@@ -128,10 +128,43 @@ func TestDiagnosticOpenLogRequests(t *testing.T) {
 	require.Contains(t, result.Output, "POST /v1/messages")
 }
 
+func TestDiagnosticOpenLogRequestsEmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	session := runtime.NewSession(dir)
+	require.FileExists(t, session.RequestsLogPath)
+
+	result := Execute("/diagnostic:open-log requests", Context{RequestsLogPath: session.RequestsLogPath})
+	require.True(t, result.OK)
+	require.Contains(t, result.Output, "is empty")
+	require.Contains(t, result.Output, session.RequestsLogPath)
+}
+
+func TestDiagnosticOpenLogThinkingDelta(t *testing.T) {
+	dir := t.TempDir()
+	session := runtime.NewSession(dir)
+	require.NoError(t, runtime.AppendLog(session.RequestsLogPath, "thinking_delta", "step one"))
+
+	result := Execute("/diagnostic:open-log thinking_delta", Context{RequestsLogPath: session.RequestsLogPath})
+	require.True(t, result.OK)
+	require.Contains(t, result.Output, "[thinking_delta] step one")
+}
+
+func TestDiagnosticOpenLogThinking(t *testing.T) {
+	dir := t.TempDir()
+	session := runtime.NewSession(dir)
+	require.NoError(t, runtime.AppendLog(session.LogPath, "thinking", "step one"))
+	require.NoError(t, runtime.AppendLog(session.LogPath, "ai", "answer"))
+
+	result := Execute("/diagnostic:open-log thinking", Context{LogPath: session.LogPath})
+	require.True(t, result.OK)
+	require.Contains(t, result.Output, "[thinking] step one")
+	require.NotContains(t, result.Output, "[ai] answer")
+}
+
 func TestDiagnosticOpenLogUsage(t *testing.T) {
 	result := Execute("/diagnostic:open-log", Context{})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "Usage: /diagnostic:open-log <requests | system>")
+	require.Contains(t, result.Output, "Usage: /diagnostic:open-log <system | thinking | thinking_delta | ai | requests>")
 }
 
 func TestDiagnosticOpenLogUnknownArg(t *testing.T) {

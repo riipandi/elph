@@ -25,6 +25,8 @@ func prepareParams(req provider.TurnRequest, params *openaisdk.ChatCompletionNew
 	default:
 		if req.Compat.ReasoningEffortSupported() && req.Thinking.ReasoningEffort != "" {
 			params.ReasoningEffort = shared.ReasoningEffort(req.Thinking.ReasoningEffort)
+		} else if req.Thinking.EnableThinking {
+			params.SetExtraFields(map[string]any{"enable_thinking": true})
 		}
 	}
 }

@@ -37,19 +37,54 @@ func TestStreamPrefixCacheReusesStableHead(t *testing.T) {
 	m.agent.Busy = true
 	m.messages = []message{
 		{text: "user prompt", kind: constants.MessageUser},
-		{text: "thinking", kind: constants.MessageThinking},
+		{text: "thinking", kind: constants.MessageThinking, detailLabel: "Thinking"},
 		{text: "partial", kind: constants.MessageAI},
 	}
+	m.agent.ThinkingMsgID = 1
 	m.agent.ResponseMsgID = 2
 
 	m = m.refreshStreamPrefixCache()
-	require.Equal(t, 2, m.layout.StreamPrefixUpTo)
+	require.Equal(t, 1, m.layout.StreamPrefixUpTo, "in-flight thinking must stay out of frozen prefix")
 	prefix := m.layout.StreamPrefix
 
 	m.messages[2].text = "partial response"
 	m.messages[2].renderCache = messageRenderCache{}
 	full := m.messagesView()
 	require.True(t, strings.HasPrefix(full, prefix))
+}
+
+func TestThinkingDetailBoxUpdatesDuringResponseStream(t *testing.T) {
+	m := testInputModel(t)
+	m.height = 24
+	m.ready = true
+	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
+	m = m.beginAgentTurn()
+	m = m.addThinkingMessage("")
+	m.agent.ThinkingMsgID = 1
+	m.agent.Busy = true
+
+	view := stripANSI(m.messagesView())
+	require.Contains(t, view, "Thinking")
+
+	m.messages[1].text = "reasoning alpha"
+	m.messages[1].renderCache = messageRenderCache{}
+	m = m.clearStreamPrefixCache()
+	m.messages = append(m.messages, message{text: "answer", kind: constants.MessageAI})
+	m.agent.ResponseMsgID = 2
+
+	m = m.refreshStreamPrefixCache()
+	view = stripANSI(m.messagesView())
+	require.Contains(t, view, "Thinking")
+	require.Contains(t, view, "reasoning alpha")
+	require.Contains(t, view, "answer")
+
+	m.messages[1].text = "reasoning alpha beta"
+	m.messages[1].renderCache = messageRenderCache{}
+	m = m.clearStreamPrefixCache()
+	flushed, _ := m.handleStreamFlush()
+	view = stripANSI(flushed.messagesView())
+	require.Contains(t, view, "reasoning alpha beta")
+	require.Contains(t, view, "Thinking")
 }
 
 func TestStreamingUsesSinglePassRender(t *testing.T) {

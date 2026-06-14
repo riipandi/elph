@@ -161,17 +161,13 @@ func (m Model) messagesView() string {
 		return ""
 	}
 
-	streamIdx := m.streamingMessageIndex()
-	if streamIdx >= 0 &&
-		m.layout.StreamPrefixUpTo == streamIdx &&
-		streamIdx < n {
+	prefixEnd := m.streamPrefixEndIndex()
+	if prefixEnd >= 0 &&
+		m.layout.StreamPrefixUpTo == prefixEnd &&
+		prefixEnd <= n {
 		var b strings.Builder
 		b.WriteString(m.layout.StreamPrefix)
-		if streamIdx > 0 {
-			b.WriteString(messageBlockGap)
-		}
-		b.WriteString(m.renderMessageAt(streamIdx))
-		for i := streamIdx + 1; i < n; i++ {
+		for i := prefixEnd; i < n; i++ {
 			b.WriteString(messageBlockGap)
 			b.WriteString(m.renderMessageAt(i))
 		}
@@ -216,16 +212,18 @@ func (m *Model) renderMessageAt(index int) string {
 
 	var out string
 	switch {
-	case streaming && msg.kind == constants.MessageThinking:
-		out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
-	case streaming:
+	case streaming && msg.kind != constants.MessageThinking:
 		out = renderStreamingMessage(width, msg.kind, msg.text)
 	case msg.kind == constants.MessageAI:
 		out = renderAIMessage(width, msg.text, false, msg.glamourPending)
 	case msg.kind == constants.MessageDetail:
 		out = renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, opts)
 	case msg.kind == constants.MessageThinking:
-		out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+		if opts.showLiveBody {
+			out = renderThinkingLiveStream(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+		} else {
+			out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+		}
 	case msg.kind == constants.MessageUser:
 		out = renderUserMessage(width, msg.text, msg.at)
 	default:
@@ -240,6 +238,7 @@ func (m *Model) renderMessageAt(index int) string {
 		detailStatus:      msg.detailStatus,
 		atUnix:            messageAtUnix(msg.at),
 		showStatusPreview: opts.showStatusPreview,
+		showLiveBody:      opts.showLiveBody,
 		spinnerFrame:      opts.spinnerFrame,
 		output:            out,
 	}
@@ -253,6 +252,21 @@ func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) 
 	default:
 		return 0, 1
 	}
+}
+
+// aiMessageBottomPad adds breathing room below the last line of an AI reply
+// without shifting spacing above the block.
+const aiMessageBottomPad = 1
+
+func renderAIBlock(blockWidth int, body string, horizontalApplied bool) string {
+	style := constants.MessageStyle(constants.MessageAI).
+		Width(blockWidth).
+		PaddingBottom(aiMessageBottomPad)
+	if !horizontalApplied {
+		_, hPad := messageBlockPadding(constants.MessageAI)
+		style = style.PaddingLeft(hPad).PaddingRight(hPad)
+	}
+	return style.Render(body)
 }
 
 // renderUserMessage paints a user chat input block with an optional timestamp line.
@@ -431,6 +445,9 @@ func (m Model) inputBodyView() string {
 }
 
 func (m Model) inputChromeView() string {
+	if m.toolInteractDialogActive() {
+		return m.toolInteractDialogView()
+	}
 	if m.modelsSyncDialogActive() {
 		return m.modelsSyncDialogView()
 	}

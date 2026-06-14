@@ -3,6 +3,8 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
 // ToolRunResult is the outcome of executing one provider-native tool call.
@@ -19,6 +21,7 @@ func ToolResultMessage(result ToolRunResult) string {
 
 // ParseToolArguments decodes provider tool arguments.
 func ParseToolArguments(raw json.RawMessage) (map[string]any, error) {
+	raw = provider.NormalizeToolArguments(raw)
 	if len(raw) == 0 {
 		return map[string]any{}, nil
 	}

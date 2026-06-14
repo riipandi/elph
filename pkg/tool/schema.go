@@ -73,9 +73,16 @@ func providerSchema(name string) (map[string]any, bool) {
 		return objectSchema(map[string]propertySpec{
 			"path": {typ: "string", description: "Path to an image or video file"},
 		}, "path"), true
-	case EnterPlanMode, ExitPlanMode, AskUser:
+	case Bash:
 		return objectSchema(map[string]propertySpec{
-			"reason": {typ: "string", description: "Short reason for the mode change or question"},
+			"command":     {typ: "string", description: "Shell command to execute via bash -c in the workspace directory"},
+			"description": {typ: "string", description: "Short description of what the command does"},
+		}, "command"), true
+	case AskUser:
+		return askUserSchema(), true
+	case EnterPlanMode, ExitPlanMode:
+		return objectSchema(map[string]propertySpec{
+			"reason": {typ: "string", description: "Short reason for the mode change"},
 		}, "reason"), true
 	default:
 		return nil, false
@@ -85,6 +92,24 @@ func providerSchema(name string) (map[string]any, bool) {
 type propertySpec struct {
 	typ         string
 	description string
+}
+
+func askUserSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"question": map[string]any{
+				"type":        "string",
+				"description": "Question to ask the user",
+			},
+			"options": map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": "Optional multiple-choice answers; omit for free-text input",
+			},
+		},
+		"required": []string{"question"},
+	}
 }
 
 func objectSchema(props map[string]propertySpec, required ...string) map[string]any {

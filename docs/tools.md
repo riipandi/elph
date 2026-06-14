@@ -73,13 +73,13 @@ A tool is sent to the provider API only when **all** of the following are true
 (`IsProviderExposed`):
 
 1. It is a known built-in (`Get`).
-2. Its default approval is `auto-allow`.
+2. Its default approval is `auto-allow` or `requires-approval` (runtime gates the latter via huh).
 3. The runtime can execute it (`IsExecutable`).
 4. It has a provider JSON schema (`providerSchema`).
 
-Today that means only **Read**, **Grep**, and **Glob** are exposed to the API, even though
-tools like WebSearch or FetchURL are `auto-allow` in the catalog. Exposing a tool before the
-runtime can run it would let the model call it and receive `tool unavailable` errors.
+Today **Read**, **Grep**, **Glob**, **AskUser**, and **Bash** are exposed. **AskUser** opens a huh
+dialog; **Bash** (and future Write/Edit) shows an approval confirm unless agent mode is **brave**.
+Auto-allow tools like WebSearch stay out until `IsExecutable` returns true for them.
 
 ### Exposure vs approval vs execution
 
@@ -94,13 +94,13 @@ runtime can run it would let the model call it and receive `tool unavailable` er
 | CodeSearch    | Auto-allow        | No           | No                       |
 | EnterPlanMode | Auto-allow        | No           | No                       |
 | ExitPlanMode  | Auto-allow        | No           | No                       |
-| AskUser       | Auto-allow        | No           | No                       |
+| AskUser       | Auto-allow        | Yes          | Yes (huh question)       |
 | Write         | Requires approval | No           | No                       |
 | Edit          | Requires approval | No           | No                       |
-| Bash          | Requires approval | No           | No                       |
+| Bash          | Requires approval | Yes          | Yes (huh confirm/brave)  |
 
-Tools with `requires-approval` stay out of the API until an approval UI can gate each call.
-Auto-allow tools stay out until `IsExecutable` returns true for them.
+`requires-approval` tools are sent to the provider API when executable; **huh** confirm gates each call
+(**brave** mode skips approval). **AskUser** always uses huh before returning the answer to the model.
 
 ### Request flow
 
@@ -137,13 +137,14 @@ tools.
 | `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool        |
 | `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)      |
 | `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                        |
-| `ExecuteTool()`         | `internal/runtime` | Read / Grep / Glob execution            |
+| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)   |
+| `ExecuteTool()`         | `internal/runtime` | Read / Grep / Glob / Bash execution     |
 
 Provider adapters map definitions to API formats:
 
 - OpenAI-compatible: `pkg/ai/providers/openaicompat` (wraps `openai` + compat hooks)
 - OpenRouter: `pkg/ai/providers/openrouter` (reasoning extra body on top of openaicompat)
-- Anthropic: `pkg/ai/providers/anthropic` ([anthropic-sdk-go](https://github.com/charmbracelet/anthropic-sdk-go))
+- Anthropic: `pkg/ai/providers/anthropic` ([anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go))
 
 ### Adding a new API-exposed tool
 

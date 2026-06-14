@@ -59,6 +59,31 @@ func TestResolveThinkingOpenAIReasoningEffort(t *testing.T) {
 	require.Equal(t, "low", cfg.ReasoningEffort)
 }
 
+func TestResolveThinkingOpenCodeGatewayUsesEnableThinking(t *testing.T) {
+	model := ResolvedModel{
+		API:       APIOpenAICompletions,
+		Reasoning: true,
+		Compat: Compat{
+			ThinkingFormat:          string(ThinkingFormatQwen),
+			SupportsReasoningEffort: compatBool(false),
+		},
+	}
+	cfg := ResolveThinking(model, constants.ThinkingHigh, nil)
+	require.True(t, cfg.Enabled)
+	require.True(t, cfg.EnableThinking)
+	require.Equal(t, ThinkingFormatQwen, cfg.ThinkingFormat)
+	require.Empty(t, cfg.ReasoningEffort)
+}
+
+func TestApplyGatewayThinkingCompatOpenCodeGo(t *testing.T) {
+	cfg := ApplyGatewayThinkingCompat("opencode-go", FileConfig{
+		BaseURL: OpenCodeGoBaseURL,
+	})
+	require.Equal(t, string(ThinkingFormatQwen), cfg.Compat.ThinkingFormat)
+	require.NotNil(t, cfg.Compat.SupportsReasoningEffort)
+	require.False(t, *cfg.Compat.SupportsReasoningEffort)
+}
+
 func TestResolveThinkingOpenRouterFormat(t *testing.T) {
 	model := ResolvedModel{
 		API:       APIOpenAICompletions,

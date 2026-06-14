@@ -46,17 +46,17 @@ elph/
 
 ## `pkg/` packages
 
-| Package            | Responsibility                                                                                                                                                                                                                                                  |
-|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ai`               | Facade: `LoadProviders`, `ResolveProvider`                                                                                                                                                                                                                      |
-| `ai/protocol`      | Shared provider contract: `TurnRequest`, `Provider`, `Compat`, errors                                                                                                                                                                                           |
-| `ai/provider`      | Provider catalog (`~/.elph/providers`), resolve/select, thinking templates, models.dev sync                                                                                                                                                                     |
-| `ai/providers`     | Reusable SDK adapters: `openai`, `openaicompat`, `openrouter`, `anthropic`, `google` ([openai-go](https://github.com/charmbracelet/openai-go), [anthropic-sdk-go](https://github.com/charmbracelet/anthropic-sdk-go), [genai](https://google.golang.org/genai)) |
-| `ai/providertests` | Cross-provider httptest suites (fantasy-style)                                                                                                                                                                                                                  |
-| `ai/utils`         | HTTP and stream helpers                                                                                                                                                                                                                                         |
-| `core/agent`       | Turn loop, events, text-markup tool parser, native tool loop, history/tool truncation limits                                                                                                                                                                    |
-| `core/fuzzy`       | Subsequence fuzzy matching                                                                                                                                                                                                                                      |
-| `tool`             | Built-in tool catalog, provider schemas, `IsProviderExposed`                                                                                                                                                                                                    |
+| Package            | Responsibility                                                                                                                                                                                                                                        |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ai`               | Facade: `LoadProviders`, `ResolveProvider`                                                                                                                                                                                                            |
+| `ai/protocol`      | Shared provider contract: `TurnRequest`, `Provider`, `Compat`, errors                                                                                                                                                                                 |
+| `ai/provider`      | Provider catalog (`~/.elph/providers`), resolve/select, thinking templates, models.dev sync                                                                                                                                                           |
+| `ai/providers`     | Reusable SDK adapters: `openai`, `openaicompat`, `openrouter`, `anthropic`, `google` ([openai-go](https://github.com/openai/openai-go), [anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go), [genai](https://google.golang.org/genai)) |
+| `ai/providertests` | Cross-provider httptest suites (fantasy-style)                                                                                                                                                                                                        |
+| `ai/utils`         | HTTP and stream helpers                                                                                                                                                                                                                               |
+| `core/agent`       | Turn loop, events, text-markup tool parser, native tool loop, history/tool truncation limits                                                                                                                                                          |
+| `core/fuzzy`       | Subsequence fuzzy matching                                                                                                                                                                                                                            |
+| `tool`             | Built-in tool catalog, provider schemas, `IsProviderExposed`                                                                                                                                                                                          |
 
 ## Runtime data flow
 
@@ -125,11 +125,11 @@ Turn-time limits and sizes are listed in [agent-runtime.md § In-memory history]
 
 Built-ins (`pkg/tool`) are the core. Two **combined** extension mechanisms — different purpose, shared host pipeline:
 
-| Mechanism | Library | Role |
-|-----------|---------|------|
-| **MCP** | `modelcontextprotocol/go-sdk` | Ecosystem tool servers (stdio/SSE); config `schemas/mcp-schema.json` |
-| **Go plugins** | `hashicorp/go-plugin` | Local compiled binaries under `~/.elph/plugins/`; gRPC subprocess |
-| **WASM plugins** (alt, later) | `tetratelabs/wazero` | Sandboxed `.wasm` modules — optional third local backend; see [consideration.md](./consideration.md) |
+| Mechanism                     | Library                       | Role                                                                                                 |
+|-------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------|
+| **MCP**                       | `modelcontextprotocol/go-sdk` | Ecosystem tool servers (stdio/SSE); config `schemas/mcp-schema.json`                                 |
+| **Go plugins**                | `hashicorp/go-plugin`         | Local compiled binaries under `~/.elph/plugins/`; gRPC subprocess                                    |
+| **WASM plugins** (alt, later) | `tetratelabs/wazero`          | Sandboxed `.wasm` modules — optional third local backend; see [consideration.md](./consideration.md) |
 
 Runtime will merge definitions from all sources, apply the same exposure/approval rules ([tools.md](./tools.md)), and dispatch in `internal/runtime.ExecuteTool` by prefix (`mcp_*`, `plugin_*`, built-in names). System prompt uses `prompt.ExternalEntry` for non-built-in tools.
 

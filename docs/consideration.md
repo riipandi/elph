@@ -16,11 +16,11 @@ See: [tools.md](./tools.md), [architecture.md](./architecture.md).
 
 ## SDK
 
-| Package                                                                             | Status   | Use                                   |
-|-------------------------------------------------------------------------------------|----------|---------------------------------------|
-| [charmbracelet/anthropic-sdk-go](https://github.com/charmbracelet/anthropic-sdk-go) | **used** | Anthropic adapter                     |
-| [charmbracelet/openai-go](https://github.com/charmbracelet/openai-go)               | **used** | OpenAI / compat / OpenRouter adapters |
-| [google.golang.org/genai](https://google.golang.org/genai)                          | **next** | Gemini — stub in `providers/google`   |
+| Package                                                                       | Status   | Use                                   |
+|-------------------------------------------------------------------------------|----------|---------------------------------------|
+| [anthropics/anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go) | **used** | Anthropic adapter                     |
+| [openai/openai-go](https://github.com/openai/openai-go)                       | **used** | OpenAI / compat / OpenRouter adapters |
+| [google.golang.org/genai](https://google.golang.org/genai)                    | **next** | Gemini — stub in `providers/google`   |
 
 ---
 
@@ -41,7 +41,7 @@ Today only **Read**, **Grep**, **Glob** run end-to-end. Rest of catalog in `pkg/
 | Package                                                                                   | Status    | Tool / area                                              |
 |-------------------------------------------------------------------------------------------|-----------|----------------------------------------------------------|
 | [bmatcuk/doublestar/v4](https://github.com/bmatcuk/doublestar/v4)                         | **next**  | **Glob** — `**` semantics                                |
-| [mvdan/sh](https://github.com/mvdan/sh)                                                   | **next**  | **Bash** — parse/validate commands                       |
+| [mvdan/sh](https://github.com/mvdan/sh)                                                   | **used**  | **Bash** — syntax validation before `bash -c`            |
 | [PuerkitoBio/goquery](https://github.com/PuerkitoBio/goquery)                             | **next**  | **FetchURL** — HTML DOM                                  |
 | [JohannesKaufmann/html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) | **next**  | **FetchURL** — HTML → markdown                           |
 | [microcosm-cc/bluemonday](https://github.com/microcosm-cc/bluemonday)                     | **next**  | **FetchURL** — sanitize HTML                             |

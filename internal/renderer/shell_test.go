@@ -1,11 +1,13 @@
 package renderer
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/pkg/core/agent"
 	"github.com/stretchr/testify/require"
 )
 
@@ -145,6 +147,53 @@ func TestSubmitShellWithoutContext(t *testing.T) {
 	require.Contains(t, content, "shell-no-ctx")
 }
 
+func drainShellCmds(t *testing.T, m Model, cmd tea.Cmd) Model {
+	t.Helper()
+	batch, ok := cmd().(tea.BatchMsg)
+	if !ok {
+		return waitForShellDone(t, m, cmd)
+	}
+
+	var waitDone tea.Cmd
+	for i, sub := range batch {
+		if sub == nil || i > 2 {
+			continue
+		}
+		if i == 2 {
+			waitDone = sub
+			continue
+		}
+		m, _ = dispatchTeaMsg(t, m, sub())
+	}
+
+	if waitDone == nil {
+		return m
+	}
+
+	doneCh := make(chan tea.Msg, 1)
+	go func() { doneCh <- waitDone() }()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case msg := <-doneCh:
+			if msg != nil {
+				m, _ = dispatchTeaMsg(t, m, msg)
+			}
+			if !m.shell.Running {
+				return m
+			}
+		default:
+			if !m.shell.Running {
+				return m
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	require.Fail(t, "timed out waiting for shell to finish")
+	return m
+}
+
 func TestSubmitShellWithContext(t *testing.T) {
 	m := testInputModel(t)
 	m.input.SetValue("!echo shell-with-ctx")
@@ -153,7 +202,26 @@ func TestSubmitShellWithContext(t *testing.T) {
 	m = updated.(Model)
 	require.True(t, m.shell.Running)
 
-	m = waitForShellDone(t, m, cmd)
+	m = drainShellCmds(t, m, cmd)
+	if m.agent.Busy {
+		if m.agent.Cancel != nil {
+			m.agent.Cancel()
+			m.agent.Cancel = nil
+		}
+		m.agent.Events = nil
+		m.agent.ToolInteractBridge = nil
+		m.agent.Busy = false
+		m.agent.Activity = agent.ActivityIdle
+		m.agent.SpinnerFrame = 0
+		if thinkIdx := m.agent.ThinkingMsgID; thinkIdx >= 0 && thinkIdx < len(m.messages) {
+			if strings.TrimSpace(m.messages[thinkIdx].text) == "" {
+				m = m.removeMessageAt(thinkIdx)
+			}
+		}
+		m.agent.ThinkingMsgID = -1
+		m.agent.ResponseMsgID = -1
+		m = m.clearStreamPrefixCache()
+	}
 
 	require.Len(t, m.messages, 2, "shell context should not add placeholder AI echo")
 	require.False(t, m.agent.Busy)

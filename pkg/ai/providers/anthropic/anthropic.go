@@ -89,12 +89,35 @@ func (p *languageModel) ID() string {
 	return p.opts.ID
 }
 
+func emitAnthropicTurnResultStream(stream *provider.TurnStream, result provider.TurnResult) {
+	if stream == nil {
+		return
+	}
+	if thinking := strings.TrimSpace(result.Thinking); thinking != "" {
+		stream.EmitThinking(thinking)
+	}
+	if content := strings.TrimSpace(result.Content); content != "" {
+		stream.EmitContent(content)
+	}
+}
+
 func (p *languageModel) Complete(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
 	if p.opts.APIKey == "" {
 		return provider.TurnResult{}, provider.ErrMissingAPIKey
 	}
 	if req.Stream != nil {
-		return p.completeStream(ctx, req)
+		result, err := p.completeStream(ctx, req)
+		if err != nil && provider.IsStreamJSONError(err) {
+			fallback := req
+			fallback.Stream = nil
+			once, onceErr := p.completeOnce(ctx, fallback)
+			if onceErr != nil {
+				return once, onceErr
+			}
+			emitAnthropicTurnResultStream(req.Stream, once)
+			return once, nil
+		}
+		return result, err
 	}
 	return p.completeOnce(ctx, req)
 }
@@ -139,10 +162,6 @@ func (p *languageModel) completeStream(ctx context.Context, req provider.TurnReq
 					Name: variant.ContentBlock.Name,
 				}
 				toolInput.Reset()
-				if variant.ContentBlock.Input != nil {
-					raw, _ := json.Marshal(variant.ContentBlock.Input)
-					toolInput.Write(raw)
-				}
 			}
 		case anthropic.ContentBlockDeltaEvent:
 			delta := variant.Delta
@@ -164,11 +183,7 @@ func (p *languageModel) completeStream(ctx context.Context, req provider.TurnReq
 			}
 		case anthropic.ContentBlockStopEvent:
 			if currentTool != nil {
-				args := json.RawMessage(toolInput.String())
-				if len(args) == 0 {
-					args = json.RawMessage("{}")
-				}
-				currentTool.Arguments = args
+				currentTool.Arguments = provider.NormalizeToolArguments(json.RawMessage(toolInput.String()))
 				toolCalls = append(toolCalls, *currentTool)
 				currentTool = nil
 			}

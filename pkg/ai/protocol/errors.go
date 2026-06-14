@@ -1,11 +1,14 @@
 package protocol
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // ProviderError is a normalized upstream provider failure.
@@ -116,6 +119,92 @@ func ErrorTitleForStatus(code int) string {
 		}
 		return "provider request failed"
 	}
+}
+
+// IsStreamJSONError reports whether err is a JSON decode failure from SSE streaming.
+func IsStreamJSONError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var syntax *json.SyntaxError
+	if errors.As(err, &syntax) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "unexpected end of JSON input")
+}
+
+// NewUpstreamHTTPError builds a ProviderError from a non-2xx upstream body.
+func NewUpstreamHTTPError(statusCode int, body []byte) error {
+	message := parseUpstreamErrorMessage(body)
+	if message == "" {
+		message = trimErrorBody(body)
+	}
+	return &ProviderError{
+		Title:        ErrorTitleForStatus(statusCode),
+		Message:      message,
+		StatusCode:   statusCode,
+		ResponseBody: append([]byte(nil), body...),
+	}
+}
+
+func parseUpstreamErrorMessage(body []byte) string {
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return ""
+	}
+	var envelope struct {
+		Type  string `json:"type"`
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	if envelope.Error.Message != "" {
+		if envelope.Error.Type != "" {
+			return envelope.Error.Type + ": " + envelope.Error.Message
+		}
+		return envelope.Error.Message
+	}
+	if envelope.Message != "" {
+		return envelope.Message
+	}
+	return ""
+}
+
+func trimErrorBody(raw []byte) string {
+	text := strings.TrimSpace(string(raw))
+	if len(text) > 240 {
+		return text[:240] + "..."
+	}
+	return text
+}
+
+// WrapStreamError normalizes stall/cancel failures from streaming.
+func WrapStreamError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return &ProviderError{
+			Title:   "stream cancelled",
+			Message: err.Error(),
+			Cause:   err,
+		}
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "stream stalled") {
+		return &ProviderError{
+			Title:   "stream stalled",
+			Message: "No data received from the provider. The model may be overloaded, rate-limited, or unavailable — try again or switch models.",
+			Cause:   err,
+		}
+	}
+	return WrapUnexpectedEOF(err)
 }
 
 // WrapUnexpectedEOF normalizes stream transport failures.

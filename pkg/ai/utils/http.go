@@ -10,11 +10,25 @@ import (
 	"time"
 )
 
-const defaultHTTPTimeout = 120 * time.Second
+const (
+	defaultHTTPTimeout       = 120 * time.Second
+	streamResponseHeaderWait = 60 * time.Second
+)
 
 // NewHTTPClient returns a client with the default upstream timeout.
 func NewHTTPClient() *http.Client {
 	return &http.Client{Timeout: defaultHTTPTimeout}
+}
+
+// NewStreamingHTTPClient returns a client tuned for SSE: bounded wait for
+// response headers plus the default overall request timeout.
+func NewStreamingHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = streamResponseHeaderWait
+	return &http.Client{
+		Timeout:   defaultHTTPTimeout,
+		Transport: transport,
+	}
 }
 
 // PostJSON sends a JSON request and decodes a JSON response.

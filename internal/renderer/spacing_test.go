@@ -22,6 +22,9 @@ func expectedBlankLinesBetween(prev, curr constants.MessageKind) int {
 	if boxedMessageKind(curr) {
 		blanks++
 	}
+	if prev == constants.MessageAI {
+		blanks++ // bottom padding inside AI block
+	}
 	if prev == constants.MessageDetail || prev == constants.MessageThinking {
 		blanks += 6
 	}
@@ -132,6 +135,8 @@ func TestActiveTurnMessageSpacingConsistent(t *testing.T) {
 	m = updated.(Model)
 
 	content := normalizeSpacingLines(stripANSI(m.messagesView()))
+	require.Contains(t, content, "[[think]]")
+	require.Contains(t, content, "[[answer]]")
 	require.Equal(t, expectedBlankLinesBetween(constants.MessageUser, constants.MessageThinking),
 		blankLinesBetweenMarkers(content, formatMessageTimestamp(m.messages[0].at), "Thinking"))
 	require.Equal(t, expectedBlankLinesBetween(constants.MessageThinking, constants.MessageAI),

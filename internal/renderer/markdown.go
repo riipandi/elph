@@ -246,7 +246,7 @@ func looksLikeMarkdown(text string) bool {
 }
 
 func renderAIMessagePlain(blockWidth int, text string) string {
-	return renderStyledMessage(blockWidth, constants.MessageAI, stripMarkdownSyntax(text))
+	return renderAIBlock(blockWidth, stripMarkdownSyntax(text), false)
 }
 
 func renderAIMessageGlamour(blockWidth int, text string) string {
@@ -282,7 +282,7 @@ func renderAIMessageGlamour(blockWidth int, text string) string {
 	for i, line := range lines {
 		lines[i] = lineStyle.Render(line)
 	}
-	return strings.Join(lines, "\n")
+	return renderAIBlock(blockWidth, strings.Join(lines, "\n"), true)
 }
 
 // renderAIMessage uses a cheap plain path while streaming or when Glamour is

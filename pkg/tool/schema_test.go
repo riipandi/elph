@@ -15,13 +15,14 @@ func TestIsProviderExposed(t *testing.T) {
 	require.False(t, IsProviderExposed(WebSearch))
 	require.False(t, IsProviderExposed(FetchURL))
 	require.False(t, IsProviderExposed(Write))
-	require.False(t, IsProviderExposed(Bash))
+	require.True(t, IsProviderExposed(Bash))
+	require.True(t, IsProviderExposed(AskUser))
 	require.False(t, IsProviderExposed("unknown"))
 }
 
-func TestProviderDefinitionsOnlyExecutableAutoAllow(t *testing.T) {
+func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	defs := ProviderDefinitions()
-	require.Len(t, defs, 3)
+	require.Len(t, defs, 5)
 
 	names := make([]string, len(defs))
 	for i, def := range defs {
@@ -29,7 +30,19 @@ func TestProviderDefinitionsOnlyExecutableAutoAllow(t *testing.T) {
 		require.NotEmpty(t, def.Description)
 		require.NotEmpty(t, def.Parameters)
 	}
-	require.ElementsMatch(t, []string{Read, Grep, Glob}, names)
+	require.ElementsMatch(t, []string{Read, Grep, Glob, AskUser, Bash}, names)
+}
+
+func TestBashAndAskUserSchemas(t *testing.T) {
+	bashSchema, ok := providerSchema(Bash)
+	require.True(t, ok)
+	require.Equal(t, "object", bashSchema["type"])
+	require.True(t, IsProviderExposed(Bash))
+
+	askSchema, ok := providerSchema(AskUser)
+	require.True(t, ok)
+	require.Equal(t, "object", askSchema["type"])
+	require.True(t, IsProviderExposed(AskUser))
 }
 
 func TestFilterProviderTools(t *testing.T) {

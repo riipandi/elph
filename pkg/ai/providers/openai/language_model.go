@@ -8,6 +8,7 @@ import (
 	openaisdk "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/shared"
 	provider "github.com/riipandi/elph/pkg/ai/protocol"
+	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
 type languageModel struct {
@@ -28,9 +29,36 @@ func (m *languageModel) Complete(ctx context.Context, req provider.TurnRequest) 
 		return provider.TurnResult{}, provider.ErrMissingAPIKey
 	}
 	if req.Stream != nil {
-		return m.completeStream(ctx, req)
+		if result, err := m.completeStreamOpenAICompat(ctx, req); err == nil {
+			return result, nil
+		} else if !provider.IsStreamJSONError(err) {
+			return provider.TurnResult{}, err
+		}
+		// OpenCode/OpenRouter gateways may emit SSE comment lines or malformed
+		// chunks that openai-go rejects; fall back to a one-shot completion and
+		// replay the final reasoning/content through stream callbacks.
+		fallback := req
+		fallback.Stream = nil
+		once, onceErr := m.completeOnce(ctx, fallback)
+		if onceErr != nil {
+			return once, onceErr
+		}
+		emitTurnResultStream(req.Stream, once)
+		return once, nil
 	}
 	return m.completeOnce(ctx, req)
+}
+
+func emitTurnResultStream(stream *provider.TurnStream, result provider.TurnResult) {
+	if stream == nil {
+		return
+	}
+	if thinking := strings.TrimSpace(result.Thinking); thinking != "" {
+		stream.EmitThinking(thinking)
+	}
+	if content := strings.TrimSpace(result.Content); content != "" {
+		stream.EmitContent(content)
+	}
 }
 
 func (m *languageModel) completeOnce(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
@@ -53,7 +81,8 @@ func (m *languageModel) completeOnce(ctx context.Context, req provider.TurnReque
 
 func (m *languageModel) completeStream(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
 	params := m.buildParams(req, true)
-	stream := m.client.Chat.Completions.NewStreaming(ctx, params)
+	streamCtx, bump := utils.WithStreamStallWatch(ctx, utils.StreamStallTimeout)
+	stream := m.client.Chat.Completions.NewStreaming(streamCtx, params)
 
 	streamReasoning := m.hooks.StreamReasoning
 	if streamReasoning == nil {
@@ -66,6 +95,7 @@ func (m *languageModel) completeStream(ctx context.Context, req provider.TurnReq
 	var finishReason string
 
 	for stream.Next() {
+		bump()
 		chunk := stream.Current()
 		if chunk.Usage.JSON.TotalTokens.Valid() {
 			usage.InputTokens = int(chunk.Usage.PromptTokens)
@@ -92,7 +122,7 @@ func (m *languageModel) completeStream(ctx context.Context, req provider.TurnReq
 		}
 	}
 	if err := stream.Err(); err != nil {
-		return provider.TurnResult{}, toProviderErr(err)
+		return provider.TurnResult{}, toProviderErr(provider.WrapStreamError(err))
 	}
 
 	result := provider.TurnResult{

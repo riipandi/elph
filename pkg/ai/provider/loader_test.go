@@ -13,6 +13,33 @@ func writeProviderFile(t *testing.T, dir, name, body string) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
 }
 
+func TestLoadCatalogAppliesOpenCodeGatewayThinkingCompat(t *testing.T) {
+	dir := t.TempDir()
+	writeProviderFile(t, dir, "opencode-go.json", `{
+		"name": "OpenCode Go",
+		"baseUrl": "https://opencode.ai/zen/go/v1",
+		"api": "openai-completions",
+		"apiKey": "env.OPENCODE_API_KEY",
+		"authHeader": true,
+		"models": [
+			{
+				"id": "mimo-v2.5",
+				"name": "MiMo V2.5",
+				"reasoning": true
+			}
+		]
+	}`)
+
+	catalog, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, catalog.Providers, 1)
+
+	model := catalog.Providers[0].Models[0]
+	require.Equal(t, string(ThinkingFormatQwen), model.Compat.ThinkingFormat)
+	require.NotNil(t, model.Compat.SupportsReasoningEffort)
+	require.False(t, *model.Compat.SupportsReasoningEffort)
+}
+
 func TestLoadCatalogFromDir(t *testing.T) {
 	dir := t.TempDir()
 	writeProviderFile(t, dir, "opencode.json", `{

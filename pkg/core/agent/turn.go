@@ -11,6 +11,10 @@ import (
 
 const PhaseDelay = 400 * time.Millisecond
 
+// turnEventBuffer must absorb bursty thinking/response deltas without blocking
+// the provider stream callback on a full channel.
+const turnEventBuffer = 512
+
 // IsShellContextPrompt reports Pi-style shell output queued for the agent (!cmd).
 func IsShellContextPrompt(prompt string) bool {
 	return strings.HasPrefix(strings.TrimSpace(prompt), "Ran `")
@@ -20,7 +24,7 @@ func IsShellContextPrompt(prompt string) bool {
 // The channel is closed after the turn completes or ctx is cancelled.
 // When opts.Provider is nil, a local placeholder simulation is used.
 func RunTurn(ctx context.Context, opts TurnOptions) <-chan Event {
-	ch := make(chan Event, len(TurnPhases)+2)
+	ch := make(chan Event, turnEventBuffer)
 	go runTurn(ctx, opts, ch)
 	return ch
 }
@@ -56,10 +60,14 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		},
 	}
 	if opts.ShowThinking {
-		stream.OnThinking = func(chunk string) {
+		stream.OnThinking = wrapThinkingStream(opts.LogProvider, func(chunk string) {
 			sendEvent(ctx, ch, ThinkingDeltaEvent(chunk))
-		}
+		})
 	}
+
+	messages := prepareTurnMessages(opts)
+
+	logProviderRequest(opts.LogProvider, 0, opts.Model, 0, len(messages), opts.Thinking)
 
 	result, err := opts.Provider.Complete(ctx, provider.TurnRequest{
 		SystemPrompt: opts.SystemPrompt,
@@ -68,13 +76,15 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		Thinking:     opts.Thinking,
 		Compat:       opts.Compat,
 		Stream:       stream,
-		Messages:     opts.Messages,
+		Messages:     messages,
 	})
 	if ctx.Err() != nil {
+		logProviderCancel(opts.LogProvider, 0, ctx.Err())
 		return
 	}
+	logProviderResult(opts.LogProvider, 0, result, err)
 	if err != nil {
-		sendEvent(ctx, ch, TurnDoneEvent(provider.TurnResult{Content: fmt.Sprintf("Provider error: %v", err)}))
+		sendEvent(ctx, ch, TurnDoneProviderErrorEvent(err, nil))
 		return
 	}
 	if !opts.ShowThinking {

@@ -11,6 +11,7 @@ import (
 
 func (m Model) resetToolCallStreamFilter() Model {
 	m.agent.ToolCallFilter.Reset()
+	m.agent.ThinkTagFilter.Reset()
 	m.agent.TurnToolCalls = nil
 	m.agent.SeenToolCalls = nil
 	m = m.resetNativeToolState()

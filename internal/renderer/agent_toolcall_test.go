@@ -153,7 +153,7 @@ func TestFinishAgentTurnStripsEmbeddedToolCalls(t *testing.T) {
 </function>
 </toolcall>`
 
-	m, _ = m.finishAgentTurn("", response)
+	m, _ = m.finishAgentTurn("", response, nil)
 
 	require.Len(t, m.messages, 2)
 	require.Equal(t, "Here are ideas.", m.messages[0].text)

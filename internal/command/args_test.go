@@ -8,7 +8,7 @@ import (
 
 func TestArgsHintJoinsValues(t *testing.T) {
 	got := ArgsHint(openLogArgs)
-	require.Equal(t, "requests | system", got)
+	require.Equal(t, "system | thinking | thinking_delta | ai | requests", got)
 }
 
 func TestResolveInputMatchesCommandAndArgs(t *testing.T) {
@@ -39,11 +39,13 @@ func TestCompleteInputAddsSpaceForArgCommands(t *testing.T) {
 }
 
 func TestArgChoiceIndexExactMatch(t *testing.T) {
-	require.Equal(t, 1, ArgChoiceIndex(openLogArgs, "system"))
+	require.Equal(t, 0, ArgChoiceIndex(openLogArgs, "system"))
+	require.Equal(t, 1, ArgChoiceIndex(openLogArgs, "thinking"))
 }
 
 func TestCompleteArgInput(t *testing.T) {
 	cmd, ok := Get(DiagnosticOpenLog, Context{})
 	require.True(t, ok)
-	require.Equal(t, "/diagnostic:open-log system", CompleteArgInput(cmd, openLogArgs[1]))
+	require.Equal(t, "/diagnostic:open-log system", CompleteArgInput(cmd, openLogArgs[0]))
+	require.Equal(t, "/diagnostic:open-log thinking", CompleteArgInput(cmd, openLogArgs[1]))
 }

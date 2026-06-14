@@ -59,5 +59,6 @@ func loadProviderFile(dir string, entry fs.DirEntry) (RegisteredProvider, error)
 		return RegisteredProvider{}, fmt.Errorf("provider %q: decode: %w", id, err)
 	}
 
+	cfg = ApplyGatewayThinkingCompat(id, cfg)
 	return normalizeProvider(id, cfg)
 }

@@ -109,6 +109,20 @@ func TestGlamourRenderMsgUpdatesCache(t *testing.T) {
 	require.True(t, updated.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(source), false, updated.messages[0].detailStatus, updated.messages[0].at, collapsibleRenderOpts{}))
 }
 
+func TestAIMarkdownListHasBottomPadding(t *testing.T) {
+	m := testModel()
+	plain := strings.TrimSpace(`Intro line
+
+- item one
+- item two
+
+Closing line.`)
+	formatted := m.renderMessage(message{text: plain, kind: constants.MessageAI})
+	plainRendered := m.renderMessage(message{text: "single", kind: constants.MessageAI})
+	require.Greater(t, lipgloss.Height(formatted), lipgloss.Height(plainRendered),
+		"markdown list blocks should be taller than a single-line reply due to bottom padding")
+}
+
 func TestAIMarkdownPreservesBlockWidth(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{

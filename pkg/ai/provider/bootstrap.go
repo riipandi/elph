@@ -123,6 +123,10 @@ func primaryTemplates() []bootstrapTemplate {
 				API:        APIOpenAICompletions,
 				APIKey:     "env.OPENCODE_API_KEY",
 				AuthHeader: true,
+				Compat: Compat{
+					ThinkingFormat:          string(ThinkingFormatQwen),
+					SupportsReasoningEffort: compatBool(false),
+				},
 				Models: []ModelConfig{
 					{
 						ID:            "big-pickle",
@@ -170,6 +174,10 @@ func primaryTemplates() []bootstrapTemplate {
 				API:        APIOpenAICompletions,
 				APIKey:     "env.OPENCODE_API_KEY",
 				AuthHeader: true,
+				Compat: Compat{
+					ThinkingFormat:          string(ThinkingFormatQwen),
+					SupportsReasoningEffort: compatBool(false),
+				},
 				Models: []ModelConfig{
 					{
 						ID:            "kimi-k2.5",

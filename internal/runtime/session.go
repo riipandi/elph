@@ -34,6 +34,7 @@ type Session struct {
 func NewSession(workDir string) Session {
 	id := typeid.MustGenerate("sess")
 	logPath, _ := OpenLog(workDir, id)
+	requestsLogPath, _ := OpenRequestsLog(workDir, id)
 	prefs, err := settings.Load()
 	if err != nil {
 		prefs = settings.Settings{}
@@ -58,7 +59,7 @@ func NewSession(workDir string) Session {
 		WorkDir:           workDir,
 		SystemPrompt:      prompt.Build(prompt.Options{WorkDir: workDir}),
 		LogPath:           logPath,
-		RequestsLogPath:   RequestsLogPath(workDir, id),
+		RequestsLogPath:   requestsLogPath,
 		Provider:          cfg.Provider,
 		ModelID:           cfg.ModelID,
 		ModelName:         modelName,
@@ -76,6 +77,14 @@ func (s Session) AppendLog(kind, text string) {
 	_ = AppendLog(s.LogPath, kind, text)
 }
 
+// AppendRequestsLog records a provider or tool trace line in the requests log.
+func (s Session) AppendRequestsLog(kind, text string) {
+	if s.RequestsLogPath == "" {
+		s.RequestsLogPath = RequestsLogPath(s.WorkDir, s.ID)
+	}
+	_ = AppendLog(s.RequestsLogPath, kind, text)
+}
+
 // StartTurn starts an agent turn and streams framework-neutral events.
 func (s Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan agent.Event {
 	opts.SystemPrompt = s.SystemPrompt
@@ -90,6 +99,11 @@ func (s Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan a
 	}
 	if len(opts.Messages) == 0 && len(s.History) > 0 {
 		opts.Messages = append([]provider.ChatMessage(nil), s.History...)
+	}
+	if s.RequestsLogPath != "" {
+		opts.LogProvider = func(kind, text string) {
+			s.AppendRequestsLog(kind, text)
+		}
 	}
 	if opts.Provider != nil {
 		opts.ToolsEnabled = true

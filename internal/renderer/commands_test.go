@@ -93,7 +93,7 @@ func TestArgPaletteAppearsForOpenLog(t *testing.T) {
 	m = m.syncSlashSuggestions()
 	require.True(t, m.argPaletteActive())
 	require.False(t, m.commandPaletteActive())
-	require.Len(t, m.suggest.ArgSuggestions, 2)
+	require.Len(t, m.suggest.ArgSuggestions, 5)
 }
 
 func TestOpenLogPlaceholderShowsArgHint(t *testing.T) {
@@ -101,7 +101,9 @@ func TestOpenLogPlaceholderShowsArgHint(t *testing.T) {
 	m.input.SetValue("/diagnostic:open-log ")
 
 	m = m.syncSlashSuggestions()
-	require.Equal(t, "requests | system", m.input.Placeholder)
+	require.Contains(t, m.input.Placeholder, "system")
+	require.Contains(t, m.input.Placeholder, "thinking")
+	require.Contains(t, m.input.Placeholder, "requests")
 }
 
 func TestTabCyclesArgSelection(t *testing.T) {
@@ -111,15 +113,11 @@ func TestTabCyclesArgSelection(t *testing.T) {
 
 	updated, consumed := m.handleSlashPaletteKey(keyTab())
 	require.True(t, consumed)
-	require.Equal(t, "/diagnostic:open-log requests", updated.input.Value())
-
-	updated, consumed = updated.handleSlashPaletteKey(keyTab())
-	require.True(t, consumed)
 	require.Equal(t, "/diagnostic:open-log system", updated.input.Value())
 
 	updated, consumed = updated.handleSlashPaletteKey(keyTab())
 	require.True(t, consumed)
-	require.Equal(t, "/diagnostic:open-log requests", updated.input.Value())
+	require.Equal(t, "/diagnostic:open-log thinking", updated.input.Value())
 }
 
 func TestArgPaletteFiltersByQuery(t *testing.T) {
@@ -139,5 +137,5 @@ func TestShiftTabCyclesArgSelectionBackward(t *testing.T) {
 
 	updated, consumed := m.handleSlashPaletteKey(keyShiftTab())
 	require.True(t, consumed)
-	require.Equal(t, "/diagnostic:open-log system", updated.input.Value())
+	require.Equal(t, "/diagnostic:open-log ai", updated.input.Value())
 }

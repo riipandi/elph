@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/riipandi/elph/internal/runtime"
@@ -17,8 +18,11 @@ const (
 )
 
 var openLogArgs = []ArgChoice{
-	{Value: "requests", Description: "Provider and tool request/response log"},
 	{Value: "system", Description: "Session events, notices, and command output"},
+	{Value: "thinking", Description: "Reasoning output recorded at end of agent turns"},
+	{Value: "thinking_delta", Description: "Reserved — use thinking after a completed turn"},
+	{Value: "ai", Description: "Assistant responses recorded at end of agent turns"},
+	{Value: "requests", Description: "Provider steps, tool runs, and stream trace"},
 }
 
 func diagnosticListTools(*Context, string) string {
@@ -55,21 +59,33 @@ func diagnosticOpenLog(ctx *Context, args string) string {
 
 	switch args {
 	case "requests":
-		return displayLogFile(ctx.RequestsLogPath, "requests")
-	case "system":
-		return displayFilteredLog(ctx.LogPath, "system")
+		return displayLogFile(ctx.RequestsLogPath, "requests", requestsLogEmptyMessage)
+	case "thinking_delta":
+		return displayFilteredLog(ctx.RequestsLogPath, "thinking_delta")
+	case "system", "thinking", "ai":
+		return displayFilteredLog(ctx.LogPath, args)
 	default:
 		return fmt.Sprintf("/%s: unknown log %q — use %s", DiagnosticOpenLog, args, ArgsHint(openLogArgs))
 	}
 }
 
-func displayLogFile(path, label string) string {
+func requestsLogEmptyMessage(path string) string {
+	return fmt.Sprintf(
+		"Requests log (%s) is empty. Send a prompt to the agent first, or use /%s thinking_delta after a turn with thinking enabled.",
+		path, DiagnosticOpenLog,
+	)
+}
+
+func displayLogFile(path, label string, missing func(string) string) string {
 	if path == "" {
 		return fmt.Sprintf("/%s: %s log not available", DiagnosticOpenLog, label)
 	}
 
 	content, err := runtime.ReadLogTail(path, 0)
 	if err != nil {
+		if os.IsNotExist(err) && missing != nil {
+			return missing(path)
+		}
 		return fmt.Sprintf("/%s: %v", DiagnosticOpenLog, err)
 	}
 
@@ -91,16 +107,32 @@ func displayFilteredLog(path, kind string) string {
 
 	content, err := runtime.FilterLogByKind(path, kind, 0)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Sprintf("Session log (%s) has not been created yet — send a message to the agent first.", path)
+		}
 		return fmt.Sprintf("/%s: %v", DiagnosticOpenLog, err)
 	}
 
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return fmt.Sprintf("System log (%s) has no [%s] entries.", path, kind)
+		switch kind {
+		case "thinking":
+			return fmt.Sprintf("Session log (%s) has no [thinking] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
+		case "thinking_delta":
+			return fmt.Sprintf("Requests log (%s) has no [thinking_delta] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
+		case "ai":
+			return fmt.Sprintf("Session log (%s) has no [ai] entries yet. Send a prompt to the agent first.", path)
+		default:
+			return fmt.Sprintf("Log (%s) has no [%s] entries.", path, kind)
+		}
 	}
 
+	label := "Session log"
+	if kind == "thinking_delta" {
+		label = "Requests log"
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "System log: %s\n\n", path)
+	fmt.Fprintf(&b, "%s (%s) — [%s]:\n\n", label, path, kind)
 	b.WriteString(content)
 	return b.String()
 }

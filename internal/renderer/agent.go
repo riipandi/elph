@@ -56,22 +56,45 @@ func (m Model) showThinkingEnabled() bool {
 	return cfg.ShowThinkingEnabled()
 }
 
-func (m Model) buildTurnOptions(prompt string) agent.TurnOptions {
-	showThinking := m.showThinkingEnabled() && m.thinkingLevel != constants.ThinkingOff
+func (m Model) thinkingTurnEnabled() bool {
+	return m.showThinkingEnabled() && m.thinkingLevel != constants.ThinkingOff
+}
+
+func (m Model) buildTurnOptions(prompt string, bridge *toolInteractBridge) agent.TurnOptions {
+	showThinking := m.thinkingTurnEnabled()
 	opts := agent.TurnOptions{
-		UserPrompt:   prompt,
-		Model:        m.session.ModelID,
-		Provider:     m.session.Provider,
-		ShowThinking: showThinking,
+		UserPrompt:         prompt,
+		Model:              m.session.ModelID,
+		Provider:           m.session.Provider,
+		ShowThinking:       showThinking,
+		SkipToolApproval:   m.mode == constants.ModeBrave,
 	}
-	if model, ok := m.session.Catalog.Model(m.session.ProviderID, m.session.ModelID); ok {
-		prefs, err := settings.Load()
-		budgets := map[string]int(nil)
-		if err == nil {
-			budgets = prefs.ThinkingBudgetOverrides()
+	if bridge != nil {
+		opts.InteractTool = bridge.Interact
+	}
+	model, modelOK := m.session.Catalog.Model(m.session.ProviderID, m.session.ModelID)
+	if !modelOK {
+		if reg, ok := m.session.Catalog.Provider(m.session.ProviderID); ok {
+			opts.Compat = reg.Config.Compat
 		}
-		opts.Thinking = provider.ResolveThinking(model, m.thinkingLevel, budgets)
-		opts.Compat = model.Compat
+		return opts
+	}
+	opts.Compat = model.Compat
+	if !showThinking {
+		return opts
+	}
+	prefs, err := settings.Load()
+	budgets := map[string]int(nil)
+	if err == nil {
+		budgets = prefs.ThinkingBudgetOverrides()
+	}
+	opts.Thinking = provider.ResolveThinking(model, m.thinkingLevel, budgets)
+	if !opts.Thinking.Enabled && opts.Compat.ThinkingFormat == string(provider.ThinkingFormatQwen) {
+		opts.Thinking = provider.ThinkingConfig{
+			Enabled:        true,
+			EnableThinking:   true,
+			ThinkingFormat:   provider.ThinkingFormatQwen,
+		}
 	}
 	return opts
 }
@@ -79,22 +102,49 @@ func (m Model) buildTurnOptions(prompt string) agent.TurnOptions {
 func (m Model) agentTurnCmds(prompt string) (Model, tea.Cmd) {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.agent.Cancel = cancel
-	events := m.session.StartTurn(ctx, m.buildTurnOptions(prompt))
+	bridge := newToolInteractBridge()
+	m.agent.ToolInteractBridge = bridge
+	if m.thinkingTurnEnabled() && m.agent.ThinkingMsgID < 0 {
+		m = m.addThinkingMessage("")
+		m.agent.ThinkingMsgID = len(m.messages) - 1
+		m.layout.ContentDirty = true
+	}
+	events := m.session.StartTurn(ctx, m.buildTurnOptions(prompt, bridge))
 	m.agent.Events = events
-	return m, tea.Batch(waitAgentEvent(events), m.spinnerTickCmd(), m.activityStopwatchStartCmd())
+	return m, tea.Batch(
+		waitAgentEvent(events),
+		waitToolInteractOffer(bridge),
+		m.spinnerTickCmd(),
+		m.activityStopwatchStartCmd(),
+	)
 }
 
 func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
 	m = m.cancelCtrlC()
+	if m.toolInteractDialogActive() || m.toolInteractPending.RespCh != nil {
+		m = m.abortToolInteract(agent.ToolInteractResponse{Cancelled: true})
+	}
 	if m.agent.Cancel != nil {
 		m.agent.Cancel()
 		m.agent.Cancel = nil
 	}
 	m.agent.Events = nil
+	m.agent.ToolInteractBridge = nil
 	m.agent.Busy = false
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
 	m = m.stopActivityStopwatch()
+	if thinkIdx := m.agent.ThinkingMsgID; thinkIdx >= 0 && thinkIdx < len(m.messages) {
+		if strings.TrimSpace(m.messages[thinkIdx].text) == "" {
+			m = m.removeMessageAt(thinkIdx)
+			if m.agent.ResponseMsgID > thinkIdx {
+				m.agent.ResponseMsgID--
+			}
+		}
+	}
+	m.agent.ThinkingMsgID = -1
+	m.agent.ResponseMsgID = -1
+	m = m.clearStreamPrefixCache()
 	m, cmd := m.withMessage("(agent turn cancelled)")
 	return m, cmd
 }
@@ -106,15 +156,49 @@ func (m Model) spinnerTickCmd() tea.Cmd {
 	return tea.Tick(spinnerInterval, func(time.Time) tea.Msg { return spinnerTickMsg{} })
 }
 
-func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
+func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Model, tea.Cmd) {
 	m.agent.Cancel = nil
 	m.agent.Events = nil
+	m.agent.ToolInteractBridge = nil
 	m.agent.Busy = false
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
 	m = m.stopActivityStopwatch()
 
-	if m.showThinkingEnabled() && m.agent.ThinkingMsgID < 0 && strings.TrimSpace(thinking) != "" {
+	if m.thinkingTurnEnabled() {
+		if m.agent.ResponseMsgID >= 0 {
+			if _, thinkChunk := m.agent.ThinkTagFilter.Flush(""); strings.TrimSpace(thinkChunk) != "" {
+				m = m.appendAgentThinkingDelta(thinkChunk)
+			}
+		} else if strings.TrimSpace(response) != "" {
+			var thinkChunk string
+			response, thinkChunk = m.agent.ThinkTagFilter.Flush(response)
+			if strings.TrimSpace(thinkChunk) != "" {
+				m = m.appendAgentThinkingDelta(thinkChunk)
+			}
+			if extraThink, stripped := agent.ExtractThinkTags(response); strings.TrimSpace(extraThink) != "" {
+				m = m.appendAgentThinkingDelta(extraThink)
+				response = stripped
+			}
+		}
+	}
+
+	if thinkIdx := m.agent.ThinkingMsgID; thinkIdx >= 0 && thinkIdx < len(m.messages) {
+		if strings.TrimSpace(m.messages[thinkIdx].text) == "" {
+			if final := strings.TrimSpace(thinking); final != "" {
+				m.messages[thinkIdx].text = final
+				m.messages[thinkIdx].renderCache = messageRenderCache{}
+			} else {
+				m = m.removeMessageAt(thinkIdx)
+				if m.agent.ResponseMsgID > thinkIdx {
+					m.agent.ResponseMsgID--
+				}
+			}
+		}
+		if thinkIdx < len(m.messages) && strings.TrimSpace(m.messages[thinkIdx].text) != "" {
+			m.session.AppendLog("thinking", m.messages[thinkIdx].text)
+		}
+	} else if m.showThinkingEnabled() && strings.TrimSpace(thinking) != "" {
 		m = m.addThinkingMessage(thinking)
 		m.session.AppendLog("thinking", thinking)
 	}
@@ -157,6 +241,10 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 		responseIdx = len(m.messages) - 1
 	}
 
+	if providerErr != nil {
+		m = m.addProviderErrorDetail(providerErr)
+	}
+
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
 	m.layout.StreamFlushPending = false
@@ -174,7 +262,7 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 }
 
 func (m Model) appendAgentThinkingDelta(delta string) Model {
-	if delta == "" || !m.showThinkingEnabled() {
+	if delta == "" || !m.thinkingTurnEnabled() {
 		return m
 	}
 	if m.agent.ThinkingMsgID < 0 {
@@ -184,14 +272,23 @@ func (m Model) appendAgentThinkingDelta(delta string) Model {
 		idx := m.agent.ThinkingMsgID
 		m.messages[idx].text += delta
 		m.messages[idx].renderCache = messageRenderCache{}
-		m.layout.ContentDirty = true
 	}
+	m = m.clearStreamPrefixCache()
+	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) appendAgentResponseDelta(delta string) Model {
 	if delta == "" {
 		return m
+	}
+
+	if m.thinkingTurnEnabled() {
+		clean, thinkChunk := m.agent.ThinkTagFilter.Process(delta)
+		delta = clean
+		if thinkChunk != "" {
+			m = m.appendAgentThinkingDelta(thinkChunk)
+		}
 	}
 
 	safe, calls := m.filterAgentResponseDelta(delta)

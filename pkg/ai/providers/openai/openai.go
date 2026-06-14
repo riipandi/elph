@@ -60,7 +60,7 @@ func New(opts Options) provider.Provider {
 
 	clientOpts := []option.RequestOption{
 		option.WithBaseURL(baseURL),
-		option.WithHTTPClient(utils.NewHTTPClient()),
+		option.WithHTTPClient(utils.NewStreamingHTTPClient()),
 	}
 	if opts.APIKey != "" {
 		clientOpts = append(clientOpts, option.WithAPIKey(opts.APIKey))

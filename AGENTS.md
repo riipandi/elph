@@ -53,11 +53,6 @@ pkg/ai/providertests/  Shared httptest suites across adapters
 
 **Google** (`providers/google`) is a stub — not wired in `NewProvider` yet.
 
-### SDK deps (`go.mod` replace)
-
-- `github.com/openai/openai-go/v3` → `github.com/charmbracelet/openai-go/v3`
-- `github.com/anthropics/anthropic-sdk-go` → `github.com/charmbracelet/anthropic-sdk-go`
-
 Extend Charm forks; do not add raw HTTP in `pkg/ai/provider/`.
 
 ## How to change providers

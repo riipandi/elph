@@ -10,7 +10,8 @@ import (
 )
 
 func TestFormatMessageTimestampSameDay(t *testing.T) {
-	at := time.Date(2026, 6, 14, 15, 30, 45, 0, time.Local)
+	now := time.Now().Local()
+	at := time.Date(now.Year(), now.Month(), now.Day(), 15, 30, 45, 0, time.Local)
 	got := formatMessageTimestamp(at)
 	require.Equal(t, "15:30:45", got)
 }

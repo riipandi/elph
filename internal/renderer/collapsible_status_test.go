@@ -36,7 +36,36 @@ func TestDetailCollapsedShowsBodyPreviewWhenIdle(t *testing.T) {
 	require.NotContains(t, rendered, "Running...")
 }
 
-func TestThinkingCollapsedShowsStreamingStatusPreview(t *testing.T) {
+func TestThinkingCollapsedShowsSpinnerWhileAwaitingContent(t *testing.T) {
+	m := testInputModel(t)
+	m.agent.Busy = true
+	m.agent.SpinnerFrame = 1
+	m.messages = []message{{
+		kind:        constants.MessageThinking,
+		detailLabel: "Thinking",
+	}}
+	m.agent.ThinkingMsgID = 0
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, rendered, "Thinking...")
+}
+
+func TestThinkingExpandedEmptyShowsSpinnerWhileStreaming(t *testing.T) {
+	m := testInputModel(t)
+	m.agent.Busy = true
+	m.agent.SpinnerFrame = 1
+	m.messages = []message{{
+		kind:           constants.MessageThinking,
+		detailLabel:    "Thinking",
+		detailExpanded: true,
+	}}
+	m.agent.ThinkingMsgID = 0
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, rendered, "Thinking...")
+}
+
+func TestThinkingCollapsedShowsLiveBodyWhileStreaming(t *testing.T) {
 	m := testInputModel(t)
 	m.agent.Busy = true
 	m.agent.SpinnerFrame = 1
@@ -44,8 +73,28 @@ func TestThinkingCollapsedShowsStreamingStatusPreview(t *testing.T) {
 	m.agent.ThinkingMsgID = 0
 
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Thinking...")
-	require.NotContains(t, rendered, "reasoning step one")
+	require.Contains(t, rendered, "Thinking")
+	require.Contains(t, rendered, "reasoning step one")
+	require.Contains(t, rendered, "reasoning step two")
+	require.Contains(t, rendered, "click or ctrl+o to expand")
+}
+
+func TestThinkingCollapsedShowsLiveBodyWhileResponseStreams(t *testing.T) {
+	m := testInputModel(t)
+	m.width = 80
+	m.agent.Busy = true
+	m.messages = []message{
+		{text: "prompt", kind: constants.MessageUser},
+		{text: "reasoning in flight", kind: constants.MessageThinking, detailLabel: "Thinking"},
+		{text: "answer so far", kind: constants.MessageAI},
+	}
+	m.agent.ThinkingMsgID = 1
+	m.agent.ResponseMsgID = 2
+
+	rendered := stripANSI(m.renderMessageAt(1))
+	require.Contains(t, rendered, "Thinking")
+	require.Contains(t, rendered, "reasoning in flight")
+	require.Contains(t, rendered, "click or ctrl+o to expand")
 }
 
 func TestThinkingCollapsedShowsBodyWhenNotStreaming(t *testing.T) {

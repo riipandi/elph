@@ -92,11 +92,17 @@ func ResolveToolRequest(rawName string, params map[string]string) ToolRequestPre
 	}
 
 	if tool.IsExecutable(name) {
-		// Reserved for when execution is wired; requests should not reach here today.
+		if tool.RequiresApproval(name) {
+			return ToolRequestPresentation{
+				Name:   name,
+				Reason: UnavailableNotExecutable,
+				Body:   formatUnavailableToolBody(requiresApprovalToolMessage(name), params),
+			}
+		}
 		return ToolRequestPresentation{
 			Name:   name,
 			Reason: UnavailableNotExecutable,
-			Body:   formatUnavailableToolBody(notExecutableToolMessage(name), params),
+			Body:   formatUnavailableToolBody(executableToolMessage(name), params),
 		}
 	}
 
@@ -113,7 +119,21 @@ func unknownToolMessage(name string) string {
 
 func notExecutableToolMessage(name string) string {
 	return fmt.Sprintf(
-		"Tool unavailable\n\n%s is listed for this agent but cannot be executed in this session. Only Read, Grep, and Glob run via native tool calling today.",
+		"Tool unavailable\n\n%s is listed for this agent but cannot be executed in this session yet.",
+		name,
+	)
+}
+
+func requiresApprovalToolMessage(name string) string {
+	return fmt.Sprintf(
+		"Tool requires approval\n\n%s can run in this session but needs user approval. Use native tool calling so the approval dialog can appear.",
+		name,
+	)
+}
+
+func executableToolMessage(name string) string {
+	return fmt.Sprintf(
+		"Tool unavailable via markup\n\n%s is executable but was requested outside the native tool loop.",
 		name,
 	)
 }

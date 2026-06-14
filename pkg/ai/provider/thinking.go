@@ -264,7 +264,9 @@ func resolveOpenAIThinking(cfg ThinkingConfig, model ResolvedModel, level consta
 	default:
 		if model.Compat.ReasoningEffortSupported() && effort != "" {
 			cfg.ReasoningEffort = effort
+			return cfg
 		}
+		cfg.EnableThinking = true
 		return cfg
 	}
 }

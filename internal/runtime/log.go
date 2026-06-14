@@ -12,21 +12,36 @@ import (
 
 const defaultLogTailBytes = 24 * 1024
 
-// OpenLog opens or creates the session log file for workDir and sessionID.
-func OpenLog(workDir string, sessionID typeid.TypeID) (string, error) {
+func sessionLogDir(workDir string) (string, error) {
 	dir := filepath.Join(workDir, ".elph", "logs")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	return dir, nil
+}
 
-	path := filepath.Join(dir, sessionID.String()+".log")
+func openSessionLogFile(workDir, filename string) (string, error) {
+	dir, err := sessionLogDir(workDir)
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, filename)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return "", err
 	}
 	defer f.Close()
-
 	return path, nil
+}
+
+// OpenLog opens or creates the session log file for workDir and sessionID.
+func OpenLog(workDir string, sessionID typeid.TypeID) (string, error) {
+	return openSessionLogFile(workDir, sessionID.String()+".log")
+}
+
+// OpenRequestsLog opens or creates the provider request trace for a session.
+func OpenRequestsLog(workDir string, sessionID typeid.TypeID) (string, error) {
+	return openSessionLogFile(workDir, sessionID.String()+".requests.log")
 }
 
 // AppendLog appends a timestamped line to the session log.

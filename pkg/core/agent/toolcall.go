@@ -246,6 +246,7 @@ func (f *ToolCallStreamFilter) Process(chunk string) (string, []ParsedToolCall) 
 	if chunk == "" {
 		return "", nil
 	}
+	ensureToolCallRegex()
 
 	combined := f.holdback + chunk
 	f.holdback = ""
@@ -333,6 +334,7 @@ func (f *ToolCallStreamFilter) Flush(text string) (string, []ParsedToolCall) {
 	var extra []ParsedToolCall
 	combined := text
 	if holdback != "" {
+		ensureToolCallRegex()
 		if toolCallOpenRe.FindStringIndex(text) != nil {
 			// TurnDone repeats streamed content; drop stale partial holdback.
 			extra = extractCallsFromMarkup(holdback)

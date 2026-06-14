@@ -3,6 +3,7 @@ package providertests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -63,6 +64,48 @@ func TestAnthropicThinkingBudget(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "done", got.Content)
+}
+
+func TestAnthropicStreamAskUserToolCall(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeEventStreamResponse(w)
+		events := []string{
+			`{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-test","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":10,"output_tokens":1}}}`,
+			`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_ask","name":"AskUser","input":{}}}`,
+			`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"question\":"}}`,
+			`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":" \"Pick one\"}"}}`,
+			`{"type":"content_block_stop","index":0}`,
+			`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":12}}`,
+			`{"type":"message_stop"}`,
+		}
+		for _, evt := range events {
+			_, _ = fmt.Fprintf(w, "event: %s\n", "content_block_delta")
+			_, _ = fmt.Fprintf(w, "data: %s\n\n", evt)
+		}
+	}))
+	defer srv.Close()
+
+	p := elphant.New(elphant.Options{APIKey: "test-key", BaseURL: srv.URL + "/v1"})
+	got, err := p.Complete(context.Background(), provider.TurnRequest{
+		UserPrompt: "ask me",
+		Model:      "claude-test",
+		Stream:     &provider.TurnStream{},
+		Tools: []provider.ToolDefinition{{
+			Name: "AskUser", Description: "Ask the user",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"question": map[string]any{"type": "string"},
+				},
+				"required": []string{"question"},
+			},
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, provider.StopReasonToolUse, got.StopReason)
+	require.Len(t, got.ToolCalls, 1)
+	require.Equal(t, "AskUser", got.ToolCalls[0].Name)
+	require.JSONEq(t, `{"question":"Pick one"}`, string(got.ToolCalls[0].Arguments))
 }
 
 func TestAnthropicAdaptiveThinking(t *testing.T) {

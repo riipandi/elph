@@ -18,13 +18,13 @@ func ResolveName(raw string) (canonical string, known bool) {
 }
 
 // IsProviderExposed reports whether a built-in tool should be sent to the model API.
-// Requires auto-allow approval, a provider schema, and IsExecutable. See docs/tools.md.
+// Requires auto-allow or requires-approval (gated at runtime), a provider schema, and IsExecutable. See docs/tools.md.
 func IsProviderExposed(name string) bool {
 	def, ok := Get(name)
 	if !ok {
 		return false
 	}
-	if def.DefaultApproval != ApprovalAutoAllow {
+	if def.DefaultApproval != ApprovalAutoAllow && def.DefaultApproval != ApprovalRequiresApproval {
 		return false
 	}
 	if !IsExecutable(name) {
@@ -42,7 +42,7 @@ func IsExecutable(name string) bool {
 		return false
 	}
 	switch def.Name {
-	case Read, Grep, Glob:
+	case Read, Grep, Glob, Bash, AskUser:
 		return true
 	default:
 		return false

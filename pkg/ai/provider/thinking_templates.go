@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+func compatBool(v bool) *bool { return &v }
+
 // BackfillThinkingResult reports provider files that gained thinking metadata.
 type BackfillThinkingResult struct {
 	Dir        string
@@ -32,16 +34,57 @@ func thinkingTemplateModel(providerID, modelID string) (ModelConfig, bool) {
 	return ModelConfig{}, false
 }
 
+// gatewayThinkingCompat returns provider defaults for OpenAI-compatible gateways
+// that stream reasoning via enable_thinking instead of reasoning_effort.
+func gatewayThinkingCompat(providerID string, cfg FileConfig) (Compat, bool) {
+	switch providerID {
+	case "opencode", "opencode-go":
+		return Compat{
+			ThinkingFormat:          string(ThinkingFormatQwen),
+			SupportsReasoningEffort: compatBool(false),
+		}, true
+	default:
+		base := strings.ToLower(strings.TrimSpace(cfg.BaseURL))
+		if strings.Contains(base, "opencode.ai/") {
+			return Compat{
+				ThinkingFormat:          string(ThinkingFormatQwen),
+				SupportsReasoningEffort: compatBool(false),
+			}, true
+		}
+	}
+	return Compat{}, false
+}
+
+// ApplyGatewayThinkingCompat fills gateway thinking compat at load time.
+func ApplyGatewayThinkingCompat(providerID string, cfg FileConfig) FileConfig {
+	gateway, ok := gatewayThinkingCompat(providerID, cfg)
+	if !ok {
+		return cfg
+	}
+	cfg.Compat = backfillCompat(cfg.Compat, gateway)
+	return cfg
+}
+
 // BackfillProviderThinking fills missing reasoning, thinkingLevelMap, and compat
 // fields from built-in templates without overwriting existing user configuration.
 func BackfillProviderThinking(providerID string, cfg FileConfig) (FileConfig, bool) {
 	tmpl, ok := thinkingTemplateByProvider(providerID)
 	if !ok {
+		if gateway, gatewayOK := gatewayThinkingCompat(providerID, cfg); gatewayOK {
+			nextCompat := backfillCompat(cfg.Compat, gateway)
+			if !compatEqual(cfg.Compat, nextCompat) {
+				cfg.Compat = nextCompat
+				return cfg, true
+			}
+		}
 		return cfg, false
 	}
 
 	changed := false
 	nextCompat := backfillCompat(cfg.Compat, tmpl.Compat)
+	if gateway, gatewayOK := gatewayThinkingCompat(providerID, cfg); gatewayOK {
+		nextCompat = backfillCompat(nextCompat, gateway)
+	}
 	if !compatEqual(cfg.Compat, nextCompat) {
 		cfg.Compat = nextCompat
 		changed = true

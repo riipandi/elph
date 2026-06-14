@@ -17,6 +17,7 @@ type messageRenderCache struct {
 	detailStatus      constants.DetailStatus
 	atUnix            int64
 	showStatusPreview bool
+	showLiveBody      bool
 	spinnerFrame      int
 	output            string
 }
@@ -30,5 +31,6 @@ func (c messageRenderCache) hit(width int, streaming bool, sourceLen int, expand
 		c.detailStatus == detailStatus &&
 		c.atUnix == messageAtUnix(at) &&
 		c.showStatusPreview == opts.showStatusPreview &&
+		c.showLiveBody == opts.showLiveBody &&
 		c.spinnerFrame == opts.spinnerFrame
 }

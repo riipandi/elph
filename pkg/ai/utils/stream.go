@@ -9,20 +9,24 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	provider "github.com/riipandi/elph/pkg/ai/protocol"
 )
 
 // PostSSE sends a JSON POST request and invokes onData for each SSE data payload.
 func PostSSE(ctx context.Context, client *http.Client, url string, headers map[string]string, body any, onData func(data []byte) error) error {
 	if client == nil {
-		client = NewHTTPClient()
+		client = NewStreamingHTTPClient()
 	}
+
+	streamCtx, bump := WithStreamStallWatch(ctx, StreamStallTimeout)
 
 	payload, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("encode request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(streamCtx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
@@ -40,9 +44,10 @@ func PostSSE(ctx context.Context, client *http.Client, url string, headers map[s
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("upstream %s: %s", resp.Status, trimBody(raw))
+		return upstreamHTTPError(resp.StatusCode, raw)
 	}
 
+	bump()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
@@ -57,6 +62,7 @@ func PostSSE(ctx context.Context, client *http.Client, url string, headers map[s
 			}
 			continue
 		}
+		bump()
 		if err := onData([]byte(data)); err != nil {
 			return err
 		}
@@ -65,4 +71,8 @@ func PostSSE(ctx context.Context, client *http.Client, url string, headers map[s
 		return fmt.Errorf("read stream: %w", err)
 	}
 	return nil
+}
+
+func upstreamHTTPError(statusCode int, body []byte) error {
+	return provider.NewUpstreamHTTPError(statusCode, body)
 }

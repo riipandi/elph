@@ -25,6 +25,45 @@ func (s *loopStubProvider) Complete(ctx context.Context, req provider.TurnReques
 	return result, nil
 }
 
+type recordingProvider struct {
+	lastMessages []provider.ChatMessage
+}
+
+func (r *recordingProvider) ID() string { return "recording" }
+
+func (r *recordingProvider) Complete(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
+	r.lastMessages = append([]provider.ChatMessage(nil), req.Messages...)
+	return provider.TurnResult{Content: "ok", StopReason: provider.StopReasonEndTurn}, nil
+}
+
+func TestRunTurnAppendsFollowUpPromptToHistory(t *testing.T) {
+	stub := &recordingProvider{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	history := []provider.ChatMessage{
+		{Role: "user", Content: "first"},
+		{Role: "assistant", Content: "answer one"},
+	}
+
+	for evt := range RunTurn(ctx, TurnOptions{
+		UserPrompt:   "second",
+		Provider:     stub,
+		ToolsEnabled: true,
+		Messages:     history,
+		ExecuteTool: func(ctx context.Context, name string, args map[string]any) ToolRunResult {
+			return ToolRunResult{Output: "unused"}
+		},
+	}) {
+		if evt.Kind == EventTurnDone {
+			break
+		}
+	}
+
+	require.Len(t, stub.lastMessages, 3)
+	require.Equal(t, "second", stub.lastMessages[2].Content)
+}
+
 func TestRunTurnNativeToolLoop(t *testing.T) {
 	stub := &loopStubProvider{steps: []provider.TurnResult{
 		{

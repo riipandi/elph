@@ -61,12 +61,14 @@ type AgentState struct {
 	SpinnerFrame     int
 	Stopwatch        stopwatch.Model
 	ToolCallFilter   agent.ToolCallStreamFilter
+	ThinkTagFilter   agent.ThinkTagStreamFilter
 	TurnToolCalls    []agent.ParsedToolCall
 	NativeToolMsgIDs map[string]int
 	SeenToolCalls    map[string]struct{}
 	Busy             bool
-	Events           <-chan agent.Event
-	Cancel           context.CancelFunc
+	Events               <-chan agent.Event
+	ToolInteractBridge   *toolInteractBridge
+	Cancel               context.CancelFunc
 	ThinkingMsgID    int
 	ResponseMsgID    int
 }

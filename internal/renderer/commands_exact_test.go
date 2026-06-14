@@ -64,5 +64,6 @@ func TestArgPaletteStillShowsForExactOpenLog(t *testing.T) {
 	m = m.syncSlashSuggestions()
 	require.True(t, m.argPaletteActive())
 	require.False(t, m.commandPaletteActive())
-	require.Equal(t, "requests | system", m.input.Placeholder)
+	require.Contains(t, m.input.Placeholder, "system")
+	require.Contains(t, m.input.Placeholder, "requests")
 }

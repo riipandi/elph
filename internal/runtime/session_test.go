@@ -14,6 +14,12 @@ func TestNewSessionHasID(t *testing.T) {
 	require.NotEmpty(t, s.ID.String())
 }
 
+func TestNewSessionCreatesRequestLog(t *testing.T) {
+	s := NewSession(t.TempDir())
+	require.NotEmpty(t, s.RequestsLogPath)
+	require.FileExists(t, s.RequestsLogPath)
+}
+
 func TestNewSessionBuildsSystemPrompt(t *testing.T) {
 	s := NewSession(t.TempDir())
 	require.Contains(t, s.SystemPrompt, "You are an expert AI coding assistant, operate in Elph CLI.")
@@ -49,4 +55,10 @@ func TestSessionStartTurnStreamsEvents(t *testing.T) {
 	require.Equal(t, agent.ActivityThinking, events[1].Activity)
 	require.Equal(t, agent.EventTurnDone, events[len(events)-1].Kind)
 	require.Equal(t, "stub reply", events[len(events)-1].Response)
+
+	content, err := ReadLogTail(s.RequestsLogPath, 0)
+	require.NoError(t, err)
+	require.Contains(t, content, "[provider_start]")
+	require.Contains(t, content, "[provider_ok]")
+	require.NotContains(t, content, "[thinking_delta]")
 }

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/riipandi/elph/pkg/tool"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 var ErrToolNotImplemented = errors.New("tool not implemented")
@@ -39,6 +40,8 @@ func ExecuteTool(ctx context.Context, workDir, name string, args map[string]any)
 		return executeGrep(ctx, workDir, args)
 	case tool.Glob:
 		return executeGlob(workDir, args)
+	case tool.Bash:
+		return executeBash(ctx, workDir, args)
 	default:
 		return ToolResult{Err: fmt.Errorf("%w: %s", ErrToolNotImplemented, canonical)}
 	}
@@ -93,6 +96,54 @@ func executeGrep(ctx context.Context, workDir string, args map[string]any) ToolR
 		return ToolResult{Output: truncateToolOutput(string(out), maxGrepBytes), Err: err}
 	}
 	return ToolResult{Output: truncateToolOutput(strings.TrimRight(string(out), "\n"), maxGrepBytes)}
+}
+
+func executeBash(ctx context.Context, workDir string, args map[string]any) ToolResult {
+	command, ok := stringArg(args, "command")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: command")}
+	}
+	if err := validateShellCommand(command); err != nil {
+		return ToolResult{Err: err}
+	}
+
+	shell := RunShellContext(ctx, workDir, command, nil)
+	result := ToolResult{
+		Output:    shell.Output,
+		Cancelled: shell.Cancelled,
+	}
+	if shell.Cancelled {
+		return result
+	}
+	if shell.Err != nil {
+		result.Err = shell.Err
+		return result
+	}
+	if shell.ExitCode != 0 {
+		result.Output = formatShellExitOutput(shell.Output, shell.ExitCode)
+	}
+	return result
+}
+
+func validateShellCommand(command string) error {
+	if command == "" {
+		return errors.New("empty command")
+	}
+	if strings.Contains(command, "\x00") {
+		return errors.New("command contains null byte")
+	}
+	_, err := syntax.NewParser().Parse(strings.NewReader(command), "")
+	if err != nil {
+		return fmt.Errorf("invalid shell syntax: %w", err)
+	}
+	return nil
+}
+
+func formatShellExitOutput(output string, exitCode int) string {
+	if strings.TrimSpace(output) == "" {
+		return fmt.Sprintf("(exit %d)", exitCode)
+	}
+	return output + fmt.Sprintf("\n\n(exit %d)", exitCode)
 }
 
 func executeGlob(workDir string, args map[string]any) ToolResult {

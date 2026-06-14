@@ -42,6 +42,16 @@ func TestFilterLogByKind(t *testing.T) {
 	require.NotContains(t, content, "[user] hello")
 }
 
+func TestOpenRequestsLogCreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	id := typeid.MustGenerate("sess")
+
+	path, err := OpenRequestsLog(dir, id)
+	require.NoError(t, err)
+	require.FileExists(t, path)
+	require.Contains(t, path, ".requests.log")
+}
+
 func TestRequestsLogPath(t *testing.T) {
 	id := typeid.MustGenerate("sess")
 	got := RequestsLogPath("/tmp/project", id)

@@ -121,6 +121,9 @@ type Model struct {
 	modelsSyncForm  *huh.Form
 	modelsSyncMsgID int // index in messages of models.dev sync status (-1 = none)
 
+	toolInteractForm    *huh.Form
+	toolInteractPending toolInteractOffer
+
 	inputPendingEsc bool // macOS ESC+backspace Option+Delete pair
 }
 
@@ -197,7 +200,11 @@ func New() Model {
 		layout:           LayoutCache{ContentDirty: true},
 		shell:            ShellState{DetailMsgID: -1},
 		ctrlCNoticeID:    -1,
-		agent:            AgentState{Stopwatch: newActivityStopwatch()},
+		agent: AgentState{
+			Stopwatch:     newActivityStopwatch(),
+			ThinkingMsgID: -1,
+			ResponseMsgID: -1,
+		},
 		branch:           "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
 	}
 	m = m.syncActiveModelMetadata()

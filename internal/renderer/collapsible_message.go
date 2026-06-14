@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 func isCollapsibleKind(kind constants.MessageKind) bool {
@@ -43,6 +42,7 @@ func detailChevron(expanded bool) string {
 
 type collapsibleRenderOpts struct {
 	showStatusPreview bool
+	showLiveBody      bool
 	spinnerFrame      int
 }
 
@@ -199,10 +199,15 @@ func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status
 	var content string
 	preStyled := false
 	switch {
-	case expanded:
-		content = trimmed
+	case opts.showLiveBody:
+		content = body
 		if kind == constants.MessageThinking {
-			content = dimStyle.Render(trimmed)
+			content = dimStyle.Render(body)
+		}
+	case expanded && trimmed != "":
+		content = body
+		if kind == constants.MessageThinking {
+			content = dimStyle.Render(body)
 		}
 	case opts.showStatusPreview:
 		content = collapsibleStatusPreview(kind, status, style, opts.spinnerFrame, innerW)
@@ -267,8 +272,30 @@ func renderDetailMessage(blockWidth int, label, body string, expanded bool, stat
 }
 
 func renderThinkingMessage(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
-	body = agent.SanitizeAssistantDisplay(body)
 	return renderThinkingCollapsible(blockWidth, label, body, expanded, opts)
+}
+
+// renderThinkingLiveStream paints in-flight reasoning with a lightweight body
+// path so token delivery does not rebuild the full collapsible chrome every flush.
+func renderThinkingLiveStream(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
+	style := constants.MessageStyle(constants.MessageThinking).Italic(true)
+	vPad, hPad := messageBlockPadding(constants.MessageThinking)
+	innerW := max(blockWidth-2*hPad, 1)
+
+	var b strings.Builder
+	b.WriteString(collapsibleHeaderChip(style, constants.MessageThinking, label, expanded))
+	if box := collapsibleBodyBox(style, constants.MessageThinking, constants.DetailStatusNeutral, blockWidth, innerW, vPad, hPad, body, expanded, opts); box != "" {
+		b.WriteString("\n\n")
+		b.WriteString(box)
+	} else if opts.showStatusPreview {
+		if preview := collapsibleStatusPreview(constants.MessageThinking, constants.DetailStatusNeutral, style, opts.spinnerFrame, innerW); preview != "" {
+			b.WriteString("\n\n")
+			b.WriteString(boxPaddingStyle(style, vPad, hPad, blockWidth).Render(preview))
+		}
+	}
+	b.WriteString("\n\n")
+	b.WriteString(collapsibleHintLine(hPad, expanded))
+	return b.String()
 }
 
 func shellDetailLabel(command string) string {
