@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/runtime"
+	"github.com/riipandi/elph/internal/settings"
 	"go.jetify.com/typeid/v2"
 )
 
@@ -140,6 +141,10 @@ func noBgStyles() textarea.Styles {
 
 func New() Model {
 	wd, _ := os.Getwd()
+	prefs, err := settings.Load()
+	if err != nil {
+		prefs = settings.Settings{}
+	}
 	session := runtime.NewSession(wd)
 
 	vp := viewport.New()
@@ -165,8 +170,8 @@ func New() Model {
 		modelName:        session.ModelName,
 		provider:         session.ProviderName,
 		contextWindow:    session.ContextWindow,
-		mode:             constants.ModeBuild,
-		thinkingLevel:    constants.ThinkingHigh,
+		mode:             prefs.AgentMode(),
+		thinkingLevel:    prefs.ThinkingLevel(),
 		sessionID:        session.ID,
 		session:          session,
 		workDir:          wd,

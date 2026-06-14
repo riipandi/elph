@@ -9,6 +9,7 @@ import (
 	"github.com/riipandi/elph/internal/align"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 )
@@ -255,6 +256,7 @@ func (m Model) applyModelSwitch(sw *command.ModelSwitch) Model {
 	if sw == nil {
 		return m
 	}
+	_ = settings.SetActiveModel(sw.ProviderID, sw.ModelID)
 	m.session.Provider = sw.Provider
 	m.session.ProviderID = sw.ProviderID
 	m.session.ProviderName = sw.ProviderName

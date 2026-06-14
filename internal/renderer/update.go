@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/core/agent"
 )
 
@@ -259,11 +260,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case constants.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
+			_ = settings.SetAgentMode(m.mode)
 			m, cmd := m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
 			return m, cmd
 
 		case constants.ActionCycleThink:
 			m.thinkingLevel = constants.NextThinkingLevel(m.thinkingLevel)
+			_ = settings.SetThinkingLevel(m.thinkingLevel)
 			m, cmd := m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
 			return m, cmd
 

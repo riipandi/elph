@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/riipandi/elph/internal/prompt"
+	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/riipandi/elph/pkg/core/agent"
@@ -31,7 +32,11 @@ type Session struct {
 func NewSession(workDir string) Session {
 	id := typeid.MustGenerate("sess")
 	logPath, _ := OpenLog(workDir, id)
-	cfg := ai.ResolveProvider()
+	prefs, err := settings.Load()
+	if err != nil {
+		prefs = settings.Settings{}
+	}
+	cfg := ai.ResolveProvider(prefs.ActiveProviderID(), prefs.ActiveModelID())
 
 	modelName := cfg.ModelName
 	if modelName == "" {

@@ -23,38 +23,57 @@ type Config struct {
 }
 
 // Resolve loads user-defined providers and picks the active provider/model.
-// ELPH_PROVIDER and ELPH_MODEL select a specific entry; otherwise the first
-// configured provider is used.
 func Resolve() Config {
+	return ResolveActive("", "")
+}
+
+// ResolveActive loads providers and resolves the active provider/model.
+// Priority: ELPH_PROVIDER/ELPH_MODEL env, saved provider/model, then the first
+// configured provider. ELPH_MODEL still applies when only the model env is set.
+func ResolveActive(savedProviderID, savedModelID string) Config {
 	catalog, err := LoadCatalog("")
 	if err != nil {
 		return Config{Catalog: catalog}
 	}
-	return resolveCatalog(catalog)
+	return resolveCatalog(catalog, savedProviderID, savedModelID)
 }
 
-func resolveCatalog(catalog Catalog) Config {
-	providerID := strings.TrimSpace(os.Getenv(elphProviderEnv))
-	modelID := strings.TrimSpace(os.Getenv(elphModelEnv))
+func resolveCatalog(catalog Catalog, savedProviderID, savedModelID string) Config {
+	envProvider := strings.TrimSpace(os.Getenv(elphProviderEnv))
+	envModel := strings.TrimSpace(os.Getenv(elphModelEnv))
 
-	if providerID != "" {
-		provider, ok := catalog.Provider(providerID)
+	if envProvider != "" {
+		provider, ok := catalog.Provider(envProvider)
 		if !ok {
 			return Config{Catalog: catalog}
 		}
-		model, ok := pickModel(provider, modelID)
+		model, ok := pickModel(provider, envModel)
 		if !ok {
 			return Config{Catalog: catalog}
 		}
 		return buildConfig(catalog, provider, model)
 	}
 
+	if savedProvider := strings.TrimSpace(savedProviderID); savedProvider != "" {
+		if provider, ok := catalog.Provider(savedProvider); ok {
+			model, ok := pickModel(provider, strings.TrimSpace(savedModelID))
+			if !ok && len(provider.Models) > 0 {
+				model, ok = provider.Models[0], true
+			}
+			if ok {
+				if cfg := buildConfig(catalog, provider, model); cfg.Provider != nil {
+					return cfg
+				}
+			}
+		}
+	}
+
 	provider, model, ok := catalog.FirstConfigured()
 	if !ok {
 		return Config{Catalog: catalog}
 	}
-	if modelID != "" {
-		if picked, ok := pickModel(provider, modelID); ok {
+	if envModel != "" {
+		if picked, ok := pickModel(provider, envModel); ok {
 			model = picked
 		}
 	}

@@ -8,6 +8,7 @@ func LoadProviders() (provider.Catalog, error) {
 }
 
 // ResolveProvider loads user-defined providers and resolves the active one.
-func ResolveProvider() provider.Config {
-	return provider.Resolve()
+// Saved provider/model ids come from ~/.elph/settings.json when env vars are unset.
+func ResolveProvider(savedProviderID, savedModelID string) provider.Config {
+	return provider.ResolveActive(savedProviderID, savedModelID)
 }

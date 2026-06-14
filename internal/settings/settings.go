@@ -17,8 +17,9 @@ const (
 
 // Settings is persisted at ~/.elph/settings.json.
 type Settings struct {
-	Models       ModelsSettings `json:"models"`
-	ShowThinking *bool          `json:"showThinking,omitempty"`
+	Models       ModelsSettings  `json:"models"`
+	ShowThinking *bool           `json:"showThinking,omitempty"`
+	Session      SessionSettings `json:"session,omitempty"`
 }
 
 // ModelsSettings controls periodic models.dev metadata sync.

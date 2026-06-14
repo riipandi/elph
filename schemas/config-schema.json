@@ -14,6 +14,31 @@
 			"type": "boolean",
 			"description": "Stream and display model reasoning in the chat. Default true.",
 			"default": true
+		},
+		"session": {
+			"type": "object",
+			"properties": {
+				"providerId": {
+					"type": "string",
+					"description": "Last selected provider id from ~/.elph/providers."
+				},
+				"modelId": {
+					"type": "string",
+					"description": "Last selected model id for the active provider."
+				},
+				"agentMode": {
+					"type": "string",
+					"enum": ["build", "plan", "ask", "brave"],
+					"description": "Active agent mode. Default build.",
+					"default": "build"
+				},
+				"thinkingLevel": {
+					"type": "string",
+					"enum": ["off", "minimal", "low", "medium", "high", "xhigh"],
+					"description": "Active thinking level shown in the footer. Default high.",
+					"default": "high"
+				}
+			}
 		}
 	}
 }
