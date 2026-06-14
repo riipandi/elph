@@ -15,13 +15,6 @@ import (
 	"go.jetify.com/typeid/v2"
 )
 
-// ─── Braille Logo ────────────────────────────────────────────────────────────
-
-const (
-	logoLine1 = "\u28FF\u28FF\u285F\u28FF\u285F\u28FF\u28FF"
-	logoLine2 = "\u28FF\u28FF\u28FF\u28FF\u28FF\u28FF\u28FF"
-)
-
 // Dedicated random source for tips — avoids mutex contention on the global source.
 var rng = rand.New(rand.NewSource(42))
 

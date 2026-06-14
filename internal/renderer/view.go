@@ -317,8 +317,8 @@ func (m Model) bannerView() string {
 	}
 
 	logo := lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(logoLine1),
-		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(logoLine2),
+		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(constants.LogoLine1),
+		lipgloss.NewStyle().Foreground(constants.GreenLt).Render(constants.LogoLine2),
 	)
 	logoBlock := lipgloss.NewStyle().MarginRight(2).Render(logo)
 	topW := max(innerW-lipgloss.Width(logoBlock), 10)

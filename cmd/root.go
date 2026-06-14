@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/riipandi/elph/internal/config"
+	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/renderer"
 	"github.com/spf13/cobra"
 	"github.com/subosito/gotenv"
@@ -19,6 +20,9 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "elph",
 	Short: "Minimalist AI agent companion",
+	Long: `A terminal-native AI coding companion. Run without arguments to open the
+interactive TUI—chat with your model, execute shell commands, switch agent
+modes, and manage providers from one place.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 		HiddenDefaultCmd:  true,
@@ -63,8 +67,45 @@ func Execute() {
 	os.Exit(0)
 }
 
+const rootHelpTemplate = `{{banner}}
+{{with .Long}}{{. | trimTrailingWhitespaces}}
+
+{{end}}Usage:
+  {{.UseLine}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+func helpBanner() string {
+	info := []string{
+		fmt.Sprintf("Welcome to %s v%s", config.AppName, config.AppVersion),
+		fmt.Sprintf("Build %s (%s) %s", config.BuildHash, config.Platform, config.BuildDate),
+	}
+	return constants.JoinSideBySide(constants.LogoLines(), info, 2) + "\n"
+}
+
 func init() {
-	// TODO: Initialize application configuration here
+	cobra.AddTemplateFunc("banner", helpBanner)
+	rootCmd.SetHelpTemplate(rootHelpTemplate)
 
 	// Set `true` to disable the default help subcommand
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: false})
