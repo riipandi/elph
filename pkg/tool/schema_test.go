@@ -14,7 +14,8 @@ func TestIsProviderExposed(t *testing.T) {
 
 	require.False(t, IsProviderExposed(WebSearch))
 	require.False(t, IsProviderExposed(FetchURL))
-	require.False(t, IsProviderExposed(Write))
+	require.True(t, IsProviderExposed(Write))
+	require.True(t, IsProviderExposed(Edit))
 	require.True(t, IsProviderExposed(Bash))
 	require.True(t, IsProviderExposed(AskUser))
 	require.False(t, IsProviderExposed("unknown"))
@@ -22,7 +23,7 @@ func TestIsProviderExposed(t *testing.T) {
 
 func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	defs := ProviderDefinitions()
-	require.Len(t, defs, 5)
+	require.Len(t, defs, 7)
 
 	names := make([]string, len(defs))
 	for i, def := range defs {
@@ -30,7 +31,7 @@ func TestProviderDefinitionsExecutableTools(t *testing.T) {
 		require.NotEmpty(t, def.Description)
 		require.NotEmpty(t, def.Parameters)
 	}
-	require.ElementsMatch(t, []string{Read, Grep, Glob, AskUser, Bash}, names)
+	require.ElementsMatch(t, []string{Read, Write, Edit, Grep, Glob, AskUser, Bash}, names)
 }
 
 func TestBashAndAskUserSchemas(t *testing.T) {
@@ -52,7 +53,8 @@ func TestFilterProviderTools(t *testing.T) {
 		{Name: WebSearch},
 		{Name: Write},
 	})
-	require.Len(t, filtered, 2)
+	require.Len(t, filtered, 3)
 	require.Equal(t, Read, filtered[0].Name)
 	require.Equal(t, Grep, filtered[1].Name)
+	require.Equal(t, Write, filtered[2].Name)
 }

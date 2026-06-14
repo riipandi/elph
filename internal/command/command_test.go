@@ -86,8 +86,11 @@ func TestAllIncludesReferencedCommands(t *testing.T) {
 func TestDiagnosticListTools(t *testing.T) {
 	result := Execute("/diagnostic:list-tools", Context{})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, tool.Read)
-	require.Contains(t, result.Output, tools.ListTools)
+	require.Empty(t, result.Output)
+	require.Equal(t, "Available tools", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, tool.Read)
+	require.Contains(t, result.DetailBody, tools.ListTools)
 }
 
 func TestDiagnosticSystemPrompt(t *testing.T) {
@@ -114,9 +117,12 @@ func TestDiagnosticOpenLogSystem(t *testing.T) {
 
 	result := Execute("/diagnostic:open-log system", Context{LogPath: session.LogPath})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, session.LogPath)
-	require.Contains(t, result.Output, "[system] notice")
-	require.NotContains(t, result.Output, "[user] hello")
+	require.Empty(t, result.Output)
+	require.Equal(t, "Session log (system)", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, session.LogPath)
+	require.Contains(t, result.DetailBody, "[system] notice")
+	require.NotContains(t, result.DetailBody, "[user] hello")
 }
 
 func TestDiagnosticOpenLogRequests(t *testing.T) {
@@ -126,8 +132,11 @@ func TestDiagnosticOpenLogRequests(t *testing.T) {
 
 	result := Execute("/diagnostic:open-log requests", Context{RequestsLogPath: session.RequestsLogPath})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, session.RequestsLogPath)
-	require.Contains(t, result.Output, "POST /v1/messages")
+	require.Empty(t, result.Output)
+	require.Equal(t, "Requests log", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, session.RequestsLogPath)
+	require.Contains(t, result.DetailBody, "POST /v1/messages")
 }
 
 func TestDiagnosticOpenLogRequestsEmptyFile(t *testing.T) {
@@ -137,8 +146,11 @@ func TestDiagnosticOpenLogRequestsEmptyFile(t *testing.T) {
 
 	result := Execute("/diagnostic:open-log requests", Context{RequestsLogPath: session.RequestsLogPath})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "is empty")
-	require.Contains(t, result.Output, session.RequestsLogPath)
+	require.Empty(t, result.Output)
+	require.Equal(t, "Requests log", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, "is empty")
+	require.Contains(t, result.DetailBody, session.RequestsLogPath)
 }
 
 func TestDiagnosticOpenLogThinkingDelta(t *testing.T) {
@@ -148,7 +160,10 @@ func TestDiagnosticOpenLogThinkingDelta(t *testing.T) {
 
 	result := Execute("/diagnostic:open-log thinking_delta", Context{RequestsLogPath: session.RequestsLogPath})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "[thinking_delta] step one")
+	require.Empty(t, result.Output)
+	require.Equal(t, "Requests log (thinking_delta)", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, "[thinking_delta] step one")
 }
 
 func TestDiagnosticOpenLogThinking(t *testing.T) {
@@ -159,8 +174,11 @@ func TestDiagnosticOpenLogThinking(t *testing.T) {
 
 	result := Execute("/diagnostic:open-log thinking", Context{LogPath: session.LogPath})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "[thinking] step one")
-	require.NotContains(t, result.Output, "[ai] answer")
+	require.Empty(t, result.Output)
+	require.Equal(t, "Session log (thinking)", result.DetailLabel)
+	require.True(t, result.DetailExpanded)
+	require.Contains(t, result.DetailBody, "[thinking] step one")
+	require.NotContains(t, result.DetailBody, "[ai] answer")
 }
 
 func TestDiagnosticOpenLogUsage(t *testing.T) {

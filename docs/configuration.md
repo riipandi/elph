@@ -21,7 +21,7 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 └── <name>/SKILL.md          # global agent skills (listed in system prompt)
 
 <workDir>/.agents/elph/
-├── .gitignore               # ignores local runtime files (logs, caches)
+├── .gitignore               # ignores logs/, settings, mcp/, and itself; prompts/skills stay committable
 ├── prompts/*.md             # project templates (override global by filename)
 ├── skills/<name>/SKILL.md   # project skills (override global by name)
 └── logs/
@@ -117,7 +117,8 @@ Each skill is a directory containing `SKILL.md` with YAML frontmatter (`name`, `
 | `SKILL.md`                | `~/.elph/skills/<name>/` and `<workDir>/.agents/elph/skills/<name>/` |
 | `AGENTS.md` / `CLAUDE.md` | Guardrails block disclosure in system prompt                         |
 
-Inspect the live prompt in the TUI with `/diagnostic:system-prompt` (collapsible detail box).
+Inspect the live prompt with `/diagnostic:system-prompt` (detail box, collapsed by default). List
+tools with `/diagnostic:list-tools` or tail logs with `/diagnostic:open-log` (both expanded by default).
 
 ## Session persistence
 

@@ -24,7 +24,8 @@ func TestIsExecutableKnownBuiltin(t *testing.T) {
 	require.True(t, IsExecutable(Glob))
 	require.True(t, IsExecutable(Bash))
 	require.True(t, IsExecutable(AskUser))
-	require.False(t, IsExecutable(Write))
+	require.True(t, IsExecutable(Write))
+	require.True(t, IsExecutable(Edit))
 	require.False(t, IsExecutable(WebSearch))
 	require.False(t, IsExecutable("unknown"))
 }

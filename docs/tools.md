@@ -77,15 +77,18 @@ A tool is sent to the provider API only when **all** of the following are true
 3. The runtime can execute it (`IsExecutable`).
 4. It has a provider JSON schema (`providerSchema`).
 
-Today **Read**, **Grep**, **Glob**, **AskUser**, and **Bash** are exposed. **AskUser** opens a huh
-question dialog. **Bash** (and future Write/Edit) shows an approval dialog unless agent mode is
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **AskUser**, and **Bash** are exposed.
+**AskUser** opens a huh question dialog. **Write**, **Edit**, and **Bash** show an approval dialog
+unless agent mode is
 **brave** or the user chose **allow for session** earlier in the TUI session. Auto-allow tools like
 WebSearch stay out until `IsExecutable` returns true for them.
 
 ### User approval (huh)
 
-Requires-approval tools block in `runToolCall` until the renderer answers `InteractTool`
-(`pkg/core/agent/interact.go`, `internal/renderer/tool_interact.go`).
+Requires-approval tools (**Write**, **Edit**, **Bash**) block in `runToolCall` until the renderer
+answers `InteractTool` (`pkg/core/agent/interact.go`, `internal/renderer/tool_interact.go`). Completed
+tool output appears in a collapsible detail box — shell/Bash stays expanded; other tools collapse when
+the body is long (see [tui.md § Detail blocks](./tui.md#input-modes)).
 
 | Choice                | Shortcut | Effect                                                                              |
 |-----------------------|----------|-------------------------------------------------------------------------------------|
@@ -114,8 +117,8 @@ Requires-approval tools block in `runToolCall` until the renderer answers `Inter
 | EnterPlanMode | Auto-allow        | No           | No                       |
 | ExitPlanMode  | Auto-allow        | No           | No                       |
 | AskUser       | Auto-allow        | Yes          | Yes (huh question)       |
-| Write         | Requires approval | No           | No                       |
-| Edit          | Requires approval | No           | No                       |
+| Write         | Requires approval | Yes          | Yes (huh confirm/brave)  |
+| Edit          | Requires approval | Yes          | Yes (huh confirm/brave)  |
 | Bash          | Requires approval | Yes          | Yes (huh confirm/brave)  |
 
 `requires-approval` tools are sent to the provider API when executable; **huh** gates each call unless
@@ -138,7 +141,7 @@ sequenceDiagram
 
     Session->>Loop: StartTurn (ToolsEnabled, ExecuteTool)
     Loop->>Tool: FilterProviderTools / ProviderDefinitions
-    Tool-->>Loop: Read, Grep, Glob schemas
+    Tool-->>Loop: Read, Write, Edit, Grep, Glob, AskUser, Bash schemas
     Loop->>Provider: Complete(TurnRequest.Tools)
     Provider-->>Loop: tool_calls / tool_use
     Loop->>Loop: InteractTool (AskUser / approval)
@@ -154,16 +157,16 @@ tools.
 
 ### Key functions
 
-| Function                | Package            | Role                                    |
-|-------------------------|--------------------|-----------------------------------------|
-| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered         |
-| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition` |
-| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check          |
-| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool        |
-| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)      |
-| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                        |
-| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)   |
-| `ExecuteTool()`         | `internal/runtime` | Read / Grep / Glob / Bash execution     |
+| Function                | Package            | Role                                     |
+|-------------------------|--------------------|------------------------------------------|
+| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered          |
+| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`  |
+| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check           |
+| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool         |
+| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)       |
+| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                         |
+| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)    |
+| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / Bash |
 
 Provider adapters map definitions to API formats:
 

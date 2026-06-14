@@ -127,8 +127,10 @@ func (m Model) finishNativeToolCall(call provider.ToolCall, result agent.ToolRun
 		if strings.TrimSpace(m.messages[idx].detailLabel) == "" {
 			m.messages[idx].detailLabel = nativeToolDetailLabel(call)
 		}
+		label := m.messages[idx].detailLabel
 		m.messages[idx].text = body
 		m.messages[idx].detailStatus = status
+		m.messages[idx].detailExpanded = toolDetailExpandedByDefault(label, body)
 		m.messages[idx].renderCache = messageRenderCache{}
 		m.layout.ContentDirty = true
 		return m

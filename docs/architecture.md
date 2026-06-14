@@ -105,7 +105,7 @@ Elph targets a low idle footprint (~30 MB RSS on a typical macOS session) by def
 | Git (full)       | `git.Read` (go-git + line diffs, max 32 paths) on footer git click or after shell | `internal/git/status.go`, `footer.go`, `shell.go` |
 | Provider catalog | Session keeps trimmed catalog; inactive models use `SlimModel`                    | `pkg/ai/provider/catalog_trim.go`                 |
 | Conversation     | `CompactMessages` + per-field caps before history/API/TUI                         | `pkg/core/agent/limits.go`, `truncate.go`         |
-| Tool output      | Read/Grep/Glob caps at execution time                                             | `internal/runtime/execute.go`                     |
+| Tool output      | Read/Write/Edit/Grep/Glob caps at execution time                                  | `internal/runtime/execute.go`                     |
 | Prompt templates | Loaded on first `/` command, not at TUI init                                      | `renderer/model.go`                               |
 | Tool-call regex  | Compiled once via `sync.Once`                                                     | `pkg/core/agent/toolcall_regex.go`                |
 | Markdown         | Glamour cache cleared after each agent turn                                       | `renderer/markdown.go`, `agent.go`                |

@@ -242,6 +242,9 @@ func TestSubmitDiagnosticOpenLogWithoutArgExecutesSelectedArg(t *testing.T) {
 	require.Nil(t, cmd)
 	require.False(t, m.agent.Busy)
 	require.Equal(t, "/diagnostic:open-log system", m.messages[0].text)
+	require.Equal(t, constants.MessageDetail, m.messages[1].kind)
+	require.Equal(t, "Session log (system)", m.messages[1].detailLabel)
+	require.True(t, m.messages[1].detailExpanded)
 	require.Contains(t, m.messages[1].text, ".agents/elph/logs/")
 }
 
@@ -254,7 +257,9 @@ func TestSubmitDiagnosticOpenLogSystem(t *testing.T) {
 
 	require.Nil(t, cmd)
 	require.False(t, m.agent.Busy)
-	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
+	require.Equal(t, constants.MessageDetail, m.messages[1].kind)
+	require.Equal(t, "Session log (system)", m.messages[1].detailLabel)
+	require.True(t, m.messages[1].detailExpanded)
 	require.Contains(t, m.messages[1].text, ".agents/elph/logs/")
 }
 
@@ -267,7 +272,9 @@ func TestSubmitDiagnosticListTools(t *testing.T) {
 
 	require.Nil(t, cmd)
 	require.False(t, m.agent.Busy)
-	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
+	require.Equal(t, constants.MessageDetail, m.messages[1].kind)
+	require.Equal(t, "Available tools", m.messages[1].detailLabel)
+	require.True(t, m.messages[1].detailExpanded)
 	require.Contains(t, m.messages[1].text, "Read")
 	require.Contains(t, m.messages[1].text, "diagnostic_list_tools")
 }

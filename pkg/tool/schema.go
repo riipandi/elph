@@ -45,6 +45,18 @@ func providerSchema(name string) (map[string]any, bool) {
 		return objectSchema(map[string]propertySpec{
 			"path": {typ: "string", description: "Absolute or workspace-relative file path"},
 		}, "path"), true
+	case Write:
+		return objectSchema(map[string]propertySpec{
+			"path":     {typ: "string", description: "Absolute or workspace-relative file path"},
+			"contents": {typ: "string", description: "Full file contents to write"},
+		}, "path", "contents"), true
+	case Edit:
+		return objectSchema(map[string]propertySpec{
+			"path":        {typ: "string", description: "Absolute or workspace-relative file path"},
+			"old_string":  {typ: "string", description: "Exact text to replace"},
+			"new_string":  {typ: "string", description: "Replacement text"},
+			"replace_all": {typ: "boolean", description: "Replace every occurrence (default false)"},
+		}, "path", "old_string", "new_string"), true
 	case Grep:
 		return objectSchema(map[string]propertySpec{
 			"pattern":     {typ: "string", description: "Regular expression to search for"},

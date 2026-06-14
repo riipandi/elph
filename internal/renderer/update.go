@@ -480,7 +480,7 @@ func (m Model) addToolDetailMessage(toolName, body string) Model {
 func (m Model) addToolDetailMessageWithStatus(toolName, body string, status constants.DetailStatus) Model {
 	m = m.addDetailMessageWithStatusAt(toolName, body, status, time.Now())
 	idx := len(m.messages) - 1
-	m.messages[idx].detailExpanded = true
+	m.messages[idx].detailExpanded = toolDetailExpandedByDefault(toolName, body)
 	m.layout.ContentDirty = true
 	return m
 }

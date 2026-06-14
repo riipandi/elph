@@ -188,21 +188,24 @@ Flow per iteration:
 - Persists `History` (`[]provider.ChatMessage`) across turns via
   `ApplyHistory` / `TurnDoneWithHistoryEvent`
 
-### Runtime execution (phase 1)
+### Runtime execution
 
 `internal/runtime/execute.go` implements:
 
-| Tool     | Behavior                                 |
-|----------|------------------------------------------|
-| **Read** | Read file under workspace                |
-| **Grep** | ripgrep search                           |
-| **Glob** | Glob file discovery                      |
-| **Bash** | `bash -c`, streamed output, 120s timeout |
+| Tool      | Behavior                                                   |
+|-----------|------------------------------------------------------------|
+| **Read**  | Read file under workspace (256 KB cap)                     |
+| **Write** | Create parent dirs and write file contents                 |
+| **Edit**  | Exact string replace; `replace_all` for multi-match        |
+| **Grep**  | `rg` subprocess (`content`, `files_with_matches`, `count`) |
+| **Glob**  | `doublestar.FilepathGlob` (`**` semantics, files only)     |
+| **Bash**  | `bash -c`, streamed output, 120s timeout                   |
 
-`pkg/tool/availability.go` — `IsExecutable` returns true for Read, Grep, Glob,
-Bash, and AskUser (AskUser returns the huh answer without subprocess execution).
+`pkg/tool/availability.go` — `IsExecutable` returns true for Read, Write, Edit,
+Grep, Glob, Bash, and AskUser (AskUser returns the huh answer without subprocess
+execution).
 
-Tests: `internal/runtime/tool_test.go`.
+Tests: `internal/runtime/tool_test.go`, `internal/runtime/execute_file_test.go`.
 
 ### TUI — native tool rendering
 
@@ -228,7 +231,8 @@ run. Models called unavailable tools and got errors.
 (`IsProviderExposed`):
 
 1. Known built-in
-2. `DefaultApproval == auto-allow`
+2. `DefaultApproval` is `auto-allow` or `requires-approval` (runtime gates the
+   latter via huh)
 3. `IsExecutable(name)`
 4. Has a provider JSON schema
 
@@ -239,7 +243,7 @@ run. Models called unavailable tools and got errors.
 | `ProviderDefinitions` | `pkg/tool/schema.go`       | Built-in schemas → filtered      |
 | Loop integration      | `pkg/core/agent/loop.go`   | Always filters before `Complete` |
 
-**Currently API-exposed:** Read, Grep, Glob, AskUser, Bash.
+**Currently API-exposed:** Read, Write, Edit, Grep, Glob, AskUser, Bash.
 
 Detailed reference: [docs/tools.md § Provider API exposure](./tools.md#provider-api-exposure).
 
@@ -277,7 +281,7 @@ flowchart TB
 
     subgraph Runtime["Runtime (internal/runtime)"]
         SE[session.StartTurn]
-        EX[ExecuteTool Read/Grep/Glob]
+        EX[ExecuteTool Read/Write/Edit/Grep/Glob/Bash]
     end
 
     SE --> RT
@@ -318,11 +322,17 @@ flowchart TB
 ### `internal/runtime`
 
 - `session.go` — history, tools enabled, execute hook
-- `execute.go`, `tool.go`, `tool_test.go` — execution and errors
+- `execute.go`, `tool.go`, `tool_test.go`, `execute_file_test.go` — execution and errors
+- `log.go`, `log_test.go` — JSONL session/requests logs via `slog`
+
+### `internal/projectdir`
+
+- `paths.go` — `<workDir>/.agents/elph`, prompts/skills/logs, `.gitignore`
 
 ### `internal/renderer`
 
 - `agent_native.go`, `agent_bridge.go`, `agent_toolcall.go` — agent UI
+- `tool_detail_expand.go` — default expand/collapse for native tool detail boxes
 - `activity_stopwatch.go`, `message_time.go` — timing
 - `detail_status.go`, `collapsible_status.go` — status presentation
 
@@ -356,10 +366,10 @@ go build -o elph ./cmd/coding-agent
 
 ## 9. Roadmap (not yet done)
 
-| Item                                          | Notes                                                                          |
-|-----------------------------------------------|--------------------------------------------------------------------------------|
-| **WebSearch, FetchURL, CodeSearch execution** | Schemas exist; need runtime handlers + `IsExecutable`                          |
-| **Write, Edit**                               | Require approval UI + runtime handlers before API exposure                     |
+| Item                                          | Notes                                                 |
+|-----------------------------------------------|-------------------------------------------------------|
+| **WebSearch, FetchURL, CodeSearch execution** | Schemas exist; need runtime handlers + `IsExecutable` |
+
 | **ReadMediaFile, plan mode**                  | Need runtime handlers and exposure rules                                       |
 | **MCP tools in provider schemas**             | `internal/tools/lookup.go` stub; wire to `ProviderDefinitions`                 |
 | **Disable XML parser when native-only**       | Reduce dual-path complexity once providers are stable                          |
@@ -378,11 +388,14 @@ When adding an API-exposed tool, follow the checklist in
 | 2     | Error presentation  | Distinct unavailable/unknown/failed states in detail boxes                    |
 | 3     | Markup leakage      | Multi-stage parser + `StripExtractedPayloads`; renderer sanitization          |
 | 4     | Native tool calling | OpenAI/Anthropic tools, agent loop, session history, TUI events               |
-| 5     | API tool filter     | `IsProviderExposed` — only Read, Grep, Glob sent to providers                 |
+| 5     | API tool filter     | `IsProviderExposed` — Read, Write, Edit, Grep, Glob, AskUser, Bash            |
 | 6     | Documentation       | `docs/tools.md` exposure section; this progress log                           |
 | 7     | Doc audit           | Full doc set in `docs/README.md`; fixed `tui.md`, tips, stale messages        |
 | 8     | Memory & startup    | Idle RSS ~30 MB; lazy git, catalog trim, history caps, huh models.dev confirm |
 | 9     | Bash + approval UX  | huh allow once/session/deny; streamed tool output; deny cache per turn        |
+| 10    | Project runtime     | `.agents/elph` paths, JSONL `slog` logs, generated `.gitignore`               |
+| 11    | Write/Edit/Glob     | Runtime handlers; doublestar Glob; Write/Edit huh approval + API exposure     |
+| 12    | Detail box defaults | Diagnostic list-tools/open-log expanded; long non-shell tool output collapsed |
 
 ---
 
@@ -440,7 +453,7 @@ Dependency: `charm.land/huh/v2`.
 
 ---
 
-## 11. Documentation audit (June 2026)
+## 13. Documentation audit (June 2026)
 
 See [docs/README.md § Documentation gaps](./README.md#documentation-gaps-audit-summary) for the living gap list.
 
@@ -449,3 +462,45 @@ Added: `architecture.md`, `configuration.md`, `cli.md`, `slash-commands.md`, `ag
 Corrected: `tui.md` keybindings and defaults; root `README.md` requirements; `notExecutableToolMessage`; banner tips.
 
 Updated (memory pass): `architecture.md` performance table; `configuration.md` / `cli.md` models.dev huh confirm; `tui.md` git refresh and update dialog; `agent-runtime.md` memory cross-links.
+
+---
+
+## 14. Project runtime (`.agents/elph`)
+
+Project-local state moved from `<workDir>/.elph` to `<workDir>/.agents/elph`.
+
+| Area           | Implementation                                                                   |
+|----------------|----------------------------------------------------------------------------------|
+| Paths          | `internal/projectdir/paths.go` — `Root`, `PromptsDir`, `SkillsDir`, `LogsDir`    |
+| Session logs   | `logs/<sess_id>/events.jsonl` and `requests.jsonl` via `internal/runtime/log.go` |
+| `.gitignore`   | `EnsureRoot` writes ignores for `logs/`, `settings.json`, `settings/`, `mcp/`    |
+| Renderer tests | `setup_test.go` `TestMain` chdirs to temp dir; removes stale `.agents`/`.elph`   |
+
+Docs: [configuration.md § Directory layout](./configuration.md#directory-layout), [agent-runtime.md § Session and logging](./agent-runtime.md#session-and-logging).
+
+---
+
+## 15. Write, Edit, and Glob (doublestar)
+
+| Tool  | Handler        | Notes                                                         |
+|-------|----------------|---------------------------------------------------------------|
+| Write | `executeWrite` | Creates parent dirs; requires huh approval (or brave/session) |
+| Edit  | `executeEdit`  | `old_string` / `new_string`; optional `replace_all`           |
+| Glob  | `executeGlob`  | `github.com/bmatcuk/doublestar/v4` — `**`, files only         |
+
+`IsProviderExposed` and `IsExecutable` include Write and Edit. Provider schemas in
+`pkg/tool/schema.go`.
+
+Docs: [tools.md § Provider API exposure](./tools.md#provider-api-exposure), [consideration.md § Built-in tools](./consideration.md#built-in-tools).
+
+---
+
+## 16. Diagnostic and tool detail expand defaults
+
+| Area                     | Implementation                                                                             |
+|--------------------------|--------------------------------------------------------------------------------------------|
+| Diagnostic detail boxes  | `command.Result.DetailExpanded`; `diagnostic.go` sets expanded for list-tools and open-log |
+| System prompt diagnostic | Collapsed by default (no `pendingDetailExpanded`)                                          |
+| Native tool detail       | `tool_detail_expand.go` — Bash/`$ ` expanded; ≥2 lines or >120 B collapsed                 |
+
+Docs: [slash-commands.md § Diagnostic detail boxes](./slash-commands.md#diagnostic-detail-boxes), [tui.md § Slash Commands](./tui.md#slash-commands).

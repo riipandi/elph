@@ -36,21 +36,22 @@ See: [tools.md](./tools.md), [architecture.md](./architecture.md).
 
 ## Built-in tools
 
-Today **Read**, **Grep**, **Glob**, **Bash**, and **AskUser** run end-to-end (Bash/AskUser via huh
-approval or question UI). Rest of catalog in `pkg/tool` awaits handlers + (for some) approval UI.
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **Bash**, and **AskUser** run end-to-end
+(Write/Edit/Bash via huh approval; AskUser via question UI). Rest of catalog in `pkg/tool` awaits
+handlers + (for some) approval UI.
 
-| Package                                                                                   | Status    | Tool / area                                              |
-|-------------------------------------------------------------------------------------------|-----------|----------------------------------------------------------|
-| [bmatcuk/doublestar/v4](https://github.com/bmatcuk/doublestar/v4)                         | **next**  | **Glob** — `**` semantics                                |
-| [mvdan/sh](https://github.com/mvdan/sh)                                                   | **used**  | **Bash** — syntax validation before `bash -c`            |
-| [PuerkitoBio/goquery](https://github.com/PuerkitoBio/goquery)                             | **next**  | **FetchURL** — HTML DOM                                  |
-| [JohannesKaufmann/html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) | **next**  | **FetchURL** — HTML → markdown                           |
-| [microcosm-cc/bluemonday](https://github.com/microcosm-cc/bluemonday)                     | **next**  | **FetchURL** — sanitize HTML                             |
-| [golang.org/x/net](https://golang.org/x/net)                                              | **next**  | **FetchURL**, **WebSearch**, **CodeSearch**              |
-| [gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype)                     | **next**  | **ReadMediaFile** — sniff type                           |
-| `image` + [golang.org/x/image](https://pkg.go.dev/golang.org/x/image)                     | **next**  | **ReadMediaFile** — decode/resize (no stale imaging lib) |
-| [aymanbagabas/go-udiff](https://github.com/aymanbagabas/go-udiff)                         | **later** | **Edit** approval preview (functional, not TUI chrome)   |
-| [invopop/jsonschema](https://github.com/invopop/jsonschema)                               | **later** | Optional schema gen from structs (hand-written today)    |
+| Package                                                                                   | Status    | Tool / area                                               |
+|-------------------------------------------------------------------------------------------|-----------|-----------------------------------------------------------|
+| [bmatcuk/doublestar/v4](https://github.com/bmatcuk/doublestar)                            | **used**  | **Glob** — `**` semantics (`internal/runtime/execute.go`) |
+| [mvdan/sh](https://github.com/mvdan/sh)                                                   | **used**  | **Bash** — syntax validation before `bash -c`             |
+| [PuerkitoBio/goquery](https://github.com/PuerkitoBio/goquery)                             | **next**  | **FetchURL** — HTML DOM                                   |
+| [JohannesKaufmann/html-to-markdown](https://github.com/JohannesKaufmann/html-to-markdown) | **next**  | **FetchURL** — HTML → markdown                            |
+| [microcosm-cc/bluemonday](https://github.com/microcosm-cc/bluemonday)                     | **next**  | **FetchURL** — sanitize HTML                              |
+| [golang.org/x/net](https://golang.org/x/net)                                              | **next**  | **FetchURL**, **WebSearch**, **CodeSearch**               |
+| [gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype)                     | **next**  | **ReadMediaFile** — sniff type                            |
+| `image` + [golang.org/x/image](https://pkg.go.dev/golang.org/x/image)                     | **next**  | **ReadMediaFile** — decode/resize (no stale imaging lib)  |
+| [aymanbagabas/go-udiff](https://github.com/aymanbagabas/go-udiff)                         | **later** | **Edit** approval preview (functional, not TUI chrome)    |
+| [invopop/jsonschema](https://github.com/invopop/jsonschema)                               | **later** | Optional schema gen from structs (hand-written today)     |
 
 **Optional** — add only when a specific tool needs them: [itchyny/gojq](https://github.com/itchyny/gojq), [tidwall/gjson](https://github.com/tidwall/gjson), [charlievieth/fastwalk](https://github.com/charlievieth/fastwalk) (if Glob is hot on huge trees; else `WalkDir` + doublestar).
 
@@ -205,7 +206,7 @@ Do not add these unless requirements change.
 
 ## Suggested build order
 
-1. **Tools** — doublestar → Write/Edit/Bash → FetchURL (+ bluemonday).
+1. **Tools** — FetchURL (+ bluemonday); go-udiff for Edit approval preview when needed.
 2. **Extension host** — unified catalog + `ExecuteTool` dispatch (prefix routing).
 3. **Go plugins** — protobuf `pkg/pluginapi` + **go-plugin** loader.
 4. **MCP** — **go-sdk** client in parallel; same merge/expose path as plugins.

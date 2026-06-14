@@ -25,10 +25,8 @@ var openLogArgs = []ArgChoice{
 	{Value: "requests", Description: "Provider steps, tool runs, and stream trace"},
 }
 
-func diagnosticListTools(*Context, string) string {
+func diagnosticListTools(ctx *Context, _ string) string {
 	var b strings.Builder
-	b.WriteString("Available tools:\n")
-
 	for _, def := range tool.All() {
 		fmt.Fprintf(&b, "  %s (%s) — %s\n", def.Name, def.DefaultApproval, def.Description)
 	}
@@ -37,7 +35,10 @@ func diagnosticListTools(*Context, string) string {
 		fmt.Fprintf(&b, "  %s (%s) — %s\n", def.Name, def.DefaultApproval, def.Description)
 	}
 
-	return strings.TrimRight(b.String(), "\n")
+	ctx.pendingDetailLabel = "Available tools"
+	ctx.pendingDetailBody = strings.TrimRight(b.String(), "\n")
+	ctx.pendingDetailExpanded = true
+	return ""
 }
 
 func diagnosticSystemPrompt(ctx *Context, _ string) string {
@@ -58,14 +59,26 @@ func diagnosticOpenLog(ctx *Context, args string) string {
 
 	switch args {
 	case "requests":
-		return displayLogFile(ctx.RequestsLogPath, "requests", requestsLogEmptyMessage)
+		return displayLogFile(ctx, ctx.RequestsLogPath, "Requests log", requestsLogEmptyMessage)
 	case "thinking_delta":
-		return displayFilteredLog(ctx.RequestsLogPath, "thinking_delta")
+		return displayFilteredLog(ctx, ctx.RequestsLogPath, "thinking_delta")
 	case "system", "thinking", "ai":
-		return displayFilteredLog(ctx.LogPath, args)
+		return displayFilteredLog(ctx, ctx.LogPath, args)
 	default:
 		return fmt.Sprintf("/%s: unknown log %q — use %s", DiagnosticOpenLog, args, ArgsHint(openLogArgs))
 	}
+}
+
+func setOpenLogDetail(ctx *Context, label, path, body string) {
+	var b strings.Builder
+	if strings.TrimSpace(path) != "" {
+		b.WriteString(path)
+		b.WriteString("\n\n")
+	}
+	b.WriteString(body)
+	ctx.pendingDetailLabel = label
+	ctx.pendingDetailBody = strings.TrimRight(b.String(), "\n")
+	ctx.pendingDetailExpanded = true
 }
 
 func requestsLogEmptyMessage(path string) string {
@@ -75,9 +88,9 @@ func requestsLogEmptyMessage(path string) string {
 	)
 }
 
-func displayLogFile(path, label string, missing func(string) string) string {
+func displayLogFile(ctx *Context, path, label string, missing func(string) string) string {
 	if path == "" {
-		return fmt.Sprintf("/%s: %s log not available", DiagnosticOpenLog, label)
+		return fmt.Sprintf("/%s: %s not available", DiagnosticOpenLog, strings.ToLower(label))
 	}
 
 	content, err := runtime.ReadLogTail(path, 0)
@@ -90,16 +103,15 @@ func displayLogFile(path, label string, missing func(string) string) string {
 
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return fmt.Sprintf("%s log (%s) is empty.", label, path)
+		setOpenLogDetail(ctx, label, path, fmt.Sprintf("(%s) is empty.", label))
+		return ""
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s log: %s\n\n", label, path)
-	b.WriteString(content)
-	return b.String()
+	setOpenLogDetail(ctx, label, path, content)
+	return ""
 }
 
-func displayFilteredLog(path, kind string) string {
+func displayFilteredLog(ctx *Context, path, kind string) string {
 	if path == "" {
 		return fmt.Sprintf("/%s: session log not available", DiagnosticOpenLog)
 	}
@@ -112,28 +124,29 @@ func displayFilteredLog(path, kind string) string {
 		return fmt.Sprintf("/%s: %v", DiagnosticOpenLog, err)
 	}
 
-	content = strings.TrimSpace(content)
-	if content == "" {
-		switch kind {
-		case "thinking":
-			return fmt.Sprintf("Session log (%s) has no [thinking] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
-		case "thinking_delta":
-			return fmt.Sprintf("Requests log (%s) has no [thinking_delta] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
-		case "ai":
-			return fmt.Sprintf("Session log (%s) has no [ai] entries yet. Send a prompt to the agent first.", path)
-		default:
-			return fmt.Sprintf("Log (%s) has no [%s] entries.", path, kind)
-		}
+	label := fmt.Sprintf("Session log (%s)", kind)
+	if kind == "thinking_delta" {
+		label = "Requests log (thinking_delta)"
 	}
 
-	label := "Session log"
-	if kind == "thinking_delta" {
-		label = "Requests log"
+	content = strings.TrimSpace(content)
+	if content == "" {
+		var msg string
+		switch kind {
+		case "thinking":
+			msg = fmt.Sprintf("Session log (%s) has no [thinking] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
+		case "thinking_delta":
+			msg = fmt.Sprintf("Requests log (%s) has no [thinking_delta] entries yet. Run an agent turn with thinking enabled (T: high), then retry.", path)
+		case "ai":
+			msg = fmt.Sprintf("Session log (%s) has no [ai] entries yet. Send a prompt to the agent first.", path)
+		default:
+			msg = fmt.Sprintf("Log (%s) has no [%s] entries.", path, kind)
+		}
+		setOpenLogDetail(ctx, label, path, msg)
+		return ""
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s (%s) — [%s]:\n\n", label, path, kind)
-	b.WriteString(content)
-	return b.String()
+	setOpenLogDetail(ctx, label, path, content)
+	return ""
 }
 
 func diagnosticDebug(*Context, string) string {

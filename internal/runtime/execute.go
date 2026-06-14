@@ -7,10 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/riipandi/elph/pkg/tool"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -49,6 +51,10 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 	switch canonical {
 	case tool.Read:
 		return executeRead(workDir, args)
+	case tool.Write:
+		return executeWrite(workDir, args)
+	case tool.Edit:
+		return executeEdit(workDir, args)
 	case tool.Grep:
 		return executeGrep(ctx, workDir, args)
 	case tool.Glob:
@@ -80,6 +86,77 @@ func executeRead(workDir string, args map[string]any) ToolResult {
 	return ToolResult{Output: string(data)}
 }
 
+func executeWrite(workDir string, args map[string]any) ToolResult {
+	path, ok := stringArg(args, "path")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: path")}
+	}
+	contents, ok := rawStringArg(args, "contents")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: contents")}
+	}
+
+	full, err := resolveWorkPath(workDir, path)
+	if err != nil {
+		return ToolResult{Err: err}
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		return ToolResult{Err: err}
+	}
+	if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+		return ToolResult{Err: err}
+	}
+	return ToolResult{Output: fmt.Sprintf("Wrote %d bytes to %s", len(contents), path)}
+}
+
+func executeEdit(workDir string, args map[string]any) ToolResult {
+	path, ok := stringArg(args, "path")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: path")}
+	}
+	oldString, ok := rawStringArg(args, "old_string")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: old_string")}
+	}
+	newString, ok := rawStringArg(args, "new_string")
+	if !ok {
+		return ToolResult{Err: errors.New("missing required argument: new_string")}
+	}
+
+	full, err := resolveWorkPath(workDir, path)
+	if err != nil {
+		return ToolResult{Err: err}
+	}
+	data, err := os.ReadFile(full)
+	if err != nil {
+		return ToolResult{Err: err}
+	}
+	content := string(data)
+	count := strings.Count(content, oldString)
+	if count == 0 {
+		return ToolResult{Err: fmt.Errorf("old_string not found in %s", path)}
+	}
+	replaceAll := boolArg(args, "replace_all")
+	if count > 1 && !replaceAll {
+		return ToolResult{Err: fmt.Errorf("old_string appears %d times in %s; set replace_all or provide more context", count, path)}
+	}
+
+	var updated string
+	if replaceAll {
+		updated = strings.ReplaceAll(content, oldString, newString)
+	} else {
+		updated = strings.Replace(content, oldString, newString, 1)
+	}
+	if err := os.WriteFile(full, []byte(updated), 0o644); err != nil {
+		return ToolResult{Err: err}
+	}
+	replaced := count
+	if !replaceAll {
+		replaced = 1
+	}
+	return ToolResult{Output: fmt.Sprintf("Replaced %d occurrence(s) in %s", replaced, path)}
+}
+
 func executeGrep(ctx context.Context, workDir string, args map[string]any) ToolResult {
 	pattern, ok := stringArg(args, "pattern")
 	if !ok {
@@ -94,7 +171,20 @@ func executeGrep(ctx context.Context, workDir string, args map[string]any) ToolR
 		searchPath = resolved
 	}
 
-	cmdArgs := []string{"--regexp", pattern, "--color=never", "--line-number", "--with-filename"}
+	outputMode := "content"
+	if raw, ok := stringArg(args, "output_mode"); ok && raw != "" {
+		outputMode = strings.ToLower(raw)
+	}
+
+	cmdArgs := []string{"--regexp", pattern, "--color=never"}
+	switch outputMode {
+	case "files_with_matches":
+		cmdArgs = append(cmdArgs, "--files-with-matches")
+	case "count":
+		cmdArgs = append(cmdArgs, "--count")
+	default:
+		cmdArgs = append(cmdArgs, "--line-number", "--with-filename")
+	}
 	if glob, ok := stringArg(args, "glob"); ok && glob != "" {
 		cmdArgs = append(cmdArgs, "--glob", glob)
 	}
@@ -174,24 +264,40 @@ func executeGlob(workDir string, args map[string]any) ToolResult {
 		}
 		root = resolved
 	}
-	if !strings.Contains(pattern, "/") {
-		pattern = filepath.Join(root, pattern)
-	}
-	matches, err := filepath.Glob(pattern)
+	matches, err := globSearch(root, pattern)
 	if err != nil {
 		return ToolResult{Err: err}
 	}
 	if len(matches) == 0 {
 		return ToolResult{Output: "(no matches)"}
 	}
+	truncated := false
 	if len(matches) > maxGlobPaths {
 		matches = matches[:maxGlobPaths]
+		truncated = true
 	}
 	out := strings.Join(matches, "\n")
-	if len(matches) == maxGlobPaths {
+	if truncated {
 		out += "\n\n(output truncated: path list capped)"
 	}
 	return ToolResult{Output: truncateToolOutput(out, maxGlobBytes)}
+}
+
+func globSearch(root, pattern string) ([]string, error) {
+	pattern = strings.TrimSpace(pattern)
+	if pattern == "" {
+		return nil, errors.New("empty pattern")
+	}
+	search := pattern
+	if !filepath.IsAbs(pattern) {
+		search = filepath.Join(root, pattern)
+	}
+	matches, err := doublestar.FilepathGlob(search, doublestar.WithFilesOnly())
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(matches)
+	return matches, nil
 }
 
 func truncateToolOutput(s string, maxBytes int) string {
@@ -230,6 +336,34 @@ func stringArg(args map[string]any, key string) (string, bool) {
 		return strings.TrimSpace(v), v != ""
 	default:
 		return strings.TrimSpace(fmt.Sprint(v)), true
+	}
+}
+
+func rawStringArg(args map[string]any, key string) (string, bool) {
+	raw, ok := args[key]
+	if !ok || raw == nil {
+		return "", false
+	}
+	switch v := raw.(type) {
+	case string:
+		return v, true
+	default:
+		return fmt.Sprint(v), true
+	}
+}
+
+func boolArg(args map[string]any, key string) bool {
+	raw, ok := args[key]
+	if !ok || raw == nil {
+		return false
+	}
+	switch v := raw.(type) {
+	case bool:
+		return v
+	case string:
+		return strings.EqualFold(strings.TrimSpace(v), "true")
+	default:
+		return false
 	}
 }
 

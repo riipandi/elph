@@ -56,19 +56,21 @@ Provider adapters:
 
 Only tools passing `IsProviderExposed` are sent to the provider:
 
-- Today: **Read**, **Grep**, **Glob**, **AskUser**, **Bash**
+- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **AskUser**, **Bash**
 - Details: [tools.md § Provider API exposure](./tools.md#provider-api-exposure)
 
 ## Runtime execution
 
 `ExecuteTool` (`internal/runtime/execute.go`):
 
-| Tool | Implementation                                         |
-|------|--------------------------------------------------------|
-| Read | Read file under workspace                              |
-| Grep | `rg` subprocess                                        |
-| Glob | Glob walk                                              |
-| Bash | `bash -c` via `RunShellContext`; streams stdout/stderr |
+| Tool  | Implementation                                             |
+|-------|------------------------------------------------------------|
+| Read  | Read file under workspace (256 KB cap)                     |
+| Write | Create parent dirs and write file contents                 |
+| Edit  | Exact string replace; `replace_all` for multi-match        |
+| Grep  | `rg` subprocess (`content`, `files_with_matches`, `count`) |
+| Glob  | `doublestar.FilepathGlob` (`**` semantics, files only)     |
+| Bash  | `bash -c` via `RunShellContext`; streams stdout/stderr     |
 
 `ExecuteToolStream` (`session.toolExecuteStream`) passes chunks to `EventToolCallOutputDelta` for
 live TUI updates. Bash validates syntax with `mvdan.cc/sh` before spawn and times out after 120s by
@@ -96,15 +98,15 @@ Native tool calling is the primary path when a provider is configured.
 
 `internal/renderer/agent_bridge.go`:
 
-| Event                      | TUI effect                                         |
-|----------------------------|----------------------------------------------------|
-| `EventActivity`            | Activity line + stopwatch                          |
-| `EventThinkingDelta`       | Append to thinking block                           |
-| `EventResponseDelta`       | Append to AI message (markdown async)              |
-| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash) |
-| `EventToolCallOutputDelta` | Append streamed shell output to detail box         |
-| `EventToolCallDone`        | Finalize detail status/body                        |
-| `EventTurnDone`            | Finalize turn, apply history, token/cost footer    |
+| Event                      | TUI effect                                                               |
+|----------------------------|--------------------------------------------------------------------------|
+| `EventActivity`            | Activity line + stopwatch                                                |
+| `EventThinkingDelta`       | Append to thinking block                                                 |
+| `EventResponseDelta`       | Append to AI message (markdown async)                                    |
+| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash)                       |
+| `EventToolCallOutputDelta` | Append streamed shell output to detail box                               |
+| `EventToolCallDone`        | Finalize detail status/body; expand/collapse via `tool_detail_expand.go` |
+| `EventTurnDone`            | Finalize turn, apply history, token/cost footer                          |
 
 Native tool UI: `agent_native.go`, `tool_interact.go` (huh approval / AskUser). Text-markup tool
 UI: `agent_toolcall.go`.

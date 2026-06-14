@@ -450,6 +450,10 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 	if label := strings.TrimSpace(result.DetailLabel); label != "" && strings.TrimSpace(result.DetailBody) != "" {
 		at := time.Now()
 		m = m.addDetailMessageAt(label, result.DetailBody, at)
+		if result.DetailExpanded {
+			m.messages[len(m.messages)-1].detailExpanded = true
+			m.layout.ContentDirty = true
+		}
 		m.session.AppendLog("detail", label)
 		m = m.syncLayout(true)
 		return m, nil, true

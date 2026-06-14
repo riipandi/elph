@@ -92,3 +92,27 @@ func TestFinishNativeToolCallBashKeepsRawStreamedOutput(t *testing.T) {
 	require.Equal(t, "failed\n(exit 1)", m.messages[idx].text)
 	require.NotContains(t, m.messages[idx].text, "Tool failed")
 }
+
+func TestFinishNativeToolCallLongReadCollapsedShellExpanded(t *testing.T) {
+	m := testInputModel(t)
+
+	readCall := provider.ToolCall{
+		ID:        "call_read",
+		Name:      "Read",
+		Arguments: json.RawMessage(`{"path":"big.txt"}`),
+	}
+	m = m.beginNativeToolCall(readCall)
+	m = m.finishNativeToolCall(readCall, agent.ToolRunResult{Output: "alpha\nbeta\ngamma"})
+	readIdx := m.agent.NativeToolMsgIDs["call_read"]
+	require.False(t, m.messages[readIdx].detailExpanded)
+
+	bashCall := provider.ToolCall{
+		ID:        "call_bash_long",
+		Name:      "Bash",
+		Arguments: json.RawMessage(`{"command":"seq 3"}`),
+	}
+	m = m.beginNativeToolCall(bashCall)
+	m = m.finishNativeToolCall(bashCall, agent.ToolRunResult{Output: "1\n2\n3"})
+	bashIdx := m.agent.NativeToolMsgIDs["call_bash_long"]
+	require.True(t, m.messages[bashIdx].detailExpanded)
+}

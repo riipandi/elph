@@ -126,14 +126,22 @@ Inputs starting with `/` invoke slash commands. Built-in commands (for example `
 `/exit`) are always available. Custom prompt templates are loaded from `~/.elph/prompts/*.md` and
 `<workDir>/.agents/elph/prompts/*.md` — each file becomes a slash command named after the filename.
 
-Detail blocks (prompt templates, `/diagnostic:system-prompt`, shell output, native tool results) and
-thinking blocks are shown separately from user input. They are dimmed and collapsible. **Thinking**
-respects `autoExpandThinking` in settings (default collapsed). **Native tool** detail boxes start
-**expanded** so streamed output is visible immediately. Diagnostic and prompt detail blocks start
-**collapsed** with a one-line preview. Click a header or hint row to expand or collapse that block.
-Detail titles are plain text (no background); the hint row is clickable for detail blocks. `Ctrl+O`
-toggles the most recent collapsible block in the session. Detail box colors reflect status: neutral,
-running, success, warning, or error.
+Detail blocks (prompt templates, diagnostics, shell output, native tool results) and thinking blocks
+are shown separately from user input. They are dimmed and collapsible.
+
+| Block kind                                       | Default expand                   | Notes                                                             |
+|--------------------------------------------------|----------------------------------|-------------------------------------------------------------------|
+| Thinking                                         | Collapsed                        | Respects `autoExpandThinking` in settings                         |
+| Prompt template detail                           | Collapsed                        | One-line preview when collapsed                                   |
+| `/diagnostic:system-prompt`                      | Collapsed                        | Full prompt in detail body                                        |
+| `/diagnostic:list-tools`, `/diagnostic:open-log` | Expanded                         | Tool list and log tail                                            |
+| Shell (`!` / `!!`) and Bash tool                 | Expanded                         | Streamed output stays visible                                     |
+| Other native tool results                        | Short: expanded; long: collapsed | ≥2 lines or >120 bytes starts collapsed (`tool_detail_expand.go`) |
+
+Click a header or hint row to expand or collapse that block. Detail titles are plain text (no
+background); the hint row is clickable for detail blocks. `Ctrl+O` toggles the most recent
+collapsible block in the session. Detail box colors reflect status: neutral, running, success,
+warning, or error.
 
 ### Slash command palette
 
@@ -298,10 +306,13 @@ overwriting one line) while preserving newlines between separate lines.
 
 ## Tool approval and AskUser
 
-When the agent calls **Bash** or **AskUser**, a huh form appears in the input chrome (replacing the
-normal prompt until you answer).
+When the agent calls **Write**, **Edit**, **Bash**, or **AskUser**, a huh form appears in the input
+chrome (replacing the normal prompt until you answer).
 
-### Bash approval
+### Write, Edit, and Bash approval
+
+Write and Edit use the same huh select as Bash (`Allow once` / `Allow for session` / `Deny`). The
+description shows tool arguments (`path`, `contents`, `old_string`, `new_string`, or `command`).
 
 | Input     | Action                                  |
 |-----------|-----------------------------------------|
@@ -311,8 +322,8 @@ normal prompt until you answer).
 | `Enter`   | Confirm selection (default: allow once) |
 | `Esc`     | Deny                                    |
 
-Denying returns `User denied tool execution` to the model. The same command is not prompted again
-during the current agent turn. See [tools.md § User approval](./tools.md#user-approval-huh).
+Denying returns `User denied tool execution` to the model. The same tool signature is not prompted
+again during the current agent turn. See [tools.md § User approval](./tools.md#user-approval-huh).
 
 ### AskUser
 
@@ -333,7 +344,8 @@ Native tool calls (`EventToolCallStart` / `EventToolCallOutputDelta` / `EventToo
 | Other | Tool name     | Formatted via `runtime.FormatToolDetailBodyFromResult`                       |
 
 While **running**, the detail box shows a spinner until the first output byte arrives, then streams
-text live (including when collapsed). Chunk boundaries preserve `\n` so line-oriented tools (e.g.
+text live. **Bash** and `!`/`!!` shell boxes stay expanded during streaming; other tools may start
+collapsed when the final body is long. Chunk boundaries preserve `\n` so line-oriented tools (e.g.
 `ping`) stay readable. Shell `!` output uses the same `ApplyStreamChunk` helper
 (`internal/runtime/shell.go`).
 

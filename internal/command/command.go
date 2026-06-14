@@ -19,12 +19,13 @@ type Context struct {
 	ModelID         string
 	ModelName       string
 
-	pendingSwitch       *ModelSwitch
-	pendingOpenSelector bool
-	selectorCatalog     provider.Catalog
-	selectorQuery       string
-	pendingDetailLabel  string
-	pendingDetailBody   string
+	pendingSwitch         *ModelSwitch
+	pendingOpenSelector   bool
+	selectorCatalog       provider.Catalog
+	selectorQuery         string
+	pendingDetailLabel    string
+	pendingDetailBody     string
+	pendingDetailExpanded bool
 
 	PromptTemplates []prompttemplate.Template
 }
@@ -55,6 +56,7 @@ type Result struct {
 	AgentPrompt       string
 	DetailLabel       string
 	DetailBody        string
+	DetailExpanded    bool
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
@@ -111,6 +113,7 @@ func Execute(input string, ctx Context) Result {
 			SelectorQuery:     ctx.selectorQuery,
 			DetailLabel:       ctx.pendingDetailLabel,
 			DetailBody:        ctx.pendingDetailBody,
+			DetailExpanded:    ctx.pendingDetailExpanded,
 		}
 	}
 
