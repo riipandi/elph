@@ -21,13 +21,13 @@ var (
 				BorderForeground(constants.Blue).
 				Padding(1, 2)
 
-	dimStyle     = lipgloss.NewStyle().Foreground(constants.DimText)
-	valStyle     = lipgloss.NewStyle().Foreground(constants.BrightText)
-	whiteSty     = lipgloss.NewStyle().Foreground(constants.White)
-	whiteBoldSty = lipgloss.NewStyle().Foreground(constants.White).Bold(true)
-	sidSty       = lipgloss.NewStyle().Foreground(constants.DimText)
-	yellowSty    = lipgloss.NewStyle().Foreground(constants.Yellow).Italic(true)
-	metaSty      = lipgloss.NewStyle().Foreground(constants.DimText)
+	dimStyle       = lipgloss.NewStyle().Foreground(constants.DimText)
+	valStyle       = lipgloss.NewStyle().Foreground(constants.BrightText)
+	primarySty     = lipgloss.NewStyle().Foreground(constants.PrimaryText)
+	primaryBoldSty = lipgloss.NewStyle().Foreground(constants.PrimaryText).Bold(true)
+	sidSty         = lipgloss.NewStyle().Foreground(constants.DimText)
+	yellowSty      = lipgloss.NewStyle().Foreground(constants.Yellow).Italic(true)
+	metaSty        = lipgloss.NewStyle().Foreground(constants.DimText)
 )
 
 // ─── View ────────────────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ func (m Model) syncLayout(follow bool) Model {
 func (m Model) syncInputWidth() Model {
 	prefixW := 0
 	if m.showPromptPrefix {
-		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
+		prefix := primaryBoldSty.Render(m.promptChar + " ")
 		prefixW = lipgloss.Width(prefix)
 	}
 
@@ -429,7 +429,7 @@ func (m Model) inputBoxView(attached bool) string {
 	boxW := borderedChromeWidth(m.chromeOuterWidth())
 	inner := m.inputBodyView()
 	if m.showPromptPrefix {
-		prefix := lipgloss.NewStyle().Foreground(constants.White).Bold(true).Render(m.promptChar + " ")
+		prefix := primaryBoldSty.Render(m.promptChar + " ")
 		inner = prefix + inner
 	}
 	return border.Width(boxW).Render(inner)
@@ -453,7 +453,7 @@ func (m Model) footerView() string {
 	line1Right := ctxSty.Render(fmt.Sprintf("$0.00 | %.1f%% (%s)", m.contextUsed*100, m.contextWindowLabel()))
 
 	modeSty := lipgloss.NewStyle().Foreground(constants.ModeBorderColor(m.mode)).Bold(true)
-	line2Left := whiteBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
+	line2Left := primaryBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
 
 	gitStr := "[-]"
 	if m.gitAdded > 0 || m.gitDeleted > 0 {
@@ -471,7 +471,7 @@ func (m Model) footerView() string {
 		gitColor = constants.Gray
 	}
 	gitSty := lipgloss.NewStyle().Foreground(gitColor)
-	line2Right := whiteSty.Render(fmt.Sprintf("turn: 0 | %s ", m.branch)) + gitSty.Render(gitStr)
+	line2Right := primarySty.Render(fmt.Sprintf("turn: 0 | %s ", m.branch)) + gitSty.Render(gitStr)
 
 	row1 := footerRow(cw, line1Left, line1Right)
 	row2 := footerRow(cw, line2Left, line2Right)

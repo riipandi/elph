@@ -13,12 +13,12 @@ func TestDetailCollapsedShowsRunningStatusPreview(t *testing.T) {
 	m.messages = []message{{
 		kind:         constants.MessageDetail,
 		detailLabel:  "$ ls",
-		text:         "(running…)\nfile.txt",
+		text:         "(running...)\nfile.txt",
 		detailStatus: constants.DetailStatusRunning,
 	}}
 
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Running…")
+	require.Contains(t, rendered, "Running...")
 	require.NotContains(t, rendered, "file.txt")
 }
 
@@ -33,7 +33,7 @@ func TestDetailCollapsedShowsBodyPreviewWhenIdle(t *testing.T) {
 
 	rendered := stripANSI(m.renderMessageAt(0))
 	require.Contains(t, rendered, "file.txt")
-	require.NotContains(t, rendered, "Running…")
+	require.NotContains(t, rendered, "Running...")
 }
 
 func TestThinkingCollapsedShowsStreamingStatusPreview(t *testing.T) {
@@ -44,7 +44,7 @@ func TestThinkingCollapsedShowsStreamingStatusPreview(t *testing.T) {
 	m.agent.ThinkingMsgID = 0
 
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Thinking…")
+	require.Contains(t, rendered, "Thinking...")
 	require.NotContains(t, rendered, "reasoning step one")
 }
 
@@ -54,7 +54,7 @@ func TestThinkingCollapsedShowsBodyWhenNotStreaming(t *testing.T) {
 
 	rendered := stripANSI(m.renderMessageAt(0))
 	require.Contains(t, rendered, "reasoning step one")
-	require.NotContains(t, rendered, "Thinking…")
+	require.NotContains(t, rendered, "Thinking...")
 }
 
 func TestStatusPreviewInsideColoredDetailBox(t *testing.T) {
@@ -63,19 +63,42 @@ func TestStatusPreviewInsideColoredDetailBox(t *testing.T) {
 	m.messages = []message{{
 		kind:         constants.MessageDetail,
 		detailLabel:  "$ ls",
-		text:         "(running…)",
+		text:         "(running...)",
 		detailStatus: constants.DetailStatusRunning,
 	}}
 
 	rendered := m.renderMessageAt(0)
 	require.Contains(t, rendered, "\x1b[48", "detail box should keep status background")
-	require.Contains(t, stripANSI(rendered), "Running…")
+	require.Contains(t, stripANSI(rendered), "Running...")
 
 	boxStyle := constants.DetailStatusStyle(constants.DetailStatusRunning)
 	preview := collapsibleStatusPreview(constants.MessageDetail, constants.DetailStatusRunning, boxStyle, 0, 80)
 	require.Contains(t, preview, "48;2;40;40;50", "status text should inherit running detail box background")
 	require.NotContains(t, preview, "49m", "status text should not reset to parent background")
 	require.NotRegexp(t, `\x1b\[m `, preview, "gap between spinner and label should not be unstyled")
+}
+
+func TestThinkingStatusPreviewEllipsisHasBoxBackground(t *testing.T) {
+	boxStyle := constants.MessageStyle(constants.MessageThinking).Italic(true)
+	preview := collapsibleStatusPreview(constants.MessageThinking, constants.DetailStatusNeutral, boxStyle, 0, 80)
+	require.Contains(t, preview, "Thinking...")
+	require.Contains(t, preview, "48;2;35;35;35", "ellipsis should inherit thinking box background")
+	require.NotRegexp(t, `Thinking\x1b\[m`, preview, "style should not reset before ellipsis")
+}
+
+func TestStatusPreviewTruncationEllipsisHasBoxBackground(t *testing.T) {
+	boxStyle := constants.DetailStatusStyle(constants.DetailStatusRunning)
+	preview := collapsibleStatusPreview(constants.MessageDetail, constants.DetailStatusRunning, boxStyle, 0, 12)
+	require.Contains(t, stripANSI(preview), "...")
+	require.Contains(t, preview, "48;2;40;40;50", "truncation ellipsis should inherit box background")
+}
+
+func TestThinkingHeaderChevronHasChipBackground(t *testing.T) {
+	style := constants.MessageStyle(constants.MessageThinking).Italic(true)
+	chip := collapsibleHeaderChip(style, constants.MessageThinking, "Thinking", false)
+	require.Contains(t, chip, "▸")
+	require.Contains(t, chip, "48;2;35;35;35", "chevron should inherit thinking chip background")
+	require.NotRegexp(t, `▸\x1b\[m `, chip, "gap after chevron should not be unstyled")
 }
 
 func TestSpinnerTickRefreshesCollapsedStatusPreview(t *testing.T) {
@@ -86,7 +109,7 @@ func TestSpinnerTickRefreshesCollapsedStatusPreview(t *testing.T) {
 	m.messages = []message{{
 		kind:         constants.MessageDetail,
 		detailLabel:  "$ sleep 1",
-		text:         "(running…)",
+		text:         "(running...)",
 		detailStatus: constants.DetailStatusRunning,
 	}}
 	m = m.syncLayout(false)

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/riipandi/elph/internal/theme"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 // Settings is persisted at ~/.elph/settings.json.
 type Settings struct {
 	Models             ModelsSettings  `json:"models"`
+	Theme              string          `json:"theme,omitempty"`
 	ShowThinking       *bool           `json:"showThinking,omitempty"`
 	AutoExpandThinking *bool           `json:"autoExpandThinking,omitempty"`
 	Session            SessionSettings `json:"session,omitempty"`
@@ -89,6 +92,7 @@ func defaultSettings() Settings {
 		Models: ModelsSettings{
 			SyncInterval: "24h",
 		},
+		Theme:        string(theme.Auto),
 		ShowThinking: &showThinking,
 	}
 }

@@ -99,7 +99,7 @@ func GetJSONWithHeaders(ctx context.Context, client *http.Client, url string, he
 func trimBody(raw []byte) string {
 	text := string(bytes.TrimSpace(raw))
 	if len(text) > 240 {
-		return text[:240] + "…"
+		return text[:240] + "..."
 	}
 	return text
 }

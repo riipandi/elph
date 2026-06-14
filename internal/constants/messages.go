@@ -20,7 +20,7 @@ const (
 // Stream message colors — foreground + background only (no prefixes).
 var (
 	UserMsgFg = BrightText
-	UserMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#F3F4F6"), Dark: lipgloss.Color("#2A2A2A")}
+	UserMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#E8E8E8"), Dark: lipgloss.Color("#2A2A2A")}
 
 	AIMsgFg = BrightText
 	AIMsgBg = lipgloss.NoColor{}
@@ -28,11 +28,11 @@ var (
 	SystemMsgFg = DimText
 	SystemMsgBg = lipgloss.NoColor{}
 
-	ToolMsgFg = compat.AdaptiveColor{Light: lipgloss.Color("#0E7490"), Dark: lipgloss.Color("#67E8F9")}
-	ToolMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#ECFEFF"), Dark: lipgloss.Color("#0C1A1D")}
+	ToolMsgFg = compat.AdaptiveColor{Light: lipgloss.Color("#547DA7"), Dark: lipgloss.Color("#67E8F9")}
+	ToolMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#E8E8F0"), Dark: lipgloss.Color("#0C1A1D")}
 
 	ThinkingMsgFg = DimText
-	ThinkingMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#F4F4F5"), Dark: lipgloss.Color("#232323")}
+	ThinkingMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#EEEEEE"), Dark: lipgloss.Color("#232323")}
 )
 
 // MessageStyle returns the lipgloss style for a stream message kind.

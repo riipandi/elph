@@ -156,7 +156,7 @@ func TestModelSelectorProviderFilterWithArrows(t *testing.T) {
 	require.Equal(t, "alpha", updated.modelSelector.ProviderFilterID)
 	require.Len(t, updated.modelSelector.Flat, 1)
 	require.Equal(t, "a1", updated.modelSelector.Flat[0].ID)
-	require.Equal(t, "Filter Alpha models…", updated.input.Placeholder)
+	require.Equal(t, "Filter Alpha models...", updated.input.Placeholder)
 
 	updated, _, handled = updated.handleModelSelectorKey(keyRight())
 	require.True(t, handled)

@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/theme"
 )
 
 // All markdown formatting runs off the UI thread so stream completion never
@@ -177,10 +177,18 @@ type glamourRenderMsg struct {
 }
 
 func glamourStylePath() string {
-	if lipgloss.HasDarkBackground(os.Stdin, os.Stdout) {
+	if theme.IsDark() {
 		return "dark"
 	}
 	return "light"
+}
+
+func resetMarkdownCache() {
+	aiMarkdownCache.mu.Lock()
+	defer aiMarkdownCache.mu.Unlock()
+	aiMarkdownCache.renderer = nil
+	aiMarkdownCache.width = 0
+	aiMarkdownCache.style = ""
 }
 
 func (c *markdownRenderCache) renderMarkdown(width int, markdown string) (string, error) {

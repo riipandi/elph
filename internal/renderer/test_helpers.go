@@ -58,6 +58,10 @@ func keyCtrlJ() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: 'j', Mod: tea.ModCtrl}
 }
 
+func keyCtrlShiftT() tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl | tea.ModShift}
+}
+
 func mouseClick(x, y int, btn tea.MouseButton, mod tea.KeyMod) tea.MouseClickMsg {
 	return tea.MouseClickMsg{X: x, Y: y, Button: btn, Mod: mod}
 }

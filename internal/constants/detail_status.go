@@ -27,32 +27,32 @@ func detailPalette(status DetailStatus) detailStatusColors {
 	switch status {
 	case DetailStatusRunning:
 		return detailStatusColors{
-			accent: compat.AdaptiveColor{Light: lipgloss.Color("#5F87FF"), Dark: lipgloss.Color("#5F87FF")},
-			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#808080")},
-			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#EEEEF2"), Dark: lipgloss.Color("#282832")},
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#547DA7"), Dark: lipgloss.Color("#5F87FF")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
+			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#E8E8F0"), Dark: lipgloss.Color("#282832")},
 		}
 	case DetailStatusSuccess:
 		return detailStatusColors{
-			accent: compat.AdaptiveColor{Light: lipgloss.Color("#7A8259"), Dark: lipgloss.Color("#B5BD68")},
-			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#808080")},
-			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#EFF1E8"), Dark: lipgloss.Color("#283228")},
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#588458"), Dark: lipgloss.Color("#B5BD68")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
+			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#E8F0E8"), Dark: lipgloss.Color("#283228")},
 		}
 	case DetailStatusWarning:
 		return detailStatusColors{
-			accent: compat.AdaptiveColor{Light: lipgloss.Color("#9A9040"), Dark: lipgloss.Color("#B8B86A")},
-			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#808080")},
-			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F5F0E5"), Dark: lipgloss.Color("#3C3728")},
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#9A7326"), Dark: lipgloss.Color("#B8B86A")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
+			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#FFF8E8"), Dark: lipgloss.Color("#3C3728")},
 		}
 	case DetailStatusError:
 		return detailStatusColors{
-			accent: compat.AdaptiveColor{Light: lipgloss.Color("#B85555"), Dark: lipgloss.Color("#CC6666")},
-			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#808080")},
-			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F5EDED"), Dark: lipgloss.Color("#3C2828")},
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#AA5555"), Dark: lipgloss.Color("#CC6666")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
+			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F0E8E8"), Dark: lipgloss.Color("#3C2828")},
 		}
 	default:
 		return detailStatusColors{
-			accent: compat.AdaptiveColor{Light: lipgloss.Color("#6B9090"), Dark: lipgloss.Color("#8ABEB7")},
-			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#808080")},
+			accent: compat.AdaptiveColor{Light: lipgloss.Color("#5A8080"), Dark: lipgloss.Color("#8ABEB7")},
+			bodyFg: compat.AdaptiveColor{Light: lipgloss.Color("#6C6C6C"), Dark: lipgloss.Color("#808080")},
 			bg:     compat.AdaptiveColor{Light: lipgloss.Color("#F3F2F6"), Dark: lipgloss.Color("#2D2838")},
 		}
 	}
@@ -80,7 +80,7 @@ func DetailStatusBodyStyle(status DetailStatus) lipgloss.Style {
 func DetailStatusPreviewLabel(status DetailStatus) string {
 	switch status {
 	case DetailStatusRunning:
-		return "Running…"
+		return "Running..."
 	default:
 		return ""
 	}

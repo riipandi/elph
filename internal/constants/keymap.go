@@ -22,6 +22,7 @@ const (
 	ActionExport            KeyAction = "export"
 	ActionOpenModelSelector KeyAction = "open_model_selector"
 	ActionToggleDetail      KeyAction = "toggle_detail"
+	ActionCycleTheme        KeyAction = "cycle_theme"
 )
 
 // DefaultKeyBindings defines all keybindings for the TUI.
@@ -36,6 +37,7 @@ var DefaultKeyBindings = []KeyBinding{
 	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last message"},
 	{Key: "ctrl+l", Action: ActionOpenModelSelector, Label: "Open model selector"},
 	{Key: "ctrl+o", Action: ActionToggleDetail, Label: "Expand/collapse detail block"},
+	{Key: "ctrl+shift+t", Action: ActionCycleTheme, Label: "Cycle theme (auto/dark/light)"},
 }
 
 // KeyBindingsByAction returns a map of action to keybinding for quick lookup.

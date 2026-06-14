@@ -46,7 +46,7 @@ func (m Model) modelsSyncingActive() bool {
 
 func (m Model) modelsSyncStatusText() string {
 	frame := spinnerFrames[m.agent.SpinnerFrame%len(spinnerFrames)]
-	return frame + " " + modelsSyncUpdatingLabel + "…"
+	return frame + " " + modelsSyncUpdatingLabel + "..."
 }
 
 func (m Model) startModelsSync() (Model, tea.Cmd) {

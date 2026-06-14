@@ -29,9 +29,11 @@ var (
 // ─── Adaptive Colors ─────────────────────────────────────────────────────────
 
 var (
-	DimText    = compat.AdaptiveColor{Light: lipgloss.Color("#9B9B9B"), Dark: lipgloss.Color("#5C5C5C")}
-	BrightText = compat.AdaptiveColor{Light: lipgloss.Color("#6B7280"), Dark: lipgloss.Color("#D1D5DB")}
-	Highlight  = compat.AdaptiveColor{Light: lipgloss.Color("#874BFD"), Dark: lipgloss.Color("#7C56DC")}
+	// Light palette aligned with pi interactive light theme.
+	DimText     = compat.AdaptiveColor{Light: lipgloss.Color("#767676"), Dark: lipgloss.Color("#5C5C5C")}
+	BrightText  = compat.AdaptiveColor{Light: lipgloss.Color("#1F2328"), Dark: lipgloss.Color("#D1D5DB")}
+	PrimaryText = compat.AdaptiveColor{Light: lipgloss.Color("#1F2328"), Dark: lipgloss.Color("#FFFFFF")}
+	Highlight   = compat.AdaptiveColor{Light: lipgloss.Color("#5A8080"), Dark: lipgloss.Color("#7C56DC")}
 )
 
 // ─── Thinking Level Colors ──────────────────────────────────────────────────
@@ -75,7 +77,7 @@ func ModeBorderColor(m AgentMode) color.Color {
 func ContextUsageColor(pct float64) color.Color {
 	switch {
 	case pct <= 0.50:
-		return White
+		return PrimaryText
 	case pct <= 0.79:
 		return Yellow
 	case pct <= 0.89:

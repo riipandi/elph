@@ -52,13 +52,13 @@ func collapsiblePreview(body string, maxWidth int) string {
 	if maxWidth <= 0 {
 		return line
 	}
-	return ansi.Truncate(line, maxWidth, "…")
+	return ansi.Truncate(line, maxWidth, "...")
 }
 
 func collapsibleActiveLabel(kind constants.MessageKind, status constants.DetailStatus) string {
 	switch kind {
 	case constants.MessageThinking:
-		return "Thinking…"
+		return "Thinking..."
 	case constants.MessageDetail:
 		return constants.DetailStatusPreviewLabel(status)
 	default:
@@ -70,26 +70,68 @@ func foregroundOnBox(box lipgloss.Style, fg color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(fg).Background(box.GetBackground())
 }
 
+func boxPaddingStyle(style lipgloss.Style, vPad, hPad, blockWidth int) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Padding(vPad, hPad).
+		Width(blockWidth).
+		Background(style.GetBackground())
+}
+
+func renderOnBoxSegments(box lipgloss.Style, plain string, segments []struct {
+	start, end int
+	style      lipgloss.Style
+}) string {
+	runes := []rune(plain)
+	if len(runes) == 0 {
+		return ""
+	}
+	bg := box.GetBackground()
+	var b strings.Builder
+	for _, seg := range segments {
+		if seg.start < 0 || seg.end > len(runes) || seg.start >= seg.end {
+			continue
+		}
+		part := string(runes[seg.start:seg.end])
+		st := seg.style.Copy().Background(bg)
+		b.WriteString(st.Render(part))
+	}
+	return b.String()
+}
+
 func collapsibleStatusPreview(kind constants.MessageKind, status constants.DetailStatus, box lipgloss.Style, spinnerFrame, maxWidth int) string {
 	label := collapsibleActiveLabel(kind, status)
 	if label == "" {
 		return ""
 	}
 	frame := spinnerFrames[spinnerFrame%len(spinnerFrames)]
-	var spinnerStyle, labelStyle lipgloss.Style
+
+	var spinnerFG, labelFG color.Color
 	switch kind {
 	case constants.MessageThinking:
-		spinnerStyle = foregroundOnBox(box, constants.Yellow)
-		labelStyle = foregroundOnBox(box, constants.DimText)
+		spinnerFG = constants.Yellow
+		labelFG = lipgloss.NewStyle().Foreground(constants.DimText).GetForeground()
 	default:
-		spinnerStyle = foregroundOnBox(box, constants.DetailStatusAccent(status).GetForeground())
-		labelStyle = foregroundOnBox(box, constants.DetailStatusBodyStyle(status).GetForeground())
+		spinnerFG = constants.DetailStatusAccent(status).GetForeground()
+		labelFG = constants.DetailStatusBodyStyle(status).GetForeground()
 	}
-	line := spinnerStyle.Render(frame) + labelStyle.Render(" "+label)
-	if maxWidth <= 0 {
-		return line
+
+	plain := frame + " " + label
+	if maxWidth > 0 {
+		plain = ansi.Truncate(plain, maxWidth, "...")
 	}
-	return ansi.Truncate(line, maxWidth, "…")
+
+	runes := []rune(plain)
+	if len(runes) == 0 {
+		return ""
+	}
+
+	spinnerStyle := foregroundOnBox(box, spinnerFG)
+	labelStyle := foregroundOnBox(box, labelFG)
+	spinner := spinnerStyle.Render(string(runes[0]))
+	if len(runes) == 1 {
+		return spinner
+	}
+	return spinner + labelStyle.Render(string(runes[1:]))
 }
 
 func firstDetailLine(body string) string {
@@ -101,16 +143,35 @@ func firstDetailLine(body string) string {
 	return strings.TrimSpace(body)
 }
 
-func collapsibleHeaderChip(style lipgloss.Style, kind constants.MessageKind, label string, expanded bool) string {
-	chevron := lipgloss.NewStyle().Foreground(constants.DimText).Render(detailChevron(expanded))
-	title := lipgloss.NewStyle().Bold(true).Render(label)
-	return style.Padding(0, 1).Render(chevron + " " + title)
+func collapsibleHeaderChip(style lipgloss.Style, _ constants.MessageKind, label string, expanded bool) string {
+	plain := detailChevron(expanded) + " " + label
+	chevronFG := lipgloss.NewStyle().Foreground(constants.DimText).GetForeground()
+	titleStyle := lipgloss.NewStyle().Foreground(style.GetForeground()).Bold(true)
+	if style.GetItalic() {
+		titleStyle = titleStyle.Italic(true)
+	}
+	body := renderOnBoxSegments(style, plain, []struct {
+		start, end int
+		style      lipgloss.Style
+	}{
+		{0, 1, lipgloss.NewStyle().Foreground(chevronFG)},
+		{1, len([]rune(plain)), titleStyle},
+	})
+	return lipgloss.NewStyle().Padding(0, 1).Background(style.GetBackground()).Render(body)
 }
 
 func collapsibleDetailTitleLine(hPad int, status constants.DetailStatus, label string, expanded bool) string {
-	chevron := constants.DetailStatusAccent(status).Render(detailChevron(expanded))
-	title := lipgloss.NewStyle().Bold(true).Foreground(constants.DimText).Render(label)
-	return strings.Repeat(" ", hPad) + chevron + " " + title
+	plain := detailChevron(expanded) + " " + label
+	runes := []rune(plain)
+	if len(runes) == 0 {
+		return strings.Repeat(" ", hPad)
+	}
+	chevron := constants.DetailStatusAccent(status).Render(string(runes[0]))
+	var title string
+	if len(runes) > 1 {
+		title = lipgloss.NewStyle().Bold(true).Foreground(constants.DimText).Render(string(runes[1:]))
+	}
+	return strings.Repeat(" ", hPad) + chevron + title
 }
 
 func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status constants.DetailStatus, blockWidth, innerW, vPad, hPad int, body string, expanded bool, opts collapsibleRenderOpts) string {
@@ -119,6 +180,7 @@ func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status
 		return ""
 	}
 	var content string
+	preStyled := false
 	switch {
 	case expanded:
 		content = trimmed
@@ -127,6 +189,7 @@ func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status
 		}
 	case opts.showStatusPreview:
 		content = collapsibleStatusPreview(kind, status, style, opts.spinnerFrame, innerW)
+		preStyled = true
 	case trimmed != "":
 		if preview := collapsiblePreview(trimmed, innerW); preview != "" {
 			content = dimStyle.Render(preview)
@@ -134,6 +197,9 @@ func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status
 	}
 	if content == "" {
 		return ""
+	}
+	if preStyled {
+		return boxPaddingStyle(style, vPad, hPad, blockWidth).Render(content)
 	}
 	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
 }

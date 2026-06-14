@@ -13,10 +13,10 @@ import (
 
 var (
 	cmdPaletteSelected = lipgloss.NewStyle().Foreground(constants.Blue).Bold(true)
-	cmdPaletteName     = lipgloss.NewStyle().Foreground(constants.White)
+	cmdPaletteName     = lipgloss.NewStyle().Foreground(constants.PrimaryText)
 	// Lifted gray for selected summary — softer than command highlight.
 	cmdPaletteSummarySelected = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{
-		Light: lipgloss.Color("#6B7280"),
+		Light: lipgloss.Color("#6C6C6C"),
 		Dark:  lipgloss.Color("#9B9B9B"),
 	})
 )

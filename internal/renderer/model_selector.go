@@ -139,7 +139,7 @@ func (m Model) modelSelectorPlaceholderText() string {
 	}
 	for _, group := range m.modelSelector.Groups {
 		if group.ProviderID == m.modelSelector.ProviderFilterID {
-			return fmt.Sprintf("Filter %s models…", group.ProviderName)
+			return fmt.Sprintf("Filter %s models...", group.ProviderName)
 		}
 	}
 	return modelSelectorPlaceholder

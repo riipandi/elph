@@ -13,6 +13,7 @@ import (
 	"github.com/riipandi/elph/internal/prompttemplate"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/settings"
+	"github.com/riipandi/elph/internal/theme"
 	"go.jetify.com/typeid/v2"
 )
 
@@ -96,6 +97,7 @@ type Model struct {
 	suggest          SuggestState
 	agent            AgentState
 	modelSelector    ModelSelectorState
+	themePreference  theme.Mode
 
 	mouseEnabled  bool // mouse capture for viewport wheel/scroll
 	selectingText bool // shift held — mouse released for terminal selection
@@ -172,6 +174,7 @@ func New() Model {
 		contextWindow:    session.ContextWindow,
 		mode:             prefs.AgentMode(),
 		thinkingLevel:    prefs.ThinkingLevel(),
+		themePreference:  prefs.ThemeMode(),
 		sessionID:        session.ID,
 		session:          session,
 		promptTemplates:  prompttemplate.Load(wd),
@@ -192,7 +195,11 @@ func New() Model {
 // ─── tea.Model Implementation ────────────────────────────────────────────────
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(enableTerminalFeatures(), checkModelsSyncDueCmd())
+	cmds := []tea.Cmd{enableTerminalFeatures(), checkModelsSyncDueCmd()}
+	if m.themePreference == theme.Auto {
+		cmds = append(cmds, requestBackgroundColorCmd())
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m Model) availableModelCount() int {

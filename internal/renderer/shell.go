@@ -57,7 +57,7 @@ func (m Model) handleShellSubmit(command string, withContext bool) (Model, tea.C
 	m.shell.WithContext = withContext
 	m.shell.Output = ""
 	m = m.beginShellActivity()
-	m = m.addDetailMessageWithStatus(shellDetailLabel(command), "(running…)", constants.DetailStatusRunning)
+	m = m.addDetailMessageWithStatus(shellDetailLabel(command), "(running...)", constants.DetailStatusRunning)
 	m.shell.DetailMsgID = len(m.messages) - 1
 	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
@@ -159,7 +159,7 @@ func (m Model) updateShellDetailMessage(result *runtime.ShellResult) Model {
 	} else {
 		output := runtime.TrimStreamOutput(m.shell.Output)
 		if output == "" {
-			text = "(running…)"
+			text = "(running...)"
 		} else {
 			text = output
 		}

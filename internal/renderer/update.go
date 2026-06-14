@@ -10,6 +10,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/settings"
+	"github.com/riipandi/elph/internal/theme"
 	"github.com/riipandi/elph/pkg/core/agent"
 )
 
@@ -91,6 +92,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 		m.layout.ContentDirty = true
 		m = m.syncLayout(false)
+
+	case tea.BackgroundColorMsg:
+		if m.themePreference == theme.Auto {
+			m = m.applyResolvedTheme(msg.IsDark())
+			m.layout.ContentDirty = true
+			m = m.syncLayout(m.content.AtBottom())
+		}
 
 	case mouseReenableMsg:
 		var cmd tea.Cmd
@@ -290,6 +298,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.thinkingLevel = constants.NextThinkingLevel(m.thinkingLevel)
 			_ = settings.SetThinkingLevel(m.thinkingLevel)
 			m, cmd := m.withMessage(fmt.Sprintf("Thinking level: %s", m.thinkingLevel))
+			return m, cmd
+
+		case constants.ActionCycleTheme:
+			m.themePreference = theme.Next(m.themePreference)
+			_ = settings.SetTheme(m.themePreference)
+			m = m.applyResolvedTheme(theme.DetectTerminal())
+			m.layout.ContentDirty = true
+			m = m.syncLayout(m.content.AtBottom())
+			m, cmd := m.withMessage(fmt.Sprintf("Theme: %s", m.themePreference))
 			return m, cmd
 
 		case constants.ActionSubmit:

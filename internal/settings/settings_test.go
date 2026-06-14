@@ -19,6 +19,7 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.Empty(t, cfg.Models.LastSync)
 	require.True(t, cfg.ShowThinkingEnabled())
 	require.False(t, cfg.AutoExpandThinkingEnabled())
+	require.Equal(t, "auto", cfg.Theme)
 }
 
 func TestAutoExpandThinkingDefaultsFalseAndCanEnable(t *testing.T) {
