@@ -42,7 +42,7 @@ func IsExecutable(name string) bool {
 		return false
 	}
 	switch def.Name {
-	case Read, Write, Edit, Grep, Glob, Bash, AskUser:
+	case Read, Write, Edit, Grep, Glob, ReadMediaFile, Bash, AskUser:
 		return true
 	default:
 		return false

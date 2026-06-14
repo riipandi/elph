@@ -225,7 +225,7 @@ func (m Model) finishShellDone(msg shellDoneMsg) (Model, tea.Cmd) {
 		m = m.beginAgentTurn()
 		m = m.syncLayout(true)
 		var agentCmd tea.Cmd
-		m, agentCmd = m.agentTurnCmds(prompt)
+		m, agentCmd = m.agentTurnCmds(prompt, nil)
 		return m, agentCmd
 	}
 

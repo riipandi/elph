@@ -152,6 +152,35 @@ arg palette is active). See [slash-commands.md](./slash-commands.md#command-pale
 
 See [prompt-templates.md](./prompt-templates.md) for format, argument placeholders, and examples.
 
+### Image attachments
+
+When the selected model supports vision, **Ctrl+V** / **Cmd+V** pastes a clipboard image into the
+pending turn (up to **4** images). Files are saved under `<workDir>/.agents/elph/attachments/` as
+`paste_<session_suffix>_*.png` and listed below the input while pending.
+
+| UI element       | Behavior                                                                    |
+|------------------|-----------------------------------------------------------------------------|
+| Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
+| Hint row         | Count + shortcuts; bullet list of relative paths                            |
+| Footer **IMG**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
+| Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
+
+On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
+paths are appended to the text prompt so the agent can use **ReadMediaFile** instead.
+
+**Remove attachments** (only when the input textarea is empty):
+
+| Key                                | Action            |
+|------------------------------------|-------------------|
+| `Backspace` / `Delete`             | Remove last image |
+| `Ctrl+Backspace` / `Ctrl+Delete`   | Remove last image |
+| `Shift+Backspace` / `Shift+Delete` | Clear all images  |
+| `Cmd+Backspace` / `Cmd+Delete`     | Clear all images  |
+
+Terminals that emit raw CSI for **Cmd+Delete** (e.g. Ghostty `\x1b[3;9~`) are handled before word-delete logic (`attachment_keys.go`). **Ctrl+C** twice also clears pending attachments.
+
+Implementation: `internal/renderer/attachments.go`, `paste_keys.go`, `internal/clipboardmedia`.
+
 ---
 
 ## Footer / Statusline
@@ -165,12 +194,12 @@ project_dir [session_id] mode             turn: 0 | branch [+N -N]
 
 ### Line 1
 
-| Segment                       | Color                    | Notes                    |
-|-------------------------------|--------------------------|--------------------------|
-| MODEL_NAME                    | `ThinkingColor(level)`   | Adapts to thinking level |
-| `| PROVIDER | T: level | IMG` | `dimText`                | Static metadata          |
-| `$0.00`                       | `ContextUsageColor(pct)` | Cost                     |
-| `X% (262k)`                   | `ContextUsageColor(pct)` | Context usage percentage |
+| Segment                       | Color                    | Notes                                                                              |
+|-------------------------------|--------------------------|------------------------------------------------------------------------------------|
+| MODEL_NAME                    | `ThinkingColor(level)`   | Adapts to thinking level                                                           |
+| `| PROVIDER | T: level | IMG` | `dimText`                | **IMG** when the active model supports image input (`provider.SupportsImageInput`) |
+| `$0.00`                       | `ContextUsageColor(pct)` | Cost                                                                               |
+| `X% (262k)`                   | `ContextUsageColor(pct)` | Context usage percentage                                                           |
 
 ### Line 2
 
@@ -255,22 +284,23 @@ Implementation: `internal/renderer/models_sync.go`. Settings: [configuration.md 
 
 Source of truth: `internal/constants/keymap.go`.
 
-| Key                 | Action                                                           |
-|---------------------|------------------------------------------------------------------|
-| `Ctrl+C`            | Cancel / Quit                                                    |
-| `Ctrl+X`            | Cancel / Quit                                                    |
-| `Ctrl+D`            | Exit application                                                 |
-| `Ctrl+A`            | Switch agent mode                                                |
-| `Shift+Tab`         | Cycle thinking level                                             |
-| `Enter`             | Send message; in slash palette, run or complete selected command |
-| `Ctrl+J`            | Insert newline in input                                          |
-| `Shift+Enter`       | Insert newline in input                                          |
-| `Ctrl+L`            | Open model selector                                              |
-| `Ctrl+Y`            | Copy last message                                                |
-| `Ctrl+O`            | Expand/collapse newest collapsible block                         |
-| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                    |
-| Click header/footer | Expand/collapse that specific block                              |
-| `:q` / `:q!`        | Quit (vim-style)                                                 |
+| Key                 | Action                                                                    |
+|---------------------|---------------------------------------------------------------------------|
+| `Ctrl+C`            | Cancel / Quit                                                             |
+| `Ctrl+X`            | Cancel / Quit                                                             |
+| `Ctrl+D`            | Exit application                                                          |
+| `Ctrl+A`            | Switch agent mode                                                         |
+| `Shift+Tab`         | Cycle thinking level                                                      |
+| `Enter`             | Send message; in slash palette, run or complete selected command          |
+| `Ctrl+J`            | Insert newline in input                                                   |
+| `Shift+Enter`       | Insert newline in input                                                   |
+| `Ctrl+L`            | Open model selector                                                       |
+| `Ctrl+Y`            | Copy last message                                                         |
+| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste |
+| `Ctrl+O`            | Expand/collapse newest collapsible block                                  |
+| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                             |
+| Click header/footer | Expand/collapse that specific block                                       |
+| `:q` / `:q!`        | Quit (vim-style)                                                          |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
 

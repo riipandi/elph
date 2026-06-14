@@ -12,14 +12,18 @@ import (
 func prepareTurnMessages(opts TurnOptions) []provider.ChatMessage {
 	messages := CompactMessages(append([]provider.ChatMessage(nil), opts.Messages...))
 	prompt := strings.TrimSpace(opts.UserPrompt)
-	if prompt == "" {
+	images := opts.UserImages
+	if len(images) > 0 {
+		images = append([]provider.ImageAttachment(nil), images...)
+	}
+	if prompt == "" && len(images) == 0 {
 		return messages
 	}
 	if len(messages) > 0 {
 		last := messages[len(messages)-1]
-		if last.Role == "user" && strings.TrimSpace(last.Content) == prompt {
+		if last.Role == "user" && strings.TrimSpace(last.Content) == prompt && len(images) == 0 && len(last.Images) == 0 {
 			return messages
 		}
 	}
-	return append(messages, provider.ChatMessage{Role: "user", Content: prompt})
+	return append(messages, provider.ChatMessage{Role: "user", Content: prompt, Images: images})
 }

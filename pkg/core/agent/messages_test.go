@@ -43,3 +43,14 @@ func TestPrepareTurnMessagesUsesPromptWhenHistoryEmpty(t *testing.T) {
 	require.Len(t, got, 1)
 	require.Equal(t, "hello", got[0].Content)
 }
+
+func TestPrepareTurnMessagesAppendsImageOnlyTurn(t *testing.T) {
+	t.Parallel()
+
+	got := prepareTurnMessages(TurnOptions{
+		UserImages: []provider.ImageAttachment{{MIME: "image/png", Data: []byte{1, 2, 3}}},
+	})
+	require.Len(t, got, 1)
+	require.Empty(t, got[0].Content)
+	require.Len(t, got[0].Images, 1)
+}

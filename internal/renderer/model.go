@@ -125,6 +125,8 @@ type Model struct {
 	toolInteractPending toolInteractOffer
 
 	inputPendingEsc bool // macOS ESC+backspace Option+Delete pair
+
+	pendingAttachments []inputAttachment
 }
 
 // Shared "no background" style reused in textarea init to reduce allocations.
@@ -219,6 +221,7 @@ func New() Model {
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		enableTerminalFeatures(),
+		initClipboardCmd(),
 		checkModelsSyncAtStartupCmd(),
 		refreshGitBranchCmd(m.workDir),
 		gitRefreshTickCmd(),

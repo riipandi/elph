@@ -61,10 +61,11 @@ func (m Model) thinkingTurnEnabled() bool {
 	return m.showThinkingEnabled() && m.thinkingLevel != constants.ThinkingOff
 }
 
-func (m Model) buildTurnOptions(prompt string, bridge *toolInteractBridge) agent.TurnOptions {
+func (m Model) buildTurnOptions(prompt string, images []provider.ImageAttachment, bridge *toolInteractBridge) agent.TurnOptions {
 	showThinking := m.thinkingTurnEnabled()
 	opts := agent.TurnOptions{
 		UserPrompt:       prompt,
+		UserImages:       images,
 		Model:            m.session.ModelID,
 		Provider:         m.session.Provider,
 		ShowThinking:     showThinking,
@@ -100,7 +101,7 @@ func (m Model) buildTurnOptions(prompt string, bridge *toolInteractBridge) agent
 	return opts
 }
 
-func (m Model) agentTurnCmds(prompt string) (Model, tea.Cmd) {
+func (m Model) agentTurnCmds(prompt string, images []provider.ImageAttachment) (Model, tea.Cmd) {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.agent.Cancel = cancel
 	bridge := newToolInteractBridge()
@@ -110,7 +111,7 @@ func (m Model) agentTurnCmds(prompt string) (Model, tea.Cmd) {
 		m.agent.ThinkingMsgID = len(m.messages) - 1
 		m.layout.ContentDirty = true
 	}
-	events := m.session.StartTurn(ctx, m.buildTurnOptions(prompt, bridge))
+	events := m.session.StartTurn(ctx, m.buildTurnOptions(prompt, images, bridge))
 	m.agent.Events = events
 	return m, tea.Batch(
 		waitAgentEvent(events),

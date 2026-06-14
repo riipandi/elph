@@ -113,6 +113,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	if m.input.Focused() {
+		if updated, handled := m.handleAttachmentRemoveMsg(msg); handled {
+			m, finCmd := updated.finalizeInputEdit()
+			return m, finCmd
+		}
 		if updated, handled := m.handleInputWordDelete(msg); handled {
 			m, cmd := updated.finalizeInputEdit()
 			return m, cmd
@@ -269,6 +273,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.input.Focused() {
+			if isPasteKey(msg) {
+				if updated, handled := m.handlePasteKey(); handled {
+					m, finCmd := updated.finalizeInputEdit()
+					return m, finCmd
+				}
+			}
 			var paletteCmd tea.Cmd
 			var consumed bool
 			m, paletteCmd, consumed = m.handleInputPaletteKey(msg)
@@ -290,9 +300,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case constants.ActionQuit:
 			hasInput := m.input.Value() != ""
 
-			if m.ctrlCPress == 1 && hasInput {
+			if m.ctrlCPress == 1 && (hasInput || len(m.pendingAttachments) > 0) {
 				m.ctrlCPress = 2
 				m = m.resetInput()
+				m = m.clearPendingAttachments()
 				var cmd tea.Cmd
 				m, cmd = m.replaceNotice("Input cleared, press again to exit")
 				return m, cmd

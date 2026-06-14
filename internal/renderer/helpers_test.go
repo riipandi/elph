@@ -193,6 +193,6 @@ func TestSpinnerTickCmdWhenIdle(t *testing.T) {
 
 func TestAgentTurnCmdsIncludesPhases(t *testing.T) {
 	m := testInputModel(t)
-	_, cmd := m.agentTurnCmds("test prompt")
+	_, cmd := m.agentTurnCmds("test prompt", nil)
 	require.NotNil(t, cmd)
 }

@@ -56,21 +56,22 @@ Provider adapters:
 
 Only tools passing `IsProviderExposed` are sent to the provider:
 
-- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **AskUser**, **Bash**
+- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **AskUser**, **Bash**
 - Details: [tools.md § Provider API exposure](./tools.md#provider-api-exposure)
 
 ## Runtime execution
 
 `ExecuteTool` (`internal/runtime/execute.go`):
 
-| Tool  | Implementation                                             |
-|-------|------------------------------------------------------------|
-| Read  | Read file under workspace (256 KB cap)                     |
-| Write | Create parent dirs and write file contents                 |
-| Edit  | Exact string replace; `replace_all` for multi-match        |
-| Grep  | `rg` subprocess (`content`, `files_with_matches`, `count`) |
-| Glob  | `doublestar.FilepathGlob` (`**` semantics, files only)     |
-| Bash  | `bash -c` via `RunShellContext`; streams stdout/stderr     |
+| Tool          | Implementation                                             |
+|---------------|------------------------------------------------------------|
+| Read          | Read file under workspace (256 KB cap)                     |
+| Write         | Create parent dirs and write file contents                 |
+| Edit          | Exact string replace; `replace_all` for multi-match        |
+| Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`) |
+| Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)     |
+| ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)    |
+| Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr     |
 
 `ExecuteToolStream` (`session.toolExecuteStream`) passes chunks to `EventToolCallOutputDelta` for
 live TUI updates. Bash validates syntax with `mvdan.cc/sh` before spawn and times out after 120s by
@@ -160,7 +161,16 @@ History is compacted automatically (`agent.CompactMessages`):
 
 Provider catalogs kept in session are trimmed: inactive models drop compat/thinking/headers metadata. Prompt templates load on first `/` use. System prompt lists only API-exposed built-in tools.
 
-Tool execution also caps raw output: Read 256 KB, Grep/Glob 128 KB, Glob 500 paths.
+Tool execution also caps raw output: Read 256 KB, Grep/Glob 128 KB, Glob 500 paths, ReadMediaFile 32 KB.
+
+### User vision images
+
+When the TUI attaches clipboard images and the model supports vision, `Session.StartTurn` passes
+`TurnOptions.UserImages` (`[]provider.ImageAttachment`) into `agent.RunTurn`. `prepareTurnMessages`
+appends a user message with `Images` set (text may be empty for image-only turns). Provider adapters
+in `pkg/ai/providers/openai` and `pkg/ai/providers/anthropic` map these blocks to API image content.
+Pasted files live under `<workDir>/.agents/elph/attachments/` (gitignored). Non-vision models receive
+attachment paths in the text prompt instead. UI: [tui.md § Image attachments](./tui.md#image-attachments).
 
 ### Session log
 

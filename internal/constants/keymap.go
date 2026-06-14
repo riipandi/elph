@@ -19,6 +19,7 @@ const (
 	ActionNewline           KeyAction = "newline"
 	ActionClearInput        KeyAction = "clear_input"
 	ActionCopy              KeyAction = "copy"
+	ActionPaste             KeyAction = "paste"
 	ActionExport            KeyAction = "export"
 	ActionOpenModelSelector KeyAction = "open_model_selector"
 	ActionToggleDetail      KeyAction = "toggle_detail"
@@ -35,6 +36,7 @@ var DefaultKeyBindings = []KeyBinding{
 	{Key: "enter", Action: ActionSubmit, Label: "Send message"},
 	{Key: "ctrl+j", Action: ActionNewline, Label: "Insert newline in input"},
 	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last message"},
+	{Key: "ctrl+v", Action: ActionPaste, Label: "Paste image from clipboard (Cmd+V on macOS)"},
 	{Key: "ctrl+l", Action: ActionOpenModelSelector, Label: "Open model selector"},
 	{Key: "ctrl+o", Action: ActionToggleDetail, Label: "Expand/collapse detail block"},
 	{Key: "ctrl+shift+t", Action: ActionCycleTheme, Label: "Cycle theme (auto/dark/light)"},

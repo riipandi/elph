@@ -119,7 +119,7 @@ func TestToolInteractApprovalOnceDoesNotPersistSession(t *testing.T) {
 	require.False(t, m.agent.SessionAllowTools)
 	require.False(t, (<-respCh).AllowSession)
 
-	opts := m.buildTurnOptions("next", newToolInteractBridge())
+	opts := m.buildTurnOptions("next", nil, newToolInteractBridge())
 	require.False(t, opts.SkipToolApproval)
 }
 

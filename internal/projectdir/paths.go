@@ -17,7 +17,8 @@ const (
 		"logs/\n" +
 		"settings.json\n" +
 		"settings/\n" +
-		"mcp/\n"
+		"mcp/\n" +
+		"attachments/\n"
 )
 
 var gitignoreRequiredEntries = []string{
@@ -26,6 +27,7 @@ var gitignoreRequiredEntries = []string{
 	"settings.json",
 	"settings/",
 	"mcp/",
+	"attachments/",
 }
 
 // Root returns <workDir>/.agents/elph.
@@ -51,6 +53,11 @@ func LogsDir(workDir string) string {
 // SessionDir returns <workDir>/.agents/elph/logs/<sessionID>.
 func SessionDir(workDir, sessionID string) string {
 	return filepath.Join(LogsDir(workDir), sessionID)
+}
+
+// AttachmentsDir returns <workDir>/.agents/elph/attachments.
+func AttachmentsDir(workDir string) string {
+	return filepath.Join(Root(workDir), "attachments")
 }
 
 // EnsureRoot creates <workDir>/.agents/elph and writes .gitignore when missing.

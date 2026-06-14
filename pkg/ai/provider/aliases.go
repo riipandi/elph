@@ -3,19 +3,20 @@ package provider
 import "github.com/riipandi/elph/pkg/ai/protocol"
 
 type (
-	TurnRequest    = protocol.TurnRequest
-	TurnResult     = protocol.TurnResult
-	TurnStream     = protocol.TurnStream
-	TurnUsage      = protocol.TurnUsage
-	Provider       = protocol.Provider
-	ChatMessage    = protocol.ChatMessage
-	ToolDefinition = protocol.ToolDefinition
-	ToolCall       = protocol.ToolCall
-	StopReason     = protocol.StopReason
-	ThinkingConfig = protocol.ThinkingConfig
-	ThinkingFormat = protocol.ThinkingFormat
-	Compat         = protocol.Compat
-	ProviderError  = protocol.ProviderError
+	TurnRequest     = protocol.TurnRequest
+	TurnResult      = protocol.TurnResult
+	TurnStream      = protocol.TurnStream
+	TurnUsage       = protocol.TurnUsage
+	Provider        = protocol.Provider
+	ChatMessage     = protocol.ChatMessage
+	ImageAttachment = protocol.ImageAttachment
+	ToolDefinition  = protocol.ToolDefinition
+	ToolCall        = protocol.ToolCall
+	StopReason      = protocol.StopReason
+	ThinkingConfig  = protocol.ThinkingConfig
+	ThinkingFormat  = protocol.ThinkingFormat
+	Compat          = protocol.Compat
+	ProviderError   = protocol.ProviderError
 )
 
 const (

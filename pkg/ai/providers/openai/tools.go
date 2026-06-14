@@ -1,7 +1,9 @@
 package openai
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	openaisdk "github.com/openai/openai-go/v3"
@@ -67,10 +69,43 @@ func chatMessages(systemPrompt string, messages []provider.ChatMessage, thinking
 		case "tool":
 			out = append(out, openaisdk.ToolMessage(msg.Content, msg.ToolCallID))
 		default:
-			out = append(out, openaisdk.UserMessage(msg.Content))
+			out = append(out, userMessageParam(msg))
 		}
 	}
 	return out
+}
+
+func userMessageParam(msg provider.ChatMessage) openaisdk.ChatCompletionMessageParamUnion {
+	if len(msg.Images) == 0 {
+		return openaisdk.UserMessage(msg.Content)
+	}
+	parts := make([]openaisdk.ChatCompletionContentPartUnionParam, 0, 1+len(msg.Images))
+	if trimmed := strings.TrimSpace(msg.Content); trimmed != "" {
+		parts = append(parts, openaisdk.TextContentPart(trimmed))
+	}
+	for _, img := range msg.Images {
+		if len(img.Data) == 0 {
+			continue
+		}
+		mime := strings.TrimSpace(img.MIME)
+		if mime == "" {
+			mime = "image/png"
+		}
+		url := fmt.Sprintf("data:%s;base64,%s", mime, base64.StdEncoding.EncodeToString(img.Data))
+		parts = append(parts, openaisdk.ImageContentPart(openaisdk.ChatCompletionContentPartImageImageURLParam{
+			URL: url,
+		}))
+	}
+	if len(parts) == 0 {
+		return openaisdk.UserMessage(msg.Content)
+	}
+	return openaisdk.ChatCompletionMessageParamUnion{
+		OfUser: &openaisdk.ChatCompletionUserMessageParam{
+			Content: openaisdk.ChatCompletionUserMessageParamContentUnion{
+				OfArrayOfContentParts: parts,
+			},
+		},
+	}
 }
 
 func turnResultFromChatChoice(choice openaisdk.ChatCompletionChoice, hooks Hooks) provider.TurnResult {

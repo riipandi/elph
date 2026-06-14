@@ -31,7 +31,8 @@ Prefer code when they disagree until docs or behavior are updated.
 
 ### Accurate
 
-- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, AskUser, Bash) — `tools.md`, `progress.md`, `agent-runtime.md`
+- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash) — `tools.md`, `progress.md`, `agent-runtime.md`
+- ReadMediaFile execution, user vision paste (Ctrl/Cmd+V), attachment shortcuts — `tools.md`, `tui.md`, `agent-runtime.md`
 - Write/Edit/Bash approval (huh), streaming shell output, deny cache — `tools.md`, `tui.md`, `agent-runtime.md`
 - Native tool detail expand rules (shell expanded; long non-shell collapsed) — `tui.md`
 - Prompt template paths and placeholders — `prompt-templates.md`
@@ -63,7 +64,7 @@ Prefer code when they disagree until docs or behavior are updated.
 | Agent modes (`build`/`plan`/`ask`)                      | UI + settings only; no runtime effect yet                                                    | `agent-runtime.md`             |
 | Agent mode **brave**                                    | Skips tool approval (`SkipToolApproval`)                                                     | `agent-runtime.md`, `tools.md` |
 | `internal/datastore`                                    | Empty package stub                                                                           | `architecture.md`              |
-| WebSearch, FetchURL, ReadMediaFile, plan mode, …        | Catalog only or not executable yet                                                           | `tools.md`                     |
+| WebSearch, FetchURL, plan mode, …                       | Catalog only or not executable yet                                                           | `tools.md`                     |
 
 ### Contributing
 

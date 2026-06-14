@@ -477,6 +477,9 @@ func (m Model) inputBoxView(attached bool) string {
 	}
 	boxW := borderedChromeWidth(m.chromeOuterWidth())
 	inner := m.inputBodyView()
+	if hint := m.attachmentHintView(); hint != "" {
+		inner = lipgloss.JoinVertical(lipgloss.Top, hint, inner)
+	}
 	if m.showPromptPrefix {
 		prefix := primaryBoldSty.Render(m.promptChar + " ")
 		inner = prefix + inner

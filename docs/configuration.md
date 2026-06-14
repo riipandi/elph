@@ -21,9 +21,10 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 └── <name>/SKILL.md          # global agent skills (listed in system prompt)
 
 <workDir>/.agents/elph/
-├── .gitignore               # ignores logs/, settings, mcp/, and itself; prompts/skills stay committable
+├── .gitignore               # ignores logs/, settings, mcp/, attachments/, and itself; prompts/skills stay committable
 ├── prompts/*.md             # project templates (override global by filename)
 ├── skills/<name>/SKILL.md   # project skills (override global by name)
+├── attachments/             # pasted images per session (gitignored; created on first paste)
 └── logs/
     └── <session_id>/
         ├── events.jsonl     # session events (user, system, ai, thinking, shell, …)

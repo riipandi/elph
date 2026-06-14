@@ -16,6 +16,7 @@ func TestIsProviderExposed(t *testing.T) {
 	require.False(t, IsProviderExposed(FetchURL))
 	require.True(t, IsProviderExposed(Write))
 	require.True(t, IsProviderExposed(Edit))
+	require.True(t, IsProviderExposed(ReadMediaFile))
 	require.True(t, IsProviderExposed(Bash))
 	require.True(t, IsProviderExposed(AskUser))
 	require.False(t, IsProviderExposed("unknown"))
@@ -23,7 +24,7 @@ func TestIsProviderExposed(t *testing.T) {
 
 func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	defs := ProviderDefinitions()
-	require.Len(t, defs, 7)
+	require.Len(t, defs, 8)
 
 	names := make([]string, len(defs))
 	for i, def := range defs {
@@ -31,7 +32,7 @@ func TestProviderDefinitionsExecutableTools(t *testing.T) {
 		require.NotEmpty(t, def.Description)
 		require.NotEmpty(t, def.Parameters)
 	}
-	require.ElementsMatch(t, []string{Read, Write, Edit, Grep, Glob, AskUser, Bash}, names)
+	require.ElementsMatch(t, []string{Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash}, names)
 }
 
 func TestBashAndAskUserSchemas(t *testing.T) {

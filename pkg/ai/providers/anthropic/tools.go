@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 
@@ -77,10 +78,31 @@ func anthropicMessages(messages []provider.ChatMessage) []anthropic.MessageParam
 				anthropic.NewToolResultBlock(msg.ToolCallID, msg.Content, false),
 			))
 		default:
-			out = append(out, anthropic.NewUserMessage(anthropic.NewTextBlock(msg.Content)))
+			out = append(out, anthropic.NewUserMessage(userContentBlocks(msg)...))
 		}
 	}
 	return out
+}
+
+func userContentBlocks(msg provider.ChatMessage) []anthropic.ContentBlockParamUnion {
+	blocks := make([]anthropic.ContentBlockParamUnion, 0, 1+len(msg.Images))
+	if trimmed := strings.TrimSpace(msg.Content); trimmed != "" {
+		blocks = append(blocks, anthropic.NewTextBlock(trimmed))
+	}
+	for _, img := range msg.Images {
+		if len(img.Data) == 0 {
+			continue
+		}
+		mime := strings.TrimSpace(img.MIME)
+		if mime == "" {
+			mime = "image/png"
+		}
+		blocks = append(blocks, anthropic.NewImageBlockBase64(mime, base64.StdEncoding.EncodeToString(img.Data)))
+	}
+	if len(blocks) == 0 {
+		return []anthropic.ContentBlockParamUnion{anthropic.NewTextBlock(msg.Content)}
+	}
+	return blocks
 }
 
 func turnResultFromMessage(msg *anthropic.Message) provider.TurnResult {

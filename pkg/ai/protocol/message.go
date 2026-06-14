@@ -25,10 +25,17 @@ type ToolCall struct {
 	Arguments json.RawMessage
 }
 
+// ImageAttachment is image bytes attached to a user message for vision models.
+type ImageAttachment struct {
+	MIME string
+	Data []byte
+}
+
 // ChatMessage is one turn in a provider conversation.
 type ChatMessage struct {
 	Role       string
 	Content    string
+	Images     []ImageAttachment
 	ToolCalls  []ToolCall
 	ToolCallID string
 }

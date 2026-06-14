@@ -437,7 +437,7 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		m = m.beginAgentTurn()
 		m = m.syncLayout(true)
 		var agentCmd tea.Cmd
-		m, agentCmd = m.agentTurnCmds(prompt)
+		m, agentCmd = m.agentTurnCmds(prompt, nil)
 		return m, agentCmd, true
 	}
 	m = m.addUserMessage(trimmed)
@@ -472,7 +472,7 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 		return m, nil, false
 	}
 	val := normalizeInputForSubmit(m.input.Value())
-	if val == "" {
+	if val == "" && len(m.pendingAttachments) == 0 {
 		return m, nil, false
 	}
 	if val == ":q" || val == ":q!" {
@@ -490,11 +490,22 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 		return m.handleShellSubmit(cmd, withContext)
 	}
 	val = stripTrigger(val)
-	m = m.addUserMessage(val)
+	display := strings.TrimSpace(val)
+	if suffix := m.attachmentsDisplaySuffix(); suffix != "" {
+		if display == "" {
+			display = strings.TrimPrefix(suffix, "\n")
+		} else {
+			display += suffix
+		}
+	}
+	userImages := m.userImagesForTurn()
+	prompt := m.promptForSubmit(val)
+	m = m.addUserMessage(display)
+	m = m.clearPendingAttachments()
 	m = m.resetInput()
 	m = m.beginAgentTurn()
 	m = m.syncLayout(true)
 	var agentCmd tea.Cmd
-	m, agentCmd = m.agentTurnCmds(val)
+	m, agentCmd = m.agentTurnCmds(prompt, userImages)
 	return m, agentCmd, true
 }

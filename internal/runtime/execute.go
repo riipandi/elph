@@ -59,6 +59,8 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 		return executeGrep(ctx, workDir, args)
 	case tool.Glob:
 		return executeGlob(workDir, args)
+	case tool.ReadMediaFile:
+		return executeReadMediaFile(workDir, args)
 	case tool.Bash:
 		return executeBash(ctx, workDir, args, onChunk)
 	default:

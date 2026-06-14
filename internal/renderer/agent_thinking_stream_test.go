@@ -13,7 +13,7 @@ func TestAgentTurnCreatesThinkingPlaceholder(t *testing.T) {
 	m.messages = []message{{text: "hello", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
 
-	m, cmd := m.agentTurnCmds("hello")
+	m, cmd := m.agentTurnCmds("hello", nil)
 	require.NotNil(t, cmd)
 	require.Len(t, m.messages, 2)
 	require.Equal(t, constants.MessageThinking, m.messages[1].kind)
@@ -30,7 +30,7 @@ func TestThinkingPlaceholderStreamsBeforeResponse(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("step one")})
 	m = updated.(Model)
@@ -52,7 +52,7 @@ func TestThinkTagsRouteToThinkingBoxDuringResponseStream(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	updated, _ := m.Update(agentEventMsg{event: agent.ResponseDeltaEvent("<think>reason step</think>visible")})
 	m = updated.(Model)
@@ -74,7 +74,7 @@ func TestManyThinkingDeltasDoNotStallUpdateLoop(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	for range 200 {
 		updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("x")})
@@ -93,7 +93,7 @@ func TestThinkingDeltaRepaintsImmediatelyWithoutFlushTick(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("live reasoning")})
 	m = updated.(Model)
@@ -109,7 +109,7 @@ func TestThinkingDeltasRepaintViewportThroughUpdateLoop(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	for i := range 20 {
 		updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("step ")})
@@ -129,7 +129,7 @@ func TestThinkTagsStreamIncrementallyIntoThinkingBox(t *testing.T) {
 	m.ready = true
 	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
 	m = m.beginAgentTurn()
-	m, _ = m.agentTurnCmds("prompt")
+	m, _ = m.agentTurnCmds("prompt", nil)
 
 	chunks := []string{"<thi", "nk>step ", "one", "</think>", "answer"}
 	for _, chunk := range chunks {

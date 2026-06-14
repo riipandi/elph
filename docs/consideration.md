@@ -36,9 +36,9 @@ See: [tools.md](./tools.md), [architecture.md](./architecture.md).
 
 ## Built-in tools
 
-Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **Bash**, and **AskUser** run end-to-end
-(Write/Edit/Bash via huh approval; AskUser via question UI). Rest of catalog in `pkg/tool` awaits
-handlers + (for some) approval UI.
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **Bash**, and **AskUser** run end-to-end
+(Write/Edit/Bash via huh approval; AskUser via question UI). User vision paste uses
+`golang.design/x/clipboard` in the TUI. Rest of catalog in `pkg/tool` awaits handlers + (for some) approval UI.
 
 | Package                                                                                   | Status    | Tool / area                                               |
 |-------------------------------------------------------------------------------------------|-----------|-----------------------------------------------------------|
@@ -49,7 +49,8 @@ handlers + (for some) approval UI.
 | [microcosm-cc/bluemonday](https://github.com/microcosm-cc/bluemonday)                     | **next**  | **FetchURL** — sanitize HTML                              |
 | [golang.org/x/net](https://golang.org/x/net)                                              | **next**  | **FetchURL**, **WebSearch**, **CodeSearch**               |
 | [gabriel-vasile/mimetype](https://github.com/gabriel-vasile/mimetype)                     | **next**  | **ReadMediaFile** — sniff type                            |
-| `image` + [golang.org/x/image](https://pkg.go.dev/golang.org/x/image)                     | **next**  | **ReadMediaFile** — decode/resize (no stale imaging lib)  |
+| `image` + [golang.org/x/image](https://pkg.go.dev/golang.org/x/image)                     | **used**  | **ReadMediaFile** + clipboard paste — decode/resize/webp  |
+| [golang.design/x/clipboard](https://golang.design/x/clipboard)                            | **used**  | Image paste in TUI (`internal/clipboardmedia`)            |
 | [aymanbagabas/go-udiff](https://github.com/aymanbagabas/go-udiff)                         | **later** | **Edit** approval preview (functional, not TUI chrome)    |
 | [invopop/jsonschema](https://github.com/invopop/jsonschema)                               | **later** | Optional schema gen from structs (hand-written today)     |
 
@@ -135,18 +136,19 @@ Use when requirements differ; MCP remains unchanged.
 
 Direct dependencies only. Do not add styling/logging/editor helpers beyond this.
 
-| Package                                                                   | Status   | Use                                                                                           |
-|---------------------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------|
-| [charm.land/bubbletea](https://charm.land/bubbletea)                      | **used** | Event loop                                                                                    |
-| [charm.land/bubbles](https://charm.land/bubbles)                          | **used** | Viewport, input, lists                                                                        |
-| [charm.land/lipgloss](https://charm.land/lipgloss)                        | **used** | Theme (`internal/theme`)                                                                      |
-| [charm.land/glamour](https://charm.land/glamour)                          | **used** | Chat markdown                                                                                 |
-| [charm.land/huh](https://charm.land/huh)                                  | **used** | Confirm dialogs (models.dev sync)                                                             |
-| [charmbracelet/x/ansi](https://github.com/charmbracelet/x/ansi)           | **used** | Keys / ANSI                                                                                   |
-| [charmbracelet/x/term](https://github.com/charmbracelet/x/term)           | **used** | Terminal size                                                                                 |
-| [charmbracelet/ultraviolet](https://github.com/charmbracelet/ultraviolet) | **used** | Input tests only                                                                              |
-| [mattn/go-runewidth](https://github.com/mattn/go-runewidth)               | **used** | Column width                                                                                  |
-| [atotto/clipboard](https://github.com/atotto/clipboard)                   | **used** | Copy — migrate to [golang.design/x/clipboard](https://golang.design/x/clipboard) when touched |
+| Package                                                                   | Status   | Use                                            |
+|---------------------------------------------------------------------------|----------|------------------------------------------------|
+| [charm.land/bubbletea](https://charm.land/bubbletea)                      | **used** | Event loop                                     |
+| [charm.land/bubbles](https://charm.land/bubbles)                          | **used** | Viewport, input, lists                         |
+| [charm.land/lipgloss](https://charm.land/lipgloss)                        | **used** | Theme (`internal/theme`)                       |
+| [charm.land/glamour](https://charm.land/glamour)                          | **used** | Chat markdown                                  |
+| [charm.land/huh](https://charm.land/huh)                                  | **used** | Confirm dialogs (models.dev sync)              |
+| [charmbracelet/x/ansi](https://github.com/charmbracelet/x/ansi)           | **used** | Keys / ANSI                                    |
+| [charmbracelet/x/term](https://github.com/charmbracelet/x/term)           | **used** | Terminal size                                  |
+| [charmbracelet/ultraviolet](https://github.com/charmbracelet/ultraviolet) | **used** | Input tests only                               |
+| [mattn/go-runewidth](https://github.com/mattn/go-runewidth)               | **used** | Column width                                   |
+| [atotto/clipboard](https://github.com/atotto/clipboard)                   | **used** | Copy text (work dir, session id, last message) |
+| [golang.design/x/clipboard](https://golang.design/x/clipboard)            | **used** | Paste image (and text fallback) in input       |
 
 ---
 
@@ -176,21 +178,21 @@ Open URLs: `open` / `xdg-open` exec — no `pkg/browser`.
 
 Do not add these unless requirements change.
 
-| Package                                                                   | Reason                                                  |
-|---------------------------------------------------------------------------|---------------------------------------------------------|
-| charm.land/fang, MakeNowJust/heredoc                                      | Fancy CLI help — Cobra defaults are enough              |
-| charm.land/log                                                            | Charm-styled logging — session file logs suffice        |
-| charmbracelet/x/editor, x/etag, x/powernap, x/exp/charmtone, x/exp/golden | TUI/HTTP polish                                         |
-| jordanella/go-ansi-paintbrush                                             | ANSI art banners                                        |
-| gen2brain/beeep, esiqveland/notify                                        | Desktop notifications                                   |
-| swaggo/swag, swaggo/http-swagger                                          | No HTTP API planned                                     |
-| denisbrodbeck/machineid                                                   | Stale; no telemetry planned                             |
-| pkg/browser, joho/godotenv                                                | Replaced by exec / gotenv                               |
-| nxadm/tail, natefinch/lumberjack                                          | Stale; fsnotify or simple rotate in-house               |
-| disintegration/imaging, go-shiori/go-readability                          | Stale/archived                                          |
-| sourcegraph/jsonrpc2                                                      | Use MCP SDK only                                        |
-| sahilm/fuzzy                                                              | In-tree fuzzy exists                                    |
-| aymanbagabas/go-nativeclipboard                                           | Image clipboard — defer until ReadMediaFile needs paste |
+| Package                                                                   | Reason                                                |
+|---------------------------------------------------------------------------|-------------------------------------------------------|
+| charm.land/fang, MakeNowJust/heredoc                                      | Fancy CLI help — Cobra defaults are enough            |
+| charm.land/log                                                            | Charm-styled logging — session file logs suffice      |
+| charmbracelet/x/editor, x/etag, x/powernap, x/exp/charmtone, x/exp/golden | TUI/HTTP polish                                       |
+| jordanella/go-ansi-paintbrush                                             | ANSI art banners                                      |
+| gen2brain/beeep, esiqveland/notify                                        | Desktop notifications                                 |
+| swaggo/swag, swaggo/http-swagger                                          | No HTTP API planned                                   |
+| denisbrodbeck/machineid                                                   | Stale; no telemetry planned                           |
+| pkg/browser, joho/godotenv                                                | Replaced by exec / gotenv                             |
+| nxadm/tail, natefinch/lumberjack                                          | Stale; fsnotify or simple rotate in-house             |
+| disintegration/imaging, go-shiori/go-readability                          | Stale/archived                                        |
+| sourcegraph/jsonrpc2                                                      | Use MCP SDK only                                      |
+| sahilm/fuzzy                                                              | In-tree fuzzy exists                                  |
+| aymanbagabas/go-nativeclipboard                                           | Replaced by golang.design/x/clipboard for image paste |
 
 ---
 
@@ -199,7 +201,7 @@ Do not add these unless requirements change.
 | Avoid                        | Use instead                             |
 |------------------------------|-----------------------------------------|
 | disintegration/imaging       | stdlib `image` + `x/image` + mimetype   |
-| atotto/clipboard (long term) | golang.design/x/clipboard               |
+| atotto/clipboard (copy only) | golang.design/x/clipboard (paste done)  |
 | go-shiori/go-readability     | goquery + html-to-markdown + bluemonday |
 
 ---

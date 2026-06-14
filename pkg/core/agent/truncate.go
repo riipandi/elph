@@ -49,6 +49,9 @@ func LimitToolRunResult(result ToolRunResult, maxBytes int) ToolRunResult {
 
 func messageUTF8Size(msg provider.ChatMessage) int {
 	n := len(msg.Content)
+	for _, img := range msg.Images {
+		n += len(img.Data) + len(img.MIME)
+	}
 	for _, call := range msg.ToolCalls {
 		n += len(call.Name) + len(call.ID) + len(call.Arguments)
 	}
@@ -117,7 +120,26 @@ func CompactMessages(messages []provider.ChatMessage) []provider.ChatMessage {
 		}
 	}
 
-	return out
+	return stripHistoryImages(out)
+}
+
+// stripHistoryImages drops image bytes from older user turns so history stays bounded.
+func stripHistoryImages(messages []provider.ChatMessage) []provider.ChatMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+	lastUser := -1
+	for i, msg := range messages {
+		if msg.Role == "user" {
+			lastUser = i
+		}
+	}
+	for i := range messages {
+		if i != lastUser && len(messages[i].Images) > 0 {
+			messages[i].Images = nil
+		}
+	}
+	return messages
 }
 
 // ToolResultMessage formats a tool result for provider follow-up messages.

@@ -192,17 +192,18 @@ Flow per iteration:
 
 `internal/runtime/execute.go` implements:
 
-| Tool      | Behavior                                                   |
-|-----------|------------------------------------------------------------|
-| **Read**  | Read file under workspace (256 KB cap)                     |
-| **Write** | Create parent dirs and write file contents                 |
-| **Edit**  | Exact string replace; `replace_all` for multi-match        |
-| **Grep**  | `rg` subprocess (`content`, `files_with_matches`, `count`) |
-| **Glob**  | `doublestar.FilepathGlob` (`**` semantics, files only)     |
-| **Bash**  | `bash -c`, streamed output, 120s timeout                   |
+| Tool              | Behavior                                                   |
+|-------------------|------------------------------------------------------------|
+| **Read**          | Read file under workspace (256 KB cap)                     |
+| **Write**         | Create parent dirs and write file contents                 |
+| **Edit**          | Exact string replace; `replace_all` for multi-match        |
+| **Grep**          | `rg` subprocess (`content`, `files_with_matches`, `count`) |
+| **Glob**          | `doublestar.FilepathGlob` (`**` semantics, files only)     |
+| **Bash**          | `bash -c`, streamed output, 120s timeout                   |
+| **ReadMediaFile** | Image decode/resize → PNG + base64 metadata (32 KB cap)    |
 
 `pkg/tool/availability.go` — `IsExecutable` returns true for Read, Write, Edit,
-Grep, Glob, Bash, and AskUser (AskUser returns the huh answer without subprocess
+Grep, Glob, ReadMediaFile, Bash, and AskUser (AskUser returns the huh answer without subprocess
 execution).
 
 Tests: `internal/runtime/tool_test.go`, `internal/runtime/execute_file_test.go`.
@@ -243,7 +244,7 @@ run. Models called unavailable tools and got errors.
 | `ProviderDefinitions` | `pkg/tool/schema.go`       | Built-in schemas → filtered      |
 | Loop integration      | `pkg/core/agent/loop.go`   | Always filters before `Complete` |
 
-**Currently API-exposed:** Read, Write, Edit, Grep, Glob, AskUser, Bash.
+**Currently API-exposed:** Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash.
 
 Detailed reference: [docs/tools.md § Provider API exposure](./tools.md#provider-api-exposure).
 
@@ -370,7 +371,7 @@ go build -o elph ./cmd/coding-agent
 |-----------------------------------------------|-------------------------------------------------------|
 | **WebSearch, FetchURL, CodeSearch execution** | Schemas exist; need runtime handlers + `IsExecutable` |
 
-| **ReadMediaFile, plan mode**                  | Need runtime handlers and exposure rules                                       |
+| **Plan mode tools**                           | EnterPlanMode / ExitPlanMode — catalog only; no runtime handlers yet           |
 | **MCP tools in provider schemas**             | `internal/tools/lookup.go` stub; wire to `ProviderDefinitions`                 |
 | **Disable XML parser when native-only**       | Reduce dual-path complexity once providers are stable                          |
 | **Slash commands**                            | `/diff`, `/settings`, `/changelog` still `notImplemented`; `/commit` not added |
@@ -382,20 +383,21 @@ When adding an API-exposed tool, follow the checklist in
 
 ## 10. Session timeline (summary)
 
-| Phase | Focus               | Outcome                                                                       |
-|-------|---------------------|-------------------------------------------------------------------------------|
-| 1     | TUI feedback        | Message timestamps; activity stopwatch                                        |
-| 2     | Error presentation  | Distinct unavailable/unknown/failed states in detail boxes                    |
-| 3     | Markup leakage      | Multi-stage parser + `StripExtractedPayloads`; renderer sanitization          |
-| 4     | Native tool calling | OpenAI/Anthropic tools, agent loop, session history, TUI events               |
-| 5     | API tool filter     | `IsProviderExposed` — Read, Write, Edit, Grep, Glob, AskUser, Bash            |
-| 6     | Documentation       | `docs/tools.md` exposure section; this progress log                           |
-| 7     | Doc audit           | Full doc set in `docs/README.md`; fixed `tui.md`, tips, stale messages        |
-| 8     | Memory & startup    | Idle RSS ~30 MB; lazy git, catalog trim, history caps, huh models.dev confirm |
-| 9     | Bash + approval UX  | huh allow once/session/deny; streamed tool output; deny cache per turn        |
-| 10    | Project runtime     | `.agents/elph` paths, JSONL `slog` logs, generated `.gitignore`               |
-| 11    | Write/Edit/Glob     | Runtime handlers; doublestar Glob; Write/Edit huh approval + API exposure     |
-| 12    | Detail box defaults | Diagnostic list-tools/open-log expanded; long non-shell tool output collapsed |
+| Phase | Focus               | Outcome                                                                           |
+|-------|---------------------|-----------------------------------------------------------------------------------|
+| 1     | TUI feedback        | Message timestamps; activity stopwatch                                            |
+| 2     | Error presentation  | Distinct unavailable/unknown/failed states in detail boxes                        |
+| 3     | Markup leakage      | Multi-stage parser + `StripExtractedPayloads`; renderer sanitization              |
+| 4     | Native tool calling | OpenAI/Anthropic tools, agent loop, session history, TUI events                   |
+| 5     | API tool filter     | `IsProviderExposed` — Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash |
+| 6     | Documentation       | `docs/tools.md` exposure section; this progress log                               |
+| 7     | Doc audit           | Full doc set in `docs/README.md`; fixed `tui.md`, tips, stale messages            |
+| 8     | Memory & startup    | Idle RSS ~30 MB; lazy git, catalog trim, history caps, huh models.dev confirm     |
+| 9     | Bash + approval UX  | huh allow once/session/deny; streamed tool output; deny cache per turn            |
+| 10    | Project runtime     | `.agents/elph` paths, JSONL `slog` logs, generated `.gitignore`                   |
+| 11    | Write/Edit/Glob     | Runtime handlers; doublestar Glob; Write/Edit huh approval + API exposure         |
+| 12    | Detail box defaults | Diagnostic list-tools/open-log expanded; long non-shell tool output collapsed     |
+| 13    | Vision + media      | ReadMediaFile runtime; Ctrl/Cmd+V paste; UserImages multimodal turns              |
 
 ---
 
@@ -469,12 +471,12 @@ Updated (memory pass): `architecture.md` performance table; `configuration.md` /
 
 Project-local state moved from `<workDir>/.elph` to `<workDir>/.agents/elph`.
 
-| Area           | Implementation                                                                   |
-|----------------|----------------------------------------------------------------------------------|
-| Paths          | `internal/projectdir/paths.go` — `Root`, `PromptsDir`, `SkillsDir`, `LogsDir`    |
-| Session logs   | `logs/<sess_id>/events.jsonl` and `requests.jsonl` via `internal/runtime/log.go` |
-| `.gitignore`   | `EnsureRoot` writes ignores for `logs/`, `settings.json`, `settings/`, `mcp/`    |
-| Renderer tests | `setup_test.go` `TestMain` chdirs to temp dir; removes stale `.agents`/`.elph`   |
+| Area           | Implementation                                                                                  |
+|----------------|-------------------------------------------------------------------------------------------------|
+| Paths          | `internal/projectdir/paths.go` — `Root`, `PromptsDir`, `SkillsDir`, `LogsDir`, `AttachmentsDir` |
+| Session logs   | `logs/<sess_id>/events.jsonl` and `requests.jsonl` via `internal/runtime/log.go`                |
+| `.gitignore`   | `EnsureRoot` writes ignores for `logs/`, `settings.json`, `settings/`, `mcp/`, `attachments/`   |
+| Renderer tests | `setup_test.go` `TestMain` chdirs to temp dir; removes stale `.agents`/`.elph`                  |
 
 Docs: [configuration.md § Directory layout](./configuration.md#directory-layout), [agent-runtime.md § Session and logging](./agent-runtime.md#session-and-logging).
 
@@ -504,3 +506,23 @@ Docs: [tools.md § Provider API exposure](./tools.md#provider-api-exposure), [co
 | Native tool detail       | `tool_detail_expand.go` — Bash/`$ ` expanded; ≥2 lines or >120 B collapsed                 |
 
 Docs: [slash-commands.md § Diagnostic detail boxes](./slash-commands.md#diagnostic-detail-boxes), [tui.md § Slash Commands](./tui.md#slash-commands).
+
+---
+
+## 17. ReadMediaFile and user vision paste (June 2026)
+
+| Area                | Implementation                                                                           |
+|---------------------|------------------------------------------------------------------------------------------|
+| ReadMediaFile       | `internal/runtime/media.go`, `internal/mediaimage` — PNG/JPEG/GIF/WebP; video rejected   |
+| API exposure        | Eighth provider tool alongside Read, Write, Edit, Grep, Glob, AskUser, Bash              |
+| User paste          | `golang.design/x/clipboard` via `internal/clipboardmedia`; **Ctrl+V** / **Cmd+V** in TUI |
+| Storage             | `<workDir>/.agents/elph/attachments/paste_<sess>_*.png` (gitignored)                     |
+| Multimodal turn     | `TurnOptions.UserImages` → `prepareTurnMessages` → OpenAI/Anthropic image blocks         |
+| Footer **IMG**      | `provider.SupportsImageInput` when active model accepts images                           |
+| Non-vision fallback | Paths appended to text prompt; model uses ReadMediaFile                                  |
+| Remove attachments  | Empty input: Backspace/Ctrl+Del last; Shift/Cmd+Del all; Cmd+Del CSI for Ghostty         |
+| Submit fix          | `userImagesForTurn()` before `clearPendingAttachments()` so images reach the provider    |
+
+Limits: max **4** user attachments per message; images downscaled to max dimension **1568**; ReadMediaFile tool output capped at **32 KB**.
+
+Docs: [tools.md § User vision images](./tools.md#user-vision-images-tui-paste), [tui.md § Image attachments](./tui.md#image-attachments), [agent-runtime.md § User vision images](./agent-runtime.md#user-vision-images).

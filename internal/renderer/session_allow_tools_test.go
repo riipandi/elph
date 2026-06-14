@@ -12,7 +12,7 @@ func TestBuildTurnOptionsSkipsApprovalWhenSessionAllowed(t *testing.T) {
 	m := testInputModel(t)
 	m.agent.SessionAllowTools = true
 
-	opts := m.buildTurnOptions("run tools", nil)
+	opts := m.buildTurnOptions("run tools", nil, nil)
 	require.True(t, opts.SkipToolApproval)
 }
 
@@ -38,7 +38,7 @@ func TestSessionAllowPersistsAcrossTurns(t *testing.T) {
 	require.True(t, bridge.skipSessionApproval)
 	require.True(t, (<-respCh).AllowSession)
 
-	opts := m.buildTurnOptions("next", newToolInteractBridge())
+	opts := m.buildTurnOptions("next", nil, newToolInteractBridge())
 	require.True(t, opts.SkipToolApproval)
 	require.Equal(t, constants.ModeBuild, m.mode)
 }

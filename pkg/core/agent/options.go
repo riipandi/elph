@@ -24,6 +24,7 @@ type TurnOptions struct {
 	ToolsEnabled      bool
 	WorkDir           string
 	Messages          []provider.ChatMessage
+	UserImages        []provider.ImageAttachment
 	Tools             []provider.ToolDefinition
 	ExecuteTool       ToolExecuteFunc
 	ExecuteToolStream ToolExecuteStreamFunc

@@ -77,7 +77,7 @@ A tool is sent to the provider API only when **all** of the following are true
 3. The runtime can execute it (`IsExecutable`).
 4. It has a provider JSON schema (`providerSchema`).
 
-Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **AskUser**, and **Bash** are exposed.
+Today **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **AskUser**, and **Bash** are exposed.
 **AskUser** opens a huh question dialog. **Write**, **Edit**, and **Bash** show an approval dialog
 unless agent mode is
 **brave** or the user chose **allow for session** earlier in the TUI session. Auto-allow tools like
@@ -110,7 +110,7 @@ the body is long (see [tui.md § Detail blocks](./tui.md#input-modes)).
 | Read          | Auto-allow        | Yes          | Yes                      |
 | Grep          | Auto-allow        | Yes          | Yes                      |
 | Glob          | Auto-allow        | Yes          | Yes                      |
-| ReadMediaFile | Auto-allow        | No           | No                       |
+| ReadMediaFile | Auto-allow        | Yes          | Yes                      |
 | FetchURL      | Auto-allow        | No           | No                       |
 | WebSearch     | Auto-allow        | No           | No                       |
 | CodeSearch    | Auto-allow        | No           | No                       |
@@ -129,6 +129,22 @@ to the model.
 `-c`) are capped at **120s** (`defaultBashTimeout` in `internal/runtime/execute.go`). Output is
 streamed to the TUI during execution (see [tui.md § Native tool detail](./tui.md#native-tool-detail)).
 
+**ReadMediaFile** reads image files under the workspace (`internal/runtime/media.go`,
+`internal/mediaimage`). Supported formats decode via stdlib `image` plus `golang.org/x/image/webp`;
+output is normalized PNG with metadata and base64 payload (32 KB tool-output cap). Video files return
+`video files are not supported yet`. The catalog description mentions video for future work.
+
+### User vision images (TUI paste)
+
+Separate from **ReadMediaFile**, users can attach images to a turn when the active model supports
+image input (`provider.SupportsImageInput` — footer shows **IMG**). **Ctrl+V** (or **Cmd+V** on
+macOS) pastes a clipboard image into the input area; files are saved under
+`<workDir>/.agents/elph/attachments/` and sent as `TurnOptions.UserImages` on submit
+(`pkg/core/agent/messages.go`). OpenAI and Anthropic adapters map these to multimodal user messages.
+Up to **4** images per message; each is downscaled (max dimension 1568) and re-encoded as PNG. When
+the model does not support vision, pasted paths are appended to the text prompt instead so the agent
+can call **ReadMediaFile**. See [tui.md § Image attachments](./tui.md#image-attachments).
+
 ### Request flow
 
 ```mermaid
@@ -141,7 +157,7 @@ sequenceDiagram
 
     Session->>Loop: StartTurn (ToolsEnabled, ExecuteTool)
     Loop->>Tool: FilterProviderTools / ProviderDefinitions
-    Tool-->>Loop: Read, Write, Edit, Grep, Glob, AskUser, Bash schemas
+    Tool-->>Loop: Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash schemas
     Loop->>Provider: Complete(TurnRequest.Tools)
     Provider-->>Loop: tool_calls / tool_use
     Loop->>Loop: InteractTool (AskUser / approval)
@@ -157,16 +173,16 @@ tools.
 
 ### Key functions
 
-| Function                | Package            | Role                                     |
-|-------------------------|--------------------|------------------------------------------|
-| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered          |
-| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`  |
-| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check           |
-| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool         |
-| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)       |
-| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                         |
-| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)    |
-| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / Bash |
+| Function                | Package            | Role                                                     |
+|-------------------------|--------------------|----------------------------------------------------------|
+| `ProviderDefinitions()` | `pkg/tool`         | Built-in schemas, then filtered                          |
+| `FilterProviderTools()` | `pkg/tool`         | Filters any `[]provider.ToolDefinition`                  |
+| `IsProviderExposed()`   | `pkg/tool`         | Single-tool API exposure check                           |
+| `IsExecutable()`        | `pkg/tool`         | Whether runtime can run the tool                         |
+| `providerSchema()`      | `pkg/tool`         | JSON Schema per built-in (private)                       |
+| `runProviderLoop()`     | `pkg/core/agent`   | Native tool loop                                         |
+| `InteractTool()`        | `pkg/core/agent`   | AskUser + approval via huh (renderer)                    |
+| `ExecuteTool()`         | `internal/runtime` | Read / Write / Edit / Grep / Glob / ReadMediaFile / Bash |
 
 Provider adapters map definitions to API formats:
 
