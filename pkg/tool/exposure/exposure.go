@@ -30,7 +30,8 @@ func IsExecutable(name string) bool {
 	}
 	switch def.Name {
 	case catalog.Read, catalog.Write, catalog.Edit, catalog.Grep, catalog.Glob,
-		catalog.ReadMediaFile, catalog.Bash, catalog.WebSearch, catalog.AskUser:
+		catalog.ReadMediaFile, catalog.Bash, catalog.FetchURL, catalog.WebSearch,
+		catalog.CodeSearch, catalog.AskUser:
 		return true
 	default:
 		return false

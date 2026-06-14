@@ -30,7 +30,7 @@ const (
 	defaultBashTimeout = 120 * time.Second
 )
 
-// bashToolTimeout is the runtime cap for agent Bash tool calls. Tests may lower it.
+// bashToolTimeout is the runtime cap for agent Bash tool calls.
 var bashToolTimeout = defaultBashTimeout
 
 // ExecuteTool runs a built-in agent tool and returns its result.
@@ -65,6 +65,10 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 		return executeBash(ctx, workDir, args, onChunk)
 	case tool.WebSearch:
 		return executeWebSearch(ctx, args)
+	case tool.FetchURL:
+		return executeFetchURL(ctx, args)
+	case tool.CodeSearch:
+		return executeCodeSearch(ctx, args)
 	default:
 		return ToolResult{Err: fmt.Errorf("%w: %s", ErrToolNotImplemented, canonical)}
 	}

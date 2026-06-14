@@ -52,7 +52,8 @@ func RunShellContext(ctx context.Context, workDir, command string, onChunk func(
 		return ShellResult{Err: err, ExitCode: -1, Cancelled: cancelled}
 	}
 
-	killOnCancel(ctx, cmd)
+	pgid := shellProcessGroupID(cmd.Process.Pid)
+	killOnCancel(ctx, pgid)
 
 	var (
 		mu     sync.Mutex
@@ -280,16 +281,27 @@ func configureShellProcess(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
-func killOnCancel(ctx context.Context, cmd *exec.Cmd) {
+func shellProcessGroupID(pid int) int {
+	if pid <= 0 {
+		return 0
+	}
+	pgid, err := syscall.Getpgid(pid)
+	if err != nil {
+		return 0
+	}
+	return pgid
+}
+
+// killOnCancel terminates the captured process group when ctx is canceled.
+// pgid must be recorded immediately after cmd.Start to avoid PID reuse races
+// when parallel tests run shell commands.
+func killOnCancel(ctx context.Context, pgid int) {
+	if pgid <= 0 {
+		return
+	}
 	go func() {
 		<-ctx.Done()
-		if cmd.Process == nil {
-			return
-		}
-		if pgid, err := syscall.Getpgid(cmd.Process.Pid); err == nil {
-			_ = syscall.Kill(-pgid, syscall.SIGKILL)
-		}
-		_ = cmd.Process.Kill()
+		_ = syscall.Kill(-pgid, syscall.SIGKILL)
 	}()
 }
 

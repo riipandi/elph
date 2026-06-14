@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -42,7 +43,12 @@ func TestExecuteBashUsesWorkDir(t *testing.T) {
 		"command": "pwd",
 	})
 	require.NoError(t, result.Err)
-	require.Contains(t, result.Output, "nested")
+	require.False(t, result.Cancelled)
+	if runtime.GOOS == "darwin" {
+		require.Equal(t, sub, result.Output)
+	} else {
+		require.Contains(t, result.Output, "nested")
+	}
 }
 
 func TestExecuteBashMissingCommand(t *testing.T) {
@@ -82,12 +88,11 @@ func TestExecuteBashStreamsOutputChunks(t *testing.T) {
 
 func TestExecuteBashTimesOut(t *testing.T) {
 	t.Parallel()
-	prev := bashToolTimeout
-	bashToolTimeout = 200 * time.Millisecond
-	defer func() { bashToolTimeout = prev }()
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
 
 	wd := t.TempDir()
-	result := ExecuteTool(context.Background(), wd, tool.Bash, map[string]any{
+	result := ExecuteTool(ctx, wd, tool.Bash, map[string]any{
 		"command": "sleep 5",
 	})
 	require.True(t, result.Cancelled)

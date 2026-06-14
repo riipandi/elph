@@ -18,6 +18,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/mattn/go-runewidth v0.0.24
+	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/openai/openai-go/v3 v3.39.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.2
@@ -65,7 +66,6 @@ require (
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect

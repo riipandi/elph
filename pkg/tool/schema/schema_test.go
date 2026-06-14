@@ -14,7 +14,8 @@ func TestIsProviderExposed(t *testing.T) {
 	require.True(t, IsProviderExposed(catalog.Glob))
 
 	require.True(t, IsProviderExposed(catalog.WebSearch))
-	require.False(t, IsProviderExposed(catalog.FetchURL))
+	require.True(t, IsProviderExposed(catalog.FetchURL))
+	require.True(t, IsProviderExposed(catalog.CodeSearch))
 	require.True(t, IsProviderExposed(catalog.Write))
 	require.True(t, IsProviderExposed(catalog.Edit))
 	require.True(t, IsProviderExposed(catalog.ReadMediaFile))
@@ -25,7 +26,7 @@ func TestIsProviderExposed(t *testing.T) {
 
 func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	defs := ProviderDefinitions()
-	require.Len(t, defs, 9)
+	require.Len(t, defs, 11)
 
 	names := make([]string, len(defs))
 	for i, def := range defs {
@@ -35,7 +36,8 @@ func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	}
 	require.ElementsMatch(t, []string{
 		catalog.Read, catalog.Write, catalog.Edit, catalog.Grep, catalog.Glob,
-		catalog.ReadMediaFile, catalog.WebSearch, catalog.AskUser, catalog.Bash,
+		catalog.ReadMediaFile, catalog.FetchURL, catalog.WebSearch, catalog.CodeSearch,
+		catalog.AskUser, catalog.Bash,
 	}, names)
 }
 

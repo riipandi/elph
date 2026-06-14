@@ -25,7 +25,7 @@ func TestBuiltinCatalogMatchesDocs(t *testing.T) {
 		{Bash, CategoryShell, ApprovalRequiresApproval, "Execute a shell command", false},
 		{FetchURL, CategoryWeb, ApprovalAutoAllow, "Fetch the content of a specified URL", false},
 		{WebSearch, CategoryWeb, ApprovalAutoAllow, "Web search with multiple engines", false},
-		{CodeSearch, CategoryWeb, ApprovalAutoAllow, "Search code on GitHub", false},
+		{CodeSearch, CategoryWeb, ApprovalAutoAllow, "Search code on GitHub (token optional) or GitLab", false},
 		{EnterPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Enter Plan mode", false},
 		{ExitPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Exit Plan mode and submit the plan", true},
 		{AskUser, CategoryCollaboration, ApprovalAutoAllow, "Ask the user a question to gather structured input", false},

@@ -107,7 +107,14 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		}, "query"), true
 	case catalog.CodeSearch:
 		return objectSchema(map[string]propertySpec{
-			"query": {typ: "string", description: "Code search query"},
+			"query": {
+				typ:         "string",
+				description: "Code search query",
+			},
+			"provider": {
+				typ:         "string",
+				description: "Optional provider: github, gitlab. Auto mode always searches GitHub; also searches GitLab when GITLAB_TOKEN is set. GITHUB_PERSONAL_ACCESS_TOKEN is optional for GitHub.",
+			},
 		}, "query"), true
 	case catalog.ReadMediaFile:
 		return objectSchema(map[string]propertySpec{

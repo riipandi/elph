@@ -64,7 +64,7 @@ var builtin = []Definition{
 		Name:            CodeSearch,
 		Category:        CategoryWeb,
 		DefaultApproval: ApprovalAutoAllow,
-		Description:     "Search code on GitHub",
+		Description:     "Search code on GitHub (token optional) or GitLab",
 	},
 
 	// Plan mode
