@@ -179,7 +179,7 @@ func TestEnterExecutesSelectedArg(t *testing.T) {
 	require.Empty(t, updated.input.Value())
 	require.Len(t, updated.messages, 2)
 	require.Equal(t, "/diagnostic:open-log system", updated.messages[0].text)
-	require.Contains(t, updated.messages[1].text, ".elph/logs/")
+	require.Contains(t, updated.messages[1].text, ".agents/elph/logs/")
 }
 
 func TestEnterOnPromptTemplateCompletesWithoutExecuting(t *testing.T) {

@@ -39,7 +39,8 @@ elph/
 | `prompt`         | System prompt assembly (`AGENTS.md`, skills, session state, response language, tools)          |
 | `prompttemplate` | Load `*.md` templates with frontmatter and `$1` args                                           |
 | `renderer`       | Bubble Tea v2 TUI (viewport, input, agent bridge, markdown, huh dialogs)                       |
-| `runtime`        | Session, tool execution, shell, session logs                                                   |
+| `projectdir`     | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                   |
+| `runtime`        | Session, tool execution, shell, JSONL session logs (`slog`)                                    |
 | `settings`       | `~/.elph/settings.json` persistence                                                            |
 | `theme`          | `auto` / `dark` / `light` lipgloss themes                                                      |
 | `tools`          | Diagnostic helpers (not agent-executable)                                                      |
@@ -114,12 +115,12 @@ Turn-time limits and sizes are listed in [agent-runtime.md § In-memory history]
 
 ## Configuration surfaces
 
-| Surface                                      | Doc                                                                                                     |
-|----------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| `~/.elph/settings.json`                      | [configuration.md](./configuration.md)                                                                  |
-| `~/.elph/providers/*.json`                   | [configuration.md](./configuration.md), [schemas/provider-schema.json](../schemas/provider-schema.json) |
-| `~/.elph/prompts/`, project `.elph/prompts/` | [prompt-templates.md](./prompt-templates.md)                                                            |
-| Env vars (`ELPH_*`, API keys)                | [configuration.md](./configuration.md)                                                                  |
+| Surface                                             | Doc                                                                                                     |
+|-----------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| `~/.elph/settings.json`                             | [configuration.md](./configuration.md)                                                                  |
+| `~/.elph/providers/*.json`                          | [configuration.md](./configuration.md), [schemas/provider-schema.json](../schemas/provider-schema.json) |
+| `~/.elph/prompts/`, project `.agents/elph/prompts/` | [prompt-templates.md](./prompt-templates.md)                                                            |
+| Env vars (`ELPH_*`, API keys)                       | [configuration.md](./configuration.md)                                                                  |
 
 ## External tools (planned)
 

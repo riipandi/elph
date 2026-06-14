@@ -11,10 +11,10 @@ shown separately in a collapsible detail block. Press `Ctrl+O` to expand or coll
 
 Elph loads prompt templates from:
 
-| Scope   | Path                           | Notes                                         |
-|---------|--------------------------------|-----------------------------------------------|
-| Global  | `~/.elph/prompts/*.md`         | Available in every session                    |
-| Project | `<workDir>/.elph/prompts/*.md` | Overrides global templates with the same name |
+| Scope   | Path                                  | Notes                                         |
+|---------|---------------------------------------|-----------------------------------------------|
+| Global  | `~/.elph/prompts/*.md`                | Available in every session                    |
+| Project | `<workDir>/.agents/elph/prompts/*.md` | Overrides global templates with the same name |
 
 Set `ELPH_PROMPTS_DIR` to replace the global directory (similar to `ELPH_PROVIDERS_DIR`).
 

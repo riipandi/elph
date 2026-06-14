@@ -3,12 +3,35 @@ package renderer
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/riipandi/elph/internal/settings"
 )
 
 func TestMain(m *testing.M) {
+	packageDir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "getwd failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	testWorkDir, err := os.MkdirTemp("", "elph-renderer-test-*")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "temp workdir failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(testWorkDir)
+
+	if err := os.Chdir(testWorkDir); err != nil {
+		fmt.Fprintf(os.Stderr, "chdir to test workdir failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Remove stale session logs from older test runs that used packageDir as workDir.
+	_ = os.RemoveAll(filepath.Join(packageDir, ".agents"))
+	_ = os.RemoveAll(filepath.Join(packageDir, ".elph"))
+
 	backup, err := backupSettings()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "settings backup failed: %v\n", err)
@@ -19,6 +42,11 @@ func TestMain(m *testing.M) {
 
 	if err := restoreSettings(backup); err != nil {
 		fmt.Fprintf(os.Stderr, "settings restore failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := os.Chdir(packageDir); err != nil {
+		fmt.Fprintf(os.Stderr, "restore package dir failed: %v\n", err)
 		os.Exit(1)
 	}
 

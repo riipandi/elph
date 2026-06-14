@@ -162,7 +162,9 @@ Tool execution also caps raw output: Read 256 KB, Grep/Glob 128 KB, Glob 500 pat
 
 ### Session log
 
-Path: `<workDir>/.elph/logs/<sess_id>.log`
+Path: `<workDir>/.agents/elph/logs/<sess_id>/events.jsonl`
+
+Each line is JSON written via `log/slog` (`time`, `level`, `msg`, `kind`). `/diagnostic:open-log` formats records for display.
 
 Kinds written in production (`runtime.AppendLog`):
 
@@ -179,7 +181,7 @@ Kinds written in production (`runtime.AppendLog`):
 
 ### Requests log
 
-Path: `<workDir>/.elph/logs/<sess_id>.requests.log` — created in session struct but **not written** by production code today. `/diagnostic:open-log requests` may show an empty or stale file.
+Path: `<workDir>/.agents/elph/logs/<sess_id>/requests.jsonl` — provider and tool trace written during agent turns. Both logs use `log/slog` JSONL records with a `kind` attribute for filtering.
 
 ## Related docs
 

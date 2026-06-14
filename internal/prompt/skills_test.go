@@ -22,7 +22,7 @@ description: Documentation help
 # Help
 `), 0o644))
 
-	projectDir := filepath.Join(workDir, ".elph", "skills", "review")
+	projectDir := filepath.Join(workDir, ".agents", "elph", "skills", "review")
 	require.NoError(t, os.MkdirAll(projectDir, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(projectDir, "SKILL.md"), []byte(`---
 name: review
@@ -45,7 +45,7 @@ func TestDiscoverSkillsProjectOverridesGlobal(t *testing.T) {
 
 	for _, scope := range []string{
 		filepath.Join(home, ".elph", "skills", "deploy"),
-		filepath.Join(workDir, ".elph", "skills", "deploy"),
+		filepath.Join(workDir, ".agents", "elph", "skills", "deploy"),
 	} {
 		require.NoError(t, os.MkdirAll(scope, 0o755))
 	}
@@ -55,7 +55,7 @@ name: deploy
 description: Global deploy skill
 ---
 `), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(workDir, ".elph", "skills", "deploy", "SKILL.md"), []byte(`---
+	require.NoError(t, os.WriteFile(filepath.Join(workDir, ".agents", "elph", "skills", "deploy", "SKILL.md"), []byte(`---
 name: deploy
 description: Project deploy skill
 ---

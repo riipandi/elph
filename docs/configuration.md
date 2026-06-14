@@ -20,12 +20,14 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 ~/.elph/skills/
 └── <name>/SKILL.md          # global agent skills (listed in system prompt)
 
-<workDir>/.elph/
+<workDir>/.agents/elph/
+├── .gitignore               # ignores local runtime files (logs, caches)
 ├── prompts/*.md             # project templates (override global by filename)
 ├── skills/<name>/SKILL.md   # project skills (override global by name)
 └── logs/
-    ├── sess_<id>.log        # session event log (written)
-    └── sess_<id>.requests.log  # reserved; not written in production yet
+    └── <session_id>/
+        ├── events.jsonl     # session events (user, system, ai, thinking, shell, …)
+        └── requests.jsonl   # provider and tool trace
 ```
 
 ## Environment variables
@@ -101,7 +103,7 @@ Per-model fields include `reasoning`, `thinkingLevelMap`, and `compat` (Pi-style
 
 1. Built-in template (`internal/prompt/template/system.md`) with dynamic tool list
 2. `<project_context>` — nearest `AGENTS.md` in `<project_instructions path="…">`
-3. `<available_skills>` — skills from `~/.elph/skills` and `<workDir>/.elph/skills` (project overrides global by name)
+3. `<available_skills>` — skills from `~/.elph/skills` and `<workDir>/.agents/elph/skills` (project overrides global by name)
 4. Current date and working directory
 5. `<session_state>` — `<session_mode>` from `session.agentMode`
 6. Guardrails, thinking instructions, and response language (`preferedResponseLanguage`)
@@ -109,22 +111,23 @@ Per-model fields include `reasoning`, `thinkingLevelMap`, and `compat` (Pi-style
 
 Each skill is a directory containing `SKILL.md` with YAML frontmatter (`name`, `description`). The model is instructed to `Read` the skill file when a task matches.
 
-| Source                    | Discovery                                                     |
-|---------------------------|---------------------------------------------------------------|
-| `AGENTS.md`               | Walk up from `workDir` (`internal/prompt/agents.go`)          |
-| `SKILL.md`                | `~/.elph/skills/<name>/` and `<workDir>/.elph/skills/<name>/` |
-| `AGENTS.md` / `CLAUDE.md` | Guardrails block disclosure in system prompt                  |
+| Source                    | Discovery                                                            |
+|---------------------------|----------------------------------------------------------------------|
+| `AGENTS.md`               | Walk up from `workDir` (`internal/prompt/agents.go`)                 |
+| `SKILL.md`                | `~/.elph/skills/<name>/` and `<workDir>/.agents/elph/skills/<name>/` |
+| `AGENTS.md` / `CLAUDE.md` | Guardrails block disclosure in system prompt                         |
 
 Inspect the live prompt in the TUI with `/diagnostic:system-prompt` (collapsible detail box).
 
 ## Session persistence
 
-| Persisted                    | Location                          | Notes                                         |
-|------------------------------|-----------------------------------|-----------------------------------------------|
-| Provider/model/mode/thinking | `settings.json`                   | Across TUI restarts                           |
-| Conversation history         | In-memory `Session.History`       | Provider messages for multi-turn native tools |
-| Session log                  | `<workDir>/.elph/logs/sess_*.log` | Append-only event log                         |
-| Full chat export             | —                                 | Not implemented                               |
+| Persisted                    | Location                                               | Notes                                         |
+|------------------------------|--------------------------------------------------------|-----------------------------------------------|
+| Provider/model/mode/thinking | `settings.json`                                        | Across TUI restarts                           |
+| Conversation history         | In-memory `Session.History`                            | Provider messages for multi-turn native tools |
+| Session log                  | `<workDir>/.agents/elph/logs/<sess_id>/events.jsonl`   | Structured JSONL via `slog`                   |
+| Requests log                 | `<workDir>/.agents/elph/logs/<sess_id>/requests.jsonl` | Provider/tool trace JSONL                     |
+| Full chat export             | —                                                      | Not implemented                               |
 
 ### `--no-session`
 

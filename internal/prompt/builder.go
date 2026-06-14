@@ -34,7 +34,7 @@ type Options struct {
 	AgentMode string
 
 	// Skills lists discoverable SKILL.md entries. When nil, skills are discovered
-	// from ~/.elph/skills and <workDir>/.elph/skills.
+	// from ~/.elph/skills and <workDir>/.agents/elph/skills.
 	Skills []Skill
 }
 

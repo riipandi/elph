@@ -124,7 +124,7 @@ Check order: `!!` → `!` → `/` → default (`>`).
 
 Inputs starting with `/` invoke slash commands. Built-in commands (for example `/help`, `/model`,
 `/exit`) are always available. Custom prompt templates are loaded from `~/.elph/prompts/*.md` and
-`<workDir>/.elph/prompts/*.md` — each file becomes a slash command named after the filename.
+`<workDir>/.agents/elph/prompts/*.md` — each file becomes a slash command named after the filename.
 
 Detail blocks (prompt templates, `/diagnostic:system-prompt`, shell output, native tool results) and
 thinking blocks are shown separately from user input. They are dimmed and collapsible. **Thinking**
@@ -247,22 +247,22 @@ Implementation: `internal/renderer/models_sync.go`. Settings: [configuration.md 
 
 Source of truth: `internal/constants/keymap.go`.
 
-| Key                 | Action                                   |
-|---------------------|------------------------------------------|
-| `Ctrl+C`            | Cancel / Quit                            |
-| `Ctrl+X`            | Cancel / Quit                            |
-| `Ctrl+D`            | Exit application                         |
-| `Ctrl+A`            | Switch agent mode                        |
-| `Shift+Tab`         | Cycle thinking level                     |
+| Key                 | Action                                                           |
+|---------------------|------------------------------------------------------------------|
+| `Ctrl+C`            | Cancel / Quit                                                    |
+| `Ctrl+X`            | Cancel / Quit                                                    |
+| `Ctrl+D`            | Exit application                                                 |
+| `Ctrl+A`            | Switch agent mode                                                |
+| `Shift+Tab`         | Cycle thinking level                                             |
 | `Enter`             | Send message; in slash palette, run or complete selected command |
-| `Ctrl+J`            | Insert newline in input                  |
-| `Shift+Enter`       | Insert newline in input                  |
-| `Ctrl+L`            | Open model selector                      |
-| `Ctrl+Y`            | Copy last message                        |
-| `Ctrl+O`            | Expand/collapse newest collapsible block |
-| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)            |
-| Click header/footer | Expand/collapse that specific block      |
-| `:q` / `:q!`        | Quit (vim-style)                         |
+| `Ctrl+J`            | Insert newline in input                                          |
+| `Shift+Enter`       | Insert newline in input                                          |
+| `Ctrl+L`            | Open model selector                                              |
+| `Ctrl+Y`            | Copy last message                                                |
+| `Ctrl+O`            | Expand/collapse newest collapsible block                         |
+| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                    |
+| Click header/footer | Expand/collapse that specific block                              |
+| `:q` / `:q!`        | Quit (vim-style)                                                 |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
 
@@ -303,13 +303,13 @@ normal prompt until you answer).
 
 ### Bash approval
 
-| Input    | Action              |
-|----------|---------------------|
-| `y` / `1` | Allow once          |
-| `a` / `2` | Allow for session   |
-| `n` / `3` | Deny                |
-| `Enter`  | Confirm selection (default: allow once) |
-| `Esc`    | Deny                  |
+| Input     | Action                                  |
+|-----------|-----------------------------------------|
+| `y` / `1` | Allow once                              |
+| `a` / `2` | Allow for session                       |
+| `n` / `3` | Deny                                    |
+| `Enter`   | Confirm selection (default: allow once) |
+| `Esc`     | Deny                                    |
 
 Denying returns `User denied tool execution` to the model. The same command is not prompted again
 during the current agent turn. See [tools.md § User approval](./tools.md#user-approval-huh).
@@ -327,10 +327,10 @@ dialog is open.
 Native tool calls (`EventToolCallStart` / `EventToolCallOutputDelta` / `EventToolCallDone`) render in
 `internal/renderer/agent_native.go`:
 
-| Tool  | Title        | Body                                                         |
-|-------|--------------|--------------------------------------------------------------|
+| Tool  | Title         | Body                                                                         |
+|-------|---------------|------------------------------------------------------------------------------|
 | Bash  | `$ <command>` | Raw stdout/stderr streamed live; final body adds `(exit N)` on non-zero exit |
-| Other | Tool name    | Formatted via `runtime.FormatToolDetailBodyFromResult`       |
+| Other | Tool name     | Formatted via `runtime.FormatToolDetailBodyFromResult`                       |
 
 While **running**, the detail box shows a spinner until the first output byte arrives, then streams
 text live (including when collapsed). Chunk boundaries preserve `\n` so line-oriented tools (e.g.

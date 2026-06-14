@@ -13,6 +13,6 @@ var Tips = []string{
 	"Press Ctrl+Y to copy the last message.",
 	"Use /diagnostic:system-prompt to inspect the assembled system prompt.",
 	"Use /diagnostic:list-tools to see tools available to the agent.",
-	"Session logs are written to <workDir>/.elph/logs/ — see /diagnostic:open-log.",
+	"Session logs are written to <workDir>/.agents/elph/logs/<session>/ — see /diagnostic:open-log.",
 	"Run elph provider connect to create starter provider configs under ~/.elph/providers.",
 }

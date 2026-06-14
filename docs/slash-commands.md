@@ -23,7 +23,7 @@ See [prompt-templates.md](./prompt-templates.md) for template format and argumen
 
 ## Prompt templates
 
-Any `~/.elph/prompts/*.md` or `<workDir>/.elph/prompts/*.md` becomes `/name` where
+Any `~/.elph/prompts/*.md` or `<workDir>/.agents/elph/prompts/*.md` becomes `/name` where
 `name` is the filename without `.md`.
 
 On submit:

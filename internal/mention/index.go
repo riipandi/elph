@@ -13,6 +13,7 @@ const maxIndexEntries = 4000
 
 var skipDirNames = map[string]struct{}{
 	".git":         {},
+	".agents":      {},
 	".elph":        {},
 	".crush":       {},
 	"node_modules": {},

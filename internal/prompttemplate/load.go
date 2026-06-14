@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Load discovers prompt templates from ~/.elph/prompts and <workDir>/.elph/prompts.
+// Load discovers prompt templates from ~/.elph/prompts and <workDir>/.agents/elph/prompts.
 // Project templates override global templates with the same name.
 func Load(workDir string) []Template {
 	byName := make(map[string]Template)

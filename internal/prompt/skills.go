@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/riipandi/elph/internal/projectdir"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,7 +23,7 @@ type Skill struct {
 	Location    string
 }
 
-// DiscoverSkills loads skills from ~/.elph/skills and <workDir>/.elph/skills.
+// DiscoverSkills loads skills from ~/.elph/skills and <workDir>/.agents/elph/skills.
 // Project skills override global skills with the same name.
 func DiscoverSkills(workDir string) []Skill {
 	byName := make(map[string]Skill)
@@ -63,7 +64,7 @@ func globalSkillsDir() (string, error) {
 }
 
 func projectSkillsDir(workDir string) string {
-	return filepath.Join(workDir, defaultElphHome, skillsDirName)
+	return projectdir.SkillsDir(workDir)
 }
 
 func loadSkillsFromDir(dir string) []Skill {

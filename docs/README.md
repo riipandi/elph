@@ -51,18 +51,18 @@ Prefer code when they disagree until docs or behavior are updated.
 
 ### Still placeholder / not implemented
 
-| Area                                                    | Code state                                                                                   | Doc reference                  |
-|---------------------------------------------------------|----------------------------------------------------------------------------------------------|--------------------------------|
-| MCP                                                     | Banner shows `0/0`; no client                                                                | `architecture.md`, `tui.md`    |
-| Banner stats                                            | Hardcoded `0` extensions/commands/skills/tools (skills are discovered for the system prompt) | `tui.md`                       |
-| `/diff`, `/settings`, `/changelog`, `/diagnostic:debug` | `notImplemented` handlers                                                                    | `slash-commands.md`            |
-| `elph doctor`                                           | Prints "not yet implemented"                                                                 | `cli.md`                       |
-| `--no-session`                                          | Mentioned in tips only; no flag                                                              | `configuration.md`             |
-| Requests log                                            | Path reserved; not written in production                                                     | `agent-runtime.md`             |
-| Agent modes (`build`/`plan`/`ask`)                      | UI + settings only; no runtime effect yet                                                    | `agent-runtime.md`             |
-| Agent mode **brave**                                    | Skips tool approval (`SkipToolApproval`)                                                     | `agent-runtime.md`, `tools.md` |
-| `internal/datastore`                                    | Empty package stub                                                                           | `architecture.md`              |
-| WebSearch, FetchURL, Write, Edit, …                     | Catalog only or not executable yet                                                           | `tools.md`                     |
+| Area                                                    | Code state                                                                                   | Doc reference                          |
+|---------------------------------------------------------|----------------------------------------------------------------------------------------------|----------------------------------------|
+| MCP                                                     | Banner shows `0/0`; no client                                                                | `architecture.md`, `tui.md`            |
+| Banner stats                                            | Hardcoded `0` extensions/commands/skills/tools (skills are discovered for the system prompt) | `tui.md`                               |
+| `/diff`, `/settings`, `/changelog`, `/diagnostic:debug` | `notImplemented` handlers                                                                    | `slash-commands.md`                    |
+| `elph doctor`                                           | Prints "not yet implemented"                                                                 | `cli.md`                               |
+| `--no-session`                                          | Mentioned in tips only; no flag                                                              | `configuration.md`                     |
+| Requests log                                            | `<workDir>/.agents/elph/logs/<sess>/requests.jsonl`                                          | `agent-runtime.md`, `configuration.md` |
+| Agent modes (`build`/`plan`/`ask`)                      | UI + settings only; no runtime effect yet                                                    | `agent-runtime.md`                     |
+| Agent mode **brave**                                    | Skips tool approval (`SkipToolApproval`)                                                     | `agent-runtime.md`, `tools.md`         |
+| `internal/datastore`                                    | Empty package stub                                                                           | `architecture.md`                      |
+| WebSearch, FetchURL, Write, Edit, …                     | Catalog only or not executable yet                                                           | `tools.md`                             |
 
 ### Contributing
 

@@ -3,6 +3,8 @@ package prompttemplate
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/riipandi/elph/internal/projectdir"
 )
 
 const (
@@ -23,7 +25,7 @@ func GlobalDir() (string, error) {
 	return filepath.Join(home, defaultElphHomeDir, promptsDirName), nil
 }
 
-// ProjectDir returns <workDir>/.elph/prompts.
+// ProjectDir returns <workDir>/.agents/elph/prompts.
 func ProjectDir(workDir string) string {
-	return filepath.Join(workDir, defaultElphHomeDir, promptsDirName)
+	return projectdir.PromptsDir(workDir)
 }
