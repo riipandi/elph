@@ -188,6 +188,12 @@ func TestStripMarkdownSyntax(t *testing.T) {
 		{"mixed", "**bold** and `code`", "bold and code"},
 		{"link in sentence", "visit [GitHub](https://github.com) now", "visit GitHub (https://github.com) now"},
 		{"no markdown", "plain text", "plain text"},
+		{"heading 1", "# Title", "Title"},
+		{"heading 2", "## Section", "Section"},
+		{"heading 6", "###### Deep", "Deep"},
+		{"heading in sentence", "see # section below", "see # section below"},
+		{"heading with inline", "# **bold** title", "bold title"},
+		{"multiple headings", "# First\n\n## Second\n\n### Third", "First\n\nSecond\n\nThird"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

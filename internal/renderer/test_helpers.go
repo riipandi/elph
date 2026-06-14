@@ -10,6 +10,10 @@ func keyCtrl(ch rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: ch, Mod: tea.ModCtrl}
 }
 
+func keyAlt(ch rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: ch, Mod: tea.ModAlt}
+}
+
 func keyEnter() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyEnter}
 }

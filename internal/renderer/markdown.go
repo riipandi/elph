@@ -26,6 +26,13 @@ const glamourAsyncMinLen = 1
 // Used in the plain renderer path (glamour-pending) so users see readable
 // text instead of raw markdown syntax.
 func stripMarkdownSyntax(s string) string {
+	// Strip ATX heading markers (### Title → Title).
+	// Do this first so the inline scanner below doesn't need
+	// line-start tracking complexity.
+	if strings.Contains(s, "#") {
+		s = stripATXHeadings(s)
+	}
+
 	// Fast path: scan for the first byte that could be markdown syntax.
 	i := strings.IndexAny(s, "*_`[")
 	if i < 0 {
@@ -111,6 +118,24 @@ func stripMarkdownSyntax(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// stripATXHeadings removes ATX heading markers (up to 6 # followed by space)
+// from the start of each line.
+func stripATXHeadings(s string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		// Count leading '#' characters
+		j := 0
+		for j < len(line) && line[j] == '#' {
+			j++
+		}
+		// ATX heading: up to 6 # followed by a space
+		if j > 0 && j <= 6 && j < len(line) && line[j] == ' ' {
+			lines[i] = line[j+1:]
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 type markdownRenderCache struct {
