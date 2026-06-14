@@ -205,7 +205,7 @@ func New() Model {
 			ThinkingMsgID: -1,
 			ResponseMsgID: -1,
 		},
-		branch:           "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
+		branch: "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
 	}
 	m = m.syncActiveModelMetadata()
 	if model, ok := m.session.Catalog.Model(m.session.ProviderID, m.session.ModelID); ok {

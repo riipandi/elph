@@ -15,6 +15,7 @@ var thinkTagPairs = []thinkTagPair{
 	{open: "<think>", close: "</think>"},
 	{open: "` <think>", close: "` </think>"},
 }
+
 // ThinkTagStreamFilter extracts thinking blocks from streamed assistant text.
 // Incomplete tags are held back across chunks.
 type ThinkTagStreamFilter struct {

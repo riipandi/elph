@@ -24,10 +24,10 @@ func TestFormatProviderErrorDetailPlain(t *testing.T) {
 func TestFormatProviderErrorDetailStructured(t *testing.T) {
 	t.Parallel()
 	err := &ProviderError{
-		Title:      "bad request",
-		Message:    "invalid model",
-		StatusCode: 400,
-		URL:        "https://api.example.com/v1/chat/completions",
+		Title:        "bad request",
+		Message:      "invalid model",
+		StatusCode:   400,
+		URL:          "https://api.example.com/v1/chat/completions",
 		RequestBody:  []byte(`{"model":"test"}`),
 		ResponseBody: []byte(`{"error":"nope"}`),
 		ResponseHeaders: map[string]string{

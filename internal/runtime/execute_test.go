@@ -64,4 +64,3 @@ func TestValidateShellCommandRejectsNullByte(t *testing.T) {
 	t.Parallel()
 	require.Error(t, validateShellCommand("echo\x00bad"))
 }
-

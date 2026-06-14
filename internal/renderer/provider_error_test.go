@@ -15,9 +15,9 @@ func TestFinishAgentTurnProviderErrorDetail(t *testing.T) {
 	m = m.beginAgentTurn()
 
 	err := &provider.ProviderError{
-		Message:    "unexpected end of JSON input",
-		StatusCode: 502,
-		URL:        "https://opencode.ai/zen/go/v1/chat/completions",
+		Message:      "unexpected end of JSON input",
+		StatusCode:   502,
+		URL:          "https://opencode.ai/zen/go/v1/chat/completions",
 		ResponseBody: []byte(""),
 	}
 	m, _ = m.finishAgentTurn("", provider.ProviderErrorSummary(err), err)

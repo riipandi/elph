@@ -1,8 +1,8 @@
 package openai
 
 import (
-	"testing"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestReasoningTextOpenCodeMiMoDelta(t *testing.T) {

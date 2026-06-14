@@ -63,11 +63,11 @@ func (m Model) thinkingTurnEnabled() bool {
 func (m Model) buildTurnOptions(prompt string, bridge *toolInteractBridge) agent.TurnOptions {
 	showThinking := m.thinkingTurnEnabled()
 	opts := agent.TurnOptions{
-		UserPrompt:         prompt,
-		Model:              m.session.ModelID,
-		Provider:           m.session.Provider,
-		ShowThinking:       showThinking,
-		SkipToolApproval:   m.mode == constants.ModeBrave,
+		UserPrompt:       prompt,
+		Model:            m.session.ModelID,
+		Provider:         m.session.Provider,
+		ShowThinking:     showThinking,
+		SkipToolApproval: m.mode == constants.ModeBrave,
 	}
 	if bridge != nil {
 		opts.InteractTool = bridge.Interact
@@ -92,8 +92,8 @@ func (m Model) buildTurnOptions(prompt string, bridge *toolInteractBridge) agent
 	if !opts.Thinking.Enabled && opts.Compat.ThinkingFormat == string(provider.ThinkingFormatQwen) {
 		opts.Thinking = provider.ThinkingConfig{
 			Enabled:        true,
-			EnableThinking:   true,
-			ThinkingFormat:   provider.ThinkingFormatQwen,
+			EnableThinking: true,
+			ThinkingFormat: provider.ThinkingFormatQwen,
 		}
 	}
 	return opts
