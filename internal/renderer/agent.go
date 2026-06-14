@@ -41,6 +41,7 @@ func (m Model) clearActivity() Model {
 	if m.showsActivity() {
 		return m
 	}
+	m = m.stopActivityStopwatch()
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
 	return m
@@ -79,7 +80,7 @@ func (m Model) agentTurnCmds(prompt string) (Model, tea.Cmd) {
 	m.agent.Cancel = cancel
 	events := m.session.StartTurn(ctx, m.buildTurnOptions(prompt))
 	m.agent.Events = events
-	return m, tea.Batch(waitAgentEvent(events), m.spinnerTickCmd())
+	return m, tea.Batch(waitAgentEvent(events), m.spinnerTickCmd(), m.activityStopwatchStartCmd())
 }
 
 func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
@@ -92,6 +93,7 @@ func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
 	m.agent.Busy = false
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
+	m = m.stopActivityStopwatch()
 	m, cmd := m.withMessage("(agent turn cancelled)")
 	return m, cmd
 }
@@ -109,6 +111,7 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 	m.agent.Busy = false
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
+	m = m.stopActivityStopwatch()
 
 	if m.showThinkingEnabled() && m.agent.ThinkingMsgID < 0 && strings.TrimSpace(thinking) != "" {
 		m = m.addThinkingMessage(thinking)

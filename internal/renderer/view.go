@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"path/filepath"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -193,9 +194,11 @@ func (m Model) renderMessage(msg message) string {
 	case constants.MessageAI:
 		return renderAIMessage(width, msg.text, false, false)
 	case constants.MessageDetail:
-		return renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, collapsibleRenderOpts{})
+		return renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, collapsibleRenderOpts{})
 	case constants.MessageThinking:
 		return renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, collapsibleRenderOpts{})
+	case constants.MessageUser:
+		return renderUserMessage(width, msg.text, msg.at)
 	default:
 		return renderStyledMessage(width, msg.kind, msg.text)
 	}
@@ -207,7 +210,7 @@ func (m *Model) renderMessageAt(index int) string {
 	streaming := m.isStreamingMessageAt(index)
 
 	opts := m.collapsibleRenderOpts(msg, index)
-	if c := msg.renderCache; c.hit(width, streaming, len(msg.text), msg.detailExpanded, msg.detailStatus, opts) {
+	if c := msg.renderCache; c.hit(width, streaming, len(msg.text), msg.detailExpanded, msg.detailStatus, msg.at, opts) {
 		return c.output
 	}
 
@@ -220,9 +223,11 @@ func (m *Model) renderMessageAt(index int) string {
 	case msg.kind == constants.MessageAI:
 		out = renderAIMessage(width, msg.text, false, msg.glamourPending)
 	case msg.kind == constants.MessageDetail:
-		out = renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, opts)
+		out = renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, opts)
 	case msg.kind == constants.MessageThinking:
 		out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+	case msg.kind == constants.MessageUser:
+		out = renderUserMessage(width, msg.text, msg.at)
 	default:
 		out = renderStyledMessage(width, msg.kind, msg.text)
 	}
@@ -233,6 +238,7 @@ func (m *Model) renderMessageAt(index int) string {
 		streaming:         streaming,
 		expanded:          msg.detailExpanded,
 		detailStatus:      msg.detailStatus,
+		atUnix:            messageAtUnix(msg.at),
 		showStatusPreview: opts.showStatusPreview,
 		spinnerFrame:      opts.spinnerFrame,
 		output:            out,
@@ -247,6 +253,21 @@ func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) 
 	default:
 		return 0, 1
 	}
+}
+
+// renderUserMessage paints a user chat input block with an optional timestamp line.
+func renderUserMessage(width int, text string, at time.Time) string {
+	vPad, hPad := messageBlockPadding(constants.MessageUser)
+	style := constants.MessageStyle(constants.MessageUser)
+	content := text
+	if ts := formatMessageTimestamp(at); ts != "" {
+		tsLine := lipgloss.NewStyle().
+			Foreground(constants.DimText).
+			Background(constants.UserMsgBg).
+			Render(ts)
+		content = text + "\n\n" + tsLine
+	}
+	return style.Padding(vPad, hPad).Width(width).Render(content)
 }
 
 // renderStyledMessage paints each message block. Vertical spacing between blocks
@@ -356,12 +377,17 @@ func (m Model) activityView() string {
 	}
 	frame := spinnerFrames[m.agent.SpinnerFrame%len(spinnerFrames)]
 	spinner := lipgloss.NewStyle().Foreground(constants.Yellow).Render(frame)
-	label := dimStyle.Render(" " + m.activityLabel() + "...")
+	label := dimStyle.Render(" " + m.activityLabel())
+	elapsed := ""
+	if m.agent.Stopwatch.Running() {
+		elapsed = dimStyle.Render(" · " + formatCompactElapsed(m.agent.Stopwatch.Elapsed()))
+	}
+	suffix := dimStyle.Render("...")
 	return lipgloss.NewStyle().
 		MarginTop(1).
 		PaddingLeft(1).
 		Width(m.width).
-		Render(spinner + label)
+		Render(spinner + label + elapsed + suffix)
 }
 
 func (m Model) activityLabel() string {

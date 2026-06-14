@@ -3,6 +3,7 @@ package renderer
 import (
 	"image/color"
 	"strings"
+	"time"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -160,7 +161,7 @@ func collapsibleHeaderChip(style lipgloss.Style, _ constants.MessageKind, label 
 	return lipgloss.NewStyle().Padding(0, 1).Background(style.GetBackground()).Render(body)
 }
 
-func collapsibleDetailTitleLine(hPad int, status constants.DetailStatus, label string, expanded bool) string {
+func collapsibleDetailTitleLine(hPad int, status constants.DetailStatus, label string, expanded bool, at time.Time) string {
 	plain := detailChevron(expanded) + " " + label
 	runes := []rune(plain)
 	if len(runes) == 0 {
@@ -171,7 +172,11 @@ func collapsibleDetailTitleLine(hPad int, status constants.DetailStatus, label s
 	if len(runes) > 1 {
 		title = lipgloss.NewStyle().Bold(true).Foreground(constants.DimText).Render(string(runes[1:]))
 	}
-	return strings.Repeat(" ", hPad) + chevron + title
+	line := strings.Repeat(" ", hPad) + chevron + title
+	if ts := formatMessageTimestamp(at); ts != "" {
+		line += dimStyle.Render(" · " + ts)
+	}
+	return line
 }
 
 func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status constants.DetailStatus, blockWidth, innerW, vPad, hPad int, body string, expanded bool, opts collapsibleRenderOpts) string {
@@ -229,13 +234,13 @@ func renderThinkingCollapsible(blockWidth int, label, body string, expanded bool
 	return b.String()
 }
 
-func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, status constants.DetailStatus, opts collapsibleRenderOpts) string {
+func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, status constants.DetailStatus, at time.Time, opts collapsibleRenderOpts) string {
 	style := constants.DetailStatusStyle(status)
 	vPad, hPad := messageBlockPadding(constants.MessageDetail)
 	innerW := max(blockWidth-2*hPad, 1)
 
 	var b strings.Builder
-	b.WriteString(collapsibleDetailTitleLine(hPad, status, label, expanded))
+	b.WriteString(collapsibleDetailTitleLine(hPad, status, label, expanded, at))
 	if box := collapsibleBodyBox(style, constants.MessageDetail, status, blockWidth, innerW, vPad, hPad, body, expanded, opts); box != "" {
 		b.WriteString("\n\n")
 		b.WriteString(box)
@@ -245,8 +250,8 @@ func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, 
 	return b.String()
 }
 
-func renderDetailMessage(blockWidth int, label, body string, expanded bool, status constants.DetailStatus, opts collapsibleRenderOpts) string {
-	return renderDetailCollapsible(blockWidth, label, body, expanded, status, opts)
+func renderDetailMessage(blockWidth int, label, body string, expanded bool, status constants.DetailStatus, at time.Time, opts collapsibleRenderOpts) string {
+	return renderDetailCollapsible(blockWidth, label, body, expanded, status, at, opts)
 }
 
 func renderThinkingMessage(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {

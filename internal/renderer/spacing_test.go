@@ -133,7 +133,7 @@ func TestActiveTurnMessageSpacingConsistent(t *testing.T) {
 
 	content := normalizeSpacingLines(stripANSI(m.messagesView()))
 	require.Equal(t, expectedBlankLinesBetween(constants.MessageUser, constants.MessageThinking),
-		blankLinesBetweenMarkers(content, "[[prompt]]", "Thinking"))
+		blankLinesBetweenMarkers(content, formatMessageTimestamp(m.messages[0].at), "Thinking"))
 	require.Equal(t, expectedBlankLinesBetween(constants.MessageThinking, constants.MessageAI),
 		blankLinesBetweenMarkers(content, "Thinking", "[[answer]]"))
 }

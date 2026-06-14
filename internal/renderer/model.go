@@ -69,6 +69,7 @@ type message struct {
 	detailLabel    string
 	detailExpanded bool
 	detailStatus   constants.DetailStatus
+	at             time.Time
 	renderCache    messageRenderCache
 	glamourPending bool
 }
@@ -195,6 +196,7 @@ func New() Model {
 		layout:           LayoutCache{ContentDirty: true},
 		shell:            ShellState{DetailMsgID: -1},
 		ctrlCNoticeID:    -1,
+		agent:            AgentState{Stopwatch: newActivityStopwatch()},
 	}
 	m = m.applyGitStatus(git.Read(wd))
 	m = m.syncActiveModelMetadata()

@@ -3,6 +3,7 @@ package renderer
 import (
 	"context"
 
+	"charm.land/bubbles/v2/stopwatch"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/mention"
 	"github.com/riipandi/elph/internal/runtime"
@@ -58,6 +59,7 @@ type LayoutCache struct {
 type AgentState struct {
 	Activity      agent.Activity
 	SpinnerFrame  int
+	Stopwatch     stopwatch.Model
 	Busy          bool
 	Events        <-chan agent.Event
 	Cancel        context.CancelFunc

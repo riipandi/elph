@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -425,8 +426,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 	}
 	m = m.applyModelSwitch(result.Switch)
 	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
-		m = m.addUserMessage(trimmed)
-		m = m.addDetailMessage("Prompt", prompt)
+		at := time.Now()
+		m = m.addUserMessageAt(trimmed, at)
+		m = m.addDetailMessageAt("Prompt", prompt, at)
 		m.session.AppendLog("prompt", prompt)
 		m = m.resetInput()
 		m = m.beginAgentTurn()

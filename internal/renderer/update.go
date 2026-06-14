@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"charm.land/bubbles/v2/stopwatch"
 	tea "charm.land/bubbletea/v2"
 	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
@@ -131,9 +132,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.agent.Busy = false
 			m.agent.Activity = agent.ActivityIdle
 			m.agent.SpinnerFrame = 0
+			m = m.stopActivityStopwatch()
 			m = m.syncLayout(true)
 		}
 		m.agent.Events = nil
+
+	case stopwatch.TickMsg, stopwatch.StartStopMsg, stopwatch.ResetMsg:
+		var swCmd tea.Cmd
+		m.agent.Stopwatch, swCmd = m.agent.Stopwatch.Update(msg)
+		if swCmd != nil {
+			cmds = append(cmds, swCmd)
+		}
 
 	case spinnerTickMsg:
 		if m.showsActivity() || m.modelsSyncingActive() {
@@ -382,22 +391,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 func (m Model) addUserMessage(text string) Model {
-	m.messages = append(m.messages, message{text: text, kind: constants.MessageUser})
+	return m.addUserMessageAt(text, time.Now())
+}
+
+func (m Model) addUserMessageAt(text string, at time.Time) Model {
+	if at.IsZero() {
+		at = time.Now()
+	}
+	m.messages = append(m.messages, message{text: text, kind: constants.MessageUser, at: at})
 	m.session.AppendLog("user", text)
 	m.layout.ContentDirty = true
 	return m
 }
 
 func (m Model) addDetailMessage(label, body string) Model {
-	return m.addDetailMessageWithStatus(label, body, constants.DetailStatusNeutral)
+	return m.addDetailMessageAt(label, body, time.Now())
+}
+
+func (m Model) addDetailMessageAt(label, body string, at time.Time) Model {
+	return m.addDetailMessageWithStatusAt(label, body, constants.DetailStatusNeutral, at)
 }
 
 func (m Model) addDetailMessageWithStatus(label, body string, status constants.DetailStatus) Model {
+	return m.addDetailMessageWithStatusAt(label, body, status, time.Now())
+}
+
+func (m Model) addDetailMessageWithStatusAt(label, body string, status constants.DetailStatus, at time.Time) Model {
+	if at.IsZero() {
+		at = time.Now()
+	}
 	m.messages = append(m.messages, message{
 		text:         body,
 		kind:         constants.MessageDetail,
 		detailLabel:  label,
 		detailStatus: status,
+		at:           at,
 	})
 	m.layout.ContentDirty = true
 	return m

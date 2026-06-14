@@ -77,7 +77,7 @@ func TestMessageRenderCacheAvoidsRepeatWork(t *testing.T) {
 	first := m.renderMessageAt(0)
 	second := m.renderMessageAt(0)
 	require.Equal(t, first, second)
-	require.True(t, m.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(m.messages[0].text), false, m.messages[0].detailStatus, collapsibleRenderOpts{}))
+	require.True(t, m.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(m.messages[0].text), false, m.messages[0].detailStatus, m.messages[0].at, collapsibleRenderOpts{}))
 }
 
 func TestMarkdownSchedulesAsyncGlamour(t *testing.T) {
@@ -106,7 +106,7 @@ func TestGlamourRenderMsgUpdatesCache(t *testing.T) {
 	})
 	require.Nil(t, cmd)
 	require.False(t, updated.messages[0].glamourPending)
-	require.True(t, updated.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(source), false, updated.messages[0].detailStatus, collapsibleRenderOpts{}))
+	require.True(t, updated.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(source), false, updated.messages[0].detailStatus, updated.messages[0].at, collapsibleRenderOpts{}))
 }
 
 func TestAIMarkdownPreservesBlockWidth(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/constants"
@@ -46,12 +47,20 @@ func isShellCancelKey(msg tea.KeyPressMsg) bool {
 }
 
 func (m Model) addShellDetailMessage(label, body string, status constants.DetailStatus) Model {
+	return m.addShellDetailMessageAt(label, body, status, time.Now())
+}
+
+func (m Model) addShellDetailMessageAt(label, body string, status constants.DetailStatus, at time.Time) Model {
+	if at.IsZero() {
+		at = time.Now()
+	}
 	m.messages = append(m.messages, message{
 		text:           body,
 		kind:           constants.MessageDetail,
 		detailLabel:    label,
 		detailStatus:   status,
 		detailExpanded: true,
+		at:             at,
 	})
 	m.layout.ContentDirty = true
 	return m
@@ -62,7 +71,8 @@ func (m Model) handleShellSubmit(command string, withContext bool) (Model, tea.C
 		return m, nil, false
 	}
 
-	m = m.addUserMessage(command)
+	at := time.Now()
+	m = m.addUserMessageAt(command, at)
 	m = m.resetInput()
 
 	m.shell.Running = true
@@ -70,7 +80,7 @@ func (m Model) handleShellSubmit(command string, withContext bool) (Model, tea.C
 	m.shell.WithContext = withContext
 	m.shell.Output = ""
 	m = m.beginShellActivity()
-	m = m.addShellDetailMessage(shellDetailLabel(command), "(running...)", constants.DetailStatusRunning)
+	m = m.addShellDetailMessageAt(shellDetailLabel(command), "(running...)", constants.DetailStatusRunning, at)
 	m.shell.DetailMsgID = len(m.messages) - 1
 	m.layout.ContentDirty = true
 	m = m.syncLayout(true)
@@ -118,6 +128,7 @@ func (m Model) handleShellSubmit(command string, withContext bool) (Model, tea.C
 		waitShellOutput(outCh),
 		waitShellDone(doneCh, command, withContext),
 		m.spinnerTickCmd(),
+		m.activityStopwatchStartCmd(),
 	), true
 }
 
