@@ -8,16 +8,6 @@ import (
 	"github.com/riipandi/elph/internal/constants"
 )
 
-// ThinkingFormat selects how reasoning parameters are sent to OpenAI-compatible APIs.
-type ThinkingFormat string
-
-const (
-	ThinkingFormatReasoningEffort ThinkingFormat = "reasoning_effort"
-	ThinkingFormatOpenRouter      ThinkingFormat = "openrouter"
-	ThinkingFormatQwen            ThinkingFormat = "qwen"
-	ThinkingFormatDeepSeek        ThinkingFormat = "deepseek"
-)
-
 // ThinkingMapState describes a per-level entry in thinkingLevelMap.
 type ThinkingMapState int
 
@@ -31,23 +21,6 @@ const (
 type ThinkingMapValue struct {
 	State ThinkingMapState
 	Value string
-}
-
-// ThinkingConfig is the resolved thinking payload for one turn.
-type ThinkingConfig struct {
-	Enabled bool
-
-	// Anthropic budget-based thinking.
-	BudgetTokens int
-
-	// Anthropic adaptive thinking (thinking.type=adaptive + output_config.effort).
-	Adaptive       bool
-	AdaptiveEffort string
-
-	// OpenAI-compatible reasoning controls.
-	ReasoningEffort string
-	ThinkingFormat  ThinkingFormat
-	EnableThinking  bool
 }
 
 var defaultThinkingBudgets = map[constants.ThinkingLevel]int{
@@ -289,7 +262,7 @@ func resolveOpenAIThinking(cfg ThinkingConfig, model ResolvedModel, level consta
 		// DeepSeek reasoner models infer thinking from model id; no extra param required.
 		return cfg
 	default:
-		if model.Compat.supportsReasoningEffort() && effort != "" {
+		if model.Compat.ReasoningEffortSupported() && effort != "" {
 			cfg.ReasoningEffort = effort
 		}
 		return cfg

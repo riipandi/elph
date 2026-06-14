@@ -1,4 +1,5 @@
-package provider
+// Package anthropic provides an Anthropic Messages API adapter for Elph providers.
+package anthropic
 
 import (
 	"context"
@@ -8,13 +9,20 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
+	provider "github.com/riipandi/elph/pkg/ai/protocol"
+	"github.com/riipandi/elph/pkg/ai/providers/internal/httpheaders"
 	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
-const defaultAnthropicBaseURL = "https://api.anthropic.com"
+const (
+	// Name is the default provider identifier.
+	Name = "anthropic"
+	// DefaultURL is the default Anthropic API base URL.
+	DefaultURL = "https://api.anthropic.com"
+)
 
-// AnthropicOptions configures an Anthropic Messages API provider.
-type AnthropicOptions struct {
+// Options configures an Anthropic provider.
+type Options struct {
 	ID          string
 	APIKey      string
 	Model       string
@@ -23,56 +31,50 @@ type AnthropicOptions struct {
 	MaxTokens   int
 	Temperature float64
 	TopP        float64
+	UserAgent   string
 }
 
-// Anthropic calls the Anthropic Messages API via anthropic-sdk-go.
-type Anthropic struct {
-	IDName      string
-	APIKey      string
-	Model       string
-	BaseURL     string
-	Headers     map[string]string
-	MaxTokens   int
-	Temperature float64
-	TopP        float64
-	client      anthropic.Client
+type languageModel struct {
+	opts   Options
+	client anthropic.Client
 }
 
-// NewAnthropic builds an Anthropic provider from explicit settings.
-func NewAnthropic(opts AnthropicOptions) *Anthropic {
-	maxTokens := opts.MaxTokens
-	if maxTokens == 0 {
-		maxTokens = defaultMaxTokens
-	}
+// New builds a provider.Provider backed by anthropic-sdk-go.
+func New(opts Options) provider.Provider {
+	maxTokens := provider.MaxTokensOrDefault(opts.MaxTokens)
 
 	clientOpts := []option.RequestOption{
-		option.WithBaseURL(normalizeAnthropicBaseURL(opts.BaseURL)),
+		option.WithBaseURL(normalizeBaseURL(opts.BaseURL)),
 		option.WithHTTPClient(utils.NewHTTPClient()),
 	}
 	if opts.APIKey != "" {
 		clientOpts = append(clientOpts, option.WithAPIKey(opts.APIKey))
 	}
-	for key, value := range opts.Headers {
+	resolved := httpheaders.ResolveHeaders(opts.Headers, opts.UserAgent, defaultUserAgent())
+	for key, value := range resolved {
 		clientOpts = append(clientOpts, option.WithHeader(key, value))
 	}
 
-	return &Anthropic{
-		IDName:      opts.ID,
-		APIKey:      opts.APIKey,
-		Model:       opts.Model,
-		BaseURL:     strings.TrimRight(opts.BaseURL, "/"),
-		Headers:     opts.Headers,
-		MaxTokens:   maxTokens,
-		Temperature: opts.Temperature,
-		TopP:        opts.TopP,
-		client:      anthropic.NewClient(clientOpts...),
+	return &languageModel{
+		opts: Options{
+			ID:          opts.ID,
+			APIKey:      opts.APIKey,
+			Model:       SanitizeModelID(opts.Model),
+			BaseURL:     strings.TrimRight(opts.BaseURL, "/"),
+			Headers:     opts.Headers,
+			MaxTokens:   maxTokens,
+			Temperature: opts.Temperature,
+			TopP:        opts.TopP,
+			UserAgent:   opts.UserAgent,
+		},
+		client: anthropic.NewClient(clientOpts...),
 	}
 }
 
-func normalizeAnthropicBaseURL(baseURL string) string {
+func normalizeBaseURL(baseURL string) string {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	if baseURL == "" {
-		return defaultAnthropicBaseURL
+		return DefaultURL
 	}
 	if strings.HasSuffix(baseURL, "/v1") {
 		baseURL = strings.TrimSuffix(baseURL, "/v1")
@@ -80,16 +82,16 @@ func normalizeAnthropicBaseURL(baseURL string) string {
 	return baseURL
 }
 
-func (p *Anthropic) ID() string {
-	if p.IDName == "" {
-		return "anthropic"
+func (p *languageModel) ID() string {
+	if p.opts.ID == "" {
+		return Name
 	}
-	return p.IDName
+	return p.opts.ID
 }
 
-func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (TurnResult, error) {
-	if p.APIKey == "" {
-		return TurnResult{}, ErrMissingAPIKey
+func (p *languageModel) Complete(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
+	if p.opts.APIKey == "" {
+		return provider.TurnResult{}, provider.ErrMissingAPIKey
 	}
 	if req.Stream != nil {
 		return p.completeStream(ctx, req)
@@ -97,28 +99,28 @@ func (p *Anthropic) Complete(ctx context.Context, req TurnRequest) (TurnResult, 
 	return p.completeOnce(ctx, req)
 }
 
-func (p *Anthropic) completeOnce(ctx context.Context, req TurnRequest) (TurnResult, error) {
+func (p *languageModel) completeOnce(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
 	params := p.buildParams(req)
 	resp, err := p.client.Messages.New(ctx, params)
 	if err != nil {
-		return TurnResult{}, err
+		return provider.TurnResult{}, toProviderErr(err)
 	}
 
-	result := turnResultFromAnthropicMessage(resp)
-	if !anthropicResultValid(result) {
-		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
+	result := turnResultFromMessage(resp)
+	if !resultValid(result) {
+		return provider.TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
 }
 
-func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnResult, error) {
+func (p *languageModel) completeStream(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
 	params := p.buildParams(req)
 	stream := p.client.Messages.NewStreaming(ctx, params)
 
 	var thinking, content strings.Builder
-	var usage TurnUsage
-	var toolCalls []ToolCall
-	var currentTool *ToolCall
+	var usage provider.TurnUsage
+	var toolCalls []provider.ToolCall
+	var currentTool *provider.ToolCall
 	var toolInput strings.Builder
 
 	for stream.Next() {
@@ -132,7 +134,7 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 			}
 		case anthropic.ContentBlockStartEvent:
 			if variant.ContentBlock.Type == "tool_use" {
-				currentTool = &ToolCall{
+				currentTool = &provider.ToolCall{
 					ID:   variant.ContentBlock.ID,
 					Name: variant.ContentBlock.Name,
 				}
@@ -148,12 +150,12 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 			case "thinking_delta":
 				if delta.Thinking != "" {
 					thinking.WriteString(delta.Thinking)
-					req.Stream.emitThinking(delta.Thinking)
+					req.Stream.EmitThinking(delta.Thinking)
 				}
 			case "text_delta":
 				if delta.Text != "" {
 					content.WriteString(delta.Text)
-					req.Stream.emitContent(delta.Text)
+					req.Stream.EmitContent(delta.Text)
 				}
 			case "input_json_delta":
 				if delta.PartialJSON != "" {
@@ -173,38 +175,38 @@ func (p *Anthropic) completeStream(ctx context.Context, req TurnRequest) (TurnRe
 		}
 	}
 	if err := stream.Err(); err != nil {
-		return TurnResult{}, err
+		return provider.TurnResult{}, toProviderErr(err)
 	}
 
-	result := TurnResult{
+	result := provider.TurnResult{
 		Thinking:  strings.TrimSpace(thinking.String()),
 		Content:   strings.TrimSpace(content.String()),
 		Usage:     usage,
 		ToolCalls: toolCalls,
 	}
 	if len(result.ToolCalls) > 0 {
-		result.StopReason = StopReasonToolUse
+		result.StopReason = provider.StopReasonToolUse
 	} else {
-		result.StopReason = StopReasonEndTurn
+		result.StopReason = provider.StopReasonEndTurn
 	}
-	if !anthropicResultValid(result) {
-		return TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
+	if !resultValid(result) {
+		return provider.TurnResult{}, fmt.Errorf("%s: empty response", p.ID())
 	}
 	return result, nil
 }
 
-func (p *Anthropic) buildParams(req TurnRequest) anthropic.MessageNewParams {
-	model := req.Model
+func (p *languageModel) buildParams(req provider.TurnRequest) anthropic.MessageNewParams {
+	model := SanitizeModelID(req.Model)
 	if model == "" {
-		model = p.Model
+		model = p.opts.Model
 	}
 
 	params := anthropic.MessageNewParams{
-		Model:      anthropic.Model(model),
-		MaxTokens:  int64(p.MaxTokens),
-		Messages:   anthropicMessages(BuildMessages(req)),
-		Temperature: anthropic.Float(p.Temperature),
-		TopP:        anthropic.Float(p.TopP),
+		Model:       anthropic.Model(model),
+		MaxTokens:   int64(p.opts.MaxTokens),
+		Messages:    anthropicMessages(provider.BuildMessages(req)),
+		Temperature: anthropic.Float(p.opts.Temperature),
+		TopP:        anthropic.Float(p.opts.TopP),
 	}
 	if strings.TrimSpace(req.SystemPrompt) != "" {
 		params.System = []anthropic.TextBlockParam{{Text: req.SystemPrompt}}
@@ -212,11 +214,11 @@ func (p *Anthropic) buildParams(req TurnRequest) anthropic.MessageNewParams {
 	if tools := anthropicTools(req.Tools); len(tools) > 0 {
 		params.Tools = tools
 	}
-	applyAnthropicThinkingParams(&params, req.Thinking)
+	applyThinkingParams(&params, req.Thinking)
 	return params
 }
 
-func applyAnthropicThinkingParams(params *anthropic.MessageNewParams, thinking ThinkingConfig) {
+func applyThinkingParams(params *anthropic.MessageNewParams, thinking provider.ThinkingConfig) {
 	if !thinking.Enabled {
 		return
 	}

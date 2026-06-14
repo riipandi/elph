@@ -1,16 +1,5 @@
 package provider
 
-// Compat holds provider-specific API compatibility overrides (Pi-style).
-type Compat struct {
-	SupportsDeveloperRole    *bool  `json:"supportsDeveloperRole,omitempty"`
-	SupportsReasoningEffort  *bool  `json:"supportsReasoningEffort,omitempty"`
-	SupportsUsageInStreaming *bool  `json:"supportsUsageInStreaming,omitempty"`
-	ForceAdaptiveThinking    bool   `json:"forceAdaptiveThinking,omitempty"`
-	AllowEmptySignature      bool   `json:"allowEmptySignature,omitempty"`
-	ThinkingFormat           string `json:"thinkingFormat,omitempty"`
-	MaxTokensField           string `json:"maxTokensField,omitempty"`
-}
-
 func mergeCompat(providerCompat, modelCompat Compat) Compat {
 	out := providerCompat
 	if modelCompat.SupportsDeveloperRole != nil {
@@ -35,25 +24,4 @@ func mergeCompat(providerCompat, modelCompat Compat) Compat {
 		out.MaxTokensField = modelCompat.MaxTokensField
 	}
 	return out
-}
-
-func (c Compat) supportsDeveloperRole() bool {
-	if c.SupportsDeveloperRole != nil {
-		return *c.SupportsDeveloperRole
-	}
-	return true
-}
-
-func (c Compat) supportsReasoningEffort() bool {
-	if c.SupportsReasoningEffort != nil {
-		return *c.SupportsReasoningEffort
-	}
-	return true
-}
-
-func (c Compat) supportsUsageInStreaming() bool {
-	if c.SupportsUsageInStreaming != nil {
-		return *c.SupportsUsageInStreaming
-	}
-	return true
 }

@@ -1,13 +1,14 @@
-package provider
+package anthropic
 
 import (
 	"encoding/json"
 	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
+	provider "github.com/riipandi/elph/pkg/ai/protocol"
 )
 
-func anthropicTools(tools []ToolDefinition) []anthropic.ToolUnionParam {
+func anthropicTools(tools []provider.ToolDefinition) []anthropic.ToolUnionParam {
 	if len(tools) == 0 {
 		return nil
 	}
@@ -52,7 +53,7 @@ func anthropicToolInputSchema(params map[string]any) anthropic.ToolInputSchemaPa
 	return schema
 }
 
-func anthropicMessages(messages []ChatMessage) []anthropic.MessageParam {
+func anthropicMessages(messages []provider.ChatMessage) []anthropic.MessageParam {
 	out := make([]anthropic.MessageParam, 0, len(messages))
 	for _, msg := range messages {
 		switch msg.Role {
@@ -81,8 +82,8 @@ func anthropicMessages(messages []ChatMessage) []anthropic.MessageParam {
 	return out
 }
 
-func turnResultFromAnthropicMessage(msg *anthropic.Message) TurnResult {
-	var result TurnResult
+func turnResultFromMessage(msg *anthropic.Message) provider.TurnResult {
+	var result provider.TurnResult
 	for _, block := range msg.Content {
 		switch variant := block.AsAny().(type) {
 		case anthropic.ThinkingBlock:
@@ -107,7 +108,7 @@ func turnResultFromAnthropicMessage(msg *anthropic.Message) TurnResult {
 			if len(args) == 0 {
 				args = json.RawMessage("{}")
 			}
-			result.ToolCalls = append(result.ToolCalls, ToolCall{
+			result.ToolCalls = append(result.ToolCalls, provider.ToolCall{
 				ID:        variant.ID,
 				Name:      variant.Name,
 				Arguments: args,
@@ -116,17 +117,17 @@ func turnResultFromAnthropicMessage(msg *anthropic.Message) TurnResult {
 	}
 	switch msg.StopReason {
 	case anthropic.StopReasonToolUse:
-		result.StopReason = StopReasonToolUse
+		result.StopReason = provider.StopReasonToolUse
 	default:
 		if len(result.ToolCalls) > 0 {
-			result.StopReason = StopReasonToolUse
+			result.StopReason = provider.StopReasonToolUse
 		} else {
-			result.StopReason = StopReasonEndTurn
+			result.StopReason = provider.StopReasonEndTurn
 		}
 	}
 	return result
 }
 
-func anthropicResultValid(result TurnResult) bool {
+func resultValid(result provider.TurnResult) bool {
 	return result.Thinking != "" || result.Content != "" || len(result.ToolCalls) > 0
 }

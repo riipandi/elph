@@ -1,27 +1,4 @@
 package provider
 
-import (
-	"context"
-	"errors"
-)
-
-// TurnRequest is a completion request to an upstream model API.
-type TurnRequest struct {
-	SystemPrompt string
-	UserPrompt   string
-	Model        string
-	Thinking     ThinkingConfig
-	Compat       Compat
-	Stream       *TurnStream
-	Messages     []ChatMessage
-	Tools        []ToolDefinition
-}
-
-// Provider completes one agent turn against an upstream model API.
-type Provider interface {
-	ID() string
-	Complete(ctx context.Context, req TurnRequest) (TurnResult, error)
-}
-
-// ErrMissingAPIKey reports that no provider credentials are configured.
-var ErrMissingAPIKey = errors.New("provider: missing API key")
+// Provider, TurnRequest, and related types live in pkg/ai/protocol and are
+// re-exported from this package for catalog consumers.

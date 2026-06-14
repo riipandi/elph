@@ -141,8 +141,9 @@ tools.
 
 Provider adapters map definitions to API formats:
 
-- OpenAI: [openai-go](https://github.com/charmbracelet/openai-go) via `openAIChatTools` in `pkg/ai/provider/openai_tools.go`
-- Anthropic: [anthropic-sdk-go](https://github.com/charmbracelet/anthropic-sdk-go) via `anthropicTools` in `pkg/ai/provider/anthropic_tools.go`
+- OpenAI-compatible: `pkg/ai/providers/openaicompat` (wraps `openai` + compat hooks)
+- OpenRouter: `pkg/ai/providers/openrouter` (reasoning extra body on top of openaicompat)
+- Anthropic: `pkg/ai/providers/anthropic` ([anthropic-sdk-go](https://github.com/charmbracelet/anthropic-sdk-go))
 
 ### Adding a new API-exposed tool
 

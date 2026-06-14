@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	elphant "github.com/riipandi/elph/pkg/ai/providers/anthropic"
+	elphopenai "github.com/riipandi/elph/pkg/ai/providers/openai"
+	elphcompat "github.com/riipandi/elph/pkg/ai/providers/openaicompat"
+	elphor "github.com/riipandi/elph/pkg/ai/providers/openrouter"
 	"github.com/riipandi/elph/pkg/ai/utils"
 )
 
@@ -91,21 +95,26 @@ func NewProvider(provider RegisteredProvider, model ResolvedModel) (Provider, er
 		return nil, fmt.Errorf("provider %q: %w", provider.ID, err)
 	}
 
+	openAIOpts := elphopenai.Options{
+		ID:           provider.ID,
+		APIKey:       apiKey,
+		BaseURL:      model.BaseURL,
+		DefaultModel: model.ID,
+		Headers:      headers,
+		AuthHeader:   provider.Config.AuthHeader,
+		MaxTokens:    model.MaxTokens,
+		Temperature:  model.Temperature,
+		TopP:         model.TopP,
+	}
+
 	switch model.API {
 	case APIOpenAICompletions:
-		return NewOpenAICompatible(OpenAIOptions{
-			ID:           provider.ID,
-			APIKey:       apiKey,
-			BaseURL:      model.BaseURL,
-			DefaultModel: model.ID,
-			Headers:      headers,
-			AuthHeader:   provider.Config.AuthHeader,
-			MaxTokens:    model.MaxTokens,
-			Temperature:  model.Temperature,
-			TopP:         model.TopP,
-		}), nil
+		if model.Compat.ThinkingFormat == string(ThinkingFormatOpenRouter) {
+			return elphor.New(openAIOpts), nil
+		}
+		return elphcompat.New(openAIOpts), nil
 	case APIAnthropicMessages:
-		return NewAnthropic(AnthropicOptions{
+		return elphant.New(elphant.Options{
 			ID:          provider.ID,
 			APIKey:      apiKey,
 			Model:       model.ID,
