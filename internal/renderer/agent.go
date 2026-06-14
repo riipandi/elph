@@ -99,7 +99,7 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 	case responseIdx >= 0 && strings.TrimSpace(response) != "":
 		m.messages[responseIdx].text = response
 		m.messages[responseIdx].renderCache = messageRenderCache{}
-		m.messages[responseIdx].glamourPending = false
+		m.messages[responseIdx].glamourPending = true
 		m.session.AppendLog("ai", response)
 		m.layout.ContentDirty = true
 	case responseIdx < 0 && strings.TrimSpace(response) != "":
@@ -115,7 +115,9 @@ func (m Model) finishAgentTurn(thinking, response string) (Model, tea.Cmd) {
 	m = m.syncLayout(true)
 
 	if responseIdx >= 0 {
-		return m.scheduleGlamourRender(responseIdx)
+		m, cmd := m.scheduleGlamourRender(responseIdx)
+		m.layout.ContentDirty = false
+		return m, cmd
 	}
 	return m, nil
 }

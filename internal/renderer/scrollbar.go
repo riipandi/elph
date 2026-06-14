@@ -35,10 +35,11 @@ func (m Model) contentAreaWidth() int {
 }
 
 func (m Model) targetContentWidth() int {
-	if m.contentScrollable() {
-		return max(m.width-scrollBarWidth, 1)
-	}
-	return m.width
+	// Always reserve the scrollbar gutter so content width never changes
+	// when the viewport transitions to scrollable. This eliminates the
+	// width-triggered cache miss loop that forced synchronous glamour
+	// re-rendering of every AI message during the transition.
+	return max(m.width-scrollBarWidth, 1)
 }
 
 // messageAreaWidth is the rendered width for stream message backgrounds.

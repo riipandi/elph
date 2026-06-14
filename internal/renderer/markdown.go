@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -13,7 +14,104 @@ import (
 
 // All markdown formatting runs off the UI thread so stream completion never
 // blocks the event loop, regardless of response size.
+
+// markdownLinkStripper is used by renderAIMessageGlamour to pre-process links
+// before glamour rendering, preventing URL duplication in the output.
+var markdownLinkStripper = regexp.MustCompile(`\[([^\]]*)\]\(([^)]*)\)`)
+
 const glamourAsyncMinLen = 1
+
+// stripMarkdownSyntax converts basic markdown formatting to clean plain text
+// in a single pass (no regex, no per-pattern allocations).
+// Used in the plain renderer path (glamour-pending) so users see readable
+// text instead of raw markdown syntax.
+func stripMarkdownSyntax(s string) string {
+	// Fast path: scan for the first byte that could be markdown syntax.
+	i := strings.IndexAny(s, "*_`[")
+	if i < 0 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	// Copy the prefix before the first marker.
+	b.WriteString(s[:i])
+	for i < len(s) {
+		switch s[i] {
+		case '*':
+			if i+1 < len(s) && s[i+1] == '*' {
+				// **bold**
+				j := strings.Index(s[i+2:], "**")
+				if j >= 0 {
+					b.WriteString(s[i+2 : i+2+j])
+					i += 4 + j
+					continue
+				}
+			}
+			// *italic*
+			j := strings.Index(s[i+1:], "*")
+			if j >= 0 {
+				b.WriteString(s[i+1 : i+1+j])
+				i += 2 + j
+				continue
+			}
+			b.WriteByte(s[i])
+			i++
+
+		case '_':
+			if i+1 < len(s) && s[i+1] == '_' {
+				// __bold__
+				j := strings.Index(s[i+2:], "__")
+				if j >= 0 {
+					b.WriteString(s[i+2 : i+2+j])
+					i += 4 + j
+					continue
+				}
+			}
+			// _italic_
+			j := strings.Index(s[i+1:], "_")
+			if j >= 0 {
+				b.WriteString(s[i+1 : i+1+j])
+				i += 2 + j
+				continue
+			}
+			b.WriteByte(s[i])
+			i++
+
+		case '`':
+			// `code`
+			j := strings.Index(s[i+1:], "`")
+			if j >= 0 {
+				b.WriteString(s[i+1 : i+1+j])
+				i += 2 + j
+				continue
+			}
+			b.WriteByte(s[i])
+			i++
+
+		case '[':
+			// [text](url) → text (url)
+			j := strings.Index(s[i:], "](")
+			if j >= 0 {
+				k := strings.Index(s[i+j+2:], ")")
+				if k >= 0 {
+					b.WriteString(s[i+1 : i+j])
+					b.WriteString(" (")
+					b.WriteString(s[i+j+2 : i+j+2+k])
+					b.WriteString(")")
+					i += j + 3 + k
+					continue
+				}
+			}
+			b.WriteByte(s[i])
+			i++
+
+		default:
+			b.WriteByte(s[i])
+			i++
+		}
+	}
+	return b.String()
+}
 
 type markdownRenderCache struct {
 	mu       sync.Mutex
@@ -93,14 +191,23 @@ func looksLikeMarkdown(text string) bool {
 }
 
 func renderAIMessagePlain(blockWidth int, text string) string {
-	return renderStyledMessage(blockWidth, constants.MessageAI, text)
+	return renderStyledMessage(blockWidth, constants.MessageAI, stripMarkdownSyntax(text))
 }
 
 func renderAIMessageGlamour(blockWidth int, text string) string {
 	_, hPad := messageBlockPadding(constants.MessageAI)
 	contentW := max(blockWidth-2*hPad, 1)
 
-	rendered, err := aiMarkdownCache.renderMarkdown(contentW, text)
+	// Strip markdown link syntax before glamour rendering to avoid duplicating
+	// URLs. Glamour renders [t](u) as both "t" and "u" (e.g. [x](https://y)
+	// becomes "x https://y"). Pre-processing to just "t (u)" makes glamour
+	// only style "t" and we re-append the URL more cleanly.
+	//
+	// We only strip links here — bold/code/italic are left for glamour to
+	// style properly.
+	processed := markdownLinkStripper.ReplaceAllString(text, "$1 ($2)")
+
+	rendered, err := aiMarkdownCache.renderMarkdown(contentW, processed)
 	if err != nil {
 		return renderAIMessagePlain(blockWidth, text)
 	}

@@ -88,7 +88,8 @@ func TestMarkdownSchedulesAsyncGlamour(t *testing.T) {
 	require.True(t, updated.messages[0].glamourPending)
 
 	preview := stripANSI(updated.renderMessageAt(0))
-	require.Contains(t, preview, "**hello**")
+	require.Contains(t, preview, "hello")
+	require.NotContains(t, preview, "**")
 }
 
 func TestGlamourRenderMsgUpdatesCache(t *testing.T) {
@@ -140,4 +141,58 @@ func TestNonAIMessagesSkipMarkdown(t *testing.T) {
 		kind: constants.MessageUser,
 	}))
 	require.Contains(t, rendered, "**literal**")
+}
+
+func TestAIMessageStripsMarkdownLinksInPlain(t *testing.T) {
+	m := testModel()
+	m.messages = []message{{
+		text:           "GitHub: [github.com/riipandi/elph](https://github.com/riipandi/elph)",
+		kind:           constants.MessageAI,
+		glamourPending: true,
+	}}
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, rendered, "GitHub:")
+	require.Contains(t, rendered, "github.com/riipandi/elph")
+	require.Contains(t, rendered, "https://github.com/riipandi/elph")
+	// The raw markdown syntax [ and ] should not appear
+	require.NotContains(t, rendered, "[")
+	require.NotContains(t, rendered, "](")
+}
+
+func TestAIMessageStripsMarkdownSyntaxPreGlamour(t *testing.T) {
+	m := testModel()
+	m.messages = []message{{text: "**bold** and `code` and [link](https://example.com)", kind: constants.MessageAI, glamourPending: true}}
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, rendered, "bold")
+	require.Contains(t, rendered, "code")
+	require.Contains(t, rendered, "link")
+	require.NotContains(t, rendered, "**")
+	require.NotContains(t, rendered, "`")
+	require.NotContains(t, rendered, "](")
+}
+
+func TestStripMarkdownSyntax(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"bold", "**bold**", "bold"},
+		{"bold alt", "__bold__", "bold"},
+		{"code", "`code`", "code"},
+		{"link", "[text](url)", "text (url)"},
+		{"italic", "*italic*", "italic"},
+		{"italic alt", "_italic_", "italic"},
+		{"mixed", "**bold** and `code`", "bold and code"},
+		{"link in sentence", "visit [GitHub](https://github.com) now", "visit GitHub (https://github.com) now"},
+		{"no markdown", "plain text", "plain text"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stripMarkdownSyntax(tt.input)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }

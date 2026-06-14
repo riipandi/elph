@@ -28,7 +28,7 @@ func TestSyncLayoutFitsTerminalHeight(t *testing.T) {
 
 	m = m.syncLayout(false)
 
-	require.Equal(t, 80, m.content.Width())
+	require.Equal(t, m.width-scrollBarWidth, m.content.Width())
 	require.Positive(t, m.content.Height())
 	require.LessOrEqual(t, m.content.Height()+m.layout.ChromeH, m.height)
 }

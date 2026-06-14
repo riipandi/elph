@@ -85,8 +85,9 @@ func (m Model) syncLayout(follow bool) Model {
 	prevH := m.content.Height()
 	m.content.SetHeight(max(m.height-m.chromeHeight(), 1))
 
-	// When already scrollable, build at guttered width immediately so message
-	// backgrounds never span the scrollbar column.
+	// Build content at guttered width immediately so message backgrounds never
+	// span the scrollbar column. Always reserve the gutter (targetContentWidth)
+	// so width remains stable — no cache-miss chain on scrollable transition.
 	prevContentW := m.content.Width()
 	targetW := m.targetContentWidth()
 	m.content.SetWidth(targetW)
@@ -97,12 +98,6 @@ func (m Model) syncLayout(follow bool) Model {
 		} else {
 			m = m.clearStreamPrefixCache()
 		}
-		m.content.SetContent(m.contentView())
-		m.layout.ContentDirty = false
-	}
-	// First transition into scrollable content at full width.
-	if m.contentScrollable() && targetW == m.width {
-		m.content.SetWidth(max(m.width-scrollBarWidth, 1))
 		m.content.SetContent(m.contentView())
 		m.layout.ContentDirty = false
 	}
@@ -241,19 +236,13 @@ func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) 
 // comes from messageBlockGap; boxed kinds also get internal vertical padding.
 func renderStyledMessage(width int, kind constants.MessageKind, text string) string {
 	vPad, hPad := messageBlockPadding(kind)
-	if vPad > 0 {
-		return constants.MessageStyle(kind).
-			Padding(vPad, hPad).
-			Width(width).
-			Render(text)
-	}
-	lineStyle := constants.MessageStyle(kind).Padding(0, hPad).Width(width)
-	lines := strings.Split(text, "\n")
-	out := make([]string, len(lines))
-	for i, line := range lines {
-		out[i] = lineStyle.Render(line)
-	}
-	return strings.Join(out, "\n")
+	// Use a single Render call — Width() already applies per-line padding,
+	// so the per-line loop below is unnecessary and creates O(n) string
+	// allocations that add GC pressure on every content rebuild.
+	return constants.MessageStyle(kind).
+		Padding(vPad, hPad).
+		Width(width).
+		Render(text)
 }
 
 // bannerContentWidth is the usable text width inside the banner border and padding.
