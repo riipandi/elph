@@ -229,18 +229,21 @@ func normalizeSpacingLines(s string) string {
 func stripANSI(s string) string {
 	var b strings.Builder
 	inEsc := false
-	for _, r := range s {
-		if r == '\x1b' {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '\x1b' {
 			inEsc = true
 			continue
 		}
 		if inEsc {
-			if r == 'm' {
+			// CSI (ESC[) ends with 0x40-0x7E (e.g. 'm' for SGR).
+			// OSC (ESC]) ends with ST (ESC\) or BEL (0x07).
+			if c == 'm' || c == '\\' || c == 0x07 {
 				inEsc = false
 			}
 			continue
 		}
-		b.WriteRune(r)
+		b.WriteByte(c)
 	}
 	return b.String()
 }

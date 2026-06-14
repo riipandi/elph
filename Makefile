@@ -1,9 +1,17 @@
 .DEFAULT_GOAL := help
 
+GO          := $$(which go)
+GOTEST      := $$(which gotestsum)
+
 BINARY_NAME := elph
 BUILD_DIR   := ./build/release
-GO          := go
-GOTEST      := gotestsum
+PKG_NAME    := github.com/riipandi/elph
+PKG_VERSION := 0.0.0
+BUILD_HASH  := $$(git rev-parse --short HEAD)
+BUILD_DATE  := $$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_META  := -X $(PKG_NAME)/internal/config.AppVersion=$(PKG_VERSION) \
+							-X $(PKG_NAME)/internal/config.BuildHash=$(BUILD_HASH) \
+							-X $(PKG_NAME)/internal/config.BuildDate=$(BUILD_DATE)
 
 # ─── Args / Flags ────────────────────────────────────────────────────────────
 
@@ -27,8 +35,14 @@ TEST_FLAGS := --format short-verbose -- -count=1 -v
 # ─── Build ───────────────────────────────────────────────────────────────────
 
 build: ## Build the application binary
-	@$(GO) build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
-	@echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"
+	@echo "Building $(PKG_NAME) v$(PKG_VERSION) ($(BUILD_HASH)) $(BUILD_DATE)"
+	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
+	$(GO) build -ldflags="-w -s -extldflags -static-pie $(BUILD_META)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd; \
+	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
+	_elapsed=$$(( _end - _start )); \
+	echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"; \
+	echo "Binary file: $(BUILD_DIR)/$(BINARY_NAME)"; \
+	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
 install: build ## Build and copy binary to ~/.local/bin
 	@mkdir -p $(HOME)/.local/bin

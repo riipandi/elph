@@ -19,6 +19,23 @@ import (
 // before glamour rendering, preventing URL duplication in the output.
 var markdownLinkStripper = regexp.MustCompile(`\[([^\]]*)\]\(([^)]*)\)`)
 
+// OSC 8 hyperlink helpers: ESC ]8 ; ; URL ESC \ TEXT ESC ]8 ; ; ESC \
+func writeHyperlink(b *strings.Builder, text, url string) {
+	b.WriteString("\x1b]8;;")
+	b.WriteString(url)
+	b.WriteString("\x1b\\")
+	b.WriteString(text)
+	b.WriteString("\x1b]8;;")
+	b.WriteString("\x1b\\")
+}
+
+func wrapHyperlink(text, url string) string {
+	var b strings.Builder
+	b.Grow(len(text) + len(url) + 20)
+	writeHyperlink(&b, text, url)
+	return b.String()
+}
+
 const glamourAsyncMinLen = 1
 
 // stripMarkdownSyntax converts basic markdown formatting to clean plain text
@@ -96,15 +113,20 @@ func stripMarkdownSyntax(s string) string {
 			i++
 
 		case '[':
-			// [text](url) → text (url)
+			// [text](url) → text wrapped in OSC 8 hyperlink (clickable).
+			// When text == url, just output the URL (no OSC 8 needed —
+			// it's already visible as plain text).
 			j := strings.Index(s[i:], "](")
 			if j >= 0 {
 				k := strings.Index(s[i+j+2:], ")")
 				if k >= 0 {
-					b.WriteString(s[i+1 : i+j])
-					b.WriteString(" (")
-					b.WriteString(s[i+j+2 : i+j+2+k])
-					b.WriteString(")")
+					text := s[i+1 : i+j]
+					url := s[i+j+2 : i+j+2+k]
+					if text == url {
+						b.WriteString(text)
+					} else {
+						writeHyperlink(&b, text, url)
+					}
 					i += j + 3 + k
 					continue
 				}
@@ -152,7 +174,6 @@ type glamourRenderMsg struct {
 	width  int
 	source string
 	output string
-	err    error
 }
 
 func glamourStylePath() string {
@@ -223,14 +244,20 @@ func renderAIMessageGlamour(blockWidth int, text string) string {
 	_, hPad := messageBlockPadding(constants.MessageAI)
 	contentW := max(blockWidth-2*hPad, 1)
 
-	// Strip markdown link syntax before glamour rendering to avoid duplicating
-	// URLs. Glamour renders [t](u) as both "t" and "u" (e.g. [x](https://y)
-	// becomes "x https://y"). Pre-processing to just "t (u)" makes glamour
-	// only style "t" and we re-append the URL more cleanly.
-	//
-	// We only strip links here — bold/code/italic are left for glamour to
-	// style properly.
-	processed := markdownLinkStripper.ReplaceAllString(text, "$1 ($2)")
+	// Strip markdown link syntax before glamour rendering:
+	// [text](url) → text wrapped in OSC 8 hyperlink (text is visible,
+	// url is embedded as clickable). When text == url, just output the
+	// URL (no wrapping needed — it's already visible).
+	processed := markdownLinkStripper.ReplaceAllStringFunc(text, func(match string) string {
+		parts := markdownLinkStripper.FindStringSubmatch(match)
+		if len(parts) != 3 {
+			return match
+		}
+		if parts[1] == parts[2] {
+			return parts[1]
+		}
+		return wrapHyperlink(parts[1], parts[2])
+	})
 
 	rendered, err := aiMarkdownCache.renderMarkdown(contentW, processed)
 	if err != nil {

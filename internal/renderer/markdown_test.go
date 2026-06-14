@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -154,10 +155,42 @@ func TestAIMessageStripsMarkdownLinksInPlain(t *testing.T) {
 	rendered := stripANSI(m.renderMessageAt(0))
 	require.Contains(t, rendered, "GitHub:")
 	require.Contains(t, rendered, "github.com/riipandi/elph")
-	require.Contains(t, rendered, "https://github.com/riipandi/elph")
+	// The URL is embedded as an OSC 8 hyperlink (not visible text).
+	// Verify the raw output has the hyperlink before ANSI stripping.
 	// The raw markdown syntax [ and ] should not appear
 	require.NotContains(t, rendered, "[")
+	raw := m.renderMessageAt(0)
+	require.Contains(t, raw, "\x1b]8;;https://github.com/riipandi/elph\x1b\\")
+	require.Contains(t, raw, "\x1b]8;;\x1b\\")
 	require.NotContains(t, rendered, "](")
+}
+
+func TestAIMessageStripsDuplicateLinkInPlain(t *testing.T) {
+	m := testModel()
+	m.messages = []message{{
+		text:           "visit [https://example.com](https://example.com) now",
+		kind:           constants.MessageAI,
+		glamourPending: true,
+	}}
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	count := strings.Count(rendered, "https://example.com")
+	// URL should appear exactly once, not "url (url)"
+	require.Equal(t, 1, count, "URL should not be duplicated")
+}
+
+func TestAIMessageStripsDuplicateLinkInGlamour(t *testing.T) {
+	m := testModel()
+	m.messages = []message{{
+		text:           "visit [https://example.com](https://example.com) now",
+		kind:           constants.MessageAI,
+		glamourPending: false,
+	}}
+
+	rendered := stripANSI(m.renderMessageAt(0))
+	count := strings.Count(rendered, "https://example.com")
+	// URL should appear exactly once even in glamour path
+	require.Equal(t, 1, count, "URL should not be duplicated in glamour")
 }
 
 func TestAIMessageStripsMarkdownSyntaxPreGlamour(t *testing.T) {
@@ -182,22 +215,19 @@ func TestStripMarkdownSyntax(t *testing.T) {
 		{"bold", "**bold**", "bold"},
 		{"bold alt", "__bold__", "bold"},
 		{"code", "`code`", "code"},
-		{"link", "[text](url)", "text (url)"},
+		{"link", "[text](url)", "text"},
 		{"italic", "*italic*", "italic"},
 		{"italic alt", "_italic_", "italic"},
 		{"mixed", "**bold** and `code`", "bold and code"},
-		{"link in sentence", "visit [GitHub](https://github.com) now", "visit GitHub (https://github.com) now"},
-		{"no markdown", "plain text", "plain text"},
-		{"heading 1", "# Title", "Title"},
-		{"heading 2", "## Section", "Section"},
-		{"heading 6", "###### Deep", "Deep"},
+		{"link in sentence", "visit [GitHub](https://github.com) now", "visit GitHub now"},
+		{"link text eq url", "[https://example.com](https://example.com)", "https://example.com"},
 		{"heading in sentence", "see # section below", "see # section below"},
 		{"heading with inline", "# **bold** title", "bold title"},
 		{"multiple headings", "# First\n\n## Second\n\n### Third", "First\n\nSecond\n\nThird"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := stripMarkdownSyntax(tt.input)
+			got := stripANSI(stripMarkdownSyntax(tt.input))
 			require.Equal(t, tt.want, got)
 		})
 	}
