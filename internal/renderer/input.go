@@ -248,7 +248,7 @@ func (m Model) maxInputHeight() int {
 	case m.modelSelectorActive():
 		overlayH = m.modelSelectorListHeight()
 	}
-	avail := m.height - footerH - activityH - overlayH - minViewportRows - inputChromeSlack
+	avail := m.height - footerH - activityH - m.todoPanelHeight() - overlayH - minViewportRows - inputChromeSlack
 	return min(max(avail, 1), maxInputLines)
 }
 

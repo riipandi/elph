@@ -59,6 +59,9 @@ func (m Model) viewParts() []string {
 	if av := m.activityView(); av != "" {
 		parts = append(parts, av)
 	}
+	if tv := m.todoPanelView(); tv != "" {
+		parts = append(parts, tv)
+	}
 	parts = append(parts, m.inputChromeView(), m.footerView())
 	return parts
 }
@@ -75,6 +78,7 @@ func (m Model) chromeHeight() int {
 	if m.showsActivity() {
 		h += lipgloss.Height(m.activityView())
 	}
+	h += m.todoPanelHeight()
 	return h
 }
 

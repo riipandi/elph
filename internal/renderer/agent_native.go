@@ -12,6 +12,7 @@ import (
 
 func (m Model) resetNativeToolState() Model {
 	m.agent.NativeToolMsgIDs = nil
+	m.agent.TodoListUpdating = false
 	return m
 }
 
@@ -43,7 +44,20 @@ func bashCommandArg(args map[string]any) (string, bool) {
 	return cmd, cmd != ""
 }
 
+func isTodoListTool(name string) bool {
+	canonical, _ := tool.ResolveName(name)
+	return canonical == tool.TodoList
+}
+
 func (m Model) beginNativeToolCall(call provider.ToolCall) Model {
+	if isTodoListTool(call.Name) {
+		m.agent.TodoListUpdating = true
+		if m.agent.NativeToolMsgIDs == nil {
+			m.agent.NativeToolMsgIDs = make(map[string]int)
+		}
+		m.agent.NativeToolMsgIDs[call.ID] = -1
+		return m
+	}
 	m = m.addToolDetailMessageWithStatus(nativeToolDetailLabel(call), "(running...)", constants.DetailStatusRunning)
 	idx := len(m.messages) - 1
 	if m.agent.NativeToolMsgIDs == nil {
@@ -72,7 +86,7 @@ func (m Model) applyApprovalInteractUI(resp agent.ToolInteractResponse, req agen
 }
 
 func (m Model) appendNativeToolOutput(call provider.ToolCall, delta string) Model {
-	if delta == "" {
+	if isTodoListTool(call.Name) || delta == "" {
 		return m
 	}
 	idx, ok := m.agent.NativeToolMsgIDs[call.ID]
@@ -106,6 +120,13 @@ func nativeToolDetailStatus(name string, result runtime.ToolResult) constants.De
 }
 
 func (m Model) finishNativeToolCall(call provider.ToolCall, result agent.ToolRunResult) Model {
+	if isTodoListTool(call.Name) {
+		m.agent.TodoListUpdating = false
+		if m.agent.NativeToolMsgIDs != nil {
+			delete(m.agent.NativeToolMsgIDs, call.ID)
+		}
+		return m
+	}
 	runtimeResult := runtime.ToolResult{
 		Output:    result.Output,
 		Err:       result.Err,

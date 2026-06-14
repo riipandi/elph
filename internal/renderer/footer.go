@@ -133,6 +133,7 @@ func (m Model) footerViewportTop() int {
 	if av := m.activityView(); av != "" {
 		top += lipgloss.Height(av)
 	}
+	top += m.todoPanelHeight()
 	top += lipgloss.Height(m.inputChromeView())
 	return top
 }

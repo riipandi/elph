@@ -32,5 +32,6 @@ func TestIsExecutableKnownBuiltin(t *testing.T) {
 	require.True(t, IsExecutable(catalog.FetchURL))
 	require.True(t, IsExecutable(catalog.CodeSearch))
 	require.True(t, IsExecutable(catalog.Skill))
+	require.True(t, IsExecutable(catalog.TodoList))
 	require.False(t, IsExecutable("unknown"))
 }

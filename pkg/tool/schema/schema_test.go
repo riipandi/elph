@@ -22,12 +22,13 @@ func TestIsProviderExposed(t *testing.T) {
 	require.True(t, IsProviderExposed(catalog.Bash))
 	require.True(t, IsProviderExposed(catalog.AskUser))
 	require.True(t, IsProviderExposed(catalog.Skill))
+	require.True(t, IsProviderExposed(catalog.TodoList))
 	require.False(t, IsProviderExposed("unknown"))
 }
 
 func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	defs := ProviderDefinitions()
-	require.Len(t, defs, 12)
+	require.Len(t, defs, 13)
 
 	names := make([]string, len(defs))
 	for i, def := range defs {
@@ -38,7 +39,7 @@ func TestProviderDefinitionsExecutableTools(t *testing.T) {
 	require.ElementsMatch(t, []string{
 		catalog.Read, catalog.Write, catalog.Edit, catalog.Grep, catalog.Glob,
 		catalog.ReadMediaFile, catalog.FetchURL, catalog.WebSearch, catalog.CodeSearch,
-		catalog.AskUser, catalog.Skill, catalog.Bash,
+		catalog.AskUser, catalog.Skill, catalog.TodoList, catalog.Bash,
 	}, names)
 }
 

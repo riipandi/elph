@@ -16,4 +16,5 @@ const (
 	ExitPlanMode  = "ExitPlanMode"
 	AskUser       = "AskUser"
 	Skill         = "Skill"
+	TodoList      = "TodoList"
 )

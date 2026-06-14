@@ -7,6 +7,7 @@ import (
 
 var sectionDescriptions = map[string]string{
 	"File Tools":          "File tools handle reading, writing, and searching the local filesystem - the foundation for code analysis and modification tasks.",
+	"State Management":    "State management tools persist structured session state across tool rounds and user turns.",
 	"Collaboration Tools": "Collaboration tools handle inter-Agent coordination, user interaction, and Skill invocation.",
 }
 

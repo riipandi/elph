@@ -4,11 +4,12 @@ package catalog
 type Category string
 
 const (
-	CategoryFile          Category = "file"
-	CategoryShell         Category = "shell"
-	CategoryWeb           Category = "web"
-	CategoryPlanMode      Category = "plan_mode"
-	CategoryCollaboration Category = "collaboration"
+	CategoryFile            Category = "file"
+	CategoryShell           Category = "shell"
+	CategoryWeb             Category = "web"
+	CategoryPlanMode        Category = "plan_mode"
+	CategoryStateManagement Category = "state_management"
+	CategoryCollaboration   Category = "collaboration"
 )
 
 // Approval is the default policy before a tool runs.

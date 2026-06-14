@@ -24,11 +24,12 @@ type (
 )
 
 const (
-	CategoryFile          = catalog.CategoryFile
-	CategoryShell         = catalog.CategoryShell
-	CategoryWeb           = catalog.CategoryWeb
-	CategoryPlanMode      = catalog.CategoryPlanMode
-	CategoryCollaboration = catalog.CategoryCollaboration
+	CategoryFile            = catalog.CategoryFile
+	CategoryShell           = catalog.CategoryShell
+	CategoryWeb             = catalog.CategoryWeb
+	CategoryPlanMode        = catalog.CategoryPlanMode
+	CategoryStateManagement = catalog.CategoryStateManagement
+	CategoryCollaboration   = catalog.CategoryCollaboration
 
 	ApprovalAutoAllow        = catalog.ApprovalAutoAllow
 	ApprovalRequiresApproval = catalog.ApprovalRequiresApproval
@@ -48,6 +49,7 @@ const (
 	ExitPlanMode  = catalog.ExitPlanMode
 	AskUser       = catalog.AskUser
 	Skill         = catalog.Skill
+	TodoList      = catalog.TodoList
 )
 
 func Get(name string) (Definition, bool)                    { return catalog.Get(name) }

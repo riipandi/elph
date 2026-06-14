@@ -82,6 +82,9 @@ func (m Model) collapsibleNeedsLiveRefresh(msg message, index int) bool {
 }
 
 func (m Model) needsSpinnerContentRefresh() bool {
+	if m.agent.TodoListUpdating {
+		return true
+	}
 	if !m.showsActivity() {
 		return false
 	}

@@ -25,11 +25,12 @@ type TemplateData struct {
 }
 
 var pkgSectionByCategory = map[tool.Category]string{
-	tool.CategoryFile:          "File Tools",
-	tool.CategoryShell:         "Shell Tools",
-	tool.CategoryWeb:           "Web Tools",
-	tool.CategoryPlanMode:      "Plan Mode",
-	tool.CategoryCollaboration: "Collaboration Tools",
+	tool.CategoryFile:            "File Tools",
+	tool.CategoryShell:           "Shell Tools",
+	tool.CategoryWeb:             "Web Tools",
+	tool.CategoryPlanMode:        "Plan Mode",
+	tool.CategoryStateManagement: "State Management",
+	tool.CategoryCollaboration:   "Collaboration Tools",
 }
 
 var pkgCategoryOrder = []tool.Category{
@@ -37,6 +38,7 @@ var pkgCategoryOrder = []tool.Category{
 	tool.CategoryShell,
 	tool.CategoryWeb,
 	tool.CategoryPlanMode,
+	tool.CategoryStateManagement,
 	tool.CategoryCollaboration,
 }
 

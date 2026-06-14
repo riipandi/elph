@@ -71,6 +71,8 @@ func ExecuteToolWithOutput(ctx context.Context, workDir, name string, args map[s
 		return executeCodeSearch(ctx, args)
 	case tool.Skill:
 		return executeSkill(ctx, workDir, args)
+	case tool.TodoList:
+		return executeTodoList(ctx, args)
 	default:
 		return ToolResult{Err: fmt.Errorf("%w: %s", ErrToolNotImplemented, canonical)}
 	}

@@ -82,6 +82,14 @@ var builtin = []Definition{
 		RequiresConfirmation: true,
 	},
 
+	// State management
+	{
+		Name:            TodoList,
+		Category:        CategoryStateManagement,
+		DefaultApproval: ApprovalAutoAllow,
+		Description:     "Manage a task to-do list",
+	},
+
 	// Collaboration
 	{
 		Name:            AskUser,

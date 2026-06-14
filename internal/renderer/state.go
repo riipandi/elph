@@ -71,5 +71,6 @@ type AgentState struct {
 	Cancel             context.CancelFunc
 	ThinkingMsgID      int
 	ResponseMsgID      int
+	TodoListUpdating   bool
 	SessionAllowTools  bool // skip approval dialogs until the TUI session ends
 }

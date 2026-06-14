@@ -9,6 +9,7 @@ import (
 	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/riipandi/elph/pkg/core/agent"
+	"github.com/riipandi/elph/pkg/memz"
 	"github.com/riipandi/elph/pkg/skill"
 	"go.jetify.com/typeid/v2"
 )
@@ -30,6 +31,7 @@ type Session struct {
 	Catalog           provider.Catalog
 	EnabledModelCount int
 	History           []provider.ChatMessage
+	Todos             []memz.Todo
 }
 
 // NewSession creates a session with a generated typeid and assembled system prompt.
@@ -93,8 +95,9 @@ func (s Session) AppendRequestsLog(kind, text string) {
 }
 
 // StartTurn starts an agent turn and streams framework-neutral events.
-func (s Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan agent.Event {
+func (s *Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan agent.Event {
 	ctx = skill.WithDepthHolder(ctx)
+	ctx = memz.WithStore(ctx, &s.Todos)
 	opts.SystemPrompt = s.SystemPrompt
 	if opts.Model == "" {
 		opts.Model = s.ModelID

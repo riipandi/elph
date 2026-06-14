@@ -138,6 +138,8 @@ func ProviderSchema(name string) (map[string]any, bool) {
 				description: "Optional additional argument text appended to the skill instructions",
 			},
 		}, "skill"), true
+	case catalog.TodoList:
+		return todoListSchema(), true
 	case catalog.EnterPlanMode, catalog.ExitPlanMode:
 		return objectSchema(map[string]propertySpec{
 			"reason": {typ: "string", description: "Short reason for the mode change"},
@@ -150,6 +152,33 @@ func ProviderSchema(name string) (map[string]any, bool) {
 type propertySpec struct {
 	typ         string
 	description string
+}
+
+func todoListSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"todos": map[string]any{
+				"type":        "array",
+				"description": "Task list to set. Omit to query the current list; pass an empty array to clear.",
+				"items": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"title": map[string]any{
+							"type":        "string",
+							"description": "Task description",
+						},
+						"status": map[string]any{
+							"type":        "string",
+							"description": "pending, in_progress, or done",
+							"enum":        []string{"pending", "in_progress", "done"},
+						},
+					},
+					"required": []string{"title", "status"},
+				},
+			},
+		},
+	}
 }
 
 func askUserSchema() map[string]any {
