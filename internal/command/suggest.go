@@ -15,11 +15,12 @@ type scoredCommand struct {
 
 // Suggest returns slash commands that fuzzy-match query, best matches first.
 // An empty query returns the first maxSuggestions commands in catalog order.
-func Suggest(query string) []SlashCommand {
+func Suggest(query string, ctx Context) []SlashCommand {
+	commands := allCommands(ctx)
 	query = normalizeSuggestQuery(query)
 	if query == "" {
 		out := make([]SlashCommand, 0, maxSuggestions)
-		for _, cmd := range builtin {
+		for _, cmd := range commands {
 			out = append(out, cmd)
 			if len(out) >= maxSuggestions {
 				break
@@ -28,8 +29,8 @@ func Suggest(query string) []SlashCommand {
 		return out
 	}
 
-	scored := make([]scoredCommand, 0, len(builtin))
-	for i, cmd := range builtin {
+	scored := make([]scoredCommand, 0, len(commands))
+	for i, cmd := range commands {
 		if score := commandScore(query, cmd); score >= 0 {
 			scored = append(scored, scoredCommand{cmd: cmd, score: score, idx: i})
 		}

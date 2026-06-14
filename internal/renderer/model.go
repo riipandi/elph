@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/prompttemplate"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/settings"
 	"go.jetify.com/typeid/v2"
@@ -96,7 +97,8 @@ type Model struct {
 	mouseEnabled  bool // mouse capture for viewport wheel/scroll
 	selectingText bool // shift held — mouse released for terminal selection
 
-	session runtime.Session
+	session         runtime.Session
+	promptTemplates []prompttemplate.Template
 
 	quitting      bool
 	ctrlCPress    int // 0=none, 1=first, 2=second (input cleared)
@@ -169,6 +171,7 @@ func New() Model {
 		thinkingLevel:    prefs.ThinkingLevel(),
 		sessionID:        session.ID,
 		session:          session,
+		promptTemplates:  prompttemplate.Load(wd),
 		workDir:          wd,
 		branch:           "main",
 		messages:         []message{},

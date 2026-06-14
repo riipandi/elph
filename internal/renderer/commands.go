@@ -96,12 +96,7 @@ func (m Model) syncSlashSuggestions() Model {
 
 func (m Model) commandContext() command.Context {
 	catalog := m.session.Catalog
-	if cmd, _, ok := command.ResolveInput(m.input.Value()); ok && cmd.Name == "model" {
-		if reloaded, err := provider.LoadCatalog(""); err == nil {
-			catalog = reloaded
-		}
-	}
-	return command.Context{
+	base := command.Context{
 		WorkDir:         m.workDir,
 		SystemPrompt:    m.session.SystemPrompt,
 		LogPath:         m.session.LogPath,
@@ -110,12 +105,20 @@ func (m Model) commandContext() command.Context {
 		ProviderID:      m.session.ProviderID,
 		ModelID:         m.session.ModelID,
 		ModelName:       m.session.ModelName,
+		PromptTemplates: m.promptTemplates,
 	}
+	if cmd, _, ok := command.ResolveInput(m.input.Value(), base); ok && cmd.Name == "model" {
+		if reloaded, err := provider.LoadCatalog(""); err == nil {
+			catalog = reloaded
+		}
+	}
+	base.Catalog = catalog
+	return base
 }
 
 func (m Model) syncSlashSuggestionsOnly() Model {
-	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
 	ctx := m.commandContext()
+	cmd, argQuery, ok := command.ResolveInput(m.input.Value(), ctx)
 	args := command.EffectiveArgs(cmd, ctx)
 	if ok && len(args) > 0 && m.argInputReady(cmd) {
 		m.suggest.CmdSuggestions = nil
@@ -130,7 +133,7 @@ func (m Model) syncSlashSuggestionsOnly() Model {
 
 	m.suggest.ArgSuggestions = nil
 	m.suggest.ArgSuggestIndex = 0
-	m.suggest.CmdSuggestions = command.Suggest(m.slashQuery())
+	m.suggest.CmdSuggestions = command.Suggest(m.slashQuery(), ctx)
 	if m.suggest.CmdSuggestIndex >= len(m.suggest.CmdSuggestions) {
 		m.suggest.CmdSuggestIndex = 0
 	}
@@ -152,8 +155,9 @@ func (m Model) syncInputPlaceholder() Model {
 	}
 
 	placeholder := ""
-	cmd, argQuery, ok := command.ResolveInput(m.input.Value())
-	args := command.EffectiveArgs(cmd, m.commandContext())
+	ctx := m.commandContext()
+	cmd, argQuery, ok := command.ResolveInput(m.input.Value(), ctx)
+	args := command.EffectiveArgs(cmd, ctx)
 	if ok && len(args) > 0 && argQuery == "" && m.argInputReady(cmd) {
 		placeholder = command.ArgsHint(args)
 	}
@@ -177,7 +181,8 @@ func (m Model) applyArgPreview() Model {
 	if len(m.suggest.ArgSuggestions) == 0 {
 		return m
 	}
-	cmd, _, ok := command.ResolveInput(m.input.Value())
+	ctx := m.commandContext()
+	cmd, _, ok := command.ResolveInput(m.input.Value(), ctx)
 	if !ok {
 		return m
 	}
@@ -194,7 +199,8 @@ func (m Model) cycleArgSelection(delta int) Model {
 		return m
 	}
 
-	_, argQuery, ok := command.ResolveInput(m.input.Value())
+	ctx := m.commandContext()
+	_, argQuery, ok := command.ResolveInput(m.input.Value(), ctx)
 	if !ok {
 		return m
 	}
@@ -267,10 +273,10 @@ func (m Model) commandPaletteView() string {
 }
 
 func (m Model) cmdPaletteView() string {
-	nameColW := command.NameColumnWidth(m.suggest.CmdSuggestions, false)
+	nameColW := command.PaletteNameColumnWidth(m.suggest.CmdSuggestions)
 	rows := make([]paletteRow, len(m.suggest.CmdSuggestions))
 	for i, cmd := range m.suggest.CmdSuggestions {
-		name, _, summary := command.AlignedRow(cmd, nameColW, false)
+		name, _, summary := command.AlignedPaletteRow(cmd, nameColW)
 		rows[i] = paletteRow{name: name, summary: summary}
 	}
 	return m.renderPaletteRows(rows, m.suggest.CmdSuggestIndex, nameColW)

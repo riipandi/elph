@@ -74,8 +74,8 @@ func TestParseCommand(t *testing.T) {
 }
 
 func TestAllIncludesReferencedCommands(t *testing.T) {
-	names := make([]string, len(All()))
-	for i, cmd := range All() {
+	names := make([]string, len(All(Context{})))
+	for i, cmd := range All(Context{}) {
 		names[i] = cmd.Name
 	}
 	require.Contains(t, names, "help")

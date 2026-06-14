@@ -8,36 +8,36 @@ import (
 )
 
 func TestSuggestDiagnosticFuzzyPrefix(t *testing.T) {
-	got := Suggest("diag")
+	got := Suggest("diag", Context{})
 	require.NotEmpty(t, got)
 	require.True(t, strings.HasPrefix(got[0].Name, "diagnostic:"))
 }
 
 func TestSuggestDebugMatchesDiagnostic(t *testing.T) {
-	got := Suggest("debug")
+	got := Suggest("debug", Context{})
 	require.NotEmpty(t, got)
 	require.Equal(t, DiagnosticDebug, got[0].Name)
 }
 
 func TestSuggestQuitMatchesExit(t *testing.T) {
-	got := Suggest("quit")
+	got := Suggest("quit", Context{})
 	require.NotEmpty(t, got)
 	require.Equal(t, "exit", got[0].Name)
 }
 
 func TestSuggestFuzzyAbbreviation(t *testing.T) {
-	got := Suggest("qt")
+	got := Suggest("qt", Context{})
 	require.NotEmpty(t, got)
 	require.Equal(t, "exit", got[0].Name)
 }
 
 func TestSuggestLimitsResults(t *testing.T) {
-	got := Suggest("")
+	got := Suggest("", Context{})
 	require.LessOrEqual(t, len(got), maxSuggestions)
 }
 
 func TestCompleteInput(t *testing.T) {
-	cmd, ok := Get(DiagnosticListTools)
+	cmd, ok := Get(DiagnosticListTools, Context{})
 	require.True(t, ok)
 	require.Equal(t, "/diagnostic:list-tools", CompleteInput(cmd, Context{}))
 }

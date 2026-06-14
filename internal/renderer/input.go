@@ -426,6 +426,13 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	m = m.applyModelSwitch(result.Switch)
+	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
+		m = m.beginAgentTurn()
+		m = m.syncLayout(true)
+		var agentCmd tea.Cmd
+		m, agentCmd = m.agentTurnCmds(prompt)
+		return m, agentCmd, true
+	}
 	if result.Quit {
 		m.quitting = true
 		return m, tea.Sequence(disableTerminalFeatures(), tea.Quit), true

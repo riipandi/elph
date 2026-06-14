@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/riipandi/elph/internal/prompttemplate"
 	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
@@ -22,6 +23,8 @@ type Context struct {
 	pendingOpenSelector bool
 	selectorCatalog     provider.Catalog
 	selectorQuery       string
+
+	PromptTemplates []prompttemplate.Template
 }
 
 // ModelSwitch applies a new active provider/model to the session.
@@ -45,17 +48,20 @@ type Result struct {
 	OpenModelSelector bool
 	SelectorCatalog   provider.Catalog
 	SelectorQuery     string
+	AgentPrompt       string
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
 type SlashCommand struct {
-	Name        string
-	Aliases     []string
-	Description string
-	Args        []ArgChoice
-	ArgsFunc    func(ctx Context) []ArgChoice
-	Quits       bool
-	Handler     func(ctx *Context, args string) string
+	Name         string
+	Aliases      []string
+	Description  string
+	ArgumentHint string
+	Args         []ArgChoice
+	ArgsFunc     func(ctx Context) []ArgChoice
+	Quits        bool
+	Prompt       bool
+	Handler      func(ctx *Context, args string) string
 }
 
 // Execute runs a slash command from raw user input (e.g. "/help", "/model sonnet").
@@ -64,19 +70,39 @@ func Execute(input string, ctx Context) Result {
 	if name == "" {
 		return Result{Output: "Usage: /help", OK: false}
 	}
+	if strings.EqualFold(name, "help") {
+		return Result{Output: FormatHelp(allCommands(ctx)), OK: true}
+	}
 
-	for _, cmd := range builtin {
-		if matches(cmd, name) {
-			output := cmd.Handler(&ctx, args)
-			return Result{
-				Output:            output,
-				OK:                true,
-				Quit:              cmd.Quits,
-				Switch:            ctx.pendingSwitch,
-				OpenModelSelector: ctx.pendingOpenSelector,
-				SelectorCatalog:   ctx.selectorCatalog,
-				SelectorQuery:     ctx.selectorQuery,
+	for _, cmd := range allCommands(ctx) {
+		if !matches(cmd, name) {
+			continue
+		}
+		if cmd.Prompt {
+			expanded, ok := prompttemplate.Expand(input, ctx.PromptTemplates)
+			if !ok || strings.TrimSpace(expanded) == "" {
+				return Result{
+					Output: fmt.Sprintf("/%s: prompt template is empty", name),
+					OK:     false,
+				}
 			}
+			return Result{OK: true, AgentPrompt: expanded}
+		}
+		if cmd.Handler == nil {
+			return Result{
+				Output: fmt.Sprintf("/%s: not yet implemented", name),
+				OK:     true,
+			}
+		}
+		output := cmd.Handler(&ctx, args)
+		return Result{
+			Output:            output,
+			OK:                true,
+			Quit:              cmd.Quits,
+			Switch:            ctx.pendingSwitch,
+			OpenModelSelector: ctx.pendingOpenSelector,
+			SelectorCatalog:   ctx.selectorCatalog,
+			SelectorQuery:     ctx.selectorQuery,
 		}
 	}
 
@@ -86,15 +112,15 @@ func Execute(input string, ctx Context) Result {
 	}
 }
 
-// All returns built-in slash commands in catalog order.
-func All() []SlashCommand {
-	return append([]SlashCommand(nil), builtin...)
+// All returns built-in and prompt-template slash commands.
+func All(ctx Context) []SlashCommand {
+	return allCommands(ctx)
 }
 
 // Get returns a slash command by name or alias.
-func Get(name string) (SlashCommand, bool) {
+func Get(name string, ctx Context) (SlashCommand, bool) {
 	name = strings.ToLower(strings.TrimSpace(name))
-	for _, cmd := range builtin {
+	for _, cmd := range allCommands(ctx) {
 		if matches(cmd, name) {
 			return cmd, true
 		}
@@ -103,16 +129,42 @@ func Get(name string) (SlashCommand, bool) {
 }
 
 // HelpText returns a formatted list of slash commands.
-func HelpText() string {
-	return FormatHelp(builtin)
+func HelpText(ctx Context) string {
+	return FormatHelp(allCommands(ctx))
 }
 
-func init() {
-	for i := range builtin {
-		if builtin[i].Name == "help" {
-			builtin[i].Handler = func(*Context, string) string { return FormatHelp(builtin) }
-			return
+func allCommands(ctx Context) []SlashCommand {
+	out := append([]SlashCommand(nil), builtin...)
+	seen := builtinNames()
+	for _, t := range ctx.PromptTemplates {
+		key := strings.ToLower(t.Name)
+		if seen[key] {
+			continue
 		}
+		out = append(out, templateCommand(t))
+		seen[key] = true
+	}
+	return out
+}
+
+func builtinNames() map[string]bool {
+	seen := make(map[string]bool, len(builtin))
+	for _, cmd := range builtin {
+		seen[strings.ToLower(cmd.Name)] = true
+		for _, alias := range cmd.Aliases {
+			seen[strings.ToLower(alias)] = true
+		}
+	}
+	return seen
+}
+
+func templateCommand(t prompttemplate.Template) SlashCommand {
+	return SlashCommand{
+		Name:         t.Name,
+		Description:  t.Description,
+		ArgumentHint: t.ArgumentHint,
+		Prompt:       true,
+		Handler:      func(*Context, string) string { return "" },
 	}
 }
 

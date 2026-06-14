@@ -120,6 +120,15 @@ Leading spaces are trimmed before detection. Prefix resets to `>` when input is 
 
 Check order: `!!` → `!` → `/` → default (`>`).
 
+### Slash Commands
+
+Inputs starting with `/` invoke slash commands. Built-in commands (for example `/help`, `/model`,
+`/exit`) are always available. Custom prompt templates are loaded from `~/.elph/prompts/*.md` and
+`<workDir>/.elph/prompts/*.md` — each file becomes a slash command named after the filename.
+
+When a prompt template is submitted, the expanded content is sent to the agent as the user prompt.
+See [prompt-templates.md](./prompt-templates.md) for format, argument placeholders, and examples.
+
 ---
 
 ## Footer / Statusline

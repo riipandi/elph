@@ -25,7 +25,7 @@ func TestFormatListTwoColumnLayout(t *testing.T) {
 }
 
 func TestFormatHelpIncludesHeaderAndAliases(t *testing.T) {
-	got := FormatHelp(All())
+	got := FormatHelp(All(Context{}))
 	require.Contains(t, got, "Available slash commands:")
 	require.Contains(t, got, "/exit (quit, q)")
 }

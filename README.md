@@ -33,6 +33,12 @@ make run
 For more detailed information about the system architecture, design decisions, and project structure,
 please refer to the documentation in the [`docs`](./docs) directory.
 
+| Topic            | Document                                      |
+|------------------|-----------------------------------------------|
+| Built-in tools   | [docs/tools.md](./docs/tools.md)              |
+| Prompt templates | [docs/prompt-templates.md](./docs/prompt-templates.md) |
+| TUI layout       | [docs/tui.md](./docs/tui.md)                  |
+
 ## License
 
 This project licensed under the [MIT license][license-mit]. See the [LICENSE](./LICENSE) file for more information.

@@ -34,7 +34,7 @@ func ArgsHint(args []ArgChoice) string {
 }
 
 // ResolveInput splits slash input into a matched command and the argument query.
-func ResolveInput(input string) (cmd SlashCommand, argQuery string, ok bool) {
+func ResolveInput(input string, ctx Context) (cmd SlashCommand, argQuery string, ok bool) {
 	trimmed := strings.TrimLeft(input, " \t")
 	if !strings.HasPrefix(trimmed, "/") {
 		return SlashCommand{}, "", false
@@ -47,7 +47,7 @@ func ResolveInput(input string) (cmd SlashCommand, argQuery string, ok bool) {
 
 	parts := strings.SplitN(body, " ", 2)
 	name := strings.ToLower(parts[0])
-	cmd, ok = Get(name)
+	cmd, ok = Get(name, ctx)
 	if !ok {
 		return SlashCommand{}, "", false
 	}

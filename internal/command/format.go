@@ -20,6 +20,29 @@ func CommandID(cmd SlashCommand) string {
 	return "/" + cmd.Name
 }
 
+// PaletteID returns the slash command id shown in autocomplete, including argument hints.
+func PaletteID(cmd SlashCommand) string {
+	name := "/" + cmd.Name
+	if hint := strings.TrimSpace(cmd.ArgumentHint); hint != "" {
+		name += " " + hint
+	}
+	return name
+}
+
+// PaletteNameColumnWidth returns the display width of the widest palette command id.
+func PaletteNameColumnWidth(commands []SlashCommand) int {
+	names := make([]string, len(commands))
+	for i, cmd := range commands {
+		names[i] = PaletteID(cmd)
+	}
+	return align.ColumnWidth(names...)
+}
+
+// AlignedPaletteRow splits a command into a justified palette id and summary.
+func AlignedPaletteRow(cmd SlashCommand, nameColW int) (name, gap, summary string) {
+	return align.Row(PaletteID(cmd), nameColW, cmd.Description)
+}
+
 // NameColumnWidth returns the display width of the widest command id column.
 func NameColumnWidth(commands []SlashCommand, includeAliases bool) int {
 	names := make([]string, len(commands))

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/riipandi/elph/internal/constants"
+	"github.com/riipandi/elph/internal/prompttemplate"
 	"github.com/stretchr/testify/require"
 )
 
@@ -268,6 +269,23 @@ func TestSubmitDiagnosticListTools(t *testing.T) {
 	require.Equal(t, constants.MessageSystem, m.messages[1].kind)
 	require.Contains(t, m.messages[1].text, "Read")
 	require.Contains(t, m.messages[1].text, "diagnostic_list_tools")
+}
+
+func TestSubmitPromptTemplateStartsAgentTurn(t *testing.T) {
+	m := testInputModel(t)
+	m.promptTemplates = []prompttemplate.Template{{
+		Name:    "identify",
+		Content: "Identify the codebase focusing on $1.",
+	}}
+	m.input.SetValue("/identify auth")
+
+	updated, cmd := m.Update(keyEnter())
+	m = updated.(Model)
+
+	require.NotNil(t, cmd)
+	require.True(t, m.agent.Busy)
+	require.Len(t, m.messages, 1)
+	require.Equal(t, "/identify auth", m.messages[0].text)
 }
 
 func TestSubmitSlashCommandUnknown(t *testing.T) {

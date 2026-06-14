@@ -12,7 +12,7 @@ func TestArgsHintJoinsValues(t *testing.T) {
 }
 
 func TestResolveInputMatchesCommandAndArgs(t *testing.T) {
-	cmd, argQuery, ok := ResolveInput("/diagnostic:open-log requests")
+	cmd, argQuery, ok := ResolveInput("/diagnostic:open-log requests", Context{})
 	require.True(t, ok)
 	require.Equal(t, DiagnosticOpenLog, cmd.Name)
 	require.Equal(t, "requests", argQuery)
@@ -24,7 +24,7 @@ func TestArgExactMatch(t *testing.T) {
 }
 
 func TestSuggestArgsFiltersByPrefix(t *testing.T) {
-	cmd, ok := Get(DiagnosticOpenLog)
+	cmd, ok := Get(DiagnosticOpenLog, Context{})
 	require.True(t, ok)
 
 	got := SuggestArgs(cmd, Context{}, "sys")
@@ -33,7 +33,7 @@ func TestSuggestArgsFiltersByPrefix(t *testing.T) {
 }
 
 func TestCompleteInputAddsSpaceForArgCommands(t *testing.T) {
-	cmd, ok := Get(DiagnosticOpenLog)
+	cmd, ok := Get(DiagnosticOpenLog, Context{})
 	require.True(t, ok)
 	require.Equal(t, "/diagnostic:open-log ", CompleteInput(cmd, Context{}))
 }
@@ -43,7 +43,7 @@ func TestArgChoiceIndexExactMatch(t *testing.T) {
 }
 
 func TestCompleteArgInput(t *testing.T) {
-	cmd, ok := Get(DiagnosticOpenLog)
+	cmd, ok := Get(DiagnosticOpenLog, Context{})
 	require.True(t, ok)
 	require.Equal(t, "/diagnostic:open-log system", CompleteArgInput(cmd, openLogArgs[1]))
 }
