@@ -15,6 +15,7 @@ type Approval string
 const (
 	ApprovalAutoAllow        Approval = "auto-allow"
 	ApprovalRequiresApproval Approval = "requires-approval"
+	ApprovalAlwaysApprove    Approval = "always-approve"
 )
 
 // Definition describes an internal built-in tool.

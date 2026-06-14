@@ -57,6 +57,12 @@ func TestRequiresApproval(t *testing.T) {
 	require.False(t, RequiresApproval("UnknownTool"))
 }
 
+func TestApprovalConstants(t *testing.T) {
+	require.Equal(t, Approval("auto-allow"), ApprovalAutoAllow)
+	require.Equal(t, Approval("requires-approval"), ApprovalRequiresApproval)
+	require.Equal(t, Approval("always-approve"), ApprovalAlwaysApprove)
+}
+
 func TestNamesPreservesCatalogOrder(t *testing.T) {
 	require.Equal(t, []string{
 		Read, Write, Edit, Grep, Glob, ReadMediaFile,

@@ -16,7 +16,7 @@ func TestNewSessionHasID(t *testing.T) {
 
 func TestNewSessionBuildsSystemPrompt(t *testing.T) {
 	s := NewSession(t.TempDir())
-	require.Contains(t, s.SystemPrompt, "You are an expert coding assistant.")
+	require.Contains(t, s.SystemPrompt, "You are an expert AI coding assistant, operate in Elph CLI.")
 	require.Contains(t, s.SystemPrompt, "## Available Tools")
 }
 

@@ -37,7 +37,7 @@ TEST_FLAGS := --format short-verbose -- -count=1 -v
 build: ## Build the application binary
 	@echo "Building $(PKG_NAME) v$(PKG_VERSION) ($(BUILD_HASH)) $(BUILD_DATE)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(GO) build -ldflags="-w -s -extldflags -static-pie $(BUILD_META)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd; \
+	$(GO) build -ldflags="-w -s -extldflags -static-pie $(BUILD_META)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/coding-agent; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"; \
@@ -50,7 +50,7 @@ install: build ## Build and copy binary to ~/.local/bin
 	@echo "Installed: $$(command -v $(HOME)/.local/bin/$(BINARY_NAME) 2>/dev/null || echo $(HOME)/.local/bin/$(BINARY_NAME))"
 
 run: ## Run the application
-	@$(GO) run ./cmd $(or $(_RESIDUAL_),$(ARGS))
+	@$(GO) run ./cmd/coding-agent $(or $(_RESIDUAL_),$(ARGS))
 
 # ─── Testing ─────────────────────────────────────────────────────────────────
 

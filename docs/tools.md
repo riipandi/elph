@@ -1,5 +1,13 @@
 # Built-in Tools
 
+## Permissions
+
+| Permission          | Description                                              |
+|---------------------|----------------------------------------------------------|
+| `auto-allow`        | Runs without approval by default; user can require it    |
+| `requires-approval` | Requires user approval before each run                   |
+| `always-approve`    | Always runs without approval; cannot be restricted       |
+
 ## File Tools
 
 File tools handle reading, writing, and searching the local filesystem - the foundation for code analysis
