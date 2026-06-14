@@ -261,10 +261,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}))
 
 		case constants.ActionExit:
+			// Let ctrl+d pass through to textarea when editing text (delete
+			// character forward). Only exit when input is empty.
+			if m.input.Focused() && m.input.Value() != "" {
+				break
+			}
 			m.quitting = true
 			return m, tea.Sequence(disableTerminalFeatures(), tea.Quit)
-
 		case constants.ActionSwitchMode:
+			// Let ctrl+a pass through to textarea when editing text (cursor to
+			// beginning of line). On macOS, Cmd+Left sends ctrl+a in many
+			// terminals. Only switch mode when input is empty (no cursor to
+			// reposition) or not focused.
+			if m.input.Focused() && m.input.Value() != "" {
+				break
+			}
 			m.mode = nextMode(m.mode)
 			_ = settings.SetAgentMode(m.mode)
 			m, cmd := m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))

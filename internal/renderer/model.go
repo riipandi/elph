@@ -149,7 +149,7 @@ func New() Model {
 	ta := textarea.New()
 	ta.Placeholder = ""
 	ta.Prompt = ""
-	ta.CharLimit = 4096
+	ta.CharLimit = 0
 	ta.ShowLineNumbers = false
 	ta.SetHeight(1)
 	// MaxHeight limits total line count in bubbles textarea; leave unset so
