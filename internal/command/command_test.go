@@ -34,18 +34,22 @@ func TestExecuteQuitAlias(t *testing.T) {
 func TestExecuteWithArgs(t *testing.T) {
 	t.Setenv("ELPH_PROVIDERS_DIR", t.TempDir())
 
+	dir := t.TempDir()
+	t.Setenv("ELPH_PROVIDERS_DIR", dir)
+
 	result := Execute("/model claude-sonnet", Context{})
 	require.True(t, result.OK)
-	require.Contains(t, result.Output, "no providers found")
+	require.True(t, result.OpenModelSelector)
+	require.NotEmpty(t, result.SelectorCatalog.Providers)
 
-	dir := t.TempDir()
-	writeProviderFile(t, dir, "opencode.json", `{
+	customDir := t.TempDir()
+	writeProviderFile(t, customDir, "opencode.json", `{
 		"baseUrl": "https://example.com/v1",
 		"api": "openai-completions",
 		"apiKey": "secret",
 		"models": [{"id": "claude-sonnet", "name": "Claude Sonnet"}]
 	}`)
-	catalog, err := provider.LoadCatalog(dir)
+	catalog, err := provider.LoadCatalog(customDir)
 	require.NoError(t, err)
 
 	result = Execute("/model claude", Context{Catalog: catalog})

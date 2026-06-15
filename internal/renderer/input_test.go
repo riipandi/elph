@@ -96,6 +96,29 @@ func TestEnterDoesNotSubmitWhileBusy(t *testing.T) {
 	require.Empty(t, m.messages)
 }
 
+func TestSubmitWithoutProvidersBootstrapsAndOpensSelector(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	providersDir := filepath.Join(home, ".elph", "providers")
+	t.Setenv("ELPH_PROVIDERS_DIR", providersDir)
+
+	m := New()
+	m.width = 80
+	m.height = 24
+	m.ready = true
+	m = m.syncLayout(false)
+	m.input.SetValue("hello")
+
+	m, _, ok := m.trySubmitInput()
+	require.True(t, ok)
+	require.True(t, m.modelSelector.Active)
+	require.Greater(t, len(m.modelSelector.Flat), 0)
+	require.Contains(t, m.messages[len(m.messages)-1].text, "Select a model first")
+
+	_, err := os.Stat(filepath.Join(providersDir, "openai.json"))
+	require.NoError(t, err)
+}
+
 func TestSubmitWithoutModelKeepsDraft(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

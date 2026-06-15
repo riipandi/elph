@@ -59,17 +59,38 @@ func isModelSlashInput(raw string) bool {
 	return name == "model"
 }
 
-func (m Model) promptSelectModel() (Model, tea.Cmd) {
-	catalog := m.session.Catalog
-	if len(catalog.Providers) == 0 {
-		catalog, _ = provider.LoadCatalog("")
+func (m Model) modelPickerCatalog() (provider.Catalog, error) {
+	if _, _, err := provider.EnsureStarterProviders(); err != nil {
+		return provider.Catalog{}, err
+	}
+	catalog, err := provider.LoadCatalog("")
+	if err != nil {
+		return provider.Catalog{}, err
 	}
 	if len(catalog.Providers) == 0 {
-		return m.withMessage("No model selected — add provider JSON files to ~/.elph/providers")
+		catalog = m.session.Catalog
+	}
+	return catalog, nil
+}
+
+func (m Model) applyModelPickerCatalog(catalog provider.Catalog) Model {
+	m.session.Catalog = catalog
+	m.session.EnabledModelCount = catalog.TotalEnabledModels()
+	return m
+}
+
+func (m Model) promptSelectModel() (Model, tea.Cmd) {
+	catalog, err := m.modelPickerCatalog()
+	if err != nil {
+		return m.withMessage(fmt.Sprintf("No model selected — %v", err))
+	}
+	if len(catalog.Providers) == 0 {
+		return m.withMessage("No providers configured — run: elph provider connect")
 	}
 	if catalog.TotalEnabledModels() == 0 {
-		return m.withMessage("No model selected — enable a model in ~/.elph/providers")
+		return m.withMessage("No enabled models — run: elph provider model list")
 	}
+	m = m.applyModelPickerCatalog(catalog)
 	m, cmd := m.withMessage("Select a model first (Ctrl+L)")
 	m = m.openModelSelectorPreservingDraft(catalog)
 	return m, cmd
@@ -82,14 +103,15 @@ func (m Model) triggerModelSelector() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	catalog, err := provider.LoadCatalog("")
-	if err != nil || len(catalog.Providers) == 0 {
-		catalog = m.session.Catalog
+	catalog, err := m.modelPickerCatalog()
+	if err != nil {
+		return m.withMessage(fmt.Sprintf("/model: %v", err))
 	}
 	if len(catalog.Providers) == 0 {
-		return m.withMessage("/model: no providers found — add JSON files to ~/.elph/providers")
+		return m.withMessage("/model: no providers configured — run: elph provider connect")
 	}
 
+	m = m.applyModelPickerCatalog(catalog)
 	m = m.openModelSelectorPreservingDraft(catalog)
 	return m, nil
 }
