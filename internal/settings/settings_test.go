@@ -150,6 +150,42 @@ func TestMarkModelsSyncedWritesFile(t *testing.T) {
 	require.Contains(t, string(raw), `"syncInterval"`)
 }
 
+func TestLoadSettingsJSONC(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	dir := filepath.Join(home, ".elph")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "settings.jsonc"), []byte(`{
+		// UI theme
+		"theme": "dark",
+	}`), 0o644))
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "dark", cfg.Theme)
+
+	path, err := Path()
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(dir, "settings.jsonc"), path)
+}
+
+func TestLoadSettingsJSONWithComments(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	dir := filepath.Join(home, ".elph")
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{
+		/* block comment */
+		"theme": "light",
+	}`), 0o644))
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.Equal(t, "light", cfg.Theme)
+}
+
 func TestPathUsesElphHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

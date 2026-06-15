@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/riipandi/elph/pkg/ai/provider"
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 func printConnectResult(result provider.BootstrapResult) {
@@ -169,7 +170,10 @@ func providerLabel(file string) string {
 	if file == "" {
 		return file
 	}
-	return strings.TrimSuffix(file, ".json")
+	if id, ok := jsoncfg.ProviderID(file); ok {
+		return id
+	}
+	return strings.TrimSuffix(strings.TrimSuffix(file, jsoncfg.ExtJSONC), jsoncfg.ExtJSON)
 }
 
 func humanizeSyncWarning(warning string) string {

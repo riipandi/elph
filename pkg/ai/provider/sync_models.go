@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/riipandi/elph/pkg/ai/utils"
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 // UpdateModelsResult reports provider files touched by a models.dev sync.
@@ -124,7 +125,7 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 		}
 
 		var cfg FileConfig
-		if err := json.Unmarshal(raw, &cfg); err != nil {
+		if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 			return result, fmt.Errorf("provider %q: decode: %w", providerID, err)
 		}
 
@@ -203,13 +204,11 @@ type syncProviderTarget struct {
 }
 
 func listSyncProviderTargets(entries []os.DirEntry, data ModelsDevData) []syncProviderTarget {
-	targets := make([]syncProviderTarget, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		providerID := strings.TrimSuffix(entry.Name(), ".json")
-		if providerID == "" {
+	providerEntries, _ := jsoncfg.SelectProviderEntries(entries)
+	targets := make([]syncProviderTarget, 0, len(providerEntries))
+	for _, entry := range providerEntries {
+		providerID, ok := jsoncfg.ProviderID(entry.Name())
+		if !ok || providerID == "" {
 			continue
 		}
 		catalogID := modelsDevProviderID(providerID)

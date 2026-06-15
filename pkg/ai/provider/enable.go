@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 // ConfigEnabled reports whether an optional enabled flag is active.
@@ -55,17 +58,18 @@ func updateProviderConfig(providerID string, mutate func(*FileConfig) error) err
 		return err
 	}
 
-	path := filepath.Join(dir, providerID+".json")
+	path, err := jsoncfg.ResolveProviderPath(dir, providerID)
+	if err != nil {
+		return err
+	}
+
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("provider %q not found", providerID)
-		}
 		return fmt.Errorf("read provider %q: %w", providerID, err)
 	}
 
 	var cfg FileConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("decode provider %q: %w", providerID, err)
 	}
 
@@ -90,7 +94,9 @@ func normalizeProviderID(id string) string {
 	if id == "." || id == string(filepath.Separator) {
 		return ""
 	}
-	if ext := filepath.Ext(id); ext == ".json" {
+	ext := strings.ToLower(filepath.Ext(id))
+	switch ext {
+	case jsoncfg.ExtJSON, jsoncfg.ExtJSONC:
 		id = id[:len(id)-len(ext)]
 	}
 	return id

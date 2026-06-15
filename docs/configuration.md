@@ -8,11 +8,11 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 
 ```
 ~/.elph/
-├── settings.json          # UI preferences, session provider/model/mode
+├── settings.json          # UI preferences, session provider/model/mode (or settings.jsonc)
 └── providers/
     ├── openai.json
     ├── anthropic.json
-    └── …                    # one JSON file per provider id
+    └── …                    # one .json or .jsonc file per provider id
 
 ~/.elph/prompts/
 └── *.md                     # global prompt templates → /name commands
@@ -58,9 +58,18 @@ elph --env-file .env.local
 
 Loads variables with `gotenv.OverLoad` before any subcommand (`cmd/coding-agent/root.go`).
 
+## JSON and JSONC
+
+Settings and provider configs accept standard JSON and [JSONC](https://github.com/tidwall/jsonc): `//` and `/* */` comments, plus trailing commas. Use either `.json` or `.jsonc` extensions.
+
+- Settings: `settings.json` is preferred when both `settings.json` and `settings.jsonc` exist. New saves go to whichever file is active (default `settings.json`).
+- Providers: one file per provider id; `.json` wins over `.jsonc` when both exist.
+
+Parsing lives in `pkg/jsoncfg`.
+
 ## `settings.json`
 
-Path: `~/.elph/settings.json` (`internal/settings/settings.go`).
+Path: `~/.elph/settings.json` or `~/.elph/settings.jsonc` (`internal/settings/settings.go`).
 
 | Field                      | Default   | Description                                                                                                                                                                                                                 |
 |----------------------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 // BootstrapResult reports which primary provider files were created or skipped.
@@ -364,7 +366,7 @@ func BootstrapProvidersWithOptions(opts BootstrapOptions) (BootstrapResult, erro
 				return result, fmt.Errorf("read %q: %w", path, readErr)
 			}
 			var cfg FileConfig
-			if err := json.Unmarshal(raw, &cfg); err != nil {
+			if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 				return result, fmt.Errorf("decode %q: %w", path, err)
 			}
 			updated, changed := BackfillProviderThinking(tmpl.ID, cfg)

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 func compatBool(v bool) *bool { return &v }
@@ -128,12 +130,13 @@ func BackfillAllProviderThinking(dir string) (BackfillThinkingResult, error) {
 	}
 
 	result := BackfillThinkingResult{Dir: dir}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		providerID := strings.TrimSuffix(entry.Name(), ".json")
-		if providerID == "" {
+	providerEntries, selectErrs := jsoncfg.SelectProviderEntries(entries)
+	for _, err := range selectErrs {
+		return result, err
+	}
+	for _, entry := range providerEntries {
+		providerID, ok := jsoncfg.ProviderID(entry.Name())
+		if !ok || providerID == "" {
 			continue
 		}
 
@@ -144,7 +147,7 @@ func BackfillAllProviderThinking(dir string) (BackfillThinkingResult, error) {
 		}
 
 		var cfg FileConfig
-		if err := json.Unmarshal(raw, &cfg); err != nil {
+		if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 			return result, err
 		}
 

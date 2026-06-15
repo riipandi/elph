@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/riipandi/elph/internal/theme"
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 const (
 	defaultElphHomeDir        = ".elph"
 	settingsFileName          = "settings.json"
+	settingsJSONCFileName     = "settings.jsonc"
 	DefaultModelsSyncInterval = 24 * time.Hour
 	// ResponseLanguageInherit matches the user's message language automatically.
 	ResponseLanguageInherit = "inherit"
@@ -38,13 +40,34 @@ type ModelsSettings struct {
 	SyncInterval string `json:"syncInterval,omitempty"`
 }
 
-// Path returns ~/.elph/settings.json.
+// Path returns the active settings file path (~/.elph/settings.json or settings.jsonc).
 func Path() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, defaultElphHomeDir, settingsFileName), nil
+	return resolveSettingsPath(filepath.Join(home, defaultElphHomeDir)), nil
+}
+
+func resolveSettingsPath(dir string) string {
+	jsonPath := filepath.Join(dir, settingsFileName)
+	jsoncPath := filepath.Join(dir, settingsJSONCFileName)
+
+	jsonExists := settingsFileExists(jsonPath)
+	jsoncExists := settingsFileExists(jsoncPath)
+	switch {
+	case jsonExists:
+		return jsonPath
+	case jsoncExists:
+		return jsoncPath
+	default:
+		return jsonPath
+	}
+}
+
+func settingsFileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // Load reads settings from disk. Missing files return defaults.
@@ -63,7 +86,7 @@ func Load() (Settings, error) {
 	}
 
 	var cfg Settings
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 		return Settings{}, fmt.Errorf("decode settings %q: %w", path, err)
 	}
 	return cfg.withDefaults(), nil

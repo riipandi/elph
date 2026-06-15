@@ -147,6 +147,44 @@ func TestLoadCatalogModelTopPOverride(t *testing.T) {
 	require.Equal(t, 0.95, catalog.Providers[0].Models[1].TopP)
 }
 
+func TestLoadCatalogProviderJSONC(t *testing.T) {
+	dir := t.TempDir()
+	writeProviderFile(t, dir, "demo.jsonc", `{
+		// provider with comments
+		"baseUrl": "https://example.com/v1",
+		"api": "openai-completions",
+		"apiKey": "test",
+		"models": [{"id": "m1", "name": "Model 1"},],
+	}`)
+
+	catalog, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, catalog.Providers, 1)
+	require.Equal(t, "demo", catalog.Providers[0].ID)
+	require.Equal(t, "m1", catalog.Providers[0].Models[0].ID)
+}
+
+func TestLoadCatalogPrefersJSONOverJSONC(t *testing.T) {
+	dir := t.TempDir()
+	writeProviderFile(t, dir, "demo.jsonc", `{
+		"baseUrl": "https://jsonc.example.com/v1",
+		"api": "openai-completions",
+		"apiKey": "test",
+		"models": [{"id": "from-jsonc"}]
+	}`)
+	writeProviderFile(t, dir, "demo.json", `{
+		"baseUrl": "https://json.example.com/v1",
+		"api": "openai-completions",
+		"apiKey": "test",
+		"models": [{"id": "from-json"}]
+	}`)
+
+	catalog, err := LoadCatalog(dir)
+	require.NoError(t, err)
+	require.Len(t, catalog.Providers, 1)
+	require.Equal(t, "from-json", catalog.Providers[0].Models[0].ID)
+}
+
 func TestLoadCatalogSkipsInvalidFiles(t *testing.T) {
 	dir := t.TempDir()
 	writeProviderFile(t, dir, "broken.json", `{invalid`)

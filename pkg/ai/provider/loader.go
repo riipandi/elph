@@ -1,12 +1,12 @@
 package provider
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
 // LoadCatalog reads all provider JSON files from dir (or ~/.elph/providers when empty).
@@ -28,10 +28,11 @@ func LoadCatalog(dir string) (Catalog, error) {
 	}
 
 	catalog := Catalog{Dir: dir}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
+	providerEntries, selectErrs := jsoncfg.SelectProviderEntries(entries)
+	for _, err := range selectErrs {
+		catalog.Errors = append(catalog.Errors, err)
+	}
+	for _, entry := range providerEntries {
 		provider, err := loadProviderFile(dir, entry)
 		if err != nil {
 			catalog.Errors = append(catalog.Errors, err)
@@ -43,8 +44,8 @@ func LoadCatalog(dir string) (Catalog, error) {
 }
 
 func loadProviderFile(dir string, entry fs.DirEntry) (RegisteredProvider, error) {
-	id := strings.TrimSuffix(entry.Name(), ".json")
-	if id == "" {
+	id, ok := jsoncfg.ProviderID(entry.Name())
+	if !ok || id == "" {
 		return RegisteredProvider{}, fmt.Errorf("invalid provider filename %q", entry.Name())
 	}
 
@@ -55,7 +56,7 @@ func loadProviderFile(dir string, entry fs.DirEntry) (RegisteredProvider, error)
 	}
 
 	var cfg FileConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
 		return RegisteredProvider{}, fmt.Errorf("provider %q: decode: %w", id, err)
 	}
 

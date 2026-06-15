@@ -16,16 +16,18 @@ const (
 		".gitignore\n" +
 		"attachments/\n" +
 		"metadata/\n" +
-		"settings.json\n" +
-		"mcp.json\n"
+		"prompts/\n" +
+		"settings.json*\n" +
+		"mcp.json*\n"
 )
 
 var gitignoreRequiredEntries = []string{
 	".gitignore",
 	"attachments/",
 	"metadata/",
-	"settings.json",
-	"mcp.json",
+	"prompts/",
+	"settings.json*",
+	"mcp.json*",
 }
 
 // Root returns <workDir>/.agents/elph.
