@@ -552,7 +552,24 @@ Docs: [tools.md § User vision images](./tools.md#user-vision-images-tui-paste),
 | Paragraph heuristics | `splitAIProseParagraphs`, `shouldAIProseParagraphBreak`, `joinAIProseLines` |
 | Reflow               | `formatAIProse` — word wrap without hyphenation (`ansi.Wordwrap`)           |
 | Visual gap           | `renderAIBlock` — explicit blank row between paragraph blocks               |
-| Glamour path         | Raw Glamour output passed to `renderAIBlock` so `\n\n` boundaries survive   |
-| Streaming            | Plain path only; Glamour scheduled after complete (`glamourPending`)        |
+| Glamour path         | Glamour v2 output via `renderAIPreformattedBlock` (per-line paint)          |
+| Streaming            | Plain path only; Glamour scheduled after complete (`markdownPending`)       |
 
 Docs: [tui.md § Long text paste](./tui.md#long-text-paste), [tui.md § AI response formatting](./tui.md#ai-response-formatting), [configuration.md § settings.json](./configuration.md#settingsjson).
+
+---
+
+## 19. Glamour markdown restore and AI copy hint (June 2026)
+
+Restored **Glamour v2** for completed assistant markup after gomarkdown experiment. Key pieces:
+
+| Area             | Implementation                                                                                   |
+|------------------|--------------------------------------------------------------------------------------------------|
+| Glamour renderer | `markdown.go` — `WithPreservedNewLines`, `WithTableWrap(false)`, `WithEmoji`                     |
+| Preprocess       | Blockquote depth normalize; footnotes; `<details>`; images-before-links; OSC 8 links             |
+| Styles           | `glamour_styles.go` — H1 aligned with H2; image alt-only format                                  |
+| Copy hint        | `ai_copy.go` — dim footer on finished AI messages; `Ctrl+Y` / click copies raw source            |
+| Tests            | `markdown_sample_test.go`, `markdown_block_test.go`, `glamour_styles_test.go`, `ai_copy_test.go` |
+| Session test     | `session_test.go` — isolate `HOME` so system-prompt test uses default `build` mode               |
+
+Docs: [tui.md § AI response formatting](./tui.md#ai-response-formatting), [architecture.md § Performance](./architecture.md#performance-and-memory).

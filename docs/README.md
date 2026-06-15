@@ -35,7 +35,7 @@ Prefer code when they disagree until docs or behavior are updated.
 - TodoList Tasks panel, per-session `metadata/<sess_id>/todos.jsonl`, completion notice — `tools.md`, `tui.md`, `agent-runtime.md`
 - ReadMediaFile execution, user vision paste (Ctrl/Cmd+V), attachment shortcuts — `tools.md`, `tui.md`, `agent-runtime.md`
 - Long text paste collapse, paste editor (Ctrl+O), `useRawPaste` — `tui.md`, `configuration.md`, `progress.md`
-- AI prose reflow, paragraph gaps, Glamour async path — `tui.md`, `architecture.md`, `agent-runtime.md`
+- AI prose reflow, Glamour v2 markdown (tables, blockquotes, preprocess), copy hint (`Ctrl+Y` / click) — `tui.md`, `architecture.md`, `agent-runtime.md`, `progress.md` §19
 - Write/Edit/Bash approval (huh), streaming shell output, deny cache — `tools.md`, `tui.md`, `agent-runtime.md`
 - Native tool detail expand rules (shell expanded; long non-shell collapsed) — `tui.md`
 - Prompt template paths and placeholders — `prompt-templates.md`

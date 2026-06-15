@@ -136,19 +136,19 @@ Use when requirements differ; MCP remains unchanged.
 
 Direct dependencies only. Do not add styling/logging/editor helpers beyond this.
 
-| Package                                                                   | Status   | Use                                            |
-|---------------------------------------------------------------------------|----------|------------------------------------------------|
-| [charm.land/bubbletea](https://charm.land/bubbletea)                      | **used** | Event loop                                     |
-| [charm.land/bubbles](https://charm.land/bubbles)                          | **used** | Viewport, input, lists                         |
-| [charm.land/lipgloss](https://charm.land/lipgloss)                        | **used** | Theme (`internal/theme`)                       |
-| [charm.land/glamour](https://charm.land/glamour)                          | **used** | Chat markdown                                  |
-| [charm.land/huh](https://charm.land/huh)                                  | **used** | Confirm dialogs (models.dev sync)              |
-| [charmbracelet/x/ansi](https://github.com/charmbracelet/x/ansi)           | **used** | Keys / ANSI                                    |
-| [charmbracelet/x/term](https://github.com/charmbracelet/x/term)           | **used** | Terminal size                                  |
-| [charmbracelet/ultraviolet](https://github.com/charmbracelet/ultraviolet) | **used** | Input tests only                               |
-| [mattn/go-runewidth](https://github.com/mattn/go-runewidth)               | **used** | Column width                                   |
-| [atotto/clipboard](https://github.com/atotto/clipboard)                   | **used** | Copy text (work dir, session id, last message) |
-| [golang.design/x/clipboard](https://golang.design/x/clipboard)            | **used** | Paste image (and text fallback) in input       |
+| Package                                                                   | Status   | Use                                                  |
+|---------------------------------------------------------------------------|----------|------------------------------------------------------|
+| [charm.land/bubbletea](https://charm.land/bubbletea)                      | **used** | Event loop                                           |
+| [charm.land/bubbles](https://charm.land/bubbles)                          | **used** | Viewport, input, lists                               |
+| [charm.land/lipgloss](https://charm.land/lipgloss)                        | **used** | Theme (`internal/theme`)                             |
+| [charm.land/glamour](https://charm.land/glamour) v2                       | **used** | Assistant markdown (tables, blockquotes, preprocess) |
+| [charm.land/huh](https://charm.land/huh)                                  | **used** | Confirm dialogs (models.dev sync)                    |
+| [charmbracelet/x/ansi](https://github.com/charmbracelet/x/ansi)           | **used** | Keys / ANSI                                          |
+| [charmbracelet/x/term](https://github.com/charmbracelet/x/term)           | **used** | Terminal size                                        |
+| [charmbracelet/ultraviolet](https://github.com/charmbracelet/ultraviolet) | **used** | Input tests only                                     |
+| [mattn/go-runewidth](https://github.com/mattn/go-runewidth)               | **used** | Column width                                         |
+| [atotto/clipboard](https://github.com/atotto/clipboard)                   | **used** | Copy text (work dir, session id, last message)       |
+| [golang.design/x/clipboard](https://golang.design/x/clipboard)            | **used** | Paste image (and text fallback) in input             |
 
 ---
 

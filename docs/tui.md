@@ -305,23 +305,24 @@ Implementation: `internal/renderer/models_sync.go`. Settings: [configuration.md 
 
 Source of truth: `internal/constants/keymap.go`.
 
-| Key                 | Action                                                                                |
-|---------------------|---------------------------------------------------------------------------------------|
-| `Ctrl+C`            | First press: quit notice; second press: quit (or clear input + attachments if typing) |
-| `Ctrl+X`            | Cancel / Quit                                                                         |
-| `Ctrl+D`            | Exit application                                                                      |
-| `Ctrl+A`            | Switch agent mode                                                                     |
-| `Shift+Tab`         | Cycle thinking level                                                                  |
-| `Enter`             | Send message; in slash palette, run or complete selected command                      |
-| `Ctrl+J`            | Insert newline in input                                                               |
-| `Shift+Enter`       | Insert newline in input                                                               |
-| `Ctrl+L`            | Open model selector                                                                   |
-| `Ctrl+Y`            | Copy last message                                                                     |
-| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste             |
-| `Ctrl+O`            | Preview/edit pasted block (input); else expand/collapse newest collapsible block      |
-| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                                         |
-| Click header/footer | Expand/collapse that specific block                                                   |
-| `:q` / `:q!`        | Quit (vim-style)                                                                      |
+| Key                 | Action                                                                                           |
+|---------------------|--------------------------------------------------------------------------------------------------|
+| `Ctrl+C`            | First press: quit notice; second press: quit (or clear input + attachments if typing)            |
+| `Ctrl+X`            | Cancel / Quit                                                                                    |
+| `Ctrl+D`            | Exit application                                                                                 |
+| `Ctrl+A`            | Switch agent mode                                                                                |
+| `Shift+Tab`         | Cycle thinking level                                                                             |
+| `Enter`             | Send message; in slash palette, run or complete selected command                                 |
+| `Ctrl+J`            | Insert newline in input                                                                          |
+| `Shift+Enter`       | Insert newline in input                                                                          |
+| `Ctrl+L`            | Open model selector                                                                              |
+| `Ctrl+Y`            | Copy last AI response (raw markdown source)                                                      |
+| Click copy hint     | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting) |
+| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                        |
+| `Ctrl+O`            | Preview/edit pasted block (input); else expand/collapse newest collapsible block                 |
+| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                                                    |
+| Click header/footer | Expand/collapse that specific block                                                              |
+| `:q` / `:q!`        | Quit (vim-style)                                                                                 |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
 
@@ -428,23 +429,33 @@ collapsed when the final body is long. Chunk boundaries preserve `\n` so line-or
 
 ### AI response formatting
 
-Assistant prose is reflowed to the message column width without hyphenation. Implementation:
-`internal/renderer/markdown.go` (`formatAIProse`, `renderAIBlock`), `view.go`.
+Assistant messages use one of three render paths (`internal/renderer/markdown.go`, `view.go`):
 
-**Rendering paths**
+| Phase     | Path         | Notes                                                         |
+|-----------|--------------|---------------------------------------------------------------|
+| Streaming | Plain reflow | No Glamour; markdown syntax stays visible until the turn ends |
+| Complete, plain    | Plain reflow      | Lightweight markdown stripped (`**`, `` ` ``, links) before reflow   |
+| Complete, markup   | Glamour v2        | Headings, lists, tables, blockquotes, code, etc.; async when detected |
 
-| Phase     | Path         | Notes                                                        |
-|-----------|--------------|--------------------------------------------------------------|
-| Streaming | Plain reflow | No Glamour; markdown syntax kept visible until the turn ends |
-| Complete, plain  | Plain reflow   | Lightweight markdown stripped (`**`, `` ` ``, links) before reflow    |
-| Complete, markup | Glamour        | Headings, lists, code, bold, etc.; async for large messages           |
+**Glamour path**
 
-Glamour uses a per-turn cached renderer (`aiMarkdownCache`); the cache is cleared after each agent
-turn (`agent.go`).
+- Renderer: `charm.land/glamour/v2` with Elph styles (`glamour_styles.go`) — H1 matches other
+  headings (no dark-theme badge); image alt text only (no `Image:` prefix).
+- Options: `WithPreservedNewLines()` (blockquotes keep one line per `>` row),
+  `WithTableWrap(false)` (wide cells truncate instead of breaking row alignment),
+  `WithEmoji()` (shortcodes such as `:smile:`).
+- Preprocess (`preprocessMarkdownForGlamour`): normalize nested blockquotes; convert footnotes and
+  `<details>` blocks; strip abbreviation definition lines; images before links (OSC 8 hyperlinks on
+  link text only, URL hidden).
+- Output is painted per line via `renderAIPreformattedBlock` so table bars and quote `│` columns
+  are not reflowed by lipgloss.
+- Async: `scheduleMarkdownRender` sets `markdownPending` and refreshes via `markdownRenderCmd`; the
+  per-turn Glamour instance cache (`aiMarkdownCache`) is reset in `agent.go` after each turn.
 
-**Paragraph detection**
+**Plain prose path**
 
-`formatAIProse` groups soft-wrapped single newlines and preserves intentional paragraph breaks:
+`formatAIProse` reflows to the message column without hyphenation. Paragraph heuristics
+(`splitAIProseParagraphs`, `shouldAIProseParagraphBreak`, `joinAIProseLines`):
 
 | Signal                                         | Treatment                                                   |
 |------------------------------------------------|-------------------------------------------------------------|
@@ -453,10 +464,32 @@ turn (`agent.go`).
 | Lowercase continuation, hyphen wrap (`word-`)  | Join into the same paragraph                                |
 | Line nearly full width + newline               | Treated as soft wrap (join)                                 |
 
-**Visual spacing**
+`renderAIBlock` inserts one blank row between paragraph blocks. AI prose separator lines (`---`,
+`========`) are stripped on the plain path only — Glamour renders `---` / `***` / `___` as
+horizontal rules.
 
-Paragraphs are separated by one blank line in the chat area (`renderAIBlock` inserts an explicit
-gap row between paragraph blocks). Wrapped lines within a paragraph stay contiguous.
+**Copy hint**
+
+Finished (non-streaming) assistant messages show a dim italic footer: `click or ctrl+y to copy`
+(`ai_copy.go`). Copy writes the **raw message source** (markdown as stored), not the rendered
+ANSI output. `Ctrl+Y` copies the last AI reply; clicking the hint copies that specific message.
+Implementation: `collapsible_hit.go` (`zoneAICopyFooter`), `mouse.go`.
+
+**Markdown support notes (Glamour path)**
+
+| Feature               | TUI behavior                                             |
+|-----------------------|----------------------------------------------------------|
+| Headings, lists, code | Full Glamour styling                                     |
+| Tables, blockquotes   | Preserved line structure; nested quotes normalized       |
+| Links                 | Link text + OSC 8 click (terminal-dependent)             |
+| Images                | Alt text only                                            |
+| Footnotes             | `[^n]` → `(n)`; definitions appended as blockquote notes |
+| `<details>`           | Converted to blockquote with bold summary                |
+| Abbreviations         | Definition lines stripped (no hover in terminal)         |
+| Math (`$…$`, `$$…$$`) | Shown literally (no LaTeX renderer)                      |
+| Raw HTML              | Tags stripped after `<details>` preprocess               |
+
+Regression fixture: `internal/renderer/markdown_sample_test.go` (comprehensive user markdown).
 
 **Performance**
 
