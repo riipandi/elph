@@ -29,7 +29,7 @@ func (m Model) walkContentLines(fn func(line int, ref contentLineRef) bool) {
 
 	bannerH := lipgloss.Height(m.bannerView())
 	for range bannerH {
-		if fn(line, contentLineRef{zone: zoneBanner}) {
+		if fn(line, contentLineRef{messageIndex: -1, zone: zoneBanner}) {
 			return
 		}
 		line++
@@ -39,14 +39,14 @@ func (m Model) walkContentLines(fn func(line int, ref contentLineRef) bool) {
 		return
 	}
 
-	if fn(line, contentLineRef{zone: zoneGap}) {
+	if fn(line, contentLineRef{messageIndex: -1, zone: zoneGap}) {
 		return
 	}
 	line++
 
 	for i := range m.messages {
 		if i > 0 {
-			if fn(line, contentLineRef{zone: zoneGap}) {
+			if fn(line, contentLineRef{messageIndex: -1, zone: zoneGap}) {
 				return
 			}
 			line++
@@ -109,7 +109,15 @@ func (m Model) collapsibleToggleAtViewportY(y int) (int, bool) {
 	if !m.isInContentArea(y) {
 		return -1, false
 	}
-	contentLine := y + m.content.YOffset()
+	if stickyIdx := m.stickyUserMessageIndex(m.content.YOffset()); stickyIdx >= 0 {
+		if y < m.stickyUserOverlayHeight(stickyIdx) {
+			return stickyIdx, true
+		}
+	}
+	contentLine, ok := m.contentLineAtViewportY(y)
+	if !ok {
+		return -1, false
+	}
 	var found = -1
 	m.walkContentLines(func(line int, ref contentLineRef) bool {
 		if line != contentLine {
@@ -151,8 +159,7 @@ func (m Model) collapsibleFooterViewportY(msgIndex int) (int, bool) {
 	if target < 0 {
 		return -1, false
 	}
-	y := target - m.content.YOffset()
-	return y, y >= 0 && y < m.content.Height()
+	return m.viewportYForContentLine(target)
 }
 
 func aiCopyHintRow(rows []string, msg message, streaming bool) int {
@@ -179,6 +186,5 @@ func (m Model) collapsibleHeaderViewportY(msgIndex int) (int, bool) {
 	if target < 0 {
 		return -1, false
 	}
-	y := target - m.content.YOffset()
-	return y, y >= 0 && y < m.content.Height()
+	return m.viewportYForContentLine(target)
 }

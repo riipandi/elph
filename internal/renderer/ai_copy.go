@@ -56,15 +56,17 @@ func (m Model) aiCopyFooterViewportY(msgIndex int) (int, bool) {
 	if target < 0 {
 		return -1, false
 	}
-	y := target - m.content.YOffset()
-	return y, y >= 0 && y < m.content.Height()
+	return m.viewportYForContentLine(target)
 }
 
 func (m Model) aiCopyAtViewportY(y int) (int, bool) {
 	if !m.isInContentArea(y) {
 		return -1, false
 	}
-	contentLine := y + m.content.YOffset()
+	contentLine, ok := m.contentLineAtViewportY(y)
+	if !ok {
+		return -1, false
+	}
 	var found = -1
 	m.walkContentLines(func(line int, ref contentLineRef) bool {
 		if line != contentLine {

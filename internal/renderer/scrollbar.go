@@ -104,7 +104,7 @@ func scrollBarFor(viewportH, total, scrollTop int) string {
 }
 
 func (m Model) contentAreaView() string {
-	vp := m.content.View()
+	vp := m.contentBodyView()
 	if !m.contentScrollable() {
 		return lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(vp)
 	}

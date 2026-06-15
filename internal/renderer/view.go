@@ -269,6 +269,8 @@ func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) 
 	switch kind {
 	case constants.MessageUser, constants.MessageTool, constants.MessageDetail, constants.MessageThinking:
 		return 1, 2
+	case constants.MessageAI:
+		return 0, 0
 	default:
 		return 0, 1
 	}

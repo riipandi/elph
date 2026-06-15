@@ -29,6 +29,7 @@ type Settings struct {
 	ShowThinking             *bool           `json:"showThinking,omitempty"`
 	AutoExpandThinking       *bool           `json:"autoExpandThinking,omitempty"`
 	UseRawPaste              *bool           `json:"useRawPaste,omitempty"`
+	StickyScroll             *bool           `json:"stickyScroll,omitempty"`
 	PreferedResponseLanguage string          `json:"preferedResponseLanguage,omitempty"`
 	ThinkingBudgets          map[string]int  `json:"thinkingBudgets,omitempty"`
 	Session                  SessionSettings `json:"session,omitempty"`
@@ -141,6 +142,10 @@ func (s Settings) withDefaults() Settings {
 		v := false
 		s.UseRawPaste = &v
 	}
+	if s.StickyScroll == nil {
+		v := true
+		s.StickyScroll = &v
+	}
 	if strings.TrimSpace(s.PreferedResponseLanguage) == "" {
 		s.PreferedResponseLanguage = ResponseLanguageInherit
 	}
@@ -161,6 +166,12 @@ func (s Settings) AutoExpandThinkingEnabled() bool {
 // When false (default), long pastes collapse to a [Pasted: N lines] placeholder.
 func (s Settings) UseRawPasteEnabled() bool {
 	return *s.withDefaults().UseRawPaste
+}
+
+// StickyScrollEnabled reports whether user prompts pin to the top while
+// scrolling through assistant replies.
+func (s Settings) StickyScrollEnabled() bool {
+	return *s.withDefaults().StickyScroll
 }
 
 // ResponseLanguage returns the default language for assistant replies.

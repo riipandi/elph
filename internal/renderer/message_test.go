@@ -71,6 +71,13 @@ func TestResponseMessageVerticalSpacing(t *testing.T) {
 	}
 }
 
+func TestAIMessageNoHorizontalPadding(t *testing.T) {
+	m := testModel()
+	rendered := stripANSI(m.renderMessage(message{text: "response from agent", kind: constants.MessageAI}))
+	require.False(t, strings.HasPrefix(rendered, " "), "AI message should not have horizontal padding: %q", rendered)
+	require.Equal(t, m.messageAreaWidth(), lipgloss.Width(m.renderMessage(message{text: "response from agent", kind: constants.MessageAI})))
+}
+
 func TestAIMessageHasBottomPaddingOnly(t *testing.T) {
 	m := testModel()
 	single := m.renderMessage(message{text: "only line", kind: constants.MessageAI})

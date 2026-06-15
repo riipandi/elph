@@ -20,6 +20,7 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.True(t, cfg.ShowThinkingEnabled())
 	require.False(t, cfg.AutoExpandThinkingEnabled())
 	require.False(t, cfg.UseRawPasteEnabled())
+	require.True(t, cfg.StickyScrollEnabled())
 	require.Equal(t, "auto", cfg.Theme)
 	require.Equal(t, ResponseLanguageInherit, cfg.ResponseLanguage())
 }
@@ -81,6 +82,26 @@ func TestPreferedResponseLanguageDefaultsInheritAndCanOverride(t *testing.T) {
 	cfg, err = Load()
 	require.NoError(t, err)
 	require.Equal(t, "Indonesian", cfg.ResponseLanguage())
+}
+
+func TestStickyScrollDefaultsTrueAndCanDisable(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.True(t, cfg.StickyScrollEnabled())
+
+	disabled := false
+	require.NoError(t, Save(Settings{
+		Models:       cfg.Models,
+		ShowThinking: cfg.ShowThinking,
+		StickyScroll: &disabled,
+	}))
+
+	cfg, err = Load()
+	require.NoError(t, err)
+	require.False(t, cfg.StickyScrollEnabled())
 }
 
 func TestShowThinkingDefaultsTrueAndCanDisable(t *testing.T) {
