@@ -1,86 +1,125 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Elph settings configuration",
-  "description": "User preferences persisted at ~/.elph/settings.json.",
-  "type": "object",
-  "properties": {
-    "models": {
-      "type": "object",
-      "description": "Automatic models.dev catalog sync settings.",
-      "properties": {
-        "lastSync": {
-          "type": "string",
-          "format": "date-time",
-          "description": "RFC3339 timestamp of the last successful provider model sync."
-        },
-        "syncInterval": {
-          "type": "string",
-          "default": "24h",
-          "description": "Go duration between automatic syncs (for example 24h, 12h, 30m). Default 24h."
-        }
-      },
-      "additionalProperties": false
-    },
-    "theme": {
-      "type": "string",
-      "enum": ["auto", "dark", "light"],
-      "default": "auto",
-      "description": "UI color scheme. auto follows the terminal appearance."
-    },
-    "showThinking": {
-      "type": "boolean",
-      "description": "Stream and display model reasoning in the chat.",
-      "default": true
-    },
-    "autoExpandThinking": {
-      "type": "boolean",
-      "description": "Start thinking blocks expanded in the chat.",
-      "default": false
-    },
-    "preferedResponseLanguage": {
-      "type": "string",
-      "default": "inherit",
-      "description": "Reply language. inherit matches the user's message language; any other value fixes the default (for example English, Indonesian). The model still switches when the user explicitly requests another language."
-    },
-    "thinkingBudgets": {
-      "type": "object",
-      "description": "Custom token budgets per thinking level for budget-based reasoning models.",
-      "additionalProperties": { "type": "integer", "minimum": 1 },
-      "properties": {
-        "minimal": { "type": "integer", "minimum": 1 },
-        "low": { "type": "integer", "minimum": 1 },
-        "medium": { "type": "integer", "minimum": 1 },
-        "high": { "type": "integer", "minimum": 1 },
-        "xhigh": { "type": "integer", "minimum": 1 }
-      }
-    },
-    "session": {
-      "type": "object",
-      "description": "Last-used runtime selections restored on startup.",
-      "properties": {
-        "providerId": {
-          "type": "string",
-          "description": "Last selected provider id from ~/.elph/providers."
-        },
-        "modelId": {
-          "type": "string",
-          "description": "Last selected model id for the active provider."
-        },
-        "agentMode": {
-          "type": "string",
-          "enum": ["build", "plan", "ask", "brave"],
-          "description": "Active agent mode.",
-          "default": "build"
-        },
-        "thinkingLevel": {
-          "type": "string",
-          "enum": ["off", "minimal", "low", "medium", "high", "xhigh"],
-          "description": "Active thinking level shown in the footer.",
-          "default": "high"
-        }
-      },
-      "additionalProperties": false
-    }
-  },
-  "additionalProperties": false
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Elph settings configuration",
+	"description": "User preferences persisted at ~/.elph/settings.json.",
+	"type": "object",
+	"properties": {
+		"models": {
+			"type": "object",
+			"description": "Automatic models.dev catalog sync settings.",
+			"properties": {
+				"lastSync": {
+					"type": "string",
+					"format": "date-time",
+					"description": "RFC3339 timestamp of the last successful provider model sync."
+				},
+				"syncInterval": {
+					"type": "string",
+					"default": "24h",
+					"description": "Go duration between automatic syncs (for example 24h, 12h, 30m). Default 24h."
+				}
+			},
+			"additionalProperties": false
+		},
+		"theme": {
+			"type": "string",
+			"enum": [
+				"auto",
+				"dark",
+				"light"
+			],
+			"default": "auto",
+			"description": "UI color scheme. auto follows the terminal appearance."
+		},
+		"showThinking": {
+			"type": "boolean",
+			"description": "Stream and display model reasoning in the chat.",
+			"default": true
+		},
+		"autoExpandThinking": {
+			"type": "boolean",
+			"description": "Start thinking blocks expanded in the chat.",
+			"default": false
+		},
+		"useRawPaste": {
+			"type": "boolean",
+			"description": "Insert pasted text verbatim in the input prompt. When false, long pastes collapse to [Pasted: N lines] with preview/edit via ctrl+o.",
+			"default": false
+		},
+		"preferedResponseLanguage": {
+			"type": "string",
+			"default": "inherit",
+			"description": "Reply language. inherit matches the user's message language; any other value fixes the default (for example English, Indonesian). The model still switches when the user explicitly requests another language."
+		},
+		"thinkingBudgets": {
+			"type": "object",
+			"description": "Custom token budgets per thinking level for budget-based reasoning models.",
+			"additionalProperties": {
+				"type": "integer",
+				"minimum": 1
+			},
+			"properties": {
+				"minimal": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"low": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"medium": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"high": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"xhigh": {
+					"type": "integer",
+					"minimum": 1
+				}
+			}
+		},
+		"session": {
+			"type": "object",
+			"description": "Last-used runtime selections restored on startup.",
+			"properties": {
+				"providerId": {
+					"type": "string",
+					"description": "Last selected provider id from ~/.elph/providers."
+				},
+				"modelId": {
+					"type": "string",
+					"description": "Last selected model id for the active provider."
+				},
+				"agentMode": {
+					"type": "string",
+					"enum": [
+						"build",
+						"plan",
+						"ask",
+						"brave"
+					],
+					"description": "Active agent mode.",
+					"default": "build"
+				},
+				"thinkingLevel": {
+					"type": "string",
+					"enum": [
+						"off",
+						"minimal",
+						"low",
+						"medium",
+						"high",
+						"xhigh"
+					],
+					"description": "Active thinking level shown in the footer.",
+					"default": "high"
+				}
+			},
+			"additionalProperties": false
+		}
+	},
+	"additionalProperties": false
 }

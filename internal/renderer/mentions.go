@@ -24,8 +24,20 @@ func (m Model) mentionPaletteActive() bool {
 	return len(m.suggest.MentionSuggestions) > 0
 }
 
+func inputCursorByteCol(line string, col int) int {
+	runes := []rune(line)
+	if col > len(runes) {
+		col = len(runes)
+	}
+	if col <= 0 {
+		return 0
+	}
+	return len(string(runes[:col]))
+}
+
 func (m Model) inputCursorOffset() int {
-	lines := strings.Split(m.input.Value(), "\n")
+	val := m.input.Value()
+	lines := strings.Split(val, "\n")
 	line := m.input.Line()
 	if line < 0 {
 		line = 0
@@ -38,9 +50,9 @@ func (m Model) inputCursorOffset() int {
 	for i := 0; i < line; i++ {
 		offset += len(lines[i]) + 1
 	}
-	offset += m.input.LineInfo().CharOffset
-	if offset > len(m.input.Value()) {
-		offset = len(m.input.Value())
+	offset += inputCursorByteCol(lines[line], m.input.Column())
+	if offset > len(val) {
+		offset = len(val)
 	}
 	return offset
 }

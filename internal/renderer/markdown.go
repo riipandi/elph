@@ -4,10 +4,13 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/theme"
 	"github.com/riipandi/elph/pkg/core/agent"
@@ -245,8 +248,156 @@ func looksLikeMarkdown(text string) bool {
 	return false
 }
 
-func renderAIMessagePlain(blockWidth int, text string) string {
-	return renderAIBlock(blockWidth, stripMarkdownSyntax(text), false)
+func endsAISentence(s string) bool {
+	s = strings.TrimSpace(s)
+	s = strings.TrimRight(s, "\"'”»")
+	if s == "" {
+		return false
+	}
+	r, _ := utf8.DecodeLastRuneInString(s)
+	return r == '.' || r == '!' || r == '?'
+}
+
+func startsAIParagraphLine(line string) bool {
+	line = strings.TrimLeft(line, " \t")
+	if line == "" {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(line)
+	return unicode.IsUpper(r) || unicode.IsDigit(r)
+}
+
+// shouldAIProseParagraphBreak reports whether a single newline between two
+// lines is an intentional paragraph boundary rather than soft wrapping.
+func shouldAIProseParagraphBreak(prev, next string, width int) bool {
+	next = strings.TrimLeft(next, " \t")
+	if next == "" {
+		return false
+	}
+	if r, _ := utf8.DecodeRuneInString(next); unicode.IsLower(r) {
+		return false
+	}
+
+	prev = strings.TrimSpace(prev)
+	if strings.HasSuffix(prev, "-") {
+		return false
+	}
+	if strings.HasSuffix(prev, ",") || strings.HasSuffix(prev, ";") || strings.HasSuffix(prev, ":") {
+		return false
+	}
+	if !endsAISentence(prev) || !startsAIParagraphLine(next) {
+		return false
+	}
+	// A line that nearly fills the column was likely soft-wrapped by the model.
+	if width > 0 && lipgloss.Width(prev) >= width-2 {
+		return false
+	}
+	return true
+}
+
+// joinAIProseLines merges two consecutive single-newline lines from model
+// output when they belong to the same paragraph.
+func joinAIProseLines(prev, next string) string {
+	prev = strings.TrimSpace(prev)
+	next = strings.TrimSpace(next)
+	if prev == "" {
+		return next
+	}
+	if next == "" {
+		return prev
+	}
+
+	// Soft-wrap hyphenation: "melik-" + "sipu" → "meliksipu"
+	if strings.HasSuffix(prev, "-") {
+		if r, _ := utf8.DecodeRuneInString(next); unicode.IsLower(r) {
+			return strings.TrimSuffix(prev, "-") + next
+		}
+	}
+
+	// Attach punctuation that should not be preceded by a space.
+	if r, _ := utf8.DecodeRuneInString(next); r != utf8.RuneError {
+		switch r {
+		case '.', ',', ';', ':', '!', '?', ')', ']', '%', '\'', '"':
+			return prev + next
+		}
+	}
+
+	return prev + " " + next
+}
+
+// splitAIProseParagraphs groups soft-wrapped single newlines while keeping
+// intentional paragraph boundaries.
+func splitAIProseParagraphs(text string, width int) []string {
+	var paras []string
+	for _, chunk := range strings.Split(text, "\n\n") {
+		chunk = strings.TrimSpace(chunk)
+		if chunk == "" {
+			continue
+		}
+		var current strings.Builder
+		flush := func() {
+			if s := strings.TrimSpace(current.String()); s != "" {
+				paras = append(paras, s)
+			}
+			current.Reset()
+		}
+		for _, line := range strings.Split(chunk, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				flush()
+				continue
+			}
+			if current.Len() > 0 {
+				prev := current.String()
+				if shouldAIProseParagraphBreak(prev, line, width) {
+					flush()
+					current.WriteString(line)
+				} else {
+					current.Reset()
+					current.WriteString(joinAIProseLines(prev, line))
+				}
+				continue
+			}
+			current.WriteString(line)
+		}
+		flush()
+	}
+	return paras
+}
+
+func wrapAIProseParagraph(para string, width int) string {
+	para = strings.Join(strings.Fields(para), " ")
+	if para == "" {
+		return ""
+	}
+	if width < 1 {
+		return para
+	}
+	return ansi.Hardwrap(ansi.Wordwrap(para, width, ""), width, false)
+}
+
+// formatAIProse reflows assistant prose without hyphenation and preserves
+// paragraph breaks.
+func formatAIProse(text string, width int) string {
+	paras := splitAIProseParagraphs(text, width)
+	if len(paras) == 0 {
+		return ""
+	}
+	out := make([]string, 0, len(paras))
+	for _, para := range paras {
+		if wrapped := wrapAIProseParagraph(para, width); wrapped != "" {
+			out = append(out, wrapped)
+		}
+	}
+	return strings.Join(out, "\n\n")
+}
+
+func renderAIMessagePlain(blockWidth int, text string, streaming bool) string {
+	if !streaming {
+		text = stripMarkdownSyntax(text)
+	}
+	body := formatAIProse(text, aiContentWidth(blockWidth))
+	return renderAIBlock(blockWidth, body, false)
 }
 
 func renderAIMessageGlamour(blockWidth int, text string) string {
@@ -270,19 +421,14 @@ func renderAIMessageGlamour(blockWidth int, text string) string {
 
 	rendered, err := aiMarkdownCache.renderMarkdown(contentW, processed)
 	if err != nil {
-		return renderAIMessagePlain(blockWidth, text)
+		return renderAIMessagePlain(blockWidth, text, false)
 	}
 	rendered = strings.TrimRight(rendered, "\n")
 	if rendered == "" {
-		return renderAIMessagePlain(blockWidth, text)
+		return renderAIMessagePlain(blockWidth, text, false)
 	}
 
-	lineStyle := lipgloss.NewStyle().Padding(0, hPad).Width(blockWidth)
-	lines := strings.Split(rendered, "\n")
-	for i, line := range lines {
-		lines[i] = lineStyle.Render(line)
-	}
-	return renderAIBlock(blockWidth, strings.Join(lines, "\n"), true)
+	return renderAIBlock(blockWidth, rendered, false)
 }
 
 // renderAIMessage uses a cheap plain path while streaming or when Glamour is
@@ -294,7 +440,7 @@ func renderAIMessage(blockWidth int, text string, streaming, glamourPending bool
 		return ""
 	}
 	if streaming || glamourPending || !looksLikeMarkdown(text) {
-		return renderAIMessagePlain(blockWidth, text)
+		return renderAIMessagePlain(blockWidth, text, streaming)
 	}
 	return renderAIMessageGlamour(blockWidth, text)
 }

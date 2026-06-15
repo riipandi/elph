@@ -77,6 +77,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateModelsSyncForm(msg)
 	}
 
+	if paste, ok := msg.(tea.PasteMsg); ok {
+		if m.pasteEditorActive() {
+			var cmd tea.Cmd
+			m.pasteEditor.input, cmd = m.pasteEditor.input.Update(paste)
+			return m, cmd
+		}
+		if m.input.Focused() && !m.agent.Busy && !m.shell.Running {
+			if updated, handled := m.handlePasteContent(paste.Content); handled {
+				m, finCmd := updated.finalizeInputEdit()
+				return m, finCmd
+			}
+		}
+	}
+
+	if m.pasteEditorActive() && isNewlineInputMsg(msg) {
+		m, cmd := m.handlePasteEditorNewlineMsg(msg)
+		return m, cmd
+	}
+
 	var cmds []tea.Cmd
 
 	if key, ok := msg.(tea.KeyPressMsg); ok {
@@ -103,6 +122,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Batch(cmds...)
 				}
 				return m, nil
+			}
+		}
+		if m.pasteEditorActive() {
+			var cmd tea.Cmd
+			var handled bool
+			m, cmd, handled = m.handlePasteEditorKey(key)
+			if handled {
+				m, finCmd := m.finalizeInputEdit()
+				if finCmd != nil {
+					cmds = append(cmds, finCmd)
+				}
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+				return m, tea.Batch(cmds...)
 			}
 		}
 	}
@@ -304,9 +338,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ctrlCPress = 2
 				m = m.resetInput()
 				m = m.clearPendingAttachments()
-				var cmd tea.Cmd
-				m, cmd = m.replaceNotice("Input cleared, press again to exit")
-				return m, cmd
+				m = m.clearCtrlCNotice()
+				m = m.syncLayout(true)
+				return m, nil
 			}
 
 			if m.ctrlCPress == 2 || (m.ctrlCPress == 1 && !hasInput) {
@@ -401,7 +435,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.input.Focused() {
+	if m.input.Focused() && !m.pasteEditorActive() {
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -541,14 +575,18 @@ func (m Model) replaceNotice(text string) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) cancelCtrlC() Model {
-	m.ctrlCPress = 0
+func (m Model) clearCtrlCNotice() Model {
 	if m.ctrlCNoticeID >= 0 && m.ctrlCNoticeID < len(m.messages) {
 		m.messages = append(m.messages[:m.ctrlCNoticeID], m.messages[m.ctrlCNoticeID+1:]...)
 		m.layout.ContentDirty = true
 	}
 	m.ctrlCNoticeID = -1
 	return m
+}
+
+func (m Model) cancelCtrlC() Model {
+	m.ctrlCPress = 0
+	return m.clearCtrlCNotice()
 }
 
 func (m Model) syncPromptPrefix() Model {

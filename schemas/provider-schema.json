@@ -1,190 +1,261 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Elph AI provider configuration",
-  "description": "One provider per JSON file in ~/.elph/providers. The provider id is the filename without .json. Toggle availability with elph provider enable/disable and elph provider model enable/disable.",
-  "type": "object",
-  "required": ["baseUrl", "api", "models"],
-  "properties": {
-    "enabled": {
-      "type": "boolean",
-      "default": true,
-      "description": "When false, the provider and all of its models are hidden from the model picker and default selection."
-    },
-    "name": {
-      "type": "string",
-      "description": "Display name shown in the UI."
-    },
-    "baseUrl": {
-      "type": "string",
-      "description": "API endpoint base URL."
-    },
-    "api": {
-      "type": "string",
-      "enum": ["openai-completions", "anthropic-messages"],
-      "description": "Upstream API protocol."
-    },
-    "apiKey": {
-      "type": "string",
-      "description": "API key literal, $ENV_VAR / ${ENV_VAR} / env.ENV_VAR interpolation, or !command."
-    },
-    "authHeader": {
-      "type": "boolean",
-      "description": "Add Authorization: Bearer <apiKey> header for OpenAI-compatible APIs."
-    },
-    "headers": {
-      "type": "object",
-      "additionalProperties": { "type": "string" },
-      "description": "Extra request headers. Values support $ENV_VAR, ${ENV_VAR}, env.ENV_VAR, and !command syntax."
-    },
-    "compat": { "$ref": "#/definitions/compat" },
-    "models": {
-      "type": "array",
-      "minItems": 1,
-      "description": "Models exposed by this provider.",
-      "items": { "$ref": "#/definitions/model" }
-    }
-  },
-  "additionalProperties": false,
-  "definitions": {
-    "thinkingLevelValue": {
-      "oneOf": [
-        { "type": "string", "description": "Provider-specific thinking value (for example high, adaptive, budget token count)." },
-        { "type": "null", "description": "Marks the level as unsupported for this model." }
-      ]
-    },
-    "thinkingLevelMap": {
-      "type": "object",
-      "description": "Maps Elph thinking levels to provider values. Omit a key to use defaults; set null to hide an unsupported level.",
-      "properties": {
-        "off": { "$ref": "#/definitions/thinkingLevelValue" },
-        "minimal": { "$ref": "#/definitions/thinkingLevelValue" },
-        "low": { "$ref": "#/definitions/thinkingLevelValue" },
-        "medium": { "$ref": "#/definitions/thinkingLevelValue" },
-        "high": { "$ref": "#/definitions/thinkingLevelValue" },
-        "xhigh": { "$ref": "#/definitions/thinkingLevelValue" }
-      },
-      "additionalProperties": { "$ref": "#/definitions/thinkingLevelValue" }
-    },
-    "model": {
-      "type": "object",
-      "required": ["id"],
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Model identifier sent to the upstream API."
-        },
-        "enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "When false, the model is hidden from the model picker and default selection."
-        },
-        "name": {
-          "type": "string",
-          "description": "Human-readable model name. Defaults to id."
-        },
-        "api": {
-          "type": "string",
-          "enum": ["openai-completions", "anthropic-messages"],
-          "description": "Override provider api for this model."
-        },
-        "baseUrl": {
-          "type": "string",
-          "description": "Override provider baseUrl for this model."
-        },
-        "reasoning": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether the model supports extended thinking."
-        },
-        "thinkingLevelMap": { "$ref": "#/definitions/thinkingLevelMap" },
-        "compat": { "$ref": "#/definitions/compat" },
-        "input": {
-          "type": "array",
-          "items": { "enum": ["text", "image"] },
-          "default": ["text"],
-          "description": "Supported input modalities."
-        },
-        "contextWindow": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 128000,
-          "description": "Maximum context window size in tokens for this model."
-        },
-        "maxTokens": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 16384,
-          "description": "Maximum output tokens per completion for this model."
-        },
-        "temperature": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 2,
-          "default": 0.4,
-          "description": "Sampling temperature. 0.4 is the default for coding agents (more deterministic, still flexible)."
-        },
-        "topP": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "default": 1,
-          "description": "Nucleus sampling cutoff (top_p). Default 1 keeps the full token pool so temperature controls randomness; use 0.9–0.95 for stricter outputs."
-        },
-        "cost": {
-          "type": "object",
-          "description": "Per-million-token pricing used for usage display.",
-          "properties": {
-            "input": { "type": "number", "minimum": 0 },
-            "output": { "type": "number", "minimum": 0 },
-            "cacheRead": { "type": "number", "minimum": 0 },
-            "cacheWrite": { "type": "number", "minimum": 0 }
-          },
-          "additionalProperties": false
-        },
-        "headers": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Per-model request headers merged over provider headers."
-        }
-      },
-      "additionalProperties": false
-    },
-    "compat": {
-      "type": "object",
-      "description": "Provider-specific API compatibility overrides.",
-      "properties": {
-        "supportsDeveloperRole": {
-          "type": "boolean",
-          "description": "Use developer role instead of system for OpenAI-compatible APIs when thinking is enabled."
-        },
-        "supportsReasoningEffort": {
-          "type": "boolean",
-          "description": "Send reasoning_effort for OpenAI-style reasoning models."
-        },
-        "supportsUsageInStreaming": {
-          "type": "boolean",
-          "description": "Request include_usage in streaming OpenAI-compatible responses."
-        },
-        "forceAdaptiveThinking": {
-          "type": "boolean",
-          "description": "Force Anthropic adaptive thinking mode."
-        },
-        "allowEmptySignature": {
-          "type": "boolean",
-          "description": "Allow empty thinking signatures in Anthropic responses."
-        },
-        "thinkingFormat": {
-          "type": "string",
-          "enum": ["reasoning_effort", "openrouter", "qwen", "deepseek"],
-          "description": "Wire format for extended thinking on OpenAI-compatible APIs."
-        },
-        "maxTokensField": {
-          "type": "string",
-          "enum": ["max_tokens", "max_completion_tokens"],
-          "description": "Request field name for output token limit."
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Elph AI provider configuration",
+	"description": "One provider per JSON file in ~/.elph/providers. The provider id is the filename without .json. Toggle availability with elph provider enable/disable and elph provider model enable/disable.",
+	"type": "object",
+	"required": [
+		"baseUrl",
+		"api",
+		"models"
+	],
+	"properties": {
+		"enabled": {
+			"type": "boolean",
+			"default": true,
+			"description": "When false, the provider and all of its models are hidden from the model picker and default selection."
+		},
+		"name": {
+			"type": "string",
+			"description": "Display name shown in the UI."
+		},
+		"baseUrl": {
+			"type": "string",
+			"description": "API endpoint base URL."
+		},
+		"api": {
+			"type": "string",
+			"enum": [
+				"openai-completions",
+				"anthropic-messages"
+			],
+			"description": "Upstream API protocol."
+		},
+		"apiKey": {
+			"type": "string",
+			"description": "API key literal, $ENV_VAR / ${ENV_VAR} / env.ENV_VAR interpolation, or !command."
+		},
+		"authHeader": {
+			"type": "boolean",
+			"description": "Add Authorization: Bearer <apiKey> header for OpenAI-compatible APIs."
+		},
+		"headers": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "string"
+			},
+			"description": "Extra request headers. Values support $ENV_VAR, ${ENV_VAR}, env.ENV_VAR, and !command syntax."
+		},
+		"compat": {
+			"$ref": "#/definitions/compat"
+		},
+		"models": {
+			"type": "array",
+			"minItems": 1,
+			"description": "Models exposed by this provider.",
+			"items": {
+				"$ref": "#/definitions/model"
+			}
+		}
+	},
+	"additionalProperties": false,
+	"definitions": {
+		"thinkingLevelValue": {
+			"oneOf": [
+				{
+					"type": "string",
+					"description": "Provider-specific thinking value (for example high, adaptive, budget token count)."
+				},
+				{
+					"type": "null",
+					"description": "Marks the level as unsupported for this model."
+				}
+			]
+		},
+		"thinkingLevelMap": {
+			"type": "object",
+			"description": "Maps Elph thinking levels to provider values. Omit a key to use defaults; set null to hide an unsupported level.",
+			"properties": {
+				"off": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				},
+				"minimal": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				},
+				"low": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				},
+				"medium": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				},
+				"high": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				},
+				"xhigh": {
+					"$ref": "#/definitions/thinkingLevelValue"
+				}
+			},
+			"additionalProperties": {
+				"$ref": "#/definitions/thinkingLevelValue"
+			}
+		},
+		"model": {
+			"type": "object",
+			"required": [
+				"id"
+			],
+			"properties": {
+				"id": {
+					"type": "string",
+					"description": "Model identifier sent to the upstream API."
+				},
+				"enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "When false, the model is hidden from the model picker and default selection."
+				},
+				"name": {
+					"type": "string",
+					"description": "Human-readable model name. Defaults to id."
+				},
+				"api": {
+					"type": "string",
+					"enum": [
+						"openai-completions",
+						"anthropic-messages"
+					],
+					"description": "Override provider api for this model."
+				},
+				"baseUrl": {
+					"type": "string",
+					"description": "Override provider baseUrl for this model."
+				},
+				"reasoning": {
+					"type": "boolean",
+					"default": false,
+					"description": "Whether the model supports extended thinking."
+				},
+				"thinkingLevelMap": {
+					"$ref": "#/definitions/thinkingLevelMap"
+				},
+				"compat": {
+					"$ref": "#/definitions/compat"
+				},
+				"input": {
+					"type": "array",
+					"items": {
+						"enum": [
+							"text",
+							"image"
+						]
+					},
+					"default": [
+						"text"
+					],
+					"description": "Supported input modalities."
+				},
+				"contextWindow": {
+					"type": "integer",
+					"minimum": 1,
+					"default": 128000,
+					"description": "Maximum context window size in tokens for this model."
+				},
+				"maxTokens": {
+					"type": "integer",
+					"minimum": 1,
+					"default": 16384,
+					"description": "Maximum output tokens per completion for this model."
+				},
+				"temperature": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 2,
+					"default": 0.4,
+					"description": "Sampling temperature. 0.4 is the default for coding agents (more deterministic, still flexible)."
+				},
+				"topP": {
+					"type": "number",
+					"minimum": 0,
+					"maximum": 1,
+					"default": 1,
+					"description": "Nucleus sampling cutoff (top_p). Default 1 keeps the full token pool so temperature controls randomness; use 0.9–0.95 for stricter outputs."
+				},
+				"cost": {
+					"type": "object",
+					"description": "Per-million-token pricing used for usage display.",
+					"properties": {
+						"input": {
+							"type": "number",
+							"minimum": 0
+						},
+						"output": {
+							"type": "number",
+							"minimum": 0
+						},
+						"cacheRead": {
+							"type": "number",
+							"minimum": 0
+						},
+						"cacheWrite": {
+							"type": "number",
+							"minimum": 0
+						}
+					},
+					"additionalProperties": false
+				},
+				"headers": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					},
+					"description": "Per-model request headers merged over provider headers."
+				}
+			},
+			"additionalProperties": false
+		},
+		"compat": {
+			"type": "object",
+			"description": "Provider-specific API compatibility overrides.",
+			"properties": {
+				"supportsDeveloperRole": {
+					"type": "boolean",
+					"description": "Use developer role instead of system for OpenAI-compatible APIs when thinking is enabled."
+				},
+				"supportsReasoningEffort": {
+					"type": "boolean",
+					"description": "Send reasoning_effort for OpenAI-style reasoning models."
+				},
+				"supportsUsageInStreaming": {
+					"type": "boolean",
+					"description": "Request include_usage in streaming OpenAI-compatible responses."
+				},
+				"forceAdaptiveThinking": {
+					"type": "boolean",
+					"description": "Force Anthropic adaptive thinking mode."
+				},
+				"allowEmptySignature": {
+					"type": "boolean",
+					"description": "Allow empty thinking signatures in Anthropic responses."
+				},
+				"thinkingFormat": {
+					"type": "string",
+					"enum": [
+						"reasoning_effort",
+						"openrouter",
+						"qwen",
+						"deepseek"
+					],
+					"description": "Wire format for extended thinking on OpenAI-compatible APIs."
+				},
+				"maxTokensField": {
+					"type": "string",
+					"enum": [
+						"max_tokens",
+						"max_completion_tokens"
+					],
+					"description": "Request field name for output token limit."
+				}
+			},
+			"additionalProperties": false
+		}
+	}
 }

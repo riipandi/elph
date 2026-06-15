@@ -255,6 +255,11 @@ func (m *Model) renderMessageAt(index int) string {
 	return out
 }
 
+func aiContentWidth(blockWidth int) int {
+	_, hPad := messageBlockPadding(constants.MessageAI)
+	return max(blockWidth-2*hPad, 1)
+}
+
 func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) {
 	switch kind {
 	case constants.MessageUser, constants.MessageTool, constants.MessageDetail, constants.MessageThinking:
@@ -268,15 +273,49 @@ func messageBlockPadding(kind constants.MessageKind) (vertical, horizontal int) 
 // without shifting spacing above the block.
 const aiMessageBottomPad = 1
 
+// aiParagraphGap is the blank line count inserted between prose paragraphs.
+const aiParagraphGap = 1
+
 func renderAIBlock(blockWidth int, body string, horizontalApplied bool) string {
-	style := constants.MessageStyle(constants.MessageAI).
-		Width(blockWidth).
-		PaddingBottom(aiMessageBottomPad)
+	base := constants.MessageStyle(constants.MessageAI)
 	if !horizontalApplied {
 		_, hPad := messageBlockPadding(constants.MessageAI)
-		style = style.PaddingLeft(hPad).PaddingRight(hPad)
+		base = base.PaddingLeft(hPad).PaddingRight(hPad)
 	}
-	return style.Render(body)
+	lineStyle := base.Width(blockWidth)
+
+	chunks := make([]string, 0, strings.Count(body, "\n\n")+1)
+	for _, para := range strings.Split(body, "\n\n") {
+		if para = strings.TrimSpace(para); para != "" {
+			chunks = append(chunks, para)
+		}
+	}
+	if len(chunks) == 0 {
+		return ""
+	}
+
+	renderChunk := func(para string, padBottom bool) string {
+		lines := strings.Split(para, "\n")
+		for j, line := range lines {
+			style := lineStyle
+			if padBottom && j == len(lines)-1 {
+				style = style.PaddingBottom(aiMessageBottomPad)
+			}
+			lines[j] = style.Render(line)
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	blocks := make([]string, 0, len(chunks)*2-1)
+	for i, para := range chunks {
+		if i > 0 {
+			for range aiParagraphGap {
+				blocks = append(blocks, lineStyle.Render(""))
+			}
+		}
+		blocks = append(blocks, renderChunk(para, i == len(chunks)-1))
+	}
+	return strings.Join(blocks, "\n")
 }
 
 // renderUserMessage paints a user chat input block with an optional timestamp line.
@@ -446,6 +485,7 @@ func (m Model) activityLabel() string {
 
 func (m Model) inputBodyView() string {
 	body := m.input.View()
+	body = overlayInputPasteTokens(body, m.input.Value(), m.inputPastes)
 	if !m.inputScrollable() {
 		return body
 	}
@@ -462,11 +502,20 @@ func (m Model) inputChromeView() string {
 		return m.modelSelectorChromeView()
 	}
 
+	pasteEditor := m.pasteEditorView()
 	palette := m.commandPaletteView()
-	inputBox := m.inputBoxView(palette != "")
+	inputBox := m.inputBoxView(palette != "" || pasteEditor != "")
 
+	var overlays []string
+	if pasteEditor != "" {
+		overlays = append(overlays, pasteEditor)
+	}
 	if palette != "" {
-		return lipgloss.JoinVertical(lipgloss.Top, palette, inputBox)
+		overlays = append(overlays, palette)
+	}
+	if len(overlays) > 0 {
+		overlays = append(overlays, inputBox)
+		return lipgloss.JoinVertical(lipgloss.Top, overlays...)
 	}
 	if !m.showsActivity() {
 		return lipgloss.NewStyle().MarginTop(1).Render(inputBox)
@@ -481,6 +530,9 @@ func (m Model) inputBoxView(attached bool) string {
 	}
 	boxW := borderedChromeWidth(m.chromeOuterWidth())
 	inner := m.inputBodyView()
+	if hint := m.pasteHintView(); hint != "" {
+		inner = lipgloss.JoinVertical(lipgloss.Top, hint, inner)
+	}
 	if hint := m.attachmentHintView(); hint != "" {
 		inner = lipgloss.JoinVertical(lipgloss.Top, hint, inner)
 	}

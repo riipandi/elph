@@ -140,8 +140,9 @@ are shown separately from user input. They are dimmed and collapsible.
 
 Click a header or hint row to expand or collapse that block. Detail titles are plain text (no
 background); the hint row is clickable for detail blocks. `Ctrl+O` toggles the most recent
-collapsible block in the session. Detail box colors reflect status: neutral, running, success,
-warning, or error.
+collapsible block in the session (unless the input has a collapsed paste token or the paste editor
+is open — then **Ctrl+O** handles paste preview/edit first). Detail box colors reflect status:
+neutral, running, success, warning, or error.
 
 ### Slash command palette
 
@@ -180,6 +181,26 @@ paths are appended to the text prompt so the agent can use **ReadMediaFile** ins
 Terminals that emit raw CSI for **Cmd+Delete** (e.g. Ghostty `\x1b[3;9~`) are handled before word-delete logic (`attachment_keys.go`). **Ctrl+C** twice also clears pending attachments.
 
 Implementation: `internal/renderer/attachments.go`, `paste_keys.go`, `internal/clipboardmedia`.
+
+### Long text paste
+
+When **Ctrl+V** / **Cmd+V** pastes plain text (not an image), long payloads collapse so the input
+stays readable. Thresholds: **≥ 4 lines** or **≥ 400 runes**. The textarea stores an internal token
+(`[[paste:id]]`); the UI shows **`[Pasted: N lines]`**. On submit, tokens expand to the full text
+sent to the agent.
+
+| UI element   | Behavior                                                                 |
+|--------------|--------------------------------------------------------------------------|
+| Hint row     | `Pasted block · N lines · ctrl+o to preview/edit` when a token is active |
+| **Ctrl+O**   | Opens a full-screen paste editor overlay (when input has a paste token)  |
+| Editor keys  | **Ctrl+J** / **Shift+Enter** — newline; **Ctrl+O** or **Esc** — save     |
+| After paste  | Cursor moves to the end of the paste token                               |
+| After editor | Main input cursor restores to the pre-edit line/column                   |
+
+Set `"useRawPaste": true` in `~/.elph/settings.json` to insert pasted text verbatim (no collapse).
+Default is `false`. See [configuration.md § settings.json](./configuration.md#settingsjson).
+
+Implementation: `internal/renderer/paste.go`, `paste_editor.go`, `attachments.go`.
 
 ---
 
@@ -284,23 +305,23 @@ Implementation: `internal/renderer/models_sync.go`. Settings: [configuration.md 
 
 Source of truth: `internal/constants/keymap.go`.
 
-| Key                 | Action                                                                    |
-|---------------------|---------------------------------------------------------------------------|
-| `Ctrl+C`            | Cancel / Quit                                                             |
-| `Ctrl+X`            | Cancel / Quit                                                             |
-| `Ctrl+D`            | Exit application                                                          |
-| `Ctrl+A`            | Switch agent mode                                                         |
-| `Shift+Tab`         | Cycle thinking level                                                      |
-| `Enter`             | Send message; in slash palette, run or complete selected command          |
-| `Ctrl+J`            | Insert newline in input                                                   |
-| `Shift+Enter`       | Insert newline in input                                                   |
-| `Ctrl+L`            | Open model selector                                                       |
-| `Ctrl+Y`            | Copy last message                                                         |
-| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste |
-| `Ctrl+O`            | Expand/collapse newest collapsible block                                  |
-| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                             |
-| Click header/footer | Expand/collapse that specific block                                       |
-| `:q` / `:q!`        | Quit (vim-style)                                                          |
+| Key                 | Action                                                                                |
+|---------------------|---------------------------------------------------------------------------------------|
+| `Ctrl+C`            | First press: quit notice; second press: quit (or clear input + attachments if typing) |
+| `Ctrl+X`            | Cancel / Quit                                                                         |
+| `Ctrl+D`            | Exit application                                                                      |
+| `Ctrl+A`            | Switch agent mode                                                                     |
+| `Shift+Tab`         | Cycle thinking level                                                                  |
+| `Enter`             | Send message; in slash palette, run or complete selected command                      |
+| `Ctrl+J`            | Insert newline in input                                                               |
+| `Shift+Enter`       | Insert newline in input                                                               |
+| `Ctrl+L`            | Open model selector                                                                   |
+| `Ctrl+Y`            | Copy last message                                                                     |
+| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste             |
+| `Ctrl+O`            | Preview/edit pasted block (input); else expand/collapse newest collapsible block      |
+| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                                         |
+| Click header/footer | Expand/collapse that specific block                                                   |
+| `:q` / `:q!`        | Quit (vim-style)                                                                      |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
 
@@ -404,3 +425,40 @@ collapsed when the final body is long. Chunk boundaries preserve `\n` so line-or
 | System   | `> `   | `highlight`                                                            |
 | Detail   | —      | Soft status-colored box — neutral, running, success, warning, error    |
 | Thinking | —      | Neutral dim gray box; `autoExpandThinking` in settings (default false) |
+
+### AI response formatting
+
+Assistant prose is reflowed to the message column width without hyphenation. Implementation:
+`internal/renderer/markdown.go` (`formatAIProse`, `renderAIBlock`), `view.go`.
+
+**Rendering paths**
+
+| Phase     | Path         | Notes                                                        |
+|-----------|--------------|--------------------------------------------------------------|
+| Streaming | Plain reflow | No Glamour; markdown syntax kept visible until the turn ends |
+| Complete, plain  | Plain reflow   | Lightweight markdown stripped (`**`, `` ` ``, links) before reflow    |
+| Complete, markup | Glamour        | Headings, lists, code, bold, etc.; async for large messages           |
+
+Glamour uses a per-turn cached renderer (`aiMarkdownCache`); the cache is cleared after each agent
+turn (`agent.go`).
+
+**Paragraph detection**
+
+`formatAIProse` groups soft-wrapped single newlines and preserves intentional paragraph breaks:
+
+| Signal                                         | Treatment                                                   |
+|------------------------------------------------|-------------------------------------------------------------|
+| Blank line (`\n\n`)                            | Always a new paragraph                                      |
+| Sentence end (`.!?`) + capital/digit next line | New paragraph if the previous line is not near column width |
+| Lowercase continuation, hyphen wrap (`word-`)  | Join into the same paragraph                                |
+| Line nearly full width + newline               | Treated as soft wrap (join)                                 |
+
+**Visual spacing**
+
+Paragraphs are separated by one blank line in the chat area (`renderAIBlock` inserts an explicit
+gap row between paragraph blocks). Wrapped lines within a paragraph stay contiguous.
+
+**Performance**
+
+- Message render cache avoids re-lipgloss on unchanged blocks (`message_render.go`).
+- Stream prefix cache reuses rendered history while the active reply grows (`stream.go`).

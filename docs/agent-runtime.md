@@ -102,15 +102,15 @@ Native tool calling is the primary path when a provider is configured.
 
 `internal/renderer/agent_bridge.go`:
 
-| Event                      | TUI effect                                                             |
-|----------------------------|------------------------------------------------------------------------|
-| `EventActivity`            | Activity line + stopwatch                                              |
-| `EventThinkingDelta`       | Append to thinking block                                               |
-| `EventResponseDelta`       | Append to AI message (markdown async)                                  |
-| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash); TodoList skips box |
-| `EventToolCallOutputDelta` | Append streamed shell output to detail box                             |
-| `EventToolCallDone`        | Finalize detail status/body; TodoList updates Tasks panel / completion |
-| `EventTurnDone`            | Finalize turn, apply history, token/cost footer                        |
+| Event                      | TUI effect                                                                                                            |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `EventActivity`            | Activity line + stopwatch                                                                                             |
+| `EventThinkingDelta`       | Append to thinking block                                                                                              |
+| `EventResponseDelta`       | Append to AI message; plain prose reflow while streaming; Glamour after complete when markup detected (`markdown.go`) |
+| `EventToolCallStart`       | Native tool detail box (running, `$ cmd` for Bash); TodoList skips box                                                |
+| `EventToolCallOutputDelta` | Append streamed shell output to detail box                                                                            |
+| `EventToolCallDone`        | Finalize detail status/body; TodoList updates Tasks panel / completion                                                |
+| `EventTurnDone`            | Finalize turn, apply history, token/cost footer                                                                       |
 
 Native tool UI: `agent_native.go`, `tool_interact.go` (huh approval / AskUser). Text-markup tool
 UI: `agent_toolcall.go`.

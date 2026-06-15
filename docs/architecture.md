@@ -27,23 +27,23 @@ elph/
 
 ## `internal/` packages
 
-| Package          | Responsibility                                                                                 |
-|------------------|------------------------------------------------------------------------------------------------|
-| `align`          | Column alignment for command palettes                                                          |
-| `command`        | Slash commands, fuzzy suggest, `/model` handler                                                |
-| `config`         | Build-time version/hash/date (Makefile ldflags)                                                |
-| `constants`      | Agent modes, thinking levels, colors, keybindings, tips                                        |
-| `datastore`      | **Stub** — empty package, reserved                                                             |
-| `git`            | Git footer: lightweight `ReadBranch` (`.git/HEAD`) + full `Read` (go-git line stats on demand) |
-| `mention`        | `@` file/path autocomplete in input                                                            |
-| `prompt`         | System prompt assembly (`AGENTS.md`, skills, session state, response language, tools)          |
-| `prompttemplate` | Load `*.md` templates with frontmatter and `$1` args                                           |
-| `renderer`       | Bubble Tea v2 TUI (viewport, input, agent bridge, markdown, huh dialogs)                       |
-| `projectdir`     | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                   |
-| `runtime`        | Session, tool execution, shell, JSONL session logs (`slog`)                                    |
-| `settings`       | `~/.elph/settings.json` persistence                                                            |
-| `theme`          | `auto` / `dark` / `light` lipgloss themes                                                      |
-| `tools`          | Diagnostic helpers (not agent-executable)                                                      |
+| Package          | Responsibility                                                                                        |
+|------------------|-------------------------------------------------------------------------------------------------------|
+| `align`          | Column alignment for command palettes                                                                 |
+| `command`        | Slash commands, fuzzy suggest, `/model` handler                                                       |
+| `config`         | Build-time version/hash/date (Makefile ldflags)                                                       |
+| `constants`      | Agent modes, thinking levels, colors, keybindings, tips                                               |
+| `datastore`      | **Stub** — empty package, reserved                                                                    |
+| `git`            | Git footer: lightweight `ReadBranch` (`.git/HEAD`) + full `Read` (go-git line stats on demand)        |
+| `mention`        | `@` file/path autocomplete in input                                                                   |
+| `prompt`         | System prompt assembly (`AGENTS.md`, skills, session state, response language, tools)                 |
+| `prompttemplate` | Load `*.md` templates with frontmatter and `$1` args                                                  |
+| `renderer`       | Bubble Tea v2 TUI (viewport, input, paste collapse/editor, agent bridge, prose/markdown, huh dialogs) |
+| `projectdir`     | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                          |
+| `runtime`        | Session, tool execution, shell, JSONL session logs (`slog`)                                           |
+| `settings`       | `~/.elph/settings.json` persistence                                                                   |
+| `theme`          | `auto` / `dark` / `light` lipgloss themes                                                             |
+| `tools`          | Diagnostic helpers (not agent-executable)                                                             |
 
 ## `pkg/` packages
 
@@ -98,18 +98,18 @@ See [agent-runtime.md](./agent-runtime.md) for the full turn pipeline.
 
 Elph targets a low idle footprint (~30 MB RSS on a typical macOS session) by deferring heavy work and capping retained data.
 
-| Area             | Strategy                                                                          | Code                                              |
-|------------------|-----------------------------------------------------------------------------------|---------------------------------------------------|
-| Startup          | No synchronous go-git open; branch placeholder `—` until first async refresh      | `renderer.New`, `footer.go`                       |
-| Git (idle)       | `ReadBranch` every 2 min — reads `.git/HEAD` only; `+N -N` stats unchanged        | `internal/git/branch.go`, `gitRefreshTick`        |
-| Git (full)       | `git.Read` (go-git + line diffs, max 32 paths) on footer git click or after shell | `internal/git/status.go`, `footer.go`, `shell.go` |
-| Provider catalog | Session keeps trimmed catalog; inactive models use `SlimModel`                    | `pkg/ai/provider/catalog_trim.go`                 |
-| Conversation     | `CompactMessages` + per-field caps before history/API/TUI                         | `pkg/core/agent/limits.go`, `truncate.go`         |
-| Tool output      | Read/Write/Edit/Grep/Glob caps at execution time                                  | `internal/runtime/execute.go`                     |
-| Prompt templates | Loaded on first `/` command, not at TUI init                                      | `renderer/model.go`                               |
-| Tool-call regex  | Compiled once via `sync.Once`                                                     | `pkg/core/agent/toolcall_regex.go`                |
-| Markdown         | Glamour cache cleared after each agent turn                                       | `renderer/markdown.go`, `agent.go`                |
-| models.dev       | One startup preview; huh confirm before full sync                                 | `renderer/models_sync.go`                         |
+| Area             | Strategy                                                                                        | Code                                              |
+|------------------|-------------------------------------------------------------------------------------------------|---------------------------------------------------|
+| Startup          | No synchronous go-git open; branch placeholder `—` until first async refresh                    | `renderer.New`, `footer.go`                       |
+| Git (idle)       | `ReadBranch` every 2 min — reads `.git/HEAD` only; `+N -N` stats unchanged                      | `internal/git/branch.go`, `gitRefreshTick`        |
+| Git (full)       | `git.Read` (go-git + line diffs, max 32 paths) on footer git click or after shell               | `internal/git/status.go`, `footer.go`, `shell.go` |
+| Provider catalog | Session keeps trimmed catalog; inactive models use `SlimModel`                                  | `pkg/ai/provider/catalog_trim.go`                 |
+| Conversation     | `CompactMessages` + per-field caps before history/API/TUI                                       | `pkg/core/agent/limits.go`, `truncate.go`         |
+| Tool output      | Read/Write/Edit/Grep/Glob caps at execution time                                                | `internal/runtime/execute.go`                     |
+| Prompt templates | Loaded on first `/` command, not at TUI init                                                    | `renderer/model.go`                               |
+| Tool-call regex  | Compiled once via `sync.Once`                                                                   | `pkg/core/agent/toolcall_regex.go`                |
+| Markdown         | Plain reflow while streaming; Glamour after complete (async when large); cache cleared per turn | `renderer/markdown.go`, `stream.go`, `agent.go`   |
+| models.dev       | One startup preview; huh confirm before full sync                                               | `renderer/models_sync.go`                         |
 
 Turn-time limits and sizes are listed in [agent-runtime.md § In-memory history](./agent-runtime.md#in-memory-history).
 

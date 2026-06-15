@@ -34,6 +34,8 @@ Prefer code when they disagree until docs or behavior are updated.
 - Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash, TodoList, Skill) — `tools.md`, `progress.md`, `agent-runtime.md`
 - TodoList Tasks panel, per-session `metadata/<sess_id>/todos.jsonl`, completion notice — `tools.md`, `tui.md`, `agent-runtime.md`
 - ReadMediaFile execution, user vision paste (Ctrl/Cmd+V), attachment shortcuts — `tools.md`, `tui.md`, `agent-runtime.md`
+- Long text paste collapse, paste editor (Ctrl+O), `useRawPaste` — `tui.md`, `configuration.md`, `progress.md`
+- AI prose reflow, paragraph gaps, Glamour async path — `tui.md`, `architecture.md`, `agent-runtime.md`
 - Write/Edit/Bash approval (huh), streaming shell output, deny cache — `tools.md`, `tui.md`, `agent-runtime.md`
 - Native tool detail expand rules (shell expanded; long non-shell collapsed) — `tui.md`
 - Prompt template paths and placeholders — `prompt-templates.md`

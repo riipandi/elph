@@ -26,11 +26,19 @@ func TestCtrlCSecondPressClearsInput(t *testing.T) {
 
 	updated, _ := m.Update(keyCtrl('c'))
 	m = updated.(Model)
-	updated, _ = m.Update(keyCtrl('c'))
+	require.Contains(t, m.messages[len(m.messages)-1].text, "Press again to exit")
+
+	updated, cmd := m.Update(keyCtrl('c'))
 	m = updated.(Model)
 
+	require.Nil(t, cmd)
 	require.Equal(t, 2, m.ctrlCPress)
 	require.Empty(t, m.input.Value())
+	require.Equal(t, -1, m.ctrlCNoticeID)
+	for _, msg := range m.messages {
+		require.NotContains(t, msg.text, "Press again to exit")
+		require.NotContains(t, msg.text, "Input cleared")
+	}
 }
 
 func TestCtrlCThirdPressQuits(t *testing.T) {

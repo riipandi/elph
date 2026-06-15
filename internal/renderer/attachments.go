@@ -20,7 +20,7 @@ type inputAttachment struct {
 }
 
 func (m Model) handlePasteKey() (Model, bool) {
-	if !m.input.Focused() || m.agent.Busy || m.shell.Running {
+	if !m.input.Focused() || m.agent.Busy || m.shell.Running || m.pasteEditorActive() {
 		return m, false
 	}
 
@@ -55,11 +55,24 @@ func (m Model) handlePasteKey() (Model, bool) {
 	}
 
 	if text, ok := clipboardmedia.ReadText(); ok && text != "" {
-		m.input.SetValue(m.input.Value() + text)
-		m = m.syncInputHeight()
-		return m, true
+		return m.handlePasteContent(text)
 	}
 	return m, false
+}
+
+func (m Model) handlePasteContent(text string) (Model, bool) {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	if text == "" {
+		return m, false
+	}
+	if !m.useRawPaste && shouldCollapsePaste(text) {
+		m = m.insertCollapsedPaste(text)
+	} else {
+		m = m.insertTextAtCursor(text)
+	}
+	m = m.syncInputHeight()
+	return m, true
 }
 
 func (m Model) attachmentsDisplaySuffix() string {

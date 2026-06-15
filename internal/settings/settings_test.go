@@ -19,6 +19,7 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.Empty(t, cfg.Models.LastSync)
 	require.True(t, cfg.ShowThinkingEnabled())
 	require.False(t, cfg.AutoExpandThinkingEnabled())
+	require.False(t, cfg.UseRawPasteEnabled())
 	require.Equal(t, "auto", cfg.Theme)
 	require.Equal(t, ResponseLanguageInherit, cfg.ResponseLanguage())
 }
@@ -41,6 +42,26 @@ func TestAutoExpandThinkingDefaultsFalseAndCanEnable(t *testing.T) {
 	cfg, err = Load()
 	require.NoError(t, err)
 	require.True(t, cfg.AutoExpandThinkingEnabled())
+}
+
+func TestUseRawPasteDefaultsFalseAndCanEnable(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfg, err := Load()
+	require.NoError(t, err)
+	require.False(t, cfg.UseRawPasteEnabled())
+
+	enabled := true
+	require.NoError(t, Save(Settings{
+		Models:       cfg.Models,
+		ShowThinking: cfg.ShowThinking,
+		UseRawPaste:  &enabled,
+	}))
+
+	cfg, err = Load()
+	require.NoError(t, err)
+	require.True(t, cfg.UseRawPasteEnabled())
 }
 
 func TestPreferedResponseLanguageDefaultsInheritAndCanOverride(t *testing.T) {

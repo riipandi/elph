@@ -247,13 +247,15 @@ func (m Model) maxInputHeight() int {
 		overlayH = m.commandPaletteHeight()
 	case m.modelSelectorActive():
 		overlayH = m.modelSelectorListHeight()
+	case m.pasteEditorActive():
+		overlayH = m.pasteEditorHeight()
 	}
 	avail := m.height - footerH - activityH - m.todoPanelHeight() - m.toolInteractDialogHeight() - overlayH - minViewportRows - inputChromeSlack
 	return min(max(avail, 1), maxInputLines)
 }
 
 func (m Model) inputDisplayRows() int {
-	val := m.input.Value()
+	val := pasteDisplayValue(m.input.Value(), m.inputPastes)
 	if val == "" {
 		return 1
 	}
@@ -383,7 +385,7 @@ func (m Model) resetInput() Model {
 	m.layout.InputScrollTop = 0
 	m.inputPendingEsc = false
 	m.promptChar = ">"
-	return m
+	return m.clearInputPastes()
 }
 
 func (m Model) finalizeInputEdit() (Model, tea.Cmd) {
@@ -396,6 +398,8 @@ func (m Model) finalizeInputEdit() (Model, tea.Cmd) {
 	if m.showPromptPrefix != prevPrefix {
 		m = m.syncInputWidth()
 	}
+
+	m = m.pruneInputPastes()
 
 	prevSuggest := len(m.suggest.CmdSuggestions) + len(m.suggest.MentionSuggestions)
 	var syncCmd tea.Cmd
@@ -482,7 +486,7 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 	if m.agent.Busy || m.shell.Running {
 		return m, nil, false
 	}
-	val := normalizeInputForSubmit(m.input.Value())
+	val := normalizeInputForSubmit(expandInputPastes(m.input.Value(), m.inputPastes))
 	if val == "" && len(m.pendingAttachments) == 0 {
 		return m, nil, false
 	}

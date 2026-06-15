@@ -184,7 +184,7 @@ func renderStreamingMessage(blockWidth int, kind constants.MessageKind, text str
 		text = agent.SanitizeAssistantDisplay(text)
 	}
 	if kind == constants.MessageAI {
-		return renderAIBlock(blockWidth, text, false)
+		return renderAIMessage(blockWidth, text, true, false)
 	}
 	vPad, hPad := messageBlockPadding(kind)
 	return constants.MessageStyle(kind).

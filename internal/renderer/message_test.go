@@ -72,8 +72,16 @@ func TestResponseMessageVerticalSpacing(t *testing.T) {
 
 func TestAIMessageHasBottomPaddingOnly(t *testing.T) {
 	m := testModel()
-	rendered := m.renderMessage(message{text: "line one\nline two", kind: constants.MessageAI})
-	require.Equal(t, 3, lipgloss.Height(rendered), "AI blocks add one line below the last row")
+	single := m.renderMessage(message{text: "only line", kind: constants.MessageAI})
+	twoParas := m.renderMessage(message{text: "First paragraph ends.\n\nSecond paragraph starts.", kind: constants.MessageAI})
+	multiLine := m.renderMessage(message{
+		text: strings.Repeat("word ", 20) + "\n\n" + strings.Repeat("more ", 20),
+		kind: constants.MessageAI,
+	})
+	require.Greater(t, lipgloss.Height(twoParas), lipgloss.Height(single),
+		"paragraph gaps should add visible height")
+	require.Greater(t, lipgloss.Height(multiLine), lipgloss.Height(single),
+		"multi-paragraph replies should be taller than a single line")
 }
 
 func TestThinkingMessageUsesCollapsibleBox(t *testing.T) {

@@ -132,6 +132,78 @@ func TestAIMarkdownPreservesBlockWidth(t *testing.T) {
 	require.LessOrEqual(t, lipgloss.Width(rendered), m.messageAreaWidth())
 }
 
+func TestFormatAIProseJoinsSoftWrappedLines(t *testing.T) {
+	text := "Rajin\nmenghitung uang rakyat, khususnya."
+	formatted := formatAIProse(text, 40)
+	require.NotContains(t, formatted, "Rajin\nmenghitung")
+	require.Contains(t, formatted, "Rajin menghitung")
+	require.NotContains(t, formatted, "-\n")
+}
+
+func TestFormatAIProsePreservesParagraphBreaks(t *testing.T) {
+	text := "Paragraph one ends here.\nParagraph two starts now.\n\nParagraph three."
+	formatted := formatAIProse(text, 80)
+	require.Contains(t, formatted, "\n\n")
+	require.Contains(t, formatted, "Paragraph one ends here.")
+	require.Contains(t, formatted, "Paragraph two starts now.")
+	require.Contains(t, formatted, "Paragraph three.")
+	require.Contains(t, formatted, "here.\n\nParagraph two")
+}
+
+func TestFormatAIProseJoinsHyphenatedWrap(t *testing.T) {
+	text := "melik-\nsipu di pantai."
+	formatted := formatAIProse(text, 40)
+	require.Contains(t, formatted, "meliksipu")
+	require.NotContains(t, formatted, "melik-")
+}
+
+func TestFormatAIProseSplitsShortParagraphLines(t *testing.T) {
+	text := "First paragraph ends.\nSecond paragraph starts."
+	formatted := formatAIProse(text, 80)
+	require.Contains(t, formatted, "\n\n")
+	require.Contains(t, formatted, "First paragraph ends.")
+	require.Contains(t, formatted, "Second paragraph starts.")
+}
+
+func TestFormatAIProseDoesNotSplitSoftWrappedLine(t *testing.T) {
+	line1 := strings.Repeat("word ", 15) + "ends."
+	text := line1 + "\nNext chunk continues here."
+	paras := splitAIProseParagraphs(text, 80)
+	require.Len(t, paras, 1)
+	require.Contains(t, paras[0], "ends. Next")
+}
+
+func TestAIProseParagraphGapIsVisible(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "First paragraph ends.\nSecond paragraph starts.",
+		kind: constants.MessageAI,
+	}))
+	lines := strings.Split(raw, "\n")
+	firstIdx, secondIdx := -1, -1
+	for i, line := range lines {
+		switch {
+		case strings.Contains(line, "First paragraph"):
+			firstIdx = i
+		case strings.Contains(line, "Second paragraph"):
+			secondIdx = i
+		}
+	}
+	require.NotEqual(t, -1, firstIdx)
+	require.NotEqual(t, -1, secondIdx)
+	require.Greater(t, secondIdx-firstIdx, 1, "paragraphs should be separated by a blank line")
+}
+
+func TestPlainAIMessageReflowsWithoutHyphenation(t *testing.T) {
+	m := testModel()
+	long := strings.Repeat("word ", 30)
+	rendered := stripANSI(m.renderMessage(message{
+		text: long,
+		kind: constants.MessageAI,
+	}))
+	require.NotContains(t, rendered, "-\n")
+}
+
 func TestPlainAIMessageSkipsMarkdownRenderer(t *testing.T) {
 	m := testModel()
 	rendered := stripANSI(m.renderMessage(message{

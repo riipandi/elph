@@ -530,3 +530,29 @@ Docs: [slash-commands.md § Diagnostic detail boxes](./slash-commands.md#diagnos
 Limits: max **4** user attachments per message; images downscaled to max dimension **1568**; ReadMediaFile tool output capped at **32 KB**.
 
 Docs: [tools.md § User vision images](./tools.md#user-vision-images-tui-paste), [tui.md § Image attachments](./tui.md#image-attachments), [agent-runtime.md § User vision images](./agent-runtime.md#user-vision-images).
+
+---
+
+## 18. Long text paste and AI prose formatting (June 2026)
+
+### Long text paste
+
+| Area           | Implementation                                                                                  |
+|----------------|-------------------------------------------------------------------------------------------------|
+| Collapse       | ≥ 4 lines or ≥ 400 runes → `[[paste:id]]` token; UI shows `[Pasted: N lines]`                   |
+| Submit         | `expandInputPastes` restores full text for the agent turn                                       |
+| Paste editor   | **Ctrl+O** overlay (`paste_editor.go`); **Esc** saves; newline via **Ctrl+J** / **Shift+Enter** |
+| Setting        | `useRawPaste` in `settings.json` (default `false`)                                              |
+| Terminal paste | `tea.PasteMsg` + **Ctrl/Cmd+V** (`attachments.go`, `paste_keys.go`)                             |
+
+### AI prose reflow
+
+| Area                 | Implementation                                                              |
+|----------------------|-----------------------------------------------------------------------------|
+| Paragraph heuristics | `splitAIProseParagraphs`, `shouldAIProseParagraphBreak`, `joinAIProseLines` |
+| Reflow               | `formatAIProse` — word wrap without hyphenation (`ansi.Wordwrap`)           |
+| Visual gap           | `renderAIBlock` — explicit blank row between paragraph blocks               |
+| Glamour path         | Raw Glamour output passed to `renderAIBlock` so `\n\n` boundaries survive   |
+| Streaming            | Plain path only; Glamour scheduled after complete (`glamourPending`)        |
+
+Docs: [tui.md § Long text paste](./tui.md#long-text-paste), [tui.md § AI response formatting](./tui.md#ai-response-formatting), [configuration.md § settings.json](./configuration.md#settingsjson).

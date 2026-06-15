@@ -1,42 +1,50 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Elph MCP configuration",
-  "description": "Reserved schema for future MCP server definitions under ~/.elph. Not yet consumed by the runtime.",
-  "type": "object",
-  "properties": {
-    "servers": {
-      "type": "object",
-      "description": "Named MCP server entries keyed by server id.",
-      "additionalProperties": { "$ref": "#/definitions/server" }
-    }
-  },
-  "additionalProperties": false,
-  "definitions": {
-    "server": {
-      "type": "object",
-      "required": ["command"],
-      "properties": {
-        "command": {
-          "type": "string",
-          "description": "Executable used to start the MCP server."
-        },
-        "args": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Arguments passed to the MCP server command."
-        },
-        "env": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Environment variables for the MCP server process."
-        },
-        "enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "When false, the server is not started."
-        }
-      },
-      "additionalProperties": false
-    }
-  }
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "Elph MCP configuration",
+	"description": "Reserved schema for future MCP server definitions under ~/.elph. Not yet consumed by the runtime.",
+	"type": "object",
+	"properties": {
+		"servers": {
+			"type": "object",
+			"description": "Named MCP server entries keyed by server id.",
+			"additionalProperties": {
+				"$ref": "#/definitions/server"
+			}
+		}
+	},
+	"additionalProperties": false,
+	"definitions": {
+		"server": {
+			"type": "object",
+			"required": [
+				"command"
+			],
+			"properties": {
+				"command": {
+					"type": "string",
+					"description": "Executable used to start the MCP server."
+				},
+				"args": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Arguments passed to the MCP server command."
+				},
+				"env": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					},
+					"description": "Environment variables for the MCP server process."
+				},
+				"enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "When false, the server is not started."
+				}
+			},
+			"additionalProperties": false
+		}
+	}
 }

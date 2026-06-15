@@ -26,6 +26,7 @@ type Settings struct {
 	Theme                    string          `json:"theme,omitempty"`
 	ShowThinking             *bool           `json:"showThinking,omitempty"`
 	AutoExpandThinking       *bool           `json:"autoExpandThinking,omitempty"`
+	UseRawPaste              *bool           `json:"useRawPaste,omitempty"`
 	PreferedResponseLanguage string          `json:"preferedResponseLanguage,omitempty"`
 	ThinkingBudgets          map[string]int  `json:"thinkingBudgets,omitempty"`
 	Session                  SessionSettings `json:"session,omitempty"`
@@ -113,6 +114,10 @@ func (s Settings) withDefaults() Settings {
 		v := false
 		s.AutoExpandThinking = &v
 	}
+	if s.UseRawPaste == nil {
+		v := false
+		s.UseRawPaste = &v
+	}
 	if strings.TrimSpace(s.PreferedResponseLanguage) == "" {
 		s.PreferedResponseLanguage = ResponseLanguageInherit
 	}
@@ -127,6 +132,12 @@ func (s Settings) ShowThinkingEnabled() bool {
 // AutoExpandThinkingEnabled reports whether thinking blocks start expanded.
 func (s Settings) AutoExpandThinkingEnabled() bool {
 	return *s.withDefaults().AutoExpandThinking
+}
+
+// UseRawPasteEnabled reports whether pasted text is inserted verbatim in the input.
+// When false (default), long pastes collapse to a [Pasted: N lines] placeholder.
+func (s Settings) UseRawPasteEnabled() bool {
+	return *s.withDefaults().UseRawPaste
 }
 
 // ResponseLanguage returns the default language for assistant replies.
