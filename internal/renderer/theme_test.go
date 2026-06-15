@@ -14,7 +14,6 @@ func TestApplyResolvedThemeForcesLightPalette(t *testing.T) {
 
 	m = m.applyResolvedTheme(true)
 	require.False(t, compat.HasDarkBackground)
-	require.Equal(t, "light", glamourStylePath())
 }
 
 func TestCycleThemeActionUpdatesPreference(t *testing.T) {

@@ -65,14 +65,14 @@ const doubleTapTimeout = 3 * time.Second
 type ctrlCResetMsg struct{}
 
 type message struct {
-	text           string
-	kind           constants.MessageKind
-	detailLabel    string
-	detailExpanded bool
-	detailStatus   constants.DetailStatus
-	at             time.Time
-	renderCache    messageRenderCache
-	glamourPending bool
+	text            string
+	kind            constants.MessageKind
+	detailLabel     string
+	detailExpanded  bool
+	detailStatus    constants.DetailStatus
+	at              time.Time
+	renderCache     messageRenderCache
+	markdownPending bool
 }
 
 type Model struct {

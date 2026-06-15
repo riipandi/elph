@@ -22,6 +22,9 @@ func TestNewSessionCreatesRequestLog(t *testing.T) {
 }
 
 func TestNewSessionBuildsSystemPrompt(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
 	s := NewSession(t.TempDir())
 	require.Contains(t, s.SystemPrompt, "You are an expert AI coding assistant, operate in Elph CLI.")
 	require.Contains(t, s.SystemPrompt, "## Available Tools")

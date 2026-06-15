@@ -207,8 +207,16 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 
 	if m.thinkingTurnEnabled() {
 		if m.agent.ResponseMsgID >= 0 {
-			if _, thinkChunk := m.agent.ThinkTagFilter.Flush(""); strings.TrimSpace(thinkChunk) != "" {
+			respHoldback, thinkChunk := m.agent.ThinkTagFilter.Flush("")
+			if strings.TrimSpace(thinkChunk) != "" {
 				m = m.appendAgentThinkingDelta(thinkChunk)
+			}
+			if respHoldback != "" {
+				idx := m.agent.ResponseMsgID
+				if idx >= 0 && idx < len(m.messages) {
+					m.messages[idx].text += respHoldback
+					m.messages[idx].renderCache = messageRenderCache{}
+				}
 			}
 		} else if strings.TrimSpace(response) != "" {
 			var thinkChunk string
@@ -266,7 +274,6 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 		}
 		m.messages[responseIdx].text = agent.TruncateWithNotice(response, agent.MaxUIMessageBytes)
 		m.messages[responseIdx].renderCache = messageRenderCache{}
-		m.messages[responseIdx].glamourPending = true
 		m.session.AppendLog("ai", response)
 		m.layout.ContentDirty = true
 	case responseIdx >= 0 && strings.TrimSpace(response) == "":
@@ -294,9 +301,7 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 	m = m.syncLayout(true)
 
 	if responseIdx >= 0 {
-		m, cmd := m.scheduleGlamourRender(responseIdx)
-		m.layout.ContentDirty = false
-		return m, cmd
+		return m.scheduleMarkdownRender(responseIdx)
 	}
 	return m, nil
 }

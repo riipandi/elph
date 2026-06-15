@@ -35,7 +35,7 @@ var DefaultKeyBindings = []KeyBinding{
 	{Key: "shift+tab", Action: ActionCycleThink, Label: "Cycle thinking level"},
 	{Key: "enter", Action: ActionSubmit, Label: "Send message"},
 	{Key: "ctrl+j", Action: ActionNewline, Label: "Insert newline in input"},
-	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last message"},
+	{Key: "ctrl+y", Action: ActionCopy, Label: "Copy last AI response"},
 	{Key: "ctrl+v", Action: ActionPaste, Label: "Paste image from clipboard (Cmd+V on macOS)"},
 	{Key: "ctrl+l", Action: ActionOpenModelSelector, Label: "Open model selector"},
 	{Key: "ctrl+o", Action: ActionToggleDetail, Label: "Expand/collapse detail block"},

@@ -129,6 +129,13 @@ func TestStripToolCallsDoesNotStripNormalProse(t *testing.T) {
 	require.Empty(t, calls)
 }
 
+func TestStripToolCallsPreservesParagraphBreaks(t *testing.T) {
+	raw := "First paragraph.\n\nSecond paragraph."
+	clean, calls := StripToolCalls(raw)
+	require.Equal(t, raw, clean)
+	require.Empty(t, calls)
+}
+
 func TestToolCallStreamFilterMangledUnnamedParameter(t *testing.T) {
 	var f ToolCallStreamFilter
 	raw := ` search>

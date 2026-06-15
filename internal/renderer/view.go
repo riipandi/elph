@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/config"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/pkg/core/agent"
@@ -198,7 +199,7 @@ func (m Model) renderMessage(msg message) string {
 	width := m.messageAreaWidth()
 	switch msg.kind {
 	case constants.MessageAI:
-		return renderAIMessage(width, msg.text, false, false)
+		return renderAIMessageFooter(width, renderAIMessage(width, msg.text, false, false), true)
 	case constants.MessageDetail:
 		return renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, collapsibleRenderOpts{})
 	case constants.MessageThinking:
@@ -217,7 +218,11 @@ func (m *Model) renderMessageAt(index int) string {
 
 	opts := m.collapsibleRenderOpts(msg, index)
 	if c := msg.renderCache; c.hit(width, streaming, len(msg.text), msg.detailExpanded, msg.detailStatus, msg.at, opts) {
-		return c.output
+		out := c.output
+		if msg.kind == constants.MessageAI {
+			return renderAIMessageFooter(width, out, !streaming)
+		}
+		return out
 	}
 
 	var out string
@@ -225,7 +230,8 @@ func (m *Model) renderMessageAt(index int) string {
 	case streaming && msg.kind != constants.MessageThinking:
 		out = renderStreamingMessage(width, msg.kind, msg.text)
 	case msg.kind == constants.MessageAI:
-		out = renderAIMessage(width, msg.text, false, msg.glamourPending)
+		out = renderAIMessage(width, msg.text, false, msg.markdownPending)
+		out = renderAIMessageFooter(width, out, !streaming)
 	case msg.kind == constants.MessageDetail:
 		out = renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, opts)
 	case msg.kind == constants.MessageThinking:
@@ -276,6 +282,38 @@ const aiMessageBottomPad = 1
 // aiParagraphGap is the blank line count inserted between prose paragraphs.
 const aiParagraphGap = 1
 
+// isAIGapLine reports whether a rendered line is only padding/whitespace.
+// Markdown output may use single-newline spacer rows, so we must detect those
+// in addition to explicit blank lines from formatAIProse.
+func isAIGapLine(line string) bool {
+	plain := strings.TrimSpace(ansi.Strip(line))
+	return plain == "" || isAIProseSeparatorLine(plain)
+}
+
+// splitAIBlockParagraphs groups rendered lines into paragraph blocks. Blank lines,
+// spacer rows, and \n\n boundaries all start a new block.
+func splitAIBlockParagraphs(body string) []string {
+	lines := strings.Split(body, "\n")
+	chunks := make([]string, 0, 4)
+	var current []string
+	flush := func() {
+		if len(current) == 0 {
+			return
+		}
+		chunks = append(chunks, strings.Join(current, "\n"))
+		current = nil
+	}
+	for _, line := range lines {
+		if isAIGapLine(line) {
+			flush()
+			continue
+		}
+		current = append(current, line)
+	}
+	flush()
+	return chunks
+}
+
 func renderAIBlock(blockWidth int, body string, horizontalApplied bool) string {
 	base := constants.MessageStyle(constants.MessageAI)
 	if !horizontalApplied {
@@ -284,12 +322,7 @@ func renderAIBlock(blockWidth int, body string, horizontalApplied bool) string {
 	}
 	lineStyle := base.Width(blockWidth)
 
-	chunks := make([]string, 0, strings.Count(body, "\n\n")+1)
-	for _, para := range strings.Split(body, "\n\n") {
-		if para = strings.TrimSpace(para); para != "" {
-			chunks = append(chunks, para)
-		}
-	}
+	chunks := splitAIBlockParagraphs(body)
 	if len(chunks) == 0 {
 		return ""
 	}
@@ -316,6 +349,31 @@ func renderAIBlock(blockWidth int, body string, horizontalApplied bool) string {
 		blocks = append(blocks, renderChunk(para, i == len(chunks)-1))
 	}
 	return strings.Join(blocks, "\n")
+}
+
+// renderAIPreformattedBlock paints markdown output without re-wrapping lines.
+// lipgloss Width() per line breaks tables, blockquote bars, and ANSI styling.
+func renderAIPreformattedBlock(blockWidth int, body string, horizontalApplied bool) string {
+	base := constants.MessageStyle(constants.MessageAI)
+	if !horizontalApplied {
+		_, hPad := messageBlockPadding(constants.MessageAI)
+		base = base.PaddingLeft(hPad).PaddingRight(hPad)
+	}
+	body = strings.TrimRight(body, "\n")
+	if body == "" {
+		return ""
+	}
+	lines := strings.Split(body, "\n")
+	lineStyle := base.Width(blockWidth)
+	lastLineStyle := lineStyle.PaddingBottom(aiMessageBottomPad)
+	for i, line := range lines {
+		style := lineStyle
+		if i == len(lines)-1 {
+			style = lastLineStyle
+		}
+		lines[i] = style.Render(line)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // renderUserMessage paints a user chat input block with an optional timestamp line.

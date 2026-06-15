@@ -8,7 +8,6 @@ import (
 
 	"charm.land/bubbles/v2/stopwatch"
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/settings"
@@ -184,8 +183,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.layout.ContentDirty = true
 		m = m.syncLayout(false)
 
-	case glamourRenderMsg:
-		return m.handleGlamourRenderMsg(msg)
+	case markdownRenderMsg:
+		return m.handleMarkdownRenderMsg(msg)
 
 	case toolInteractOfferMsg:
 		var cmd tea.Cmd
@@ -414,11 +413,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case constants.ActionCopy:
-			if len(m.messages) > 0 {
-				lastMsg := m.messages[len(m.messages)-1]
-				_ = clipboard.WriteAll(lastMsg.text)
-				m, cmd := m.withMessage("Copied to clipboard")
-				return m, cmd
+			if idx := m.lastAIMessageIndex(); idx >= 0 {
+				return m.copyMessageAt(idx)
 			}
 
 		case constants.ActionOpenModelSelector:

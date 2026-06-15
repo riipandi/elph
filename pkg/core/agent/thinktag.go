@@ -170,7 +170,12 @@ func splitTrailingThinkOpen(s string) (prefix, holdback string) {
 	best := -1
 	for _, pair := range thinkTagPairs {
 		open := strings.ToLower(pair.open)
-		for i := 1; i <= len(open) && i <= len(lower); i++ {
+		minHold := 1
+		// Qwen uses "` <think>". A lone "`" is inline/code-fence markdown, not a think opener.
+		if strings.HasPrefix(pair.open, "`") {
+			minHold = 2
+		}
+		for i := minHold; i <= len(open) && i <= len(lower); i++ {
 			suffix := lower[len(lower)-i:]
 			if strings.HasPrefix(open, suffix) {
 				at := len(s) - i

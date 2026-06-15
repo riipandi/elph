@@ -55,6 +55,13 @@ func (m Model) handleMouse(msg tea.MouseMsg) (Model, []tea.Cmd) {
 			}
 			return m, cmds
 		}
+		if idx, ok := m.aiCopyAtViewportY(click.Y); ok {
+			m, cmd := m.copyMessageAt(idx)
+			if cmd != nil {
+				return m, []tea.Cmd{cmd}
+			}
+			return m, nil
+		}
 		if idx, ok := m.collapsibleToggleAtViewportY(click.Y); ok {
 			m, toggled := m.toggleDetailExpandAt(idx)
 			if toggled {

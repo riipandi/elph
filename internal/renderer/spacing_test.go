@@ -23,7 +23,8 @@ func expectedBlankLinesBetween(prev, curr constants.MessageKind) int {
 		blanks++
 	}
 	if prev == constants.MessageAI {
-		blanks++ // bottom padding inside AI block
+		blanks++    // bottom padding inside AI block
+		blanks += 2 // copy hint separator before footer line
 	}
 	if prev == constants.MessageDetail || prev == constants.MessageThinking {
 		blanks += 6

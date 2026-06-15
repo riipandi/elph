@@ -38,6 +38,23 @@ func TestAIMessageRendersMarkdownCodeBlock(t *testing.T) {
 	require.NotContains(t, rendered, "`")
 }
 
+func TestAIMessageRendersFencedCodeBlock(t *testing.T) {
+	m := testModel()
+	rendered := stripANSI(m.renderMessage(message{
+		text: "```go\nfmt.Println(\"hi\")\n```",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, rendered, "fmt.Println")
+	require.NotContains(t, rendered, "```")
+}
+
+func TestStripMarkdownSyntaxPreservesFences(t *testing.T) {
+	got := stripMarkdownSyntax("```go\nfmt.Println()\n```")
+	require.Contains(t, got, "```go")
+	require.Contains(t, got, "```")
+	require.Contains(t, got, "fmt.Println()")
+}
+
 func TestStreamingUsesPlainPathWithoutGlamour(t *testing.T) {
 	m := testModel()
 	m.agent.Busy = true
@@ -80,33 +97,50 @@ func TestMessageRenderCacheAvoidsRepeatWork(t *testing.T) {
 	require.True(t, m.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(m.messages[0].text), false, m.messages[0].detailStatus, m.messages[0].at, collapsibleRenderOpts{}))
 }
 
-func TestMarkdownSchedulesAsyncGlamour(t *testing.T) {
+func TestMarkdownSchedulesAsyncRender(t *testing.T) {
 	m := testModel()
-	m.messages = []message{{text: "**hello**", kind: constants.MessageAI}}
+	m.messages = []message{{text: "| A | B |\n|---|---|\n| 1 | 2 |", kind: constants.MessageAI}}
 
-	updated, cmd := m.scheduleGlamourRender(0)
+	updated, cmd := m.scheduleMarkdownRender(0)
 	require.NotNil(t, cmd)
-	require.True(t, updated.messages[0].glamourPending)
+	require.True(t, updated.messages[0].markdownPending)
 
 	preview := stripANSI(updated.renderMessageAt(0))
-	require.Contains(t, preview, "hello")
-	require.NotContains(t, preview, "**")
+	require.Contains(t, preview, "A")
+	require.Contains(t, preview, "B")
 }
 
-func TestGlamourRenderMsgUpdatesCache(t *testing.T) {
+func TestMarkdownRenderMsgUpdatesCache(t *testing.T) {
 	m := testModel()
-	source := "**hello**"
-	m.messages = []message{{text: source, kind: constants.MessageAI, glamourPending: true}}
+	source := "## hello"
+	m.messages = []message{{text: source, kind: constants.MessageAI, markdownPending: true}}
 
-	updated, cmd := m.handleGlamourRenderMsg(glamourRenderMsg{
+	updated, cmd := m.handleMarkdownRenderMsg(markdownRenderMsg{
 		index:  0,
 		width:  m.messageAreaWidth(),
 		source: source,
-		output: renderAIMessageGlamour(m.messageAreaWidth(), source),
+		output: renderAIMarkdown(m.messageAreaWidth(), source),
 	})
 	require.Nil(t, cmd)
-	require.False(t, updated.messages[0].glamourPending)
+	require.False(t, updated.messages[0].markdownPending)
+	require.Contains(t, stripANSI(updated.renderMessageAt(0)), aiCopyHintText)
 	require.True(t, updated.messages[0].renderCache.hit(m.messageAreaWidth(), false, len(source), false, updated.messages[0].detailStatus, updated.messages[0].at, collapsibleRenderOpts{}))
+}
+
+func TestAsyncMarkdownRenderIncludesCopyHint(t *testing.T) {
+	m := testModel()
+	source := "## Title\n\nBody paragraph."
+	m.messages = []message{{text: source, kind: constants.MessageAI}}
+	updated, cmd := m.scheduleMarkdownRender(0)
+	require.NotNil(t, cmd)
+	require.True(t, updated.messages[0].markdownPending)
+	require.Contains(t, stripANSI(updated.renderMessageAt(0)), aiCopyHintText)
+
+	msg := cmd()
+	rendered, ok := msg.(markdownRenderMsg)
+	require.True(t, ok)
+	final, _ := updated.handleMarkdownRenderMsg(rendered)
+	require.Contains(t, stripANSI(final.renderMessageAt(0)), aiCopyHintText)
 }
 
 func TestAIMarkdownListHasBottomPadding(t *testing.T) {
@@ -130,6 +164,35 @@ func TestAIMarkdownPreservesBlockWidth(t *testing.T) {
 		kind: constants.MessageAI,
 	})
 	require.LessOrEqual(t, lipgloss.Width(rendered), m.messageAreaWidth())
+}
+
+func TestNormalizeAIProseSeparatorsStripsDashRules(t *testing.T) {
+	text := "Para satu.\n\n--------\n\nPara dua."
+	normalized := normalizeAIProseSeparators(text)
+	require.NotContains(t, normalized, "--------")
+	require.Contains(t, normalized, "\n\n")
+}
+
+func TestAIMessageRendersDashSeparatorAsHR(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "Para satu.\n\n--------\n\nPara dua.",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, raw, "--------")
+	require.Contains(t, raw, "Para satu.")
+	require.Contains(t, raw, "Para dua.")
+}
+
+func TestAIMessageRendersHorizontalRuleInMarkdown(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "**Bold** intro.\n\n---\n\nClosing paragraph.",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, raw, "--------")
+	require.Contains(t, raw, "Bold")
+	require.Contains(t, raw, "Closing paragraph.")
 }
 
 func TestFormatAIProseJoinsSoftWrappedLines(t *testing.T) {
@@ -171,6 +234,43 @@ func TestFormatAIProseDoesNotSplitSoftWrappedLine(t *testing.T) {
 	paras := splitAIProseParagraphs(text, 80)
 	require.Len(t, paras, 1)
 	require.Contains(t, paras[0], "ends. Next")
+}
+
+func TestMarkdownParagraphGapIsVisible(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "**Intro** line.\n\nSecond paragraph here.",
+		kind: constants.MessageAI,
+	}))
+	lines := strings.Split(raw, "\n")
+	introIdx, secondIdx := -1, -1
+	for i, line := range lines {
+		switch {
+		case strings.Contains(line, "Intro"):
+			introIdx = i
+		case strings.Contains(line, "Second paragraph"):
+			secondIdx = i
+		}
+	}
+	require.NotEqual(t, -1, introIdx)
+	require.NotEqual(t, -1, secondIdx)
+	require.Greater(t, secondIdx-introIdx, 1, "markdown paragraphs should be separated by a blank line")
+}
+
+func TestSplitAIBlockParagraphsDetectsMarkdownSpacers(t *testing.T) {
+	rendered := renderAIMarkdown(testModel().messageAreaWidth(), "First paragraph.\n\nSecond paragraph.")
+	chunks := splitAIBlockParagraphs(rendered)
+	require.Len(t, chunks, 2)
+	require.Contains(t, stripANSI(chunks[0]), "First paragraph.")
+	require.Contains(t, stripANSI(chunks[1]), "Second paragraph.")
+}
+
+func TestFormatAIProseSplitsShortIndonesianParagraphs(t *testing.T) {
+	text := "Paragraf pertama selesai.\nParagraf kedua dimulai."
+	formatted := formatAIProse(text, 80)
+	require.Contains(t, formatted, "\n\n")
+	require.Contains(t, formatted, "Paragraf pertama selesai.")
+	require.Contains(t, formatted, "Paragraf kedua dimulai.")
 }
 
 func TestAIProseParagraphGapIsVisible(t *testing.T) {
@@ -219,6 +319,25 @@ func TestLooksLikeMarkdown(t *testing.T) {
 	require.True(t, looksLikeMarkdown("## Title"))
 	require.True(t, looksLikeMarkdown("**bold**"))
 	require.True(t, looksLikeMarkdown("- item"))
+	require.True(t, looksLikeMarkdown("This is *italic* text."))
+	require.True(t, looksLikeMarkdown("This is _italic_ text."))
+}
+
+func TestSingleAsteriskItalicIsStyled(t *testing.T) {
+	m := testModel()
+	raw := m.renderMessage(message{text: "This is *important* text.", kind: constants.MessageAI})
+	require.Contains(t, stripANSI(raw), "important")
+	require.NotContains(t, stripANSI(raw), "*important*")
+	require.True(t, strings.Contains(raw, "[3m") || strings.Contains(raw, ";3m") ||
+		strings.Contains(raw, "[1m") || strings.Contains(raw, ";1m") || strings.Contains(raw, ";1;3m"),
+		"italic/bold ANSI should be present")
+}
+
+func TestMarkdownPendingShowsSourcePreview(t *testing.T) {
+	m := testModel()
+	m.messages = []message{{text: "**hello**", kind: constants.MessageAI, markdownPending: true}}
+	raw := stripANSI(m.renderMessageAt(0))
+	require.Contains(t, raw, "**hello**")
 }
 
 func TestNonAIMessagesSkipMarkdown(t *testing.T) {
@@ -230,66 +349,110 @@ func TestNonAIMessagesSkipMarkdown(t *testing.T) {
 	require.Contains(t, rendered, "**literal**")
 }
 
-func TestAIMessageStripsMarkdownLinksInPlain(t *testing.T) {
+func TestMarkdownPendingShowsSourceLinkPreview(t *testing.T) {
 	m := testModel()
 	m.messages = []message{{
-		text:           "GitHub: [github.com/riipandi/elph](https://github.com/riipandi/elph)",
-		kind:           constants.MessageAI,
-		glamourPending: true,
+		text:            "GitHub: [github.com/riipandi/elph](https://github.com/riipandi/elph)",
+		kind:            constants.MessageAI,
+		markdownPending: true,
 	}}
 
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "GitHub:")
 	require.Contains(t, rendered, "github.com/riipandi/elph")
-	// The URL is embedded as an OSC 8 hyperlink (not visible text).
-	// Verify the raw output has the hyperlink before ANSI stripping.
-	// The raw markdown syntax [ and ] should not appear
-	require.NotContains(t, rendered, "[")
-	raw := m.renderMessageAt(0)
-	require.Contains(t, raw, "\x1b]8;;https://github.com/riipandi/elph\x1b\\")
-	require.Contains(t, raw, "\x1b]8;;\x1b\\")
-	require.NotContains(t, rendered, "](")
+	require.Contains(t, rendered, "](")
 }
 
-func TestAIMessageStripsDuplicateLinkInPlain(t *testing.T) {
+func TestAIMessageStripsDuplicateLinkInMarkdown(t *testing.T) {
 	m := testModel()
 	m.messages = []message{{
-		text:           "visit [https://example.com](https://example.com) now",
-		kind:           constants.MessageAI,
-		glamourPending: true,
+		text:            "visit [https://example.com](https://example.com) now",
+		kind:            constants.MessageAI,
+		markdownPending: false,
 	}}
 
 	rendered := stripANSI(m.renderMessageAt(0))
 	count := strings.Count(rendered, "https://example.com")
-	// URL should appear exactly once, not "url (url)"
-	require.Equal(t, 1, count, "URL should not be duplicated")
+	require.Equal(t, 1, count, "URL should not be duplicated in markdown output")
 }
 
-func TestAIMessageStripsDuplicateLinkInGlamour(t *testing.T) {
+func TestAIMessageRendersStrikeAndBoldItalic(t *testing.T) {
 	m := testModel()
-	m.messages = []message{{
-		text:           "visit [https://example.com](https://example.com) now",
-		kind:           constants.MessageAI,
-		glamourPending: false,
-	}}
-
-	rendered := stripANSI(m.renderMessageAt(0))
-	count := strings.Count(rendered, "https://example.com")
-	// URL should appear exactly once even in glamour path
-	require.Equal(t, 1, count, "URL should not be duplicated in glamour")
+	rendered := stripANSI(m.renderMessage(message{
+		text: "~~old~~ and ***emphasis*** and `fmt.Println`",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, rendered, "old")
+	require.Contains(t, rendered, "emphasis")
+	require.Contains(t, rendered, "fmt.Println")
+	require.NotContains(t, rendered, "~~")
+	require.NotContains(t, rendered, "***")
 }
 
-func TestAIMessageStripsMarkdownSyntaxPreGlamour(t *testing.T) {
+func TestAIMessageRendersBlockquote(t *testing.T) {
 	m := testModel()
-	m.messages = []message{{text: "**bold** and `code` and [link](https://example.com)", kind: constants.MessageAI, glamourPending: true}}
+	raw := stripANSI(m.renderMessage(message{
+		text: "> Line one\n> Line two\n> Line three",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, raw, "Line one")
+	require.Contains(t, raw, "Line two")
+	require.Contains(t, raw, "Line three")
+	require.NotContains(t, raw, "Line one Line two")
+	require.NotContains(t, raw, "Line two Line three")
+}
+
+func TestStreamingBlockquoteRendersStyled(t *testing.T) {
+	m := testModel()
+	m.agent.Busy = true
+	m.agent.ResponseMsgID = 0
+	m.messages = []message{{text: "> Line one\n> Line two", kind: constants.MessageAI}}
 
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "bold")
-	require.Contains(t, rendered, "code")
-	require.Contains(t, rendered, "link")
-	require.NotContains(t, rendered, "**")
-	require.NotContains(t, rendered, "`")
-	require.NotContains(t, rendered, "](")
+	require.Contains(t, rendered, "Line one")
+	require.Contains(t, rendered, "Line two")
+}
+
+func TestAIMessageMarkdownLinkNoOSCLeak(t *testing.T) {
+	m := testModel()
+	raw := m.renderMessage(message{
+		text: "Visit [GitHub](https://github.com/riipandi/elph) for more.",
+		kind: constants.MessageAI,
+	})
+	plain := stripANSI(raw)
+	require.Contains(t, plain, "GitHub")
+	require.NotContains(t, plain, "https://github.com/riipandi/elph")
+	require.NotContains(t, plain, "/riipandi/elphGitHub")
+}
+
+func TestAIMessageRendersTable(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "| Col A | Col B |\n|-------|-------|\n| one   | two   |",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, raw, "Col A")
+	require.Contains(t, raw, "Col B")
+	require.Contains(t, raw, "│")
+	require.NotContains(t, raw, "|---|")
+}
+
+func TestAIMessageRendersNestedBlockquote(t *testing.T) {
+	m := testModel()
+	raw := stripANSI(m.renderMessage(message{
+		text: "> Outer quote\n> > Nested quote\n> Still outer",
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, raw, "Outer quote")
+	require.Contains(t, raw, "Nested quote")
+	require.Contains(t, raw, "Still outer")
+	require.NotContains(t, raw, "> Nested")
+	require.NotContains(t, raw, "Nested quote Still outer")
+	require.NotContains(t, raw, "Outer quote Nested quote")
+}
+
+func TestLooksLikeMarkdownDetectsTable(t *testing.T) {
+	require.True(t, looksLikeMarkdown("| A | B |"))
+	require.True(t, hasMarkdownBlockStructure("| A | B |\n|---|---|"))
 }
 
 func TestStripMarkdownSyntax(t *testing.T) {

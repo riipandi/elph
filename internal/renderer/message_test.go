@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
 	"github.com/stretchr/testify/require"
 )
@@ -125,7 +126,7 @@ func TestSystemMessageVerticalSpacing(t *testing.T) {
 		{text: "Copied to clipboard", kind: constants.MessageSystem},
 	}
 	content := normalizeSpacingLines(stripANSI(m.messagesView()))
-	require.Contains(t, content, "from agent\n\n\nCopied to clipboard")
+	require.Contains(t, content, "from agent\n\n\n"+aiCopyHintText+"\n\nCopied to clipboard")
 }
 
 func TestUserMessageMultiline(t *testing.T) {
@@ -238,25 +239,7 @@ func normalizeSpacingLines(s string) string {
 	return strings.TrimSpace(strings.Join(out, "\n"))
 }
 
-// stripANSI is a minimal helper for tests; lipgloss output includes sequences.
+// stripANSI is a test helper; lipgloss output includes CSI, OSC 8, and SGR sequences.
 func stripANSI(s string) string {
-	var b strings.Builder
-	inEsc := false
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == '\x1b' {
-			inEsc = true
-			continue
-		}
-		if inEsc {
-			// CSI (ESC[) ends with 0x40-0x7E (e.g. 'm' for SGR).
-			// OSC (ESC]) ends with ST (ESC\) or BEL (0x07).
-			if c == 'm' || c == '\\' || c == 0x07 {
-				inEsc = false
-			}
-			continue
-		}
-		b.WriteByte(c)
-	}
-	return b.String()
+	return ansi.Strip(s)
 }

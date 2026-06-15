@@ -89,9 +89,6 @@ func stripOrphanClosingTags(text string) string {
 		if toolMarkupLineRe.MatchString(line) {
 			continue
 		}
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
 		kept = append(kept, line)
 	}
 	return strings.Join(kept, "\n")

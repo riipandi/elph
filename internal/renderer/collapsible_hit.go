@@ -1,7 +1,10 @@
 package renderer
 
 import (
+	"strings"
+
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/riipandi/elph/internal/constants"
 )
 
@@ -13,6 +16,7 @@ const (
 	zoneBody
 	zoneCollapsibleHeader
 	zoneCollapsibleFooter
+	zoneAICopyFooter
 )
 
 type contentLineRef struct {
@@ -50,17 +54,22 @@ func (m Model) walkContentLines(fn func(line int, ref contentLineRef) bool) {
 
 		msg := m.messages[i]
 		rendered := m.renderMessageAt(i)
-		blockH := lipgloss.Height(rendered)
+		rows := strings.Split(rendered, "\n")
+		blockH := len(rows)
+		copyFooterRow := aiCopyHintRow(rows, msg, m.isStreamingMessageAt(i))
 
 		for row := range blockH {
 			ref := contentLineRef{messageIndex: i, zone: zoneBody}
-			if isCollapsibleKind(msg.kind) {
+			switch {
+			case isCollapsibleKind(msg.kind):
 				switch row {
 				case 0:
 					ref.zone = zoneCollapsibleHeader
 				case blockH - 1:
 					ref.zone = zoneCollapsibleFooter
 				}
+			case copyFooterRow >= 0 && row == copyFooterRow:
+				ref.zone = zoneAICopyFooter
 			}
 			if fn(line, ref) {
 				return
@@ -112,6 +121,18 @@ func (m Model) collapsibleFooterViewportY(msgIndex int) (int, bool) {
 	}
 	y := target - m.content.YOffset()
 	return y, y >= 0 && y < m.content.Height()
+}
+
+func aiCopyHintRow(rows []string, msg message, streaming bool) int {
+	if msg.kind != constants.MessageAI || streaming {
+		return -1
+	}
+	for i, row := range rows {
+		if strings.Contains(ansi.Strip(row), aiCopyHintText) {
+			return i
+		}
+	}
+	return -1
 }
 
 func (m Model) collapsibleHeaderViewportY(msgIndex int) (int, bool) {

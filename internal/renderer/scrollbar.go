@@ -37,7 +37,7 @@ func (m Model) contentAreaWidth() int {
 func (m Model) targetContentWidth() int {
 	// Always reserve the scrollbar gutter so content width never changes
 	// when the viewport transitions to scrollable. This eliminates the
-	// width-triggered cache miss loop that forced synchronous glamour
+	// width-triggered cache miss loop that forced synchronous markdown render
 	// re-rendering of every AI message during the transition.
 	return max(m.width-scrollBarWidth, 1)
 }

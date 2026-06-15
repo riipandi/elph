@@ -270,13 +270,17 @@ func collapsibleBodyBox(style lipgloss.Style, kind constants.MessageKind, status
 	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
 }
 
-func collapsibleHintLine(hPad int, expanded bool) string {
+func dimItalicHintLine(hPad int, text string) string {
 	return lipgloss.NewStyle().
 		Foreground(constants.DimText).
 		Italic(true).
 		Background(lipgloss.NoColor{}).
 		PaddingLeft(hPad).
-		Render(collapsibleExpandHint(expanded))
+		Render(text)
+}
+
+func collapsibleHintLine(hPad int, expanded bool) string {
+	return dimItalicHintLine(hPad, collapsibleExpandHint(expanded))
 }
 
 func renderThinkingCollapsible(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {

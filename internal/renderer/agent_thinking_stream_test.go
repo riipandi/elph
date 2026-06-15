@@ -123,6 +123,30 @@ func TestThinkingDeltasRepaintViewportThroughUpdateLoop(t *testing.T) {
 	require.Contains(t, view, "step step step")
 }
 
+func TestStreamedCodeFencePreservesClosingBackticks(t *testing.T) {
+	m := testInputModel(t)
+	m.messages = []message{{text: "prompt", kind: constants.MessageUser}}
+	m = m.beginAgentTurn()
+	m, _ = m.agentTurnCmds("prompt", nil)
+
+	fence := "```go\nfmt.Println(\"hi\")\n```"
+	for _, chunk := range []string{fence[:8], fence[8:]} {
+		updated, _ := m.Update(agentEventMsg{event: agent.ResponseDeltaEvent(chunk)})
+		m = updated.(Model)
+	}
+	m, _ = m.finishAgentTurn("", "", nil)
+
+	require.Len(t, m.messages, 2)
+	require.Equal(t, fence, m.messages[1].text)
+
+	rendered := stripANSI(m.renderMessage(message{
+		text: m.messages[1].text,
+		kind: constants.MessageAI,
+	}))
+	require.Contains(t, rendered, "fmt.Println")
+	require.NotContains(t, rendered, "```")
+}
+
 func TestThinkTagsStreamIncrementallyIntoThinkingBox(t *testing.T) {
 	m := testInputModel(t)
 	m.height = 24
