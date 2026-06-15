@@ -5,7 +5,6 @@ import (
 	"image/color"
 	"path/filepath"
 	"strings"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -205,7 +204,7 @@ func (m Model) renderMessage(msg message) string {
 	case constants.MessageThinking:
 		return renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, collapsibleRenderOpts{})
 	case constants.MessageUser:
-		return renderUserMessage(width, msg.text, msg.at)
+		return renderUserCollapsible(width, msg.text, msg.detailExpanded, msg.at)
 	default:
 		return renderStyledMessage(width, msg.kind, msg.text)
 	}
@@ -241,7 +240,7 @@ func (m *Model) renderMessageAt(index int) string {
 			out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
 		}
 	case msg.kind == constants.MessageUser:
-		out = renderUserMessage(width, msg.text, msg.at)
+		out = renderUserCollapsible(width, msg.text, msg.detailExpanded, msg.at)
 	default:
 		out = renderStyledMessage(width, msg.kind, msg.text)
 	}
@@ -374,21 +373,6 @@ func renderAIPreformattedBlock(blockWidth int, body string, horizontalApplied bo
 		lines[i] = style.Render(line)
 	}
 	return strings.Join(lines, "\n")
-}
-
-// renderUserMessage paints a user chat input block with an optional timestamp line.
-func renderUserMessage(width int, text string, at time.Time) string {
-	vPad, hPad := messageBlockPadding(constants.MessageUser)
-	style := constants.MessageStyle(constants.MessageUser)
-	content := text
-	if ts := formatMessageTimestamp(at); ts != "" {
-		tsLine := lipgloss.NewStyle().
-			Foreground(constants.DimText).
-			Background(constants.UserMsgBg).
-			Render(ts)
-		content = text + "\n\n" + tsLine
-	}
-	return style.Padding(vPad, hPad).Width(width).Render(content)
 }
 
 // renderStyledMessage paints each message block. Vertical spacing between blocks

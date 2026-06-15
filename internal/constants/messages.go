@@ -20,7 +20,8 @@ const (
 // Stream message colors — foreground + background only (no prefixes).
 var (
 	UserMsgFg = BrightText
-	UserMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#E8E8E8"), Dark: lipgloss.Color("#2A2A2A")}
+	// UserMsgBg uses the pi-style green tint (aligned with DetailStatusSuccess).
+	UserMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#E8F0E8"), Dark: lipgloss.Color("#283228")}
 
 	AIMsgFg = BrightText
 	AIMsgBg = lipgloss.NoColor{}

@@ -11,7 +11,17 @@ import (
 )
 
 func isCollapsibleKind(kind constants.MessageKind) bool {
-	return kind == constants.MessageDetail || kind == constants.MessageThinking
+	return kind == constants.MessageDetail || kind == constants.MessageThinking || kind == constants.MessageUser
+}
+
+func messageCollapsible(msg message) bool {
+	if !isCollapsibleKind(msg.kind) {
+		return false
+	}
+	if msg.kind == constants.MessageUser {
+		return userMessageCollapsible(msg.text)
+	}
+	return true
 }
 
 func collapsibleLabel(msg message) string {
@@ -21,16 +31,24 @@ func collapsibleLabel(msg message) string {
 	switch msg.kind {
 	case constants.MessageThinking:
 		return "Thinking"
+	case constants.MessageUser:
+		return "You"
 	default:
 		return "Details"
 	}
 }
 
+const collapsibleHintText = "click or ctrl+o to "
+
 func collapsibleExpandHint(expanded bool) string {
 	if expanded {
-		return "click or ctrl+o to collapse"
+		return collapsibleHintText + "collapse"
 	}
-	return "click or ctrl+o to expand"
+	return collapsibleHintText + "expand"
+}
+
+func rowContainsCollapsibleHint(row string) bool {
+	return strings.Contains(ansi.Strip(row), collapsibleHintText)
 }
 
 func detailChevron(expanded bool) string {
@@ -348,4 +366,66 @@ func renderThinkingLiveStream(blockWidth int, label, body string, expanded bool,
 
 func shellDetailLabel(command string) string {
 	return "$ " + command
+}
+
+func userMessageLineCount(text string) int {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return 0
+	}
+	return strings.Count(strings.TrimRight(text, "\n"), "\n") + 1
+}
+
+func userMessageCollapsible(text string) bool {
+	return userMessageLineCount(text) > 1
+}
+
+func userMessageFooterDimStyle() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(constants.DimText).
+		Background(constants.UserMsgBg)
+}
+
+func userMessageBody(text string, expanded bool, innerW int) string {
+	if expanded || !userMessageCollapsible(text) {
+		return text
+	}
+	prefix := detailChevron(false) + " "
+	preview := collapsiblePreview(text, max(innerW-len([]rune(prefix)), 1))
+	return prefix + preview
+}
+
+func userMessageFooterLine(at time.Time, expanded, showHint bool) string {
+	ts := formatMessageTimestamp(at)
+	hint := ""
+	if showHint {
+		hint = collapsibleExpandHint(expanded)
+	}
+	dim := userMessageFooterDimStyle()
+	hintStyle := dim.Copy().Italic(true)
+
+	switch {
+	case ts == "" && hint == "":
+		return ""
+	case ts == "":
+		return hintStyle.Render(hint)
+	case hint == "":
+		return dim.Render(ts)
+	default:
+		return dim.Render(ts) + dim.Render(" · ") + hintStyle.Render(hint)
+	}
+}
+
+func renderUserCollapsible(blockWidth int, text string, expanded bool, at time.Time) string {
+	vPad, hPad := messageBlockPadding(constants.MessageUser)
+	style := constants.MessageStyle(constants.MessageUser)
+	innerW := max(blockWidth-2*hPad, 1)
+	collapsible := userMessageCollapsible(text)
+
+	body := userMessageBody(text, expanded, innerW)
+	content := body
+	if footer := userMessageFooterLine(at, expanded, collapsible); footer != "" {
+		content = body + "\n\n" + footer
+	}
+	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
 }

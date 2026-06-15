@@ -39,9 +39,10 @@ func TestUserMessageTimestampHasProportionalGap(t *testing.T) {
 	m := testModel()
 	at := time.Date(2026, 6, 14, 10, 20, 30, 0, time.Local)
 	rendered := stripANSI(m.renderMessage(message{
-		text: "line one\nline two",
-		kind: constants.MessageUser,
-		at:   at,
+		text:           "line one\nline two",
+		kind:           constants.MessageUser,
+		detailExpanded: true,
+		at:             at,
 	}))
 	helloIdx := strings.Index(rendered, "line two")
 	tsIdx := strings.Index(rendered, "10:20:30")

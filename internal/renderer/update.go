@@ -454,7 +454,12 @@ func (m Model) addUserMessageAt(text string, at time.Time) Model {
 	if at.IsZero() {
 		at = time.Now()
 	}
-	m.messages = append(m.messages, message{text: text, kind: constants.MessageUser, at: at})
+	m.messages = append(m.messages, message{
+		text:           text,
+		kind:           constants.MessageUser,
+		at:             at,
+		detailExpanded: false,
+	})
 	m.session.AppendLog("user", text)
 	m.layout.ContentDirty = true
 	return m
@@ -488,7 +493,7 @@ func (m Model) addDetailMessageWithStatusAt(label, body string, status constants
 }
 
 func (m Model) toggleDetailExpandAt(index int) (Model, bool) {
-	if index < 0 || index >= len(m.messages) || !isCollapsibleKind(m.messages[index].kind) {
+	if index < 0 || index >= len(m.messages) || !messageCollapsible(m.messages[index]) {
 		return m, false
 	}
 	m.messages[index].detailExpanded = !m.messages[index].detailExpanded
@@ -499,7 +504,7 @@ func (m Model) toggleDetailExpandAt(index int) (Model, bool) {
 
 func (m Model) toggleLastDetailExpand() (Model, bool) {
 	for i := len(m.messages) - 1; i >= 0; i-- {
-		if !isCollapsibleKind(m.messages[i].kind) {
+		if !messageCollapsible(m.messages[i]) {
 			continue
 		}
 		return m.toggleDetailExpandAt(i)

@@ -99,7 +99,7 @@ func TestThinkingMessageUsesCollapsibleBox(t *testing.T) {
 func TestBoxedMessageSingleLineHeight(t *testing.T) {
 	m := testModel()
 	rendered := m.renderMessage(message{text: "hello", kind: constants.MessageUser})
-	require.Equal(t, 3, lipgloss.Height(rendered), "user block includes vertical padding")
+	require.Equal(t, 3, lipgloss.Height(rendered), "single-line user block includes vertical padding")
 }
 
 func TestUserMessageVerticalSpacing(t *testing.T) {
@@ -131,10 +131,20 @@ func TestSystemMessageVerticalSpacing(t *testing.T) {
 
 func TestUserMessageMultiline(t *testing.T) {
 	m := testModel()
-	rendered := m.renderMessage(message{text: "line one\nline two", kind: constants.MessageUser})
-	require.GreaterOrEqual(t, lipgloss.Height(rendered), 4,
-		"multiline user message should include vertical padding")
-	plain := stripANSI(rendered)
+	collapsed := m.renderMessage(message{text: "line one\nline two", kind: constants.MessageUser})
+	plain := stripANSI(collapsed)
+	require.Contains(t, plain, "line one")
+	require.NotContains(t, plain, "line two")
+	require.GreaterOrEqual(t, lipgloss.Height(collapsed), 3)
+
+	expanded := m.renderMessage(message{
+		text:           "line one\nline two",
+		kind:           constants.MessageUser,
+		detailExpanded: true,
+	})
+	require.GreaterOrEqual(t, lipgloss.Height(expanded), 4,
+		"expanded multiline user message should include vertical padding")
+	plain = stripANSI(expanded)
 	require.Contains(t, plain, "line one")
 	require.Contains(t, plain, "line two")
 }

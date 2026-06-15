@@ -58,16 +58,15 @@ func (m Model) walkContentLines(fn func(line int, ref contentLineRef) bool) {
 		blockH := len(rows)
 		copyFooterRow := aiCopyHintRow(rows, msg, m.isStreamingMessageAt(i))
 
+		headerRow, footerRow := collapsibleToggleRows(msg, rows, blockH)
+
 		for row := range blockH {
 			ref := contentLineRef{messageIndex: i, zone: zoneBody}
 			switch {
-			case isCollapsibleKind(msg.kind):
-				switch row {
-				case 0:
-					ref.zone = zoneCollapsibleHeader
-				case blockH - 1:
-					ref.zone = zoneCollapsibleFooter
-				}
+			case headerRow >= 0 && row == headerRow:
+				ref.zone = zoneCollapsibleHeader
+			case footerRow >= 0 && row == footerRow:
+				ref.zone = zoneCollapsibleFooter
 			case copyFooterRow >= 0 && row == copyFooterRow:
 				ref.zone = zoneAICopyFooter
 			}
@@ -77,6 +76,33 @@ func (m Model) walkContentLines(fn func(line int, ref contentLineRef) bool) {
 			line++
 		}
 	}
+}
+
+func collapsibleToggleRows(msg message, rows []string, blockH int) (headerRow, footerRow int) {
+	if !messageCollapsible(msg) {
+		return -1, -1
+	}
+	switch msg.kind {
+	case constants.MessageUser:
+		for i, row := range rows {
+			if rowContainsCollapsibleHint(row) {
+				footerRow = i
+				break
+			}
+		}
+		for i, row := range rows {
+			plain := strings.TrimSpace(ansi.Strip(row))
+			if plain == "" || rowContainsCollapsibleHint(row) {
+				continue
+			}
+			headerRow = i
+			break
+		}
+	default:
+		headerRow = 0
+		footerRow = blockH - 1
+	}
+	return headerRow, footerRow
 }
 
 func (m Model) collapsibleToggleAtViewportY(y int) (int, bool) {
@@ -93,10 +119,16 @@ func (m Model) collapsibleToggleAtViewportY(y int) (int, bool) {
 		case zoneCollapsibleFooter:
 			found = ref.messageIndex
 		case zoneCollapsibleHeader:
-			if ref.messageIndex >= 0 &&
-				ref.messageIndex < len(m.messages) &&
-				m.messages[ref.messageIndex].kind == constants.MessageThinking {
-				found = ref.messageIndex
+			if ref.messageIndex >= 0 && ref.messageIndex < len(m.messages) {
+				msg := m.messages[ref.messageIndex]
+				switch msg.kind {
+				case constants.MessageThinking:
+					found = ref.messageIndex
+				case constants.MessageUser:
+					if userMessageCollapsible(msg.text) {
+						found = ref.messageIndex
+					}
+				}
 			}
 		}
 		return true
