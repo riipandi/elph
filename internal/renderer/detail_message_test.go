@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/riipandi/elph/internal/settings"
 	"github.com/stretchr/testify/require"
 )
@@ -60,7 +60,7 @@ func TestToggleLastDetailExpand(t *testing.T) {
 
 func TestPromptTemplateShowsSeparateUserAndDetailMessages(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{{
+	m.promptTemplates = []template.Template{{
 		Name:    "identify",
 		Content: "Identify the codebase focusing on $1.",
 	}}

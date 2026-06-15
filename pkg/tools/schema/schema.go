@@ -192,7 +192,11 @@ func askUserSchema() map[string]any {
 			"options": map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
-				"description": "Optional multiple-choice answers; omit for free-text input",
+				"description": "Suggested answers shown as quick picks; the user can still type a custom answer unless allowCustom is false",
+			},
+			"allowCustom": map[string]any{
+				"type":        "boolean",
+				"description": "When options are provided, also allow a free-text answer (default true)",
 			},
 		},
 		"required": []string{"question"},

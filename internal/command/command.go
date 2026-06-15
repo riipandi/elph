@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/riipandi/elph/pkg/ai/provider"
 )
 
@@ -27,7 +27,7 @@ type Context struct {
 	pendingDetailBody     string
 	pendingDetailExpanded bool
 
-	PromptTemplates []prompttemplate.Template
+	PromptTemplates []template.Template
 	Skills          []SlashSkill
 }
 
@@ -89,7 +89,7 @@ func Execute(input string, ctx Context) Result {
 			continue
 		}
 		if cmd.Prompt {
-			expanded, ok := prompttemplate.Expand(input, ctx.PromptTemplates)
+			expanded, ok := template.Expand(input, ctx.PromptTemplates)
 			if !ok || strings.TrimSpace(expanded) == "" {
 				return Result{
 					Output: fmt.Sprintf("/%s: prompt template is empty", name),
@@ -194,7 +194,7 @@ func builtinNames() map[string]bool {
 	return seen
 }
 
-func templateCommand(t prompttemplate.Template) SlashCommand {
+func templateCommand(t template.Template) SlashCommand {
 	return SlashCommand{
 		Name:         t.Name,
 		Description:  t.Description,

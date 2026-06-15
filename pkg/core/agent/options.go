@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"time"
 
 	"github.com/riipandi/elph/pkg/ai/provider"
 )
@@ -14,21 +15,31 @@ type ToolExecuteStreamFunc func(ctx context.Context, call provider.ToolCall, arg
 
 // TurnOptions configures a single agent turn.
 type TurnOptions struct {
-	SystemPrompt      string
-	UserPrompt        string
-	Model             string
-	Provider          provider.Provider
-	ShowThinking      bool
-	Thinking          provider.ThinkingConfig
-	Compat            provider.Compat
-	ToolsEnabled      bool
-	WorkDir           string
-	Messages          []provider.ChatMessage
-	UserImages        []provider.ImageAttachment
-	Tools             []provider.ToolDefinition
-	ExecuteTool       ToolExecuteFunc
-	ExecuteToolStream ToolExecuteStreamFunc
-	InteractTool      ToolInteractFunc
-	SkipToolApproval  bool        // brave mode — skip approval dialogs for requires-approval tools
-	LogProvider       TurnLogFunc // optional provider/tool trace (requests log)
+	SystemPrompt           string
+	UserPrompt             string
+	Model                  string
+	Provider               provider.Provider
+	ShowThinking           bool
+	Thinking               provider.ThinkingConfig
+	Compat                 provider.Compat
+	ToolsEnabled           bool
+	WorkDir                string
+	Messages               []provider.ChatMessage
+	UserImages             []provider.ImageAttachment
+	Tools                  []provider.ToolDefinition
+	ExecuteTool            ToolExecuteFunc
+	ExecuteToolStream      ToolExecuteStreamFunc
+	InteractTool           ToolInteractFunc
+	SkipToolApproval       bool          // brave mode — skip approval dialogs for requires-approval tools
+	LogProvider            TurnLogFunc   // optional provider/tool trace (requests log)
+	ProviderMaxRetries     int           // retriable failures to retry (0 = default)
+	ProviderDefaultTimeout time.Duration // provider inactivity limit (0 = default)
+}
+
+// ProviderRetryConfig returns retry settings for upstream provider calls.
+func (o TurnOptions) ProviderRetryConfig() ProviderRetryConfig {
+	return ProviderRetryConfig{
+		MaxRetries:         o.ProviderMaxRetries,
+		StreamStallTimeout: o.ProviderDefaultTimeout,
+	}
 }

@@ -11,6 +11,22 @@ import (
 
 const maxToolIterations = 8
 
+// toolRoundCountsTowardLimit reports whether a provider tool round should consume
+// iteration budget. AskUser-only rounds are excluded because they wait on the
+// user rather than autonomous agent work.
+func toolRoundCountsTowardLimit(calls []provider.ToolCall) bool {
+	if len(calls) == 0 {
+		return false
+	}
+	for _, call := range calls {
+		name, ok := tools.ResolveName(call.Name)
+		if !ok || name != tools.AskUser {
+			return true
+		}
+	}
+	return false
+}
+
 func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 	messages := prepareTurnMessages(opts)
 
@@ -31,7 +47,7 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		usage       provider.TurnUsage
 	)
 
-	for step := 0; step < maxToolIterations; step++ {
+	for step := 0; step < maxToolIterations; {
 		thinking := opts.Thinking
 		showThinking := opts.ShowThinking
 		if step > 0 {
@@ -57,7 +73,7 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 
 		logProviderRequest(opts.LogProvider, step, opts.Model, len(providerTools), len(messages), thinking)
 
-		result, err := opts.Provider.Complete(ctx, provider.TurnRequest{
+		result, err := completeProviderWithRetry(ctx, opts.LogProvider, step, opts.Provider, provider.TurnRequest{
 			SystemPrompt: opts.SystemPrompt,
 			UserPrompt:   opts.UserPrompt,
 			Model:        opts.Model,
@@ -66,6 +82,8 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 			Stream:       stream,
 			Messages:     messages,
 			Tools:        providerTools,
+		}, opts.ProviderRetryConfig(), func(attempt int) {
+			sendEvent(ctx, ch, ActivityEvent(ActivityConnecting))
 		})
 		if ctx.Err() != nil {
 			logProviderCancel(opts.LogProvider, step, ctx.Err())
@@ -127,6 +145,9 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 			})
 		}
 		messages = CompactMessages(messages)
+		if toolRoundCountsTowardLimit(result.ToolCalls) {
+			step++
+		}
 	}
 
 	sendEvent(ctx, ch, TurnDoneWithHistoryEvent(provider.TurnResult{

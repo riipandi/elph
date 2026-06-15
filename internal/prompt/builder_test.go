@@ -15,7 +15,19 @@ func TestBuildIncludesBaseTemplate(t *testing.T) {
 	require.Contains(t, got, "You are an expert AI coding assistant, operate in Elph CLI.")
 	require.Contains(t, got, "## Output")
 	require.Contains(t, got, "## Git")
-	require.Contains(t, got, "Use `AskUser` only when a decision has meaningful trade-offs")
+	require.Contains(t, got, "## Asking the User")
+	require.Contains(t, got, "required gate")
+	require.Contains(t, got, "wait for their response, then proceed")
+}
+
+func TestBuildAskUserSectionInjectedWithCustomSystemPrompt(t *testing.T) {
+	got := Build(Options{
+		SystemPrompt: "Custom agent.\n\n{{.AvailableTools}}",
+	})
+	require.Contains(t, got, "Custom agent.")
+	require.Contains(t, got, "required gate")
+	require.Contains(t, got, "call AskUser first")
+	require.NotContains(t, got, "You are an expert AI coding assistant, operate in Elph CLI.")
 }
 
 func TestBuildIncludesDynamicTools(t *testing.T) {
@@ -161,7 +173,9 @@ func TestBuildIncludesAdditionalInstructions(t *testing.T) {
 
 func TestBuildThinkingSectionSpacing(t *testing.T) {
 	got := Build(Options{})
-	require.Contains(t, got, "tool definitions, and session assumptions.\n\nYou can use <think> tags")
+	require.Contains(t, got, "## Asking the User")
+	require.Contains(t, got, "tool definitions, and session assumptions.\n\n## Asking the User")
+	require.Contains(t, got, "short and specific.\n\nYou can use <think> tags")
 }
 
 func TestBuildCompactSpacing(t *testing.T) {
@@ -206,4 +220,8 @@ func TestBuildSectionOrder(t *testing.T) {
 	require.Less(t, session, guardrails)
 	require.Less(t, guardrails, responseLang)
 	require.Less(t, responseLang, extra)
+
+	askUser := strings.Index(got, "## Asking the User")
+	require.Greater(t, askUser, guardrails)
+	require.Less(t, askUser, responseLang)
 }

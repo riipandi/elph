@@ -37,6 +37,13 @@ func logProviderRequest(fn TurnLogFunc, step int, model string, toolCount, messa
 	))
 }
 
+func logProviderRetry(fn TurnLogFunc, step, attempt int, err error) {
+	if fn == nil || err == nil {
+		return
+	}
+	logProvider(fn, "provider_retry", fmt.Sprintf("step=%d attempt=%d err=%v", step, attempt, err))
+}
+
 func logProviderCancel(fn TurnLogFunc, step int, err error) {
 	if fn == nil || err == nil {
 		return

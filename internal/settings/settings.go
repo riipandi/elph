@@ -23,16 +23,17 @@ const (
 
 // Settings is persisted at ~/.elph/settings.json.
 type Settings struct {
-	SyncInterval             string          `json:"syncInterval,omitempty"`
-	Models                   *ModelsSettings `json:"models,omitempty"`
-	Theme                    string          `json:"theme,omitempty"`
-	ShowThinking             *bool           `json:"showThinking,omitempty"`
-	AutoExpandThinking       *bool           `json:"autoExpandThinking,omitempty"`
-	UseRawPaste              *bool           `json:"useRawPaste,omitempty"`
-	StickyScroll             *bool           `json:"stickyScroll,omitempty"`
-	PreferedResponseLanguage string          `json:"preferedResponseLanguage,omitempty"`
-	ThinkingBudgets          map[string]int  `json:"thinkingBudgets,omitempty"`
-	Session                  SessionSettings `json:"session,omitempty"`
+	SyncInterval             string            `json:"syncInterval,omitempty"`
+	Models                   *ModelsSettings   `json:"models,omitempty"`
+	Theme                    string            `json:"theme,omitempty"`
+	ShowThinking             *bool             `json:"showThinking,omitempty"`
+	AutoExpandThinking       *bool             `json:"autoExpandThinking,omitempty"`
+	UseRawPaste              *bool             `json:"useRawPaste,omitempty"`
+	StickyScroll             *bool             `json:"stickyScroll,omitempty"`
+	PreferedResponseLanguage string            `json:"preferedResponseLanguage,omitempty"`
+	ThinkingBudgets          map[string]int    `json:"thinkingBudgets,omitempty"`
+	Provider                 *ProviderSettings `json:"provider,omitempty"`
+	Session                  SessionSettings   `json:"session,omitempty"`
 }
 
 // ModelsSettings holds legacy settings migrated on load.
@@ -120,6 +121,7 @@ func defaultSettings() Settings {
 		Theme:                    string(theme.Auto),
 		ShowThinking:             &showThinking,
 		PreferedResponseLanguage: ResponseLanguageInherit,
+		Provider:                 defaultProviderSettings(),
 	}
 }
 
@@ -154,6 +156,17 @@ func (s Settings) withDefaults() Settings {
 	}
 	if strings.TrimSpace(s.PreferedResponseLanguage) == "" {
 		s.PreferedResponseLanguage = ResponseLanguageInherit
+	}
+	if s.Provider == nil {
+		s.Provider = defaultProviderSettings()
+	} else {
+		if s.Provider.MaxRetries == nil {
+			maxRetries := DefaultProviderMaxRetries
+			s.Provider.MaxRetries = &maxRetries
+		}
+		if strings.TrimSpace(s.Provider.DefaultTimeout) == "" {
+			s.Provider.DefaultTimeout = DefaultProviderTimeout.String()
+		}
 	}
 	return s
 }

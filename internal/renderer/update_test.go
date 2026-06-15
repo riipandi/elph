@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
@@ -289,7 +289,7 @@ func TestSubmitDiagnosticListTools(t *testing.T) {
 
 func TestSubmitPromptTemplateStartsAgentTurn(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{{
+	m.promptTemplates = []template.Template{{
 		Name:    "identify",
 		Content: "Identify the codebase focusing on $1.",
 	}}

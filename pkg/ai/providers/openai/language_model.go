@@ -81,7 +81,7 @@ func (m *languageModel) completeOnce(ctx context.Context, req provider.TurnReque
 
 func (m *languageModel) completeStream(ctx context.Context, req provider.TurnRequest) (provider.TurnResult, error) {
 	params := m.buildParams(req, true)
-	streamCtx, bump := utils.WithStreamStallWatch(ctx, utils.StreamStallTimeout)
+	streamCtx, bump := utils.WithStreamStallWatch(ctx, utils.EffectiveStreamStallTimeout(req.StreamStallTimeout))
 	stream := m.client.Chat.Completions.NewStreaming(streamCtx, params)
 
 	streamReasoning := m.hooks.StreamReasoning

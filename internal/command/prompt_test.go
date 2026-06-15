@@ -3,13 +3,13 @@ package command
 import (
 	"testing"
 
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExecutePromptTemplate(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:    "identify",
 			Content: "Identify the codebase focusing on $1.",
 		}},
@@ -23,7 +23,7 @@ func TestExecutePromptTemplate(t *testing.T) {
 
 func TestBuiltinOverridesPromptTemplate(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:    "help",
 			Content: "custom help prompt",
 		}},
@@ -37,7 +37,7 @@ func TestBuiltinOverridesPromptTemplate(t *testing.T) {
 
 func TestAllIncludesPromptTemplates(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:        "identify",
 			Description: "Identify the codebase",
 		}},
@@ -54,7 +54,7 @@ func TestAllIncludesPromptTemplates(t *testing.T) {
 
 func TestSuggestIncludesPromptTemplates(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:        "identify",
 			Description: "Identify the codebase",
 		}},

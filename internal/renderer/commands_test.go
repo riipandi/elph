@@ -7,7 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
@@ -187,7 +187,7 @@ func TestEnterExecutesSelectedArg(t *testing.T) {
 
 func TestEnterOnPromptTemplateCompletesWithoutExecuting(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{{
+	m.promptTemplates = []template.Template{{
 		Name:         "identify",
 		Description:  "Identify the codebase",
 		ArgumentHint: "<focus-area>",

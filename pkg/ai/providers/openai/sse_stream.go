@@ -86,7 +86,7 @@ func (m *languageModel) completeStreamSSE(ctx context.Context, req provider.Turn
 	var finishReason string
 
 	url := strings.TrimRight(m.opts.BaseURL, "/") + "/chat/completions"
-	err = utils.PostSSE(ctx, utils.NewStreamingHTTPClient(), url, headers, body, func(data []byte) error {
+	err = utils.PostSSE(ctx, utils.NewStreamingHTTPClient(), url, headers, body, req.StreamStallTimeout, func(data []byte) error {
 		if streamErr, ok := provider.ProviderErrorFromStreamData(data); ok {
 			return streamErr
 		}

@@ -3,7 +3,7 @@ package command
 import (
 	"testing"
 
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestCommandExactMatch(t *testing.T) {
 
 func TestInputPlaceholderHint(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:         "identify",
 			Description:  "Identify the codebase",
 			ArgumentHint: "<focus-area>",

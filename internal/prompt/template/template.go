@@ -1,4 +1,4 @@
-package prompttemplate
+package template
 
 // Template is a markdown prompt snippet loaded from disk.
 type Template struct {

@@ -12,7 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/command"
 	"github.com/riipandi/elph/internal/constants"
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/riipandi/elph/internal/runtime"
 	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/internal/theme"
@@ -112,7 +112,7 @@ type Model struct {
 	selectingText bool // shift held — mouse released for terminal selection
 
 	session         runtime.Session
-	promptTemplates []prompttemplate.Template
+	promptTemplates []template.Template
 	slashSkills     []command.SlashSkill
 
 	quitting      bool
@@ -258,7 +258,7 @@ func (m Model) ensurePromptTemplates() Model {
 	if m.promptTemplates != nil {
 		return m
 	}
-	m.promptTemplates = prompttemplate.Load(m.workDir)
+	m.promptTemplates = template.Load(m.workDir)
 	m.slashSkills = command.LoadSlashSkills(m.workDir)
 	return m
 }

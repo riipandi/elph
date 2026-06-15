@@ -69,7 +69,7 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 
 	logProviderRequest(opts.LogProvider, 0, opts.Model, 0, len(messages), opts.Thinking)
 
-	result, err := opts.Provider.Complete(ctx, provider.TurnRequest{
+	result, err := completeProviderWithRetry(ctx, opts.LogProvider, 0, opts.Provider, provider.TurnRequest{
 		SystemPrompt: opts.SystemPrompt,
 		UserPrompt:   opts.UserPrompt,
 		Model:        opts.Model,
@@ -77,7 +77,7 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		Compat:       opts.Compat,
 		Stream:       stream,
 		Messages:     messages,
-	})
+	}, opts.ProviderRetryConfig(), nil)
 	if ctx.Err() != nil {
 		logProviderCancel(opts.LogProvider, 0, ctx.Err())
 		return

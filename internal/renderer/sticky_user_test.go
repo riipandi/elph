@@ -95,6 +95,24 @@ func TestStickyUserOverlayAtTopOfViewport(t *testing.T) {
 	require.NotContains(t, view, "user prompt line two")
 }
 
+func TestStickyScrollShowsFullLastDetailBoxAtBottom(t *testing.T) {
+	m := stickyScrollTestModel(t)
+	m.height = 28
+	m.messages = append(m.messages, message{
+		kind:           constants.MessageDetail,
+		detailLabel:    "Tool result",
+		text:           strings.Repeat("detail body line\n", 6) + "detail footer marker",
+		detailExpanded: true,
+	})
+	m.layout.ContentDirty = true
+	m = m.syncLayout(true)
+	require.True(t, m.content.AtBottom())
+
+	view := stripANSI(m.contentBodyView())
+	require.Contains(t, view, "detail footer marker")
+	require.Contains(t, view, "click or ctrl+o to collapse")
+}
+
 func TestStickyDoesNotHideAIContentUnderOverlay(t *testing.T) {
 	m := stickyScrollTestModel(t)
 	_, userEnd, ok := m.messageBlockLineRange(0)

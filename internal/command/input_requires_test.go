@@ -3,13 +3,13 @@ package command
 import (
 	"testing"
 
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRequiresArgs(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:         "identify",
 			ArgumentHint: "<focus-area>",
 		}},
@@ -59,7 +59,7 @@ func TestSkillSlashUsesArgumentHintLikePromptTemplate(t *testing.T) {
 
 func TestCompleteInputAddsSpaceForArgumentHint(t *testing.T) {
 	ctx := Context{
-		PromptTemplates: []prompttemplate.Template{{
+		PromptTemplates: []template.Template{{
 			Name:         "identify",
 			ArgumentHint: "<focus-area>",
 		}},

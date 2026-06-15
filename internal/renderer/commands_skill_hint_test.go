@@ -4,13 +4,13 @@ import (
 	"testing"
 
 	"github.com/riipandi/elph/internal/command"
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSkillSlashShowsArgumentHintPlaceholder(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{}
+	m.promptTemplates = []template.Template{}
 	m.slashSkills = []command.SlashSkill{{
 		Name:         "identify",
 		Description:  "Identify the codebase",
@@ -26,7 +26,7 @@ func TestSkillSlashShowsArgumentHintPlaceholder(t *testing.T) {
 
 func TestSkillSlashClearsPlaceholderWhenArgsTyped(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{}
+	m.promptTemplates = []template.Template{}
 	m.slashSkills = []command.SlashSkill{{
 		Name:         "identify",
 		Description:  "Identify the codebase",

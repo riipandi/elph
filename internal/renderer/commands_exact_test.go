@@ -3,7 +3,7 @@ package renderer
 import (
 	"testing"
 
-	"github.com/riipandi/elph/internal/prompttemplate"
+	"github.com/riipandi/elph/internal/prompt/template"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +27,7 @@ func TestCommandPaletteHiddenWhenHelpFullyTyped(t *testing.T) {
 
 func TestPromptTemplateShowsArgumentHintPlaceholder(t *testing.T) {
 	m := testInputModel(t)
-	m.promptTemplates = []prompttemplate.Template{{
+	m.promptTemplates = []template.Template{{
 		Name:         "identify",
 		Description:  "Identify the codebase",
 		ArgumentHint: "<focus-area>",

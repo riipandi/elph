@@ -27,23 +27,23 @@ elph/
 
 ## `internal/` packages
 
-| Package          | Responsibility                                                                                                              |
-|------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| `align`          | Column alignment for command palettes                                                                                       |
-| `command`        | Slash commands, fuzzy suggest, `/model` handler                                                                             |
-| `config`         | Build-time version/hash/date (Makefile ldflags)                                                                             |
-| `constants`      | Agent modes, thinking levels, colors, keybindings, tips                                                                     |
-| `datastore`      | **Stub** — empty package, reserved                                                                                          |
-| `git`            | Git footer: lightweight `ReadBranch` (`.git/HEAD`) + full `Read` (go-git line stats on demand)                              |
-| `mention`        | `@` file/path autocomplete in input                                                                                         |
-| `prompt`         | System prompt assembly (`AGENTS.md`, skills, session state, response language, tools)                                       |
-| `prompttemplate` | Load `*.md` templates with frontmatter and `$1` args                                                                        |
-| `renderer`       | Bubble Tea v2 TUI (viewport, input, paste collapse/editor, agent bridge, prose/Glamour markdown, AI copy hint, huh dialogs) |
-| `projectdir`     | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                                                |
-| `runtime`        | Session, tool execution, shell, JSONL session logs (`slog`)                                                                 |
-| `settings`       | Layered `settings.json` (`~/.elph` + project `.agents/elph`), `version.json` sync metadata                                  |
-| `theme`          | `auto` / `dark` / `light` lipgloss themes                                                                                   |
-| `tools`          | Diagnostic helpers (not agent-executable)                                                                                   |
+| Package           | Responsibility                                                                                                              |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `align`           | Column alignment for command palettes                                                                                       |
+| `command`         | Slash commands, fuzzy suggest, `/model` handler                                                                             |
+| `config`          | Build-time version/hash/date (Makefile ldflags)                                                                             |
+| `constants`       | Agent modes, thinking levels, colors, keybindings, tips                                                                     |
+| `datastore`       | **Stub** — empty package, reserved                                                                                          |
+| `git`             | Git footer: lightweight `ReadBranch` (`.git/HEAD`) + full `Read` (go-git line stats on demand)                              |
+| `mention`         | `@` file/path autocomplete in input                                                                                         |
+| `prompt`          | System prompt assembly (`AGENTS.md`, skills, session state, response language, tools)                                       |
+| `prompt/template` | Load `*.md` templates with frontmatter and `$1` args                                                                        |
+| `renderer`        | Bubble Tea v2 TUI (viewport, input, paste collapse/editor, agent bridge, prose/Glamour markdown, AI copy hint, huh dialogs) |
+| `projectdir`      | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                                                |
+| `runtime`         | Session, tool execution, shell, JSONL session logs (`slog`)                                                                 |
+| `settings`        | Layered `settings.json` (`~/.elph` + project `.agents/elph`), `version.json` sync metadata                                  |
+| `theme`           | `auto` / `dark` / `light` lipgloss themes                                                                                   |
+| `tools`           | Diagnostic helpers (not agent-executable)                                                                                   |
 
 ## `pkg/` packages
 

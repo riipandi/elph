@@ -122,6 +122,48 @@ func (r *thinkingRecordingProvider) Complete(ctx context.Context, req provider.T
 	return r.inner.Complete(ctx, req)
 }
 
+func TestRunTurnAskUserRoundsDoNotCountTowardLimit(t *testing.T) {
+	steps := make([]provider.TurnResult, 0, maxToolIterations+2)
+	for range maxToolIterations + 1 {
+		steps = append(steps, provider.TurnResult{
+			StopReason: provider.StopReasonToolUse,
+			ToolCalls: []provider.ToolCall{{
+				ID:        "call_ask",
+				Name:      "AskUser",
+				Arguments: json.RawMessage(`{"question":"Pick one","options":["a","b"]}`),
+			}},
+		})
+	}
+	steps = append(steps, provider.TurnResult{
+		Content:    "Done.",
+		StopReason: provider.StopReasonEndTurn,
+	})
+
+	stub := &loopStubProvider{steps: steps}
+	events := RunTurn(context.Background(), TurnOptions{
+		UserPrompt:   "help me choose",
+		Provider:     stub,
+		ToolsEnabled: true,
+		InteractTool: func(ctx context.Context, req ToolInteractRequest) (ToolInteractResponse, error) {
+			require.Equal(t, ToolInteractAskUser, req.Kind)
+			return ToolInteractResponse{Answer: "a"}, nil
+		},
+		ExecuteTool: func(ctx context.Context, name string, args map[string]any) ToolRunResult {
+			t.Fatal("AskUser should not call ExecuteTool")
+			return ToolRunResult{}
+		},
+	})
+
+	var done Event
+	for evt := range events {
+		if evt.Kind == EventTurnDone {
+			done = evt
+		}
+	}
+	require.Equal(t, "Done.", done.Response)
+	require.Equal(t, len(steps), stub.calls)
+}
+
 func TestRunTurnNativeToolLoop(t *testing.T) {
 	stub := &loopStubProvider{steps: []provider.TurnResult{
 		{

@@ -3,18 +3,20 @@ package protocol
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 // TurnRequest is a completion request to an upstream model API.
 type TurnRequest struct {
-	SystemPrompt string
-	UserPrompt   string
-	Model        string
-	Thinking     ThinkingConfig
-	Compat       Compat
-	Stream       *TurnStream
-	Messages     []ChatMessage
-	Tools        []ToolDefinition
+	SystemPrompt       string
+	UserPrompt         string
+	Model              string
+	Thinking           ThinkingConfig
+	Compat             Compat
+	Stream             *TurnStream
+	Messages           []ChatMessage
+	Tools              []ToolDefinition
+	StreamStallTimeout time.Duration
 }
 
 // Provider completes one agent turn against an upstream model API.

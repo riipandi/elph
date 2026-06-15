@@ -29,7 +29,7 @@ func TestBuiltinCatalogMatchesDocs(t *testing.T) {
 		{EnterPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Enter Plan mode", false},
 		{ExitPlanMode, CategoryPlanMode, ApprovalAutoAllow, "Exit Plan mode and submit the plan", true},
 		{TodoList, CategoryStateManagement, ApprovalAutoAllow, "Manage a task to-do list", false},
-		{AskUser, CategoryCollaboration, ApprovalAutoAllow, "Ask the user a question to gather structured input", false},
+		{AskUser, CategoryCollaboration, ApprovalAutoAllow, "Ask the user a question with optional suggested choices and free-text fallback", false},
 		{Skill, CategoryCollaboration, ApprovalAutoAllow, "Invoke a registered inline Skill", false},
 	}
 

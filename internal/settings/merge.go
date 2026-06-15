@@ -36,6 +36,7 @@ func mergeSettings(base, overlay Settings) Settings {
 			base.ThinkingBudgets[k] = v
 		}
 	}
+	base.Provider = mergeProviderSettings(base.Provider, overlay.Provider)
 	return base
 }
 

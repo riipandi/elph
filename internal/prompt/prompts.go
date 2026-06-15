@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-//go:embed template/system.md
+//go:embed stubs/system.md
 var builtinSystemPrompt string
 
 var builtinTemplate = template.Must(

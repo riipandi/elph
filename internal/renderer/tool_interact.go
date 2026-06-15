@@ -151,6 +151,10 @@ func toolInteractFormTheme() huh.ThemeFunc {
 	return huh.ThemeFunc(toolInteractHuhTheme)
 }
 
+func askUserFormTheme() huh.ThemeFunc {
+	return huh.ThemeFunc(toolInteractHuhTheme)
+}
+
 func newAskUserForm(req agent.ToolInteractRequest, width int) *huh.Form {
 	fields := parseAskUserArgs(req.Args)
 	question := fields.question
@@ -162,18 +166,28 @@ func newAskUserForm(req agent.ToolInteractRequest, width int) *huh.Form {
 		for i, opt := range options {
 			opts[i] = huh.NewOption(opt, opt)
 		}
-		return huh.NewForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Key("answer").
-					Title(question).
-					Options(opts...).
-					Value(&selected),
-			),
-		).
+		selectField := huh.NewSelect[string]().
+			Key("choice").
+			Options(opts...).
+			Value(&selected)
+		var group *huh.Group
+		if fields.allowCustom {
+			var custom string
+			group = huh.NewGroup(
+				selectField,
+				huh.NewInput().
+					Key("custom").
+					Prompt("").
+					Placeholder(askUserCustomPlaceholder).
+					Value(&custom),
+			)
+		} else {
+			group = huh.NewGroup(selectField)
+		}
+		return huh.NewForm(group).
 			WithWidth(width).
 			WithShowHelp(false).
-			WithTheme(toolInteractFormTheme())
+			WithTheme(askUserFormTheme())
 	}
 
 	var answer string
@@ -188,18 +202,19 @@ func newAskUserForm(req agent.ToolInteractRequest, width int) *huh.Form {
 	).
 		WithWidth(width).
 		WithShowHelp(false).
-		WithTheme(toolInteractFormTheme())
+		WithTheme(askUserFormTheme())
+}
+
+func approvalPromptText(name string) string {
+	return fmt.Sprintf("Allow %s?", name)
 }
 
 func newToolApprovalForm(req agent.ToolInteractRequest, width int) *huh.Form {
-	name, _ := tools.ResolveName(req.Name)
 	choice := approvalChoiceOnce
 	return huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Key("approval").
-				Title(fmt.Sprintf("Allow %s?", name)).
-				Description(formatApprovalDescription(name, req.Args, width)).
 				Options(
 					huh.NewOption("Allow once", approvalChoiceOnce),
 					huh.NewOption("Allow for session", approvalChoiceSession),
@@ -313,6 +328,9 @@ func (m Model) updateToolInteractForm(msg tea.Msg) (Model, tea.Cmd) {
 		if resp, ok := m.toolInteractShortcutResponse(msg); ok {
 			return m.completeToolInteractWith(resp)
 		}
+		if resp, ok := m.askUserChoiceEnterResponse(msg); ok {
+			return m.completeToolInteractWith(resp)
+		}
 	}
 
 	form, cmd := m.toolInteractForm.Update(msg)
@@ -363,6 +381,51 @@ func (m Model) toolInteractShortcutResponse(msg tea.KeyPressMsg) (agent.ToolInte
 		}
 	}
 	return agent.ToolInteractResponse{}, false
+}
+
+// askUserChoiceEnterResponse submits the highlighted option when Enter is pressed
+// on the choice select. Huh would otherwise advance to the custom input field.
+func (m Model) askUserChoiceEnterResponse(msg tea.KeyPressMsg) (agent.ToolInteractResponse, bool) {
+	if m.toolInteractForm == nil || m.toolInteractPending.Req.Kind != agent.ToolInteractAskUser {
+		return agent.ToolInteractResponse{}, false
+	}
+	fields := parseAskUserArgs(m.toolInteractPending.Req.Args)
+	if len(fields.options) == 0 || !fields.allowCustom {
+		return agent.ToolInteractResponse{}, false
+	}
+	if msg.Code != tea.KeyEnter && msg.String() != "enter" {
+		return agent.ToolInteractResponse{}, false
+	}
+	focused := m.toolInteractForm.GetFocusedField()
+	if focused == nil || focused.GetKey() != "choice" {
+		return agent.ToolInteractResponse{}, false
+	}
+	choice := askUserChoiceSelection(m.toolInteractForm, fields.options)
+	if choice == "" {
+		return agent.ToolInteractResponse{}, false
+	}
+	return agent.ToolInteractResponse{Answer: choice}, true
+}
+
+func askUserChoiceSelection(form *huh.Form, options []string) string {
+	if choice := askUserFormFieldString(form, "choice"); choice != "" {
+		return choice
+	}
+	type choiceHovered interface {
+		GetKey() string
+		Hovered() (string, bool)
+	}
+	if focused := form.GetFocusedField(); focused != nil {
+		if sel, ok := focused.(choiceHovered); ok && sel.GetKey() == "choice" {
+			if hovered, ok := sel.Hovered(); ok && strings.TrimSpace(hovered) != "" {
+				return hovered
+			}
+		}
+	}
+	if len(options) > 0 {
+		return options[0]
+	}
+	return ""
 }
 
 func (m Model) completeToolInteractWith(resp agent.ToolInteractResponse) (Model, tea.Cmd) {
@@ -449,13 +512,35 @@ func (m Model) askUserFormResponse(form *huh.Form) agent.ToolInteractResponse {
 	if form.State == huh.StateAborted {
 		return agent.ToolInteractResponse{Cancelled: true}
 	}
-	answer := strings.TrimSpace(form.GetString("answer"))
+	return agent.ToolInteractResponse{Answer: resolveAskUserFormAnswer(form)}
+}
+
+func resolveAskUserFormAnswer(form *huh.Form) string {
+	return resolveAskUserAnswer(
+		askUserFormFieldString(form, "custom"),
+		askUserFormFieldString(form, "choice"),
+		askUserFormFieldString(form, "answer"),
+	)
+}
+
+func resolveAskUserAnswer(custom, choice, fallback string) string {
+	if strings.TrimSpace(custom) != "" {
+		return strings.TrimSpace(custom)
+	}
+	if strings.TrimSpace(choice) != "" {
+		return strings.TrimSpace(choice)
+	}
+	return strings.TrimSpace(fallback)
+}
+
+func askUserFormFieldString(form *huh.Form, key string) string {
+	answer := strings.TrimSpace(form.GetString(key))
 	if answer == "" {
-		if raw := form.Get("answer"); raw != nil {
+		if raw := form.Get(key); raw != nil {
 			answer = strings.TrimSpace(fmt.Sprint(raw))
 		}
 	}
-	return agent.ToolInteractResponse{Answer: answer}
+	return answer
 }
 
 func (m Model) approvalFormResponse(form *huh.Form) agent.ToolInteractResponse {
@@ -556,7 +641,55 @@ func (m Model) toolInteractDialogBody() string {
 	label, accent := toolInteractDialogAccent(req)
 	labelLine := lipgloss.NewStyle().Foreground(accent).Bold(true).Render(label)
 	hintLine := lipgloss.NewStyle().Foreground(constants.DimText).Render(toolInteractFooterHint(req))
+
+	if req.Kind == agent.ToolInteractAskUser {
+		fields := parseAskUserArgs(req.Args)
+		if len(fields.options) > 0 {
+			width := m.toolInteractFormWidth()
+			questionLine := lipgloss.NewStyle().
+				Foreground(constants.BrightText).
+				Width(width).
+				Render(wrapAskUserQuestion(fields.question, width))
+			return lipgloss.JoinVertical(lipgloss.Left,
+				labelLine,
+				"",
+				questionLine,
+				"",
+				formView,
+				"",
+				hintLine,
+			)
+		}
+	}
+
+	if req.Kind == agent.ToolInteractApproval {
+		name, _ := tools.ResolveName(req.Name)
+		width := m.toolInteractFormWidth()
+		promptLine := lipgloss.NewStyle().
+			Foreground(constants.BrightText).
+			Width(width).
+			Render(approvalPromptText(name))
+		parts := []string{labelLine, "", promptLine}
+		if desc := formatApprovalDescription(name, req.Args, width); desc != "" {
+			descLine := lipgloss.NewStyle().
+				Foreground(constants.DimText).
+				Width(width).
+				Render(desc)
+			parts = append(parts, "", descLine)
+		}
+		parts = append(parts, "", formView, "", hintLine)
+		return lipgloss.JoinVertical(lipgloss.Left, parts...)
+	}
+
 	return lipgloss.JoinVertical(lipgloss.Left, labelLine, "", formView, "", hintLine)
+}
+
+func wrapAskUserQuestion(question string, width int) string {
+	question = strings.TrimSpace(question)
+	if question == "" || width <= 0 {
+		return question
+	}
+	return ansi.Wordwrap(question, width, "")
 }
 
 func (m Model) toolInteractChromeView() string {
@@ -589,7 +722,11 @@ func toolInteractDialogAccent(req agent.ToolInteractRequest) (string, color.Colo
 func toolInteractFooterHint(req agent.ToolInteractRequest) string {
 	switch req.Kind {
 	case agent.ToolInteractAskUser:
-		if len(parseAskUserArgs(req.Args).options) > 0 {
+		fields := parseAskUserArgs(req.Args)
+		if len(fields.options) > 0 {
+			if fields.allowCustom {
+				return "↑/↓ · 1-9 · or type below · Enter · Esc"
+			}
 			return "↑/↓ · 1-9 · Enter · Esc"
 		}
 		return "Enter · Esc"
@@ -600,11 +737,15 @@ func toolInteractFooterHint(req agent.ToolInteractRequest) string {
 	}
 }
 
-const defaultAskUserQuestion = "The agent has a question for you."
+const (
+	defaultAskUserQuestion   = "The agent has a question for you."
+	askUserCustomPlaceholder = "Or type your own…"
+)
 
 type askUserFields struct {
-	question string
-	options  []string
+	question    string
+	options     []string
+	allowCustom bool
 }
 
 var askUserQuotedStrings = regexp.MustCompile(`"([^"]+)"`)
@@ -619,6 +760,7 @@ func parseAskUserArgs(args map[string]any) askUserFields {
 	out.question = askUserQuestionText(args)
 	out.options = askUserOptions(args)
 	out.question, out.options = reconcileSwappedAskUserFields(out.question, out.options, args)
+	out.allowCustom = askUserAllowCustom(args, len(out.options) > 0)
 
 	if out.question != "" && len(out.options) == 0 {
 		if opts, ok := parseJSONStringArray(out.question); ok {
@@ -750,6 +892,25 @@ func salvageTrailingArrayToken(s string) string {
 	tail = strings.TrimPrefix(tail, `"`)
 	tail = strings.TrimSuffix(tail, "]")
 	return strings.TrimSpace(tail)
+}
+
+func askUserAllowCustom(args map[string]any, hasOptions bool) bool {
+	if !hasOptions {
+		return false
+	}
+	raw, ok := args["allowCustom"]
+	if !ok || raw == nil {
+		return true
+	}
+	switch v := raw.(type) {
+	case bool:
+		return v
+	case string:
+		s := strings.ToLower(strings.TrimSpace(v))
+		return s != "false" && s != "0" && s != "no"
+	default:
+		return true
+	}
 }
 
 func askUserOptions(args map[string]any) []string {

@@ -63,6 +63,7 @@ func (m Model) thinkingTurnEnabled() bool {
 
 func (m Model) buildTurnOptions(prompt string, images []provider.ImageAttachment, bridge *toolInteractBridge) agent.TurnOptions {
 	showThinking := m.thinkingTurnEnabled()
+	prefs, prefErr := settings.Load()
 	opts := agent.TurnOptions{
 		UserPrompt:       prompt,
 		UserImages:       images,
@@ -70,6 +71,10 @@ func (m Model) buildTurnOptions(prompt string, images []provider.ImageAttachment
 		Provider:         m.session.Provider,
 		ShowThinking:     showThinking,
 		SkipToolApproval: m.mode == constants.ModeBrave || m.agent.SessionAllowTools,
+	}
+	if prefErr == nil {
+		opts.ProviderMaxRetries = prefs.ProviderMaxRetries()
+		opts.ProviderDefaultTimeout = prefs.ProviderDefaultTimeout()
 	}
 	if bridge != nil {
 		opts.InteractTool = bridge.Interact
@@ -85,9 +90,8 @@ func (m Model) buildTurnOptions(prompt string, images []provider.ImageAttachment
 	if !showThinking {
 		return opts
 	}
-	prefs, err := settings.Load()
 	budgets := map[string]int(nil)
-	if err == nil {
+	if prefErr == nil {
 		budgets = prefs.ThinkingBudgetOverrides()
 	}
 	opts.Thinking = provider.ResolveThinking(model, m.thinkingLevel, budgets)

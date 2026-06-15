@@ -18,6 +18,64 @@ func TestAskUserQuestionAndOptions(t *testing.T) {
 	})
 	require.Equal(t, "Go or Rust?", fields.question)
 	require.Equal(t, []string{"Go", "Rust"}, fields.options)
+	require.True(t, fields.allowCustom)
+}
+
+func TestParseAskUserArgsAllowCustomFalse(t *testing.T) {
+	fields := parseAskUserArgs(map[string]any{
+		"question":    "Pick one",
+		"options":     []any{"A", "B"},
+		"allowCustom": false,
+	})
+	require.False(t, fields.allowCustom)
+}
+
+func TestResolveAskUserAnswerPrefersCustomOverChoice(t *testing.T) {
+	require.Equal(t, "Français", resolveAskUserAnswer("Français", "English", ""))
+	require.Equal(t, "English", resolveAskUserAnswer("", "English", ""))
+	require.Equal(t, "typed", resolveAskUserAnswer("", "", "typed"))
+}
+
+func TestAskUserFormWithOptionsShowsCustomInput(t *testing.T) {
+	form := newAskUserForm(agent.ToolInteractRequest{
+		Kind: agent.ToolInteractAskUser,
+		Args: map[string]any{
+			"question": "Which language should the report be in?",
+			"options":  []any{"English", "Bahasa Indonesia"},
+		},
+	}, 60)
+	if updated, _ := form.Update(tea.WindowSizeMsg{Width: 100, Height: 40}); updated != nil {
+		if f, ok := updated.(*huh.Form); ok {
+			form = f
+		}
+	}
+
+	m := testInputModel(t)
+	m.toolInteractForm = form
+	m.toolInteractPending = toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": "Which language should the report be in?",
+				"options":  []any{"English", "Bahasa Indonesia"},
+			},
+		},
+	}
+	view := stripANSI(m.toolInteractChromeView())
+	require.Contains(t, view, "Which language should the report be in?")
+	require.Contains(t, view, "English")
+	require.Contains(t, view, "Bahasa Indonesia")
+	require.Contains(t, view, askUserCustomPlaceholder)
+
+	var customLine string
+	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, askUserCustomPlaceholder) {
+			customLine = line
+			break
+		}
+	}
+	require.NotEmpty(t, customLine)
+	require.NotContains(t, strings.TrimLeft(customLine, " "), "›")
 }
 
 func TestParseAskUserArgsOptionsJSONString(t *testing.T) {
@@ -70,6 +128,15 @@ func TestNewAskUserFormShowsQuestionNotRawJSONArray(t *testing.T) {
 
 	m := testInputModel(t)
 	m.toolInteractForm = form
+	m.toolInteractPending = toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": `["English", "Indonesia"`,
+				"options":  "What language should the report be in",
+			},
+		},
+	}
 	view := stripANSI(m.toolInteractChromeView())
 	require.Contains(t, view, "What language should the report be in")
 	require.NotContains(t, view, `["English"`)
@@ -100,14 +167,65 @@ func TestApprovalFormShowsSessionOption(t *testing.T) {
 	m := testInputModel(t)
 	m.toolInteractForm = form
 	m.toolInteractPending = toolInteractOffer{
-		Req: agent.ToolInteractRequest{Kind: agent.ToolInteractApproval, Name: "Bash"},
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractApproval,
+			Name: "Bash",
+			Args: map[string]any{"command": "go test ./..."},
+		},
 	}
 	view := stripANSI(m.toolInteractChromeView())
+	require.Contains(t, view, "Approve Bash")
+	require.Contains(t, view, "Allow Bash?")
+	require.Contains(t, view, "go test ./...")
 	require.Contains(t, view, "Allow once")
 	require.Contains(t, view, "Allow for session")
 	require.Contains(t, view, "Deny")
 	require.Contains(t, view, "y once")
 	require.Contains(t, view, "a session")
+}
+
+func TestApprovalFormSpacingAboveOptions(t *testing.T) {
+	form := newToolApprovalForm(agent.ToolInteractRequest{
+		Kind: agent.ToolInteractApproval,
+		Name: "Bash",
+		Args: map[string]any{
+			"command":     "go test ./...",
+			"description": "Run tests",
+		},
+	}, 60)
+	if updated, _ := form.Update(tea.WindowSizeMsg{Width: 100, Height: 40}); updated != nil {
+		if f, ok := updated.(*huh.Form); ok {
+			form = f
+		}
+	}
+
+	m := testInputModel(t)
+	m.toolInteractForm = form
+	m.toolInteractPending = toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractApproval,
+			Name: "Bash",
+			Args: map[string]any{
+				"command":     "go test ./...",
+				"description": "Run tests",
+			},
+		},
+	}
+
+	view := stripANSI(m.toolInteractChromeView())
+	lines := strings.Split(strings.TrimSuffix(view, "\n"), "\n")
+	descIdx, optionsIdx := -1, -1
+	for i, line := range lines {
+		if strings.Contains(line, "Run tests") && descIdx < 0 {
+			descIdx = i
+		}
+		if strings.Contains(line, "Allow once") && optionsIdx < 0 {
+			optionsIdx = i
+		}
+	}
+	require.Greater(t, descIdx, -1)
+	require.Greater(t, optionsIdx, descIdx)
+	require.Equal(t, 2, optionsIdx-descIdx, "options should sit one blank line below the description")
 }
 
 func TestFormatApprovalDescriptionBash(t *testing.T) {
@@ -147,14 +265,19 @@ func TestToolInteractApprovalLongContentFitsTerminal(t *testing.T) {
 	}
 
 	m := testInputModel(t)
+	m.height = 30
 	m.toolInteractForm = form
 	m.toolInteractPending = toolInteractOffer{
-		Req: agent.ToolInteractRequest{Kind: agent.ToolInteractApproval, Name: "Bash"},
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractApproval,
+			Name: "Bash",
+			Args: map[string]any{"command": longCmd, "description": longDesc},
+		},
 	}
 	m = m.syncLayout(false)
 
 	require.LessOrEqual(t, m.renderedViewHeight(), m.height, "full view should fit terminal")
-	require.LessOrEqual(t, lipgloss.Height(form.View()), 14, "form should stay compact")
+	require.LessOrEqual(t, lipgloss.Height(form.View()), 6, "approval options should stay compact")
 }
 
 func TestToolInteractBridgeDeliverResponse(t *testing.T) {
@@ -247,6 +370,84 @@ func TestToolInteractApprovalYShortcut(t *testing.T) {
 	require.True(t, (<-respCh).Approved)
 }
 
+func TestAskUserEnterOnChoiceSubmitsSelectedOption(t *testing.T) {
+	m := testInputModel(t)
+	respCh := make(chan agent.ToolInteractResponse, 1)
+	offer := toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": "Pick a language",
+				"options":  []any{"English", "Bahasa Indonesia"},
+			},
+		},
+		RespCh: respCh,
+	}
+	updated, _ := m.Update(toolInteractOfferMsg{offer: offer})
+	m = updated.(Model)
+	require.True(t, m.toolInteractDialogActive())
+
+	updated, _ = m.Update(keyRune('j'))
+	m = updated.(Model)
+	updated, _ = m.Update(keyEnter())
+	m = updated.(Model)
+
+	require.False(t, m.toolInteractDialogActive())
+	require.Equal(t, "Bahasa Indonesia", (<-respCh).Answer)
+}
+
+func TestAskUserEnterOnFirstChoiceSubmitsWithoutCustomFocus(t *testing.T) {
+	m := testInputModel(t)
+	respCh := make(chan agent.ToolInteractResponse, 1)
+	offer := toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": "Pick a language",
+				"options":  []any{"English", "Bahasa Indonesia"},
+			},
+		},
+		RespCh: respCh,
+	}
+	updated, _ := m.Update(toolInteractOfferMsg{offer: offer})
+	m = updated.(Model)
+	require.True(t, m.toolInteractDialogActive())
+
+	updated, _ = m.Update(keyEnter())
+	m = updated.(Model)
+
+	require.False(t, m.toolInteractDialogActive())
+	require.Equal(t, "English", (<-respCh).Answer)
+}
+
+func TestAskUserTabStillMovesToCustomInput(t *testing.T) {
+	m := testInputModel(t)
+	offer := toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": "Pick a language",
+				"options":  []any{"English", "Bahasa Indonesia"},
+			},
+		},
+		RespCh: make(chan agent.ToolInteractResponse, 1),
+	}
+	updated, _ := m.Update(toolInteractOfferMsg{offer: offer})
+	m = updated.(Model)
+	require.Equal(t, "choice", m.toolInteractForm.GetFocusedField().GetKey())
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	m = updated.(Model)
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			updated, _ = m.Update(msg)
+			m = updated.(Model)
+		}
+	}
+	require.True(t, m.toolInteractDialogActive())
+	require.Equal(t, "custom", m.toolInteractForm.GetFocusedField().GetKey())
+}
+
 func TestToolInteractAskUserNumberShortcut(t *testing.T) {
 	m := testInputModel(t)
 	respCh := make(chan agent.ToolInteractResponse, 1)
@@ -272,6 +473,49 @@ func TestToolInteractAskUserNumberShortcut(t *testing.T) {
 	updated, _ := m.completeToolInteractWith(resp)
 	require.Nil(t, updated.toolInteractForm)
 	require.Equal(t, "B", (<-respCh).Answer)
+}
+
+func TestAskUserFormSpacingAboveOptions(t *testing.T) {
+	form := newAskUserForm(agent.ToolInteractRequest{
+		Kind: agent.ToolInteractAskUser,
+		Args: map[string]any{
+			"question": "Pick a language",
+			"options":  []any{"English", "Indonesia"},
+		},
+	}, 60)
+	if updated, _ := form.Update(tea.WindowSizeMsg{Width: 100, Height: 40}); updated != nil {
+		if f, ok := updated.(*huh.Form); ok {
+			form = f
+		}
+	}
+
+	m := testInputModel(t)
+	m.toolInteractForm = form
+	m.toolInteractPending = toolInteractOffer{
+		Req: agent.ToolInteractRequest{
+			Kind: agent.ToolInteractAskUser,
+			Args: map[string]any{
+				"question": "Pick a language",
+				"options":  []any{"English", "Indonesia"},
+			},
+		},
+	}
+
+	view := stripANSI(m.toolInteractChromeView())
+	lines := strings.Split(strings.TrimSuffix(view, "\n"), "\n")
+	questionIdx := -1
+	firstOptionIdx := -1
+	for i, line := range lines {
+		if strings.Contains(line, "Pick a language") && questionIdx < 0 {
+			questionIdx = i
+		}
+		if strings.Contains(line, "English") && !strings.Contains(line, "Pick a language") && firstOptionIdx < 0 {
+			firstOptionIdx = i
+		}
+	}
+	require.Greater(t, questionIdx, -1)
+	require.Greater(t, firstOptionIdx, questionIdx)
+	require.Equal(t, 2, firstOptionIdx-questionIdx, "options should sit one blank line below the question")
 }
 
 func TestToolInteractDialogPolishedLayout(t *testing.T) {

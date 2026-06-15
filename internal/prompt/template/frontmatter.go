@@ -1,4 +1,4 @@
-package prompttemplate
+package template
 
 import (
 	"strings"

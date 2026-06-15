@@ -20,6 +20,8 @@ func TestEnsureCreatesSettingsJSONWhenMissing(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(raw), `"syncInterval": "24h"`)
 	require.Contains(t, string(raw), `"theme": "auto"`)
+	require.Contains(t, string(raw), `"maxRetries": 2`)
+	require.Contains(t, string(raw), `"defaultTimeout": "2m0s"`)
 
 	cfg, err := Load()
 	require.NoError(t, err)
@@ -69,6 +71,8 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.True(t, cfg.StickyScrollEnabled())
 	require.Equal(t, "auto", cfg.Theme)
 	require.Equal(t, ResponseLanguageInherit, cfg.ResponseLanguage())
+	require.Equal(t, DefaultProviderMaxRetries, cfg.ProviderMaxRetries())
+	require.Equal(t, DefaultProviderTimeout, cfg.ProviderDefaultTimeout())
 }
 
 func TestAutoExpandThinkingDefaultsFalseAndCanEnable(t *testing.T) {

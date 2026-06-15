@@ -95,7 +95,7 @@ var builtin = []Definition{
 		Name:            AskUser,
 		Category:        CategoryCollaboration,
 		DefaultApproval: ApprovalAutoAllow,
-		Description:     "Ask the user a question to gather structured input",
+		Description:     "Ask the user a question with optional suggested choices and free-text fallback",
 	},
 	{
 		Name:            Skill,

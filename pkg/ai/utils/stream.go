@@ -10,17 +10,18 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	provider "github.com/riipandi/elph/pkg/ai/protocol"
 )
 
 // PostSSE sends a JSON POST request and invokes onData for each SSE data payload.
-func PostSSE(ctx context.Context, client *http.Client, url string, headers map[string]string, body any, onData func(data []byte) error) error {
+func PostSSE(ctx context.Context, client *http.Client, url string, headers map[string]string, body any, stallTimeout time.Duration, onData func(data []byte) error) error {
 	if client == nil {
 		client = NewStreamingHTTPClient()
 	}
 
-	streamCtx, bump := WithStreamStallWatch(ctx, StreamStallTimeout)
+	streamCtx, bump := WithStreamStallWatch(ctx, EffectiveStreamStallTimeout(stallTimeout))
 
 	payload, err := json.Marshal(body)
 	if err != nil {

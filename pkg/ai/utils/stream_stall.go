@@ -11,6 +11,14 @@ import (
 // before the first SSE chunk arrives.
 const StreamStallTimeout = 120 * time.Second
 
+// EffectiveStreamStallTimeout returns timeout when positive, otherwise the default.
+func EffectiveStreamStallTimeout(timeout time.Duration) time.Duration {
+	if timeout > 0 {
+		return timeout
+	}
+	return StreamStallTimeout
+}
+
 // ErrStreamStall is returned when no SSE chunk arrives within StreamStallTimeout.
 var ErrStreamStall = errors.New("stream stalled: no data from provider")
 

@@ -101,20 +101,78 @@ func (m Model) stickyUserOverlayHeight(msgIndex int) int {
 	return lipgloss.Height(m.renderUserSticky(msgIndex))
 }
 
+// contentVisibleBodyLines is how many content lines fit below an active sticky header.
+func (m Model) contentVisibleBodyLines(scrollTop int) int {
+	vpH := m.content.Height()
+	_, stickyH := m.stickyUserAtScrollTop(scrollTop)
+	visible := vpH - stickyH
+	if visible < 1 {
+		return 1
+	}
+	return visible
+}
+
+// contentScrollTopForBottom is the scroll offset that shows the last content line
+// when a sticky user header consumes part of the viewport height.
+func (m Model) contentScrollTopForBottom() int {
+	total := m.content.TotalLineCount()
+	if total <= 0 {
+		return 0
+	}
+	vpH := m.content.Height()
+	if total <= vpH {
+		return 0
+	}
+
+	scrollTop := total - vpH
+	for range 8 {
+		visible := m.contentVisibleBodyLines(scrollTop)
+		newTop := total - visible
+		if newTop < 0 {
+			newTop = 0
+		}
+		if newTop == scrollTop {
+			break
+		}
+		scrollTop = newTop
+	}
+	return scrollTop
+}
+
+// contentBodyScrollTop is the line index used to paint the scrollable body. When
+// the viewport is at its max offset but a sticky header is active, the body must
+// start lower than YOffset so the bottom lines are not clipped.
+func (m Model) contentBodyScrollTop() int {
+	scrollTop := m.content.YOffset()
+	if !m.contentScrollable() {
+		return scrollTop
+	}
+	standardMax := m.content.TotalLineCount() - m.content.Height()
+	if standardMax < 0 {
+		standardMax = 0
+	}
+	if scrollTop < standardMax {
+		return scrollTop
+	}
+	return m.contentScrollTopForBottom()
+}
+
 // contentLineAtViewportY maps a viewport-local Y to a line index in the full
 // scrollable content, accounting for the sticky header inset.
 func (m Model) contentLineAtViewportY(y int) (int, bool) {
-	_, stickyH := m.stickyUserAtScrollTop(m.content.YOffset())
+	displayTop := m.contentBodyScrollTop()
+	_, stickyH := m.stickyUserAtScrollTop(displayTop)
 	if y < stickyH {
 		return -1, false
 	}
-	return y - stickyH + m.content.YOffset(), true
+	return y - stickyH + displayTop, true
 }
 
 // viewportYForContentLine maps a full-content line index to viewport-local Y.
 func (m Model) viewportYForContentLine(contentLine int) (int, bool) {
-	_, stickyH := m.stickyUserAtScrollTop(m.content.YOffset())
-	y := contentLine - m.content.YOffset() + stickyH
+	displayTop := m.contentBodyScrollTop()
+	_, stickyH := m.stickyUserAtScrollTop(displayTop)
+	y := contentLine - displayTop + stickyH
 	return y, y >= stickyH && y < m.content.Height()
 }
 
@@ -219,7 +277,7 @@ func (m Model) sliceContentAt(yOffset, count int) string {
 }
 
 func (m Model) contentBodyView() string {
-	scrollTop := m.content.YOffset()
+	scrollTop := m.contentBodyScrollTop()
 	stickyIdx, stickyH := m.stickyUserAtScrollTop(scrollTop)
 
 	vpH := m.content.Height()

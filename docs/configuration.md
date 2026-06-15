@@ -39,7 +39,7 @@ Default home: `~/.elph/` (override individual dirs with env vars below).
 | Variable             | Effect                                                                         |
 |----------------------|--------------------------------------------------------------------------------|
 | `ELPH_PROVIDERS_DIR` | Replace `~/.elph/providers` (`pkg/ai/provider/paths.go`)                       |
-| `ELPH_PROMPTS_DIR`   | Replace `~/.elph/prompts` (`internal/prompttemplate/paths.go`)                 |
+| `ELPH_PROMPTS_DIR`   | Replace `~/.elph/prompts` (`internal/prompt/template/paths.go`)                |
 | `ELPH_SKILLS_DIR`    | Replace `~/.elph/skills` (`internal/prompt/skills.go`)                         |
 | `ELPH_PROVIDER`      | Force active provider id                                                       |
 | `ELPH_MODEL`         | Force active model id (matched across providers when `ELPH_PROVIDER` is unset) |
