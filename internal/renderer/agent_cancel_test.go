@@ -39,6 +39,30 @@ func TestCtrlCDuringAgentTurnCancelsNotExit(t *testing.T) {
 	require.Contains(t, stripANSI(m.messages[len(m.messages)-1].text), "agent turn cancelled")
 }
 
+func TestAgentTurnClosedOpensPendingMarkupAskUser(t *testing.T) {
+	m := testInputModel(t)
+	m.height = 24
+	m.width = 100
+	m.ready = true
+	m = m.beginAgentTurn()
+	m.agent.MarkupAskUserPending = &markupAskUserOffer{
+		Name: "AskUser",
+		Parameters: map[string]string{
+			"question": "Pick one",
+			"options":  `["English", "Indonesia"]`,
+		},
+	}
+
+	updated, cmd := m.Update(agentTurnClosedMsg{})
+	m = updated.(Model)
+	require.NotNil(t, cmd)
+	require.False(t, m.agent.Busy)
+
+	updated, _ = m.Update(cmd())
+	m = updated.(Model)
+	require.True(t, m.toolInteractDialogActive())
+}
+
 func TestAgentTurnClosedResetsBusyState(t *testing.T) {
 	m := testInputModel(t)
 	m = m.beginAgentTurn()

@@ -37,9 +37,9 @@ func stickyScrollTestModel(t *testing.T) Model {
 func TestStickyScrollDisabledBySetting(t *testing.T) {
 	m := stickyScrollTestModel(t)
 	m.stickyScroll = false
-	anchor, ok := m.userMessageScrollAnchor(0)
+	_, userEnd, ok := m.messageBlockLineRange(0)
 	require.True(t, ok)
-	m.content.SetYOffset(anchor + 1)
+	m.content.SetYOffset(userEnd + 1)
 
 	require.Equal(t, -1, m.stickyUserMessageIndex(m.content.YOffset()))
 	view := stripANSI(m.contentBodyView())
@@ -124,6 +124,33 @@ func TestStickyUserClickTogglesExpand(t *testing.T) {
 	updated, _ := m.Update(mouseClick(2, 0, tea.MouseLeft, 0))
 	m = updated.(Model)
 	require.True(t, m.messages[0].detailExpanded)
+}
+
+func TestUserMessageBoxesRenderLeftBorder(t *testing.T) {
+	at := time.Date(2026, 6, 15, 9, 30, 0, 0, time.Local)
+	sticky := renderUserSticky(60, "alpha\nbeta", at)
+	collapsed := renderUserCollapsible(60, "alpha\nbeta", false, at)
+	require.Contains(t, sticky, "▎")
+	require.Contains(t, collapsed, "▎")
+}
+
+func TestUserLeftBarHeightMatchesDetailBox(t *testing.T) {
+	at := time.Date(2026, 6, 15, 9, 30, 0, 0, time.Local)
+	collapsed := renderUserCollapsible(60, "alpha\nbeta\ngamma", false, at)
+	height := lipgloss.Height(collapsed)
+
+	plain := stripANSI(collapsed)
+	barLines := 0
+	for _, line := range strings.Split(plain, "\n") {
+		trimmed := strings.TrimLeft(line, " ")
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "▎") {
+			barLines++
+		}
+	}
+	require.Equal(t, height, barLines, "each box row should include the left accent bar")
 }
 
 func TestRenderUserStickyIsCompactCollapsed(t *testing.T) {

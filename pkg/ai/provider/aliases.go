@@ -35,14 +35,15 @@ const (
 var ErrMissingAPIKey = protocol.ErrMissingAPIKey
 
 var (
-	ParseContextTooLarge      = protocol.ParseContextTooLarge
-	HeaderMap                 = protocol.HeaderMap
-	ErrorTitleForStatus       = protocol.ErrorTitleForStatus
-	WrapUnexpectedEOF         = protocol.WrapUnexpectedEOF
-	IsStreamJSONError         = protocol.IsStreamJSONError
-	NormalizeToolArguments    = protocol.NormalizeToolArguments
-	ProviderErrorSummary      = protocol.ProviderErrorSummary
-	FormatProviderErrorDetail = protocol.FormatProviderErrorDetail
-	MaxTokensOrDefault        = protocol.MaxTokensOrDefault
-	BuildMessages             = protocol.BuildMessages
+	ParseContextTooLarge             = protocol.ParseContextTooLarge
+	HeaderMap                        = protocol.HeaderMap
+	ErrorTitleForStatus              = protocol.ErrorTitleForStatus
+	WrapUnexpectedEOF                = protocol.WrapUnexpectedEOF
+	IsStreamJSONError                = protocol.IsStreamJSONError
+	ShouldStreamNonStreamingFallback = protocol.ShouldStreamNonStreamingFallback
+	NormalizeToolArguments           = protocol.NormalizeToolArguments
+	ProviderErrorSummary             = protocol.ProviderErrorSummary
+	FormatProviderErrorDetail        = protocol.FormatProviderErrorDetail
+	MaxTokensOrDefault               = protocol.MaxTokensOrDefault
+	BuildMessages                    = protocol.BuildMessages
 )

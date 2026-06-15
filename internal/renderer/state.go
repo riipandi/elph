@@ -58,21 +58,27 @@ type LayoutCache struct {
 
 // AgentState tracks agent turn progress and activity UI.
 type AgentState struct {
-	Activity           agent.Activity
-	SpinnerFrame       int
-	Stopwatch          stopwatch.Model
-	ToolCallFilter     agent.ToolCallStreamFilter
-	ThinkTagFilter     agent.ThinkTagStreamFilter
-	TurnToolCalls      []agent.ParsedToolCall
-	NativeToolMsgIDs   map[string]int
-	SeenToolCalls      map[string]struct{}
-	Busy               bool
-	Events             <-chan agent.Event
-	ToolInteractBridge *toolInteractBridge
-	Cancel             context.CancelFunc
-	ThinkingMsgID      int
-	ResponseMsgID      int
-	TodoListUpdating   bool
-	TodoListBefore     []todolist.Todo
-	SessionAllowTools  bool // skip approval dialogs until the TUI session ends
+	Activity             agent.Activity
+	SpinnerFrame         int
+	Stopwatch            stopwatch.Model
+	ToolCallFilter       agent.ToolCallStreamFilter
+	ThinkTagFilter       agent.ThinkTagStreamFilter
+	TurnToolCalls        []agent.ParsedToolCall
+	NativeToolMsgIDs     map[string]int
+	SeenToolCalls        map[string]struct{}
+	Busy                 bool
+	Events               <-chan agent.Event
+	ToolInteractBridge   *toolInteractBridge
+	Cancel               context.CancelFunc
+	ThinkingMsgID        int
+	ResponseMsgID        int
+	TodoListUpdating     bool
+	TodoListBefore       []todolist.Todo
+	SessionAllowTools    bool // skip approval dialogs until the TUI session ends
+	MarkupAskUserPending *markupAskUserOffer
+}
+
+type markupAskUserOffer struct {
+	Name       string
+	Parameters map[string]string
 }

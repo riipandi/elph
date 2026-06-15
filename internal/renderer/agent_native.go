@@ -52,6 +52,13 @@ func isTodoListTool(name string) bool {
 }
 
 func (m Model) beginNativeToolCall(call provider.ToolCall) Model {
+	if canonical, ok := tools.ResolveName(call.Name); ok && canonical == tools.AskUser {
+		if m.agent.NativeToolMsgIDs == nil {
+			m.agent.NativeToolMsgIDs = make(map[string]int)
+		}
+		m.agent.NativeToolMsgIDs[call.ID] = -1
+		return m
+	}
 	if isTodoListTool(call.Name) {
 		m.agent.TodoListUpdating = true
 		m.agent.TodoListBefore = append([]todolist.Todo(nil), m.session.Todos()...)
@@ -123,6 +130,12 @@ func nativeToolDetailStatus(name string, result runtime.ToolResult) constants.De
 }
 
 func (m Model) finishNativeToolCall(call provider.ToolCall, result agent.ToolRunResult) Model {
+	if canonical, ok := tools.ResolveName(call.Name); ok && canonical == tools.AskUser {
+		if m.agent.NativeToolMsgIDs != nil {
+			delete(m.agent.NativeToolMsgIDs, call.ID)
+		}
+		return m
+	}
 	if isTodoListTool(call.Name) {
 		m.agent.TodoListUpdating = false
 		if m.agent.NativeToolMsgIDs != nil {

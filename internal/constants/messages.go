@@ -26,6 +26,8 @@ var (
 	UserStickyMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#EEEEEE"), Dark: lipgloss.Color("#232323")}
 	// UserStickyTimestampFg is a soft green accent for the pinned prompt timestamp.
 	UserStickyTimestampFg = compat.AdaptiveColor{Light: lipgloss.Color("#588458"), Dark: lipgloss.Color("#8FB88F")}
+	// UserMsgAccent is the left-border accent for user prompt blocks.
+	UserMsgAccent = UserStickyTimestampFg
 
 	AIMsgFg = BrightText
 	AIMsgBg = lipgloss.NoColor{}
@@ -40,9 +42,19 @@ var (
 	ThinkingMsgBg = compat.AdaptiveColor{Light: lipgloss.Color("#EEEEEE"), Dark: lipgloss.Color("#232323")}
 )
 
+// UserLeftBarStyle returns the accent column for user prompt blocks.
+func UserLeftBarStyle(bg, accent compat.AdaptiveColor) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(accent).Background(bg)
+}
+
 // StickyUserStyle returns the box style for the pinned user prompt header.
 func StickyUserStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Background(UserStickyMsgBg)
+}
+
+// UserMessageBoxStyle returns the collapsible user prompt block style.
+func UserMessageBoxStyle() lipgloss.Style {
+	return MessageStyle(MessageUser)
 }
 
 // StickyUserTitleStyle returns the neutral dim foreground for the sticky prompt preview.

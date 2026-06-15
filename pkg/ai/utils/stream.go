@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,6 +53,8 @@ func PostSSE(ctx context.Context, client *http.Client, url string, headers map[s
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		line := scanner.Text()
+		// Any bytes on the wire (including SSE comments/keepalives) reset the stall timer.
+		bump()
 		if !strings.HasPrefix(line, "data:") {
 			continue
 		}
@@ -62,12 +65,14 @@ func PostSSE(ctx context.Context, client *http.Client, url string, headers map[s
 			}
 			continue
 		}
-		bump()
 		if err := onData([]byte(data)); err != nil {
 			return err
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		if errors.Is(err, context.Canceled) && errors.Is(context.Cause(streamCtx), ErrStreamStall) {
+			return ErrStreamStall
+		}
 		return fmt.Errorf("read stream: %w", err)
 	}
 	return nil

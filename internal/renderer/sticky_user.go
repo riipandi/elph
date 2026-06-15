@@ -184,10 +184,18 @@ func stickyUserLineStyle(width int) lipgloss.Style {
 func renderUserSticky(blockWidth int, text string, at time.Time) string {
 	vPad, hPad := messageBlockPadding(constants.MessageUser)
 	style := constants.StickyUserStyle()
-	innerW := max(blockWidth-2*hPad, 1)
+	innerW := userBoxInnerWidth(blockWidth, hPad)
 
 	content := userMessageStickyLine(text, innerW, at)
-	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
+	return renderUserBoxWithLeftBar(
+		blockWidth,
+		constants.UserStickyMsgBg,
+		constants.UserStickyTimestampFg,
+		style,
+		vPad,
+		hPad,
+		content,
+	)
 }
 
 func (m Model) sliceContentAt(yOffset, count int) string {

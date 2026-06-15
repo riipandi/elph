@@ -82,7 +82,14 @@ func (m Model) applyAgentEvent(evt agent.Event) (Model, tea.Cmd) {
 		return m.flushThinkingStreamNow()
 	case agent.EventResponseDelta:
 		m = m.appendAgentResponseDelta(evt.Delta)
-		return m.markStreamDirty()
+		m, cmd := m.markStreamDirty()
+		if askCmd := m.markupAskUserCmd(); askCmd != nil {
+			if cmd == nil {
+				return m, askCmd
+			}
+			return m, tea.Batch(cmd, askCmd)
+		}
+		return m, cmd
 	case agent.EventToolCallOutputDelta:
 		m = m.appendNativeToolOutput(evt.ToolCall, evt.Delta)
 		return m.markStreamDirty()

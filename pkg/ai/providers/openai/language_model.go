@@ -31,7 +31,7 @@ func (m *languageModel) Complete(ctx context.Context, req provider.TurnRequest) 
 	if req.Stream != nil {
 		if result, err := m.completeStreamOpenAICompat(ctx, req); err == nil {
 			return result, nil
-		} else if !provider.IsStreamJSONError(err) {
+		} else if !provider.ShouldStreamNonStreamingFallback(err) {
 			return provider.TurnResult{}, err
 		}
 		// OpenCode/OpenRouter gateways may emit SSE comment lines or malformed

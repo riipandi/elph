@@ -1,7 +1,10 @@
 package agent
 
 import (
+	"regexp"
 	"strings"
+
+	"github.com/riipandi/elph/pkg/tools"
 )
 
 // ParsedToolCall is a tool invocation embedded in model text output.
@@ -33,10 +36,13 @@ func StripToolCalls(text string) (string, []ParsedToolCall) {
 		}
 		if call, ok := parseToolCallInner(inner[1]); ok {
 			calls = append(calls, call)
+			return ""
 		}
+		calls = append(calls, extractCallsFromMarkup(inner[1])...)
 		return ""
 	})
 	clean = stripLooseFunctionMarkup(clean, &calls)
+	clean = stripBrokenFunctionMarkup(clean, &calls)
 	clean = stripOrphanToolCallMarkup(clean, &calls)
 	clean = stripFunctionNameFragments(clean, &calls)
 	clean = stripLooseParameterMarkup(clean, &calls)
@@ -92,6 +98,19 @@ func stripOrphanClosingTags(text string) string {
 		kept = append(kept, line)
 	}
 	return strings.Join(kept, "\n")
+}
+
+func stripBrokenFunctionMarkup(text string, calls *[]ParsedToolCall) string {
+	return toolFunctionBrokenRe.ReplaceAllStringFunc(text, func(block string) string {
+		match := toolFunctionBrokenRe.FindStringSubmatch(block)
+		if len(match) < 3 {
+			return ""
+		}
+		if call, ok := parsePartialFunctionBody(match[1], match[2]); ok {
+			*calls = append(*calls, call)
+		}
+		return ""
+	})
 }
 
 func stripLooseFunctionMarkup(text string, calls *[]ParsedToolCall) string {
@@ -164,6 +183,15 @@ func extractCallsFromMarkup(markup string) []ParsedToolCall {
 		return calls
 	}
 
+	if match := toolFunctionBrokenRe.FindStringSubmatch(markup); len(match) >= 3 {
+		if call, ok := parsePartialFunctionBody(match[1], match[2]); ok {
+			calls = append(calls, call)
+		}
+	}
+	if len(calls) > 0 {
+		return calls
+	}
+
 	if match := toolFunctionNameFragRe.FindStringSubmatch(markup); len(match) >= 3 {
 		if call, ok := parsePartialFunctionBody(match[1], match[2]); ok {
 			calls = append(calls, call)
@@ -172,23 +200,33 @@ func extractCallsFromMarkup(markup string) []ParsedToolCall {
 	return calls
 }
 
-func parsePartialFunctionBody(name, body string) (ParsedToolCall, bool) {
+// SanitizeParsedToolName trims malformed markup tails from a parsed function name.
+func SanitizeParsedToolName(name string) string {
 	name = strings.TrimSpace(name)
+	if i := strings.IndexAny(name, "</"); i >= 0 {
+		name = name[:i]
+	}
+	return strings.TrimSpace(name)
+}
+
+func canonicalParsedToolName(name string) string {
+	name = SanitizeParsedToolName(name)
+	if name == "" {
+		return ""
+	}
+	if canonical, ok := tools.ResolveName(name); ok {
+		return canonical
+	}
+	return name
+}
+
+func parsePartialFunctionBody(name, body string) (ParsedToolCall, bool) {
+	name = canonicalParsedToolName(name)
 	if name == "" {
 		return ParsedToolCall{}, false
 	}
 
-	params := make(map[string]string)
-	for _, param := range toolParameterRe.FindAllStringSubmatch(body, -1) {
-		if len(param) < 3 {
-			continue
-		}
-		key := strings.TrimSpace(param[1])
-		if key == "" {
-			continue
-		}
-		params[key] = strings.TrimSpace(param[2])
-	}
+	params := parseToolParameters(body)
 	if match := toolParameterOpenRe.FindStringSubmatch(body); len(match) >= 3 {
 		key := strings.TrimSpace(match[1])
 		if key != "" {
@@ -212,23 +250,35 @@ func parseToolCallInner(inner string) (ParsedToolCall, bool) {
 }
 
 func parseFunctionMatch(name, body string) (ParsedToolCall, bool) {
-	name = strings.TrimSpace(name)
+	name = canonicalParsedToolName(name)
 	if name == "" {
 		return ParsedToolCall{}, false
 	}
 
-	params := make(map[string]string)
-	for _, param := range toolParameterRe.FindAllStringSubmatch(body, -1) {
-		if len(param) < 3 {
-			continue
-		}
-		key := strings.TrimSpace(param[1])
-		if key == "" {
-			continue
-		}
-		params[key] = strings.TrimSpace(param[2])
-	}
+	params := parseToolParameters(body)
 	return ParsedToolCall{Name: name, Parameters: params}, true
+}
+
+func parseToolParameters(body string) map[string]string {
+	params := make(map[string]string)
+	for _, re := range []*regexp.Regexp{toolParameterRe, toolParameterLooseRe} {
+		if re == nil {
+			continue
+		}
+		for _, param := range re.FindAllStringSubmatch(body, -1) {
+			if len(param) < 3 {
+				continue
+			}
+			key := strings.TrimSpace(param[1])
+			if key == "" {
+				continue
+			}
+			if _, exists := params[key]; !exists {
+				params[key] = strings.TrimSpace(param[2])
+			}
+		}
+	}
+	return params
 }
 
 // ToolCallStreamFilter removes toolcall markup from streamed assistant text.

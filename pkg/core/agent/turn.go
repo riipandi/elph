@@ -84,6 +84,10 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 	}
 	logProviderResult(opts.LogProvider, 0, result, err)
 	if err != nil {
+		if ProviderCancelError(err) {
+			logProviderCancel(opts.LogProvider, 0, err)
+			return
+		}
 		sendEvent(ctx, ch, TurnDoneProviderErrorEvent(err, nil))
 		return
 	}

@@ -12,6 +12,9 @@ func TestProviderErrorSummary(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, "", ProviderErrorSummary(nil))
 	require.Equal(t, "Provider error: boom", ProviderErrorSummary(errors.New("boom")))
+
+	pe := &ProviderError{Title: "rate limited", Message: "slow down"}
+	require.Equal(t, "Provider error (rate limited): slow down", ProviderErrorSummary(pe))
 }
 
 func TestFormatProviderErrorDetailPlain(t *testing.T) {
@@ -37,6 +40,7 @@ func TestFormatProviderErrorDetailStructured(t *testing.T) {
 	got := FormatProviderErrorDetail(err)
 	require.Contains(t, got, "invalid model")
 	require.Contains(t, got, "HTTP 400")
+	require.NotContains(t, got, "Hint:")
 	require.Contains(t, got, "https://api.example.com/v1/chat/completions")
 	require.Contains(t, got, "--- Request ---")
 	require.Contains(t, got, `{"model":"test"}`)

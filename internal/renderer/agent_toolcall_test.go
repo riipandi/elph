@@ -29,6 +29,32 @@ func TestAppendAgentResponseDeltaStripsToolCalls(t *testing.T) {
 	require.Contains(t, m.messages[0].text, "cafe Sukabumi")
 }
 
+func TestAppendAgentResponseDeltaMalformedAskUserOpensDialog(t *testing.T) {
+	m := New()
+	m.height = 24
+	m.width = 100
+	m.ready = true
+	m = m.beginAgentTurn()
+
+	raw := `<toolcall><function=AskUser</parameter=options>["English", "Indonesia"]</parameter>` +
+		`<parameter=question>What language should the report be in?</parameter></function></toolcall>`
+
+	m = m.appendAgentResponseDelta(raw)
+	require.NotNil(t, m.agent.MarkupAskUserPending)
+	require.False(t, m.toolInteractDialogActive(), "dialog should wait until the stream turn finishes")
+
+	m, _ = m.finishAgentTurn("", "", nil)
+	updated, _ := m.Update(markupAskUserCmdMsg{})
+	m = updated.(Model)
+
+	require.True(t, m.toolInteractDialogActive())
+	dialog := stripANSI(m.toolInteractChromeView())
+	require.Contains(t, dialog, "What language should the report be in")
+	require.Contains(t, dialog, "English")
+	require.NotContains(t, dialog, "Tool not available")
+	require.NotContains(t, dialog, `["English"`)
+}
+
 func TestAppendAgentResponseDeltaUnknownTool(t *testing.T) {
 	m := New()
 	m = m.beginAgentTurn()

@@ -16,7 +16,7 @@ func TestStripToolCallsSingle(t *testing.T) {
 	clean, calls := StripToolCalls(raw)
 	require.Equal(t, "Hello world", clean)
 	require.Len(t, calls, 1)
-	require.Equal(t, "websearch", calls[0].Name)
+	require.Equal(t, "WebSearch", calls[0].Name)
 	require.Equal(t, "cafe Sukabumi", calls[0].Parameters["query"])
 }
 
@@ -48,7 +48,7 @@ func TestToolCallStreamFilterHoldsIncompleteBlock(t *testing.T) {
 	safe, calls = f.Process("<parameter=path>/tmp/a</parameter></function></toolcall> tail")
 	require.Equal(t, "tail", safe)
 	require.Len(t, calls, 1)
-	require.Equal(t, "read", calls[0].Name)
+	require.Equal(t, "Read", calls[0].Name)
 	require.Equal(t, "/tmp/a", calls[0].Parameters["path"])
 }
 
@@ -62,7 +62,7 @@ func TestStripToolCallsToolCallUnderscoreClose(t *testing.T) {
 	clean, calls := StripToolCalls(raw)
 	require.Empty(t, clean)
 	require.Len(t, calls, 1)
-	require.Equal(t, "websearch", calls[0].Name)
+	require.Equal(t, "WebSearch", calls[0].Name)
 	require.Contains(t, calls[0].Parameters["query"], "Sukabumi")
 }
 
@@ -91,7 +91,19 @@ func TestStripToolCallsPartialToolSuffix(t *testing.T) {
 	clean, calls = StripToolCalls("prefix <toolcall><function=websearch><parameter=query>cafe</parameter>")
 	require.Equal(t, "prefix", clean)
 	require.Len(t, calls, 1)
-	require.Equal(t, "websearch", calls[0].Name)
+	require.Equal(t, "WebSearch", calls[0].Name)
+}
+
+func TestStripToolCallsMalformedAskUserFunctionTag(t *testing.T) {
+	raw := `<toolcall><function=AskUser</parameter=options>["English", "Indonesia"]</parameter>` +
+		`<parameter=question>What language should the report be in?</parameter></function></toolcall>`
+
+	clean, calls := StripToolCalls(raw)
+	require.Empty(t, clean)
+	require.Len(t, calls, 1)
+	require.Equal(t, "AskUser", calls[0].Name)
+	require.Equal(t, `["English", "Indonesia"]`, calls[0].Parameters["options"])
+	require.Equal(t, "What language should the report be in?", calls[0].Parameters["question"])
 }
 
 func TestStripToolCallsLooseFunctionMarkup(t *testing.T) {
@@ -204,5 +216,5 @@ func TestToolCallStreamFilterFlushTrailingHoldback(t *testing.T) {
 	clean, calls := f.Flush("<parameter=pattern>foo</parameter></function></toolcall> after")
 	require.Equal(t, "after", clean)
 	require.Len(t, calls, 1)
-	require.Equal(t, "grep", calls[0].Name)
+	require.Equal(t, "Grep", calls[0].Name)
 }

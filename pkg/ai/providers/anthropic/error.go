@@ -13,10 +13,21 @@ func toProviderErr(err error) error {
 	}
 	var apiErr *anthropic.Error
 	if errors.As(err, &apiErr) {
-		message := apiErr.Error()
+		fields := provider.UpstreamErrorFields{Type: string(apiErr.Type())}
+		if raw := apiErr.RawJSON(); raw != "" {
+			if parsed, ok := provider.ParseUpstreamErrorBody([]byte(raw)); ok {
+				fields = parsed
+			}
+		}
+		message := provider.FormatProviderErrorMessage(fields)
+		if message == "" {
+			message = apiErr.Error()
+		}
 		out := &provider.ProviderError{
 			Title:      provider.ErrorTitleForStatus(apiErr.StatusCode),
 			Message:    message,
+			ErrorType:  fields.Type,
+			ErrorCode:  fields.Code,
 			Cause:      apiErr,
 			StatusCode: apiErr.StatusCode,
 		}
@@ -28,7 +39,7 @@ func toProviderErr(err error) error {
 		}
 		out.RequestBody = apiErr.DumpRequest(true)
 		out.ResponseBody = apiErr.DumpResponse(true)
-		provider.ParseContextTooLarge(message, out)
+		provider.EnrichProviderError(out)
 		return out
 	}
 	return provider.WrapUnexpectedEOF(err)

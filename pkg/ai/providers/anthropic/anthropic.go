@@ -107,7 +107,7 @@ func (p *languageModel) Complete(ctx context.Context, req provider.TurnRequest) 
 	}
 	if req.Stream != nil {
 		result, err := p.completeStream(ctx, req)
-		if err != nil && provider.IsStreamJSONError(err) {
+		if err != nil && provider.ShouldStreamNonStreamingFallback(err) {
 			fallback := req
 			fallback.Stream = nil
 			once, onceErr := p.completeOnce(ctx, fallback)

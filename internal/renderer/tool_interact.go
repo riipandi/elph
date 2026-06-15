@@ -2,8 +2,10 @@ package renderer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"image/color"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,8 +19,9 @@ import (
 )
 
 type toolInteractOffer struct {
-	Req    agent.ToolInteractRequest
-	RespCh chan<- agent.ToolInteractResponse
+	Req        agent.ToolInteractRequest
+	RespCh     chan<- agent.ToolInteractResponse
+	FromMarkup bool
 }
 
 type toolInteractOfferMsg struct {
@@ -149,8 +152,9 @@ func toolInteractFormTheme() huh.ThemeFunc {
 }
 
 func newAskUserForm(req agent.ToolInteractRequest, width int) *huh.Form {
-	question := askUserQuestion(req.Args)
-	options := askUserOptions(req.Args)
+	fields := parseAskUserArgs(req.Args)
+	question := fields.question
+	options := fields.options
 
 	if len(options) > 0 {
 		var selected string
@@ -351,7 +355,7 @@ func (m Model) toolInteractShortcutResponse(msg tea.KeyPressMsg) (agent.ToolInte
 			return agent.ToolInteractResponse{Approved: false}, true
 		}
 	case agent.ToolInteractAskUser:
-		opts := askUserOptions(req.Args)
+		opts := parseAskUserArgs(req.Args).options
 		if len(opts) > 0 && len(msg.Text) == 1 {
 			if n, err := strconv.Atoi(msg.Text); err == nil && n >= 1 && n <= len(opts) {
 				return agent.ToolInteractResponse{Answer: opts[n-1]}, true
@@ -367,6 +371,9 @@ func (m Model) completeToolInteractWith(resp agent.ToolInteractResponse) (Model,
 	m.toolInteractPending = toolInteractOffer{}
 	m.showPromptPrefix = false
 	m.input.Focus()
+	if offer.FromMarkup && offer.Req.Kind == agent.ToolInteractAskUser {
+		return m.completeMarkupAskUser(offer.Req, resp)
+	}
 	m = m.applyApprovalInteractUI(resp, offer.Req)
 	m = m.applySessionToolApproval(resp)
 	m = m.recordToolApprovalDenial(resp, offer.Req)
@@ -399,13 +406,16 @@ func (m Model) completeToolInteractForm() (Model, tea.Cmd) {
 	m.input.Focus()
 
 	resp := agent.ToolInteractResponse{}
+	switch offer.Req.Kind {
+	case agent.ToolInteractAskUser:
+		resp = m.askUserFormResponse(form)
+	case agent.ToolInteractApproval:
+		resp = m.approvalFormResponse(form)
+	}
+	if offer.FromMarkup && offer.Req.Kind == agent.ToolInteractAskUser {
+		return m.completeMarkupAskUser(offer.Req, resp)
+	}
 	if offer.RespCh != nil {
-		switch offer.Req.Kind {
-		case agent.ToolInteractAskUser:
-			resp = m.askUserFormResponse(form)
-		case agent.ToolInteractApproval:
-			resp = m.approvalFormResponse(form)
-		}
 		m = m.applyApprovalInteractUI(resp, offer.Req)
 		m = m.applySessionToolApproval(resp)
 		m = m.recordToolApprovalDenial(resp, offer.Req)
@@ -579,7 +589,7 @@ func toolInteractDialogAccent(req agent.ToolInteractRequest) (string, color.Colo
 func toolInteractFooterHint(req agent.ToolInteractRequest) string {
 	switch req.Kind {
 	case agent.ToolInteractAskUser:
-		if len(askUserOptions(req.Args)) > 0 {
+		if len(parseAskUserArgs(req.Args).options) > 0 {
 			return "↑/↓ · 1-9 · Enter · Esc"
 		}
 		return "Enter · Esc"
@@ -590,14 +600,156 @@ func toolInteractFooterHint(req agent.ToolInteractRequest) string {
 	}
 }
 
-func askUserQuestion(args map[string]any) string {
-	if q, ok := stringArgAny(args, "question"); ok {
-		return q
+const defaultAskUserQuestion = "The agent has a question for you."
+
+type askUserFields struct {
+	question string
+	options  []string
+}
+
+var askUserQuotedStrings = regexp.MustCompile(`"([^"]+)"`)
+
+func parseAskUserArgs(args map[string]any) askUserFields {
+	var out askUserFields
+	if args == nil {
+		out.question = defaultAskUserQuestion
+		return out
 	}
-	if r, ok := stringArgAny(args, "reason"); ok {
-		return r
+
+	out.question = askUserQuestionText(args)
+	out.options = askUserOptions(args)
+	out.question, out.options = reconcileSwappedAskUserFields(out.question, out.options, args)
+
+	if out.question != "" && len(out.options) == 0 {
+		if opts, ok := parseJSONStringArray(out.question); ok {
+			out.options = opts
+			out.question = ""
+		} else if opts := salvageQuotedStrings(out.question); len(opts) > 0 && strings.HasPrefix(strings.TrimSpace(out.question), "[") {
+			out.options = opts
+			out.question = ""
+		}
 	}
-	return "The agent has a question for you."
+
+	if len(out.options) == 0 {
+		if raw, ok := args["question"]; ok {
+			out.options = askUserOptions(map[string]any{"options": raw})
+			if len(out.options) > 0 {
+				out.question = ""
+			}
+		}
+	}
+
+	if strings.TrimSpace(out.question) == "" {
+		if len(out.options) > 0 {
+			out.question = "Choose an option:"
+		} else {
+			out.question = defaultAskUserQuestion
+		}
+	}
+	return out
+}
+
+func askUserQuestionText(args map[string]any) string {
+	raw, ok := args["question"]
+	if !ok || raw == nil {
+		if r, ok := stringArgAny(args, "reason"); ok {
+			return r
+		}
+		return ""
+	}
+	switch v := raw.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	case []any, []string:
+		return ""
+	default:
+		s := strings.TrimSpace(fmt.Sprint(v))
+		if strings.HasPrefix(s, "[") {
+			return s
+		}
+		return s
+	}
+}
+
+func reconcileSwappedAskUserFields(question string, options []string, args map[string]any) (string, []string) {
+	if len(options) > 0 || strings.TrimSpace(question) == "" {
+		return question, options
+	}
+	raw, ok := args["options"]
+	if !ok || raw == nil {
+		return question, options
+	}
+	optText, ok := raw.(string)
+	if !ok {
+		return question, options
+	}
+	optText = strings.TrimSpace(optText)
+	if optText == "" || strings.HasPrefix(optText, "[") {
+		return question, options
+	}
+	if !strings.HasPrefix(strings.TrimSpace(question), "[") {
+		return question, options
+	}
+	opts := options
+	if len(opts) == 0 {
+		if parsed, ok := parseJSONStringArray(question); ok {
+			opts = parsed
+		} else {
+			opts = salvageQuotedStrings(question)
+		}
+	}
+	if len(opts) == 0 {
+		return question, options
+	}
+	return optText, opts
+}
+
+func parseJSONStringArray(s string) ([]string, bool) {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "[") {
+		return nil, false
+	}
+	var opts []string
+	if err := json.Unmarshal([]byte(s), &opts); err != nil {
+		return nil, false
+	}
+	opts = trimStrings(opts)
+	if len(opts) == 0 {
+		return nil, false
+	}
+	return opts, true
+}
+
+func salvageQuotedStrings(s string) []string {
+	matches := askUserQuotedStrings.FindAllStringSubmatch(s, -1)
+	out := make([]string, 0, len(matches)+1)
+	for _, m := range matches {
+		if len(m) > 1 {
+			out = append(out, strings.TrimSpace(m[1]))
+		}
+	}
+	if tail := salvageTrailingArrayToken(s); tail != "" {
+		out = append(out, tail)
+	}
+	return trimStrings(out)
+}
+
+func salvageTrailingArrayToken(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "[") {
+		return ""
+	}
+	i := strings.LastIndex(s, ",")
+	if i < 0 {
+		return ""
+	}
+	tail := strings.TrimSpace(s[i+1:])
+	if strings.HasSuffix(tail, `"`) {
+		return ""
+	}
+	tail = strings.TrimPrefix(tail, `"`)
+	tail = strings.TrimSuffix(tail, "]")
+	return strings.TrimSpace(tail)
 }
 
 func askUserOptions(args map[string]any) []string {
@@ -616,6 +768,11 @@ func askUserOptions(args map[string]any) []string {
 			}
 		}
 		return trimStrings(out)
+	case string:
+		if opts, ok := parseJSONStringArray(v); ok {
+			return opts
+		}
+		return nil
 	default:
 		return nil
 	}

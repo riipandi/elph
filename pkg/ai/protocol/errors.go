@@ -15,6 +15,9 @@ import (
 type ProviderError struct {
 	Title             string
 	Message           string
+	Hint              string
+	ErrorType         string
+	ErrorCode         string
 	Cause             error
 	URL               string
 	StatusCode        int
@@ -113,12 +116,36 @@ func ErrorTitleForStatus(code int) string {
 		return "rate limited"
 	case http.StatusBadRequest:
 		return "bad request"
+	case http.StatusGatewayTimeout:
+		return "gateway timeout"
 	default:
 		if code >= 500 {
 			return "upstream error"
 		}
 		return "provider request failed"
 	}
+}
+
+// ShouldStreamNonStreamingFallback reports whether a failed stream should retry once without streaming.
+func ShouldStreamNonStreamingFallback(err error) bool {
+	if err == nil {
+		return false
+	}
+	if IsStreamJSONError(err) {
+		return true
+	}
+	var pe *ProviderError
+	if !errors.As(err, &pe) || pe == nil {
+		return false
+	}
+	if pe.Title == "stream stalled" || pe.Title == "gateway timeout" {
+		return true
+	}
+	if pe.StatusCode == http.StatusGatewayTimeout {
+		return true
+	}
+	msg := strings.ToLower(pe.Message)
+	return strings.Contains(msg, "idle timeout") || strings.Contains(msg, "gateway timeout")
 }
 
 // IsStreamJSONError reports whether err is a JSON decode failure from SSE streaming.
@@ -136,44 +163,21 @@ func IsStreamJSONError(err error) bool {
 
 // NewUpstreamHTTPError builds a ProviderError from a non-2xx upstream body.
 func NewUpstreamHTTPError(statusCode int, body []byte) error {
-	message := parseUpstreamErrorMessage(body)
-	if message == "" {
-		message = trimErrorBody(body)
-	}
-	return &ProviderError{
+	pe := &ProviderError{
 		Title:        ErrorTitleForStatus(statusCode),
-		Message:      message,
 		StatusCode:   statusCode,
 		ResponseBody: append([]byte(nil), body...),
 	}
-}
-
-func parseUpstreamErrorMessage(body []byte) string {
-	trimmed := strings.TrimSpace(string(body))
-	if trimmed == "" {
-		return ""
+	if fields, ok := parseUpstreamErrorBody(body); ok {
+		pe.Message = formatProviderErrorMessage(fields)
+		pe.ErrorType = fields.Type
+		pe.ErrorCode = fields.Code
 	}
-	var envelope struct {
-		Type  string `json:"type"`
-		Error struct {
-			Type    string `json:"type"`
-			Message string `json:"message"`
-		} `json:"error"`
-		Message string `json:"message"`
+	if pe.Message == "" {
+		pe.Message = trimErrorBody(body)
 	}
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		return ""
-	}
-	if envelope.Error.Message != "" {
-		if envelope.Error.Type != "" {
-			return envelope.Error.Type + ": " + envelope.Error.Message
-		}
-		return envelope.Error.Message
-	}
-	if envelope.Message != "" {
-		return envelope.Message
-	}
-	return ""
+	enrichProviderError(pe)
+	return pe
 }
 
 func trimErrorBody(raw []byte) string {
@@ -189,6 +193,16 @@ func WrapStreamError(err error) error {
 	if err == nil {
 		return nil
 	}
+	msg := err.Error()
+	if strings.Contains(msg, "stream stalled") {
+		pe := &ProviderError{
+			Title:   "stream stalled",
+			Message: "No data received from the provider. The model may be overloaded, rate-limited, or unavailable — try again or switch models.",
+			Cause:   err,
+		}
+		enrichProviderError(pe)
+		return pe
+	}
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return &ProviderError{
 			Title:   "stream cancelled",
@@ -196,15 +210,18 @@ func WrapStreamError(err error) error {
 			Cause:   err,
 		}
 	}
-	msg := err.Error()
-	if strings.Contains(msg, "stream stalled") {
-		return &ProviderError{
-			Title:   "stream stalled",
-			Message: "No data received from the provider. The model may be overloaded, rate-limited, or unavailable — try again or switch models.",
-			Cause:   err,
+	if wrapped := WrapUnexpectedEOF(err); wrapped != err {
+		if pe, ok := wrapped.(*ProviderError); ok {
+			enrichProviderError(pe)
 		}
+		return wrapped
 	}
-	return WrapUnexpectedEOF(err)
+	var pe *ProviderError
+	if errors.As(err, &pe) {
+		enrichProviderError(pe)
+		return pe
+	}
+	return err
 }
 
 // WrapUnexpectedEOF normalizes stream transport failures.

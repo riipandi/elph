@@ -419,8 +419,8 @@ func userMessageFooterLine(at time.Time, expanded, showHint bool, footerBg compa
 
 func renderUserCollapsible(blockWidth int, text string, expanded bool, at time.Time) string {
 	vPad, hPad := messageBlockPadding(constants.MessageUser)
-	style := constants.MessageStyle(constants.MessageUser)
-	innerW := max(blockWidth-2*hPad, 1)
+	style := constants.UserMessageBoxStyle()
+	innerW := userBoxInnerWidth(blockWidth, hPad)
 	collapsible := userMessageCollapsible(text)
 
 	body := userMessageBody(text, expanded, innerW)
@@ -428,5 +428,13 @@ func renderUserCollapsible(blockWidth int, text string, expanded bool, at time.T
 	if footer := userMessageFooterLine(at, expanded, collapsible, constants.UserMsgBg); footer != "" {
 		content = body + "\n\n" + footer
 	}
-	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
+	return renderUserBoxWithLeftBar(
+		blockWidth,
+		constants.UserMsgBg,
+		constants.UserMsgAccent,
+		style,
+		vPad,
+		hPad,
+		content,
+	)
 }

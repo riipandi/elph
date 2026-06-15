@@ -7,7 +7,9 @@ import (
 )
 
 // StreamStallTimeout is how long to wait without stream activity before failing.
-const StreamStallTimeout = 45 * time.Second
+// Slow-thinking models (e.g. MiMo with qwen format) may take over a minute
+// before the first SSE chunk arrives.
+const StreamStallTimeout = 120 * time.Second
 
 // ErrStreamStall is returned when no SSE chunk arrives within StreamStallTimeout.
 var ErrStreamStall = errors.New("stream stalled: no data from provider")

@@ -51,6 +51,13 @@ func (m Model) recordToolCallRequests(calls []agent.ParsedToolCall) Model {
 		m.agent.SeenToolCalls[sig] = struct{}{}
 		recorded = append(recorded, call)
 
+		var queued bool
+		m, queued = m.tryQueueMarkupAskUser(call)
+		if queued {
+			m.session.AppendLog("tool_request", fmt.Sprintf("%s %v", call.Name, call.Parameters))
+			continue
+		}
+
 		presentation := runtime.ResolveToolRequest(call.Name, call.Parameters)
 		m = m.addToolDetailMessageWithStatus(
 			presentation.Name,

@@ -53,6 +53,9 @@ func (m Model) handleAgentTurnClosed() (Model, tea.Cmd) {
 		m = m.syncLayout(true)
 	}
 	m.agent.Events = nil
+	if askCmd := m.markupAskUserCmd(); askCmd != nil {
+		return m, askCmd
+	}
 	return m, nil
 }
 
@@ -65,6 +68,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleAgentEvent(msg)
 	case agentTurnClosedMsg:
 		return m.handleAgentTurnClosed()
+	case markupAskUserCmdMsg:
+		return m.handleMarkupAskUserCmd()
 	case streamFlushMsg:
 		return m.handleStreamFlush()
 	}

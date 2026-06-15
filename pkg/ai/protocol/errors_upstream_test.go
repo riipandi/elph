@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -28,4 +29,13 @@ func TestWrapStreamErrorStall(t *testing.T) {
 	require.True(t, errors.As(err, &pe))
 	require.Equal(t, "stream stalled", pe.Title)
 	require.Contains(t, pe.Message, "No data received")
+}
+
+func TestWrapStreamErrorStallBeforeCancelClassification(t *testing.T) {
+	t.Parallel()
+
+	err := WrapStreamError(errors.Join(context.Canceled, errors.New("stream stalled: no data from provider")))
+	var pe *ProviderError
+	require.True(t, errors.As(err, &pe))
+	require.Equal(t, "stream stalled", pe.Title)
 }

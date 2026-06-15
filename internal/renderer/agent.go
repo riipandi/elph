@@ -288,7 +288,7 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 		responseIdx = len(m.messages) - 1
 	}
 
-	if providerErr != nil {
+	if providerErr != nil && !agent.ProviderCancelError(providerErr) {
 		m = m.addProviderErrorDetail(providerErr)
 	}
 
@@ -301,7 +301,21 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 	m = m.syncLayout(true)
 
 	if responseIdx >= 0 {
-		return m.scheduleMarkdownRender(responseIdx)
+		var cmds []tea.Cmd
+		m, renderCmd := m.scheduleMarkdownRender(responseIdx)
+		if renderCmd != nil {
+			cmds = append(cmds, renderCmd)
+		}
+		if askCmd := m.markupAskUserCmd(); askCmd != nil {
+			cmds = append(cmds, askCmd)
+		}
+		if len(cmds) > 0 {
+			return m, tea.Batch(cmds...)
+		}
+		return m, nil
+	}
+	if askCmd := m.markupAskUserCmd(); askCmd != nil {
+		return m, askCmd
 	}
 	return m, nil
 }

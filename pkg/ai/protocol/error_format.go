@@ -14,7 +14,26 @@ func ProviderErrorSummary(err error) string {
 	if err == nil {
 		return ""
 	}
-	return fmt.Sprintf("Provider error: %v", err)
+	var pe *ProviderError
+	if errors.As(err, &pe) && pe != nil {
+		label := "Provider error"
+		if pe.Title != "" {
+			label += " (" + pe.Title + ")"
+		}
+		msg := truncateProviderSummary(pe.Message, providerErrorSummaryMaxLen)
+		if msg == "" {
+			msg = pe.Title
+		}
+		if msg == "" {
+			msg = "request failed"
+		}
+		summary := label + ": " + msg
+		if pe.Hint != "" {
+			summary += " — " + pe.Hint
+		}
+		return summary
+	}
+	return "Provider error: " + truncateProviderSummary(err.Error(), providerErrorSummaryMaxLen)
 }
 
 // FormatProviderErrorDetail returns a multi-section log suitable for a detail box.
@@ -54,6 +73,14 @@ func appendProviderErrorSections(b *strings.Builder, pe *ProviderError) {
 		b.WriteString("\nURL: ")
 		b.WriteString(pe.URL)
 	}
+	if pe.ErrorType != "" {
+		b.WriteString("\nType: ")
+		b.WriteString(pe.ErrorType)
+	}
+	if pe.ErrorCode != "" {
+		b.WriteString("\nCode: ")
+		b.WriteString(pe.ErrorCode)
+	}
 	if pe.ContextTooLarge {
 		b.WriteString("\nContext limit exceeded")
 		if pe.ContextMaxTokens > 0 {
@@ -63,6 +90,10 @@ func appendProviderErrorSections(b *strings.Builder, pe *ProviderError) {
 			}
 			b.WriteByte(')')
 		}
+	}
+	if pe.Hint != "" {
+		b.WriteString("\n\nHint: ")
+		b.WriteString(pe.Hint)
 	}
 	if len(pe.ResponseHeaders) > 0 {
 		b.WriteString("\n\n--- Response headers ---\n")

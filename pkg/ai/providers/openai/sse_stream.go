@@ -87,6 +87,9 @@ func (m *languageModel) completeStreamSSE(ctx context.Context, req provider.Turn
 
 	url := strings.TrimRight(m.opts.BaseURL, "/") + "/chat/completions"
 	err = utils.PostSSE(ctx, utils.NewStreamingHTTPClient(), url, headers, body, func(data []byte) error {
+		if streamErr, ok := provider.ProviderErrorFromStreamData(data); ok {
+			return streamErr
+		}
 		var chunk sseStreamChunk
 		if err := json.Unmarshal(data, &chunk); err != nil {
 			return fmt.Errorf("decode stream chunk: %w", err)

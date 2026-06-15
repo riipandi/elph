@@ -218,7 +218,8 @@ func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
 func TestUserMessageHorizontalPadding(t *testing.T) {
 	m := testModel()
 	rendered := stripANSI(m.renderMessage(message{text: "hello", kind: constants.MessageUser}))
-	require.True(t, strings.HasPrefix(rendered, "  "), "user message should have horizontal padding: %q", rendered)
+	require.True(t, strings.HasPrefix(rendered, "▎"), "user message should render a left accent bar: %q", rendered)
+	require.Contains(t, rendered, "hello")
 }
 
 func TestToolMessageBlockPadding(t *testing.T) {

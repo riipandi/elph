@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -61,6 +62,22 @@ func TestProviderErrorDetailExpandedShowsBody(t *testing.T) {
 	rendered := stripANSI(m.renderMessageAt(0))
 	require.Contains(t, rendered, "Provider request failed")
 	require.Contains(t, rendered, "unexpected end of JSON input")
+}
+
+func TestFinishAgentTurnIgnoresStreamCancelledError(t *testing.T) {
+	m := New()
+	m = m.beginAgentTurn()
+
+	err := &provider.ProviderError{
+		Title:   "stream cancelled",
+		Message: "read stream: context canceled",
+		Cause:   context.Canceled,
+	}
+	m, _ = m.finishAgentTurn("", provider.ProviderErrorSummary(err), err)
+
+	for _, msg := range m.messages {
+		require.NotContains(t, msg.text, "Provider request failed")
+	}
 }
 
 func TestTurnDoneProviderErrorEvent(t *testing.T) {

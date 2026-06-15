@@ -12,11 +12,67 @@ import (
 )
 
 func TestAskUserQuestionAndOptions(t *testing.T) {
-	q := askUserQuestion(map[string]any{"question": "Go or Rust?"})
-	require.Equal(t, "Go or Rust?", q)
+	fields := parseAskUserArgs(map[string]any{
+		"question": "Go or Rust?",
+		"options":  []any{"Go", "Rust"},
+	})
+	require.Equal(t, "Go or Rust?", fields.question)
+	require.Equal(t, []string{"Go", "Rust"}, fields.options)
+}
 
-	opts := askUserOptions(map[string]any{"options": []any{"Go", "Rust"}})
-	require.Equal(t, []string{"Go", "Rust"}, opts)
+func TestParseAskUserArgsOptionsJSONString(t *testing.T) {
+	fields := parseAskUserArgs(map[string]any{
+		"question": "Pick a language",
+		"options":  `["English", "Indonesia"]`,
+	})
+	require.Equal(t, "Pick a language", fields.question)
+	require.Equal(t, []string{"English", "Indonesia"}, fields.options)
+}
+
+func TestParseAskUserArgsQuestionHoldsJSONArray(t *testing.T) {
+	fields := parseAskUserArgs(map[string]any{
+		"question": `["English", "Indonesia"]`,
+	})
+	require.Equal(t, "Choose an option:", fields.question)
+	require.Equal(t, []string{"English", "Indonesia"}, fields.options)
+}
+
+func TestParseAskUserArgsSwappedQuestionAndOptions(t *testing.T) {
+	fields := parseAskUserArgs(map[string]any{
+		"question": `["English", "Indonesia"`,
+		"options":  "What language should the report be in",
+	})
+	require.Equal(t, "What language should the report be in", fields.question)
+	require.Equal(t, []string{"English", "Indonesia"}, fields.options)
+}
+
+func TestParseAskUserArgsMalformedQuestionSalvagesQuotedOptions(t *testing.T) {
+	fields := parseAskUserArgs(map[string]any{
+		"question": `["English", "Indonesia`,
+	})
+	require.Equal(t, "Choose an option:", fields.question)
+	require.Equal(t, []string{"English", "Indonesia"}, fields.options)
+}
+
+func TestNewAskUserFormShowsQuestionNotRawJSONArray(t *testing.T) {
+	form := newAskUserForm(agent.ToolInteractRequest{
+		Kind: agent.ToolInteractAskUser,
+		Args: map[string]any{
+			"question": `["English", "Indonesia"`,
+			"options":  "What language should the report be in",
+		},
+	}, 80)
+	if updated, _ := form.Update(tea.WindowSizeMsg{Width: 100, Height: 40}); updated != nil {
+		if f, ok := updated.(*huh.Form); ok {
+			form = f
+		}
+	}
+
+	m := testInputModel(t)
+	m.toolInteractForm = form
+	view := stripANSI(m.toolInteractChromeView())
+	require.Contains(t, view, "What language should the report be in")
+	require.NotContains(t, view, `["English"`)
 }
 
 func TestApprovalFormShowsSessionOption(t *testing.T) {
