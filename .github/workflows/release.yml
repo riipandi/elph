@@ -42,7 +42,7 @@ jobs:
 
       - name: Install required toolchain
         run: |
-          github.com/pressly/goose/v3/cmd/elph/goose@latest
+          github.com/pressly/goose/v3/cmd/goose@latest
           gotest.tools/gotestsum@latest
 
       # - name: Setup Protobuf toolchain
