@@ -70,7 +70,7 @@ func TestSearchFallbackToDuckDuckGo(t *testing.T) {
 	})
 	t.Setenv("TAVILY_API_KEY", "tv-test")
 
-	used, results, err := Search(context.Background(), "golang", "")
+	used, results, err := Search(context.Background(), "golang")
 	require.NoError(t, err)
 	require.Equal(t, EngineDuckDuckGo, used)
 	require.Len(t, results, 1)
@@ -79,7 +79,7 @@ func TestSearchFallbackToDuckDuckGo(t *testing.T) {
 
 func TestSearchRequiresKeyForExplicitEngine(t *testing.T) {
 	clearSearchAPIKeys(t)
-	_, _, err := Search(context.Background(), "test", "tavily")
+	_, _, err := Search(context.Background(), "test", WithEngine("tavily"))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "TAVILY_API_KEY")
 }
@@ -107,7 +107,7 @@ func TestSearchTavilyViaMockServer(t *testing.T) {
 	})
 	t.Setenv("TAVILY_API_KEY", "tv-key")
 
-	used, results, err := Search(context.Background(), "elph", "")
+	used, results, err := Search(context.Background(), "elph")
 	require.NoError(t, err)
 	require.Equal(t, EngineTavily, used)
 	require.Len(t, results, 1)

@@ -24,7 +24,7 @@
 ╭─────────────────────────────────────────────────────────────────╮
 │ >                                                               │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)
 ╰─────────────────────────────────────────────────────────────────╯
-MODEL_NAME | PROVIDER | T: high | IMG           $0.00 | 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
+MODEL_NAME | PROVIDER | T: high | IMG      $0.00 | 0k | 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
 project_dir [sess_abcd12345] agent_mode          turn: 0 | main [-]
 ```
 

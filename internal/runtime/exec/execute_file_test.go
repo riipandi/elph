@@ -2,6 +2,7 @@ package exec
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,21 +30,28 @@ func TestExecuteRead(t *testing.T) {
 		"path": "hello.txt",
 	})
 	require.NoError(t, result.Err)
-	require.Equal(t, "hello\nworld", result.Output)
+	require.Contains(t, result.Output, "1\thello")
+	require.Contains(t, result.Output, "2\tworld")
+	require.Contains(t, result.Output, "Total lines in file: 2")
 }
 
 func TestExecuteReadTruncatesLargeFile(t *testing.T) {
 	t.Parallel()
 	wd := t.TempDir()
 	path := filepath.Join(wd, "big.txt")
-	require.NoError(t, os.WriteFile(path, []byte(strings.Repeat("x", maxReadBytes+10)), 0o644))
+	// File with enough rows that line-numbered output exceeds maxReadBytes
+	var sb strings.Builder
+	for i := 0; i < 10000; i++ {
+		sb.WriteString("this is line number " + fmt.Sprint(i) + "\n")
+	}
+	require.NoError(t, os.WriteFile(path, []byte(sb.String()), 0o644))
 
 	result := ExecuteTool(context.Background(), wd, tools.Read, map[string]any{
 		"path": "big.txt",
 	})
 	require.NoError(t, result.Err)
 	require.Contains(t, result.Output, "(output truncated)")
-	require.LessOrEqual(t, len(result.Output), maxReadBytes+32)
+	require.LessOrEqual(t, len(result.Output), maxReadBytes+256)
 }
 
 func TestExecuteWriteCreatesFileAndParents(t *testing.T) {

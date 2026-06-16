@@ -17,26 +17,26 @@ and modification tasks.
 
 | Tool          | Default Approval  | Description                                                                                                               |
 |---------------|-------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Read          | Auto-allow        | Read a text file. Fails on directories — use Glob first to find files inside a directory                                  |
-| Write         | Requires approval | Create or overwrite a file. Fails if the path is an existing directory                                                    |
-| Edit          | Requires approval | Edit a file using string replacement. Fails on directories — only use on existing files                                   |
-| Grep          | Auto-allow        | `ripgrep` powered full-text search                                                                                        |
+| Read          | Auto-allow        | Read a text file (supports line_offset and n_lines; negative offset = tail read). Fails on directories                    |
+| Write         | Requires approval | Create, overwrite, or append to a file (supports mode: "overwrite" or "append"). Fails on directories                     |
+| Edit          | Requires approval | Edit a file using string replacement (supports replace_all, no-op guard). Fails on directories                            |
+| Grep          | Auto-allow        | `ripgrep` powered full-text search (supports context_lines)                                                               |
 | Glob          | Auto-allow        | Find files and list directory contents by glob pattern. Use pattern "dir/**" to recursively list all files in a directory |
 | ReadMediaFile | Auto-allow        | Read an image or video file                                                                                               |
 
 ## Shell Tools
 
-| Tool | Default Approval  | Description             |
-|------|-------------------|-------------------------|
-| Bash | Requires approval | Execute a shell command |
+| Tool | Default Approval  | Description                                                                          |
+|------|-------------------|--------------------------------------------------------------------------------------|
+| Bash | Requires approval | Execute a shell command (supports cwd and timeout overrides; default 120s, max 300s) |
 
 ## Web Tools
 
-| Tool       | Default Approval | Description                          |
-|------------|------------------|--------------------------------------|
-| FetchURL   | Auto-allow       | Fetch the content of a specified URL |
-| WebSearch  | Auto-allow       | Web search with multiple engines     |
-| CodeSearch | Auto-allow       | Search code on GitHub                |
+| Tool       | Default Approval | Description                                     |
+|------------|------------------|-------------------------------------------------|
+| FetchURL   | Auto-allow       | Fetch the content of a specified URL            |
+| WebSearch  | Auto-allow       | Web search (supports limit and include_content) |
+| CodeSearch | Auto-allow       | Search code on GitHub                           |
 
 ## Plan Mode
 

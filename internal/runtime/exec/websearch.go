@@ -16,8 +16,21 @@ func executeWebSearch(ctx context.Context, args map[string]any) toolresult.ToolR
 		return toolresult.ToolResult{Err: errors.New("missing required argument: query")}
 	}
 	engine, _ := stringArg(args, "engine")
+	limit := intArg(args, "limit", 5)
+	includeContent := boolArg(args, "include_content")
 
-	used, results, err := websearch.Search(ctx, query, engine)
+	var opts []websearch.SearchOption
+	if engine != "" {
+		opts = append(opts, websearch.WithEngine(engine))
+	}
+	if limit > 0 {
+		opts = append(opts, websearch.WithLimit(limit))
+	}
+	if includeContent {
+		opts = append(opts, websearch.WithIncludeContent())
+	}
+
+	used, results, err := websearch.Search(ctx, query, opts...)
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
 	}

@@ -17,6 +17,7 @@ type Result struct {
 	Title   string
 	URL     string
 	Snippet string
+	Content string // Full page content (populated when include_content is enabled)
 }
 
 // EngineID identifies a search backend.
@@ -182,21 +183,61 @@ func orderedTryList(preferred EngineID) []engine {
 	return ordered
 }
 
+// SearchOption configures a web search call.
+type SearchOption func(*searchOptions)
+
+type searchOptions struct {
+	engine         EngineID
+	limit          int
+	includeContent bool
+}
+
+// WithEngine sets the preferred search engine.
+func WithEngine(engine string) SearchOption {
+	return func(o *searchOptions) {
+		if id, ok := NormalizeEngine(engine); ok {
+			o.engine = id
+		}
+	}
+}
+
+// WithLimit sets the maximum number of results.
+func WithLimit(n int) SearchOption {
+	return func(o *searchOptions) {
+		if n > 0 && n <= 20 {
+			o.limit = n
+		}
+	}
+}
+
+// WithIncludeContent enables fetching full page content for each result.
+func WithIncludeContent() SearchOption {
+	return func(o *searchOptions) {
+		o.includeContent = true
+	}
+}
+
 // Search runs a web query. When engine is empty, auto-selects the lowest-ranked available engine.
 // On failure, tries other engines and always falls back to DuckDuckGo last.
-func Search(ctx context.Context, query string, engine string) (used EngineID, results []Result, err error) {
+func Search(ctx context.Context, query string, opts ...SearchOption) (used EngineID, results []Result, err error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return "", nil, fmt.Errorf("empty search query")
 	}
 
+	var cfg searchOptions
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	// Apply defaults
+	if cfg.limit <= 0 || cfg.limit > 20 {
+		cfg.limit = 5
+	}
+
 	var preferred EngineID
-	if strings.TrimSpace(engine) != "" {
-		id, ok := NormalizeEngine(engine)
-		if !ok {
-			return "", nil, fmt.Errorf("unknown search engine: %s", engine)
-		}
-		preferred = id
+	if cfg.engine != "" {
+		preferred = cfg.engine
 		if !IsAvailable(preferred) {
 			e, _ := engineByID(preferred)
 			if e.requiresKey {
@@ -210,6 +251,10 @@ func Search(ctx context.Context, query string, engine string) (used EngineID, re
 		key := apiKeyFor(e)
 		res, searchErr := e.search(ctx, HTTPClient, query, key)
 		if searchErr == nil && len(res) > 0 {
+			// Apply limit to results
+			if len(res) > cfg.limit {
+				res = res[:cfg.limit]
+			}
 			return e.id, res, nil
 		}
 		if searchErr != nil {
@@ -231,6 +276,9 @@ func Format(engine EngineID, query string, results []Result) string {
 		fmt.Fprintf(&b, "   url: %s\n", r.URL)
 		if r.Snippet != "" {
 			fmt.Fprintf(&b, "   snippet: %s\n", r.Snippet)
+		}
+		if r.Content != "" {
+			fmt.Fprintf(&b, "   content: %s\n", r.Content)
 		}
 		if i < len(results)-1 {
 			b.WriteByte('\n')

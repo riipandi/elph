@@ -64,12 +64,15 @@ func ProviderSchema(name string) (map[string]any, bool) {
 	switch name {
 	case catalog.Read:
 		return objectSchema(map[string]propertySpec{
-			"path": {typ: "string", description: "Absolute or workspace-relative file path"},
+			"path":        {typ: "string", description: "Absolute or workspace-relative file path"},
+			"line_offset": {typ: "integer", description: "Starting line number (1-indexed). Negative values read from end of file (tail). Omit to start at line 1."},
+			"n_lines":     {typ: "integer", description: "Number of lines to read. Omit to read up to the internal cap (1000 lines / 100 KB)."},
 		}, "path"), true
 	case catalog.Write:
 		return objectSchema(map[string]propertySpec{
 			"path":     {typ: "string", description: "Absolute or workspace-relative file path"},
 			"contents": {typ: "string", description: "Full file contents to write"},
+			"mode":     {typ: "string", description: "Write mode: \"overwrite\" (default) or \"append\". append adds content to the end without adding a newline."},
 		}, "path", "contents"), true
 	case catalog.Edit:
 		return objectSchema(map[string]propertySpec{
@@ -80,10 +83,11 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		}, "path", "old_string", "new_string"), true
 	case catalog.Grep:
 		return objectSchema(map[string]propertySpec{
-			"pattern":     {typ: "string", description: "Regular expression to search for"},
-			"path":        {typ: "string", description: "Directory or file to search in"},
-			"glob":        {typ: "string", description: "Optional glob filter"},
-			"output_mode": {typ: "string", description: "content, files_with_matches, or count"},
+			"pattern":       {typ: "string", description: "Regular expression to search for"},
+			"path":          {typ: "string", description: "Directory or file to search in"},
+			"glob":          {typ: "string", description: "Optional glob filter"},
+			"output_mode":   {typ: "string", description: "content, files_with_matches, or count"},
+			"context_lines": {typ: "integer", description: "Number of context lines to show before and each match"},
 		}, "pattern"), true
 	case catalog.Glob:
 		return objectSchema(map[string]propertySpec{
@@ -104,6 +108,14 @@ func ProviderSchema(name string) (map[string]any, bool) {
 				typ:         "string",
 				description: "Optional engine: duckduckgo, jina, brave, serpapi, tavily, firecrawl, perplexity, exa. Auto-selects the best configured engine when omitted; DuckDuckGo is the fallback.",
 			},
+			"limit": {
+				typ:         "integer",
+				description: "Number of results to return (1-20, default: 5).",
+			},
+			"include_content": {
+				typ:         "boolean",
+				description: "Whether to include the content of each result page. Can consume many tokens when true.",
+			},
 		}, "query"), true
 	case catalog.CodeSearch:
 		return objectSchema(map[string]propertySpec{
@@ -122,8 +134,10 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		}, "path"), true
 	case catalog.Bash:
 		return objectSchema(map[string]propertySpec{
-			"command":     {typ: "string", description: "Shell command to execute via bash -c in the workspace directory"},
+			"command":     {typ: "string", description: "Shell command to execute"},
 			"description": {typ: "string", description: "Short description of what the command does"},
+			"cwd":         {typ: "string", description: "Working directory for the command. Omit to use the session's working directory."},
+			"timeout":     {typ: "integer", description: "Timeout in seconds. Default: 120s, max: 300s."},
 		}, "command"), true
 	case catalog.AskUser:
 		return askUserSchema(), true

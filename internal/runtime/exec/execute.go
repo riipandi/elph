@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/shell"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/riipandi/elph/internal/runtime/shell"
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"github.com/riipandi/elph/pkg/tools"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -94,15 +95,70 @@ func executeRead(workDir string, args map[string]any) toolresult.ToolResult {
 			Err: fmt.Errorf("%s is a directory — use Glob with pattern %q to list its contents", path, path+"/**"),
 		}
 	}
+
+	lineOffset := intArg(args, "line_offset", 1)
+	nLines := intArg(args, "n_lines", 0)
+
 	data, err := os.ReadFile(full)
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
 	}
-	if len(data) > maxReadBytes {
-		data = data[:maxReadBytes]
-		return toolresult.ToolResult{Output: string(data) + "\n\n(output truncated)"}
+
+	lines := strings.Split(string(data), "\n")
+	totalLines := len(lines)
+
+	// Handle tail (negative offset)
+	if lineOffset < 0 {
+		lineOffset = totalLines + lineOffset + 1
+		if lineOffset < 1 {
+			lineOffset = 1
+		}
 	}
-	return toolresult.ToolResult{Output: string(data)}
+
+	// Cap lineOffset
+	if lineOffset > totalLines {
+		return toolresult.ToolResult{Output: "(end of file)"}
+	}
+
+	// Calculate line range
+	start := lineOffset - 1 // zero-indexed
+	end := totalLines
+	if nLines > 0 && start+nLines < totalLines {
+		truncated := start + nLines
+		if truncated < totalLines {
+			end = truncated
+		}
+	}
+
+	// Build output with line numbers
+	var out strings.Builder
+	for i := start; i < end; i++ {
+		out.WriteString(fmt.Sprintf("%d\t%s\n", i+1, lines[i]))
+	}
+
+	result := out.String()
+	if len(result) > maxReadBytes {
+		result = truncateUTF8(result, maxReadBytes)
+		result += "\n\n(output truncated)"
+	}
+
+	// Add footer info
+	totalRead := end - start
+	footer := fmt.Sprintf("Total lines in file: %d. %d lines read.", totalLines, totalRead)
+	if maxLinesReached := nLines > 0 && start+nLines < totalLines; maxLinesReached {
+		footer += " (max lines reached)"
+	} else if end < totalLines {
+		footer += " (output truncated)"
+	} else {
+		footer += " End of file reached."
+	}
+
+	if len(result) > 0 {
+		result += "\n"
+	}
+	result += "\n<system>" + footer + "</system>"
+
+	return toolresult.ToolResult{Output: result}
 }
 
 func executeWrite(workDir string, args map[string]any) toolresult.ToolResult {
@@ -124,13 +180,33 @@ func executeWrite(workDir string, args map[string]any) toolresult.ToolResult {
 			Err: fmt.Errorf("%s is a directory — cannot write to a directory path; use a file path or remove the directory first", path),
 		}
 	}
+
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		return toolresult.ToolResult{Err: err}
 	}
-	if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
-		return toolresult.ToolResult{Err: err}
+
+	mode := "overwrite"
+	if raw, ok := stringArg(args, "mode"); ok && raw != "" {
+		mode = strings.ToLower(raw)
 	}
-	return toolresult.ToolResult{Output: fmt.Sprintf("Wrote %d bytes to %s", len(contents), path)}
+
+	switch mode {
+	case "append":
+		f, err := os.OpenFile(full, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return toolresult.ToolResult{Err: err}
+		}
+		defer f.Close()
+		if _, err := f.WriteString(contents); err != nil {
+			return toolresult.ToolResult{Err: err}
+		}
+		return toolresult.ToolResult{Output: fmt.Sprintf("Appended %d bytes to %s", len(contents), path)}
+	default:
+		if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+			return toolresult.ToolResult{Err: err}
+		}
+		return toolresult.ToolResult{Output: fmt.Sprintf("Wrote %d bytes to %s", len(contents), path)}
+	}
 }
 
 func executeEdit(workDir string, args map[string]any) toolresult.ToolResult {
@@ -145,6 +221,11 @@ func executeEdit(workDir string, args map[string]any) toolresult.ToolResult {
 	newString, ok := rawStringArg(args, "new_string")
 	if !ok {
 		return toolresult.ToolResult{Err: errors.New("missing required argument: new_string")}
+	}
+
+	// No-op guard
+	if oldString == newString {
+		return toolresult.ToolResult{Err: errors.New("no changes to make: old_string and new_string are exactly the same")}
 	}
 
 	full, err := resolveWorkPath(workDir, path)
@@ -163,7 +244,7 @@ func executeEdit(workDir string, args map[string]any) toolresult.ToolResult {
 	content := string(data)
 	count := strings.Count(content, oldString)
 	if count == 0 {
-		return toolresult.ToolResult{Err: fmt.Errorf("old_string not found in %s", path)}
+		return toolresult.ToolResult{Err: fmt.Errorf("old_string not found in %s — use Read to reload the file content", path)}
 	}
 	replaceAll := boolArg(args, "replace_all")
 	if count > 1 && !replaceAll {
@@ -206,6 +287,12 @@ func executeGrep(ctx context.Context, workDir string, args map[string]any) toolr
 	}
 
 	cmdArgs := []string{"--regexp", pattern, "--color=never"}
+
+	// Context lines (ripgrep -C)
+	if raw := intArg(args, "context_lines", 0); raw > 0 {
+		cmdArgs = append(cmdArgs, "-C", fmt.Sprint(raw))
+	}
+
 	switch outputMode {
 	case "files_with_matches":
 		cmdArgs = append(cmdArgs, "--files-with-matches")
@@ -239,9 +326,29 @@ func executeBash(ctx context.Context, workDir string, args map[string]any, onChu
 		return toolresult.ToolResult{Err: err}
 	}
 
-	bashCtx, cancel := context.WithTimeout(ctx, bashToolTimeout)
+	// Resolve working directory
+	effectiveWd := workDir
+	if raw, ok := stringArg(args, "cwd"); ok && raw != "" {
+		resolved, err := resolveWorkPath(workDir, raw)
+		if err != nil {
+			return toolresult.ToolResult{Err: err}
+		}
+		effectiveWd = resolved
+	}
+
+	// Resolve timeout: default from package variable, override if provided
+	bashTimeout := bashToolTimeout
+	if raw := intArg(args, "timeout", 0); raw > 0 {
+		bashTimeout = time.Duration(raw) * time.Second
+		const maxTimeout = 300 * time.Second
+		if bashTimeout > maxTimeout {
+			bashTimeout = maxTimeout
+		}
+	}
+
+	bashCtx, cancel := context.WithTimeout(ctx, bashTimeout)
 	defer cancel()
-	sh := shell.RunShellContext(bashCtx, workDir, command, onChunk)
+	sh := shell.RunShellContext(bashCtx, effectiveWd, command, onChunk)
 	result := toolresult.ToolResult{
 		Output:    sh.Output,
 		Cancelled: sh.Cancelled,
@@ -393,6 +500,27 @@ func boolArg(args map[string]any, key string) bool {
 		return strings.EqualFold(strings.TrimSpace(v), "true")
 	default:
 		return false
+	}
+}
+
+func intArg(args map[string]any, key string, defaultVal int) int {
+	raw, ok := args[key]
+	if !ok || raw == nil {
+		return defaultVal
+	}
+	switch v := raw.(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	case string:
+		n, err := strconv.Atoi(strings.TrimSpace(v))
+		if err != nil {
+			return defaultVal
+		}
+		return n
+	default:
+		return defaultVal
 	}
 }
 
