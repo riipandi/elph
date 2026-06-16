@@ -366,18 +366,18 @@ func BootstrapProvidersWithOptions(opts BootstrapOptions) (BootstrapResult, erro
 				return result, fmt.Errorf("read %q: %w", path, readErr)
 			}
 			var cfg FileConfig
-			if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
+			if unmarshalErr := jsoncfg.Unmarshal(raw, &cfg); unmarshalErr != nil {
 				return result, fmt.Errorf("decode %q: %w", path, err)
 			}
 			updated, changed := BackfillProviderThinking(tmpl.ID, cfg)
 			if changed {
-				payload, err := json.MarshalIndent(updated, "", "  ")
-				if err != nil {
-					return result, fmt.Errorf("encode %q: %w", filename, err)
+				payload, encodeErr := json.MarshalIndent(updated, "", "  ") //nolint:gosec
+				if encodeErr != nil {
+					return result, fmt.Errorf("encode %q: %w", filename, encodeErr)
 				}
 				payload = append(payload, '\n')
-				if err := os.WriteFile(path, payload, 0o644); err != nil {
-					return result, fmt.Errorf("write %q: %w", path, err)
+				if writeErr := os.WriteFile(path, payload, 0o600); writeErr != nil {
+					return result, fmt.Errorf("write %q: %w", path, writeErr)
 				}
 				result.Backfilled = append(result.Backfilled, filename)
 				reportProviderProgress(opts.Reporter, ProviderProgressEvent{
@@ -404,13 +404,14 @@ func BootstrapProvidersWithOptions(opts BootstrapOptions) (BootstrapResult, erro
 			return result, fmt.Errorf("stat %q: %w", path, err)
 		}
 
+		//nolint:gosec // intentionally writing API key to config file
 		payload, err := json.MarshalIndent(tmpl.Config, "", "  ")
 		if err != nil {
 			return result, fmt.Errorf("encode %q: %w", filename, err)
 		}
 		payload = append(payload, '\n')
 
-		if err := os.WriteFile(path, payload, 0o644); err != nil {
+		if err := os.WriteFile(path, payload, 0o600); err != nil {
 			return result, fmt.Errorf("write %q: %w", path, err)
 		}
 		result.Created = append(result.Created, filename)

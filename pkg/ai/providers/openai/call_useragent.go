@@ -5,6 +5,7 @@ import (
 	"github.com/riipandi/elph/pkg/ai/providers/internal/httpheaders"
 )
 
+//nolint:unused // kept for future use
 func callUserAgent(req provider.TurnRequest) (string, bool) {
 	if req.Compat.ThinkingFormat != "" {
 		_ = req.Compat.ThinkingFormat

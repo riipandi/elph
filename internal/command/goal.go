@@ -57,24 +57,24 @@ func goalStatus(ctx *Context) string {
 		return "No active goal.\nUse /goal <objective> to create one, or see /goal replace <objective>."
 	}
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Objective: %s\n", s.Objective))
+	fmt.Fprintf(&b, "Objective: %s\n", s.Objective)
 	if s.CompletionCriterion != "" {
-		b.WriteString(fmt.Sprintf("Completion criterion: %s\n", s.CompletionCriterion))
+		fmt.Fprintf(&b, "Completion criterion: %s\n", s.CompletionCriterion)
 	}
-	b.WriteString(fmt.Sprintf("Status: %s\n", s.Status))
-	b.WriteString(fmt.Sprintf("Turns used: %d\n", s.TurnsUsed))
-	b.WriteString(fmt.Sprintf("Tokens used: %d\n", s.TokensUsed))
+	fmt.Fprintf(&b, "Status: %s\n", s.Status)
+	fmt.Fprintf(&b, "Turns used: %d\n", s.TurnsUsed)
+	fmt.Fprintf(&b, "Tokens used: %d\n", s.TokensUsed)
 	if s.WallClockMs > 0 {
-		b.WriteString(fmt.Sprintf("Elapsed: %s\n", fmtDuration(s.WallClockMs)))
+		fmt.Fprintf(&b, "Elapsed: %s\n", fmtDuration(s.WallClockMs))
 	}
 	if s.WallClockBudgetMs > 0 {
-		b.WriteString(fmt.Sprintf("Wall clock budget: %s\n", fmtDuration(s.WallClockBudgetMs)))
+		fmt.Fprintf(&b, "Wall clock budget: %s\n", fmtDuration(s.WallClockBudgetMs))
 	}
 	if s.TurnBudget > 0 {
-		b.WriteString(fmt.Sprintf("Turn budget: %d\n", s.TurnBudget))
+		fmt.Fprintf(&b, "Turn budget: %d\n", s.TurnBudget)
 	}
 	if s.TokenBudget > 0 {
-		b.WriteString(fmt.Sprintf("Token budget: %d\n", s.TokenBudget))
+		fmt.Fprintf(&b, "Token budget: %d\n", s.TokenBudget)
 	}
 	return b.String()
 }

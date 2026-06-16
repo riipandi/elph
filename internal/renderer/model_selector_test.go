@@ -125,7 +125,7 @@ func TestModelSelectorFilterViaInput(t *testing.T) {
 	catalog := testModelCatalog(t)
 	m = m.openModelSelector(catalog, "")
 
-	for _, ch := range []rune("two") {
+	for _, ch := range "two" {
 		m.input, _ = m.input.Update(keyRune(ch))
 	}
 	updated, _ := m.finalizeInputEdit()

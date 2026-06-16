@@ -102,6 +102,7 @@ func promptSpacingMessage(text string, kind uiconst.MessageKind) message {
 	return msg
 }
 
+//nolint:unused // kept for future use
 func kindForMarker(marker string) uiconst.MessageKind {
 	switch marker {
 	case "[[think]]":

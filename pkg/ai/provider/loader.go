@@ -29,9 +29,7 @@ func LoadCatalog(dir string) (Catalog, error) {
 
 	catalog := Catalog{Dir: dir}
 	providerEntries, selectErrs := jsoncfg.SelectProviderEntries(entries)
-	for _, err := range selectErrs {
-		catalog.Errors = append(catalog.Errors, err)
-	}
+	catalog.Errors = append(catalog.Errors, selectErrs...)
 	for _, entry := range providerEntries {
 		provider, err := loadProviderFile(dir, entry)
 		if err != nil {

@@ -40,20 +40,20 @@ func Index(root string) ([]Entry, error) {
 			return nil
 		}
 
-		rel, err := filepath.Rel(root, path)
-		if err != nil || rel == "." {
+		relPath, relErr := filepath.Rel(root, path)
+		if relErr != nil || relPath == "." {
 			return nil
 		}
-		rel = filepath.ToSlash(rel)
+		relPath = filepath.ToSlash(relPath)
 
-		if skip, skipDir := shouldSkip(rel, d); skip {
+		if skip, skipDir := shouldSkip(relPath, d); skip {
 			if skipDir && d.IsDir() {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 
-		entries = append(entries, Entry{Path: rel, IsDir: d.IsDir()})
+		entries = append(entries, Entry{Path: relPath, IsDir: d.IsDir()})
 		if len(entries) >= maxIndexEntries {
 			return errIndexLimit
 		}

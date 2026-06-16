@@ -134,8 +134,8 @@ func (r *doctorReport) checkSettings(workDir string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
+	if _, statErr := os.Stat(path); statErr != nil {
+		if os.IsNotExist(statErr) {
 			r.add(doctorWarn, section, fmt.Sprintf("%s missing (defaults will be used)", tildePath(path)))
 		} else {
 			r.add(doctorFail, section, fmt.Sprintf("%s: %v", tildePath(path), err))

@@ -91,7 +91,7 @@ func (m *languageModel) completeStreamSSE(ctx context.Context, req provider.Turn
 			return streamErr
 		}
 		var chunk sseStreamChunk
-		if err := json.Unmarshal(data, &chunk); err != nil {
+		if decodeErr := json.Unmarshal(data, &chunk); decodeErr != nil {
 			return fmt.Errorf("decode stream chunk: %w", err)
 		}
 		if chunk.Usage != nil {
@@ -117,7 +117,7 @@ func (m *languageModel) completeStreamSSE(ctx context.Context, req provider.Turn
 		}
 
 		var delta sseStreamDelta
-		if err := json.Unmarshal(choice.Delta, &delta); err != nil {
+		if decodeErr := json.Unmarshal(choice.Delta, &delta); decodeErr != nil {
 			return fmt.Errorf("decode stream delta: %w", err)
 		}
 		if delta.Content != "" {

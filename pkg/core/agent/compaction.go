@@ -79,11 +79,7 @@ func ShouldCompact(messages []protocol.ChatMessage, threshold CompactionThreshol
 
 	// Check token estimate
 	tokens := EstimateTokens(totalBytes)
-	if tokens < threshold.MinTokens {
-		return false
-	}
-
-	return true
+	return tokens >= threshold.MinTokens
 }
 
 // ShouldAutoCompact checks if auto-compaction should trigger based on context usage.
@@ -108,12 +104,13 @@ func extractFileOps(messages []protocol.ChatMessage) (readFiles, modifiedFiles [
 			name := strings.ToLower(call.Name)
 			// Extract file path from arguments (simplified - real impl would parse JSON)
 			args := string(call.Arguments)
-			if name == "read" || name == "cat" {
+			switch name {
+			case "read", "cat":
 				if path := extractPathFromArgs(args); path != "" && !seen[path] {
 					readFiles = append(readFiles, path)
 					seen[path] = true
 				}
-			} else if name == "write" || name == "edit" {
+			case "write", "edit":
 				if path := extractPathFromArgs(args); path != "" && !seen[path] {
 					modifiedFiles = append(modifiedFiles, path)
 					seen[path] = true
@@ -177,8 +174,8 @@ func GenerateCompactionSummary(
 	readFiles, modifiedFiles := extractFileOps(messages)
 
 	b.WriteString("## Compaction Summary\n\n")
-	b.WriteString(fmt.Sprintf("**Reason:** %s\n", reason))
-	b.WriteString(fmt.Sprintf("**Messages compacted:** %d user, %d assistant, %d tool\n\n", userMsgs, assistantMsgs, toolMsgs))
+	fmt.Fprintf(&b, "**Reason:** %s\n", reason)
+	fmt.Fprintf(&b, "**Messages compacted:** %d user, %d assistant, %d tool\n\n", userMsgs, assistantMsgs, toolMsgs)
 
 	if previousSummary != "" {
 		b.WriteString("## Previous Context\n")

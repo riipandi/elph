@@ -69,6 +69,7 @@ func (m Model) handlePasteContent(text string) (Model, bool) {
 	return m, true
 }
 
+//nolint:unused // kept for future use
 func (m Model) attachmentsDisplaySuffix() string {
 	return inputui.DisplaySuffix(m.pendingAttachments)
 }

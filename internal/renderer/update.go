@@ -91,15 +91,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.input.Focused() && !m.agent.Busy && !m.shell.Running {
 			if updated, handled := m.handlePasteContent(paste.Content); handled {
-				m, finCmd := updated.finalizeInputEdit()
-				return m, finCmd
+				updatedM, finCmd := updated.finalizeInputEdit()
+				return updatedM, finCmd
 			}
 		}
 	}
 
 	if m.pasteEditorActive() && isNewlineInputMsg(msg) {
-		m, cmd := m.handlePasteEditorNewlineMsg(msg)
-		return m, cmd
+		editorM, cmd := m.handlePasteEditorNewlineMsg(msg)
+		return editorM, cmd
 	}
 
 	var cmds []tea.Cmd
@@ -135,31 +135,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var handled bool
 			m, cmd, handled = m.handlePasteEditorKey(key)
 			if handled {
-				m, finCmd := m.finalizeInputEdit()
+				pasteM, finCmd := m.finalizeInputEdit()
 				if finCmd != nil {
 					cmds = append(cmds, finCmd)
 				}
 				if cmd != nil {
 					cmds = append(cmds, cmd)
 				}
-				return m, tea.Batch(cmds...)
+				return pasteM, tea.Batch(cmds...)
 			}
 		}
 	}
 
 	if m.input.Focused() && isNewlineInputMsg(msg) {
-		m, cmd := m.handleInputNewlineMsg(msg)
-		return m, cmd
+		newlineM, cmd := m.handleInputNewlineMsg(msg)
+		return newlineM, cmd
 	}
 
 	if m.input.Focused() {
 		if updated, handled := m.handleAttachmentRemoveMsg(msg); handled {
-			m, finCmd := updated.finalizeInputEdit()
-			return m, finCmd
+			attachM, finCmd := updated.finalizeInputEdit()
+			return attachM, finCmd
 		}
 		if updated, handled := m.handleInputWordDelete(msg); handled {
-			m, cmd := updated.finalizeInputEdit()
-			return m, cmd
+			wordDelM, cmd := updated.finalizeInputEdit()
+			return wordDelM, cmd
 		}
 	}
 
@@ -308,23 +308,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.input.Focused() && isInputNewlineKey(msg) {
-			m, cmd := m.handleInputNewlineMsg(msg)
-			return m, cmd
+			inputNewlineM, cmd := m.handleInputNewlineMsg(msg)
+			return inputNewlineM, cmd
 		}
 
 		if m.input.Focused() {
 			if isPasteKey(msg) {
 				if updated, handled := m.handlePasteKey(); handled {
-					m, finCmd := updated.finalizeInputEdit()
-					return m, finCmd
+					pasteKeyM, finCmd := updated.finalizeInputEdit()
+					return pasteKeyM, finCmd
 				}
 			}
 			var paletteCmd tea.Cmd
 			var consumed bool
 			m, paletteCmd, consumed = m.handleInputPaletteKey(msg)
 			if consumed {
-				m, finCmd := m.finalizeInputEdit()
-				return m, tea.Batch(paletteCmd, finCmd)
+				paletteM, finCmd := m.finalizeInputEdit()
+				return paletteM, tea.Batch(paletteCmd, finCmd)
 			}
 		}
 
@@ -373,12 +373,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case uiconst.ActionSwitchMode:
 			m.mode = nextMode(m.mode)
 			_ = settings.SetAgentMode(m.mode)
-			m, cmd := m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
-			return m, cmd
+			switchModeM, cmd := m.withMessage(fmt.Sprintf("Switched to %s mode", m.mode))
+			return switchModeM, cmd
 
 		case uiconst.ActionCycleThink:
-			m, cmd := m.cycleThinkingLevel()
-			return m, cmd
+			cycleThinkM, cmd := m.cycleThinkingLevel()
+			return cycleThinkM, cmd
 
 		case uiconst.ActionCycleTheme:
 			m.themePreference = theme.Next(m.themePreference)
@@ -386,8 +386,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.applyResolvedTheme(theme.DetectTerminal())
 			m.layout.ContentDirty = true
 			m = m.syncLayout(m.content.AtBottom())
-			m, cmd := m.withMessage(fmt.Sprintf("Theme: %s", m.themePreference))
-			return m, cmd
+			cycleThemeM, cmd := m.withMessage(fmt.Sprintf("Theme: %s", m.themePreference))
+			return cycleThemeM, cmd
 
 		case uiconst.ActionSubmit:
 			if isInputNewlineKey(msg) {
@@ -416,8 +416,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.input.Focused() {
 				break
 			}
-			m, cmd := m.handleInputNewlineMsg(msg)
-			return m, cmd
+			actionNewlineM, cmd := m.handleInputNewlineMsg(msg)
+			return actionNewlineM, cmd
 
 		case uiconst.ActionCopy:
 			if idx := m.lastAIMessageIndex(); idx >= 0 {

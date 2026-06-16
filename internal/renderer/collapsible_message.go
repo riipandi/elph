@@ -113,7 +113,7 @@ func renderOnBoxSegments(box lipgloss.Style, plain string, segments []struct {
 			continue
 		}
 		part := string(runes[seg.start:seg.end])
-		st := seg.style.Copy().Background(bg)
+		st := seg.style.Background(bg)
 		b.WriteString(st.Render(part))
 	}
 	return b.String()
@@ -407,7 +407,7 @@ func userMessageFooterLine(at time.Time, expanded, showHint bool, footerBg compa
 		hint = collapsibleExpandHint(expanded)
 	}
 	dim := userMessageFooterDimStyle(footerBg)
-	hintStyle := dim.Copy().Italic(true)
+	hintStyle := dim.Italic(true)
 
 	switch {
 	case ts == "" && hint == "":

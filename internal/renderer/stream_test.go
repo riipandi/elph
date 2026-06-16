@@ -22,7 +22,7 @@ func TestStreamFlushThrottlesLayoutRebuild(t *testing.T) {
 	require.True(t, updated.layout.StreamFlushPending)
 
 	updated.messages[0].text = "seed tokens"
-	updated, cmd = updated.markStreamDirty()
+	updated, _ = updated.markStreamDirty()
 	require.True(t, updated.layout.StreamFlushPending, "second delta should not schedule another tick immediately")
 
 	flushed, _ := updated.handleStreamFlush()

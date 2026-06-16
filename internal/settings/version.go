@@ -46,7 +46,7 @@ func LoadVersion() (VersionFile, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			v := defaultVersionFile()
-			if err := v.migrateLastSyncFromSettings(); err != nil {
+			if migrateErr := v.migrateLastSyncFromSettings(); migrateErr != nil {
 				return VersionFile{}, err
 			}
 			return v, nil
@@ -71,7 +71,7 @@ func SaveVersion(v VersionFile) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if verMkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); verMkdirErr != nil {
 		return fmt.Errorf("create version dir: %w", err)
 	}
 
@@ -82,7 +82,7 @@ func SaveVersion(v VersionFile) error {
 	}
 	payload = append(payload, '\n')
 
-	if err := os.WriteFile(path, payload, 0o644); err != nil {
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return fmt.Errorf("write version %q: %w", path, err)
 	}
 	return nil

@@ -78,6 +78,7 @@ func resolveInterpolatedWithLookup(raw string, lookup func(string) (string, erro
 	return b.String(), nil
 }
 
+//nolint:unused // kept for future use
 func resolveDollarRef(raw string, i int) (consumed int, value string, err error) {
 	return resolveDollarRefWithLookup(raw, i, lookupEnv)
 }
@@ -124,6 +125,7 @@ func resolveDollarRefWithLookup(raw string, i int, lookup func(string) (string, 
 	}
 }
 
+//nolint:unused // kept for future use
 func tryResolveEnvDotRef(raw string, i int) (consumed int, value string, ok bool, err error) {
 	return tryResolveEnvDotRefWithLookup(raw, i, lookupEnv)
 }

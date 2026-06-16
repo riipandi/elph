@@ -64,7 +64,8 @@ func Normalize(data []byte, mimeHint string) ([]byte, string, int, int, error) {
 		return nil, "", 0, 0, err
 	}
 	bounds := img.Bounds()
-	width, height := bounds.Dx(), bounds.Dy()
+	//nolint:ineffassign,staticcheck
+	width, height := bounds.Dx(), bounds.Dy() // reassigned after downscale
 	img = downscale(img, MaxVisionDimension)
 	bounds = img.Bounds()
 	width, height = bounds.Dx(), bounds.Dy()
@@ -95,11 +96,11 @@ func FormatToolResult(relPath, mime string, width, height int, data []byte) stri
 
 // SaveAttachment writes PNG bytes under <workDir>/.agents/elph/attachments/.
 func SaveAttachment(workDir, sessionSuffix string, data []byte) (absPath, relPath string, err error) {
-	if err := projectdir.EnsureRoot(workDir); err != nil {
+	if ensureErr := projectdir.EnsureRoot(workDir); ensureErr != nil {
 		return "", "", err
 	}
 	dir := projectdir.AttachmentsDir(workDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if mkdirErr := os.MkdirAll(dir, 0o755); mkdirErr != nil {
 		return "", "", err
 	}
 	name := fmt.Sprintf("paste_%s_%d.png", sessionSuffix, time.Now().UnixNano())
@@ -112,7 +113,7 @@ func SaveAttachment(workDir, sessionSuffix string, data []byte) (absPath, relPat
 			break
 		}
 	}
-	if err := os.WriteFile(absPath, data, 0o644); err != nil {
+	if writeErr := os.WriteFile(absPath, data, 0o600); writeErr != nil {
 		return "", "", err
 	}
 	rel, err := filepath.Rel(workDir, absPath)

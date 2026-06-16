@@ -45,24 +45,24 @@ func executeGetGoal(ctx context.Context, _ map[string]any) toolresult.ToolResult
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Objective: %s\n", snapshot.Objective))
+	fmt.Fprintf(&b, "Objective: %s\n", snapshot.Objective)
 	if snapshot.CompletionCriterion != "" {
-		b.WriteString(fmt.Sprintf("Completion criterion: %s\n", snapshot.CompletionCriterion))
+		fmt.Fprintf(&b, "Completion criterion: %s\n", snapshot.CompletionCriterion)
 	}
-	b.WriteString(fmt.Sprintf("Status: %s\n", snapshot.Status))
+	fmt.Fprintf(&b, "Status: %s\n", snapshot.Status)
 	if snapshot.TurnBudget > 0 {
-		b.WriteString(fmt.Sprintf("Turn budget: %d\n", snapshot.TurnBudget))
+		fmt.Fprintf(&b, "Turn budget: %d\n", snapshot.TurnBudget)
 	}
 	if snapshot.TokenBudget > 0 {
-		b.WriteString(fmt.Sprintf("Token budget: %d\n", snapshot.TokenBudget))
+		fmt.Fprintf(&b, "Token budget: %d\n", snapshot.TokenBudget)
 	}
-	b.WriteString(fmt.Sprintf("Turns used: %d\n", snapshot.TurnsUsed))
-	b.WriteString(fmt.Sprintf("Tokens used: %d\n", snapshot.TokensUsed))
+	fmt.Fprintf(&b, "Turns used: %d\n", snapshot.TurnsUsed)
+	fmt.Fprintf(&b, "Tokens used: %d\n", snapshot.TokensUsed)
 	if snapshot.WallClockMs > 0 {
-		b.WriteString(fmt.Sprintf("Elapsed: %s\n", formatDuration(snapshot.WallClockMs)))
+		fmt.Fprintf(&b, "Elapsed: %s\n", formatDuration(snapshot.WallClockMs))
 	}
 	if snapshot.WallClockBudgetMs > 0 {
-		b.WriteString(fmt.Sprintf("Wall clock budget: %s\n", formatDuration(snapshot.WallClockBudgetMs)))
+		fmt.Fprintf(&b, "Wall clock budget: %s\n", formatDuration(snapshot.WallClockBudgetMs))
 	}
 
 	return toolresult.ToolResult{Output: b.String()}

@@ -283,9 +283,7 @@ func resolveKnownTool(raw string) string {
 
 func tokenizeToolHints(lower string) []string {
 	var tokens []string
-	for _, match := range regexp.MustCompile(`[a-z][a-z0-9_]{2,31}`).FindAllString(lower, -1) {
-		tokens = append(tokens, match)
-	}
+	tokens = append(tokens, regexp.MustCompile(`[a-z][a-z0-9_]{2,31}`).FindAllString(lower, -1)...)
 	return tokens
 }
 

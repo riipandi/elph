@@ -69,21 +69,22 @@ func updateProviderConfig(providerID string, mutate func(*FileConfig) error) err
 	}
 
 	var cfg FileConfig
-	if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
+	if enableErr := jsoncfg.Unmarshal(raw, &cfg); enableErr != nil {
 		return fmt.Errorf("decode provider %q: %w", providerID, err)
 	}
 
-	if err := mutate(&cfg); err != nil {
+	if enableErr := mutate(&cfg); enableErr != nil {
 		return err
 	}
 
+	//nolint:gosec // intentionally writing API key to config file
 	payload, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode provider %q: %w", providerID, err)
 	}
 	payload = append(payload, '\n')
 
-	if err := os.WriteFile(path, payload, 0o644); err != nil {
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return fmt.Errorf("write provider %q: %w", providerID, err)
 	}
 	return nil

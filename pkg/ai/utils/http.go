@@ -23,7 +23,17 @@ func NewHTTPClient() *http.Client {
 // NewStreamingHTTPClient returns a client tuned for SSE: bounded wait for
 // response headers and no overall request timeout (stall watch handles hangs).
 func NewStreamingHTTPClient() *http.Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	baseTransport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		// http.DefaultTransport is always *http.Transport in practice.
+		return &http.Client{
+			Timeout: 0,
+			Transport: &http.Transport{
+				ResponseHeaderTimeout: streamResponseHeaderWait,
+			},
+		}
+	}
+	transport := baseTransport.Clone()
 	transport.ResponseHeaderTimeout = streamResponseHeaderWait
 	return &http.Client{
 		Timeout:   0,

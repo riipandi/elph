@@ -42,6 +42,7 @@ func (m Model) slashQueryActive() bool {
 	return strings.HasPrefix(strings.TrimLeft(m.input.Value(), " \t"), "/")
 }
 
+//nolint:unused // kept for future use
 func (m Model) slashQuery() string {
 	val := strings.TrimLeft(m.input.Value(), " \t")
 	if !strings.HasPrefix(val, "/") {
@@ -233,8 +234,8 @@ func (m Model) cycleArgSelection(delta int) Model {
 
 func (m Model) handleInputPaletteKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
 	if m.mentionPaletteActive() {
-		m, ok := m.handleMentionPaletteKey(msg)
-		return m, nil, ok
+		updatedM, ok := m.handleMentionPaletteKey(msg)
+		return updatedM, nil, ok
 	}
 	return m.handleSlashPaletteKey(msg)
 }
@@ -499,8 +500,8 @@ func (m Model) handleContextUsage() Model {
 
 	var b strings.Builder
 	// Header line
-	b.WriteString(fmt.Sprintf("%s / %s tokens (%.2f%%)\n",
-		formatTokenCount(used), formatTokenCount(window), usedPct))
+	fmt.Fprintf(&b, "%s / %s tokens (%.2f%%)\n",
+		formatTokenCount(used), formatTokenCount(window), usedPct)
 	b.WriteString(modelLabel + "\n\n")
 
 	// Token breakdown

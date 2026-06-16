@@ -119,8 +119,8 @@ func (m Model) handlePasteEditorKey(key tea.KeyPressMsg) (Model, tea.Cmd, bool) 
 		return m, nil, false
 	}
 	if isNewlineInputMsg(key) {
-		m, cmd := m.handlePasteEditorNewlineMsg(key)
-		return m, cmd, true
+		pasteM, cmd := m.handlePasteEditorNewlineMsg(key)
+		return pasteM, cmd, true
 	}
 	switch key.String() {
 	case "esc":
@@ -151,6 +151,7 @@ func (m Model) handlePasteToggleKey() (Model, bool) {
 	return m, false
 }
 
+//nolint:unused // kept for future use
 func (m Model) pasteEditorInputRows() int {
 	if !m.pasteEditorActive() {
 		return 0

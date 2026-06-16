@@ -45,6 +45,7 @@ func isShellCancelKey(msg tea.KeyPressMsg) bool {
 	return resolveKeyAction(msg) == uiconst.ActionQuit
 }
 
+//nolint:unused // kept for future use
 func (m Model) addShellDetailMessage(label, body string, status uiconst.DetailStatus) Model {
 	return m.addShellDetailMessageAt(label, body, status, time.Now())
 }
@@ -223,9 +224,9 @@ func (m Model) finishShellDone(msg shellDoneMsg) (Model, tea.Cmd) {
 		prompt := rtshell.FormatShellContext(msg.command, msg.result.Output, msg.result.ExitCode)
 		m.session.AppendLog("shell_context", prompt)
 		if !m.hasActiveModel() {
-			m, cmd := m.promptSelectModel()
-			m = m.syncLayout(true)
-			return m, cmd
+			shellM, cmd := m.promptSelectModel()
+			shellM = shellM.syncLayout(true)
+			return shellM, cmd
 		}
 		m = m.beginAgentTurn()
 		m = m.syncLayout(true)

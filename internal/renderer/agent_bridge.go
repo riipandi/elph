@@ -97,30 +97,30 @@ func (m Model) applyAgentEvent(evt agent.Event) (Model, tea.Cmd) {
 		return m.markStreamDirty()
 	case agent.EventResponseDelta:
 		m = m.appendAgentResponseDelta(evt.Delta)
-		m, cmd := m.markStreamDirty()
-		if askCmd := m.markupAskUserCmd(); askCmd != nil {
+		bridgeM, cmd := m.markStreamDirty()
+		if askCmd := bridgeM.markupAskUserCmd(); askCmd != nil {
 			if cmd == nil {
-				return m, askCmd
+				return bridgeM, askCmd
 			}
-			return m, tea.Batch(cmd, askCmd)
+			return bridgeM, tea.Batch(cmd, askCmd)
 		}
-		return m, cmd
+		return bridgeM, cmd
 	case agent.EventToolCallOutputDelta:
 		m = m.appendNativeToolOutput(evt.ToolCall, evt.Delta)
 		return m.markStreamDirty()
 	case agent.EventToolCallStart:
 		m.agent.Activity = agent.ActivityForTool(evt.ToolCall.Name)
 		m = m.beginNativeToolCall(evt.ToolCall)
-		m, cmd := m.markStreamDirty()
+		bridgeM, cmd := m.markStreamDirty()
 		var cmds []tea.Cmd
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		cmds = append(cmds, m.drainAgentEvents()...)
-		if m.agent.ToolInteractBridge != nil {
-			cmds = append(cmds, waitToolInteractOffer(m.agent.ToolInteractBridge))
+		cmds = append(cmds, bridgeM.drainAgentEvents()...)
+		if bridgeM.agent.ToolInteractBridge != nil {
+			cmds = append(cmds, waitToolInteractOffer(bridgeM.agent.ToolInteractBridge))
 		}
-		return m, tea.Batch(cmds...)
+		return bridgeM, tea.Batch(cmds...)
 	case agent.EventToolCallDone:
 		m = m.finishNativeToolCall(evt.ToolCall, evt.ToolResult)
 		return m.flushContentNow()

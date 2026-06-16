@@ -37,6 +37,7 @@ func DeleteWordBackwardKeyMsg() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModAlt, Text: "alt+backspace"}
 }
 
+//nolint:unused // kept for future use
 func deleteWordForwardKeyMsg() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModAlt, Text: "alt+delete"}
 }

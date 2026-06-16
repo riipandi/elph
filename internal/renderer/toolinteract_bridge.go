@@ -43,6 +43,8 @@ func toolInteractAskUserSignature(req agent.ToolInteractRequest) string {
 func toolApprovalSignature(req agent.ToolInteractRequest) string {
 	return toolinteract.ApprovalSignature(req)
 }
+
+//nolint:unused // kept for future use
 func isDialogCancelChoice(raw string) bool { return toolinteract.IsDialogCancelChoice(raw) }
 
 const (
@@ -74,6 +76,8 @@ func (m Model) toolInteractShortcutResponse(msg tea.KeyPressMsg) (agent.ToolInte
 func (m Model) approvalFormResponse(form *huh.Form) agent.ToolInteractResponse {
 	return toolinteract.ApprovalFormResponse(form)
 }
+
+//nolint:unused // kept for future use
 func (m Model) askUserFormResponse(form *huh.Form) agent.ToolInteractResponse {
 	return toolinteract.AskUserFormResponse(form)
 }
@@ -112,8 +116,8 @@ func (m Model) offerToolInteract(msg toolInteractOfferMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) updateToolInteractForm(msg tea.Msg) (Model, tea.Cmd) {
-	if m, tickCmds, ok := m.handleActivityTick(msg); ok {
-		return m, tea.Batch(tickCmds...)
+	if tickM, tickCmds, ok := m.handleActivityTick(msg); ok {
+		return tickM, tea.Batch(tickCmds...)
 	}
 
 	var cmds []tea.Cmd

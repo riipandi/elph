@@ -28,6 +28,8 @@ func wrappedInputRows(line string, width int) int { return inputui.WrappedRows(l
 func pasteLineCount(text string) int              { return inputui.PasteLineCount(text) }
 func shouldCollapsePaste(text string) bool        { return inputui.ShouldCollapsePaste(text) }
 func pasteToken(id int) string                    { return inputui.PasteToken(id) }
+
+//nolint:unused // kept for future use
 func pasteDisplayToken(id int, lines int, pastes map[int]string) string {
 	return inputui.PasteDisplayToken(id, lines, pastes)
 }
@@ -56,9 +58,13 @@ func disableTerminalFeatures() tea.Cmd { return inputui.DisableTerminalFeatures(
 
 type termFeaturesMsg = inputui.TermFeaturesMsg
 
-func csiPayload(msg tea.Msg) string              { return inputui.CSIPayload(msg) }
-func csiPayloadFromString(text string) string    { return inputui.CSIPayloadFromString(text) }
-func rawCSIPayload(msg tea.Msg) (string, bool)   { return inputui.RawCSIPayload(msg) }
+func csiPayload(msg tea.Msg) string           { return inputui.CSIPayload(msg) }
+func csiPayloadFromString(text string) string { return inputui.CSIPayloadFromString(text) }
+
+//nolint:unused // kept for future use
+func rawCSIPayload(msg tea.Msg) (string, bool) {
+	return inputui.RawCSIPayload(msg)
+}
 func isShiftEnterMsg(msg tea.Msg) bool           { return inputui.IsShiftEnterMsg(msg) }
 func isNewlineInputMsg(msg tea.Msg) bool         { return inputui.IsNewlineInputMsg(msg) }
 func isInputNewlineKey(msg tea.KeyPressMsg) bool { return inputui.IsInputNewlineKey(msg) }
@@ -68,9 +74,13 @@ func isShiftEnterKeyMsg(msg tea.KeyPressMsg) bool {
 func isLiteralNewlineKeyMsg(msg tea.KeyPressMsg) bool {
 	return inputui.IsLiteralNewlineKeyMsg(msg)
 }
-func isShiftEnterPayload(payload string) bool { return inputui.IsShiftEnterPayload(payload) }
-func isCtrlJPayload(payload string) bool      { return inputui.IsCtrlJPayload(payload) }
-func decodeCSIByteList(list string) string    { return inputui.DecodeCSIByteList(list) }
+
+//nolint:unused // kept for future use
+func isShiftEnterPayload(payload string) bool {
+	return inputui.IsShiftEnterPayload(payload)
+}
+func isCtrlJPayload(payload string) bool   { return inputui.IsCtrlJPayload(payload) }
+func decodeCSIByteList(list string) string { return inputui.DecodeCSIByteList(list) }
 
 const ctrlWCode = inputui.CtrlWCode
 
@@ -99,6 +109,7 @@ func isMetaClearAttachmentsKey(msg tea.KeyPressMsg) bool {
 }
 func isInputEscapeKey(msg tea.KeyPressMsg) bool { return inputui.IsInputEscapeKey(msg) }
 
+//nolint:unused // kept for future use
 func inputCursorByteCol(line string, col int) int {
 	return inputui.CursorByteCol(line, col)
 }

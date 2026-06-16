@@ -76,9 +76,7 @@ func normalizeBaseURL(baseURL string) string {
 	if baseURL == "" {
 		return DefaultURL
 	}
-	if strings.HasSuffix(baseURL, "/v1") {
-		baseURL = strings.TrimSuffix(baseURL, "/v1")
-	}
+	baseURL = strings.TrimSuffix(baseURL, "/v1")
 	return baseURL
 }
 

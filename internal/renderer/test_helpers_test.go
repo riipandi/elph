@@ -46,6 +46,7 @@ func keyCtrlDelete() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModCtrl}
 }
 
+//nolint:unused // kept for future use
 func keyAlt(ch rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: ch, Mod: tea.ModAlt}
 }
@@ -74,6 +75,7 @@ func keyDown() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyDown}
 }
 
+//nolint:unused // kept for future use
 func keyUp() tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: tea.KeyUp}
 }

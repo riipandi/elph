@@ -95,7 +95,7 @@ func ensureGitignore(root string) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	return os.WriteFile(path, []byte(gitignoreBody), 0o644)
+	return os.WriteFile(path, []byte(gitignoreBody), 0o600)
 }
 
 func gitignoreUpToDate(content string) bool {

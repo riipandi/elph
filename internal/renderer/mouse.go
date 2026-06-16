@@ -48,25 +48,25 @@ func (m Model) handleMouse(msg tea.MouseMsg) (Model, []tea.Cmd) {
 
 	if click, ok := msg.(tea.MouseClickMsg); ok && click.Button == tea.MouseLeft && !click.Mod.Contains(tea.ModShift) {
 		if m.isInFooterArea(click.Y) {
-			m, cmd := m.handleFooterClick(click.X, click.Y)
+			clickM, cmd := m.handleFooterClick(click.X, click.Y)
 			var cmds []tea.Cmd
 			if cmd != nil {
 				cmds = append(cmds, cmd)
 			}
-			return m, cmds
+			return clickM, cmds
 		}
 		if idx, ok := m.aiCopyAtViewportY(click.Y); ok {
-			m, cmd := m.copyMessageAt(idx)
+			copyM, cmd := m.copyMessageAt(idx)
 			if cmd != nil {
-				return m, []tea.Cmd{cmd}
+				return copyM, []tea.Cmd{cmd}
 			}
-			return m, nil
+			return copyM, nil
 		}
 		if idx, ok := m.collapsibleToggleAtViewportY(click.Y); ok {
-			m, toggled := m.toggleDetailExpandAt(idx)
+			toggleM, toggled := m.toggleDetailExpandAt(idx)
 			if toggled {
-				m = m.syncLayout(false)
-				return m, nil
+				toggleM = toggleM.syncLayout(false)
+				return toggleM, nil
 			}
 		}
 	}

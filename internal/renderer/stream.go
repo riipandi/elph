@@ -74,6 +74,7 @@ func (m Model) streamPrefixDetailSig(streamIdx int) uint64 {
 		if !isCollapsibleKind(m.messages[i].kind) {
 			continue
 		}
+		//nolint:gosec // values are small, no overflow possible
 		part := uint64(i+1) | uint64(m.messages[i].detailStatus)<<8
 		if m.messages[i].detailExpanded {
 			part |= 1 << 32
@@ -135,6 +136,8 @@ func (m Model) flushContentNow() (Model, tea.Cmd) {
 
 // flushThinkingStreamNow repaints the thinking detail box immediately instead of
 // waiting for the throttled stream flush tick.
+//
+//nolint:unused // kept for future use
 func (m Model) flushThinkingStreamNow() (Model, tea.Cmd) {
 	return m.flushContentNow()
 }

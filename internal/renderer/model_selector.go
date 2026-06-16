@@ -331,27 +331,27 @@ func (m Model) handleModelSelectorKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool
 
 func (m Model) confirmModelSelector() (Model, tea.Cmd, bool) {
 	if len(m.modelSelector.Flat) == 0 {
-		m, cmd := m.withMessage("/model: no models match your search")
-		m = m.closeModelSelector()
-		m = m.syncLayout(true)
-		return m, cmd, true
+		selM, cmd := m.withMessage("/model: no models match your search")
+		selM = selM.closeModelSelector()
+		selM = selM.syncLayout(true)
+		return selM, cmd, true
 	}
 
 	model := m.modelSelector.selectedModel()
 	regProvider, ok := m.modelSelector.Catalog.Provider(model.ProviderID)
 	if !ok {
-		m, cmd := m.withMessage(fmt.Sprintf("/model: provider %q not found", model.ProviderID))
-		m = m.closeModelSelector()
-		m = m.syncLayout(true)
-		return m, cmd, true
+		selM, cmd := m.withMessage(fmt.Sprintf("/model: provider %q not found", model.ProviderID))
+		selM = selM.closeModelSelector()
+		selM = selM.syncLayout(true)
+		return selM, cmd, true
 	}
 
 	cfg, err := provider.BuildModelConfig(m.modelSelector.Catalog, regProvider, model)
 	if err != nil && !provider.IsCredentialError(err) {
-		m, cmd := m.withMessage(fmt.Sprintf("/model: %v", err))
-		m = m.closeModelSelector()
-		m = m.syncLayout(true)
-		return m, cmd, true
+		selM, cmd := m.withMessage(fmt.Sprintf("/model: %v", err))
+		selM = selM.closeModelSelector()
+		selM = selM.syncLayout(true)
+		return selM, cmd, true
 	}
 
 	m = m.applyModelSwitch(&command.ModelSwitch{

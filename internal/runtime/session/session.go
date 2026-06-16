@@ -100,7 +100,6 @@ func (s Session) Todos() []todolist.Todo {
 	out := make([]todolist.Todo, len(*s.todoStore))
 	copy(out, *s.todoStore)
 	return out
-	return out
 }
 
 // GoalManager returns the session's goal manager.

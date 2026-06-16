@@ -175,8 +175,8 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 	m = m.applyModelSwitch(result.Switch)
 	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
 		if !m.hasActiveModel() {
-			m, cmd := m.promptSelectModel()
-			return m, cmd, true
+			inputUpdated, cmd := m.promptSelectModel()
+			return inputUpdated, cmd, true
 		}
 		at := time.Now()
 		m.agent.ResolvedAskUsers = nil
@@ -228,9 +228,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	if output := strings.TrimSpace(result.Output); output != "" {
-		m, cmd := m.withMessage(output)
-		m = m.syncLayout(true)
-		return m, cmd, true
+		msgM, cmd := m.withMessage(output)
+		msgM = msgM.syncLayout(true)
+		return msgM, cmd, true
 	}
 	m = m.syncLayout(true)
 	return m, nil, true
@@ -259,8 +259,8 @@ func (m Model) trySubmitInput() (Model, tea.Cmd, bool) {
 		return m.handleShellSubmit(cmd, withContext)
 	}
 	if !m.hasActiveModel() {
-		m, cmd := m.promptSelectModel()
-		return m, cmd, true
+		updatedMsg, cmd := m.promptSelectModel()
+		return updatedMsg, cmd, true
 	}
 	val = stripTrigger(val)
 	display := strings.TrimSpace(val)

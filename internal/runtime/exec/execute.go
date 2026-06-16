@@ -142,7 +142,7 @@ func executeRead(workDir string, args map[string]any) toolresult.ToolResult {
 	// Build output with line numbers
 	var out strings.Builder
 	for i := start; i < end; i++ {
-		out.WriteString(fmt.Sprintf("%d\t%s\n", i+1, lines[i]))
+		fmt.Fprintf(&out, "%d\t%s\n", i+1, lines[i])
 	}
 
 	result := out.String()
@@ -211,7 +211,7 @@ func executeWrite(workDir string, args map[string]any) toolresult.ToolResult {
 		}
 		return toolresult.ToolResult{Output: fmt.Sprintf("Appended %d bytes to %s", len(contents), path)}
 	default:
-		if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+		if err := os.WriteFile(full, []byte(contents), 0o600); err != nil {
 			return toolresult.ToolResult{Err: err}
 		}
 		return toolresult.ToolResult{Output: fmt.Sprintf("Wrote %d bytes to %s", len(contents), path)}
@@ -266,7 +266,8 @@ func executeEdit(workDir string, args map[string]any) toolresult.ToolResult {
 	} else {
 		updated = strings.Replace(content, oldString, newString, 1)
 	}
-	if err := os.WriteFile(full, []byte(updated), 0o644); err != nil {
+	//nolint:gosec // deliberate file edit tool — path resolved via resolveWorkPath above
+	if err := os.WriteFile(full, []byte(updated), 0o600); err != nil {
 		return toolresult.ToolResult{Err: err}
 	}
 	replaced := count

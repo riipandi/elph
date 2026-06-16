@@ -125,7 +125,7 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 		}
 
 		var cfg FileConfig
-		if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
+		if cfgErr := jsoncfg.Unmarshal(raw, &cfg); cfgErr != nil {
 			return result, fmt.Errorf("provider %q: decode: %w", providerID, err)
 		}
 
@@ -173,12 +173,13 @@ func UpdateModelsFromModelsDev(opts UpdateModelsOptions) (UpdateModelsResult, er
 			cfg.Name = catalogProvider.Name
 		}
 
+		//nolint:gosec // intentionally writing API key to config file
 		payload, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
 			return result, fmt.Errorf("provider %q: encode: %w", providerID, err)
 		}
 		payload = append(payload, '\n')
-		if err := os.WriteFile(path, payload, 0o644); err != nil {
+		if err := os.WriteFile(path, payload, 0o600); err != nil {
 			return result, fmt.Errorf("provider %q: write: %w", providerID, err)
 		}
 		result.Updated = append(result.Updated, entryName)
@@ -322,8 +323,8 @@ func syncLiveProviderModels(
 
 	if liveModelsProviderRequiresAuth(providerID) && strings.TrimSpace(apiKey) == "" {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("%s: API key unavailable for live /models (%s); using models.dev catalog only", entryName, strings.TrimSpace(cfg.APIKey)))
-		cfg, changed := syncCatalogProviderModels(providerID, catalogID, cfg, data, catalogProvider, result, entryName)
-		return cfg, changed, nil
+		syncedCfg, changed := syncCatalogProviderModels(providerID, catalogID, cfg, data, catalogProvider, result, entryName)
+		return syncedCfg, changed, nil
 	}
 
 	liveIDs, err := FetchLiveModels(ctx, client, LiveModelsOptions{

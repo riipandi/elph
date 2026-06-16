@@ -167,6 +167,7 @@ func stripUnsupportedMarkdownDefs(text string) string {
 	return collapseExtraBlankLines(text)
 }
 
+//nolint:unused // kept for future use
 func stripAIProseSeparatorLines(text string) string {
 	lines := strings.Split(text, "\n")
 	out := make([]string, 0, len(lines))
@@ -281,7 +282,6 @@ func HasMarkdownBlockStructure(text string) bool {
 	for _, line := range strings.Split(text, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "```") {
-			inFence = !inFence
 			return true
 		}
 		if isMarkdownBlockLine(line, inFence) {

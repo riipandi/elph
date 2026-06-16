@@ -14,17 +14,17 @@ func isToggleDetailKey(msg tea.KeyPressMsg) bool {
 
 func (m Model) handleToggleDetailKey() (Model, bool) {
 	if m.pasteEditorActive() {
-		if m, handled := m.handlePasteToggleKey(); handled {
-			return m, true
+		if detailM, handled := m.handlePasteToggleKey(); handled {
+			return detailM, true
 		}
 	}
 	if m.input.Focused() && len(pasteIDsInValue(m.input.Value())) > 0 {
-		if m, handled := m.handlePasteToggleKey(); handled {
-			return m, true
+		if detailM, handled := m.handlePasteToggleKey(); handled {
+			return detailM, true
 		}
 	}
-	if m, handled := m.handlePasteToggleKey(); handled {
-		return m, true
+	if detailM, handled := m.handlePasteToggleKey(); handled {
+		return detailM, true
 	}
 	m, toggled := m.toggleLastDetailExpand()
 	if !toggled {

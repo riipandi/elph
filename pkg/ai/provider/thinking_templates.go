@@ -149,7 +149,7 @@ func BackfillAllProviderThinking(dir string) (BackfillThinkingResult, error) {
 		}
 
 		var cfg FileConfig
-		if err := jsoncfg.Unmarshal(raw, &cfg); err != nil {
+		if tmplErr := jsoncfg.Unmarshal(raw, &cfg); tmplErr != nil {
 			return result, err
 		}
 
@@ -158,12 +158,13 @@ func BackfillAllProviderThinking(dir string) (BackfillThinkingResult, error) {
 			continue
 		}
 
+		//nolint:gosec // intentionally writing API key to config file
 		payload, err := json.MarshalIndent(updated, "", "  ")
 		if err != nil {
 			return result, err
 		}
 		payload = append(payload, '\n')
-		if err := os.WriteFile(path, payload, 0o644); err != nil {
+		if err := os.WriteFile(path, payload, 0o600); err != nil {
 			return result, err
 		}
 		result.Backfilled = append(result.Backfilled, entry.Name())

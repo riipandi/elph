@@ -23,7 +23,8 @@ func TestMain(m *testing.M) {
 	}
 	defer os.RemoveAll(testWorkDir)
 
-	if err := os.Chdir(testWorkDir); err != nil {
+	if chdirErr := os.Chdir(testWorkDir); chdirErr != nil {
+		fmt.Fprintf(os.Stderr, "chdir to test workdir failed: %v\n", chdirErr)
 		fmt.Fprintf(os.Stderr, "chdir to test workdir failed: %v\n", err)
 		os.Exit(1)
 	}
@@ -40,12 +41,13 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	if err := restoreSettings(backup); err != nil {
-		fmt.Fprintf(os.Stderr, "settings restore failed: %v\n", err)
+	if restoreErr := restoreSettings(backup); restoreErr != nil {
+		fmt.Fprintf(os.Stderr, "settings restore failed: %v\n", restoreErr)
 		os.Exit(1)
 	}
 
-	if err := os.Chdir(packageDir); err != nil {
+	if chdirErr := os.Chdir(packageDir); chdirErr != nil {
+		fmt.Fprintf(os.Stderr, "restore package dir failed: %v\n", chdirErr)
 		fmt.Fprintf(os.Stderr, "restore package dir failed: %v\n", err)
 		os.Exit(1)
 	}

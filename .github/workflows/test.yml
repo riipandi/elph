@@ -81,7 +81,7 @@ jobs:
       #   run: pnpm exec vitest run
 
       - name: Run unit tests
-        run: go test -v ./...
+        run: gotestsum --format short-verbose -- -count=1 -v ./...
         env:
           # GOEXPERIMENT: jsonv2
           NODE_ENV: production

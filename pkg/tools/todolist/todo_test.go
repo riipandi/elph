@@ -74,7 +74,7 @@ func TestApplyPresentTrueNilArgQueries(t *testing.T) {
 }
 
 func TestGetNilContext(t *testing.T) {
-	require.Nil(t, Get(nil))
+	require.Nil(t, Get(context.TODO()))
 }
 
 func TestGetEmptyStore(t *testing.T) {
@@ -143,5 +143,5 @@ func TestWithStoreNilReturnsContext(t *testing.T) {
 }
 
 func TestStoreFromNilContext(t *testing.T) {
-	require.Nil(t, StoreFrom(nil))
+	require.Nil(t, StoreFrom(context.TODO()))
 }

@@ -85,7 +85,7 @@ func SaveTodosSnapshot(workDir, sessionID string, todos []todolist.Todo) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0o644)
+	return os.WriteFile(path, append(data, '\n'), 0o600)
 }
 
 // TodosEqual reports whether two todo lists have the same titles and statuses.

@@ -67,7 +67,7 @@ func appendProviderErrorSections(b *strings.Builder, pe *ProviderError) {
 	}
 	if pe.StatusCode != 0 {
 		b.WriteString("\n\nHTTP ")
-		b.WriteString(fmt.Sprintf("%d", pe.StatusCode))
+		fmt.Fprintf(b, "%d", pe.StatusCode)
 	}
 	if pe.URL != "" {
 		b.WriteString("\nURL: ")
@@ -84,9 +84,9 @@ func appendProviderErrorSections(b *strings.Builder, pe *ProviderError) {
 	if pe.ContextTooLarge {
 		b.WriteString("\nContext limit exceeded")
 		if pe.ContextMaxTokens > 0 {
-			b.WriteString(fmt.Sprintf(" (max %d", pe.ContextMaxTokens))
+			fmt.Fprintf(b, " (max %d", pe.ContextMaxTokens)
 			if pe.ContextUsedTokens > 0 {
-				b.WriteString(fmt.Sprintf(", used %d", pe.ContextUsedTokens))
+				fmt.Fprintf(b, ", used %d", pe.ContextUsedTokens)
 			}
 			b.WriteByte(')')
 		}

@@ -23,6 +23,8 @@ import (
 )
 
 // Dedicated random source for tips — avoids mutex contention on the global source.
+//
+//nolint:gosec // TUI doesn't need crypto randomness
 var rng = rand.New(rand.NewSource(42))
 
 func randomTip() string {

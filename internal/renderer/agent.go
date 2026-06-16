@@ -317,17 +317,17 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 
 	if responseIdx >= 0 {
 		var cmds []tea.Cmd
-		m, renderCmd := m.scheduleMarkdownRender(responseIdx)
+		updatedM, renderCmd := m.scheduleMarkdownRender(responseIdx)
 		if renderCmd != nil {
 			cmds = append(cmds, renderCmd)
 		}
-		if askCmd := m.markupAskUserCmd(); askCmd != nil {
+		if askCmd := updatedM.markupAskUserCmd(); askCmd != nil {
 			cmds = append(cmds, askCmd)
 		}
 		if len(cmds) > 0 {
-			return m, tea.Batch(cmds...)
+			return updatedM, tea.Batch(cmds...)
 		}
-		return m, nil
+		return updatedM, nil
 	}
 	if askCmd := m.markupAskUserCmd(); askCmd != nil {
 		return m, askCmd

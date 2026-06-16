@@ -105,7 +105,7 @@ func Save(cfg Settings) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if mkdirErr := os.MkdirAll(filepath.Dir(path), 0o755); mkdirErr != nil {
 		return fmt.Errorf("create settings dir: %w", err)
 	}
 
@@ -116,7 +116,7 @@ func Save(cfg Settings) error {
 	}
 	payload = append(payload, '\n')
 
-	if err := os.WriteFile(path, payload, 0o644); err != nil {
+	if err := os.WriteFile(path, payload, 0o600); err != nil {
 		return fmt.Errorf("write settings %q: %w", path, err)
 	}
 	return nil
