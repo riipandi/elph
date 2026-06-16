@@ -11,7 +11,11 @@
 		},
 		"theme": {
 			"type": "string",
-			"enum": ["auto", "dark", "light"],
+			"enum": [
+				"auto",
+				"dark",
+				"light"
+			],
 			"default": "auto",
 			"description": "UI color scheme. auto follows the terminal appearance."
 		},
@@ -48,11 +52,26 @@
 				"minimum": 1
 			},
 			"properties": {
-				"minimal": { "type": "integer", "minimum": 1 },
-				"low": { "type": "integer", "minimum": 1 },
-				"medium": { "type": "integer", "minimum": 1 },
-				"high": { "type": "integer", "minimum": 1 },
-				"xhigh": { "type": "integer", "minimum": 1 }
+				"minimal": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"low": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"medium": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"high": {
+					"type": "integer",
+					"minimum": 1
+				},
+				"xhigh": {
+					"type": "integer",
+					"minimum": 1
+				}
 			}
 		},
 		"session": {
@@ -69,13 +88,25 @@
 				},
 				"agentMode": {
 					"type": "string",
-					"enum": ["build", "plan", "ask", "brave"],
+					"enum": [
+						"build",
+						"plan",
+						"ask",
+						"brave"
+					],
 					"description": "Active agent mode.",
 					"default": "build"
 				},
 				"thinkingLevel": {
 					"type": "string",
-					"enum": ["off", "minimal", "low", "medium", "high", "xhigh"],
+					"enum": [
+						"off",
+						"minimal",
+						"low",
+						"medium",
+						"high",
+						"xhigh"
+					],
 					"description": "Active thinking level shown in the footer.",
 					"default": "high"
 				}

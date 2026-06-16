@@ -15,14 +15,14 @@ See also: [agent-runtime.md](./agent-runtime.md) (execution flow), [slash-comman
 File tools handle reading, writing, and searching the local filesystem - the foundation for code analysis
 and modification tasks.
 
-| Tool          | Default Approval  | Description                        |
-|---------------|-------------------|------------------------------------|
-| Read          | Auto-allow        | Read a text file. Fails on directories — use Glob first to find files inside a directory        |
-| Write         | Requires approval | Create or overwrite a file. Fails if the path is an existing directory         |
-| Edit          | Requires approval | Edit a file using string replacement. Fails on directories — only use on existing files         |
-| Grep          | Auto-allow        | `ripgrep` powered full-text search |
-| Glob          | Auto-allow        | Find files and list directory contents by glob pattern. Use pattern "dir/**" to recursively list all files in a directory        |
-| ReadMediaFile | Auto-allow        | Read an image or video file        |
+| Tool          | Default Approval  | Description                                                                                                               |
+|---------------|-------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Read          | Auto-allow        | Read a text file. Fails on directories — use Glob first to find files inside a directory                                  |
+| Write         | Requires approval | Create or overwrite a file. Fails if the path is an existing directory                                                    |
+| Edit          | Requires approval | Edit a file using string replacement. Fails on directories — only use on existing files                                   |
+| Grep          | Auto-allow        | `ripgrep` powered full-text search                                                                                        |
+| Glob          | Auto-allow        | Find files and list directory contents by glob pattern. Use pattern "dir/**" to recursively list all files in a directory |
+| ReadMediaFile | Auto-allow        | Read an image or video file                                                                                               |
 
 ## Shell Tools
 
