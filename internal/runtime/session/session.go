@@ -2,11 +2,13 @@ package session
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/riipandi/elph/internal/runtime/exec"
 	"github.com/riipandi/elph/internal/runtime/log"
 	"github.com/riipandi/elph/internal/runtime/toolresult"
-	"time"
-
 	"github.com/riipandi/elph/internal/prompt"
 	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/ai"
@@ -17,6 +19,7 @@ import (
 	"github.com/riipandi/elph/pkg/tools/goal"
 	"go.jetify.com/typeid/v2"
 )
+
 
 // Session binds a coding-agent runtime to a single interactive session.
 type Session struct {
@@ -156,8 +159,14 @@ func (s *Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan 
 	}
 	ctx = goal.WithManager(ctx, s.goalManager)
 
+	// Build system prompt with optional goal context
 	opts.SystemPrompt = s.SystemPrompt
+	if snapshot := s.goalManager.GetGoal(); snapshot != nil {
+		opts.SystemPrompt += formatGoalPrompt(snapshot)
+	}
+
 	if opts.Model == "" {
+
 		opts.Model = s.ModelID
 	}
 	if opts.Provider == nil {
@@ -233,4 +242,49 @@ func loadSessionTodos(workDir, sessionID string) []todolist.Todo {
 		return make([]todolist.Todo, 0)
 	}
 	return loaded
+}
+
+
+func formatGoalPrompt(s *goal.Snapshot) string {
+	var b strings.Builder
+	b.WriteString("\n\n## Current Goal\n")
+	fmt.Fprintf(&b, "Objective: %s\n", s.Objective)
+	if s.CompletionCriterion != "" {
+		fmt.Fprintf(&b, "Completion criterion: %s\n", s.CompletionCriterion)
+	}
+	fmt.Fprintf(&b, "Status: %s\n", s.Status)
+	fmt.Fprintf(&b, "Turns used: %d\n", s.TurnsUsed)
+	fmt.Fprintf(&b, "Tokens used: %d\n", s.TokensUsed)
+	if s.WallClockMs > 0 {
+		fmt.Fprintf(&b, "Elapsed: %s\n", fmtGoalDuration(s.WallClockMs))
+	}
+	if s.WallClockBudgetMs > 0 {
+		fmt.Fprintf(&b, "Wall clock budget: %s\n", fmtGoalDuration(s.WallClockBudgetMs))
+	}
+	if s.TurnBudget > 0 {
+		fmt.Fprintf(&b, "Turn budget: %d\n", s.TurnBudget)
+	}
+	if s.TokenBudget > 0 {
+		fmt.Fprintf(&b, "Token budget: %d\n", s.TokenBudget)
+	}
+	b.WriteString("Work toward this goal. When you believe the goal is complete, call UpdateGoal with status=complete.")
+	return b.String()
+}
+
+func fmtGoalDuration(ms int64) string {
+	if ms < 1000 {
+		return fmt.Sprintf("%dms", ms)
+	}
+	totalSeconds := ms / 1000
+	if totalSeconds < 60 {
+		return fmt.Sprintf("%ds", totalSeconds)
+	}
+	minutes := totalSeconds / 60
+	seconds := totalSeconds % 60
+	if minutes < 60 {
+		return fmt.Sprintf("%dm%ds", minutes, seconds)
+	}
+	hours := minutes / 60
+	minutes = minutes % 60
+	return fmt.Sprintf("%dh%dm", hours, minutes)
 }
