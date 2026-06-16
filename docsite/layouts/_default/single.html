@@ -36,7 +36,7 @@
     {{ end }}
 
     <main id="docs-content">
-      {{ partial "main-content/nav.html" . }}
+
 
       {{ with .Params.cover }}
         {{ $cover := resources.Get . }}
@@ -61,16 +61,18 @@
     </main>
 
     {{ partial "site/right-sidebar.html" . }}
+
+
+
   </div>
 
-  <div id="off-canvas-model"></div>
+
 
   {{ partial "site/footer.html" . }}
 
   {{ $js := slice
     (resources.Get "js/site/color-preference.js")
     (resources.Get "js/site/table-of-contents.js")
-    (resources.Get "js/site/off-canvas.js")
   | resources.Concat "assets/js/docs.js" | minify | fingerprint }}
   <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.integrity }}"></script>
 </body>

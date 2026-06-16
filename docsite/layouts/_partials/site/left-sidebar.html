@@ -1,8 +1,4 @@
 <aside id="left-sidebar">
-	<div>
-		<button class="btn">{{ partial "icon.html" "close" }} {{ i18n "close" }}</button>
-	</div>
-
 	<nav aria-label="Documentation pages">
 		{{ $data := index hugo.Data site.Language.Lang page.Section "sidebar" }}
 

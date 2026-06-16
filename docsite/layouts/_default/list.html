@@ -6,6 +6,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>{{ $firstPage.Title | .RenderString }} · {{ site.Title | .RenderString }}</title>
+	<script>location.replace({{ $firstPage.RelPermalink }})</script>
 	<meta http-equiv="refresh" content="0; url={{ $firstPage.RelPermalink }}">
 	<link rel="canonical" href="{{ $firstPage.Permalink }}">
 	{{ partial "favicons.html" . }}
@@ -73,14 +74,13 @@
     {{ partial "site/right-sidebar.html" . }}
   </div>
 
-  <div id="off-canvas-model"></div>
+
 
   {{ partial "site/footer.html" . }}
 
   {{ $js := slice
     (resources.Get "js/site/color-preference.js")
     (resources.Get "js/site/table-of-contents.js")
-    (resources.Get "js/site/off-canvas.js")
   | resources.Concat "assets/js/docs.js" | minify | fingerprint }}
   <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.integrity }}"></script>
 </body>
