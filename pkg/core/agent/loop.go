@@ -9,7 +9,16 @@ import (
 	"github.com/riipandi/elph/pkg/tools"
 )
 
-const maxToolIterations = 8
+// DefaultMaxToolIterations is the default max autonomous tool rounds per turn.
+const DefaultMaxToolIterations = 25
+
+// maxToolIterationsFor returns the effective tool round limit from opts or default.
+func maxToolIterationsFor(opts TurnOptions) int {
+	if opts.MaxToolIterations > 0 {
+		return opts.MaxToolIterations
+	}
+	return DefaultMaxToolIterations
+}
 
 // toolRoundCountsTowardLimit reports whether a provider tool round should consume
 // iteration budget. AskUser-only rounds are excluded because they wait on the
@@ -47,7 +56,8 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		usage       protocol.TurnUsage
 	)
 
-	for step := 0; step < maxToolIterations; {
+	maxIter := maxToolIterationsFor(opts)
+	for step := 0; step < maxIter; {
 		thinking := opts.Thinking
 		showThinking := opts.ShowThinking
 		if step > 0 {
@@ -151,7 +161,7 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 	}
 
 	sendEvent(ctx, ch, TurnDoneWithHistoryEvent(protocol.TurnResult{
-		Content: fmt.Sprintf("Stopped after %d tool rounds.", maxToolIterations),
+		Content: fmt.Sprintf("Stopped after %d tool rounds.", maxToolIterationsFor(opts)),
 		Usage:   usage,
 	}, CompactMessages(messages)))
 }

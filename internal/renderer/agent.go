@@ -77,6 +77,7 @@ func (m Model) buildTurnOptions(prompt string, images []provider.ImageAttachment
 	if prefErr == nil {
 		opts.ProviderMaxRetries = prefs.ProviderMaxRetries()
 		opts.ProviderDefaultTimeout = prefs.ProviderDefaultTimeout()
+		opts.MaxToolIterations = prefs.ToolRoundsLimit()
 	}
 	if bridge != nil {
 		opts.InteractTool = bridge.Interact

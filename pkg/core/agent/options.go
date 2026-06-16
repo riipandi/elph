@@ -34,6 +34,7 @@ type TurnOptions struct {
 	LogProvider            TurnLogFunc   // optional provider/tool trace (requests log)
 	ProviderMaxRetries     int           // retriable failures to retry (0 = default)
 	ProviderDefaultTimeout time.Duration // provider inactivity limit (0 = default)
+	MaxToolIterations      int           // max autonomous tool rounds per turn (0 = default MaxToolIterationsDefault)
 }
 
 // ProviderRetryConfig returns retry settings for upstream provider calls.

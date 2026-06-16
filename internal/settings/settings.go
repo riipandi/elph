@@ -22,6 +22,7 @@ const (
 )
 
 // Settings is persisted at ~/.elph/settings.json.
+// Settings is persisted at ~/.elph/settings.json.
 type Settings struct {
 	SyncInterval             string            `json:"syncInterval,omitempty"`
 	Models                   *ModelsSettings   `json:"models,omitempty"`
@@ -34,6 +35,7 @@ type Settings struct {
 	ThinkingBudgets          map[string]int    `json:"thinkingBudgets,omitempty"`
 	Provider                 *ProviderSettings `json:"provider,omitempty"`
 	Session                  SessionSettings   `json:"session,omitempty"`
+	MaxToolIterations        *int              `json:"maxToolIterations,omitempty"`
 }
 
 // ModelsSettings holds legacy settings migrated on load.
@@ -168,6 +170,10 @@ func (s Settings) withDefaults() Settings {
 			s.Provider.DefaultTimeout = DefaultProviderTimeout.String()
 		}
 	}
+	if s.MaxToolIterations == nil {
+		v := 0 // 0 = use DefaultMaxToolIterations in loop
+		s.MaxToolIterations = &v
+	}
 	return s
 }
 
@@ -198,6 +204,16 @@ func (s Settings) ResponseLanguage() string {
 	return s.withDefaults().PreferedResponseLanguage
 }
 
+// ToolRoundsLimit returns the configured max tool rounds (0 = use default).
+func (s Settings) ToolRoundsLimit() int {
+	cfg := s.withDefaults()
+	if cfg.MaxToolIterations == nil {
+		return 0
+	}
+	return *cfg.MaxToolIterations
+}
+
+// ThinkingBudgetOverrides returns custom token budgets per thinking level.
 // ThinkingBudgetOverrides returns custom token budgets per thinking level.
 func (s Settings) ThinkingBudgetOverrides() map[string]int {
 	if len(s.ThinkingBudgets) == 0 {

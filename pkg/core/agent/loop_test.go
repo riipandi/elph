@@ -123,8 +123,8 @@ func (r *thinkingRecordingProvider) Complete(ctx context.Context, req protocol.T
 }
 
 func TestRunTurnAskUserRoundsDoNotCountTowardLimit(t *testing.T) {
-	steps := make([]protocol.TurnResult, 0, maxToolIterations+2)
-	for range maxToolIterations + 1 {
+	steps := make([]protocol.TurnResult, 0, DefaultMaxToolIterations+2)
+	for range DefaultMaxToolIterations + 1 {
 		steps = append(steps, protocol.TurnResult{
 			StopReason: protocol.StopReasonToolUse,
 			ToolCalls: []protocol.ToolCall{{
