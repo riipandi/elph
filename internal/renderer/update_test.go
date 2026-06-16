@@ -438,7 +438,7 @@ func TestAddToolDetailAndThinkingMessages(t *testing.T) {
 	require.Len(t, m.messages, 2)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
 	require.Equal(t, "Read", m.messages[0].detailLabel)
-	require.True(t, m.messages[0].detailExpanded)
+	require.False(t, m.messages[0].detailExpanded)
 	require.Equal(t, uiconst.MessageThinking, m.messages[1].kind)
 }
 

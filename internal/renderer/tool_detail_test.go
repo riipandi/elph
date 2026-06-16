@@ -15,21 +15,19 @@ func TestToolDetailStatusTransitions(t *testing.T) {
 	require.Equal(t, uiconst.DetailStatusWarning, toolDetailStatus(toolresult.ToolResult{Cancelled: true}))
 }
 
-func TestToolDetailExpandedByDefault(t *testing.T) {
+func TestToolDetailCollapsedByDefault(t *testing.T) {
 	m := New()
 	m = m.addToolDetailMessage("Bash", "echo hello")
 
-	require.True(t, m.messages[0].detailExpanded)
-	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "echo hello")
-	require.Contains(t, rendered, "ctrl+o to collapse")
+	require.False(t, m.messages[0].detailExpanded)
+	require.Contains(t, stripANSI(m.renderMessageAt(0)), "ctrl+o to expand")
 }
 
-func TestToolDetailShortContentExpandedByDefault(t *testing.T) {
+func TestToolDetailShortContentCollapsedByDefault(t *testing.T) {
 	m := New()
 	m = m.addToolDetailMessage("Read", "file contents")
 
-	require.True(t, m.messages[0].detailExpanded)
+	require.False(t, m.messages[0].detailExpanded)
 }
 
 func TestToolDetailLongContentCollapsedByDefault(t *testing.T) {
@@ -44,14 +42,12 @@ func TestToolDetailLongContentCollapsedByDefault(t *testing.T) {
 	require.NotContains(t, rendered, "line three")
 }
 
-func TestShellToolDetailLongContentExpandedByDefault(t *testing.T) {
+func TestShellToolDetailLongContentCollapsedByDefault(t *testing.T) {
 	m := New()
-	m = m.addToolDetailMessage("$ go test ./...", "line one\nline two\nline three")
+	m = m.addToolDetailMessage("$ go test ./", "line one\nline two\nline three")
 
-	require.True(t, m.messages[0].detailExpanded)
-	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "ctrl+o to collapse")
-	require.Contains(t, rendered, "line three")
+	require.False(t, m.messages[0].detailExpanded)
+	require.Contains(t, stripANSI(m.renderMessageAt(0)), "ctrl+o to expand")
 }
 
 func TestAddToolDetailFromResultFormatsFailure(t *testing.T) {

@@ -93,7 +93,7 @@ func TestFinishNativeToolCallBashKeepsRawStreamedOutput(t *testing.T) {
 	require.NotContains(t, m.messages[idx].text, "Tool failed")
 }
 
-func TestFinishNativeToolCallLongReadCollapsedShellExpanded(t *testing.T) {
+func TestFinishNativeToolCallAllCollapsedByDefault(t *testing.T) {
 	m := testInputModel(t)
 
 	readCall := provider.ToolCall{
@@ -114,5 +114,5 @@ func TestFinishNativeToolCallLongReadCollapsedShellExpanded(t *testing.T) {
 	m = m.beginNativeToolCall(bashCall)
 	m = m.finishNativeToolCall(bashCall, agent.ToolRunResult{Output: "1\n2\n3"})
 	bashIdx := m.agent.NativeToolMsgIDs["call_bash_long"]
-	require.True(t, m.messages[bashIdx].detailExpanded)
+	require.False(t, m.messages[bashIdx].detailExpanded, "Bash tool detail should also collapse by default")
 }
