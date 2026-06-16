@@ -27,7 +27,12 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	for {
+	// Cap the drain loop so a burst of delta events (e.g. 500 thinking tokens)
+	// does not block Bubble Tea's render loop and cause UI freezes. Each delta
+	// may trigger a content rebuild; after the cap we yield by scheduling the
+	// next channel read as a Cmd, letting the TUI render before the next batch.
+	const maxDrainPerCycle = 30
+	for drained := 0; drained < maxDrainPerCycle; {
 		select {
 		case evt, ok := <-m.agent.Events:
 			if !ok {
@@ -39,6 +44,7 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 			switch evt.Kind {
 			case agent.EventThinkingDelta, agent.EventResponseDelta, agent.EventToolCallOutputDelta:
 				m, cmd = m.coalesceAgentEvent(cmd, evt)
+				drained++
 				continue
 			default:
 				if cmd == nil {
@@ -50,6 +56,12 @@ func (m Model) handleAgentEvent(msg agentEventMsg) (Model, tea.Cmd) {
 			return m, cmd
 		}
 	}
+
+	// Hit the per-cycle cap — yield to the TUI by scheduling the next read.
+	if cmd == nil {
+		return m, waitAgentEvent(m.agent.Events)
+	}
+	return m, tea.Batch(cmd, waitAgentEvent(m.agent.Events))
 }
 
 func (m Model) coalesceAgentEvent(prior tea.Cmd, evt agent.Event) (Model, tea.Cmd) {
@@ -79,7 +91,10 @@ func (m Model) applyAgentEvent(evt agent.Event) (Model, tea.Cmd) {
 			return m, nil
 		}
 		m = m.appendAgentThinkingDelta(evt.Delta)
-		return m.flushThinkingStreamNow()
+		// Use markStreamDirty (throttled at ~40ms) instead of flushThinkingStreamNow
+		// (which does a synchronous syncLayout). During a burst of thinking tokens
+		// the throttled path avoids blocking the TUI render loop on every delta.
+		return m.markStreamDirty()
 	case agent.EventResponseDelta:
 		m = m.appendAgentResponseDelta(evt.Delta)
 		m, cmd := m.markStreamDirty()

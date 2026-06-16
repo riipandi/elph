@@ -101,7 +101,8 @@ func (m Model) syncLayout(follow bool) Model {
 	atBottom := m.content.AtBottom()
 
 	prevH := m.content.Height()
-	m.content.SetHeight(max(m.height-m.chromeHeight(), 1))
+	chromeH := m.chromeHeight()
+	m.content.SetHeight(max(m.height-chromeH, 1))
 
 	// Build content at guttered width immediately so message backgrounds never
 	// span the scrollbar column. Always reserve the gutter (targetContentWidth)
@@ -122,12 +123,24 @@ func (m Model) syncLayout(follow bool) Model {
 
 	// Bubble Tea drops lines from the top when output exceeds terminal height,
 	// which clips the banner border. Shrink the viewport until the frame fits.
-	for m.renderedViewHeight() > m.height && m.content.Height() > 1 {
+	//
+	// No loop: measuredRenderedHeight already includes viewport + chrome lines,
+	// so overflow = measuredRenderedHeight - m.height — set height directly.
+	measuredH := m.renderedViewHeight()
+	overflow := measuredH - m.height
+	if overflow > 0 && m.content.Height() > overflow+1 {
+		m.content.SetHeight(m.content.Height() - overflow)
+	} else if overflow > 0 && m.content.Height() > 1 {
+		// Fallback: at least shrink by 1 if we can't shrink by full overflow.
 		m.content.SetHeight(m.content.Height() - 1)
 	}
 
+	// Cache chrome height. Note: chromeH was already computed above — this is
+	// a cheap struct field store (the re-computation below detects post-rebuild
+	// activity/dialog changes).
 	m.layout.ChromeH = m.chromeHeight()
-	m = m.syncInputWidth()
+	// syncInputWidth called above — no need to call again; nothing inside
+	// syncLayout changes input dimensions after the initial sync.
 
 	if follow || atBottom {
 		m.content.GotoBottom()

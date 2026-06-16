@@ -242,11 +242,27 @@ func (m Model) finishShellDone(msg shellDoneMsg) (Model, tea.Cmd) {
 func (m Model) handleShellOutput(msg shellOutputMsg) (Model, tea.Cmd) {
 	m.shell.Output = rtshell.ApplyStreamChunk(m.shell.Output, msg.chunk)
 	m = m.updateShellDetailMessage(nil)
-	m = m.syncLayout(true)
+
+	// Don't call syncLayout directly on every chunk — that triggers a full
+	// content rebuild (messagesView → renderMessageAt for every message)
+	// on TUI output at Vt-100 baud rate. Instead, mark dirty and schedule a
+	// throttled flush tick so the TUI render loop batches shell updates at
+	// the same 40ms cadence as agent token streaming.
+	var cmds []tea.Cmd
+	if !m.layout.StreamFlushPending {
+		m.layout.StreamFlushPending = true
+		cmds = append(cmds, streamFlushTick())
+	}
 
 	var cmd tea.Cmd
 	if m.shell.OutputCh != nil {
 		cmd = waitShellOutput(m.shell.OutputCh)
 	}
-	return m, cmd
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	if len(cmds) == 0 {
+		return m, nil
+	}
+	return m, tea.Batch(cmds...)
 }

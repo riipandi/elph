@@ -165,8 +165,9 @@ func (m Model) handleStreamFlush() (Model, tea.Cmd) {
 	m = m.refreshStreamPrefixCache()
 	m = m.syncLayout(m.content.AtBottom())
 
+	// Re-arm the flush tick while either agent or shell is actively streaming.
 	var cmds []tea.Cmd
-	if m.layout.ContentDirty && m.agent.Busy {
+	if m.layout.ContentDirty && (m.agent.Busy || m.shell.Running) {
 		m.layout.StreamFlushPending = true
 		cmds = append(cmds, streamFlushTick())
 	}

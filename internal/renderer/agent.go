@@ -15,7 +15,7 @@ import (
 	"github.com/riipandi/elph/pkg/core/agent"
 )
 
-const spinnerInterval = 80 * time.Millisecond
+const spinnerInterval = 200 * time.Millisecond
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
