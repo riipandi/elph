@@ -99,6 +99,25 @@
 			"maximum": 100,
 			"default": 80,
 			"description": "Compaction target as percentage of history budget. Lower = more aggressive compaction. Used by both auto-compaction and /compact slash command."
+		},
+		"provider": {
+			"type": "object",
+			"description": "Provider-level settings: retries and timeouts.",
+			"properties": {
+				"maxRetries": {
+					"type": "integer",
+					"minimum": 0,
+					"default": 3,
+					"description": "Max retries for transient provider failures (rate limit, server error). 0 = no retries."
+				},
+				"defaultTimeout": {
+					"type": "string",
+					"default": "5m",
+					"description": "Go duration for stream stall timeout (e.g. 5m, 120s)."
+				}
+			},
+			"additionalProperties": false
 		}
+	},
 	"additionalProperties": false
 }
