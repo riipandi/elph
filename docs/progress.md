@@ -733,3 +733,55 @@ if result.CompactRatio <= 0 && !agent.ShouldCompact(history, threshold) {
 ### Verification
 
 All 1087 tests pass. Build succeeds.
+
+---
+
+## 22. Goal tools and tool parameter improvements (June 2026)
+
+Added session-scoped Goal tools (CreateGoal, GetGoal, UpdateGoal, SetGoalBudget) and
+improved parameter parity with Kimi Code for Read, Write, Edit, Grep, Bash, and WebSearch.
+
+### New: Goal Tools
+
+| Tool          | Description                                                      | File                            |
+|---------------|------------------------------------------------------------------|---------------------------------|
+| CreateGoal    | Create a new goal with objective + optional criterion            | `pkg/tools/goal/goal.go`        |
+| GetGoal       | Return current goal snapshot (status, turns, tokens, wall clock) | `internal/runtime/exec/goal.go` |
+| UpdateGoal    | Update goal lifecycle status (active/complete/paused/blocked)    | `pkg/tools/schema/schema.go`    |
+| SetGoalBudget | Set token, turn, or time budget for the current goal             | `pkg/tools/catalog/catalog.go`  |
+
+Key implementation details:
+
+- Goal manager (`goal.Manager`) is stored in `Session.goalManager` and passed via context.
+- Turn tracking wired through `TurnOptions.RecordGoalTurn` callback — each tool round
+  that counts toward the iteration limit increments turns and token usage.
+- Budget validation: time budgets clamped between 1 second and 24 hours.
+- All Goal tools are auto-allow and always exposed; return clear errors when no goal exists.
+- Units: `turns`, `tokens`, `milliseconds`, `seconds`, `minutes`, `hours`.
+
+### Improved: Parameter Parity with Kimi Code
+
+| Tool      | New Parameters                            | Behavior change                                     |
+|-----------|-------------------------------------------|-----------------------------------------------------|
+| Read      | `line_offset` (negative=tails), `n_lines` | Line-numbered output with system footer             |
+| Write     | `mode` ("overwrite" / "append")           | Append mode support                                 |
+| Edit      | —                                         | No-op guard, better "not found" message             |
+| Grep      | `context_lines`                           | Maps to ripgrep `-C`                                |
+| Bash      | `cwd`, `timeout` (seconds, max 300s)      | Working dir override, configurable cap              |
+| WebSearch | `limit` (1-20), `include_content` (bool)  | Functional options pattern in `pkg/tools/websearch` |
+
+### Files
+
+| Action | Files                                                                                   |
+|--------|-----------------------------------------------------------------------------------------|
+| New    | `pkg/tools/goal/goal.go`, `internal/runtime/exec/goal.go`                               |
+| Mod    | `pkg/tools/schema/schema.go`, `pkg/tools/catalog/*`, `pkg/tools/exposure/*`,            |
+|        | `pkg/tools/websearch/search.go`, `pkg/core/agent/loop.go`, `pkg/core/agent/options.go`, |
+|        | `internal/runtime/exec/execute.go`, `internal/runtime/session/session.go`,              |
+|        | `docs/tools.md`, `docs/architecture.md`, `docs/agent-runtime.md`, `docs/progress.md`    |
+| Test   | `pkg/tools/catalog/catalog_test.go`, `pkg/tools/schema/schema_test.go`,                 |
+|        | `pkg/tools/websearch/search_test.go`, `internal/runtime/exec/execute_file_test.go`      |
+
+### Verification
+
+All 1085 tests pass. Build succeeds.

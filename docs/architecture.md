@@ -40,7 +40,7 @@ elph/
 | `prompt/template` | Load `*.md` templates with frontmatter and `$1` args                                                                        |
 | `renderer`        | Bubble Tea v2 TUI (viewport, input, paste collapse/editor, agent bridge, prose/Glamour markdown, AI copy hint, huh dialogs) |
 | `projectdir`      | Project-local paths (`<workDir>/.agents/elph`, `.gitignore`)                                                                |
-| `runtime`         | Session, tool execution, shell, JSONL session logs (`slog`)                                                                 |
+| `runtime`         | Session, tool execution (including goal.go), shell, JSONL session logs (`slog`)                                             |
 | `settings`        | Layered `settings.json` (`~/.elph` + project `.agents/elph`), `version.json` sync metadata                                  |
 | `theme`           | `auto` / `dark` / `light` lipgloss themes                                                                                   |
 | `tools`           | Diagnostic helpers (not agent-executable)                                                                                   |
@@ -58,6 +58,7 @@ elph/
 | `core/agent`       | Turn loop, events, text-markup tool parser, native tool loop, history/tool truncation limits                                                                                                                                                          |
 | `core/fuzzy`       | Subsequence fuzzy matching                                                                                                                                                                                                                            |
 | `tool`             | Built-in tool catalog, provider schemas, `IsProviderExposed`                                                                                                                                                                                          |
+| `tools/goal`       | Goal types, snapshot, context-scoped manager for CreateGoal/GetGoal/UpdateGoal/SetGoalBudget                                                                                                                                                          |
 
 ## Runtime data flow
 

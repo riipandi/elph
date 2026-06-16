@@ -55,25 +55,33 @@ Provider adapters:
 
 Only tools passing `IsProviderExposed` are sent to the provider:
 
-- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**, **Bash**
+- Today: **Read**, **Write**, **Edit**, **Grep**, **Glob**, **ReadMediaFile**, **WebSearch**, **AskUser**, **Bash**,
+  **TodoList**, **Skill**, **CreateGoal**, **GetGoal**, **UpdateGoal**, **SetGoalBudget**
 - Details: [tools.md § Provider API exposure](./tools.md#provider-api-exposure)
 
 ## Runtime execution
 
 `ExecuteTool` (`internal/runtime/execute.go`):
 
-| Tool          | Implementation                                              |
-|---------------|-------------------------------------------------------------|
-| Read          | Read file under workspace (256 KB cap)                      |
-| Write         | Create parent dirs and write file contents                  |
-| Edit          | Exact string replace; `replace_all` for multi-match         |
-| Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`)  |
-| Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)      |
-| ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)     |
-| WebSearch     | Multi-engine search (`pkg/tools/websearch`); 128 KB cap     |
-| TodoList      | Session task list (`pkg/tools/todolist`); persists snapshot |
-| Skill         | Load and return skill body from registered `SKILL.md`       |
-| Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr      |
+| Tool          | Implementation                                                            |
+|---------------|---------------------------------------------------------------------------|
+| Read          | Read file under workspace (256 KB cap, line_offset, n_lines)              |
+| Write         | Create parent dirs and write/append file contents                         |
+| Edit          | Exact string replace; `replace_all` for multi-match                       |
+| Grep          | `rg` subprocess (`content`, `files_with_matches`, `count`, context_lines) |
+| Glob          | `doublestar.FilepathGlob` (`**` semantics, files only)                    |
+| ReadMediaFile | Decode/resize image → PNG metadata + base64 (32 KB cap)                   |
+| WebSearch     | Multi-engine search (`pkg/tools/websearch`); 128 KB cap                   |
+| FetchURL      | HTTP fetch with HTML extraction (`pkg/tools/fetchurl`)                    |
+| CodeSearch    | GitHub/GitLab code search (`pkg/tools/codesearch`)                        |
+| TodoList      | Session task list (`pkg/tools/todolist`); persists snapshot               |
+| Skill         | Load and return skill body from registered `SKILL.md`                     |
+| Bash          | `bash -c` via `RunShellContext`; streams stdout/stderr                    |
+| CreateGoal    | Create a session goal with objective + optional criterion                 |
+| GetGoal       | Return current goal snapshot (status, turns, tokens, budgets)             |
+| UpdateGoal    | Update goal lifecycle status                                              |
+| SetGoalBudget | Set token/turn/time budget for the current goal                           |
+
 
 `ExecuteToolStream` (`session.toolExecuteStream`) passes chunks to `EventToolCallOutputDelta` for
 live TUI updates. Bash validates syntax with `mvdan.cc/sh` before spawn and times out after 120s by
@@ -222,6 +230,14 @@ Kinds written in production (`runtime.AppendLog`):
 ### Requests log
 
 Path: `<workDir>/.agents/elph/metadata/<sess_id>/log_requests.json` — provider and tool trace written during agent turns. Both logs use `log/slog` JSONL records with a `kind` attribute for filtering.
+
+### Goal session state
+
+- In-memory store: `Session.goalManager` (`*goal.Manager`) is initialized on session creation.
+- Passed to tool execution via `goal.WithManager(ctx, s.goalManager)` in `StartTurn`.
+- Goal turn tracking: `RecordGoalTurn` callback in `TurnOptions` records each tool round progress
+  (turns and tokens) when a goal is active.
+- Implementation: `pkg/tools/goal` (types + manager), `internal/runtime/exec/goal.go` (execute).
 
 ### TodoList session state
 

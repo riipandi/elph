@@ -32,7 +32,9 @@ Prefer code when they disagree until docs or behavior are updated.
 
 ### Accurate
 
-- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, AskUser, Bash, TodoList, Skill) — `tools.md`, `progress.md`, `agent-runtime.md`
+- Native tool loop and API filter (Read, Write, Edit, Grep, Glob, ReadMediaFile, WebSearch, AskUser, Bash, TodoList, Skill, CreateGoal, GetGoal, UpdateGoal, SetGoalBudget) — `tools.md`, `progress.md`, `agent-runtime.md`
+- Goal tools lifecycle and session-scoped state manager — `tools.md`, `agent-runtime.md`, `pkg/tools/goal`
+- Read line_offset/n_lines, Write mode, Edit no-op guard, Grep context_lines, Bash cwd/timeout, WebSearch limit/include_content — `tools.md`
 - TodoList Tasks panel, per-session `metadata/<sess_id>/todos.jsonl`, completion notice — `tools.md`, `tui.md`, `agent-runtime.md`
 - ReadMediaFile execution, user vision paste (Ctrl/Cmd+V), attachment shortcuts — `tools.md`, `tui.md`, `agent-runtime.md`
 - Long text paste collapse, paste editor (Ctrl+O), `useRawPaste` — `tui.md`, `configuration.md`, `progress.md`
@@ -51,7 +53,7 @@ Prefer code when they disagree until docs or behavior are updated.
 ### Fixed in this audit
 
 - Session metadata layout (`metadata/<sess_id>/todos.jsonl`, `log_events.json`, `log_requests.json`) — `configuration.md`, `agent-runtime.md`, `slash-commands.md`
-- `pkg/tools` package layout (`catalog/`, `exposure/`, `schema/`, `todolist/`, `websearch/`) — `tools.md`, `architecture.md`, `AGENTS.md`
+- `pkg/tools` package layout (`catalog/`, `exposure/`, `schema/`, `goal/`, `todolist/`, `websearch/`) — `tools.md`, `architecture.md`, `AGENTS.md`
 - `tui.md` keybindings (`Ctrl+A` not `Ctrl+M`; added `Ctrl+L`, `Ctrl+Y`, `Ctrl+Shift+T`)
 - `tui.md` `showPromptPrefix` default (`false` in code)
 - Stale `notExecutableToolMessage` text in `internal/runtime/tool.go`
@@ -70,7 +72,7 @@ Prefer code when they disagree until docs or behavior are updated.
 | Agent modes (`build`/`plan`/`ask`)                      | UI + settings only; no runtime effect yet                                                    | `agent-runtime.md`             |
 | Agent mode **brave**                                    | Skips tool approval (`SkipToolApproval`)                                                     | `agent-runtime.md`, `tools.md` |
 | `internal/datastore`                                    | Empty package stub                                                                           | `architecture.md`              |
-| FetchURL, plan mode, …                                  | Catalog only or not executable yet                                                           | `tools.md`                     |
+| Agent mode build/plan/ask runtime effect                | No runtime difference yet (only UI)                                                          | `agent-runtime.md`             |
 
 ### Contributing
 
