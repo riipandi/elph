@@ -54,4 +54,11 @@ var builtin = []SlashCommand{
 		Quits:       true,
 		Handler:     func(*Context, string) string { return "" },
 	},
+	{
+		Name:         "compact",
+		Aliases:      []string{"c"},
+		Description:  "Compress conversation history to save context window space",
+		ArgumentHint: "[percentage]",
+		Handler:     compactHandler,
+	},
 }

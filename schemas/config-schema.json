@@ -87,7 +87,18 @@
 			"minimum": 0,
 			"default": 0,
 			"description": "Max autonomous tool rounds per turn. 0 uses the built-in default (25). Increase if the agent stops prematurely with 'Stopped after N tool rounds.'"
+		},
+		"autoCompactContext": {
+			"type": "boolean",
+			"default": true,
+			"description": "When true (default), Elph automatically compacts conversation history and retries when the provider reports a context-limit error, instead of showing the error to the user."
+		},
+		"autoCompactLimit": {
+			"type": "integer",
+			"minimum": 10,
+			"maximum": 100,
+			"default": 80,
+			"description": "Compaction target as percentage of history budget. Lower = more aggressive compaction. Used by both auto-compaction and /compact slash command."
 		}
-	},
 	"additionalProperties": false
 }

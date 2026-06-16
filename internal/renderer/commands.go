@@ -1,14 +1,17 @@
 package renderer
 
 import (
+	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/compat"
 	"github.com/riipandi/elph/internal/command"
+	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/internal/uiconst"
 	"github.com/riipandi/elph/pkg/ai/provider"
+	"github.com/riipandi/elph/pkg/core/agent"
 )
 
 var (
@@ -350,4 +353,54 @@ func (m Model) commandPaletteHeight() int {
 		return lipgloss.Height(view)
 	}
 	return 0
+}
+
+func (m Model) handleCompactHistory(result command.Result) Model {
+	history := m.session.History
+	if len(history) == 0 {
+		m = m.addDetailMessage("Compact history", "No conversation history to compact.")
+		return m.syncLayout(true)
+	}
+
+	before := len(history)
+	beforeBytes := 0
+	for _, msg := range history {
+		beforeBytes += len(msg.Content)
+	}
+
+	ratio := result.CompactRatio
+	if ratio <= 0 || ratio >= 100 {
+		if prefs, err := settings.Load(); err == nil {
+			ratio = prefs.CompactLimit()
+		} else {
+			ratio = 80 // fallback default
+		}
+	}
+
+	compacted := agent.CompactMessagesToRatio(history, ratio)
+	m.session.ApplyHistory(compacted)
+
+	after := len(compacted)
+	afterBytes := 0
+	for _, msg := range compacted {
+		afterBytes += len(msg.Content)
+	}
+
+	body := fmt.Sprintf("Reduced: %d → %d messages (%s → %s)",
+		before, after,
+		formatBytes(beforeBytes), formatBytes(afterBytes))
+	m = m.addDetailMessage("Compact history", body)
+	m.session.AppendLog("detail", body)
+	return m.syncLayout(true)
+}
+
+func formatBytes(b int) string {
+	switch {
+	case b < 1<<10:
+		return fmt.Sprintf("%dB", b)
+	case b < 1<<20:
+		return fmt.Sprintf("%.1fKB", float64(b)/(1<<10))
+	default:
+		return fmt.Sprintf("%.1fMB", float64(b)/(1<<20))
+	}
 }

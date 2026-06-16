@@ -147,6 +147,107 @@ func stripHistoryImages(messages []protocol.ChatMessage) []protocol.ChatMessage 
 	return messages
 }
 
+
+
+// CompactMessagesForContext aggressively reduces history when the provider
+// reports a context-limit error. Returns the compacted messages and whether
+// anything was removed.
+func CompactMessagesForContext(messages []protocol.ChatMessage, attempt int, ratio int) ([]protocol.ChatMessage, bool) {
+	if len(messages) == 0 {
+		return messages, false
+	}
+
+	// Start with standard compaction.
+	out := CompactMessages(messages)
+
+	var minMessages, minBytes int
+	var factor int
+	if ratio > 0 && ratio < 100 {
+		// Use explicit ratio (e.g., 50 = 50% of max).
+		minMessages = MaxHistoryMessages * ratio / 100
+		minBytes = MaxHistoryBytes * ratio / 100
+		factor = 100 / ratio // for proportional tool truncation
+	} else {
+		// Scale limits by attempt: each retry doubles aggressiveness.
+		factor = 1 << (attempt + 1) // 2, 4, 8, ...
+		minMessages = MaxHistoryMessages / factor
+		minBytes = MaxHistoryBytes / factor
+	}
+	if minMessages < 4 {
+		minMessages = 4
+	}
+	if minBytes < 16<<10 {
+		minBytes = 16 << 10 // 16KB floor
+	}
+
+	// Drop oldest turns while exceeding scaled limits.
+	changed := false
+	for historyUTF8Size(out) > minBytes || len(out) > minMessages {
+		next := removeOldestTurn(out)
+		if len(next) >= len(out) {
+			break
+		}
+		out = next
+		changed = true
+		if len(out) == 0 {
+			break
+		}
+	}
+
+	out = stripHistoryImages(out)
+
+	// More aggressive tool-result truncation.
+	var toolLimit int
+	if ratio > 0 && ratio < 100 {
+		toolLimit = MaxProviderToolBytes * ratio / 100
+	} else {
+		truncateFactor := factor * 2
+		toolLimit = MaxProviderToolBytes / truncateFactor
+	}
+	if toolLimit < 4<<10 {
+		toolLimit = 4 << 10 // 4KB floor for tool results
+	}
+	for i, msg := range out {
+		if msg.Role == "tool" && len(msg.Content) > toolLimit {
+			out[i].Content = TruncateWithNotice(msg.Content, toolLimit)
+			changed = true
+		}
+	}
+
+	return out, changed
+}
+
+// CompactMessagesToRatio compacts history to a target percentage of the default
+// history limits. ratio is 1-99, where 50 means compact to 50% of MaxHistoryBytes.
+func CompactMessagesToRatio(messages []protocol.ChatMessage, ratio int) []protocol.ChatMessage {
+	if ratio <= 0 || ratio >= 100 {
+		return CompactMessages(messages)
+	}
+
+	out := CompactMessages(messages)
+	targetBytes := MaxHistoryBytes * ratio / 100
+	targetMessages := MaxHistoryMessages * ratio / 100
+	if targetMessages < 4 {
+		targetMessages = 4
+	}
+	if targetBytes < 16<<10 {
+		targetBytes = 16 << 10
+	}
+
+	for historyUTF8Size(out) > targetBytes || len(out) > targetMessages {
+		next := removeOldestTurn(out)
+		if len(next) >= len(out) {
+			break
+		}
+		out = next
+		if len(out) == 0 {
+			break
+		}
+	}
+
+	return stripHistoryImages(out)
+}
+
 // ToolResultMessage formats a tool result for provider follow-up messages.
 func toolResultMessageLimited(result ToolRunResult) string {
 	limited := LimitToolRunResult(result, MaxProviderToolBytes)

@@ -35,6 +35,8 @@ type TurnOptions struct {
 	ProviderMaxRetries     int           // retriable failures to retry (0 = default)
 	ProviderDefaultTimeout time.Duration // provider inactivity limit (0 = default)
 	MaxToolIterations      int           // max autonomous tool rounds per turn (0 = default MaxToolIterationsDefault)
+	AutoCompactContext     bool          // compact conversation history on context-limit error and retry
+	AutoCompactLimit        int           // compaction target percentage (0 = use default 80)
 }
 
 // ProviderRetryConfig returns retry settings for upstream provider calls.
@@ -42,5 +44,7 @@ func (o TurnOptions) ProviderRetryConfig() ProviderRetryConfig {
 	return ProviderRetryConfig{
 		MaxRetries:         o.ProviderMaxRetries,
 		StreamStallTimeout: o.ProviderDefaultTimeout,
+		AutoCompactContext: o.AutoCompactContext,
+		AutoCompactLimit:   o.AutoCompactLimit,
 	}
 }

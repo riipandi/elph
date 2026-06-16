@@ -19,6 +19,9 @@ type Context struct {
 	ModelID         string
 	ModelName       string
 
+	CompactHistory  bool   // set by /compact handler
+	CompactRatio    int    // compaction target percentage
+
 	pendingSwitch         *ModelSwitch
 	pendingOpenSelector   bool
 	selectorCatalog       provider.Catalog
@@ -58,6 +61,8 @@ type Result struct {
 	DetailLabel       string
 	DetailBody        string
 	DetailExpanded    bool
+	CompactHistory    bool   // signal to hard-compact conversation history
+	CompactRatio      int    // compaction target percentage (0 = use default)
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
@@ -131,8 +136,10 @@ func Execute(input string, ctx Context) Result {
 			DetailLabel:       ctx.pendingDetailLabel,
 			DetailBody:        ctx.pendingDetailBody,
 			DetailExpanded:    ctx.pendingDetailExpanded,
+			CompactHistory:    ctx.CompactHistory,
+			CompactRatio:      ctx.CompactRatio,
 		}
-	}
+}
 
 	return Result{
 		Output: fmt.Sprintf("Unknown command: /%s\nType /help to see available commands.", name),

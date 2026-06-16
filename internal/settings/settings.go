@@ -36,6 +36,8 @@ type Settings struct {
 	Provider                 *ProviderSettings `json:"provider,omitempty"`
 	Session                  SessionSettings   `json:"session,omitempty"`
 	MaxToolIterations        *int              `json:"maxToolIterations,omitempty"`
+	AutoCompactContext        *bool             `json:"autoCompactContext,omitempty"`
+	AutoCompactLimit         *int              `json:"autoCompactLimit,omitempty"`
 }
 
 // ModelsSettings holds legacy settings migrated on load.
@@ -174,6 +176,14 @@ func (s Settings) withDefaults() Settings {
 		v := 0 // 0 = use DefaultMaxToolIterations in loop
 		s.MaxToolIterations = &v
 	}
+	if s.AutoCompactContext == nil {
+		v := true
+		s.AutoCompactContext = &v
+	}
+	if s.AutoCompactLimit == nil {
+		v := 80 // default 80%
+		s.AutoCompactLimit = &v
+	}
 	return s
 }
 
@@ -213,7 +223,29 @@ func (s Settings) ToolRoundsLimit() int {
 	return *cfg.MaxToolIterations
 }
 
-// ThinkingBudgetOverrides returns custom token budgets per thinking level.
+// AutoCompactContextEnabled reports whether the agent automatically compacts
+// conversation history and retries when the provider reports context-limit errors.
+func (s Settings) AutoCompactContextEnabled() bool {
+	cfg := s.withDefaults()
+	return cfg.AutoCompactContext != nil && *cfg.AutoCompactContext
+}
+
+// CompactLimit returns the compaction target percentage (1-100, default 80).
+func (s Settings) CompactLimit() int {
+	cfg := s.withDefaults()
+	if cfg.AutoCompactLimit == nil {
+		return 80
+	}
+	limit := *cfg.AutoCompactLimit
+	if limit < 10 {
+		return 10
+	}
+	if limit > 100 {
+		return 100
+	}
+	return limit
+}
+
 // ThinkingBudgetOverrides returns custom token budgets per thinking level.
 func (s Settings) ThinkingBudgetOverrides() map[string]int {
 	if len(s.ThinkingBudgets) == 0 {

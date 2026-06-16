@@ -208,6 +208,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		m.quitting = true
 		return m, tea.Sequence(disableTerminalFeatures(), tea.Quit), true
 	}
+	if result.CompactHistory {
+		return m.handleCompactHistory(result), nil, true
+	}
 	if label := strings.TrimSpace(result.DetailLabel); label != "" && strings.TrimSpace(result.DetailBody) != "" {
 		at := time.Now()
 		m = m.addDetailMessageAt(label, result.DetailBody, at)
