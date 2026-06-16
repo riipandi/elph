@@ -329,8 +329,12 @@ func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, 
 		b.WriteString("\n\n")
 		b.WriteString(box)
 	}
-	b.WriteString("\n\n")
-	b.WriteString(collapsibleHintLine(hPad, expanded))
+
+	if status != uiconst.DetailStatusRunning {
+		b.WriteString("\n\n")
+		b.WriteString(collapsibleHintLine(hPad, expanded))
+	}
+
 	return b.String()
 }
 
