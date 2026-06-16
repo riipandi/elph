@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Test
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['*']
+  pull_request:
+
+permissions: read-all
+
+env:
+  CI: true
+  LEFTHOOK: 0
+  CGO_ENABLED: 0
+
+jobs:
+  test:
+    name: Test
+    strategy:
+      matrix:
+        # @ref: https://github.com/actions/runner-images
+        os: [ubuntu-24.04, macos-14]
+        go-version: ['1.26.4']
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run actions/setup-sdk@local
+        uses: ./.github/setup-sdk
+        with:
+          goVersion: ${{ matrix.go-version }}
+
+      - name: Install required toolchain
+        run: |
+          github.com/pressly/goose/v3/cmd/elph/goose@latest
+          gotest.tools/gotestsum@latest
+
+      # - name: Setup Protobuf toolchain
+      #   uses: bufbuild/buf-action@v1
+      #   with:
+      #     github_token: ${{ github.token }}
+      #     setup_only: true
+
+      # - if: ${{ steps.pnpm-cache.outputs.cache-hit != 'true' }}
+      #   name: Install dependencies
+      #   run: |
+      #     pnpm install --ignore-scripts --frozen-lockfile
+      #     go mod download && go mod tidy
+      #     pnpm run generate:proto
+      #     # templ generate
+
+      - name: Setup golangci-lint toolchain
+        uses: golangci/golangci-lint-action@v9
+        with:
+          github-token: ${{ github.token }}
+          install-mode: binary
+          version: v2.12
+
+      # - name: Check code quality
+      #   run: |
+      #     pnpm exec oxfmt --check
+      #     pnpm exec oxfmt --write .
+      #     pnpm exec oxlint --fix .
+
+      - name: Check code quality
+        run: |
+          go vet ./...
+          golangci-lint run -c .golangci.yml ./...
+        env:
+          # GOEXPERIMENT: jsonv2
+          NODE_ENV: production
+
+      # - name: Run unit tests
+      #   run: pnpm exec vitest run
+
+      - name: Run unit tests
+        run: go test -v ./...
+        env:
+          # GOEXPERIMENT: jsonv2
+          NODE_ENV: production
+
+      - name: Build application binaries
+        run: make build
+        env:
+          # GOEXPERIMENT: jsonv2
+          NODE_ENV: production

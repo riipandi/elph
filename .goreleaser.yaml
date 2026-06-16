@@ -99,7 +99,7 @@ release:
 #       DOCKER_IMAGE: 'ghcr.io/riipandi/elph'
 #       BUILD_VERSION: '{{.Version}}'
 #       BUILD_HASH: '{{.Commit}}'
-#       GO_VERSION: 1.26.1
+#       GO_VERSION: 1.26.4
 #       PLATFORM: linux/amd64
 #       DISTROLESS_TAG: nonroot
 

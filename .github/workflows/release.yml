@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+# git tag --delete v0.0.1
+# git push origin --delete tag v0.0.1
+# git tag v0.0.1 -m "version bump"
+# git push origin v0.0.1
+
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+  packages: write
+
+# Cancel in progress workflows on pull_requests.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  LEFTHOOK: 0
+  CGO_ENABLED: 0
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run actions/setup-sdk@local
+        uses: ./.github/setup-sdk
+        with:
+          goVersion: 1.26.4
+
+      - name: Install required toolchain
+        run: |
+          github.com/pressly/goose/v3/cmd/elph/goose@latest
+          gotest.tools/gotestsum@latest
+
+      # - name: Setup Protobuf toolchain
+      #   uses: bufbuild/buf-action@v1
+      #   with:
+      #     github_token: ${{ github.token }}
+      #     setup_only: true
+
+      # - if: ${{ steps.pnpm-cache.outputs.cache-hit != 'true' }}
+      #   name: Install dependencies
+      #   run: |
+      #     pnpm install --ignore-scripts --frozen-lockfile
+      #     go mod download && go mod tidy
+      #     pnpm run generate:proto
+      #     # templ generate
+
+      - name: Setup golangci-lint toolchain
+        uses: golangci/golangci-lint-action@v9
+        with:
+          github-token: ${{ github.token }}
+          install-mode: binary
+          version: v2.12
+
+      - name: Check code quality
+        run: |
+          # pnpm exec oxfmt --check
+          # pnpm exec oxfmt --write .
+          # pnpm exec oxlint --fix .
+          go vet ./...
+          golangci-lint run -c .golangci.yml ./...
+        env:
+          # GOEXPERIMENT: jsonv2
+          NODE_ENV: production
+
+      # - name: Run unit tests (frontend)
+      #   run: pnpm exec vitest run
+
+      - name: Run unit tests (backend)
+        run: go test -v ./...
+        env:
+          # GOEXPERIMENT: jsonv2
+          NODE_ENV: production
+
+      # Code signing:
+      # @ref: https://github.com/goreleaser/goreleaser-action?tab=readme-ov-file#signing
+      # - name: Import GPG key
+      #   id: import_gpg
+      #   uses: crazy-max/ghaction-import-gpg@v6
+      #   with:
+      #     gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+      #     passphrase: ${{ secrets.PASSPHRASE }}
+
+      - name: Run GoReleaser
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          args: release --clean --skip=validate
+          version: 2.14.3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
