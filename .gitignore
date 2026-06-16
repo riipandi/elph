@@ -67,4 +67,6 @@ terraform.tfvars*
 
 # Hugo
 .hugo_build.lock
+docsite/docsite/
 docsite/public/
+/public/

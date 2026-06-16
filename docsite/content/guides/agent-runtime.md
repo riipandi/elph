@@ -1,7 +1,7 @@
 ---
 title: Agent Runtime
 summary: "How a user message becomes a provider completion."
-weight: 100
+weight: 20
 ---
 
 How a user message becomes a provider completion, tool execution, and TUI update.

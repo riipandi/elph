@@ -1,7 +1,7 @@
 ---
 title: TUI Layout Docs
 summary: "Terminal UI layout, keybindings, and component reference."
-weight: 100
+weight: 50
 ---
 
 ## Layout

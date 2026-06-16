@@ -1,7 +1,7 @@
 ---
 title: Architecture
 summary: "High-level map of the Elph codebase."
-weight: 100
+weight: 10
 ---
 
 High-level map of the Elph codebase. Module: `github.com/riipandi/elph` (Go 1.26). Binary: `elph` from `cmd/elph`.

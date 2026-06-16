@@ -1,7 +1,7 @@
 ---
 title: Prompt Templates
 summary: "Reusable Markdown prompt templates."
-weight: 100
+weight: 70
 ---
 
 Prompt templates are Markdown snippets that expand into full prompts. Type `/name` in the TUI input

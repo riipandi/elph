@@ -18,11 +18,7 @@
   display: flex;
   padding: var(--padding_d2) var(--padding);
   justify-content: space-between;
-
-  position: sticky;
-  top: 0;
   z-index: 10;
-
   background: var(--background-subtle);
   backdrop-filter: blur(var(--blur));
 }
@@ -94,6 +90,8 @@
   flex-direction: column;
   flex: 1;
   padding: var(--padding) var(--padding_x2);
+  width: 100%;
+  max-width: 920px;
   overflow-x: auto;
 }
 
@@ -429,7 +427,7 @@
   }
 }
 
-/* From Large Tablet */
+/* ─── From Large Tablet (>= 1024px) ────────────────────────────────────── */
 @media (min-width: 1024px) {
   #article-nav {
     background: none;

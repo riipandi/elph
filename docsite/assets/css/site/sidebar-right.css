@@ -52,10 +52,13 @@
   padding: 0 var(--padding);
 }
 
+#TableOfContents {
+  overflow-y: auto;
+}
+
 #TableOfContents ul {
   border-left: 1px solid var(--border);
 }
-
 #TableOfContents a {
   color: var(--color-nav);
   display: inline-block;
@@ -88,11 +91,10 @@
 }
 
 #TableOfContents a.active {
-  border-top-right-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
-
-  background: var(--primary);
-  color: var(--color-primary);
+  color: var(--color);
+  font-weight: 600;
+  border-left: 2px solid var(--color);
+  margin-left: -1px;
 }
 
 #TableOfContents ul a.active::before {
@@ -100,9 +102,7 @@
 }
 
 #TableOfContents a:hover:not(.active) {
-  background: var(--background-hover);
-  border-top-right-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
+  color: var(--color);
 }
 
 #TableOfContents ul ul {
@@ -117,24 +117,36 @@
   }
 }
 
-/* From Large Tablet */
+/* ─── From Large Tablet (>= 1024px) ────────────────────────────────────── */
 @media (min-width: 1024px) {
   #right-sidebar {
-    width: 25%;
     display: flex;
     flex-direction: column;
     position: sticky;
-    top: var(--site-header-height);
+    top: calc(var(--site-header-height) + 1rem);
     height: auto;
-    max-height: calc(100svh - var(--site-header-height));
-    overflow-x: auto;
+    max-height: calc(100svh - var(--site-header-height) - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 
     flex-shrink: 0;
     align-self: start;
+
+    padding-top: 0.25rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--border);
   }
 
   #right-sidebar > div {
     display: none;
+  }
+
+  #right-sidebar header h3 {
+    padding: 0 0 0.5rem;
+  }
+
+  #right-sidebar > nav {
+    padding: 0;
   }
 }
 

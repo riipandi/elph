@@ -1,7 +1,7 @@
 ---
 title: Slash Commands
 summary: "Built-in slash command reference."
-weight: 100
+weight: 60
 ---
 
 Type `/` in the TUI input to invoke commands. Built-in commands are defined in

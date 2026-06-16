@@ -1,6 +1,25 @@
+{{- $firstPage := index (.Pages.ByWeight) 0 -}}
+{{- if $firstPage -}}
 <!DOCTYPE html>
 <html lang="{{ site.Language.Locale | default `en-US` }}">
-
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ $firstPage.Title | .RenderString }} · {{ site.Title | .RenderString }}</title>
+	<meta http-equiv="refresh" content="0; url={{ $firstPage.RelPermalink }}">
+	<link rel="canonical" href="{{ $firstPage.Permalink }}">
+	{{ partial "favicons.html" . }}
+	{{ partial "og-x-seo.html" . }}
+</head>
+<body>
+	<p style="padding:2rem;text-align:center;font-family:system-ui,sans-serif;color:var(--ink, #333);">
+		Redirecting to <a href="{{ $firstPage.RelPermalink }}">{{ $firstPage.Title }}</a>…
+	</p>
+</body>
+</html>
+{{- else -}}
+<!DOCTYPE html>
+<html lang="{{ site.Language.Locale | default `en-US` }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +33,7 @@
 
   {{ $css := slice
     (resources.Get "css/reset.css")
+    (resources.Get "css/theme.css")
     (resources.Get "css/landing.css")
     (resources.Get "css/docs-layout.css")
   | resources.Concat "assets/css/docs.css" | minify | fingerprint }}
@@ -23,7 +43,6 @@
   {{ partial "analytics.html" . }}
   {{ partial "og-x-seo.html" . }}
 </head>
-
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
@@ -49,15 +68,6 @@
         {{ . | safeHTML }}
       </div>
       {{ end }}
-
-      <div class="docs-card-grid">
-        {{ range .Pages.ByWeight }}
-        <a class="docs-card" href="{{ .RelPermalink }}">
-          <strong>{{ .Title }}</strong>
-          {{ with .Params.summary }}<span>{{ . }}</span>{{ end }}
-        </a>
-        {{ end }}
-      </div>
     </main>
 
     {{ partial "site/right-sidebar.html" . }}
@@ -67,8 +77,12 @@
 
   {{ partial "site/footer.html" . }}
 
-  <script src="{{ "js/site/color-preference.js" | absURL }}"></script>
-  <script src="{{ "js/site/table-of-contents.js" | absURL }}"></script>
-  <script src="{{ "js/site/off-canvas.js" | absURL }}"></script>
+  {{ $js := slice
+    (resources.Get "js/site/color-preference.js")
+    (resources.Get "js/site/table-of-contents.js")
+    (resources.Get "js/site/off-canvas.js")
+  | resources.Concat "assets/js/docs.js" | minify | fingerprint }}
+  <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.integrity }}"></script>
 </body>
 </html>
+{{- end -}}

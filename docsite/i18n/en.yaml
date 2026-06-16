@@ -45,3 +45,9 @@ backToHome:
 
 backToTop:
   other: Back to top
+
+pageNotFound:
+  other: Page not found
+
+pageNotFoundText:
+  other: The page you are looking for was not found.

@@ -1,7 +1,7 @@
 ---
 title: CLI Reference
 summary: "Command reference for the elph binary."
-weight: 100
+weight: 40
 ---
 
 Elph ships as the `elph` binary (`make build` → `build/release/elph`).

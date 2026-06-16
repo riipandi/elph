@@ -41,7 +41,7 @@ body {
 }
 
 .page {
-  width: min(1180px, calc(100% - 2rem));
+  width: min(1320px, calc(100% - 2rem));
   margin: 0 auto;
 }
 

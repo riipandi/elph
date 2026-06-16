@@ -17,6 +17,7 @@
 
   {{ $css := slice
     (resources.Get "css/reset.css")
+    (resources.Get "css/theme.css")
     (resources.Get "css/landing.css")
     (resources.Get "css/docs-layout.css")
   | resources.Concat "assets/css/docs.css" | minify | fingerprint }}
@@ -27,11 +28,8 @@
   {{ partial "og-x-seo.html" . }}
 </head>
 
-<body>
   <a class="skip-link" href="#main">Skip to content</a>
-
   {{ partial "site/nav.html" . }}
-
   <div id="docs-wrapper">
     {{ if index hugo.Data site.Language.Lang .Section "sidebar" }}
       {{ partial "site/left-sidebar.html" . }}
@@ -69,8 +67,11 @@
 
   {{ partial "site/footer.html" . }}
 
-  <script src="{{ "js/site/color-preference.js" | absURL }}"></script>
-  <script src="{{ "js/site/table-of-contents.js" | absURL }}"></script>
-  <script src="{{ "js/site/off-canvas.js" | absURL }}"></script>
+  {{ $js := slice
+    (resources.Get "js/site/color-preference.js")
+    (resources.Get "js/site/table-of-contents.js")
+    (resources.Get "js/site/off-canvas.js")
+  | resources.Concat "assets/js/docs.js" | minify | fingerprint }}
+  <script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.integrity }}"></script>
 </body>
 </html>

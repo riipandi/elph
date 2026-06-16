@@ -3,7 +3,7 @@
 #docs-wrapper {
   display: flex;
   flex: 1;
-  width: min(1180px, calc(100% - 2rem));
+  width: min(1320px, calc(100% - 2rem));
   margin: 0 auto;
   gap: 1.5rem;
   padding: 2rem 0 3rem;
@@ -79,7 +79,7 @@
 #docs-content {
   flex: 1;
   min-width: 0;
-  max-width: 860px;
+  max-width: 960px;
   color: var(--ink);
   line-height: 1.7;
   font-size: 1rem;
@@ -237,7 +237,15 @@
   margin: 1rem 0;
 }
 
-/* Article nav (prev/next + toc toggle) */
+/* ─── Article body content width ─────────────────────────────────────────── */
+
+#article-body {
+  width: 100%;
+  max-width: 960px;
+}
+
+/* ─── Article nav (prev/next + toc toggle) ────────────────────────────────── */
+
 #article-nav {
   display: flex;
   justify-content: space-between;
@@ -265,14 +273,15 @@
   color: var(--ink);
 }
 
-/* Article cover */
+/* ─── Article cover ───────────────────────────────────────────────────────── */
+
 #article-cover {
   width: 100%;
   border-radius: var(--radius);
   margin-bottom: 1.5rem;
 }
 
-/* ─── Article pagination ──────────────────────────────────────────────── */
+/* ─── Article pagination ────────────────────────────────────────────────── */
 
 .article-pagination {
   display: flex;
@@ -324,14 +333,27 @@
   fill: currentColor;
   flex-shrink: 0;
 }
-/* ─── Right sidebar (ToC) ───────────────────────────────────────────────── */
+
+/* ─── Right sidebar (ToC) — floating, follows scroll ─────────────────────── */
 
 #right-sidebar {
-  width: 220px;
+  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
+
+  /* Floating sticky — follows the reader as they scroll */
+  position: sticky;
+  top: 1.5rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  /* Separator from main content */
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--line);
 }
 
 #right-sidebar > div {
@@ -363,22 +385,26 @@
 
 #right-sidebar nav a {
   display: block;
-  padding: 0.25rem 0;
+  padding: 0.28rem 0;
   font-size: 0.84rem;
   color: var(--muted);
   text-decoration: none;
-  transition: color 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  border-left: 2px solid transparent;
+  padding-left: 0.5rem;
+  margin-left: -1px;
 }
 
 #right-sidebar nav a:hover,
 #right-sidebar nav a.active {
   color: var(--ink);
+  border-left-color: var(--accent);
 }
 
 /* Back to top */
 #back-to-top {
   display: inline-block;
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   font-size: 0.82rem;
   color: var(--blue);
   text-decoration: underline;
@@ -395,8 +421,58 @@ body.model-open {
   overflow: hidden;
 }
 
+/* ─── Off-canvas sidebar panels ─────────────────────────────────────────── */
+
+#left-sidebar.open,
+#right-sidebar.open {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  height: 100%;
+  z-index: 20;
+  background: var(--surface);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+  animation: slide-in 0.3s forwards;
+}
+
+#left-sidebar.open {
+  width: min(380px, 85vw);
+  left: 0;
+}
+
+#right-sidebar.open {
+  width: min(380px, 85vw);
+  right: 0;
+  padding: 0;
+  border-left: none;
+  position: fixed;
+}
+
+#left-sidebar.open > div,
+#right-sidebar.open > div {
+  display: flex;
+  padding: 0.75rem;
+  justify-content: flex-end;
+}
+
+#right-sidebar.open > nav {
+  padding: 0 0.75rem;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
 /* ─── Section index page — card grid ──────────────────────────────────── */
+
 .docs-card-grid {
   display: grid;
   gap: 0.75rem;
@@ -429,8 +505,10 @@ body.model-open {
   color: var(--muted);
   font-size: 0.92rem;
 }
+
 /* ─── Responsive ────────────────────────────────────────────────────────── */
 
+/* Tablet: hide sidebars, article takes full width */
 @media (max-width: 1024px) {
   #docs-wrapper {
     flex-direction: column;
@@ -449,6 +527,10 @@ body.model-open {
   #docs-content {
     max-width: 100%;
     padding: 0;
+  }
+
+  #article-body {
+    max-width: 100%;
   }
 
   #docs-content h1 {
@@ -472,10 +554,32 @@ body.model-open {
   #docs-content td {
     padding: 0.35rem 0.5rem;
   }
+
+/* Desktop: hide article-nav (sidebars are inline) */
+@media (min-width: 1280px) {
+  #article-nav {
+    display: none;
+  }
 }
 
+/* Small mobile: article-nav sticks to top for sidebar access */
+@media (max-width: 743px) {
+  #article-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface);
+    backdrop-filter: blur(8px);
+    margin: 0 calc(-1 * 1rem);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* ─── Fallback class (used on list / index pages) ──────────────────────── */
+
 .docs-content {
-  max-width: 860px;
+  max-width: 960px;
   padding: 2rem 1rem 3rem;
   color: var(--ink);
   line-height: 1.7;

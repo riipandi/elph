@@ -1,7 +1,7 @@
 ---
 title: Built-in Tools
 summary: "Built-in tools catalog, exposure rules, execution, and approvals."
-weight: 100
+weight: 30
 ---
 
 See also: [Agent Runtime](/guides/agent-runtime/) (execution flow), [Slash Commands](/guides/slash-commands/) (diagnostic helpers).

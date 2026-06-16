@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.Locale | default `en-US` }}">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex">
+	<title>{{ i18n "pageNotFound" | default "Page not found" }} · {{ site.Title | .RenderString }}</title>
+	<link rel="canonical" href="{{ site.Home.Permalink }}">
+
+	{{ $css := slice
+		(resources.Get "css/reset.css")
+		(resources.Get "css/theme.css")
+		(resources.Get "css/landing.css")
+	| resources.Concat "assets/css/404.css" | minify | fingerprint }}
+	<link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.integrity }}">
+
+	{{ partial "favicons.html" . }}
+	{{ partial "analytics.html" . }}
+</head>
+<body>
+	{{ partial "site/nav.html" . }}
+
+	<main id="main" class="page" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100svh - 200px);text-align:center;gap:0.5rem;padding:3rem 1rem;">
+		<p style="font-size:5rem;font-weight:900;line-height:1;letter-spacing:-0.04em;color:var(--ink);margin:0;">404</p>
+		<p style="font-size:1.25rem;color:var(--muted);margin:0 0 1.5rem;max-width:28rem;">
+			{{ i18n "pageNotFoundText" | default "The page you are looking for was not found." }}
+		</p>
+		<a class="button primary" href="{{ site.Home.Permalink }}">{{ i18n "backToHome" | default "Back to home" }}</a>
+	</main>
+
+	{{ partial "site/footer.html" . }}
+</body>
+</html>

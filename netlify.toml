@@ -10,10 +10,16 @@
   command = """\
   git config core.quotepath false && \
   hugo build --config ./docsite/hugo.yaml --gc --minify --baseURL "${URL}" && \
-	cp ./schemas/*.json ./docsite/public/
+	cp ./schemas/*.json ./docsite/public/ && \
+	cp ./install.sh ./docsite/public/
   """
 
 [[redirects]]
 	from = "/*"
 	to = "/404/"
 	status = 404
+
+[[redirects]]
+	from = "/install"
+	to = "/install.sh"
+	status = 200
