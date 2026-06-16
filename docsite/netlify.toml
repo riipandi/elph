@@ -10,7 +10,7 @@
   command = """\
   git config core.quotepath false && \
   hugo build --gc --minify --baseURL "${URL}" && \
-	cp schemas/*.json docsite/public/
+	cp ../schemas/*.json ./public/
   """
 
 [[redirects]]
