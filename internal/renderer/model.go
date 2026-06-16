@@ -133,6 +133,7 @@ type Model struct {
 	pendingAttachments []inputAttachment
 	useRawPaste        bool
 	stickyScroll       bool
+	footerTokenDisplay string
 
 	inputPastes map[int]string
 	nextPasteID int
@@ -225,9 +226,10 @@ func New() Model {
 			ThinkingMsgID: -1,
 			ResponseMsgID: -1,
 		},
-		branch:       "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
-		useRawPaste:  prefs.UseRawPasteEnabled(),
-		stickyScroll: prefs.StickyScrollEnabled(),
+		branch:             "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
+		useRawPaste:        prefs.UseRawPasteEnabled(),
+		stickyScroll:       prefs.StickyScrollEnabled(),
+		footerTokenDisplay: string(prefs.FooterTokenDisplayMode()),
 	}
 	m = m.syncActiveModelMetadata()
 	if model, ok := m.session.Catalog.Model(m.session.ProviderID, m.session.ModelID); ok {

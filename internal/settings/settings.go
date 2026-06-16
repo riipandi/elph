@@ -38,6 +38,7 @@ type Settings struct {
 	MaxToolIterations        *int              `json:"maxToolIterations,omitempty"`
 	AutoCompactContext       *bool             `json:"autoCompactContext,omitempty"`
 	AutoCompactLimit         *int              `json:"autoCompactLimit,omitempty"`
+	FooterTokenDisplay       string            `json:"footerTokenDisplay,omitempty"`
 }
 
 // ModelsSettings holds legacy settings migrated on load.
@@ -184,6 +185,9 @@ func (s Settings) withDefaults() Settings {
 		v := 80 // default 80%
 		s.AutoCompactLimit = &v
 	}
+	if s.FooterTokenDisplay == "" {
+		s.FooterTokenDisplay = string(FooterTokenBoth)
+	}
 	return s
 }
 
@@ -244,6 +248,11 @@ func (s Settings) CompactLimit() int {
 		return 100
 	}
 	return limit
+}
+
+// FooterTokenDisplayMode returns the footer token display mode, defaulting to "both".
+func (s Settings) FooterTokenDisplayMode() FooterTokenDisplay {
+	return ParseFooterTokenDisplay(s.withDefaults().FooterTokenDisplay)
 }
 
 // ThinkingBudgetOverrides returns custom token budgets per thinking level.

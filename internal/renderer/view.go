@@ -624,7 +624,7 @@ func (m Model) footerView() string {
 	ctxFrac := m.displayContextFraction()
 	ctxColor := uiconst.ContextUsageColor(ctxFrac)
 	ctxSty := lipgloss.NewStyle().Foreground(ctxColor)
-	line1Right := ctxSty.Render(fmt.Sprintf("%s | %.1f%% (%s)", m.footerCostLabel(), ctxFrac*100, m.contextWindowLabel()))
+	line1Right := ctxSty.Render(fmt.Sprintf("%s | %s", m.footerCostLabel(), m.footerTokenUsageLabel(ctxFrac, m.tokensUsed)))
 
 	modeSty := lipgloss.NewStyle().Foreground(uiconst.ModeBorderColor(m.mode)).Bold(true)
 	line2Left := primaryBoldSty.Render(wd) + sidSty.Render(fmt.Sprintf(" [%s] ", sidVal)) + modeSty.Render(string(m.mode))
