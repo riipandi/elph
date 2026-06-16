@@ -49,3 +49,16 @@ func writeTestPNG(t *testing.T, path string, w, h int) {
 	defer f.Close()
 	require.NoError(t, png.Encode(f, img))
 }
+
+func TestExecuteReadMediaFileOnDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "subdir")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+
+	result := ExecuteTool(context.Background(), dir, tools.ReadMediaFile, map[string]any{
+		"path": "subdir",
+	})
+	require.Error(t, result.Err)
+	require.Contains(t, result.Err.Error(), "is a directory")
+}

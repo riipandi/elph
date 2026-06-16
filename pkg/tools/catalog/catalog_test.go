@@ -16,11 +16,11 @@ func TestBuiltinCatalogMatchesDocs(t *testing.T) {
 		description          string
 		requiresConfirmation bool
 	}{
-		{Read, CategoryFile, ApprovalAutoAllow, "Read a text file's contents", false},
-		{Write, CategoryFile, ApprovalRequiresApproval, "Create or overwrite a file", false},
-		{Edit, CategoryFile, ApprovalRequiresApproval, "Precise string replacement", false},
+		{Read, CategoryFile, ApprovalAutoAllow, "Read a text file. Fails on directories — use Glob first to find files inside a directory", false},
+		{Write, CategoryFile, ApprovalRequiresApproval, "Create or overwrite a file. Fails if the path is an existing directory", false},
+		{Edit, CategoryFile, ApprovalRequiresApproval, "Edit a file using string replacement. Fails on directories — only use on existing files", false},
 		{Grep, CategoryFile, ApprovalAutoAllow, "ripgrep powered full-text search", false},
-		{Glob, CategoryFile, ApprovalAutoAllow, "Find files by glob pattern", false},
+		{Glob, CategoryFile, ApprovalAutoAllow, "Find files and list directory contents by glob pattern. Use pattern 'dir/**' to recursively list all files in a directory. Often used before Read to explore unknown paths", false},
 		{ReadMediaFile, CategoryFile, ApprovalAutoAllow, "Read an image or video file", false},
 		{Bash, CategoryShell, ApprovalRequiresApproval, "Execute a shell command", false},
 		{FetchURL, CategoryWeb, ApprovalAutoAllow, "Fetch the content of a specified URL", false},

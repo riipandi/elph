@@ -35,7 +35,7 @@ func TestBuildIncludesDynamicTools(t *testing.T) {
 	require.Contains(t, got, "## Available Tools")
 	require.Contains(t, got, "### File Tools")
 	require.Contains(t, got, "File tools handle reading, writing, and searching the local filesystem")
-	require.Contains(t, got, "- Read (auto-allow): Read a text file's contents")
+	require.Contains(t, got, "- Read (auto-allow): Read a text file. Fails on directories")
 	require.Contains(t, got, "- Grep (auto-allow):")
 	require.Contains(t, got, "- Glob (auto-allow):")
 	require.Contains(t, got, "### Shell Tools")
@@ -57,7 +57,7 @@ func TestBuildRespectsToolFilter(t *testing.T) {
 	require.True(t, ok)
 
 	got := Build(Options{Tools: []Entry{EntryFromBuiltin(read)}})
-	require.Contains(t, got, "- Read (auto-allow): Read a text file's contents")
+	require.Contains(t, got, "- Read (auto-allow): Read a text file. Fails on directories")
 	require.NotContains(t, got, "- Bash (")
 	require.Contains(t, got, "- DiagnosticListTools (auto-allow):")
 }
@@ -182,8 +182,10 @@ func TestBuildCompactSpacing(t *testing.T) {
 	got := Build(Options{})
 
 	require.NotContains(t, got, "\n\n\n")
+	require.NotContains(t, got, "\n\n\n")
 	require.Contains(t, got, "writing files.\n\n## Output")
-	require.Contains(t, got, "show paths clearly.\n\n## Available Tools")
+	require.Contains(t, got, "show paths clearly.\n\n## File Operations")
+	require.Contains(t, got, "Glob first.\n\n## Available Tools")
 	require.Contains(t, got, "## Available Tools\n\n### File Tools")
 	require.Contains(t, got, "### Shell Tools")
 	require.Contains(t, got, "### State Management")

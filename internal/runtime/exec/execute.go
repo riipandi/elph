@@ -89,6 +89,11 @@ func executeRead(workDir string, args map[string]any) toolresult.ToolResult {
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
 	}
+	if dir, dirErr := checkIsDirectory(full); dirErr == nil && dir {
+		return toolresult.ToolResult{
+			Err: fmt.Errorf("%s is a directory — use Glob with pattern %q to list its contents", path, path+"/**"),
+		}
+	}
 	data, err := os.ReadFile(full)
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
@@ -113,6 +118,11 @@ func executeWrite(workDir string, args map[string]any) toolresult.ToolResult {
 	full, err := resolveWorkPath(workDir, path)
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
+	}
+	if dir, dirErr := checkIsDirectory(full); dirErr == nil && dir {
+		return toolresult.ToolResult{
+			Err: fmt.Errorf("%s is a directory — cannot write to a directory path; use a file path or remove the directory first", path),
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		return toolresult.ToolResult{Err: err}
@@ -140,6 +150,11 @@ func executeEdit(workDir string, args map[string]any) toolresult.ToolResult {
 	full, err := resolveWorkPath(workDir, path)
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
+	}
+	if dir, dirErr := checkIsDirectory(full); dirErr == nil && dir {
+		return toolresult.ToolResult{
+			Err: fmt.Errorf("%s is a directory — cannot edit a directory, use Glob with pattern %q to explore", path, path+"/**"),
+		}
 	}
 	data, err := os.ReadFile(full)
 	if err != nil {
@@ -393,4 +408,16 @@ func resolveWorkPath(workDir, path string) (string, error) {
 		return filepath.Clean(path), nil
 	}
 	return filepath.Clean(filepath.Join(workDir, path)), nil
+}
+
+// checkIsDirectory reports whether the given path exists and is a directory.
+func checkIsDirectory(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return info.IsDir(), nil
 }

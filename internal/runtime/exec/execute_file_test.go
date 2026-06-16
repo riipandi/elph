@@ -214,3 +214,47 @@ func TestExecuteGlobSimpleAndRecursive(t *testing.T) {
 	require.NotContains(t, scoped.Output, "root.go")
 	require.Contains(t, scoped.Output, "main.go")
 }
+
+func TestExecuteReadOnDirectory(t *testing.T) {
+	t.Parallel()
+	wd := t.TempDir()
+	sub := filepath.Join(wd, "subdir")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(sub, "file.txt"), []byte("content"), 0o644))
+
+	result := ExecuteTool(context.Background(), wd, tools.Read, map[string]any{
+		"path": "subdir",
+	})
+	require.Error(t, result.Err)
+	require.Contains(t, result.Err.Error(), "is a directory")
+	require.Contains(t, result.Err.Error(), "Glob")
+}
+
+func TestExecuteEditOnDirectory(t *testing.T) {
+	t.Parallel()
+	wd := t.TempDir()
+	sub := filepath.Join(wd, "subdir")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+
+	result := ExecuteTool(context.Background(), wd, tools.Edit, map[string]any{
+		"path":       "subdir",
+		"old_string": "x",
+		"new_string": "y",
+	})
+	require.Error(t, result.Err)
+	require.Contains(t, result.Err.Error(), "is a directory")
+}
+
+func TestExecuteWriteOnDirectory(t *testing.T) {
+	t.Parallel()
+	wd := t.TempDir()
+	sub := filepath.Join(wd, "subdir")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+
+	result := ExecuteTool(context.Background(), wd, tools.Write, map[string]any{
+		"path":     "subdir",
+		"contents": "hello",
+	})
+	require.Error(t, result.Err)
+	require.Contains(t, result.Err.Error(), "directory")
+}

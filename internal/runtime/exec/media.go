@@ -18,6 +18,11 @@ func executeReadMediaFile(workDir string, args map[string]any) toolresult.ToolRe
 	if err != nil {
 		return toolresult.ToolResult{Err: err}
 	}
+	if dir, dirErr := checkIsDirectory(full); dirErr == nil && dir {
+		return toolresult.ToolResult{
+			Err: fmt.Errorf("%s is a directory — use ReadMediaFile on a specific file, not a directory", path),
+		}
+	}
 	data, mime, width, height, err := mediaimage.ReadPath(full)
 	if err != nil {
 		if errors.Is(err, mediaimage.ErrVideoUnsupported) {

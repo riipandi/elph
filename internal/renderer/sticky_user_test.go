@@ -185,7 +185,8 @@ func TestRenderUserStickyIsCompactCollapsed(t *testing.T) {
 }
 
 func TestRenderUserStickyTitleAndTimestampUseDistinctStyles(t *testing.T) {
-	at := time.Date(2026, 6, 15, 9, 30, 0, 0, time.Local)
+	now := time.Now()
+	at := time.Date(now.Year(), now.Month(), now.Day(), 9, 30, 0, 0, time.Local)
 	raw := renderUserSticky(60, "hello\nworld", at)
 
 	require.Contains(t, raw, uiconst.StickyUserTitleStyle().Render("▸ hello"))
