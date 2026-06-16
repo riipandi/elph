@@ -15,7 +15,7 @@ func (c Compat) supportsDeveloperRole() bool {
 	if c.SupportsDeveloperRole != nil {
 		return *c.SupportsDeveloperRole
 	}
-	return true
+	return false
 }
 
 func (c Compat) supportsReasoningEffort() bool {

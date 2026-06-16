@@ -127,7 +127,7 @@ func primaryTemplates() []bootstrapTemplate {
 				AuthHeader: true,
 				Compat: Compat{
 					ThinkingFormat:          string(ThinkingFormatQwen),
-					SupportsReasoningEffort: compatBool(false),
+					SupportsReasoningEffort: new(false),
 				},
 				Models: []ModelConfig{
 					{
@@ -178,7 +178,7 @@ func primaryTemplates() []bootstrapTemplate {
 				AuthHeader: true,
 				Compat: Compat{
 					ThinkingFormat:          string(ThinkingFormatQwen),
-					SupportsReasoningEffort: compatBool(false),
+					SupportsReasoningEffort: new(false),
 				},
 				Models: []ModelConfig{
 					{
@@ -207,7 +207,7 @@ func primaryTemplates() []bootstrapTemplate {
 				APIKey:     "env.DEEPSEEK_API_KEY",
 				AuthHeader: true,
 				Compat: Compat{
-					SupportsDeveloperRole: compatBool(false),
+					SupportsDeveloperRole: new(false),
 				},
 				Models: []ModelConfig{
 					{
@@ -267,7 +267,7 @@ func primaryTemplates() []bootstrapTemplate {
 				APIKey:     "env.MOONSHOT_API_KEY",
 				AuthHeader: true,
 				Compat: Compat{
-					SupportsDeveloperRole: compatBool(false),
+					SupportsDeveloperRole: new(false),
 				},
 				Models: []ModelConfig{
 					{

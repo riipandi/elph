@@ -65,7 +65,7 @@ func TestResolveThinkingOpenCodeGatewayUsesEnableThinking(t *testing.T) {
 		Reasoning: true,
 		Compat: Compat{
 			ThinkingFormat:          string(ThinkingFormatQwen),
-			SupportsReasoningEffort: compatBool(false),
+			SupportsReasoningEffort: new(false),
 		},
 	}
 	cfg := ResolveThinking(model, protocol.ThinkingHigh, nil)

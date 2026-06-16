@@ -85,18 +85,26 @@ func truncateHistoryMessage(msg protocol.ChatMessage) protocol.ChatMessage {
 }
 
 // removeOldestTurn drops the first user turn (user + following assistant/tool messages).
+// It ensures tool messages are never orphaned: if the first message is not a user,
+// it skips all non-user messages until the first user turn, so paired
+// assistant(tool_calls) → tool responses are removed as a unit.
 func removeOldestTurn(messages []protocol.ChatMessage) []protocol.ChatMessage {
 	if len(messages) == 0 {
 		return nil
 	}
-	if messages[0].Role != "user" {
-		if len(messages) == 1 {
-			return nil
-		}
-		return messages[1:]
+
+	// When the first message is not a user (e.g. after prior compaction removed users),
+	// skip all non-user messages to find the first user turn boundary. This prevents
+	// orphaning tool messages by removing just their preceding assistant(tool_calls).
+	start := 0
+	for start < len(messages) && messages[start].Role != "user" {
+		start++
+	}
+	if start >= len(messages) {
+		return nil
 	}
 
-	i := 1
+	i := start + 1
 	for i < len(messages) && messages[i].Role != "user" {
 		i++
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/riipandi/elph/pkg/jsoncfg"
 )
 
-func compatBool(v bool) *bool { return &v }
+func new(v bool) *bool { return &v }
 
 // BackfillThinkingResult reports provider files that gained thinking metadata.
 type BackfillThinkingResult struct {
@@ -43,18 +43,20 @@ func gatewayThinkingCompat(providerID string, cfg FileConfig) (Compat, bool) {
 	case "opencode", "opencode-go":
 		return Compat{
 			ThinkingFormat:          string(ThinkingFormatQwen),
-			SupportsReasoningEffort: compatBool(false),
+			SupportsReasoningEffort: new(false),
+			SupportsDeveloperRole:   new(false),
 		}, true
 	case "deepseek", "kimi":
 		return Compat{
-			SupportsDeveloperRole: compatBool(false),
+			SupportsDeveloperRole: new(false),
 		}, true
 	default:
 		base := strings.ToLower(strings.TrimSpace(cfg.BaseURL))
 		if strings.Contains(base, "opencode.ai/") {
 			return Compat{
 				ThinkingFormat:          string(ThinkingFormatQwen),
-				SupportsReasoningEffort: compatBool(false),
+				SupportsReasoningEffort: new(false),
+				SupportsDeveloperRole:   new(false),
 			}, true
 		}
 	}

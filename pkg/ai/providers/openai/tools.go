@@ -32,6 +32,11 @@ func chatTools(tools []provider.ToolDefinition) []openaisdk.ChatCompletionToolUn
 }
 
 func chatMessages(systemPrompt string, messages []provider.ChatMessage, thinking provider.ThinkingConfig, compat provider.Compat) []openaisdk.ChatCompletionMessageParamUnion {
+	// Sanitize: remove orphaned tool messages whose tool_call_id doesn't match
+	// a preceding assistant's tool_calls. DeepSeek and other OpenAI-compatible
+	// APIs reject tool messages without a matching parent.
+	messages = sanitizeToolMessages(messages)
+
 	capacity := len(messages)
 	if strings.TrimSpace(systemPrompt) != "" {
 		capacity++
@@ -70,6 +75,46 @@ func chatMessages(systemPrompt string, messages []provider.ChatMessage, thinking
 			out = append(out, openaisdk.ToolMessage(msg.Content, msg.ToolCallID))
 		default:
 			out = append(out, userMessageParam(msg))
+		}
+	}
+	return out
+}
+
+// sanitizeToolMessages removes tool messages whose tool_call_id doesn't match
+// any preceding assistant message's tool_calls. This prevents provider API
+// errors from orphaned tool messages (e.g. after history compaction).
+func sanitizeToolMessages(messages []provider.ChatMessage) []provider.ChatMessage {
+	var activeIDs []string
+	out := make([]provider.ChatMessage, 0, len(messages))
+	for _, msg := range messages {
+		if msg.Role == "assistant" {
+			// Collect IDs from this assistant's tool_calls.
+			activeIDs = nil
+			for _, call := range msg.ToolCalls {
+				if call.ID != "" {
+					activeIDs = append(activeIDs, call.ID)
+				}
+			}
+			out = append(out, msg)
+		} else if msg.Role == "tool" {
+			// Only include tool messages whose ID matches a preceding assistant's tool_calls.
+			if msg.ToolCallID == "" {
+				continue
+			}
+			var matched bool
+			for _, id := range activeIDs {
+				if id == msg.ToolCallID {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				out = append(out, msg)
+			}
+		} else {
+			// User messages reset the active IDs (new turn).
+			activeIDs = nil
+			out = append(out, msg)
 		}
 	}
 	return out
