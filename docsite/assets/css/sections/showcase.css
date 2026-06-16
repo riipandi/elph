@@ -1,0 +1,90 @@
+.showcase-section {
+  background: var(--background-subtle);
+  padding-top: var(--padding_x2);
+  padding-bottom: var(--padding_x2);
+  width: 100%;
+}
+
+.showcase-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--padding);
+}
+
+.showcase-body {
+  margin: var(--padding);
+  gap: var(--padding);
+  overflow-x: auto;
+}
+
+@media (min-width: 1024px) {
+  .showcase-body {
+    max-width: 80svw;
+    margin: var(--padding) auto;
+  }
+}
+
+@media (min-width: 1280px) {
+  .showcase-body {
+    max-width: 60svw;
+  }
+}
+
+/* Typography */
+.showcase-body {
+  font-size: .95rem;
+}
+.showcase-body p,
+.showcase-body pre:not(.chroma),
+.showcase-body .highlight {
+  line-height: 1.8em;
+  letter-spacing: -.1px;
+}
+
+.showcase-body strong, .showcase-body b, .showcase-body table th {
+  font-weight: 600
+}
+
+.showcase-body em {
+  font-style: italic
+}
+
+/* Links */
+.showcase-body a {
+  color: var(--primary);
+  text-decoration: none
+}
+
+.showcase-body a:hover {
+  text-decoration: underline;
+  background: var(--background-hover);
+}
+
+/* Spacing */
+.showcase-body p,
+.showcase-body .highlight {
+  margin-top: 1rem;
+}
+
+/* Code/ Highlight/ Chroma */
+.showcase-body code, .showcase-body pre {
+  font-family: var(--font-mono);
+  font-size: .875rem;
+}
+
+.showcase-body pre, .showcase-body pre code {
+  display: inline-grid;
+}
+
+.showcase-body .chroma code {
+  padding: unset;
+  background: unset;
+  border-radius: unset;
+  border: unset;
+}
+
+.showcase-body :not(.code-window).highlight .chroma {
+  border: 1px solid var(--border);
+}

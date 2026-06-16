@@ -1,0 +1,19 @@
+name = 'E25DX'
+license = 'MIT'
+licenselink = 'https://github.com/dumindu/E25DX/blob/main/LICENSE'
+description = 'Documentation, blog, pages, search - No Node or NPM dependencies'
+
+# The home page of the theme, where the source can be found
+homepage = 'https://github.com/dumindu/E25DX'
+
+# If you have a running demo of the theme
+demosite = 'https://dumindu.github.io/E25DX'
+
+# Taxonomy terms
+tags = ['documentation', 'blog', 'light', 'dark', 'minimal']
+features = ['light mode', 'dark mode', 'syntax highlighting', 'responsive', 'seo', 'customizable']
+
+# If the theme has a single author
+[author]
+name = 'Dumindu Madunuwan'
+homepage = 'https://github.com/dumindu'

@@ -1,0 +1,24 @@
+#site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--padding_d2);
+  text-align: center;
+  flex-wrap: wrap;
+  white-space: initial;
+  padding: var(--padding_x2);
+  color: var(--color-fade);
+  fill: currentColor;
+}
+
+#site-footer > a.btn-primary {
+  padding: 0 var(--padding_d2);
+  font-weight: 400;
+}
+
+/* From Large Tablet */
+@media (min-width: 1024px) {
+  #site-footer {
+    width: 75vw;
+  }
+}

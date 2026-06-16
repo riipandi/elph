@@ -1,0 +1,22 @@
+<section class="hero-section">
+	<div class="hero-header">
+		{{ with resources.Get .svg }}
+			<h1 class="hero-svg" aria-label="{{ site.Title }}">
+			{{ .Content | safeHTML }}
+			</h1>
+		{{ end }}
+
+		<span class="badge">{{ .badge }}</span>
+
+		<h2>
+			{{ .title | markdownify }}
+		</h2>
+	</div>
+	<div class="hero-content">
+		<p>{{ .description | markdownify }}</p>
+	</div>
+	<div class="hero-controls">
+		<a href="{{ .btn_primary.url | absLangURL }}" class="btn btn-primary">{{ .btn_primary.label }}</a>
+		<a href="{{ .btn_secondary.url | absLangURL }}" class="btn btn-outline" {{ if (urls.Parse .btn_secondary.url).IsAbs }}target="_blank"{{ end }}>{{ .btn_secondary.label }}</a>
+	</div>
+</section>

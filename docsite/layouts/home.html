@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.Locale | default `en-US` }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ site.Params.description | .RenderString }}">
+  <meta name="author" content="{{ site.Params.author.name }}">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.light }}" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.dark }}" media="(prefers-color-scheme: dark)">
+  {{ with .Params.robots }}
+  <meta name="robots" content="{{ . }}">
+  {{ end }}
+
+  <title>{{ site.Title | .RenderString }} · {{ site.Params.description | .RenderString }}</title>
+  <link rel="canonical" href="{{ .Permalink }}">
+
+  {{ $css := slice
+    (resources.Get "css/reset.css")
+    (resources.Get "css/landing.css")
+  | resources.Concat "assets/css/landing.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.integrity }}">
+
+  {{ with site.Params.enablePageFind }}
+  <link href="{{ "pagefind/pagefind-component-ui.css" | absURL }}" rel="stylesheet">
+  {{ end }}
+
+  {{ partial "favicons.html" . }}
+  {{ partial "analytics.html" . }}
+  {{ partial "og-x-seo.html" . }}
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {{ partial "site/nav.html" . }}
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-content page">
+        <div class="hero-copy">
+          <p class="eyebrow">Minimal setup. Real coding momentum.</p>
+          <h1>AI companion for focused coding.</h1>
+          <p class="lead">
+            Tailored for developers who want to stay in the flow. Elph understands your repository context,
+            calls tools natively, and asks before risky actions. Open a repo, describe the outcome, approve
+            important actions, and let Elph do the rest — no hidden black box.
+          </p>
+          <p class="status-note">
+            Early-stage project: APIs, provider behavior, and runtime details may change between releases,
+            you may encounter bugs.
+          </p>
+          <div class="actions" aria-label="Primary actions">
+            <a class="button primary" href="#install">Start locally</a>
+            <a class="button secondary" href="https://github.com/riipandi/elph">View GitHub</a>
+            <a class="button secondary" href="https://github.com/riipandi/elph#readme">Read README</a>
+          </div>
+          <div class="trust-row" aria-label="Highlights">
+            <span class="tag">Go 1.26</span>
+            <span class="tag">Bubble Tea TUI</span>
+            <span class="tag">Native tools</span>
+            <span class="tag">Provider routing</span>
+          </div>
+        </div>
+        <aside class="session" aria-label="Elph session preview">
+          <div class="session-top">
+            <span class="session-title">elph / current repository</span>
+            <span class="mini-label">build mode</span>
+          </div>
+          <div class="session-body">
+            <div class="transcript">
+              <p class="line"><span class="prompt">$</span> elph</p>
+              <p class="line"><span class="prompt">user</span> make provider setup less noisy</p>
+              <p class="line"><span class="prompt">elph</span> reading instructions and narrowing files</p>
+              <p class="line"><span class="prompt">tool</span> focused tests queued before full validation</p>
+            </div>
+            <div class="status-board">
+              <span class="mini-label">Work queue</span>
+              <div class="status-stack">
+                <div class="status-item"><span>Inspect config path</span><span>done</span></div>
+                <div class="status-item"><span>Patch provider flow</span><span>ready</span></div>
+                <div class="status-item"><span>Run package tests</span><span>next</span></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section compact page" aria-label="Product priorities">
+      <div class="proof-strip">
+        <div class="proof">
+          <strong>Less setup</strong>
+          <span>Project instructions, prompts, and runtime defaults are loaded from the working context.</span>
+        </div>
+        <div class="proof">
+          <strong>More throughput</strong>
+          <span>The turn loop is built around focused edits, native tools, and test-first validation.</span>
+        </div>
+        <div class="proof">
+          <strong>Clear control</strong>
+          <span>Risky shell and file actions stay visible through explicit approval paths.</span>
+        </div>
+        <div class="proof">
+          <strong>Extensible core</strong>
+          <span>Providers, tools, prompt templates, and skills can grow without bloating the daily path.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="section page">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Workflow</p>
+          <h2>Start with work, not settings.</h2>
+        </div>
+        <p class="section-copy">
+          Elph is intentionally small on the surface. It gives each coding session enough structure to move fast,
+          while keeping the important decisions visible.
+        </p>
+      </div>
+      <div class="workflow">
+        <article class="step">
+          <span class="step-number">01</span>
+          <h3>Open a repository</h3>
+          <p>Run Elph where the code lives so it can load nearby instructions, current files, and project context.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">02</span>
+          <h3>Describe the outcome</h3>
+          <p>Ask for the end state. Elph can inspect, search, edit, track todos, and keep changes scoped.</p>
+        </article>
+        <article class="step">
+          <span class="step-number">03</span>
+          <h3>Approve and verify</h3>
+          <p>Review tool actions, apply the change, and run focused tests before broader validation.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="capabilities" class="section page">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Capabilities</p>
+          <h2>Minimal does not mean fixed.</h2>
+        </div>
+        <p class="section-copy">
+          The interface stays quiet, but the runtime is built to grow: native tools, model providers, prompts,
+          and session controls are separated behind clear boundaries.
+        </p>
+      </div>
+      <div class="capability-grid">
+        <article class="capability wide">
+          <div class="icon">01</div>
+          <h3>Focused TUI</h3>
+          <p>Streaming responses, markdown rendering, keyboard-first controls, paste handling, and session logs.</p>
+        </article>
+        <article class="capability wide">
+          <div class="icon">02</div>
+          <h3>Native tool loop</h3>
+          <p>Read, Write, Edit, Grep, Glob, Bash, WebSearch, TodoList, skills, and media reading.</p>
+        </article>
+        <article class="capability small">
+          <div class="icon">03</div>
+          <h3>Provider routing</h3>
+          <p>OpenAI-compatible APIs, OpenRouter routing, and Anthropic messages through layered adapters.</p>
+        </article>
+        <article class="capability small">
+          <div class="icon">04</div>
+          <h3>Approval workflow</h3>
+          <p>Risky actions are gated, with session-level allow paths when a task needs more autonomy.</p>
+        </article>
+        <article class="capability small">
+          <div class="icon">05</div>
+          <h3>Memory-conscious runtime</h3>
+          <p>History compaction, capped tool output, and deferred heavy work keep long sessions responsive.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="extend" class="section page">
+      <div class="extend">
+        <div class="extend-copy">
+          <p class="eyebrow">Extend</p>
+          <h2>Grow capability behind stable boundaries.</h2>
+          <p class="section-copy">
+            Elph keeps the daily experience simple by putting extension points where maintainers expect them:
+            provider adapters, tool catalog entries, prompt templates, and project-level instructions.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="{{ "/guides/" | relURL }}">Read docs</a>
+            <a class="button secondary" href="{{ "/guides/tools/" | relURL }}">Tool model</a>
+          </div>
+        </div>
+        <div class="map" aria-label="Extension areas">
+          <div class="map-row">
+            <strong>Providers</strong>
+            <span>Protocol contracts, catalog config, and SDK adapters stay in separate packages.</span>
+          </div>
+          <div class="map-row">
+            <strong>Tools</strong>
+            <span>Catalog, exposure rules, schemas, and execution live under dedicated tool packages.</span>
+          </div>
+          <div class="map-row">
+            <strong>Prompts</strong>
+            <span>Reusable user and project prompts keep recurring workflows consistent.</span>
+          </div>
+          <div class="map-row">
+            <strong>Runtime</strong>
+            <span>Turn loop, history limits, and approval handling are documented for safe changes.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="section page">
+      <div class="install-panel">
+        <div class="install-copy">
+          <p class="eyebrow">Install</p>
+          <h2>Run it locally.</h2>
+          <p class="section-copy">
+            Elph is under active development. Use the documented Go install path for daily use, or clone the
+            repository when contributing to providers, tools, or runtime behavior.
+          </p>
+          <div class="requirements" aria-label="Requirements">
+            <div class="requirement">
+              <strong>Go</strong>
+              <span>1.26 or newer</span>
+            </div>
+            <div class="requirement">
+              <strong>Optional tools</strong>
+              <span>gotestsum, golangci-lint</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="commands" aria-label="Quick start commands">
+          <div class="command">
+            <code>go install github.com/riipandi/elph/cmd/elph@latest</code>
+            <span>Install</span>
+          </div>
+          <div class="command">
+            <code>elph</code>
+            <span>Launch TUI</span>
+          </div>
+          <div class="command">
+            <code>git clone &lt;repository-url&gt; &amp;&amp; cd elph</code>
+            <span>Contribute</span>
+          </div>
+          <div class="command">
+            <code>make prepare &amp;&amp; make deps &amp;&amp; make run</code>
+            <span>From source</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="docs" class="section page">
+      <div class="docs-panel">
+        <div>
+          <p class="eyebrow">Documentation</p>
+          <h2>Understand the runtime before changing it.</h2>
+          <p class="section-copy">
+            The core docs explain the architecture, tool model, and turn loop so extensions can stay aligned
+            with the minimalist product surface.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="{{ "/guides/" | relURL }}">Open guides</a>
+            <a class="button secondary" href="https://github.com/riipandi/elph#readme">Open README</a>
+          </div>
+        </div>
+        <div class="doc-links">
+          <a class="doc-link" href="{{ "/guides/architecture/" | relURL }}">
+            <strong>Architecture</strong>
+            <span>Repository layout, data flow, and runtime boundaries.</span>
+          </a>
+          <a class="doc-link" href="{{ "/guides/agent-runtime/" | relURL }}">
+            <strong>Agent runtime</strong>
+            <span>Turn loop, history limits, sessions, and logging.</span>
+          </a>
+          <a class="doc-link" href="{{ "/guides/tools/" | relURL }}">
+            <strong>Tools</strong>
+            <span>Tool catalog, exposure rules, execution, and approvals.</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {{ partial "site/footer.html" . }}
+
+  <script src="{{ "js/site/color-preference.js" | absURL }}"></script>
+
+  {{ with site.Params.enablePageFind }}
+  <script src="{{ "pagefind/pagefind-component-ui.js" | absURL }}" type="module"></script>
+  {{ end }}
+</body>
+</html>

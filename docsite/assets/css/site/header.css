@@ -1,0 +1,113 @@
+#site-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "logo actions"
+    "menu menu";
+
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+#site-header-logo {
+  grid-area: logo;
+  padding: var(--padding_d2);
+}
+
+#site-header-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: var(--padding_d2);
+  padding-right: var(--padding);
+}
+
+#site-header-menu {
+  grid-area: menu;
+  display: flex;
+  flex-wrap: wrap;
+
+  background: var(--background-subtle);
+  backdrop-filter: blur(var(--blur));
+  padding: var(--padding_d2);
+  gap: var(--padding_d2);
+
+  border-top: 1px solid var(--border);
+}
+
+#site-header-menu a {
+  display: flex;
+  gap: calc(var(--padding) /3);
+  padding: var(--padding_d2);
+  align-items: center;
+
+  text-transform: uppercase;
+  font-size: .86em;
+  color: var(--color-fade);
+  fill: currentColor;
+
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+#site-header-menu a:not(.active):hover {
+  background: var(--background-hover);
+  color: var(--color-nav);
+}
+
+#site-header-menu a.active {
+  background: var(--background-subtle);
+  backdrop-filter: blur(var(--blur));
+  border: 1px solid var(--border-subtle);
+  pointer-events: none;
+}
+
+#search-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#repo-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  fill: var(--color-nav);
+}
+
+#repo-main:hover {
+  fill: var(--color);
+}
+
+@media (max-width: 743px) {
+  .pf-trigger-shortcut {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  #site-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas: "logo menu actions";
+
+    backdrop-filter: blur(var(--blur));
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  #site-header-logo {
+    justify-self: start;
+  }
+
+  #site-header-menu {
+    background: none;
+    border: none;
+    justify-content: center;
+    justify-self: center;
+  }
+
+  #site-header-actions{
+    justify-self: end;
+  }
+}

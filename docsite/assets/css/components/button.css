@@ -1,0 +1,31 @@
+.btn {
+  display: flex;
+  padding: var(--padding_d2);
+  gap: calc(var(--padding_d2)/2);
+  justify-items: center;
+  align-items: center;
+
+  background: var(--background-dim);
+  backdrop-filter: blur(--blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+
+  color: var(--color-nav);
+  fill: currentColor;
+  cursor: pointer;
+}
+
+.btn:hover, .btn:focus {
+  background: var(--background-hover);
+}
+
+.btn-primary {
+  background: rgb(from var(--primary) r g b / .5);
+  border: 1px solid rgb(from var(--primary) r g b / .6);
+  color: rgb(from var(--color-nav) r g b / .8);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--primary);
+  color: var(--color-nav);
+}

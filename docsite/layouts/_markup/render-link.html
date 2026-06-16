@@ -1,0 +1,17 @@
+{{- $href := .Destination -}}
+{{- $isExternal := or (strings.HasPrefix $href "http") (strings.HasPrefix $href "https") -}}
+{{- if not $isExternal -}}
+  {{- if hasPrefix $href "./" -}}
+    {{- $stripped := strings.TrimPrefix "./" $href -}}
+    {{- $stripped = $stripped | replaceRE "\\.md(#.*)?$" "$1" -}}
+    {{- /* Resolve relative to current section, then strip .md */ -}}
+    {{- $section := .Page.Section -}}
+    {{- $href = printf "/%s/%s" $section $stripped -}}
+    {{- if and (not (strings.HasSuffix $href "/")) (not (strings.Contains $href "#")) -}}
+      {{- $href = printf "%s/" $href -}}
+    {{- end -}}
+  {{- else if findRE "\\.md(#.*)?$" $href 1 -}}
+    {{- $href = $href | replaceRE "\\.md(#.*)?$" "$1" -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $href | safeURL }}"{{ with .Title }} title="{{ . }}"{{ end }}{{ if $isExternal }} target="_blank"{{ end }}>{{ .Text | safeHTML }}</a>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.Locale | default `en-US` }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ .Page.Params.description | default site.Params.description | .RenderString }}">
+  <meta name="author" content="{{ site.Params.author.name }}">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.light }}" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.dark }}" media="(prefers-color-scheme: dark)">
+  {{ with .Params.robots }}
+  <meta name="robots" content="{{ . }}">
+  {{ end }}
+
+  <title>{{ .Title | .RenderString }} · {{ site.Title | .RenderString }}</title>
+  <link rel="canonical" href="{{ .Permalink }}">
+
+  {{ $css := slice
+    (resources.Get "css/reset.css")
+    (resources.Get "css/landing.css")
+    (resources.Get "css/docs-layout.css")
+  | resources.Concat "assets/css/docs.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.integrity }}">
+
+  {{ partial "favicons.html" . }}
+  {{ partial "analytics.html" . }}
+  {{ partial "og-x-seo.html" . }}
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  {{ partial "site/nav.html" . }}
+
+  <div id="docs-wrapper">
+    {{ if index hugo.Data site.Language.Lang .Section "sidebar" }}
+      {{ partial "site/left-sidebar.html" . }}
+    {{ end }}
+
+    <main id="docs-content">
+      {{ partial "main-content/nav.html" . }}
+
+      {{ with .Params.cover }}
+        {{ $cover := resources.Get . }}
+        {{ if $cover }}
+          <img id="article-cover" src="{{ $cover.RelPermalink }}" alt="Cover image">
+        {{ end }}
+      {{ end }}
+
+      {{ if .Title }}
+      <header id="article-header">
+        <h1>{{ .Title | .RenderString }}</h1>
+        {{ with .Params.summary }}
+        <p>{{ . | $.RenderString }}</p>
+        {{ end }}
+      </header>
+      {{ end }}
+
+      <div id="article-body">
+        {{ .Content | safeHTML }}
+      </div>
+      {{ partial "main-content/footer.html" . }}
+    </main>
+
+    {{ partial "site/right-sidebar.html" . }}
+  </div>
+
+  <div id="off-canvas-model"></div>
+
+  {{ partial "site/footer.html" . }}
+
+  <script src="{{ "js/site/color-preference.js" | absURL }}"></script>
+  <script src="{{ "js/site/table-of-contents.js" | absURL }}"></script>
+  <script src="{{ "js/site/off-canvas.js" | absURL }}"></script>
+</body>
+</html>

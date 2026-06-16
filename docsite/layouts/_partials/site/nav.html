@@ -1,0 +1,22 @@
+<header class="site-header">
+  <nav class="nav page" aria-label="Main navigation">
+    <a class="brand" href="{{ site.Home.Permalink }}" aria-label="Home">
+      <span class="brand-mark">e</span>
+      <span>{{ site.Title }}</span>
+    </a>
+
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-input" aria-hidden="true">
+    <label for="nav-toggle" class="nav-toggle" aria-label="Toggle menu">
+      <span class="nav-toggle-icon"></span>
+    </label>
+
+    <div class="nav-links">
+      <a href="{{ "/guides/" | relURL }}">Guides</a>
+      <a href="{{ "/customization/" | relURL }}">Customization</a>
+      <a href="{{ "/configuration/" | relURL }}">Configuration</a>
+      <a href="{{ "/reference/" | relURL }}">Reference</a>
+      <a href="{{ "/release-notes/" | relURL }}">Release Notes</a>
+      <a class="nav-github" href="https://github.com/riipandi/elph" target="_blank" aria-label="GitHub repository">{{ partial "icon.html" "github" }}</a>
+    </div>
+  </nav>
+</header>

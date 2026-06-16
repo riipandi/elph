@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://json.schemastore.org/hugo.json
+
+enableGitInfo: true
+enableRobotsTXT: true
+cleanDestinationDir: true
+disableHugoGeneratorInject: true
+defaultContentLanguage: en
+timeZone: Asia/Jakarta
+
+disableKinds: [taxonomy, term]
+
+# Path configurations
+archetypeDir: docsite/archetypes
+assetDir: docsite/assets
+dataDir: docsite/data
+i18nDir: docsite/i18n
+layoutDir: docsite/layouts
+resourceDir: docsite/resources
+themesDir: docsite/themes
+contentDir: docsite/content
+publishDir: docsite/public
+staticDir: docsite/static
+
+languages:
+  en:
+    weight: 1
+    locale: en-US
+    label: English
+    # contentDir: docsite/content/en
+    contentDir: docsite/content
+    title: Elph
+    params:
+      description: AI companion for focused coding
+
+# To omit the Google Analytics script, put a ~ in place of the G-XXXXXXXXXX below.
+# Replace with your Google Analytics ID to enable Google Analytics.
+services:
+  googleAnalytics:
+    ID: ~
+
+params:
+  project:
+    # To omit the startYear, put a ~ in its place.
+    startYear: ~
+    presentYear: 2026
+    github:
+      repo: riipandi/elph
+    themeColor:
+      light: '#ffffff'
+      dark: '#101010'
+
+  author:
+    name: Aris Ripandi
+    url: https://github.com/riipandi
+
+  home:
+    heading: Elph
+    headingSegment2:
+    description: AI companion for focused coding
+    getStartedPath: overview/
+
+  pagination:
+    size: 6
+
+  enableOGXSEO: false # No automated OG image generation
+  enablePageFind: false # Run pagefind --site dir after build
+
+markup:
+  highlight:
+    noClasses: false
+  goldmark:
+    renderer:
+      unsafe: true
+    parser:
+      attribute:
+        block: true
+        title: true

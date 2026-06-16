@@ -1,0 +1,49 @@
+{{ $sidebar := index hugo.Data site.Language.Lang .Section "sidebar" }}
+{{ with $sidebar }}
+
+  {{ $prevPageTitle := "" }}
+  {{ $nextPageTitle := "" }}
+  {{ $prevPageHref := "" }}
+  {{ $nextPageHref := "" }}
+
+  {{ $url := split $.Permalink "/" }}
+  {{ $urlPageSlug := index $url (sub (len $url) 2) }}
+  {{ $isSectionIndex := eq $urlPageSlug $.Section }}
+  {{ $isActivePagePassed := false }}
+  {{ $isNextPagePassed := false }}
+
+  {{ range $group := . }}
+    {{ if $isNextPagePassed }}{{ break }}{{ end }}
+    {{ range $page := $group.pages }}
+      {{ $pageSlug := $page.url | default ($page.title | urlize) }}
+      {{ $isActivePage := or $isSectionIndex (eq $urlPageSlug $pageSlug) }}
+
+      {{ if $isActivePagePassed }}
+        {{ $nextPageTitle = $page.title }}
+        {{ $nextPageHref = printf "%s%s/%s/" site.Home.Permalink $.Section $pageSlug }}
+        {{ $isNextPagePassed = true }}
+        {{ break }}
+      {{ else if $isActivePage }}
+        {{ $isActivePagePassed = true }}
+      {{ else }}
+        {{ $prevPageTitle = $page.title }}
+        {{ $prevPageHref = printf "%s%s/%s/" site.Home.Permalink $.Section $pageSlug }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+
+  <nav class="article-pagination">
+    {{ if ne $prevPageHref "" }}
+      <a href="{{ $prevPageHref }}">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        {{ $prevPageTitle }}
+      </a>
+    {{ end }}
+    {{ if ne $nextPageHref "" }}
+      <a href="{{ $nextPageHref }}">
+        {{ $nextPageTitle }}
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </a>
+    {{ end }}
+  </nav>
+{{ end }}

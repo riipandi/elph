@@ -1,0 +1,12 @@
+- title: "Getting Started"
+  pages:
+    - title: "Architecture"
+    - title: "Agent Runtime"
+
+- title: "Usage"
+  pages:
+    - title: "Tools"
+    - title: "CLI"
+    - title: "TUI"
+    - title: "Slash Commands"
+    - title: "Prompt Templates"

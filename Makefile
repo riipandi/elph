@@ -90,6 +90,14 @@ clean: ## Clean build artifacts
 	@rm -rf $(BUILD_DIR) vendor node_modules coverage.out coverage.html
 	@find internal -type f -name '*_gsx.go' -delete
 
+# ─── Website ─-----───────────────────────────────────────────────────────────
+
+site-dev: ## Run website in development
+	@hugo server --config docsite/hugo.yaml
+
+site-build: ## Build the documentation site
+	@hugo build --config docsite/hugo.yaml --gc --minify
+
 # ─── Help ────────────────────────────────────────────────────────────────────
 
 help: ## Show this help

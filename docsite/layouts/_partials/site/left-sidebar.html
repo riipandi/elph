@@ -1,0 +1,30 @@
+<aside id="left-sidebar">
+	<div>
+		<button class="btn">{{ partial "icon.html" "close" }} {{ i18n "close" }}</button>
+	</div>
+
+	<nav aria-label="Documentation pages">
+		{{ $data := index hugo.Data site.Language.Lang page.Section "sidebar" }}
+
+		{{ range $group := $data -}}
+		<details open>
+			<summary>{{ $group.title }}</summary>
+			<ul>
+			{{ range $page := $group.pages -}}
+				{{- $pageSlug := $page.url | default ($page.title | urlize) -}}
+				{{- $href := printf "%s%s/%s/" site.Home.Permalink page.Section $pageSlug -}}
+				{{- $url := split page.Permalink "/" -}}
+				{{- $urlPageSlug := index $url (sub (len $url) 2) -}}
+				{{- $isActivePage := eq $urlPageSlug $pageSlug -}}
+				{{- $displayTitle := $page.title -}}
+				<li>
+					<a href="{{ $href }}"{{ if $isActivePage }} class="active" aria-current="page"{{ end }}>
+						{{ $displayTitle }}
+					</a>
+				</li>
+				{{ end -}}
+			</ul>
+		</details>
+		{{ end }}
+	</nav>
+</aside>

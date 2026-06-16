@@ -64,3 +64,7 @@ compose.env*
 terraform.tfstate*
 terraform.tfvars*
 !terraform.tfvars.example
+
+# Hugo
+.hugo_build.lock
+docsite/public/

@@ -1,0 +1,18 @@
+- title: "Foundation"
+  pages:
+    - title: "Architecture"
+    - title: "Agent Runtime"
+    - title: "Tools"
+
+- title: "Interface"
+  pages:
+    - title: "TUI"
+    - title: "Slash Commands"
+    - title: "Prompt Templates"
+
+- title: "Reference"
+  pages:
+    - title: "Configuration"
+    - title: "CLI"
+    - title: "Consideration"
+    - title: "Progress"

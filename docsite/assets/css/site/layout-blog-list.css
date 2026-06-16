@@ -1,0 +1,38 @@
+html {
+  scroll-behavior: smooth;
+  scroll-padding: 2em;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  color: var(--color);
+  background: var(--background);
+  font-family: var(--font-sans);
+}
+
+#content-wrapper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100svw;
+}
+
+#site-footer {
+  width: 100%;
+}
+
+main > section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}

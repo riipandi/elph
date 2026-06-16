@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="{{ site.Language.Locale | default `en-US` }}">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ .Page.Params.description | default site.Params.description | .RenderString }}">
+  <meta name="author" content="{{ site.Params.author.name }}">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.light }}" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="{{ site.Params.project.themeColor.dark }}" media="(prefers-color-scheme: dark)">
+  {{ with .Params.robots -}}
+  <meta name="robots" content="{{ . }}">
+  {{ end -}}
+
+  <title>{{ .Title | .RenderString }} · {{ site.Title | .RenderString }}</title>
+  <link rel="canonical" href="{{ .Permalink }}">
+
+  {{- $css := slice
+		(resources.Get "css/reset.css")
+		(resources.Get "css/theme.css")
+		(resources.Get "css/components/button.css")
+		(resources.Get "css/components/dropdown.css")
+		(resources.Get "css/site/header.css")
+		(resources.Get "css/site/footer.css")
+		(resources.Get "css/blog/list-body.css")
+		(resources.Get "css/blog/list-footer.css")
+		(resources.Get "css/site/layout-blog-list.css")
+	| resources.Concat "assets/css/blog-list.css" | minify | fingerprint }}
+  <link rel="stylesheet" href="{{ $css.RelPermalink }}" integrity="{{ $css.Data.integrity }}">
+
+	{{ with site.Params.enablePageFind }}
+	<link href="{{ "pagefind/pagefind-component-ui.css" | absURL }}" rel="stylesheet">
+	{{ end }}
+
+  {{ partial "favicons.html" . }}
+  {{ partial "analytics.html" . }}
+  {{ partial "og-x-seo.html" . }}
+</head>
+
+<body>
+	<div id="content-wrapper">
+		{{ partial "site/header.html" . }}
+		<main>
+			<section>
+				<div id="section-body">
+					{{ partial "blog/list-body.html" . }}
+				</div>
+				{{ partial "blog/list-footer.html" . }}
+			</section>
+		</main>
+		{{ partial "site/footer.html" . }}
+	</div>
+
+	{{- $js := slice
+		(resources.Get "js/components/dropdown.js")
+		(resources.Get "js/site/color-preference.js")
+	| resources.Concat "assets/js/blog-list.js" | minify | fingerprint }}
+	<script src="{{ $js.RelPermalink }}" integrity="{{ $js.Data.integrity }}"></script>
+
+	{{ with site.Params.enablePageFind }}
+	<script src="{{ "pagefind/pagefind-component-ui.js" | absURL }}" type="module"></script>
+	{{ end }}
+</body>
+</html>
