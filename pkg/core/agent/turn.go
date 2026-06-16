@@ -77,7 +77,7 @@ func runTurn(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		Compat:       opts.Compat,
 		Stream:       stream,
 		Messages:     messages,
-	}, opts.ProviderRetryConfig(), nil)
+	}, opts.ProviderRetryConfig(), nil, nil)
 	if ctx.Err() != nil {
 		logProviderCancel(opts.LogProvider, 0, ctx.Err())
 		return

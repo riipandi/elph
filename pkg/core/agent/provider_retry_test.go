@@ -51,6 +51,7 @@ func TestCompleteProviderWithRetryOnRetriableError(t *testing.T) {
 		protocol.TurnRequest{UserPrompt: "hi"},
 		ProviderRetryConfig{MaxRetries: 2},
 		func(attempt int) { retries = append(retries, attempt) },
+		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, "ok", result.Content)
@@ -74,6 +75,7 @@ func TestCompleteProviderWithRetryStopsOnNonRetriableError(t *testing.T) {
 		protocol.TurnRequest{UserPrompt: "hi"},
 		ProviderRetryConfig{MaxRetries: 2},
 		nil,
+		nil,
 	)
 	require.Error(t, err)
 	require.Equal(t, 1, stub.calls)
@@ -94,6 +96,7 @@ func TestCompleteProviderWithRetryDisablesStreamAfterStall(t *testing.T) {
 		protocol.TurnRequest{UserPrompt: "hi", Stream: stream},
 		ProviderRetryConfig{MaxRetries: 1},
 		nil,
+		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, 2, stub.calls)
@@ -113,6 +116,7 @@ func TestCompleteProviderWithRetryRespectsZeroMaxRetries(t *testing.T) {
 		stub,
 		protocol.TurnRequest{UserPrompt: "hi"},
 		ProviderRetryConfig{MaxRetries: 0},
+		nil,
 		nil,
 	)
 	require.Error(t, err)

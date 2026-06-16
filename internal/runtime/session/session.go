@@ -34,7 +34,9 @@ type Session struct {
 	Catalog           provider.Catalog
 	EnabledModelCount int
 	History           []provider.ChatMessage
-	todoStore         *[]todolist.Todo // heap pointer; stable when Model copies Session
+	todoStore         *[]todolist.Todo        // heap pointer; stable when Model copies Session
+	CompactionCount   int                     // number of times history has been compacted
+	CompactionHistory []agent.CompactionEntry // history of compactions with summaries
 }
 
 // NewSession creates a session with a generated typeid and assembled system prompt.
@@ -186,6 +188,19 @@ func (s *Session) ApplyHistory(history []provider.ChatMessage) {
 		return
 	}
 	s.History = agent.CompactMessages(history)
+}
+
+// ApplyHistoryWithCompaction replaces history and tracks compaction metadata.
+func (s *Session) ApplyHistoryWithCompaction(result agent.CompactionResult) {
+	if len(result.Messages) == 0 {
+		s.History = nil
+		return
+	}
+	s.History = result.Messages
+	if result.Entry != nil {
+		s.CompactionCount++
+		s.CompactionHistory = append(s.CompactionHistory, *result.Entry)
+	}
 }
 
 func loadSessionTodos(workDir, sessionID string) []todolist.Todo {

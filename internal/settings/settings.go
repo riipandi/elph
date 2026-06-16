@@ -38,6 +38,9 @@ type Settings struct {
 	MaxToolIterations        *int              `json:"maxToolIterations,omitempty"`
 	AutoCompactContext       *bool             `json:"autoCompactContext,omitempty"`
 	AutoCompactLimit         *int              `json:"autoCompactLimit,omitempty"`
+	CompactMinMessages       *int              `json:"compactMinMessages,omitempty"`  // Minimum messages before auto-compact
+	CompactMinBytes          *int              `json:"compactMinBytes,omitempty"`     // Minimum bytes before auto-compact
+	CompactContextUsage      *int              `json:"compactContextUsage,omitempty"` // Context usage % threshold (0-100)
 	FooterTokenDisplay       string            `json:"footerTokenDisplay,omitempty"`
 }
 
@@ -248,6 +251,51 @@ func (s Settings) CompactLimit() int {
 		return 100
 	}
 	return limit
+}
+
+// GetCompactMinMessages returns the minimum messages before auto-compact, defaulting to 10.
+func (s Settings) GetCompactMinMessages() int {
+	cfg := s.withDefaults()
+	if cfg.CompactMinMessages == nil {
+		return 10
+	}
+	min := *cfg.CompactMinMessages
+	if min < 4 {
+		return 4
+	}
+	if min > 50 {
+		return 50
+	}
+	return min
+}
+
+// GetCompactMinBytes returns the minimum bytes before auto-compact, defaulting to 64KB.
+func (s Settings) GetCompactMinBytes() int {
+	cfg := s.withDefaults()
+	if cfg.CompactMinBytes == nil {
+		return 64 * 1024 // 64KB
+	}
+	min := *cfg.CompactMinBytes
+	if min < 1024 {
+		return 1024 // 1KB minimum
+	}
+	return min
+}
+
+// GetCompactContextUsage returns the context usage % threshold for auto-compact, defaulting to 70.
+func (s Settings) GetCompactContextUsage() int {
+	cfg := s.withDefaults()
+	if cfg.CompactContextUsage == nil {
+		return 70
+	}
+	usage := *cfg.CompactContextUsage
+	if usage < 50 {
+		return 50
+	}
+	if usage > 95 {
+		return 95
+	}
+	return usage
 }
 
 // FooterTokenDisplayMode returns the footer token display mode, defaulting to "both".

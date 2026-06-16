@@ -368,27 +368,55 @@ func (m Model) handleCompactHistory(result command.Result) Model {
 		beforeBytes += len(msg.Content)
 	}
 
-	ratio := result.CompactRatio
-	if ratio <= 0 || ratio >= 100 {
-		if prefs, err := settings.Load(); err == nil {
-			ratio = prefs.CompactLimit()
-		} else {
-			ratio = 80 // fallback default
-		}
+	// Load settings for smart compaction
+	prefs, err := settings.Load()
+	if err != nil {
+		prefs = settings.Settings{}
 	}
 
-	compacted := agent.CompactMessagesToRatio(history, ratio)
-	m.session.ApplyHistory(compacted)
+	// Use settings for threshold
+	threshold := agent.CompactionThreshold{
+		MinMessages:  prefs.GetCompactMinMessages(),
+		MinBytes:     prefs.GetCompactMinBytes(),
+		MinTokens:    16 * 1024, // 16K tokens minimum
+		ContextUsage: prefs.GetCompactContextUsage(),
+	}
 
-	after := len(compacted)
+	// Smart compaction: skip if conversation is too small (unless manual override)
+	if result.CompactRatio <= 0 && !agent.ShouldCompact(history, threshold) {
+		m = m.addDetailMessage("Compact history", fmt.Sprintf(
+			"Conversation too small to compact (%d messages, %s).",
+			before, formatBytes(beforeBytes)))
+		return m.syncLayout(true)
+	}
+
+	ratio := result.CompactRatio
+	if ratio <= 0 || ratio >= 100 {
+		ratio = prefs.CompactLimit()
+	}
+
+	// Use new compaction tracking
+	tokensBefore := agent.EstimateTokens(beforeBytes)
+	compactionResult := agent.CompactMessagesWithEntry(history, ratio, agent.ReasonManual, tokensBefore)
+	m.session.ApplyHistoryWithCompaction(compactionResult)
+
+	after := len(compactionResult.Messages)
 	afterBytes := 0
-	for _, msg := range compacted {
+	for _, msg := range compactionResult.Messages {
 		afterBytes += len(msg.Content)
 	}
 
-	body := fmt.Sprintf("Reduced: %d → %d messages (%s → %s)",
-		before, after,
-		formatBytes(beforeBytes), formatBytes(afterBytes))
+	var body string
+	if compactionResult.Entry != nil {
+		body = fmt.Sprintf("Reduced: %d → %d messages (%s → %s)\nCompactions: %d",
+			before, after,
+			formatBytes(beforeBytes), formatBytes(afterBytes),
+			m.session.CompactionCount)
+	} else {
+		body = fmt.Sprintf("Reduced: %d → %d messages (%s → %s)",
+			before, after,
+			formatBytes(beforeBytes), formatBytes(afterBytes))
+	}
 	m = m.addDetailMessage("Compact history", body)
 	m.session.AppendLog("detail", body)
 	return m.syncLayout(true)

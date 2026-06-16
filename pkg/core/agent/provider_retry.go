@@ -78,6 +78,7 @@ func completeProviderWithRetry(
 	req protocol.TurnRequest,
 	cfg ProviderRetryConfig,
 	onRetry func(attempt int),
+	onCompaction func(result CompactionResult),
 ) (protocol.TurnResult, error) {
 	var lastErr error
 	baseAttempts := cfg.attempts()
@@ -91,20 +92,24 @@ func completeProviderWithRetry(
 		if attempt > 0 {
 			// Context-too-large: compact and retry without backoff.
 			if cfg.AutoCompactContext && contextCompactions < maxContextCompactions && isContextTooLargeProviderError(lastErr) {
-				compacted, changed := CompactMessagesForContext(req.Messages, contextCompactions, cfg.AutoCompactLimit)
-				if changed {
-					req.Messages = compacted
+				tokensBefore := EstimateTokens(historyUTF8Size(req.Messages))
+				result := CompactMessagesWithEntry(req.Messages, cfg.AutoCompactLimit, ReasonOverflow, tokensBefore)
+				if result.Changed {
+					req.Messages = result.Messages
 					contextCompactions++
 					logProviderRetry(log, step, attempt, lastErr)
 					if onRetry != nil {
 						onRetry(attempt)
 					}
+					if onCompaction != nil {
+						onCompaction(result)
+					}
 					// Skip the backoff — retry immediately with compacted history.
 					attemptReq := req
 					attemptReq.StreamStallTimeout = utils.EffectiveStreamStallTimeout(cfg.StreamStallTimeout)
-					result, err := p.Complete(ctx, attemptReq)
+					resp, err := p.Complete(ctx, attemptReq)
 					if err == nil {
-						return result, nil
+						return resp, nil
 					}
 					lastErr = err
 					if ctx.Err() != nil || ProviderCancelError(err) {
@@ -134,9 +139,9 @@ func completeProviderWithRetry(
 			attemptReq.Stream = nil
 		}
 
-		result, err := p.Complete(ctx, attemptReq)
+		resp, err := p.Complete(ctx, attemptReq)
 		if err == nil {
-			return result, nil
+			return resp, nil
 		}
 		lastErr = err
 		if ctx.Err() != nil || ProviderCancelError(err) || !shouldRetryProvider(err) {

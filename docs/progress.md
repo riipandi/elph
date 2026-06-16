@@ -573,3 +573,163 @@ Restored **Glamour v2** for completed assistant markup after gomarkdown experime
 | Session test     | `session_test.go` — isolate `HOME` so system-prompt test uses default `build` mode               |
 
 Docs: [tui.md § AI response formatting](./tui.md#ai-response-formatting), [architecture.md § Performance](./architecture.md#performance-and-memory).
+
+---
+
+## 20. Compaction improvements based on Pi (June 2026)
+
+Implemented compaction improvements inspired by the Pi coding agent's approach.
+
+### New Files
+
+| File                              | Description                                                                                         |
+|-----------------------------------|-----------------------------------------------------------------------------------------------------|
+| `pkg/core/agent/compaction.go`    | CompactionEntry structure, CompactionReason tracking, structured summaries, file operation tracking |
+| `docs/compaction-improvements.md` | Documentation of improvements                                                                       |
+
+### Modified Files
+
+| File                                    | Changes                                            |
+|-----------------------------------------|----------------------------------------------------|
+| `internal/runtime/session/session.go`   | Added CompactionCount and CompactionHistory fields |
+| `pkg/core/agent/provider_retry.go`      | Updated to use new compaction tracking             |
+| `pkg/core/agent/loop.go`                | Updated function signature                         |
+| `pkg/core/agent/turn.go`                | Updated function signature                         |
+| `internal/renderer/commands.go`         | Updated to use new compaction API                  |
+| `pkg/core/agent/provider_retry_test.go` | Updated tests                                      |
+
+### Key Features
+
+1. **CompactionEntry structure** — Tracks summary, tokensBefore, timestamp, reason, messages removed, file operations
+2. **CompactionReason** — manual, threshold, overflow
+3. **File Tracking** — readFiles, modifiedFiles extracted from tool calls
+4. **Session History** — CompactionCount and CompactionHistory persist across compactions
+5. **Structured Summaries** — Pi-style format with file tracking
+
+### CompactionEntry Structure
+
+```go
+type CompactionEntry struct {
+    Summary          string           // Structured summary of compacted messages
+    TokensBefore     int              // Context tokens before compaction
+    Timestamp        time.Time        // When compaction occurred
+    Reason           CompactionReason // Why compaction was triggered
+    MessagesRemoved  int              // Number of messages removed
+    ReadFiles        []string         // Files read during compacted turns
+    ModifiedFiles    []string         // Files modified during compacted turns
+}
+```
+
+### CompactionReason Types
+
+```go
+const (
+    ReasonManual    CompactionReason = "manual"    // User ran /compact
+    ReasonThreshold CompactionReason = "threshold" // Proactive: approaching context limit
+    ReasonOverflow  CompactionReason = "overflow"  // Reactive: context-limit error from provider
+)
+```
+
+### Usage Examples
+
+**Manual Compaction:**
+```go
+// Before
+history := agent.CompactMessages(messages)
+session.ApplyHistory(history)
+
+// After
+tokensBefore := agent.EstimateTokens(historyUTF8Size(messages))
+result := agent.CompactMessagesWithEntry(messages, ratio, agent.ReasonManual, tokensBefore)
+session.ApplyHistoryWithCompaction(result)
+```
+
+**Auto-compaction (Provider Retry):**
+```go
+result, err := completeProviderWithRetry(ctx, log, step, provider, req, cfg,
+    func(attempt int) { /* on retry */ },
+    func(result CompactionResult) { /* on compaction */ },
+)
+```
+
+### Benefits
+
+1. **Better Observability** — Know when and why compaction occurred
+2. **File Tracking** — Understand which files were involved
+3. **History Preservation** — Track compaction count across session
+4. **Structured Summaries** — Consistent format for compaction data
+5. **Extension Ready** — Can be extended for custom compaction logic
+
+### Verification
+
+All 1087 tests pass. Build succeeds.
+
+---
+
+## 21. Smart compaction with minimum limits (June 2026)
+
+Added intelligent compaction that skips when conversation is too small, synced with settings.
+
+### New Features
+
+| Feature               | Description                                                                     |
+|-----------------------|---------------------------------------------------------------------------------|
+| `CompactionThreshold` | Configurable thresholds for min messages, bytes, tokens, context usage          |
+| `ShouldCompact()`     | Checks if conversation is large enough to benefit from compaction               |
+| `ShouldAutoCompact()` | Checks if auto-compaction should trigger based on context usage                 |
+| Settings sync         | `compactMinMessages`, `compactMinBytes`, `compactContextUsage` in settings.json |
+
+### Threshold Defaults
+
+| Setting               | Default | Range  | Description                                |
+|-----------------------|---------|--------|--------------------------------------------|
+| `compactMinMessages`  | 10      | 4-50   | Minimum messages before auto-compact       |
+| `compactMinBytes`     | 64KB    | 1KB+   | Minimum bytes before auto-compact          |
+| `compactContextUsage` | 70%     | 50-95% | Context usage % threshold for auto-compact |
+
+### Settings Methods
+
+```go
+func (s Settings) GetCompactMinMessages() int   // default 10, range 4-50
+func (s Settings) GetCompactMinBytes() int      // default 64KB, min 1KB
+func (s Settings) GetCompactContextUsage() int  // default 70%, range 50-95%
+```
+
+### Smart Compaction Logic
+
+```go
+// In CompactMessagesWithEntry:
+threshold := DefaultCompactionThreshold()
+if !ShouldCompact(messages, threshold) {
+    return CompactionResult{Changed: false}  // Skip compaction
+}
+
+// In handleCompactHistory:
+if result.CompactRatio <= 0 && !agent.ShouldCompact(history, threshold) {
+    // Show "Conversation too small to compact" message
+}
+```
+
+### Settings.json Example
+
+```json
+{
+  "autoCompactContext": true,
+  "autoCompactLimit": 80,
+  "compactMinMessages": 10,
+  "compactMinBytes": 65536,
+  "compactContextUsage": 70
+}
+```
+
+### Benefits
+
+1. **No unnecessary compaction** — Small conversations stay intact
+2. **User feedback** — Clear message when compaction is skipped
+3. **Configurable** — Users can tune thresholds via settings.json
+4. **Context-aware** — Auto-compact only when context is sufficiently full
+5. **Safe defaults** — Works well out-of-the-box without configuration
+
+### Verification
+
+All 1087 tests pass. Build succeeds.

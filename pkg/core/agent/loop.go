@@ -94,7 +94,7 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 			Tools:        providerTools,
 		}, opts.ProviderRetryConfig(), func(attempt int) {
 			sendEvent(ctx, ch, ActivityEvent(ActivityConnecting))
-		})
+		}, nil)
 		if ctx.Err() != nil {
 			logProviderCancel(opts.LogProvider, step, ctx.Err())
 			return
