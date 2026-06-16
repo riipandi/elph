@@ -23,8 +23,9 @@ runs:
       with:
         node-version: ${{ inputs.nodeVersion }}
 
-    - uses: pnpm/action-setup@v5
+    - uses: pnpm/action-setup@v6
       with:
+        version: ^11.6.0
         run_install: false
         standalone: true
         cache: true
