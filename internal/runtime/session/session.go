@@ -6,20 +6,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/riipandi/elph/internal/prompt"
 	"github.com/riipandi/elph/internal/runtime/exec"
 	"github.com/riipandi/elph/internal/runtime/log"
 	"github.com/riipandi/elph/internal/runtime/toolresult"
-	"github.com/riipandi/elph/internal/prompt"
 	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/pkg/ai"
 	"github.com/riipandi/elph/pkg/ai/provider"
 	"github.com/riipandi/elph/pkg/core/agent"
 	"github.com/riipandi/elph/pkg/skill"
-	"github.com/riipandi/elph/pkg/tools/todolist"
 	"github.com/riipandi/elph/pkg/tools/goal"
+	"github.com/riipandi/elph/pkg/tools/todolist"
 	"go.jetify.com/typeid/v2"
 )
-
 
 // Session binds a coding-agent runtime to a single interactive session.
 type Session struct {
@@ -44,7 +43,6 @@ type Session struct {
 	CompactionHistory []agent.CompactionEntry // history of compactions with summaries
 }
 
-
 // NewSession creates a session with a generated typeid and assembled system prompt.
 func NewSession(workDir string) Session {
 	id := typeid.MustGenerate("sess")
@@ -67,9 +65,9 @@ func NewSession(workDir string) Session {
 
 	todoStore := loadSessionTodos(workDir, id.String())
 	return Session{
-		ID:        id,
-		WorkDir:   workDir,
-		todoStore: &todoStore,
+		ID:          id,
+		WorkDir:     workDir,
+		todoStore:   &todoStore,
 		goalManager: goal.NewManager(),
 		SystemPrompt: prompt.Build(prompt.Options{
 			WorkDir:                  workDir,
@@ -109,7 +107,6 @@ func (s Session) Todos() []todolist.Todo {
 func (s *Session) GoalManager() *goal.Manager {
 	return s.goalManager
 }
-
 
 // ReplaceTodos replaces the session todo list.
 func (s *Session) ReplaceTodos(todos []todolist.Todo) {
@@ -243,7 +240,6 @@ func loadSessionTodos(workDir, sessionID string) []todolist.Todo {
 	}
 	return loaded
 }
-
 
 func formatGoalPrompt(s *goal.Snapshot) string {
 	var b strings.Builder

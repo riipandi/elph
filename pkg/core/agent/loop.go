@@ -165,7 +165,6 @@ func runProviderLoop(ctx context.Context, opts TurnOptions, ch chan<- Event) {
 		}
 	}
 
-
 	sendEvent(ctx, ch, TurnDoneWithHistoryEvent(protocol.TurnResult{
 		Content: fmt.Sprintf("Stopped after %d tool rounds.", maxToolIterationsFor(opts)),
 		Usage:   usage,

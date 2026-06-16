@@ -31,7 +31,7 @@ const (
 	CategoryPlanMode        = catalog.CategoryPlanMode
 	CategoryStateManagement = catalog.CategoryStateManagement
 	CategoryCollaboration   = catalog.CategoryCollaboration
-	CategoryGoal           = catalog.CategoryGoal
+	CategoryGoal            = catalog.CategoryGoal
 
 	ApprovalAutoAllow        = catalog.ApprovalAutoAllow
 	ApprovalRequiresApproval = catalog.ApprovalRequiresApproval

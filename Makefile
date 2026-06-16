@@ -2,6 +2,8 @@
 
 GO          := $$(which go)
 GOTEST      := $$(which gotestsum)
+GORELEASER  := $$(which goreleaser)
+GOLANGCI    := $$(which golangci-lint)
 
 BINARY_NAME := elph
 BUILD_DIR   := ./build/release
@@ -28,7 +30,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 TEST_FLAGS := --format short-verbose -- -count=1 -v
 
-.PHONY: build run install
+.PHONY: build run install release
 .PHONY: test integration coverage
 .PHONY: clean prepare deps lint fmt vet help
 
@@ -52,6 +54,11 @@ install: build ## Build and copy binary to ~/.local/bin
 run: ## Run the application
 	@$(GO) run ./cmd/elph $(or $(_RESIDUAL_),$(ARGS))
 
+# ─── Release ─────────────────────────────────────────────────────────────────
+
+release: ## Run the goreleaser in dirty
+	@$(GORELEASER) build --clean --auto-snapshot
+
 # ─── Testing ─────────────────────────────────────────────────────────────────
 
 test: ## Run unit tests
@@ -67,7 +74,7 @@ coverage: ## Run tests with coverage report
 # ─── Code Quality ────────────────────────────────────────────────────────────
 
 lint: ## Run linter (requires golangci-lint)
-	@golangci-lint run ./...
+	@$(GOLANGCI) run -c .golangci.yml ./...
 
 fmt: ## Format code
 	@$(GO) fmt ./...

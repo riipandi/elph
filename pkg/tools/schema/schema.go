@@ -156,9 +156,9 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		return todoListSchema(), true
 	case catalog.CreateGoal:
 		return objectSchema(map[string]propertySpec{
-			"objective":          {typ: "string", description: "The objective to pursue. Must have a verifiable end state."},
+			"objective":           {typ: "string", description: "The objective to pursue. Must have a verifiable end state."},
 			"completionCriterion": {typ: "string", description: "How to verify the goal is complete."},
-			"replace":            {typ: "boolean", description: "Replace an existing active or paused goal."},
+			"replace":             {typ: "boolean", description: "Replace an existing active or paused goal."},
 		}, "objective"), true
 	case catalog.GetGoal:
 		return objectSchema(nil), true
@@ -179,7 +179,6 @@ func ProviderSchema(name string) (map[string]any, bool) {
 		return nil, false
 	}
 }
-
 
 type propertySpec struct {
 	typ         string

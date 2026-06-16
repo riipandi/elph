@@ -883,9 +883,182 @@ h3 {
   }
 }
 
-/* ─── Dark mode nav overrides ─────────────────────────────────────────── */
+/* ─── Dark mode overrides ──────────────────────────────────────────────── */
 :root[data-color="dark"] {
-  --nav-bg: rgba(16, 16, 16, 0.88);
+  color-scheme: dark;
+  --bg: #0e0f0d;
+  --ink: #e4e7e2;
+  --ink-2: #bcc0b8;
+  --muted: #8a9484;
+  --soft: #6b7566;
+  --surface: #1a1d19;
+  --surface-2: #252925;
+  --surface-3: #1f242e;
+  --line: #2d322b;
+  --line-strong: #3d453b;
+  --accent: #4ea85c;
+  --accent-strong: #6bc77a;
+  --blue: #5a9fd4;
+  --blue-soft: #1d2e3a;
+  --code: #101510;
+  --code-2: #1d241d;
+  --warning: #d4912a;
+  --radius: 8px;
+  --shadow: 0 18px 56px rgba(0, 0, 0, 0.4);
+
+  --nav-bg: rgba(14, 15, 13, 0.88);
   --nav-border: rgba(255, 255, 255, 0.1);
-  --nav-overlay-bg: rgba(16, 16, 16, 0.97);
+  --nav-overlay-bg: rgba(14, 15, 13, 0.97);
+}
+
+:root[data-color="dark"] body {
+  background:
+    linear-gradient(rgba(228, 231, 226, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(228, 231, 226, 0.035) 1px, transparent 1px),
+    var(--bg);
+}
+
+:root[data-color="dark"] .hero {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(14, 15, 13, 0.92), rgba(14, 15, 13, 0.72)),
+    linear-gradient(135deg, #1a2e1c 0%, #0e0f0d 52%, #16232e 100%);
+}
+
+:root[data-color="dark"] .hero .eyebrow {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+
+:root[data-color="dark"] .button.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+:root[data-color="dark"] .button.secondary:hover,
+:root[data-color="dark"] .button.secondary:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-color="dark"] .tag {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+:root[data-color="dark"] .proof {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+:root[data-color="dark"] .capability {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:root[data-color="dark"] .step {
+  background: var(--surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-color="dark"] .map {
+  background:
+    linear-gradient(180deg, rgba(29, 46, 58, 0.7), rgba(14, 15, 13, 0.9)),
+    var(--surface);
+}
+
+:root[data-color="dark"] .map-row {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(90, 159, 212, 0.2);
+}
+
+:root[data-color="dark"] .map-row strong {
+  color: var(--blue);
+}
+
+:root[data-color="dark"] .command span {
+  color: #8a9484;
+}
+
+:root[data-color="dark"] .extend-copy,
+:root[data-color="dark"] .install-copy,
+:root[data-color="dark"] .docs-panel {
+  background: var(--surface);
+}
+
+:root[data-color="dark"] .doc-link {
+  background: var(--surface-2);
+}
+
+:root[data-color="dark"] .requirement {
+  background: var(--surface-2);
+}
+
+:root[data-color="dark"] .site-footer {
+  border-top-color: var(--line);
+}
+
+:root[data-color="dark"] .brand-mark {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+
+:root[data-color="dark"] .eyebrow {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+
+:root[data-color="dark"] .eyebrow::before {
+  background: var(--accent);
+}
+
+:root[data-color="dark"] .icon {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+:root[data-color="dark"] .step-number {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  color: var(--accent);
+}
+
+:root[data-color="dark"] .nav-links a:hover,
+:root[data-color="dark"] .nav-links a:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+:root[data-color="dark"] .nav-links a {
+  color: var(--muted);
+}
+
+:root[data-color="dark"] .nav-github:hover svg {
+  fill: var(--ink);
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.5rem;
+  line-height: 0;
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.theme-toggle:hover {
+  color: var(--ink);
+}
+:root[data-color="dark"] .theme-toggle {
+  color: var(--muted);
+}
+:root[data-color="dark"] .theme-toggle:hover {
+  color: var(--ink);
 }

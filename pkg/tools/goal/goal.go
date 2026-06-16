@@ -24,16 +24,16 @@ const (
 
 // Snapshot is a point-in-time view of a goal.
 type Snapshot struct {
-	Objective          string `json:"objective"`
+	Objective           string `json:"objective"`
 	CompletionCriterion string `json:"completionCriterion,omitempty"`
-	Status             Status `json:"status"`
-	TokenBudget        int64  `json:"tokenBudget,omitempty"`
-	TurnBudget         int64  `json:"turnBudget,omitempty"`
-	WallClockBudgetMs  int64  `json:"wallClockBudgetMs,omitempty"`
-	TurnsUsed          int64  `json:"turnsUsed"`
-	TokensUsed         int64  `json:"tokensUsed"`
-	WallClockMs        int64  `json:"wallClockMs"`
-	StartedAt          int64  `json:"startedAt"`
+	Status              Status `json:"status"`
+	TokenBudget         int64  `json:"tokenBudget,omitempty"`
+	TurnBudget          int64  `json:"turnBudget,omitempty"`
+	WallClockBudgetMs   int64  `json:"wallClockBudgetMs,omitempty"`
+	TurnsUsed           int64  `json:"turnsUsed"`
+	TokensUsed          int64  `json:"tokensUsed"`
+	WallClockMs         int64  `json:"wallClockMs"`
+	StartedAt           int64  `json:"startedAt"`
 }
 
 // BudgetLimits holds optional budget constraints for a goal.
@@ -45,15 +45,15 @@ type BudgetLimits struct {
 
 // Goal is the runtime state of a single goal.
 type Goal struct {
-	Objective          string
+	Objective           string
 	CompletionCriterion string
-	Status             Status
-	TokenBudget        int64
-	TurnBudget         int64
-	WallClockBudgetMs  int64
-	TurnsUsed          int64
-	TokensUsed         int64
-	StartedAt          time.Time
+	Status              Status
+	TokenBudget         int64
+	TurnBudget          int64
+	WallClockBudgetMs   int64
+	TurnsUsed           int64
+	TokensUsed          int64
+	StartedAt           time.Time
 }
 
 // Snapshot returns a point-in-time view of the goal.

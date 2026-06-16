@@ -61,11 +61,10 @@ var builtin = []SlashCommand{
 		Handler:     contextHandler,
 	},
 	{
-		Name:        "goal",
-		Aliases:     []string{"goals"},
-		Description: "Manage session goals: status, pause, resume, cancel, replace, next",
+		Name:         "goal",
+		Aliases:      []string{"goals"},
+		Description:  "Manage session goals: status, pause, resume, cancel, replace, next",
 		ArgumentHint: "<subcommand> [args]",
-		Handler:     goalHandler,
+		Handler:      goalHandler,
 	},
-
 }

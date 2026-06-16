@@ -10,7 +10,7 @@ const (
 	CategoryPlanMode        Category = "plan_mode"
 	CategoryStateManagement Category = "state_management"
 	CategoryCollaboration   Category = "collaboration"
-	CategoryGoal           Category = "goal"
+	CategoryGoal            Category = "goal"
 )
 
 // Approval is the default policy before a tool runs.

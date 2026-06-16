@@ -9,7 +9,6 @@ import (
 	"github.com/riipandi/elph/pkg/tools/goal"
 )
 
-
 // Context carries session state needed by slash command handlers.
 type Context struct {
 	WorkDir         string
@@ -25,7 +24,6 @@ type Context struct {
 
 	// GoalManager is an interface for the session goal manager.
 	GoalManager *goal.Manager
-
 
 	CompactHistory bool // set by /compact handler
 	CompactRatio   int  // compaction target percentage

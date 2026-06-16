@@ -117,7 +117,6 @@ func (m Model) commandContext() command.Context {
 		PromptTemplates: m.promptTemplates,
 		Skills:          m.slashSkills,
 		GoalManager:     m.session.GoalManager(),
-
 	}
 	if cmd, _, ok := command.ResolveInput(m.input.Value(), base); ok && cmd.Name == "model" {
 		if reloaded, err := provider.LoadCatalog(""); err == nil && len(reloaded.Providers) > 0 {

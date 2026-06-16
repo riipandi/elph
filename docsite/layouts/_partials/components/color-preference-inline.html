@@ -1,0 +1,8 @@
+<script>
+const lsKey='color-preference';
+let cp=localStorage.getItem(lsKey);
+if(cp===null)cp=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+document.documentElement.setAttribute('data-color',cp);
+window.__setColor=function(v){localStorage.setItem(lsKey,v);document.documentElement.setAttribute('data-color',v)};
+window.toggleTheme=function(){window.__setColor(cp==='dark'?'light':'dark');cp=(cp==='dark'?'light':'dark')};
+</script>

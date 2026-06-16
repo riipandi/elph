@@ -461,3 +461,13 @@
   line-height: 1.7;
   font-size: 1rem;
 }
+
+:root[data-color="dark"] #docs-content tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.025);
+}
+:root[data-color="dark"] #docs-content blockquote {
+  background: rgba(78, 168, 92, 0.08);
+}
+:root[data-color="dark"] #docs-content pre {
+  color: #dce8d9;
+}

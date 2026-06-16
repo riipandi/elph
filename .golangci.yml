@@ -1,0 +1,135 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+
+version: '2'
+
+linters:
+  default: none
+  enable:
+    - errcheck      # Ensure errors are checked and handled
+    - govet         # Go's official vet tool for catching suspicious constructs
+    - staticcheck   # Advanced static analysis, catches bugs and code smells
+    - ineffassign   # Detects assignments to variables that are never used
+    - unused        # Finds unused variables, functions, and imports
+    - gosec         # Basic security checks (recommended to keep enabled)
+  settings:
+    errcheck:
+      check-type-assertions: true
+    staticcheck:
+      checks:
+        - 'all' # Use all staticcheck checks for best coverage
+    exhaustive:
+      check:
+        - switch
+        - map
+    exhaustruct:
+      exclude:
+        - ^net/http.Client$
+        - ^net/http.Cookie$
+        - ^net/http.Request$
+        - ^net/http.Response$
+        - ^net/http.Server$
+        - ^net/http.Transport$
+        - ^net/url.URL$
+        - ^os/exec.Cmd$
+        - ^reflect.StructField$
+        - ^github.com/riipandi/elph/pkg/.*$
+        - ^github.com/riipandi/elph/modules/.*$
+        # - ^github.com/prometheus/client_golang/.+Opts$
+        # - ^github.com/testcontainers/testcontainers-go.+Request$
+        # - ^github.com/testcontainers/testcontainers-go.FromDockerfile$
+        # - ^github.com/ory/dockertest/v3.*$
+        # - ^golang.org/x/tools/go/analysis.Analyzer$
+        # - ^google.golang.org/protobuf/.+Options$
+        # - ^gopkg.in/yaml.v3.Node$
+        # - ^github.com/urfave/cli/v3.*$
+        # - ^github.com/ClickHouse/clickhouse-go/v2.*$
+        # - ^github.com/aws/aws-sdk-go-v2/.*$
+    gosec:
+      excludes:
+        - G101
+        - G102
+        - G107
+    funlen:
+      lines: 100
+      statements: 50
+      ignore-comments: true
+    gocognit:
+      min-complexity: 20
+    gomodguard:
+      blocked:
+        modules:
+          - github.com/satori/go.uuid:
+              recommendations:
+                - github.com/google/uuid
+              reason: satori's package is not maintained
+          - github.com/gofrs/uuid:
+              recommendations:
+                - github.com/gofrs/uuid/v5
+              reason: gofrs' package was not go module before v5
+    govet:
+      disable:
+        - fieldalignment # Disable struct field alignment warnings to allow easier refactoring and avoid unnecessary churn in PRs.
+      enable-all: true
+    inamedparam:
+      skip-single-param: true
+    lll:
+      line-length: 120
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-no-explanation:
+        - funlen
+        - gocognit
+        - lll
+    # sloglint:
+    #   no-global: all
+    #   context: scope
+    # perfsprint:
+    #   strconcat: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - godot
+        source: (noinspection|TODO)
+      - linters:
+          - gocritic
+        source: //noinspection
+      - linters:
+          - bodyclose
+          - dupl
+          - errcheck
+          - exhaustruct
+          - funlen
+          - goconst
+          - gosec
+          - noctx
+          - wrapcheck
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - packages$
+      - temp$
+
+issues:
+  max-same-issues: 50
+
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+      - packages$
+      - build$
+      - storage$
+      - release$
+      - temp$

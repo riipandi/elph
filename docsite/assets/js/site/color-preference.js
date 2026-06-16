@@ -33,3 +33,8 @@ window.matchMedia('(prefers-color-scheme: dark)')
         colorPreference = isDark ? 'dark' : 'light'
         setColorPreference()
     })
+
+window.toggleTheme = function() {
+  colorPreference = colorPreference === 'dark' ? 'light' : 'dark';
+  setColorPreference();
+}

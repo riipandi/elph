@@ -30,14 +30,14 @@ type TurnOptions struct {
 	ExecuteTool            ToolExecuteFunc
 	ExecuteToolStream      ToolExecuteStreamFunc
 	InteractTool           ToolInteractFunc
-	SkipToolApproval       bool          // brave mode — skip approval dialogs for requires-approval tools
-	LogProvider            TurnLogFunc   // optional provider/tool trace (requests log)
-	ProviderMaxRetries     int           // retriable failures to retry (0 = default)
-	ProviderDefaultTimeout time.Duration // provider inactivity limit (0 = default)
-	MaxToolIterations      int           // max autonomous tool rounds per turn (0 = default MaxToolIterationsDefault)
-	AutoCompactContext     bool          // compact conversation history on context-limit error and retry
-	RecordGoalTurn       func(tokens int) // optional: called after each tool round to record goal turn progress
-	AutoCompactLimit       int           // compaction target percentage (0 = use default 80)
+	SkipToolApproval       bool             // brave mode — skip approval dialogs for requires-approval tools
+	LogProvider            TurnLogFunc      // optional provider/tool trace (requests log)
+	ProviderMaxRetries     int              // retriable failures to retry (0 = default)
+	ProviderDefaultTimeout time.Duration    // provider inactivity limit (0 = default)
+	MaxToolIterations      int              // max autonomous tool rounds per turn (0 = default MaxToolIterationsDefault)
+	AutoCompactContext     bool             // compact conversation history on context-limit error and retry
+	RecordGoalTurn         func(tokens int) // optional: called after each tool round to record goal turn progress
+	AutoCompactLimit       int              // compaction target percentage (0 = use default 80)
 }
 
 // ProviderRetryConfig returns retry settings for upstream provider calls.
