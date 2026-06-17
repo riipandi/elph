@@ -15,11 +15,11 @@ func TestEnsureStarterProvidersCreatesTemplatesOnFreshInstall(t *testing.T) {
 	result, created, err := EnsureStarterProviders()
 	require.NoError(t, err)
 	require.True(t, created)
-	require.Len(t, result.Created, 6)
+	require.Len(t, result.Created, 7)
 
 	catalog, err := LoadCatalog(dir)
 	require.NoError(t, err)
-	require.Len(t, catalog.Providers, 6)
+	require.Len(t, catalog.Providers, 7)
 
 	result, created, err = EnsureStarterProviders()
 	require.NoError(t, err)

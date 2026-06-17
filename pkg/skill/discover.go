@@ -47,8 +47,8 @@ func mergeDefinitions(workDir string) (map[string]Definition, []string) {
 	for _, dir := range discoveryScopes(workDir) {
 		for _, def := range loadFromDir(dir) {
 			if prev, exists := byName[def.Name]; exists {
-				if prev.Location != def.Location {
-					slog.Default().Info("skill name collision; later scope wins",
+				if prev.Location != "" && def.Location != "" && prev.Location != def.Location {
+					slog.Default().Debug("skill name collision; later scope wins",
 						"name", def.Name,
 						"shadowed", prev.Location,
 						"winner", def.Location,

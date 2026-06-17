@@ -33,9 +33,18 @@ func (m Model) paletteBox(lines []string) string {
 }
 
 func (m Model) renderPaletteRows(rows []paletteRow, selected int, nameColW int) string {
+	boxW := borderedChromeWidth(m.chromeOuterWidth())
+	// inner content after border (2) + padding (2)
+	// summary fits in: innerW - nameColW - ColumnGap
+	summaryMaxW := boxW - 4 - nameColW - align.ColumnGap
+	if summaryMaxW < 0 {
+		summaryMaxW = 0
+	}
+
 	lines := make([]string, len(rows))
 	for i, row := range rows {
-		_, gap, summary := align.Row(row.name, nameColW, row.summary)
+		truncated := align.TruncateDisplayWidth(row.summary, summaryMaxW)
+		_, gap, summary := align.Row(row.name, nameColW, truncated)
 		lines[i] = paletteLine(row.name, gap, summary, i == selected)
 	}
 	return m.paletteBox(lines)

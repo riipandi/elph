@@ -50,6 +50,11 @@ func gatewayThinkingCompat(providerID string, cfg FileConfig) (Compat, bool) {
 		return Compat{
 			SupportsDeveloperRole: new(false),
 		}, true
+	case "kilo":
+		return Compat{
+			ThinkingFormat:        string(ThinkingFormatOpenRouter),
+			SupportsDeveloperRole: new(false),
+		}, true
 	default:
 		base := strings.ToLower(strings.TrimSpace(cfg.BaseURL))
 		if strings.Contains(base, "opencode.ai/") {

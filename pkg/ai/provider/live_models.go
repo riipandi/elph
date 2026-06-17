@@ -12,6 +12,7 @@ import (
 const (
 	OpenCodeZenBaseURL = "https://opencode.ai/zen/v1"
 	OpenCodeGoBaseURL  = "https://opencode.ai/zen/go/v1"
+	KiloGatewayBaseURL = "https://api.kilo.ai/api/gateway"
 )
 
 // CompatibleModelsResponse is the OpenAI-compatible /models payload.
@@ -38,7 +39,7 @@ type LiveModelsOptions struct {
 
 func isLiveModelsProvider(providerID string) bool {
 	switch providerID {
-	case "opencode", "opencode-go", "deepseek", "kimi":
+	case "opencode", "opencode-go", "deepseek", "kimi", "kilo":
 		return true
 	default:
 		return false

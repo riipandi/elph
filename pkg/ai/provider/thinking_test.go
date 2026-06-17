@@ -84,6 +84,15 @@ func TestApplyGatewayThinkingCompatOpenCodeGo(t *testing.T) {
 	require.False(t, *cfg.Compat.SupportsReasoningEffort)
 }
 
+func TestApplyGatewayThinkingCompatKilo(t *testing.T) {
+	cfg := ApplyGatewayThinkingCompat("kilo", FileConfig{
+		BaseURL: KiloGatewayBaseURL,
+	})
+	require.Equal(t, string(ThinkingFormatOpenRouter), cfg.Compat.ThinkingFormat)
+	require.NotNil(t, cfg.Compat.SupportsDeveloperRole)
+	require.False(t, *cfg.Compat.SupportsDeveloperRole)
+}
+
 func TestResolveThinkingOpenRouterFormat(t *testing.T) {
 	model := ResolvedModel{
 		API:       APIOpenAICompletions,

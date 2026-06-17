@@ -309,6 +309,30 @@ func primaryTemplates() []bootstrapTemplate {
 				},
 			},
 		},
+		{
+			ID: "kilo",
+			Config: FileConfig{
+				Name:       "Kilo",
+				BaseURL:    KiloGatewayBaseURL,
+				API:        APIOpenAICompletions,
+				APIKey:     "env.KILO_API_KEY",
+				AuthHeader: true,
+				Compat: Compat{
+					ThinkingFormat:        string(ThinkingFormatOpenRouter),
+					SupportsDeveloperRole: new(false),
+				},
+				Models: []ModelConfig{
+					{
+						ID:            "kilo-auto/free",
+						Name:          "Kilo Auto Free",
+						Input:         []string{"text"},
+						ContextWindow: 128000,
+						MaxTokens:     4096,
+						Cost:          &Cost{},
+					},
+				},
+			},
+		},
 	}
 }
 

@@ -15,7 +15,7 @@ func TestBootstrapProvidersCreatesStarterFiles(t *testing.T) {
 	result, err := BootstrapProviders(dir, false)
 	require.NoError(t, err)
 	require.Equal(t, dir, result.Dir)
-	require.Equal(t, []string{"openai.json", "anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json"}, result.Created)
+	require.Equal(t, []string{"openai.json", "anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json", "kilo.json"}, result.Created)
 	require.Empty(t, result.Skipped)
 
 	for _, name := range result.Created {
@@ -45,7 +45,7 @@ func TestBootstrapProvidersSkipsExistingFiles(t *testing.T) {
 
 	result, err := BootstrapProviders(dir, false)
 	require.NoError(t, err)
-	require.Equal(t, []string{"anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json"}, result.Created)
+	require.Equal(t, []string{"anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json", "kilo.json"}, result.Created)
 	require.Equal(t, []string{"openai.json"}, result.Skipped)
 
 	raw, err := os.ReadFile(filepath.Join(dir, "openai.json"))
@@ -59,7 +59,7 @@ func TestBootstrapProvidersForceOverwrites(t *testing.T) {
 
 	result, err := BootstrapProviders(dir, true)
 	require.NoError(t, err)
-	require.Equal(t, []string{"openai.json", "anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json"}, result.Created)
+	require.Equal(t, []string{"openai.json", "anthropic.json", "opencode.json", "opencode-go.json", "deepseek.json", "kimi.json", "kilo.json"}, result.Created)
 	require.Empty(t, result.Skipped)
 
 	raw, err := os.ReadFile(filepath.Join(dir, "openai.json"))
