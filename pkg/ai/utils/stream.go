@@ -55,7 +55,10 @@ func PostSSE(ctx context.Context, client *resty.Client, url string, headers map[
 				return
 			}
 			bump()
-			event := e.(*resty.SSE)
+			event, ok := e.(*resty.SSE)
+			if !ok {
+				return
+			}
 			data := strings.TrimSpace(event.Data)
 			if data == "" || data == "[DONE]" {
 				if data == "[DONE]" {
