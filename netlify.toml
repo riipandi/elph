@@ -15,11 +15,12 @@
   """
 
 [[redirects]]
-	from = "/*"
-	to = "/404/"
-	status = 404
-
-[[redirects]]
 	from = "/install"
 	to = "/install.sh"
 	status = 200
+	force = true
+
+[[redirects]]
+	from = "/*"
+	to = "/404/"
+	status = 404
