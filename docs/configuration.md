@@ -112,6 +112,17 @@ On first launch, `settings.Ensure()` creates `~/.elph/settings.json` with defaul
 | `session.thinkingLevel`    | `high`       | `off` … `xhigh`                                                                                                                                                                                                             |
 Legacy `models.syncInterval` and `models.lastSync` in older settings files are migrated on load (`syncInterval` is promoted to the top level; `lastSync` moves to `version.json`).
 
+### Provider HTTP settings
+
+HTTP clients use [resty v3](https://resty.dev) with built-in retry and configurable timeouts.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `provider.maxRetries` | `2` | Retries for retriable provider failures (5xx, network errors). `0` disables. |
+| `provider.defaultTimeout` | `120s` | Provider inactivity timeout and SSE stall detection limit. |
+
+Tool packages (websearch, codesearch, fetchurl) have independent retry: 2 retries on 5xx/network errors with 1s-5s backoff.
+
 ### Model selection
 
 Priority (`pkg/ai/provider/registry.go`):

@@ -53,7 +53,7 @@ pkg/ai/providertests/  Shared httptest suites across adapters
 
 **Google** (`providers/google`) is a stub — not wired in `NewProvider` yet.
 
-Extend Charm forks; do not add raw HTTP in `pkg/ai/provider/`.
+Extend Charm forks; do not add raw HTTP in `pkg/ai/provider/`. Use resty v3 via `pkg/ai/utils`.
 
 ## How to change providers
 
