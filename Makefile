@@ -5,7 +5,7 @@ GOTEST      := $$(which gotestsum)
 GORELEASER  := $$(which goreleaser)
 GOLANGCI    := $$(which golangci-lint)
 
-BINARY_NAME := elph
+BINARY_NAME := elph-next
 BUILD_DIR   := ./build/release
 PKG_NAME    := github.com/riipandi/elph
 PKG_VERSION := 0.0.0
