@@ -35,7 +35,19 @@ const (
 )
 
 // HTTPClient is the client used for outbound search requests. Tests may replace it.
-var HTTPClient = resty.New().SetTimeout(20 * time.Second)
+var HTTPClient = resty.New().
+	SetTimeout(20 * time.Second).
+	SetRetryCount(2).
+	SetRetryWaitTime(1 * time.Second).
+	SetRetryMaxWaitTime(5 * time.Second).
+	AddRetryConditions(
+		func(r *resty.Response, err error) bool {
+			if err != nil {
+				return true
+			}
+			return r.StatusCode() >= 500
+		},
+	)
 
 type engine struct {
 	id          EngineID

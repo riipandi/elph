@@ -27,7 +27,19 @@ type Result struct {
 }
 
 // HTTPClient is used for outbound API requests. Tests may replace it.
-var HTTPClient = resty.New().SetTimeout(20 * time.Second)
+var HTTPClient = resty.New().
+	SetTimeout(20 * time.Second).
+	SetRetryCount(2).
+	SetRetryWaitTime(1 * time.Second).
+	SetRetryMaxWaitTime(5 * time.Second).
+	AddRetryConditions(
+		func(r *resty.Response, err error) bool {
+			if err != nil {
+				return true
+			}
+			return r.StatusCode() >= 500
+		},
+	)
 
 // Available returns providers that CodeSearch may use.
 func Available() []ProviderID {

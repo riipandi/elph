@@ -14,11 +14,38 @@ import (
 const (
 	defaultHTTPTimeout       = 120 * time.Second
 	streamResponseHeaderWait = 60 * time.Second
+
+	// DefaultRetryCount is the default number of retries for retriable failures.
+	DefaultRetryCount = 2
+
+	// DefaultRetryWaitTime is the initial wait time between retries.
+	DefaultRetryWaitTime = 1 * time.Second
+
+	// DefaultRetryMaxWaitTime is the maximum wait time between retries.
+	DefaultRetryMaxWaitTime = 10 * time.Second
 )
 
 // NewHTTPClient returns a resty client with the default upstream timeout.
 func NewHTTPClient() *resty.Client {
-	return resty.New().SetTimeout(defaultHTTPTimeout)
+	return NewHTTPClientWithTimeout(defaultHTTPTimeout)
+}
+
+// NewHTTPClientWithTimeout returns a resty client with the given timeout and
+// default retry settings (2 retries on 5xx / network errors).
+func NewHTTPClientWithTimeout(timeout time.Duration) *resty.Client {
+	return resty.New().
+		SetTimeout(timeout).
+		SetRetryCount(DefaultRetryCount).
+		SetRetryWaitTime(DefaultRetryWaitTime).
+		SetRetryMaxWaitTime(DefaultRetryMaxWaitTime).
+		AddRetryConditions(
+			func(r *resty.Response, err error) bool {
+				if err != nil {
+					return true
+				}
+				return r.StatusCode() >= 500
+			},
+		)
 }
 
 // NewStreamingHTTPClient returns a resty client tuned for SSE: bounded wait for

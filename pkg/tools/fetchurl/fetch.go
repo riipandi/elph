@@ -17,6 +17,17 @@ const MaxBytes = 256 << 10
 // HTTPClient is used for outbound requests. Tests may replace it.
 var HTTPClient = resty.New().
 	SetTimeout(30 * time.Second).
+	SetRetryCount(2).
+	SetRetryWaitTime(1 * time.Second).
+	SetRetryMaxWaitTime(5 * time.Second).
+	AddRetryConditions(
+		func(r *resty.Response, err error) bool {
+			if err != nil {
+				return true
+			}
+			return r.StatusCode() >= 500
+		},
+	).
 	SetRedirectPolicy(resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {
 			return fmt.Errorf("too many redirects")
