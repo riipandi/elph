@@ -441,15 +441,6 @@ h3 {
   font-size: 1.18rem;
 }
 
-.status-note {
-  max-width: 650px;
-  margin: 1rem 0 0;
-  border-left: 3px solid var(--warning);
-  color: var(--ink-2);
-  padding-left: 0.9rem;
-  font-size: 0.95rem;
-	font-style: italic;
-}
 
 .actions {
   display: flex;
@@ -490,22 +481,104 @@ h3 {
   color: var(--ink);
 }
 
-.trust-row {
+.hero-install-line {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1.15rem;
-}
-
-.tag {
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: 1.1rem;
+  padding: 0.65rem 1.15rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--muted);
-  padding: 0.38rem 0.52rem;
+  background: var(--surface);
   font-size: 0.84rem;
-  font-weight: 760;
+  width: fit-content;
 }
+
+.hero-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.hero-install-alt {
+  white-space: nowrap;
+}
+
+.hero-install-alt a {
+  color: var(--blue);
+  text-underline-offset: 0.2em;
+}
+
+.hero-install-alt a:hover {
+  color: var(--ink-2);
+}
+
+.hero-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,0.72);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.hero-copy-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.hero-copy-btn.copied {
+  color: var(--accent-strong);
+  border-color: var(--accent-strong);
+  background: var(--surface-2);
+}
+
+.hero-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  color: var(--accent-strong);
+  background: transparent;
+  white-space: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+:root[data-color="dark"] .hero-install-line {
+  background: rgba(255,255,255,0.04);
+  border-color: var(--line);
+}
+:root[data-color="dark"] .hero-copy-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--line);
+  color: var(--muted);
+}
+:root[data-color="dark"] .hero-copy-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: rgba(255,255,255,0.1);
+}
+:root[data-color="dark"] .hero-copy-btn.copied {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+:root[data-color="dark"] .hero-code {
+  color: var(--accent);
+}
+:root[data-color="dark"] .hero-install-alt a {
+  color: var(--blue);
+}
+
 
 .section {
   padding: clamp(3.25rem, 7vw, 5.5rem) 0;
@@ -703,6 +776,7 @@ h3 {
 }
 
 .commands {
+	padding: 10px;
   overflow: hidden;
   background: var(--code);
   color: #eef6eb;

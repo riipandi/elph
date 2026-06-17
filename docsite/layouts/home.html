@@ -47,20 +47,21 @@
             calls tools natively, and asks before risky actions. Open a repo, describe the outcome, approve
             important actions, and let Elph do the rest — no hidden black box.
           </p>
-          <p class="status-note">
-            Early-stage project: APIs, provider behavior, and runtime details may change between releases,
-            you may encounter bugs.
-          </p>
-          <div class="actions" aria-label="Primary actions">
-            <a class="button primary" href="#install">Start locally</a>
-            <a class="button secondary" href="https://github.com/riipandi/elph">View GitHub</a>
-            <a class="button secondary" href="https://github.com/riipandi/elph#readme">Read README</a>
+
+          <!-- <div class="actions" aria-label="Primary actions">
+            <a class="button primary" href="#install">Install Elph</a>
+            <a class="button secondary" href="https://github.com/riipandi/elph">View on GitHub</a>
+          </div> -->
+
+          <div class="hero-install-line">
+            <code class="hero-code" id="install-command">curl -fsSL https://elph.space/install.sh | bash</code>
+            <button class="hero-copy-btn" data-copy="curl -fsSL https://elph.space/install.sh | bash" aria-label="Copy install command">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
           </div>
-          <div class="trust-row" aria-label="Highlights">
-            <span class="tag">Go 1.26</span>
-            <span class="tag">Bubble Tea TUI</span>
-            <span class="tag">Native tools</span>
-            <span class="tag">Provider routing</span>
+
+          <div class="hero-tags">
+            <span class="hero-install-alt">Or, install using <a href="#install">go install</a></span>
           </div>
         </div>
         <aside class="session" aria-label="Elph session preview">
@@ -220,25 +221,25 @@
           <p class="eyebrow">Install</p>
           <h2>Run it locally.</h2>
           <p class="section-copy">
-            Elph is under active development. Use the documented Go install path for daily use, or clone the
-            repository when contributing to providers, tools, or runtime behavior.
+            Run the quick install script (no Go required), use the Go toolchain path,
+            or clone the repository when contributing to providers, tools, or runtime.
           </p>
           <div class="requirements" aria-label="Requirements">
             <div class="requirement">
               <strong>Go</strong>
-              <span>1.26 or newer</span>
-            </div>
-            <div class="requirement">
-              <strong>Optional tools</strong>
-              <span>gotestsum, golangci-lint</span>
+              <span>1.26.4 or newer</span>
             </div>
           </div>
         </div>
 
         <div class="commands" aria-label="Quick start commands">
           <div class="command">
+            <code>curl -fsSL https://elph.space/install.sh | bash</code>
+            <span>Quick install (recommended)</span>
+          </div>
+          <div class="command">
             <code>go install github.com/riipandi/elph/cmd/elph@latest</code>
-            <span>Install</span>
+            <span>Via Go toolchain</span>
           </div>
           <div class="command">
             <code>elph</code>
@@ -252,6 +253,7 @@
             <code>make prepare &amp;&amp; make deps &amp;&amp; make run</code>
             <span>From source</span>
           </div>
+        </div>
         </div>
       </div>
     </section>
@@ -295,5 +297,29 @@
   {{ with site.Params.enablePageFind }}
   <script src="{{ "pagefind/pagefind-component-ui.js" | absURL }}" type="module"></script>
   {{ end }}
+  <script>
+(function(){
+  "use strict";
+  var btn=document.querySelector(".hero-copy-btn");
+  if(btn){
+    btn.addEventListener("click",function(e){
+      var text=this.getAttribute("data-copy");
+      if(navigator.clipboard){
+        navigator.clipboard.writeText(text).then(function(){
+          var svg=this.querySelector("svg");
+          var orig=svg.innerHTML;
+          svg.innerHTML="<polyline points=\"20 6 9 17 4 12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>";
+          this.classList.add("copied");
+          var self=this;
+          setTimeout(function(){
+            self.classList.remove("copied");
+            svg.innerHTML=orig;
+          },1800);
+        }.bind(this));
+      }
+    });
+  }
+})();
+</script>
 </body>
 </html>

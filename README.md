@@ -12,6 +12,14 @@ Read the [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on contrib
 
 ### Installation
 
+Install using the [install](./install.sh) script:
+
+```sh
+curl -fsSL https://elph.space/install.sh | bash
+```
+
+Or use `go install` (requires Go 1.26+):
+
 ```sh
 go install github.com/riipandi/elph/cmd/elph@latest
 ```
