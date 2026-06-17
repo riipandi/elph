@@ -15,7 +15,7 @@ Read the [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on contrib
 Install using the [install](./install.sh) script:
 
 ```sh
-curl -fsSL https://elph.space/install | bash
+curl -fsSL https://elph.space/install.sh | bash
 ```
 
 Or use `go install` (requires Go 1.26+):

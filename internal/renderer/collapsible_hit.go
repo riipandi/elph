@@ -100,7 +100,16 @@ func collapsibleToggleRows(msg message, rows []string, blockH int) (headerRow, f
 		}
 	default:
 		headerRow = 0
-		footerRow = blockH - 1
+		for i, row := range rows {
+			if rowContainsCollapsibleHint(row) {
+				footerRow = i
+				break
+			}
+		}
+		// If no hint found (e.g. running status), fall back to last row
+		if footerRow < 0 {
+			footerRow = blockH - 1
+		}
 	}
 	return headerRow, footerRow
 }
@@ -163,7 +172,10 @@ func (m Model) collapsibleFooterViewportY(msgIndex int) (int, bool) {
 }
 
 func aiCopyHintRow(rows []string, msg message, streaming bool) int {
-	if msg.kind != uiconst.MessageAI || streaming {
+	if streaming {
+		return -1
+	}
+	if msg.kind != uiconst.MessageAI && !msg.copyable {
 		return -1
 	}
 	for i, row := range rows {

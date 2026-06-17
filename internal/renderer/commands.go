@@ -566,6 +566,10 @@ func (m Model) handleContextUsage() Model {
 	// Append system prompt as a separate collapsed detail at the bottom
 	if strings.TrimSpace(m.session.SystemPrompt) != "" {
 		m = m.addDetailMessage("System prompt", m.session.SystemPrompt)
+		// Mark copyable so user can click or Ctrl+Y to copy
+		if idx := len(m.messages) - 1; idx >= 0 {
+			m.messages[idx].copyable = true
+		}
 		// Collapsed by default — user can expand with ctrl+o
 		m.session.AppendLog("detail", "System prompt")
 	}

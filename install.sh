@@ -3,7 +3,7 @@
 # Elph -- Install script
 #
 # Usage:
-#   curl -fsSL https://elph.space/install | bash
+#   curl -fsSL https://elph.space/install.sh | bash
 #   curl -fsSL https://raw.githubusercontent.com/riipandi/elph/main/install.sh | bash
 #
 # Options:

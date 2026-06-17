@@ -77,6 +77,7 @@ type message struct {
 	at              time.Time
 	renderCache     messageRenderCache
 	markdownPending bool
+	copyable        bool // true for detail messages that can be copied via click or Ctrl+Y
 }
 
 type Model struct {

@@ -24,12 +24,18 @@ func renderAIMessageFooter(blockWidth int, body string, showCopyHint bool) strin
 }
 
 func (m Model) lastAIMessageIndex() int {
+	copyableIdx := -1
 	for i := len(m.messages) - 1; i >= 0; i-- {
-		if m.messages[i].kind == uiconst.MessageAI && strings.TrimSpace(m.messages[i].text) != "" {
+		msg := m.messages[i]
+		if msg.kind == uiconst.MessageAI && strings.TrimSpace(msg.text) != "" {
 			return i
 		}
+		// Fall back to last copyable detail (e.g. system prompt from /context)
+		if copyableIdx < 0 && msg.copyable && strings.TrimSpace(msg.text) != "" {
+			copyableIdx = i
+		}
 	}
-	return -1
+	return copyableIdx
 }
 
 func (m Model) copyMessageAt(index int) (Model, tea.Cmd) {
@@ -37,7 +43,7 @@ func (m Model) copyMessageAt(index int) (Model, tea.Cmd) {
 		return m, nil
 	}
 	msg := m.messages[index]
-	if msg.kind != uiconst.MessageAI || strings.TrimSpace(msg.text) == "" {
+	if (msg.kind != uiconst.MessageAI && !msg.copyable) || strings.TrimSpace(msg.text) == "" {
 		return m, nil
 	}
 	_ = clipboard.WriteAll(msg.text)

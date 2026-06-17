@@ -63,6 +63,7 @@ type collapsibleRenderOpts struct {
 	showStatusPreview bool
 	showLiveBody      bool
 	spinnerFrame      int
+	copyable          bool // show copy hint inline with collapsible footer
 }
 
 func collapsiblePreview(body string, maxWidth int) string {
@@ -332,7 +333,11 @@ func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, 
 
 	if status != uiconst.DetailStatusRunning {
 		b.WriteString("\n\n")
-		b.WriteString(collapsibleHintLine(hPad, expanded))
+		b.WriteString(dimItalicHintLine(hPad, collapsibleExpandHint(expanded)))
+		if opts.copyable && expanded {
+			b.WriteString("\n")
+			b.WriteString(dimItalicHintLine(hPad, aiCopyHintText))
+		}
 	}
 
 	return b.String()

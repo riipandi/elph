@@ -54,13 +54,11 @@ func (m Model) collapsibleShowsStatusPreview(msg message, index int) bool {
 func (m Model) collapsibleRenderOpts(msg message, index int) collapsibleRenderOpts {
 	show := m.collapsibleShowsStatusPreview(msg, index)
 	live := m.thinkingShowsLiveBody(msg, index) || m.nativeToolOutputStreaming(index)
-	if !show && !live {
-		return collapsibleRenderOpts{}
-	}
 	return collapsibleRenderOpts{
 		showStatusPreview: show,
 		showLiveBody:      live,
 		spinnerFrame:      m.agent.SpinnerFrame,
+		copyable:          msg.copyable,
 	}
 }
 
