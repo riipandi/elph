@@ -52,9 +52,13 @@ func (m Model) handleAgentTurnClosed() (Model, tea.Cmd) {
 		m = m.stopActivityStopwatch()
 		// Accumulate tool call count across turns
 		m.toolCallCount += len(m.agent.TurnToolCalls)
-		m = m.syncLayout(true)
 	}
 	m.agent.Events = nil
+	// Reset stale todo/task state that may not have been cleaned up
+	// if finishNativeToolCall was skipped (e.g. cancelled turn).
+	m.agent.TodoListUpdating = false
+	m.agent.TodoListBefore = nil
+	m = m.syncLayout(true)
 	if askCmd := m.markupAskUserCmd(); askCmd != nil {
 		return m, askCmd
 	}

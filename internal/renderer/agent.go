@@ -218,6 +218,8 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 	m.agent.Busy = false
 	m.agent.Activity = agent.ActivityIdle
 	m.agent.SpinnerFrame = 0
+	m.agent.TodoListUpdating = false
+	m.agent.TodoListBefore = nil
 	m = m.stopActivityStopwatch()
 
 	if m.thinkingTurnEnabled() {
