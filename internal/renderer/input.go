@@ -173,6 +173,18 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	m = m.applyModelSwitch(result.Switch)
+	// Apply system prompt overrides before starting the agent turn.
+	// ClearSystemPrompt removes the project system prompt to save tokens;
+	// SystemPrompt (when non-empty) replaces it with a minimal, focused prompt.
+	if result.ClearSystemPrompt {
+		if result.SystemPrompt != "" {
+			m.session.SystemPrompt = result.SystemPrompt
+		} else {
+			m.session.SystemPrompt = ""
+		}
+	} else if result.SystemPrompt != "" {
+		m.session.SystemPrompt = result.SystemPrompt
+	}
 	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
 		if !m.hasActiveModel() {
 			inputUpdated, cmd := m.promptSelectModel()

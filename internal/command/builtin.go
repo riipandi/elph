@@ -27,6 +27,12 @@ var builtin = []SlashCommand{
 		Handler:     notImplemented("diff"),
 	},
 	{
+		Name:         "commit",
+		Description:  "Generate a git commit message from staged changes",
+		ArgumentHint: "[--unstaged]",
+		Handler:      commitHandler,
+	},
+	{
 		Name:        DiagnosticListTools,
 		Description: "List all tools available to the agent",
 		Handler:     diagnosticListTools,

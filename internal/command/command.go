@@ -22,6 +22,14 @@ type Context struct {
 
 	ContextUsage bool // set by /context handler
 
+	// ClearSystemPrompt signals the renderer to clear the session system prompt
+	// before starting the agent turn, saving tokens and keeping the model focused.
+	ClearSystemPrompt bool
+
+	// SystemPromptOverride, when non-empty, replaces the session system prompt
+	// for the upcoming agent turn.
+	SystemPromptOverride string
+
 	// GoalManager is an interface for the session goal manager.
 	GoalManager *goal.Manager
 
@@ -30,6 +38,7 @@ type Context struct {
 
 	pendingSwitch         *ModelSwitch
 	pendingOpenSelector   bool
+	pendingAgentPrompt    string // agent prompt to use for next turn
 	selectorCatalog       provider.Catalog
 	selectorQuery         string
 	pendingDetailLabel    string
@@ -67,9 +76,11 @@ type Result struct {
 	DetailLabel       string
 	DetailBody        string
 	DetailExpanded    bool
-	ContextUsage      bool // set by /context handler
-	CompactHistory    bool // signal to hard-compact conversation history
-	CompactRatio      int  // compaction target percentage (0 = use default)
+	ContextUsage      bool   // set by /context handler
+	CompactHistory    bool   // signal to hard-compact conversation history
+	CompactRatio      int    // compaction target percentage (0 = use default)
+	ClearSystemPrompt bool   // clear session system prompt for this turn
+	SystemPrompt      string // override session system prompt for this turn
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
@@ -138,6 +149,7 @@ func Execute(input string, ctx Context) Result {
 			Quit:              cmd.Quits,
 			Switch:            ctx.pendingSwitch,
 			OpenModelSelector: ctx.pendingOpenSelector,
+			AgentPrompt:       ctx.pendingAgentPrompt,
 			SelectorCatalog:   ctx.selectorCatalog,
 			SelectorQuery:     ctx.selectorQuery,
 			DetailLabel:       ctx.pendingDetailLabel,
@@ -146,6 +158,8 @@ func Execute(input string, ctx Context) Result {
 			ContextUsage:      ctx.ContextUsage,
 			CompactHistory:    ctx.CompactHistory,
 			CompactRatio:      ctx.CompactRatio,
+			ClearSystemPrompt: ctx.ClearSystemPrompt,
+			SystemPrompt:      ctx.SystemPromptOverride,
 		}
 	}
 
