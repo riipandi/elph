@@ -165,6 +165,7 @@ func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
 	m.agent.ResponseMsgID = -1
 	m = m.clearStreamPrefixCache()
 	m.agent.CommitWorkDir = ""
+	m.agent.SuppressThinking = false
 	if m.agent.SavedSystemPrompt != "" {
 		m.session.SystemPrompt = m.agent.SavedSystemPrompt
 		m.agent.SavedSystemPrompt = ""
@@ -322,13 +323,19 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 	m.agent.CommitWorkDir = ""
 	if commitWorkDir != "" && strings.TrimSpace(response) != "" && providerErr == nil {
 		m = m.commitResponse(commitWorkDir, response)
+		// Remove AI response message after commit for a concise output.
+		if responseIdx >= 0 {
+			m = m.removeMessageAt(responseIdx)
+			responseIdx = -1
+		}
 	}
 	// Restore the original system prompt saved before /commit overrode it.
 	if m.agent.SavedSystemPrompt != "" {
 		m.session.SystemPrompt = m.agent.SavedSystemPrompt
 		m.agent.SavedSystemPrompt = ""
 	}
-
+	m.agent.SuppressThinking = false
+	m.agent.CommitWorkDir = ""
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
 	m.layout.StreamFlushPending = false
@@ -423,7 +430,7 @@ func extractCommitHash(output string) string {
 }
 
 func (m Model) appendAgentThinkingDelta(delta string) Model {
-	if delta == "" || !m.thinkingTurnEnabled() {
+	if delta == "" || !m.thinkingTurnEnabled() || m.agent.SuppressThinking {
 		return m
 	}
 	if m.agent.ThinkingMsgID < 0 {

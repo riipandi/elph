@@ -199,18 +199,25 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		at := time.Now()
 		m.agent.ResolvedAskUsers = nil
 		m = m.addUserMessageAt(trimmed, at)
-		detailLabel := strings.TrimSpace(result.DetailLabel)
-		detailBody := strings.TrimSpace(result.DetailBody)
-		if detailLabel != "" && detailBody != "" {
-			m = m.addDetailMessageAt(detailLabel, detailBody, at)
-			if result.DetailExpanded {
-				m.messages[len(m.messages)-1].detailExpanded = true
-				m.layout.ContentDirty = true
+		// For /commit, suppress diff display and thinking for a concise output.
+		isCommit := result.CommitAfterTurn
+		if isCommit {
+			m.agent.SuppressThinking = true
+		}
+		if !isCommit {
+			detailLabel := strings.TrimSpace(result.DetailLabel)
+			detailBody := strings.TrimSpace(result.DetailBody)
+			if detailLabel != "" && detailBody != "" {
+				m = m.addDetailMessageAt(detailLabel, detailBody, at)
+				if result.DetailExpanded {
+					m.messages[len(m.messages)-1].detailExpanded = true
+					m.layout.ContentDirty = true
+				}
+				m.session.AppendLog("detail", detailLabel)
+			} else {
+				m = m.addDetailMessageAt("Prompt", prompt, at)
+				m.session.AppendLog("prompt", prompt)
 			}
-			m.session.AppendLog("detail", detailLabel)
-		} else {
-			m = m.addDetailMessageAt("Prompt", prompt, at)
-			m.session.AppendLog("prompt", prompt)
 		}
 		m = m.resetInput()
 		m = m.beginAgentTurn()

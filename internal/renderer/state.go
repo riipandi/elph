@@ -68,6 +68,10 @@ type AgentState struct {
 	// SavedSystemPrompt holds the original system prompt before /commit overrides it.
 	// Restored after the turn completes or is cancelled.
 	SavedSystemPrompt string
+
+	// SuppressThinking skips displaying thinking tokens during this turn.
+	// Used by /commit to keep output concise.
+	SuppressThinking bool
 }
 
 type markupAskUserOffer struct {
