@@ -72,6 +72,7 @@ func main() {
 
 	// Output should be empty (handler returns "")
 	require.Empty(t, result.Output)
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestCommitWithContext includes user-provided context in the prompt.
@@ -90,6 +91,7 @@ func login() {
 	require.NotEmpty(t, result.AgentPrompt)
 	require.Contains(t, result.AgentPrompt, "Use the following context to understand intent")
 	require.Contains(t, result.AgentPrompt, "Fixing the null pointer bug in user login flow")
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestCommitWithContextUnstaged works with --unstaged flag and context.
@@ -112,6 +114,7 @@ var x = 2
 	require.Contains(t, result.AgentPrompt, "Use the following context to understand intent")
 	require.Contains(t, result.AgentPrompt, "Refactor variable naming")
 	require.Contains(t, result.AgentPrompt, "unstaged changes")
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestCommitUnstagedDiff uses --unstaged flag without context.
@@ -135,6 +138,7 @@ var x = 2
 	require.Contains(t, result.AgentPrompt, "unstaged changes")
 	require.Contains(t, result.AgentPrompt, "+var x = 2")
 	require.True(t, result.ClearSystemPrompt)
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestCommitDiffTruncated caps large diffs.
@@ -154,6 +158,7 @@ func TestCommitDiffTruncated(t *testing.T) {
 	require.NotEmpty(t, result.AgentPrompt)
 	require.Contains(t, result.AgentPrompt, "(diff truncated)")
 	require.True(t, result.ClearSystemPrompt)
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestCommitHandlerWire verifies the handler sets all expected context fields.
@@ -173,8 +178,8 @@ func TestCommitHandlerWire(t *testing.T) {
 	require.Equal(t, "Commit diff", ctx.pendingDetailLabel)
 	require.True(t, ctx.pendingDetailExpanded)
 	require.Contains(t, ctx.pendingDetailBody, "Diff (staged changes)")
-	// No context section when args is empty
 	require.NotContains(t, ctx.pendingAgentPrompt, "Use the following context to understand intent")
+	require.True(t, ctx.CommitAfterTurn)
 }
 
 // TestCommitHandlerWireWithContext verifies context is included.
@@ -189,6 +194,7 @@ func TestCommitHandlerWireWithContext(t *testing.T) {
 	require.Contains(t, ctx.pendingAgentPrompt, "Use the following context to understand intent")
 	require.Contains(t, ctx.pendingAgentPrompt, "Fix login redirect bug")
 	require.True(t, ctx.ClearSystemPrompt)
+	require.True(t, ctx.CommitAfterTurn)
 }
 
 // TestCommitHandlerWireUnstaged verifies --unstaged flag with tracked file modifications.
@@ -207,6 +213,7 @@ func TestCommitHandlerWireUnstaged(t *testing.T) {
 	require.Contains(t, ctx.SystemPromptOverride, "commit message generator")
 	require.Contains(t, ctx.pendingAgentPrompt, "unstaged changes")
 	require.Contains(t, ctx.pendingDetailBody, "Diff (unstaged changes)")
+	require.True(t, ctx.CommitAfterTurn)
 }
 
 // TestCommitHandlerWireUnstagedWithContext verifies --unstaged + context together.
@@ -223,6 +230,7 @@ func TestCommitHandlerWireUnstagedWithContext(t *testing.T) {
 	require.Contains(t, ctx.pendingAgentPrompt, "Improve error handling")
 	require.Contains(t, ctx.pendingAgentPrompt, "unstaged changes")
 	require.True(t, ctx.ClearSystemPrompt)
+	require.True(t, ctx.CommitAfterTurn)
 }
 
 // TestExecuteCommitResultWire verifies Execute passes through all fields.
@@ -239,6 +247,7 @@ func TestExecuteCommitResultWire(t *testing.T) {
 	require.Contains(t, result.SystemPrompt, "commit message generator")
 	require.Equal(t, "Commit diff", result.DetailLabel)
 	require.True(t, result.DetailExpanded)
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestExecuteCommitResultWireUnstaged verifies --unstaged flag propagation.
@@ -253,6 +262,7 @@ func TestExecuteCommitResultWireUnstaged(t *testing.T) {
 	require.NotEmpty(t, result.AgentPrompt)
 	require.True(t, result.ClearSystemPrompt)
 	require.Contains(t, result.DetailBody, "Diff (unstaged changes)")
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestExecuteCommitWithContext verifies context survives Execute round-trip.
@@ -265,6 +275,7 @@ func TestExecuteCommitWithContext(t *testing.T) {
 	require.True(t, result.OK)
 	require.Contains(t, result.AgentPrompt, "Use the following context to understand intent")
 	require.Contains(t, result.AgentPrompt, "Add health check endpoint")
+	require.True(t, result.CommitAfterTurn)
 }
 
 // TestRunGitDiff runs git diff in a workdir.
@@ -363,4 +374,5 @@ func TestCommitHandlerWireContextBeforeFlag(t *testing.T) {
 	require.Contains(t, ctx.pendingAgentPrompt, "Minor tweak")
 	require.Contains(t, ctx.pendingAgentPrompt, "unstaged changes")
 	require.True(t, ctx.ClearSystemPrompt)
+	require.True(t, ctx.CommitAfterTurn)
 }

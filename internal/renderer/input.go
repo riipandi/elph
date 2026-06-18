@@ -173,6 +173,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	}
 	m = m.applyModelSwitch(result.Switch)
+	// Save the original system prompt before /commit overrides it, so it can be
+	// restored after the agent turn completes.
+	savedPrompt := m.session.SystemPrompt
 	// Apply system prompt overrides before starting the agent turn.
 	// ClearSystemPrompt removes the project system prompt to save tokens;
 	// SystemPrompt (when non-empty) replaces it with a minimal, focused prompt.
@@ -184,6 +187,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		}
 	} else if result.SystemPrompt != "" {
 		m.session.SystemPrompt = result.SystemPrompt
+	}
+	if result.CommitAfterTurn {
+		m.agent.SavedSystemPrompt = savedPrompt
 	}
 	if prompt := strings.TrimSpace(result.AgentPrompt); prompt != "" {
 		if !m.hasActiveModel() {
@@ -211,6 +217,9 @@ func (m Model) handleSlashCommand(raw string) (Model, tea.Cmd, bool) {
 		m = m.syncLayout(true)
 		var agentCmd tea.Cmd
 		m, agentCmd = m.agentTurnCmds(prompt, nil)
+		if result.CommitAfterTurn {
+			m.agent.CommitWorkDir = m.workDir
+		}
 		return m, agentCmd, true
 	}
 	m = m.addUserMessage(trimmed)

@@ -2,6 +2,8 @@ package renderer
 
 import (
 	"context"
+	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -162,6 +164,11 @@ func (m Model) cancelAgentTurn() (Model, tea.Cmd) {
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
 	m = m.clearStreamPrefixCache()
+	m.agent.CommitWorkDir = ""
+	if m.agent.SavedSystemPrompt != "" {
+		m.session.SystemPrompt = m.agent.SavedSystemPrompt
+		m.agent.SavedSystemPrompt = ""
+	}
 	m, cmd := m.withMessage("(agent turn cancelled)")
 	return m, cmd
 }
@@ -309,6 +316,19 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 		m = m.addProviderErrorDetail(providerErr)
 	}
 
+	// If this was a /commit turn, pipe the response into git commit.
+	// Skip on provider errors, cancelled turns, or empty responses.
+	commitWorkDir := m.agent.CommitWorkDir
+	m.agent.CommitWorkDir = ""
+	if commitWorkDir != "" && strings.TrimSpace(response) != "" && providerErr == nil {
+		m = m.commitResponse(commitWorkDir, response)
+	}
+	// Restore the original system prompt saved before /commit overrode it.
+	if m.agent.SavedSystemPrompt != "" {
+		m.session.SystemPrompt = m.agent.SavedSystemPrompt
+		m.agent.SavedSystemPrompt = ""
+	}
+
 	m.agent.ThinkingMsgID = -1
 	m.agent.ResponseMsgID = -1
 	m.layout.StreamFlushPending = false
@@ -335,6 +355,71 @@ func (m Model) finishAgentTurn(thinking, response string, providerErr error) (Mo
 		return m, askCmd
 	}
 	return m, nil
+}
+
+// commitResponse pipes the agent response into `git commit -m` and adds a detail message
+// with the result (success with short hash, or failure with git output).
+func (m Model) commitResponse(workDir, response string) Model {
+	parts := strings.SplitN(strings.TrimSpace(response), "\n", 2)
+	subject := strings.TrimSpace(parts[0])
+
+	var args []string
+	if len(parts) > 1 && strings.TrimSpace(parts[1]) != "" {
+		body := strings.TrimSpace(parts[1])
+		args = []string{"commit", "-m", subject, "-m", body}
+	} else {
+		args = []string{"commit", "-m", subject}
+	}
+
+	cmd := exec.Command("git", args...)
+	if workDir != "" {
+		cmd.Dir = workDir
+	}
+	out, err := cmd.CombinedOutput()
+	output := strings.TrimSpace(string(out))
+
+	if err != nil {
+		return m.addDetailMessageWithStatusAt(
+			"Git commit",
+			fmt.Sprintf("Commit failed:\n%s", output),
+			uiconst.DetailStatusError,
+			time.Now(),
+		)
+	}
+
+	shortHash := extractCommitHash(output)
+	if shortHash != "" {
+		return m.addDetailMessageWithStatusAt(
+			"Git commit",
+			fmt.Sprintf("✓ committed as %s: %s", shortHash, subject),
+			uiconst.DetailStatusSuccess,
+			time.Now(),
+		)
+	}
+	return m.addDetailMessageWithStatusAt(
+		"Git commit",
+		fmt.Sprintf("✓ committed: %s", subject),
+		uiconst.DetailStatusSuccess,
+		time.Now(),
+	)
+}
+
+// extractCommitHash parses the short hash from git commit output like "[main abc1234] msg".
+func extractCommitHash(output string) string {
+	start := strings.Index(output, "[")
+	if start < 0 {
+		return ""
+	}
+	rest := output[start+1:]
+	end := strings.Index(rest, "]")
+	if end < 0 {
+		return ""
+	}
+	parts := strings.Fields(rest[:end])
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+	return ""
 }
 
 func (m Model) appendAgentThinkingDelta(delta string) Model {

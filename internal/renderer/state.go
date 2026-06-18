@@ -60,6 +60,14 @@ type AgentState struct {
 	SessionAllowTools    bool // skip approval dialogs until the TUI session ends
 	MarkupAskUserPending *markupAskUserOffer
 	ResolvedAskUsers     map[string]toolinteract.AskUserResolution
+
+	// CommitWorkDir is non-empty when a /commit turn is in flight.
+	// After the turn completes, the renderer pipes the response into git commit -m.
+	CommitWorkDir string
+
+	// SavedSystemPrompt holds the original system prompt before /commit overrides it.
+	// Restored after the turn completes or is cancelled.
+	SavedSystemPrompt string
 }
 
 type markupAskUserOffer struct {

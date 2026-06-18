@@ -36,6 +36,10 @@ type Context struct {
 	CompactHistory bool // set by /compact handler
 	CompactRatio   int  // compaction target percentage
 
+	// CommitAfterTurn signals the renderer to pipe the agent response into
+	// git commit -m after the turn completes.
+	CommitAfterTurn bool
+
 	pendingSwitch         *ModelSwitch
 	pendingOpenSelector   bool
 	pendingAgentPrompt    string // agent prompt to use for next turn
@@ -81,6 +85,7 @@ type Result struct {
 	CompactRatio      int    // compaction target percentage (0 = use default)
 	ClearSystemPrompt bool   // clear session system prompt for this turn
 	SystemPrompt      string // override session system prompt for this turn
+	CommitAfterTurn   bool   // pipe agent response into git commit -m after turn
 }
 
 // SlashCommand describes a built-in /command available in the TUI.
@@ -160,6 +165,7 @@ func Execute(input string, ctx Context) Result {
 			CompactRatio:      ctx.CompactRatio,
 			ClearSystemPrompt: ctx.ClearSystemPrompt,
 			SystemPrompt:      ctx.SystemPromptOverride,
+			CommitAfterTurn:   ctx.CommitAfterTurn,
 		}
 	}
 

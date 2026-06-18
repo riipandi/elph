@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// defaultCommitTypes is the JSON type-to-description map matching Lumen's default.
+// defaultCommitTypes is the JSON type-to-description map matching.
 const defaultCommitTypes = `{
   "docs": "Documentation only changes",
   "style": "Changes that do not affect the meaning of the code",
@@ -61,6 +61,9 @@ func commitHandler(ctx *Context, args string) string {
 2. Be concise and direct
 3. Output only the commit message without any explanations
 4. Follow the format: <type>(<optional scope>): <commit message>`
+
+	// Signal the renderer to pipe the agent response into git commit -m.
+	ctx.CommitAfterTurn = true
 
 	// Build the context section if user provided additional intent.
 	var contextSection string
