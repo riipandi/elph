@@ -67,8 +67,8 @@ changelog:
 release:
   make_latest: false
   prerelease: auto
-  mode: prepend
-  draft: true
+  mode: replace
+  draft: false
 
 # kos:
 #   - repositories:
