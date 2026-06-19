@@ -3,8 +3,9 @@ package exec
 import (
 	"errors"
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"path/filepath"
+
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 
 	"github.com/riipandi/elph/internal/mediaimage"
 )

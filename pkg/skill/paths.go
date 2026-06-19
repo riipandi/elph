@@ -11,7 +11,8 @@ func discoveryScopes(workDir string) []string {
 	var scopes []string
 
 	if home, err := os.UserHomeDir(); err == nil {
-		scopes = append(scopes,
+		scopes = append(
+			scopes,
 			filepath.Join(home, ".agents", "skills"),
 			filepath.Join(home, ".claude", "skills"),
 		)
@@ -20,7 +21,8 @@ func discoveryScopes(workDir string) []string {
 		scopes = append(scopes, global)
 	}
 	if workDir != "" {
-		scopes = append(scopes,
+		scopes = append(
+			scopes,
 			filepath.Join(workDir, ".agents", "skills"),
 			filepath.Join(workDir, ".agents", "elph", "skills"),
 		)

@@ -390,7 +390,8 @@ func (m Model) handleCompactHistory(result command.Result) Model {
 	if result.CompactRatio <= 0 && !agent.ShouldCompact(history, threshold) {
 		m = m.addDetailMessage("Compact history", fmt.Sprintf(
 			"Conversation too small to compact (%d messages, %s).",
-			before, formatBytes(beforeBytes)))
+			before, formatBytes(beforeBytes),
+		))
 		return m.syncLayout(true)
 	}
 

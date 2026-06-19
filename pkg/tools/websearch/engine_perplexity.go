@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"resty.dev/v3"
 	"strings"
+
+	"resty.dev/v3"
 )
 
 var jsonArrayRe = regexp.MustCompile(`\[[\s\S]*\]`)

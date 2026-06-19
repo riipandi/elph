@@ -1,9 +1,10 @@
 package command
 
 import (
+	"testing"
+
 	"github.com/riipandi/elph/internal/runtime/log"
 	"github.com/riipandi/elph/internal/runtime/session"
-	"testing"
 
 	inttools "github.com/riipandi/elph/internal/tools"
 	"github.com/riipandi/elph/pkg/ai/provider"

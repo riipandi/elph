@@ -2,9 +2,10 @@ package renderer
 
 import (
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"sort"
 	"strings"
+
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 
 	"github.com/riipandi/elph/pkg/core/agent"
 )

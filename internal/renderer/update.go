@@ -2,10 +2,11 @@ package renderer
 
 import (
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 
 	"charm.land/bubbles/v2/stopwatch"
 	tea "charm.land/bubbletea/v2"

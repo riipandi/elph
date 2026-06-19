@@ -6,8 +6,10 @@ import (
 	"github.com/riipandi/elph/internal/inputui"
 )
 
-type inputAttachment = inputui.Attachment
-type pasteEditorState = inputui.PasteEditorState
+type (
+	inputAttachment  = inputui.Attachment
+	pasteEditorState = inputui.PasteEditorState
+)
 
 const (
 	maxInputLines    = inputui.MaxInputLines
@@ -33,15 +35,19 @@ func pasteToken(id int) string                    { return inputui.PasteToken(id
 func pasteDisplayToken(id int, lines int, pastes map[int]string) string {
 	return inputui.PasteDisplayToken(id, lines, pastes)
 }
+
 func overlayInputPasteTokens(view, val string, pastes map[int]string) string {
 	return inputui.OverlayPasteTokens(view, val, pastes)
 }
+
 func pasteDisplayValue(val string, pastes map[int]string) string {
 	return inputui.DisplayValue(val, pastes)
 }
+
 func expandInputPastes(val string, pastes map[int]string) string {
 	return inputui.ExpandPastes(val, pastes)
 }
+
 func pasteIDAtOffset(val string, offset int) (int, bool) {
 	return inputui.PasteIDAtOffset(val, offset)
 }
@@ -71,6 +77,7 @@ func isInputNewlineKey(msg tea.KeyPressMsg) bool { return inputui.IsInputNewline
 func isShiftEnterKeyMsg(msg tea.KeyPressMsg) bool {
 	return inputui.IsShiftEnterKeyMsg(msg)
 }
+
 func isLiteralNewlineKeyMsg(msg tea.KeyPressMsg) bool {
 	return inputui.IsLiteralNewlineKeyMsg(msg)
 }
@@ -95,15 +102,19 @@ func isPasteKey(msg tea.KeyPressMsg) bool     { return inputui.IsPasteKey(msg) }
 func isMetaClearCSIPayload(payload string) bool {
 	return inputui.IsMetaClearCSIPayload(payload)
 }
+
 func isRemoveLastAttachmentKey(msg tea.KeyPressMsg) bool {
 	return inputui.IsRemoveLastAttachmentKey(msg)
 }
+
 func isCtrlRemoveLastAttachmentKey(msg tea.KeyPressMsg) bool {
 	return inputui.IsCtrlRemoveLastAttachmentKey(msg)
 }
+
 func isClearAttachmentsKey(msg tea.KeyPressMsg) bool {
 	return inputui.IsClearAttachmentsKey(msg)
 }
+
 func isMetaClearAttachmentsKey(msg tea.KeyPressMsg) bool {
 	return inputui.IsMetaClearAttachmentsKey(msg)
 }
@@ -113,6 +124,7 @@ func isInputEscapeKey(msg tea.KeyPressMsg) bool { return inputui.IsInputEscapeKe
 func inputCursorByteCol(line string, col int) int {
 	return inputui.CursorByteCol(line, col)
 }
+
 func runtimeMediaNote(atts []inputAttachment) string {
 	return inputui.RuntimeMediaNote(atts)
 }

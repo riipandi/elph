@@ -46,6 +46,7 @@ func TestBuiltinCatalogMatchesDocs(t *testing.T) {
 		require.Equal(t, tc.requiresConfirmation, def.RequiresConfirmation, "confirmation for %q", tc.name)
 	}
 }
+
 func TestByCategory(t *testing.T) {
 	require.Len(t, ByCategory(CategoryFile), 6)
 	require.Len(t, ByCategory(CategoryShell), 1)

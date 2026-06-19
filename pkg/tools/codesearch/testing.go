@@ -6,8 +6,10 @@ import (
 	"resty.dev/v3"
 )
 
-type githubSearchFunc func(context.Context, *resty.Client, string, string) ([]Result, error)
-type gitlabSearchFunc func(context.Context, *resty.Client, string, string, string) ([]Result, error)
+type (
+	githubSearchFunc func(context.Context, *resty.Client, string, string) ([]Result, error)
+	gitlabSearchFunc func(context.Context, *resty.Client, string, string, string) ([]Result, error)
+)
 
 var (
 	githubSearchFn = searchGitHub

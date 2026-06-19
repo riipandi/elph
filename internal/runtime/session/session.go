@@ -162,7 +162,6 @@ func (s *Session) StartTurn(ctx context.Context, opts agent.TurnOptions) <-chan 
 	}
 
 	if opts.Model == "" {
-
 		opts.Model = s.ModelID
 	}
 	if opts.Provider == nil {

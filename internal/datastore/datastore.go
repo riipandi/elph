@@ -113,6 +113,7 @@ func buildDSN(url, token string) string {
 	// Local file - tursogo handles local paths directly
 	return url
 }
+
 func ensureDBDir(dbURL string) error {
 	// Skip for remote URLs
 	if strings.HasPrefix(dbURL, "libsql://") || strings.HasPrefix(dbURL, "https://") {

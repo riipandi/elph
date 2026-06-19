@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"resty.dev/v3"
 	"sort"
 	"strings"
+
+	"resty.dev/v3"
 
 	"github.com/riipandi/elph/pkg/ai/utils"
 	"github.com/riipandi/elph/pkg/jsoncfg"

@@ -3,8 +3,9 @@ package websearch
 import (
 	"context"
 	"fmt"
-	"resty.dev/v3"
 	"strings"
+
+	"resty.dev/v3"
 )
 
 func searchExa(ctx context.Context, client *resty.Client, query, apiKey string) ([]Result, error) {

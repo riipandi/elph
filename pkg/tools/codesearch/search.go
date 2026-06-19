@@ -5,9 +5,10 @@ package codesearch
 import (
 	"context"
 	"fmt"
-	"resty.dev/v3"
 	"strings"
 	"time"
+
+	"resty.dev/v3"
 )
 
 // ProviderID identifies a code search backend.

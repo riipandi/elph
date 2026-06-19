@@ -8,11 +8,13 @@ import (
 	"github.com/riipandi/elph/pkg/core/agent"
 )
 
-type toolInteractOffer = toolinteract.Offer
-type toolInteractOfferMsg = toolinteract.OfferMsg
-type toolInteractBridge = toolinteract.Bridge
-type askUserResolution = toolinteract.AskUserResolution
-type askUserFields = toolinteract.AskUserFields
+type (
+	toolInteractOffer    = toolinteract.Offer
+	toolInteractOfferMsg = toolinteract.OfferMsg
+	toolInteractBridge   = toolinteract.Bridge
+	askUserResolution    = toolinteract.AskUserResolution
+	askUserFields        = toolinteract.AskUserFields
+)
 
 const (
 	defaultAskUserQuestion   = toolinteract.DefaultAskUserQuestion
@@ -24,22 +26,29 @@ func waitToolInteractOffer(b *toolinteract.Bridge) tea.Cmd { return toolinteract
 func newToolInteractForm(req agent.ToolInteractRequest, width int) *huh.Form {
 	return toolinteract.NewForm(req, width)
 }
+
 func newAskUserForm(req agent.ToolInteractRequest, width int) *huh.Form {
 	return toolinteract.NewForm(req, width)
 }
+
 func newToolApprovalForm(req agent.ToolInteractRequest, width int) *huh.Form {
 	return toolinteract.NewForm(req, width)
 }
+
 func parseAskUserArgs(args map[string]any) askUserFields { return toolinteract.ParseAskUserArgs(args) }
+
 func resolveAskUserAnswer(custom, choice, fallback string) string {
 	return toolinteract.ResolveAskUserAnswer(custom, choice, fallback)
 }
+
 func lookupResolvedAskUser(store *map[string]askUserResolution, req agent.ToolInteractRequest) (agent.ToolInteractResponse, bool) {
 	return toolinteract.LookupResolvedAskUser(store, req)
 }
+
 func toolInteractAskUserSignature(req agent.ToolInteractRequest) string {
 	return toolinteract.AskUserSignature(req)
 }
+
 func toolApprovalSignature(req agent.ToolInteractRequest) string {
 	return toolinteract.ApprovalSignature(req)
 }
@@ -58,9 +67,11 @@ const (
 func formatApprovalDescription(name string, args map[string]any, width int) string {
 	return toolinteract.FormatApprovalDescription(name, args, width)
 }
+
 func clampMultilineText(text string, width, maxLines int) string {
 	return toolinteract.ClampMultilineText(text, width, maxLines)
 }
+
 func normalizeApprovalChoice(raw string) string {
 	return toolinteract.NormalizeApprovalChoice(raw)
 }

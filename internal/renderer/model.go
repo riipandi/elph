@@ -1,10 +1,11 @@
 package renderer
 
 import (
-	"github.com/riipandi/elph/internal/runtime/session"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/riipandi/elph/internal/runtime/session"
 
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"

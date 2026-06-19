@@ -3,8 +3,9 @@ package provider
 import (
 	"context"
 	"fmt"
-	"resty.dev/v3"
 	"strings"
+
+	"resty.dev/v3"
 
 	"github.com/riipandi/elph/pkg/ai/utils"
 )

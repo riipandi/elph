@@ -37,7 +37,6 @@ func IsExecutable(name string) bool {
 	default:
 		return false
 	}
-
 }
 
 func titleCaseToolName(name string) string {

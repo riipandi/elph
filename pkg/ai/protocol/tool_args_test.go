@@ -19,7 +19,8 @@ func TestNormalizeToolArguments(t *testing.T) {
 	raw := json.RawMessage(`{"question":"Pick one"}`)
 	require.Equal(t, raw, NormalizeToolArguments(raw))
 
-	require.JSONEq(t,
+	require.JSONEq(
+		t,
 		`{"question":"Pick","options":["English","Indonesia"]}`,
 		string(NormalizeToolArguments(json.RawMessage(`{}{"question":"Pick","options":["English","Indonesia"]}`))),
 	)

@@ -4,6 +4,7 @@ GO          := $$(which go)
 GOTEST      := $$(which gotestsum)
 GORELEASER  := $$(which goreleaser)
 GOLANGCI    := $$(which golangci-lint)
+GOFMT       := $$(which gofumpt) 
 
 BINARY_NAME := elph-next
 BUILD_DIR   := ./build/release
@@ -77,7 +78,7 @@ lint: ## Run linter (requires golangci-lint)
 	@$(GOLANGCI) run -c .golangci.yml ./...
 
 fmt: ## Format code
-	@$(GO) fmt ./...
+	@$(GOFMT) -l -w .
 
 vet: ## Analyzes code for suspicious patterns
 	@$(GO) vet ./...
@@ -88,6 +89,7 @@ prepare: ## Install required toolchain
 	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	$(GO) install github.com/pressly/goose/v3/cmd/goose@latest
 	$(GO) install gotest.tools/gotestsum@latest
+	$(GO) install mvdan.cc/gofumpt@latest
 
 deps: ## Download dependencies
 	@$(GO) mod download

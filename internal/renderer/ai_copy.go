@@ -73,7 +73,7 @@ func (m Model) aiCopyAtViewportY(y int) (int, bool) {
 	if !ok {
 		return -1, false
 	}
-	var found = -1
+	found := -1
 	m.walkContentLines(func(line int, ref contentLineRef) bool {
 		if line != contentLine {
 			return false

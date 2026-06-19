@@ -2,10 +2,11 @@ package renderer
 
 import (
 	"context"
-	rtshell "github.com/riipandi/elph/internal/runtime/shell"
 	"strings"
 	"sync"
 	"time"
+
+	rtshell "github.com/riipandi/elph/internal/runtime/shell"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/riipandi/elph/internal/uiconst"

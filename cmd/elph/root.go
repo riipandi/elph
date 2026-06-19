@@ -67,7 +67,8 @@ var versionCmd = &cobra.Command{
 			fmt.Printf("%s\n", config.AppVersion)
 			return
 		} else {
-			fmt.Printf("%s %s (%s) %s build %s\n",
+			fmt.Printf(
+				"%s %s (%s) %s build %s\n",
 				config.AppIdentifier,
 				config.AppVersion,
 				config.BuildHash,

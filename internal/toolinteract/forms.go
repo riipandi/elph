@@ -252,7 +252,8 @@ func DialogBody(formView string, req agent.ToolInteractRequest, width int) strin
 				Foreground(uiconst.BrightText).
 				Width(width).
 				Render(WrapAskUserQuestion(fields.Question, width))
-			return lipgloss.JoinVertical(lipgloss.Left,
+			return lipgloss.JoinVertical(
+				lipgloss.Left,
 				labelLine,
 				"",
 				questionLine,

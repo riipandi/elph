@@ -2,8 +2,9 @@ package renderer
 
 import (
 	"errors"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"testing"
+
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 
 	"github.com/riipandi/elph/internal/uiconst"
 	"github.com/stretchr/testify/require"

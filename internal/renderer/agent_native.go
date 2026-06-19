@@ -1,9 +1,10 @@
 package renderer
 
 import (
+	"strings"
+
 	"github.com/riipandi/elph/internal/runtime/shell"
 	"github.com/riipandi/elph/internal/runtime/toolresult"
-	"strings"
 
 	"github.com/riipandi/elph/internal/uiconst"
 	"github.com/riipandi/elph/pkg/ai/provider"

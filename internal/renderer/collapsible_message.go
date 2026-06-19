@@ -102,7 +102,8 @@ func boxPaddingStyle(style lipgloss.Style, vPad, hPad, blockWidth int) lipgloss.
 func renderOnBoxSegments(box lipgloss.Style, plain string, segments []struct {
 	start, end int
 	style      lipgloss.Style
-}) string {
+},
+) string {
 	runes := []rune(plain)
 	if len(runes) == 0 {
 		return ""

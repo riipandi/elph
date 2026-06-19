@@ -3,6 +3,7 @@ package websearch
 import (
 	"context"
 	"fmt"
+
 	"resty.dev/v3"
 )
 

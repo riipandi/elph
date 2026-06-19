@@ -23,7 +23,8 @@ func TestToolResultMessageLimitsLargeOutput(t *testing.T) {
 func TestCompactMessagesDropsOldestTurn(t *testing.T) {
 	var msgs []protocol.ChatMessage
 	for i := 0; i < 30; i++ {
-		msgs = append(msgs,
+		msgs = append(
+			msgs,
 			protocol.ChatMessage{Role: "user", Content: strings.Repeat("u", 64)},
 			protocol.ChatMessage{Role: "assistant", Content: strings.Repeat("a", 64)},
 		)

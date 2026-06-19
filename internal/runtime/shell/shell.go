@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/toolresult"
 	"io"
 	"os/exec"
 	gort "runtime"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/riipandi/elph/internal/runtime/toolresult"
 )
 
 const (

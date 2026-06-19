@@ -470,7 +470,8 @@ func (m Model) bannerView() string {
 		versionLine = fmt.Sprintf("Welcome to %s v%s %s", config.AppName, config.AppVersion, updateNotice)
 	}
 
-	logo := lipgloss.JoinVertical(lipgloss.Left,
+	logo := lipgloss.JoinVertical(
+		lipgloss.Left,
 		lipgloss.NewStyle().Foreground(uiconst.GreenLt).Render(uiconst.LogoLine1),
 		lipgloss.NewStyle().Foreground(uiconst.GreenLt).Render(uiconst.LogoLine2),
 	)
@@ -482,7 +483,8 @@ func (m Model) bannerView() string {
 
 	topSection := lipgloss.JoinHorizontal(lipgloss.Top, logoBlock, lipgloss.JoinVertical(lipgloss.Left, header, subtitle))
 
-	meta := lipgloss.JoinVertical(lipgloss.Left,
+	meta := lipgloss.JoinVertical(
+		lipgloss.Left,
 		"",
 		metaLine(innerW, "Directory:  ", m.workDir),
 		metaLine(innerW, "Model:      ", fmt.Sprintf("%s [%s] (%d available)", m.modelName, m.provider, m.availableModelCount())),

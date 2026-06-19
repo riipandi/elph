@@ -2,9 +2,10 @@ package command
 
 import (
 	"fmt"
-	"github.com/riipandi/elph/internal/runtime/log"
 	"os"
 	"strings"
+
+	"github.com/riipandi/elph/internal/runtime/log"
 
 	inttools "github.com/riipandi/elph/internal/tools"
 	"github.com/riipandi/elph/pkg/tools"

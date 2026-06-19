@@ -6,10 +6,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"resty.dev/v3"
 	"sort"
 	"strings"
 	"time"
+
+	"resty.dev/v3"
 )
 
 // Result is a normalized search hit.
