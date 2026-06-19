@@ -66,6 +66,7 @@ changelog:
 
 release:
   replace_existing_draft: true
+  replace_existing_artifacts: true
   use_existing_draft: true
   make_latest: false
   prerelease: auto
