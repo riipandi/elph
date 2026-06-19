@@ -70,6 +70,16 @@ release:
   mode: replace
   draft: false
 
+  header: |
+    ## Release ({{ .Date }})
+
+    Welcome to this new release!
+
+  footer: |
+    ## Thanks
+
+    Those were the changes on {{ .Tag }}!
+
 # kos:
 #   - repositories:
 #       - ghcr.io/riipandi/elph
