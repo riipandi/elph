@@ -65,6 +65,8 @@ changelog:
       - "^test:"
 
 release:
+  replace_existing_draft: true
+  use_existing_draft: true
   make_latest: false
   prerelease: auto
   mode: replace
