@@ -21,6 +21,7 @@ See: [tools.md](./tools.md), [architecture.md](./architecture.md).
 | [anthropics/anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go) | **used** | Anthropic adapter                     |
 | [openai/openai-go](https://github.com/openai/openai-go)                       | **used** | OpenAI / compat / OpenRouter adapters |
 | [google.golang.org/genai](https://google.golang.org/genai)                    | **next** | Gemini — stub in `providers/google`   |
+| [cohere-ai/cohere-go](https://github.com/cohere-ai/cohere-go)                 | **next** | Cohere - not yet implemented          |
 
 ---
 
