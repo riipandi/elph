@@ -37,7 +37,7 @@ TEST_FLAGS := --format short-verbose -- -count=1 -v
 # ─── Build ───────────────────────────────────────────────────────────────────
 
 build: ## Build the application binary
-	@echo "Building $(PKG_NAME) v$(PKG_VERSION) ($(BUILD_HASH)) $(BUILD_DATE)"
+	@echo "Building Elph v$(PKG_VERSION) ($(BUILD_HASH)) $(BUILD_DATE)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	$(GO) build -ldflags="-w -s -extldflags -static-pie $(BUILD_META)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/elph; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \

@@ -2,12 +2,10 @@ package git
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,46 +29,28 @@ func TestReadBranchAndDiffStats(t *testing.T) {
 func initRepoWithChanges(t *testing.T, dir string) {
 	t.Helper()
 
-	repo, err := git.PlainInit(dir, false)
-	require.NoError(t, err)
+	git := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v failed: %s", args, string(out))
+	}
 
-	wt, err := repo.Worktree()
-	require.NoError(t, err)
+	git("init", "--initial-branch=master")
+	git("config", "user.email", "test@example.com")
+	git("config", "user.name", "Test")
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello\n"), 0o644))
-	_, err = wt.Add("a.txt")
-	require.NoError(t, err)
-
-	_, err = wt.Commit("init", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-	})
-	require.NoError(t, err)
+	git("add", "a.txt")
+	git("commit", "-m", "init")
 
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello\nworld\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.txt"), []byte("new\n"), 0o644))
-	_, err = wt.Add("b.txt")
-	require.NoError(t, err)
+	git("add", "b.txt")
 }
 
-func TestChangedPathCount(t *testing.T) {
-	status := git.Status{
-		"a.txt": {Staging: git.Modified},
-		"b.txt": {Worktree: git.Modified},
-		"c.txt": {Staging: git.Unmodified, Worktree: git.Unmodified},
-	}
-	require.Equal(t, 2, changedPathCount(status))
-}
-
-func TestCountTextDiff(t *testing.T) {
-	added, deleted := countTextDiff("one\n", "one\ntwo\n")
-	require.Equal(t, 1, added)
-	require.Equal(t, 0, deleted)
-
-	added, deleted = countTextDiff("one\ntwo\n", "one\n")
-	require.Equal(t, 0, added)
-	require.Equal(t, 1, deleted)
+func TestCountChangedFiles(t *testing.T) {
+	require.Equal(t, 2, countChangedFiles("?M a.txt\nM  b.txt\n?? c.txt"))
+	require.Equal(t, 0, countChangedFiles("?? a.txt"))
+	require.Equal(t, 0, countChangedFiles(""))
 }

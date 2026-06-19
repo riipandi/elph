@@ -231,7 +231,7 @@ func New() Model {
 			ThinkingMsgID: -1,
 			ResponseMsgID: -1,
 		},
-		branch:             "—", // refreshed asynchronously in Init (avoids blocking startup on go-git)
+		branch:             "—", // refreshed asynchronously in Init (avoid blocking startup)
 		useRawPaste:        prefs.UseRawPasteEnabled(),
 		stickyScroll:       prefs.StickyScrollEnabled(),
 		footerTokenDisplay: string(prefs.FooterTokenDisplayMode()),
