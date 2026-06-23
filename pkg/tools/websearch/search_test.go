@@ -167,6 +167,54 @@ func TestFormatOutput(t *testing.T) {
 	require.Contains(t, out, "url: https://go.dev")
 }
 
+func TestSearchWithLimitOption(t *testing.T) {
+	clearSearchAPIKeys(t)
+	ddg := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<a class="result__a" href="https://a">A</a><a class="result__snippet">a</a>
+			<a class="result__a" href="https://b">B</a><a class="result__snippet">b</a>
+			<a class="result__a" href="https://c">C</a><a class="result__snippet">c</a>`))
+	}))
+	defer ddg.Close()
+
+	t.Cleanup(ResetEnginesForTest)
+	SetEnginesForTest([]EngineDef{
+		{ID: EngineDuckDuckGo, Name: "DuckDuckGo", Rank: 1, Search: MockDuckDuckGoAt(ddg.URL)},
+	})
+
+	used, results, err := Search(context.Background(), "test", WithLimit(2))
+	require.NoError(t, err)
+	require.Equal(t, EngineDuckDuckGo, used)
+	require.Len(t, results, 2)
+}
+
+func TestSearchWithIncludeContentOption(t *testing.T) {
+	clearSearchAPIKeys(t)
+	ddg := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<a class="result__a" href="https://go.dev">Go</a><a class="result__snippet">The Go language</a>`))
+	}))
+	defer ddg.Close()
+
+	t.Cleanup(ResetEnginesForTest)
+	SetEnginesForTest([]EngineDef{
+		{ID: EngineDuckDuckGo, Name: "DuckDuckGo", Rank: 1, Search: MockDuckDuckGoAt(ddg.URL)},
+	})
+
+	// WithIncludeContent just sets a flag — DDG search doesn't populate content,
+	// but the option itself should not cause an error
+	used, results, err := Search(context.Background(), "golang", WithIncludeContent())
+	require.NoError(t, err)
+	require.Equal(t, EngineDuckDuckGo, used)
+	require.NotEmpty(t, results)
+}
+
+func TestSearchEmptyQuery(t *testing.T) {
+	_, _, err := Search(context.Background(), "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "empty search query")
+}
+
 func TestMain(m *testing.M) {
 	HTTPClient = resty.New()
 	os.Exit(m.Run())

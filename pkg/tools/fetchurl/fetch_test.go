@@ -40,3 +40,33 @@ func TestFormatOutput(t *testing.T) {
 	require.Contains(t, out, "url: https://example.com")
 	require.Contains(t, out, "hi")
 }
+
+func TestTrimBody_ShortReturnsUnchanged(t *testing.T) {
+	require.Equal(t, "short", trimBody("short"))
+}
+
+func TestTrimBody_TrimsWhitespace(t *testing.T) {
+	require.Equal(t, "hello", trimBody("  hello  "))
+}
+
+func TestTrimBody_TruncatesLong(t *testing.T) {
+	s := string(make([]byte, 300))
+	got := trimBody(s)
+	require.Len(t, got, 240+3) // 240 chars + "..."
+	require.Contains(t, got, "...")
+}
+
+func TestTrimBody_Boundary(t *testing.T) {
+	// exactly 240 chars should not be truncated
+	s := string(make([]byte, 240))
+	got := trimBody(s)
+	require.Len(t, got, 240)
+	require.NotContains(t, got, "...")
+}
+
+func TestFormatOutput_EmptyContentType(t *testing.T) {
+	out := Format(Result{URL: "https://example.com", Body: "no type"})
+	require.Contains(t, out, "url: https://example.com")
+	require.NotContains(t, out, "content_type:")
+	require.Contains(t, out, "no type")
+}

@@ -23,3 +23,12 @@ func TestDetailStatusDiffersFromThinking(t *testing.T) {
 	thinking := MessageStyle(MessageThinking).GetBackground()
 	require.NotEqual(t, detail, thinking)
 }
+
+func TestDetailStatusPreviewLabel(t *testing.T) {
+	require.Equal(t, "Running...", DetailStatusPreviewLabel(DetailStatusRunning))
+	require.Equal(t, "Failed", DetailStatusPreviewLabel(DetailStatusError))
+	require.Equal(t, "Cancelled", DetailStatusPreviewLabel(DetailStatusWarning))
+	require.Equal(t, "Unavailable", DetailStatusPreviewLabel(DetailStatusUnavailable))
+	require.Equal(t, "", DetailStatusPreviewLabel(DetailStatusNeutral))
+	require.Equal(t, "", DetailStatusPreviewLabel(DetailStatusSuccess))
+}
