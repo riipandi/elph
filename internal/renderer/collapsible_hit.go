@@ -137,12 +137,11 @@ func (m Model) collapsibleToggleAtViewportY(y int) (int, bool) {
 			found = ref.messageIndex
 		case zoneCollapsibleHeader:
 			if ref.messageIndex >= 0 && ref.messageIndex < len(m.messages) {
-				msg := m.messages[ref.messageIndex]
-				switch msg.kind {
-				case uiconst.MessageThinking:
+				switch m.messages[ref.messageIndex].kind {
+				case uiconst.MessageThinking, uiconst.MessageDetail:
 					found = ref.messageIndex
 				case uiconst.MessageUser:
-					if userMessageCollapsible(msg.text) {
+					if userMessageCollapsible(m.messages[ref.messageIndex].text) {
 						found = ref.messageIndex
 					}
 				}

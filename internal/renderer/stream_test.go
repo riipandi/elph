@@ -64,7 +64,7 @@ func TestThinkingDetailBoxUpdatesDuringResponseStream(t *testing.T) {
 	m.agent.Busy = true
 
 	view := stripANSI(m.messagesView())
-	require.Contains(t, view, "Thinking")
+	require.Contains(t, view, "Thought")
 
 	m.messages[1].text = "reasoning alpha"
 	m.messages[1].renderCache = messageRenderCache{}
@@ -72,19 +72,18 @@ func TestThinkingDetailBoxUpdatesDuringResponseStream(t *testing.T) {
 	m.messages = append(m.messages, message{text: "answer", kind: uiconst.MessageAI})
 	m.agent.ResponseMsgID = 2
 
-	m = m.refreshStreamPrefixCache()
+	m.messages[1].detailExpanded = true
 	view = stripANSI(m.messagesView())
-	require.Contains(t, view, "Thinking")
+	require.Contains(t, view, "Thought")
 	require.Contains(t, view, "reasoning alpha")
 	require.Contains(t, view, "answer")
 
 	m.messages[1].text = "reasoning alpha beta"
 	m.messages[1].renderCache = messageRenderCache{}
-	m = m.clearStreamPrefixCache()
 	flushed, _ := m.handleStreamFlush()
 	view = stripANSI(flushed.messagesView())
 	require.Contains(t, view, "reasoning alpha beta")
-	require.Contains(t, view, "Thinking")
+	require.Contains(t, view, "Thought")
 }
 
 func TestStreamingUsesSinglePassRender(t *testing.T) {

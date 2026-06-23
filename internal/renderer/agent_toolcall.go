@@ -60,8 +60,12 @@ func (m Model) recordToolCallRequests(calls []agent.ParsedToolCall) Model {
 		}
 
 		presentation := toolresult.ResolveToolRequest(call.Name, call.Parameters)
+		label := presentation.Name
+		if paramLabel := primaryToolParamLabel(call.Name, call.Parameters, m.workDir); paramLabel != "" {
+			label = paramLabel
+		}
 		m = m.addToolDetailMessageWithStatus(
-			presentation.Name,
+			label,
 			presentation.Body,
 			toolRequestDetailStatus(presentation.Reason),
 		)

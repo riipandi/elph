@@ -222,7 +222,7 @@ func (m Model) renderMessage(msg message) string {
 	case uiconst.MessageDetail:
 		return renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, collapsibleRenderOpts{})
 	case uiconst.MessageThinking:
-		return renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, collapsibleRenderOpts{})
+		return renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.at, collapsibleRenderOpts{})
 	case uiconst.MessageUser:
 		return renderUserCollapsible(width, msg.text, msg.detailExpanded, msg.at)
 	default:
@@ -255,9 +255,9 @@ func (m *Model) renderMessageAt(index int) string {
 		out = renderDetailMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.detailStatus, msg.at, opts)
 	case msg.kind == uiconst.MessageThinking:
 		if opts.showLiveBody {
-			out = renderThinkingLiveStream(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+			out = renderThinkingLiveStream(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.at, opts)
 		} else {
-			out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, opts)
+			out = renderThinkingMessage(width, collapsibleLabel(msg), msg.text, msg.detailExpanded, msg.at, opts)
 		}
 	case msg.kind == uiconst.MessageUser:
 		out = renderUserCollapsible(width, msg.text, msg.detailExpanded, msg.at)
@@ -458,10 +458,16 @@ func footerRow(contentW int, left, right string) string {
 // ─── Sub-views ───────────────────────────────────────────────────────────────
 
 func (m Model) bannerView() string {
+	// After first interaction, show compact version
+	if len(m.messages) > 0 {
+		line := fmt.Sprintf("%s v%s  %s", config.AppName, config.AppVersion, m.workDir)
+		w := m.chromeOuterWidth()
+		return lipgloss.NewStyle().Width(w).MaxHeight(1).Render(dimStyle.Render(" ─ " + line))
+	}
+
 	w := m.chromeOuterWidth()
 	innerW := bannerContentWidth(w)
 
-	// TODO: replace with actual value
 	updateAvailable := false
 
 	versionLine := fmt.Sprintf("Welcome to %s v%s", config.AppName, config.AppVersion)
@@ -511,12 +517,11 @@ func (m Model) activityView() string {
 	if m.agent.Stopwatch.Running() {
 		elapsed = dimStyle.Render(" · " + formatCompactElapsed(m.agent.Stopwatch.Elapsed()))
 	}
-	suffix := dimStyle.Render("...")
 	return lipgloss.NewStyle().
 		MarginTop(1).
 		PaddingLeft(1).
 		Width(m.width).
-		Render(spinner + label + elapsed + suffix)
+		Render(spinner + label + elapsed)
 }
 
 func (m Model) activityLabel() string {
@@ -525,9 +530,9 @@ func (m Model) activityLabel() string {
 		if cmd == "" {
 			return string(agent.ActivityRunning)
 		}
-		prefix := "Running $ "
-		suffix := " · Esc to cancel"
-		maxCmd := m.width - lipgloss.Width(prefix+suffix+"...") - 2
+		prefix := "Running Bash("
+		suffix := ") · Esc to cancel"
+		maxCmd := m.width - lipgloss.Width(prefix+suffix) - 2
 		if maxCmd < 8 {
 			maxCmd = 8
 		}

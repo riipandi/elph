@@ -161,7 +161,7 @@ func (s Settings) withDefaults() Settings {
 		s.ShowThinking = &v
 	}
 	if s.AutoExpandThinking == nil {
-		v := false
+		v := true
 		s.AutoExpandThinking = &v
 	}
 	if s.UseRawPaste == nil {

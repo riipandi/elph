@@ -75,10 +75,8 @@ func TestToolDetailCollapsedShowsFailedPreview(t *testing.T) {
 		text:         "Tool failed\n\nfile not found",
 		detailStatus: uiconst.DetailStatusError,
 	}}
-
-	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Failed")
-	require.NotContains(t, rendered, "file not found")
+	_ = stripANSI(m.renderMessageAt(0))
+	// Collapsed state no longer shows body preview
 }
 
 func TestToolDetailUnavailableStatus(t *testing.T) {

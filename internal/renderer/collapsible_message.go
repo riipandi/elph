@@ -92,13 +92,6 @@ func foregroundOnBox(box lipgloss.Style, fg color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(fg).Background(box.GetBackground())
 }
 
-func boxPaddingStyle(style lipgloss.Style, vPad, hPad, blockWidth int) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Padding(vPad, hPad).
-		Width(blockWidth).
-		Background(style.GetBackground())
-}
-
 func renderOnBoxSegments(box lipgloss.Style, plain string, segments []struct {
 	start, end int
 	style      lipgloss.Style
@@ -238,59 +231,6 @@ func collapsibleHeaderChip(style lipgloss.Style, _ uiconst.MessageKind, label st
 	return lipgloss.NewStyle().Padding(0, 1).Background(style.GetBackground()).Render(body)
 }
 
-func collapsibleDetailTitleLine(hPad int, status uiconst.DetailStatus, label string, expanded bool, at time.Time) string {
-	plain := detailChevron(expanded) + " " + label
-	runes := []rune(plain)
-	if len(runes) == 0 {
-		return strings.Repeat(" ", hPad)
-	}
-	chevron := uiconst.DetailStatusAccent(status).Render(string(runes[0]))
-	var title string
-	if len(runes) > 1 {
-		title = lipgloss.NewStyle().Bold(true).Foreground(uiconst.DimText).Render(string(runes[1:]))
-	}
-	line := strings.Repeat(" ", hPad) + chevron + title
-	if ts := formatMessageTimestamp(at); ts != "" {
-		line += dimStyle.Render(" · " + ts)
-	}
-	return line
-}
-
-func collapsibleBodyBox(style lipgloss.Style, kind uiconst.MessageKind, status uiconst.DetailStatus, blockWidth, innerW, vPad, hPad int, body string, expanded bool, opts collapsibleRenderOpts) string {
-	trimmed := strings.TrimSpace(body)
-	if trimmed == "" && !opts.showStatusPreview {
-		return ""
-	}
-	var content string
-	preStyled := false
-	switch {
-	case opts.showLiveBody:
-		content = body
-		if kind == uiconst.MessageThinking {
-			content = dimStyle.Render(body)
-		}
-	case opts.showStatusPreview:
-		content = collapsibleStatusPreview(kind, status, style, opts.spinnerFrame, innerW)
-		preStyled = true
-	case expanded && trimmed != "":
-		content = body
-		if kind == uiconst.MessageThinking {
-			content = dimStyle.Render(body)
-		}
-	case trimmed != "":
-		if preview := collapsiblePreview(trimmed, innerW); preview != "" {
-			content = dimStyle.Render(preview)
-		}
-	}
-	if content == "" {
-		return ""
-	}
-	if preStyled {
-		return boxPaddingStyle(style, vPad, hPad, blockWidth).Render(content)
-	}
-	return style.Padding(vPad, hPad).Width(blockWidth).Render(content)
-}
-
 func dimItalicHintLine(hPad int, text string) string {
 	return lipgloss.NewStyle().
 		Foreground(uiconst.DimText).
@@ -300,83 +240,22 @@ func dimItalicHintLine(hPad int, text string) string {
 		Render(text)
 }
 
-func collapsibleHintLine(hPad int, expanded bool) string {
-	return dimItalicHintLine(hPad, collapsibleExpandHint(expanded))
-}
-
-func renderThinkingCollapsible(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
-	style := uiconst.MessageStyle(uiconst.MessageThinking).Italic(true)
-	vPad, hPad := messageBlockPadding(uiconst.MessageThinking)
-	innerW := max(blockWidth-2*hPad, 1)
-
-	var b strings.Builder
-	b.WriteString(collapsibleHeaderChip(style, uiconst.MessageThinking, label, expanded))
-	if box := collapsibleBodyBox(style, uiconst.MessageThinking, uiconst.DetailStatusNeutral, blockWidth, innerW, vPad, hPad, body, expanded, opts); box != "" {
-		b.WriteString("\n\n")
-		b.WriteString(box)
-	}
-	b.WriteString("\n\n")
-	b.WriteString(collapsibleHintLine(hPad, expanded))
-	return b.String()
-}
-
-func renderDetailCollapsible(blockWidth int, label, body string, expanded bool, status uiconst.DetailStatus, at time.Time, opts collapsibleRenderOpts) string {
-	style := uiconst.DetailStatusStyle(status)
-	vPad, hPad := messageBlockPadding(uiconst.MessageDetail)
-	innerW := max(blockWidth-2*hPad, 1)
-
-	var b strings.Builder
-	b.WriteString(collapsibleDetailTitleLine(hPad, status, label, expanded, at))
-	if box := collapsibleBodyBox(style, uiconst.MessageDetail, status, blockWidth, innerW, vPad, hPad, body, expanded, opts); box != "" {
-		b.WriteString("\n\n")
-		b.WriteString(box)
-	}
-
-	if status != uiconst.DetailStatusRunning {
-		b.WriteString("\n\n")
-		b.WriteString(dimItalicHintLine(hPad, collapsibleExpandHint(expanded)))
-		if opts.copyable && expanded {
-			b.WriteString("\n")
-			b.WriteString(dimItalicHintLine(hPad, aiCopyHintText))
-		}
-	}
-
-	return b.String()
-}
-
 func renderDetailMessage(blockWidth int, label, body string, expanded bool, status uiconst.DetailStatus, at time.Time, opts collapsibleRenderOpts) string {
-	return renderDetailCollapsible(blockWidth, label, body, expanded, status, at, opts)
+	return renderCompactDetailCollapsible(blockWidth, label, body, expanded, status, at, opts)
 }
 
-func renderThinkingMessage(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
-	return renderThinkingCollapsible(blockWidth, label, body, expanded, opts)
+func renderThinkingMessage(blockWidth int, label, body string, expanded bool, at time.Time, opts collapsibleRenderOpts) string {
+	return renderCompactThinkingCollapsible(blockWidth, label, body, expanded, at, opts)
 }
 
 // renderThinkingLiveStream paints in-flight reasoning with a lightweight body
 // path so token delivery does not rebuild the full collapsible chrome every flush.
-func renderThinkingLiveStream(blockWidth int, label, body string, expanded bool, opts collapsibleRenderOpts) string {
-	style := uiconst.MessageStyle(uiconst.MessageThinking).Italic(true)
-	vPad, hPad := messageBlockPadding(uiconst.MessageThinking)
-	innerW := max(blockWidth-2*hPad, 1)
-
-	var b strings.Builder
-	b.WriteString(collapsibleHeaderChip(style, uiconst.MessageThinking, label, expanded))
-	if box := collapsibleBodyBox(style, uiconst.MessageThinking, uiconst.DetailStatusNeutral, blockWidth, innerW, vPad, hPad, body, expanded, opts); box != "" {
-		b.WriteString("\n\n")
-		b.WriteString(box)
-	} else if opts.showStatusPreview {
-		if preview := collapsibleStatusPreview(uiconst.MessageThinking, uiconst.DetailStatusNeutral, style, opts.spinnerFrame, innerW); preview != "" {
-			b.WriteString("\n\n")
-			b.WriteString(boxPaddingStyle(style, vPad, hPad, blockWidth).Render(preview))
-		}
-	}
-	b.WriteString("\n\n")
-	b.WriteString(collapsibleHintLine(hPad, expanded))
-	return b.String()
+func renderThinkingLiveStream(blockWidth int, label, body string, expanded bool, at time.Time, opts collapsibleRenderOpts) string {
+	return renderCompactThinkingCollapsible(blockWidth, label, body, expanded, at, opts)
 }
 
 func shellDetailLabel(command string) string {
-	return "$ " + command
+	return "Bash(" + command + ")"
 }
 
 func userMessageLineCount(text string) int {
@@ -447,4 +326,110 @@ func renderUserCollapsible(blockWidth int, text string, expanded bool, at time.T
 		hPad,
 		content,
 	)
+}
+
+// ── Compact Detail & Thinking Rendering ──────────────────────────────────
+
+// statusDotAndStyle returns the appropriate dot character and style for
+// a given detail status. The dot changes between filled (●) and outline (○)
+// based on whether the operation is running/pending or completed. Colors
+// indicate success (green), error (red), warning (yellow), or neutral.
+func statusDotAndStyle(status uiconst.DetailStatus) (string, lipgloss.Style) {
+	switch status {
+	case uiconst.DetailStatusSuccess:
+		return "●", lipgloss.NewStyle().Foreground(uiconst.Green)
+	case uiconst.DetailStatusRunning:
+		return "○", lipgloss.NewStyle().Foreground(uiconst.Yellow)
+	case uiconst.DetailStatusError:
+		return "●", lipgloss.NewStyle().Foreground(uiconst.Red)
+	case uiconst.DetailStatusWarning:
+		return "●", lipgloss.NewStyle().Foreground(uiconst.Yellow)
+	case uiconst.DetailStatusUnavailable:
+		return "○", lipgloss.NewStyle().Foreground(uiconst.Gray)
+	default:
+		return "●", lipgloss.NewStyle().Foreground(uiconst.DimText)
+	}
+}
+
+// renderCompactDetailCollapsible renders a detail/tool-call message as a single-line
+// dot indicator. The dot changes based on status (filled ● for completed, outline ○
+// for running). Expanded body is shown inside a status-colored background box.
+func renderCompactDetailCollapsible(blockWidth int, label, body string, expanded bool, status uiconst.DetailStatus, at time.Time, opts collapsibleRenderOpts) string {
+	vPad, hPad := messageBlockPadding(uiconst.MessageDetail)
+
+	dotChar, dotStyle := statusDotAndStyle(status)
+	labelText := lipgloss.NewStyle().Foreground(uiconst.DimText).Bold(true).Render(label)
+
+	var b strings.Builder
+	b.WriteString(strings.Repeat(" ", hPad))
+	b.WriteString(dotStyle.Render(dotChar))
+	b.WriteString(" ")
+	b.WriteString(labelText)
+
+	trimmed := strings.TrimSpace(body)
+	if expanded && trimmed != "" {
+		// Expanded: no inline hint, body box below, then trailing hint
+		b.WriteString("\n\n")
+		box := uiconst.DetailStatusStyle(status).Width(blockWidth).Padding(vPad, hPad)
+		b.WriteString(box.Render(trimmed))
+		b.WriteString("\n\n")
+		b.WriteString(dimItalicHintLine(hPad, collapsibleExpandHint(true)))
+		return b.String()
+	}
+
+	// Collapsed: inline hint, no trailing hint
+	if status != uiconst.DetailStatusRunning {
+		b.WriteString(dimItalicHintLine(0, " "+collapsibleExpandHint(false)))
+	}
+
+	return b.String()
+}
+
+// thinkingDurationLabel returns a compact elapsed-time suffix for thinking messages.
+// Examples: " for 4s", " for 1.2s", or empty string when elapsed is negligible.
+func thinkingDurationLabel(at time.Time) string {
+	if at.IsZero() {
+		return ""
+	}
+	elapsed := time.Since(at)
+	if elapsed < time.Second {
+		return ""
+	}
+	return " for " + formatCompactElapsed(elapsed)
+}
+
+// renderCompactThinkingCollapsible renders a thinking message as a compact format:
+// ▸ Thought for 4s  (collapsed) or  ▾ Thought for 4s (expanded) with body below.
+func renderCompactThinkingCollapsible(blockWidth int, label, body string, expanded bool, at time.Time, opts collapsibleRenderOpts) string {
+	vPad, hPad := messageBlockPadding(uiconst.MessageThinking)
+
+	chevron := detailChevron(expanded)
+	dur := thinkingDurationLabel(at)
+	title := "Thought" + dur
+
+	var b strings.Builder
+	b.WriteString(strings.Repeat(" ", hPad))
+	b.WriteString(lipgloss.NewStyle().Foreground(uiconst.DimText).Render(chevron))
+	b.WriteString(lipgloss.NewStyle().Foreground(uiconst.DimText).Italic(true).Render(" " + title))
+
+	trimmed := strings.TrimSpace(body)
+	if expanded && trimmed != "" {
+		// Expanded: body box below, then trailing hint
+		b.WriteString("\n\n")
+		box := uiconst.MessageStyle(uiconst.MessageThinking).Width(blockWidth).Padding(vPad, hPad)
+		b.WriteString(box.Render(dimStyle.Render(trimmed)))
+		b.WriteString("\n\n")
+		b.WriteString(dimItalicHintLine(hPad, collapsibleExpandHint(true)))
+		return b.String()
+	} else if opts.showStatusPreview && !expanded {
+		// In-flight: show spinner + "Thinking..." inline on header
+		frame := spinnerFrames[opts.spinnerFrame%len(spinnerFrames)]
+		b.WriteString("\n\n")
+		b.WriteString(strings.Repeat(" ", hPad) + lipgloss.NewStyle().Foreground(uiconst.Yellow).Render(frame+" ") + dimStyle.Render("Thinking..."))
+	}
+
+	// Collapsed: inline hint
+	b.WriteString(dimItalicHintLine(0, " "+collapsibleExpandHint(expanded)))
+
+	return b.String()
 }

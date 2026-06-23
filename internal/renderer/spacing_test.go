@@ -26,9 +26,6 @@ func expectedBlankLinesBetween(prev, curr uiconst.MessageKind) int {
 		blanks++    // bottom padding inside AI block
 		blanks += 2 // copy hint separator before footer line
 	}
-	if prev == uiconst.MessageDetail || prev == uiconst.MessageThinking {
-		blanks += 6
-	}
 	return blanks
 }
 
@@ -88,10 +85,14 @@ func TestAssistantTurnSpacingConsistent(t *testing.T) {
 }
 
 func spacingMarker(text string, kind uiconst.MessageKind) string {
-	if kind == uiconst.MessageDetail || kind == uiconst.MessageThinking {
-		return "[[collapsible-block]]"
+	switch kind {
+	case uiconst.MessageThinking:
+		return "Thought" // compact format always shows "Thought" header
+	case uiconst.MessageDetail:
+		return "[[collapsible-block]]" // label always in header
+	default:
+		return text
 	}
-	return text
 }
 
 func promptSpacingMessage(text string, kind uiconst.MessageKind) message {
@@ -132,20 +133,22 @@ func TestActiveTurnMessageSpacingConsistent(t *testing.T) {
 	updated, _ := m.Update(keyEnter())
 	m = updated.(Model)
 	require.True(t, m.showsActivity())
-
 	updated, _ = m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("[[think]]")})
 	m = updated.(Model)
+	// Collapse thinking for consistent spacing measurement
+	if tIdx := m.agent.ThinkingMsgID; tIdx >= 0 && tIdx < len(m.messages) {
+		m.messages[tIdx].detailExpanded = false
+	}
 	updated, _ = m.Update(agentEventMsg{event: agent.ResponseDeltaEvent("[[answer]]")})
 	m = updated.(Model)
 
 	content := normalizeSpacingLines(stripANSI(m.messagesView()))
-	require.Contains(t, content, "[[think]]")
 	require.Contains(t, content, "[[answer]]")
 	// Spacing is measured from the user footer timestamp, which already sits below the prompt body.
 	require.Equal(t, 2,
-		blankLinesBetweenMarkers(content, formatMessageTimestamp(m.messages[0].at), "Thinking"))
+		blankLinesBetweenMarkers(content, formatMessageTimestamp(m.messages[0].at), "Thought"))
 	require.Equal(t, expectedBlankLinesBetween(uiconst.MessageThinking, uiconst.MessageAI),
-		blankLinesBetweenMarkers(content, "Thinking", "[[answer]]"))
+		blankLinesBetweenMarkers(content, "Thought", "[[answer]]"))
 }
 
 func TestActivityChromeGapMatchesIdleInputMargin(t *testing.T) {

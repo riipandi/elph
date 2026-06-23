@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/riipandi/elph/internal/prompt/template"
-	"github.com/riipandi/elph/internal/settings"
 	"github.com/riipandi/elph/internal/uiconst"
 	"github.com/stretchr/testify/require"
 )
@@ -20,11 +19,11 @@ func TestDetailMessageCollapsedByDefault(t *testing.T) {
 	}}
 
 	rendered := stripANSI(m.renderMessageAt(0))
+	// compact format: collapsed detail doesn't show body preview
 	require.Contains(t, rendered, "Prompt")
 	require.Contains(t, rendered, "ctrl+o to expand")
 	require.NotContains(t, rendered, "ctrl+o to collapse")
-	require.Contains(t, rendered, "Analyze this codebase.")
-	require.NotContains(t, rendered, "Focus on: auth")
+	require.NotContains(t, rendered, "Analyze this codebase.")
 }
 
 func TestDetailMessageExpandedShowsFullBody(t *testing.T) {
@@ -119,25 +118,20 @@ func TestCtrlOUpdatesContentViewWhileStreaming(t *testing.T) {
 	require.Contains(t, after, "line two")
 }
 
-func TestThinkingMessageCollapsedByDefault(t *testing.T) {
+func TestThinkingMessageExpandedByDefault(t *testing.T) {
 	m := testInputModel(t)
 	m = m.addThinkingMessage("reasoning step one\nreasoning step two")
 
-	require.False(t, m.messages[0].detailExpanded)
+	require.True(t, m.messages[0].detailExpanded)
 	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Thinking")
-	require.Contains(t, rendered, "ctrl+o to expand")
+	// compact format: expanded thinking shows body in dimmed box
+	require.Contains(t, rendered, "Thought")
 	require.Contains(t, rendered, "reasoning step one")
-	require.NotContains(t, rendered, "reasoning step two")
+	require.Contains(t, rendered, "ctrl+o to collapse")
 }
 
-func TestThinkingAutoExpandSetting(t *testing.T) {
+func TestThinkingMessageExpandedShowsBody(t *testing.T) {
 	m := testInputModel(t)
-	enabled := true
-	require.NoError(t, settings.Save(settings.Settings{
-		SyncInterval:       "24h",
-		AutoExpandThinking: &enabled,
-	}))
 	m = m.addThinkingMessage("expanded reasoning\nsecond line")
 	require.True(t, m.messages[0].detailExpanded)
 
@@ -149,6 +143,7 @@ func TestThinkingAutoExpandSetting(t *testing.T) {
 func TestCtrlOTogglesThinkingBlock(t *testing.T) {
 	m := testInputModel(t)
 	m = m.addThinkingMessage("alpha\nbeta\ngamma")
+	m.messages[0].detailExpanded = false // force collapsed
 
 	collapsed := stripANSI(m.renderMessageAt(0))
 	updated, cmd := m.Update(keyCtrl('o'))

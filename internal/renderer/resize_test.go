@@ -87,5 +87,5 @@ func TestLongPasteBannerAppearsOnce(t *testing.T) {
 	m.messages = []message{{text: readme, kind: uiconst.MessageUser}}
 
 	content := m.contentView()
-	require.Equal(t, 1, strings.Count(content, "Welcome to"))
+	require.Equal(t, 1, strings.Count(content, "─ Elph"), "banner should appear once")
 }

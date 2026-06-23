@@ -20,8 +20,8 @@ func TestAgentTurnCreatesThinkingPlaceholder(t *testing.T) {
 	require.Equal(t, 1, m.agent.ThinkingMsgID)
 
 	view := stripANSI(m.messagesView())
-	require.Contains(t, view, "Thinking")
-	require.Contains(t, view, "Thinking...")
+	require.Contains(t, view, "Thought")
+	require.Contains(t, view, "click or ctrl+o to collapse")
 }
 
 func TestThinkingPlaceholderStreamsBeforeResponse(t *testing.T) {
@@ -40,10 +40,9 @@ func TestThinkingPlaceholderStreamsBeforeResponse(t *testing.T) {
 	m = flushed
 
 	view := stripANSI(m.messagesView())
-	require.Contains(t, view, "Thinking")
-	require.Contains(t, view, "step one")
+	require.Contains(t, view, "Thought")
 	require.Contains(t, view, "answer")
-	require.Less(t, stringsIndex(view, "Thinking"), stringsIndex(view, "answer"))
+	require.Less(t, stringsIndex(view, "Thought"), stringsIndex(view, "answer"))
 }
 
 func TestThinkTagsRouteToThinkingBoxDuringResponseStream(t *testing.T) {
@@ -53,6 +52,11 @@ func TestThinkTagsRouteToThinkingBoxDuringResponseStream(t *testing.T) {
 	m.messages = []message{{text: "prompt", kind: uiconst.MessageUser}}
 	m = m.beginAgentTurn()
 	m, _ = m.agentTurnCmds("prompt", nil)
+
+	// Expand thinking to verify body text
+	if len(m.messages) > 1 {
+		m.messages[1].detailExpanded = true
+	}
 
 	updated, _ := m.Update(agentEventMsg{event: agent.ResponseDeltaEvent("<think>reason step</think>visible")})
 	m = updated.(Model)
@@ -76,6 +80,11 @@ func TestManyThinkingDeltasDoNotStallUpdateLoop(t *testing.T) {
 	m = m.beginAgentTurn()
 	m, _ = m.agentTurnCmds("prompt", nil)
 
+	// Expand thinking to verify body text
+	if len(m.messages) > 1 {
+		m.messages[1].detailExpanded = true
+	}
+
 	for range 200 {
 		updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("x")})
 		m = updated.(Model)
@@ -95,11 +104,15 @@ func TestThinkingDeltaRepaintsImmediatelyWithoutFlushTick(t *testing.T) {
 	m = m.beginAgentTurn()
 	m, _ = m.agentTurnCmds("prompt", nil)
 
+	// Expand thinking to verify body text
+	if len(m.messages) > 1 {
+		m.messages[1].detailExpanded = true
+	}
+
 	updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("live reasoning")})
 	m = updated.(Model)
 
 	view := stripANSI(m.contentView())
-	require.Contains(t, view, "Thinking")
 	require.Contains(t, view, "live reasoning")
 }
 
@@ -111,6 +124,11 @@ func TestThinkingDeltasRepaintViewportThroughUpdateLoop(t *testing.T) {
 	m = m.beginAgentTurn()
 	m, _ = m.agentTurnCmds("prompt", nil)
 
+	// Expand thinking to verify body text
+	if len(m.messages) > 1 {
+		m.messages[1].detailExpanded = true
+	}
+
 	for i := range 20 {
 		updated, _ := m.Update(agentEventMsg{event: agent.ThinkingDeltaEvent("step ")})
 		m = updated.(Model)
@@ -119,7 +137,6 @@ func TestThinkingDeltasRepaintViewportThroughUpdateLoop(t *testing.T) {
 	m, _ = m.handleStreamFlush()
 
 	view := stripANSI(m.contentView())
-	require.Contains(t, view, "Thinking")
 	require.Contains(t, view, "step step step")
 }
 
@@ -154,6 +171,11 @@ func TestThinkTagsStreamIncrementallyIntoThinkingBox(t *testing.T) {
 	m.messages = []message{{text: "prompt", kind: uiconst.MessageUser}}
 	m = m.beginAgentTurn()
 	m, _ = m.agentTurnCmds("prompt", nil)
+
+	// Expand thinking to verify body text
+	if len(m.messages) > 1 {
+		m.messages[1].detailExpanded = true
+	}
 
 	chunks := []string{"<thi", "nk>step ", "one", "</think>", "answer"}
 	for _, chunk := range chunks {

@@ -99,7 +99,7 @@ func TestThinkingMessageUsesCollapsibleBox(t *testing.T) {
 		kind:        uiconst.MessageThinking,
 		detailLabel: "Thinking",
 	})
-	require.GreaterOrEqual(t, lipgloss.Height(rendered), 3)
+	require.Contains(t, stripANSI(rendered), "Thought")
 	require.Contains(t, stripANSI(rendered), "ctrl+o to expand")
 }
 
@@ -179,12 +179,10 @@ func TestUserMessageWidthMatchesChromeWithScrollbar(t *testing.T) {
 func assertChromeWidthsMatch(t *testing.T, m Model) {
 	t.Helper()
 	userW := lipgloss.Width(m.renderMessage(m.messages[len(m.messages)-1]))
-	bannerW := lipgloss.Width(m.bannerView())
-	inputW := lipgloss.Width(m.inputView())
 	msgW := m.messageAreaWidth()
+	inputW := lipgloss.Width(m.inputView())
 	require.Equal(t, msgW, userW, "user message width vs messageAreaWidth")
-	require.Equal(t, m.chromeOuterWidth(), bannerW, "banner width vs chromeOuterWidth")
-	require.Equal(t, bannerW, inputW, "input width vs banner width")
+	require.Equal(t, m.chromeOuterWidth(), inputW, "input width vs chromeOuterWidth")
 }
 
 func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
@@ -208,7 +206,7 @@ func TestMessageWidthUsesContentAreaWidth(t *testing.T) {
 		uiconst.MessageAI,
 		uiconst.MessageSystem,
 		uiconst.MessageTool,
-		uiconst.MessageThinking,
+		// MessageThinking excluded: compact format doesn't pad to full width
 	} {
 		renderedW := lipgloss.Width(m.renderMessage(message{text: "hello", kind: kind}))
 		require.Equal(t, msgW, renderedW, "kind %d width", kind)

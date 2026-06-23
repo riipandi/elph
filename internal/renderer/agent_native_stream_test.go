@@ -19,7 +19,7 @@ func TestBeginNativeToolCallBashShowsCommandLabel(t *testing.T) {
 	}
 	m = m.beginNativeToolCall(call)
 	idx := m.agent.NativeToolMsgIDs["call_bash"]
-	require.Equal(t, "$ ping 1.1.1.1", m.messages[idx].detailLabel)
+	require.Equal(t, "Bash(ping 1.1.1.1)", m.messages[idx].detailLabel)
 }
 
 func TestAppendNativeToolOutputStreamsIntoDetailBox(t *testing.T) {
@@ -88,7 +88,7 @@ func TestFinishNativeToolCallBashKeepsRawStreamedOutput(t *testing.T) {
 	m = m.finishNativeToolCall(call, agent.ToolRunResult{Output: "failed\n\n(exit 1)"})
 
 	idx := m.agent.NativeToolMsgIDs["call_bash_done"]
-	require.Equal(t, "$ false", m.messages[idx].detailLabel)
+	require.Equal(t, "Bash(false)", m.messages[idx].detailLabel)
 	require.Equal(t, "failed\n(exit 1)", m.messages[idx].text)
 	require.NotContains(t, m.messages[idx].text, "Tool failed")
 }

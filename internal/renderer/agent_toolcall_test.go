@@ -23,7 +23,7 @@ func TestAppendAgentResponseDeltaStripsToolCalls(t *testing.T) {
 	require.Equal(t, -1, m.agent.ResponseMsgID, "tool-only response should not create AI bubble")
 	require.Len(t, m.messages, 1)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 	require.Equal(t, uiconst.DetailStatusUnavailable, m.messages[0].detailStatus)
 	require.Contains(t, m.messages[0].text, "Tool unavailable")
 	require.Contains(t, m.messages[0].text, "cafe Sukabumi")
@@ -94,7 +94,7 @@ func TestAppendAgentResponseDeltaIncompleteToolCallCreatesDetailBox(t *testing.T
 
 	require.Len(t, m.messages, 2)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 	require.Contains(t, m.messages[0].text, "cafe Sukabumi")
 	require.Equal(t, uiconst.MessageAI, m.messages[1].kind)
 	require.Equal(t, "prefix", strings.TrimSpace(m.messages[1].text))
@@ -117,7 +117,7 @@ func TestAppendAgentResponseDeltaStripsLeakedQueryBeforeMarkup(t *testing.T) {
 	require.Equal(t, -1, m.agent.ResponseMsgID)
 	require.Len(t, m.messages, 1)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 }
 
 func TestAppendAgentResponseDeltaStripsMangledUnnamedParameter(t *testing.T) {
@@ -130,7 +130,7 @@ func TestAppendAgentResponseDeltaStripsMangledUnnamedParameter(t *testing.T) {
 
 	require.Len(t, m.messages, 1)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 	require.Contains(t, m.messages[0].text, "Sukabumi")
 }
 
@@ -146,7 +146,7 @@ func TestAppendAgentResponseDeltaStripsOrphanToolMarkupTail(t *testing.T) {
 
 	require.Len(t, m.messages, 1)
 	require.Equal(t, uiconst.MessageDetail, m.messages[0].kind)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 	require.Contains(t, m.messages[0].text, "Sukabumi")
 }
 
@@ -164,7 +164,7 @@ func TestAppendAgentResponseDeltaStripsToolCallUnderscoreClose(t *testing.T) {
 
 	require.Equal(t, -1, m.agent.ResponseMsgID)
 	require.Len(t, m.messages, 1)
-	require.Equal(t, "WebSearch", m.messages[0].detailLabel)
+	require.Contains(t, m.messages[0].detailLabel, "WebSearch")
 }
 
 func TestFinishAgentTurnStripsEmbeddedToolCalls(t *testing.T) {
@@ -183,5 +183,5 @@ func TestFinishAgentTurnStripsEmbeddedToolCalls(t *testing.T) {
 
 	require.Len(t, m.messages, 2)
 	require.Equal(t, "Here are ideas.", m.messages[0].text)
-	require.Equal(t, "WebSearch", m.messages[1].detailLabel)
+	require.Contains(t, m.messages[1].detailLabel, "WebSearch")
 }

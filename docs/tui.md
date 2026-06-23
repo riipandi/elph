@@ -97,12 +97,15 @@ project_dir [sess_abcd12345] agent_mode          turn: 0 | main [-]
 
 ### Behaviour
 
+- **Full banner** shown on initial empty state (logo + version + metadata + tip).
+- **Compact banner** (1 line: `─ Elph v0.0.0  work/dir`) replaces full banner after the first user message.
 - **Subtitle**: `MaxWidth` truncates to one line if too long (line-clamp).
 - **Tip**: `Width` wraps text to multiple lines if too long (word-wrap).
 - **Metadata**: `MaxWidth` truncates individual lines.
 - **Layout**: Logo + header/subtitle sit in a `JoinHorizontal` at the top.
   Metadata lines sit below, left-aligned to the banner edge (no logo offset).
 
+---
 ---
 
 ## Input Prompt
@@ -144,22 +147,21 @@ Inputs starting with `/` invoke slash commands. Built-in commands (for example `
 `<workDir>/.agents/elph/prompts/*.md` — each file becomes a slash command named after the filename.
 
 Detail blocks (prompt templates, diagnostics, shell output, native tool results) and thinking blocks
-are shown separately from user input. They are dimmed and collapsible.
+are shown as compact single-line dot indicators when collapsed:
 
-| Block kind                                       | Default expand                   | Notes                                                             |
-|--------------------------------------------------|----------------------------------|-------------------------------------------------------------------|
-| Thinking                                         | Collapsed                        | Respects `autoExpandThinking` in settings                         |
-| Prompt template detail                           | Collapsed                        | One-line preview when collapsed                                   |
-| `/diagnostic:system-prompt`                      | Collapsed                        | Full prompt in detail body                                        |
-| `/diagnostic:list-tools`, `/diagnostic:open-log` | Expanded                         | Tool list and log tail                                            |
-| Shell (`!` / `!!`) and Bash tool                 | Expanded                         | Streamed output stays visible                                     |
-| Other native tool results                        | Short: expanded; long: collapsed | ≥2 lines or >120 bytes starts collapsed (`tool_detail_expand.go`) |
+  ● Bash(echo hi) (click or ctrl+o to expand)
+  ○ Read(.../path/to/file)              ← ○ outline = running, ● filled = done
 
-Click a header or hint row to expand or collapse that block. Detail titles are plain text (no
-background); the hint row is clickable for detail blocks. `Ctrl+O` toggles the most recent
-collapsible block in the session (unless the input has a collapsed paste token or the paste editor
-is open — then **Ctrl+O** handles paste preview/edit first). Detail box colors reflect status:
-neutral, running, success, warning, or error.
+The dot changes dynamically based on status:
+- **●** filled green = success, red = error, yellow = warning
+- **○** outline yellow = running, gray = unavailable
+- **●** filled dim = neutral (default)
+
+When expanded, the body appears inside a background box colored by status:
+green tint (success), red tint (error), amber tint (warning), blue tint (running).
+Detail titles use plain text (no background); the hint row is clickable for detail blocks.
+`Ctrl+O` toggles the most recent collapsible block in the session (unless the input has a
+collapsed paste token or the paste editor is open — then **Ctrl+O** handles paste preview first).
 
 ### Slash command palette
 
@@ -361,9 +363,21 @@ User and assistant blocks can show a compact local timestamp (`internal/renderer
 - Today: `15:04:05`
 - Other days: `Jan 2 15:04:05`
 
-## Activity stopwatch
+## Activity indicator
 
-During agent activity (connecting, thinking, tool work), a stopwatch shows elapsed time (`internal/renderer/activity_stopwatch.go`). Updates every 100ms while active.
+When the agent is busy, an activity line shows between the content area and input:
+
+  ⡿  Working · 4.2s
+  ⡿  Running Bash(git status) · Esc to cancel
+  ⡿  Connecting... · 1.5s
+
+- Spinner + label + elapsed time (no redundant `...` suffix — spinner is the indicator).
+- Activity label shows: `Working`, `Connecting`, `Running Bash(cmd)`, `Streaming`, etc.
+- Esc cancels the current turn.
+- Stopwatch updates every 200ms.
+
+Implementation: `internal/renderer/activity_stopwatch.go`, `view.go` (`activityView`, `activityLabel`).
+
 
 ## Model selector
 
@@ -405,10 +419,11 @@ Persisted per session at `<workDir>/.agents/elph/metadata/<sess_id>/todos.jsonl`
 |---------|--------------------------------------------------|
 | `!cmd`  | Run shell; output can be queued as agent context |
 | `!!cmd` | Run shell without agent context                  |
+Output appears in a collapsible detail box labeled `Bash(<command>)` with status colors (running /
+success / error / cancelled). Activity view shows `⡿  Running Bash(cmd)`. Stream chunks honor terminal
+carriage returns (e.g. ping statistics overwriting one line) while preserving newlines between
+separate lines.
 
-Output appears in a collapsible detail box labeled `$ <command>` with status colors (running /
-success / error / cancelled). Stream chunks honor terminal carriage returns (e.g. ping statistics
-overwriting one line) while preserving newlines between separate lines.
 
 ## Tool approval and AskUser
 
@@ -446,10 +461,15 @@ dialog is open.
 Native tool calls (`EventToolCallStart` / `EventToolCallOutputDelta` / `EventToolCallDone`) render in
 `internal/renderer/agent_native.go`:
 
-| Tool  | Title         | Body                                                                         |
-|-------|---------------|------------------------------------------------------------------------------|
-| Bash  | `$ <command>` | Raw stdout/stderr streamed live; final body adds `(exit N)` on non-zero exit |
-| Other | Tool name     | Formatted via `runtime.FormatToolDetailBodyFromResult`                       |
+| Tool  | Title         | Body                                                                                                 |
+|-------|---------------|------------------------------------------------------------------------------------------------------|
+| Bash  | `Bash(cmd)`   | Raw stdout/stderr streamed live; final body adds `(exit N)` on non-zero exit                         |
+| Other | `Tool(param)` | Parameterized (e.g. `Read(.../path)`, `Grep(pattern)`); via `runtime.FormatToolDetailBodyFromResult` |
+
+Paths are smart-truncated from the front using the CWD as anchor:
+- Inside CWD:  `Read(.../elph/src/main.go)`
+- Sibling:     `Read(.../riipandi/project/file.ts)`
+- Unrelated:   `Read(.../src/main.go)` (segment-aware at `/` boundaries)
 
 While **running**, the detail box shows a spinner until the first output byte arrives, then streams
 text live. **Bash** and `!`/`!!` shell boxes stay expanded during streaming; other tools may start
@@ -459,13 +479,12 @@ collapsed when the final body is long. Chunk boundaries preserve `\n` so line-or
 
 ## Stream Messages
 
-| Type     | Prefix | Color                                                                  |
-|----------|--------|------------------------------------------------------------------------|
-| User     | `\|`   | `userPipeCol`                                                          |
-| AI       | `\|`   | `aiPipeCol`                                                            |
-| System   | `> `   | `highlight`                                                            |
-| Detail   | —      | Soft status-colored box — neutral, running, success, warning, error    |
-| Thinking | —      | Neutral dim gray box; `autoExpandThinking` in settings (default false) |
+| Type     | Prefix  | Color                                                                                                                         |
+|----------|---------|-------------------------------------------------------------------------------------------------------------------------------|
+| User     | `\|`    | `userPipeCol`                                                                                                                 |
+| AI       | `\|`    | `aiPipeCol`                                                                                                                   |
+| Detail   | ●/○ dot | Dynamic dot (● filled / ○ outline) + status-colored background when expanded                                                  |
+| Thinking | ▸/▾     | Compact `▸ Thought` with duration; dimmed background box when expanded. Auto-expanded by default (`autoExpandThinking: true`) |
 
 ### AI response formatting
 

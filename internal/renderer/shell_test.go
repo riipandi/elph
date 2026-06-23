@@ -129,7 +129,7 @@ func TestSubmitShellWithoutContext(t *testing.T) {
 	m = updated.(Model)
 	require.True(t, m.shell.Running)
 	require.NotEmpty(t, m.activityView())
-	require.Contains(t, stripANSI(m.activityView()), "Running $ echo shell-no-ctx")
+	require.Contains(t, stripANSI(m.activityView()), "Running Bash(echo shell-no-ctx)")
 	require.Contains(t, stripANSI(m.activityView()), "Esc to cancel")
 
 	m = waitForShellDone(t, m, cmd)
@@ -139,7 +139,7 @@ func TestSubmitShellWithoutContext(t *testing.T) {
 	require.Equal(t, uiconst.MessageUser, m.messages[0].kind)
 	require.Equal(t, "echo shell-no-ctx", m.messages[0].text)
 	require.Equal(t, uiconst.MessageDetail, m.messages[1].kind)
-	require.Equal(t, "$ echo shell-no-ctx", m.messages[1].detailLabel)
+	require.Equal(t, "Bash(echo shell-no-ctx)", m.messages[1].detailLabel)
 	require.Contains(t, m.messages[1].text, "shell-no-ctx")
 	require.NotContains(t, m.messages[1].text, "$ echo shell-no-ctx")
 
@@ -228,7 +228,7 @@ func TestSubmitShellWithContext(t *testing.T) {
 	require.Equal(t, uiconst.MessageUser, m.messages[0].kind)
 	require.Equal(t, "echo shell-with-ctx", m.messages[0].text)
 	require.Equal(t, uiconst.MessageDetail, m.messages[1].kind)
-	require.Equal(t, "$ echo shell-with-ctx", m.messages[1].detailLabel)
+	require.Equal(t, "Bash(echo shell-with-ctx)", m.messages[1].detailLabel)
 	require.Contains(t, m.messages[1].text, "shell-with-ctx")
 	require.Contains(t, stripANSI(m.contentView()), "shell-with-ctx")
 	require.NotContains(t, stripANSI(m.contentView()), "Received:")

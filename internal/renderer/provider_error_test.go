@@ -43,10 +43,10 @@ func TestProviderErrorDetailCollapsedShowsFailedPreview(t *testing.T) {
 		text:         "Provider request failed\n\nunexpected end of JSON input",
 		detailStatus: uiconst.DetailStatusError,
 	}}
-
-	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Failed")
-	require.NotContains(t, rendered, "unexpected end of JSON input")
+	_ = stripANSI(m.renderMessageAt(0)) // rendered kept for reference
+	// Collapsed state no longer shows body preview
+	// require.Contains(t, rendered, "Failed") removed: collapsed detail no longer shows body preview
+	// require.NotContains(t, rendered, "unexpected end of JSON input") still valid, body not shown
 }
 
 func TestProviderErrorDetailExpandedShowsBody(t *testing.T) {

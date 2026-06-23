@@ -16,7 +16,7 @@ func TestContentViewIncludesBannerAndMessages(t *testing.T) {
 	m.messages = []message{{text: "hello from user", kind: uiconst.MessageUser}}
 
 	content := m.contentView()
-	require.Contains(t, content, "Welcome to")
+	require.Contains(t, content, "Elph v")
 	require.Contains(t, content, "hello from user")
 }
 
@@ -43,7 +43,7 @@ func TestContentViewLongPasteIncludesBannerOnce(t *testing.T) {
 	m.messages = []message{{text: readme, kind: uiconst.MessageUser}}
 
 	content := m.contentView()
-	require.Equal(t, 1, strings.Count(content, "Welcome to"))
+	require.Equal(t, 1, strings.Count(content, "─ Elph"), "banner should appear once")
 }
 
 func TestBannerWidthMatchesTerminal(t *testing.T) {

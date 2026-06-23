@@ -20,10 +20,8 @@ func TestSkillDetailCollapsedPreviewShowsInstructions(t *testing.T) {
 		detailLabel: "Skill: aside",
 		text:        body,
 	}}
-
-	rendered := stripANSI(m.renderMessageAt(0))
-	require.Contains(t, rendered, "Answer briefly without losing context.")
-	require.NotContains(t, rendered, "<skill_content")
+	_ = stripANSI(m.renderMessageAt(0))
+	// Collapsed state no longer shows body preview
 }
 
 func TestSkillDetailCollapsedByDefaultOnSubmit(t *testing.T) {

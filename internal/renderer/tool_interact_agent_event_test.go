@@ -44,9 +44,9 @@ func TestToolCallStartProcessedWhileApprovalDialogOpen(t *testing.T) {
 	require.Equal(t, uiconst.DetailStatusRunning, m.messages[idx].detailStatus)
 
 	view := stripANSI(m.contentView())
-	require.Contains(t, view, "$ echo hi")
-	require.Contains(t, view, "Running...")
-	require.NotContains(t, view, "(running...)")
+	require.Contains(t, view, "Bash(echo hi)")
+	require.Contains(t, view, "(running...)")
+	require.NotContains(t, view, "Running...")
 }
 
 func TestResponseDeltaProcessedWhileApprovalDialogOpen(t *testing.T) {

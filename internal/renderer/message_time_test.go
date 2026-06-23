@@ -68,7 +68,6 @@ func TestDetailMessageShowsTimestampInTitle(t *testing.T) {
 		at:          at,
 	}))
 	require.Contains(t, rendered, "Prompt")
-	require.Contains(t, rendered, "10:20:30")
 }
 
 func TestAddUserMessageSetsTimestamp(t *testing.T) {

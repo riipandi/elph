@@ -562,6 +562,7 @@ func (m Model) addThinkingMessage(text string) Model {
 		kind:           uiconst.MessageThinking,
 		detailLabel:    "Thinking",
 		detailExpanded: m.thinkingExpandedByDefault(),
+		at:             time.Now(),
 	})
 	m.layout.ContentDirty = true
 	return m

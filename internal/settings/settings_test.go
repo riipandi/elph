@@ -66,7 +66,7 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.Equal(t, "24h", cfg.SyncInterval)
 
 	require.True(t, cfg.ShowThinkingEnabled())
-	require.False(t, cfg.AutoExpandThinkingEnabled())
+	require.True(t, cfg.AutoExpandThinkingEnabled())
 	require.False(t, cfg.UseRawPasteEnabled())
 	require.True(t, cfg.StickyScrollEnabled())
 	require.Equal(t, "auto", cfg.Theme)
@@ -75,24 +75,24 @@ func TestLoadMissingReturnsDefaults(t *testing.T) {
 	require.Equal(t, DefaultProviderTimeout, cfg.ProviderDefaultTimeout())
 }
 
-func TestAutoExpandThinkingDefaultsFalseAndCanEnable(t *testing.T) {
+func TestAutoExpandThinkingDefaultsTrueAndCanDisable(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
 	cfg, err := Load()
 	require.NoError(t, err)
-	require.False(t, cfg.AutoExpandThinkingEnabled())
+	require.True(t, cfg.AutoExpandThinkingEnabled())
 
-	enabled := true
+	disabled := false
 	require.NoError(t, Save(Settings{
 		SyncInterval:       cfg.SyncInterval,
 		ShowThinking:       cfg.ShowThinking,
-		AutoExpandThinking: &enabled,
+		AutoExpandThinking: &disabled,
 	}))
 
 	cfg, err = Load()
 	require.NoError(t, err)
-	require.True(t, cfg.AutoExpandThinkingEnabled())
+	require.False(t, cfg.AutoExpandThinkingEnabled())
 }
 
 func TestUseRawPasteDefaultsFalseAndCanEnable(t *testing.T) {
