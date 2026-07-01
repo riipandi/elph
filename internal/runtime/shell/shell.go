@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os/exec"
 	gort "runtime"
 	"strconv"
@@ -12,8 +11,14 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/charmbracelet/x/ansi"
+	"github.com/charmbracelet/x/xpty"
 	"github.com/riipandi/elph/internal/runtime/toolresult"
 )
+
+// ptySema limits concurrent PTY allocations to avoid kernel resource exhaustion
+// (ENXIO) under parallel load.
+var ptySema = make(chan struct{}, 16)
 
 const (
 	defaultMaxShellLines = 2000
@@ -33,71 +38,92 @@ func RunShell(workDir, command string) ShellResult {
 	return RunShellContext(context.Background(), workDir, command, nil)
 }
 
-// RunShellContext executes a shell command and streams stdout/stderr chunks to onChunk.
+// RunShellContext executes a shell command via PTY and streams output chunks to onChunk.
 // Cancel ctx to terminate the process; partial output is preserved in ShellResult.
+// PTY output may contain ANSI escape codes; caller can strip them with ansi.Strip
+// on the resulting ShellResult.Output.
 func RunShellContext(ctx context.Context, workDir, command string, onChunk func(string)) ShellResult {
-	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	ptySema <- struct{}{}
+	defer func() { <-ptySema }()
+
+	pty, err := xpty.NewPty(80, 24)
+	if err != nil {
+		return ShellResult{Err: fmt.Errorf("create pty: %w", err), ExitCode: -1}
+	}
+	defer pty.Close()
+
+	cmd := exec.Command("bash", "-c", command)
 	cmd.Dir = workDir
 	configureShellProcess(cmd)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return ShellResult{Err: err, ExitCode: -1}
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return ShellResult{Err: err, ExitCode: -1}
-	}
-
-	if err := cmd.Start(); err != nil {
+	if err := pty.Start(cmd); err != nil {
 		cancelled := errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled)
 		return ShellResult{Err: err, ExitCode: -1, Cancelled: cancelled}
 	}
 
 	pgid := shellProcessGroupID(cmd.Process.Pid)
-	configureShellCancel(cmd, pgid)
+	up, _ := pty.(*xpty.UnixPty)
 
+	// Read from PTY master in a goroutine.
 	var (
 		mu     sync.Mutex
 		output strings.Builder
 	)
-	appendChunk := func(chunk string) {
-		if chunk == "" {
-			return
-		}
-		mu.Lock()
-		output.WriteString(chunk)
-		mu.Unlock()
-		if onChunk != nil {
-			onChunk(chunk)
-		}
-	}
-
-	copyOut := func(r io.Reader, wg *sync.WaitGroup) {
-		defer wg.Done()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
 		buf := make([]byte, 4096)
 		for {
-			n, readErr := r.Read(buf)
+			n, readErr := pty.Read(buf)
 			if n > 0 {
-				appendChunk(string(buf[:n]))
+				chunk := string(buf[:n])
+				mu.Lock()
+				output.WriteString(chunk)
+				mu.Unlock()
+				if onChunk != nil {
+					onChunk(chunk)
+				}
 			}
 			if readErr != nil {
 				return
 			}
 		}
+	}()
+
+	// Wait for process or cancellation.
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- xpty.WaitProcess(ctx, cmd)
+	}()
+
+	var waitErr error
+	select {
+	case <-ctx.Done():
+		// Kill the whole process group to unblock reads.
+		if pgid > 0 {
+			syscall.Kill(-pgid, syscall.SIGKILL) //nolint:errcheck
+		} else if cmd.Process != nil {
+			cmd.Process.Kill() //nolint:errcheck
+		}
+		_ = pty.Close()
+		<-readDone
+		<-waitCh
+	case waitErr = <-waitCh:
+		// Close slave so master sees EOF/EIO and read goroutine drains.
+		if up != nil {
+			_ = up.Slave().Close()
+		}
+		<-readDone
+		_ = pty.Close()
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go copyOut(stdout, &wg)
-	go copyOut(stderr, &wg)
-
-	wg.Wait()
-	waitErr := cmd.Wait()
-
 	cancelled := ctx.Err() != nil
-	raw := strings.TrimRight(output.String(), "\n")
-	truncated := truncateShellOutput(raw)
+	raw := output.String()
+	// Normalize CRLF from PTY output, then strip trailing newlines and ANSI codes.
+	clean := SanitizeStreamChunk(raw)
+	clean = strings.TrimRight(clean, "\n")
+	clean = ansi.Strip(clean)
+	truncated := truncateShellOutput(clean)
 
 	result := ShellResult{
 		Output:    truncated,
@@ -108,8 +134,8 @@ func RunShellContext(ctx context.Context, workDir, command string, onChunk func(
 		if cancelled {
 			return result
 		}
-		exitErr, ok := waitErr.(*exec.ExitError)
-		if ok {
+		var exitErr *exec.ExitError
+		if errors.As(waitErr, &exitErr) {
 			result.ExitCode = exitErr.ExitCode()
 			return result
 		}
@@ -292,27 +318,6 @@ func shellProcessGroupID(pid int) int {
 		return 0
 	}
 	return pgid
-}
-
-// configureShellCancel kills the captured process group when CommandContext
-// cancels ctx. Unlike a detached goroutine, cmd.Cancel runs only while the
-// process is still live, avoiding PID/PGID reuse races in parallel tests.
-func configureShellCancel(cmd *exec.Cmd, pgid int) {
-	cmd.Cancel = func() error {
-		if pgid > 0 {
-			if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
-				if errors.Is(err, syscall.ESRCH) {
-					return nil
-				}
-				return err
-			}
-			return nil
-		}
-		if cmd.Process != nil {
-			return cmd.Process.Kill()
-		}
-		return nil
-	}
 }
 
 // SanitizeStreamChunk normalizes streamed shell bytes for display.
