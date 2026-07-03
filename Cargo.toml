@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.dependencies]
+# Internal dependencies
+elph-agent = { path = "crates/agent" }
+elph-ai = { path = "crates/ai" }
+elph-tui = { path = "crates/tui" }
+
+# External dependencies
+chrono = { version = "0.4.45", features = ["serde"] }
+iocraft = "0.8.3"
+nix = { version = "0.31", default-features = false, features = ["signal", "process"] }
+smol = "2.0.2"

@@ -1,0 +1,74 @@
+/.docs
+/.idea
+/.pnp
+/.husky
+.pnp.js
+.DS_Store
+.DS_Store?
+.compose/
+.memelord/
+/coverage
+/[Tt]emp/
+/[Tt]mp/
+/storage/
+/target/
+/vendor/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+node_modules/
+*tsbuildinfo
+npm-debug.log*
+coverage.*
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/mcp.json
+!.vscode/tasks.json
+*.bak
+
+# SQLite
+*.sqlite*
+*.sqlite3*
+*.db
+
+# Output
+_data/
+build/
+dist/
+output/
+release/
+.build/
+.data/
+.cache
+.output
+.wrangler
+.netlify
+.temp
+.tmp
+
+# Envars
+.env.*
+!.env.example
+compose.env*
+!compose.env.example
+.*.vars
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate*
+terraform.tfvars*
+!terraform.tfvars.example
+
+# Hugo
+.hugo_build.lock
+docsite/docsite/
+docsite/public/
+/public/
+
+# Misc
+.agents/prompts/
+.agents/skills/

@@ -1,0 +1,16 @@
+[package]
+name = "coding-agent"
+version = "0.0.1"
+edition = "2024"
+
+[[bin]]
+name = "elph"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+nix.workspace = true
+smol.workspace = true
+iocraft.workspace = true
+elph-agent.workspace = true
+elph-tui.workspace = true
