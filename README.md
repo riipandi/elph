@@ -21,7 +21,7 @@ curl -fsSL https://elph.space/install.sh | bash
 Or use `cargo install` (requires Rust 1.96+):
 
 ```sh
-cargo install elph
+cargo install --locked elph-coding-agent
 ```
 
 ### Up and Running
@@ -41,13 +41,35 @@ make check
 make run
 ```
 
-### Publish Crates
+### Publishing
+
+Publish all crates to crates.io (order matters):
 
 ```sh
-cargo publish -p elph-ai --allow-dirty
-cargo publish -p elph-agent --allow-dirty
-cargo publish -p elph-tui --allow-dirty
-cargo publish -p elph-coding-agent --allow-dirty
+cargo publish -p elph-ai
+cargo publish -p elph-agent
+cargo publish -p elph-tui
+cargo publish -p elph-coding-agent
+```
+
+**Note:** crates.io is immutable. Once published, a version cannot be overwritten or deleted.
+
+**Yank** — mark a version as unusable (keeps the code, prevents new installs):
+
+```sh
+cargo yank elph-coding-agent@0.0.1
+```
+
+**Undo yank**
+
+```sh
+cargo yank elph-coding-agent@0.0.1 --undo
+```
+
+**Patch** — fix, bump version, publish:
+
+```sh
+cargo publish -p elph-coding-agent
 ```
 
 ## Documentation
