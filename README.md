@@ -6,7 +6,8 @@
 
 ## Quick Start
 
-You will need [`Rust >= 1.96`][rust] installed, plus `watchexec` and `cargo-tarpaulin` (installed via `make prepare`).
+You will need [`Rust >= 1.96`][rust] installed. Run `make prepare` to install all toolchain dependencies
+(`watchexec`, `cargo-tarpaulin`, `cross`, and `rustup` targets for cross-compilation).
 
 Read the [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on contributing to this project.
 
