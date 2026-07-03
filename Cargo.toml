@@ -25,3 +25,7 @@ debug = false        # No debug symbols in release
 [profile.dev]
 incremental = true   # Incremental: rebuild only changed code — much faster iteration
 debug = "limited"    # Limited debug info: line numbers only, no type/variable debug
+
+[workspace.metadata.cross]
+target.x86_64-unknown-linux-gnu = { image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:main" }
+target.aarch64-unknown-linux-gnu = { image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main" }

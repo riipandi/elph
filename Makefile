@@ -1,10 +1,29 @@
 .DEFAULT_GOAL := help
 
-CARGO       := cargo
-BINARY_NAME := elph
-BUILD_DIR   := ./target/release
+CARGO       := $$(which cargo)
+CROSS       := $$(which cross)
 PKG_VERSION := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH  := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+BUILD_DIR   := ./target/release
+BINARY_NAME := elph
+
+# Auto-detect cross-compilation target based on host platform
+UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
+ifeq ($(UNAME_S),Darwin)
+  ifeq ($(UNAME_M),arm64)
+    CROSS_TARGET ?= x86_64-unknown-linux-gnu
+  else
+    CROSS_TARGET ?= aarch64-unknown-linux-gnu
+  endif
+else
+  ifeq ($(UNAME_M),aarch64)
+    CROSS_TARGET ?= x86_64-unknown-linux-gnu
+  else
+    CROSS_TARGET ?= aarch64-unknown-linux-gnu
+  endif
+endif
+# Override: make cross-build CROSS_TARGET=<triple>
 
 # ─── Args ───────────────────────────────────────────────────────────────────
 
@@ -14,7 +33,7 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage prepare help
+.PHONY: build run watch test lint fmt clean check coverage prepare cross help
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +59,13 @@ watch: ## Run with hot reload (requires watchexec)
 test: ## Run all workspace tests
 	@$(CARGO) test --workspace $(or $(_RESIDUAL_),$(ARGS))
 
+# ─── Cross-Compilation ─────────────────────────────────────────────────────────
+
+cross: ## Cross-compile for $$CROSS_TARGET
+	@echo "Cross-building for $(CROSS_TARGET)..."
+	@$(CROSS) build --release --target $(CROSS_TARGET)
+	@echo "Binary: target/$(CROSS_TARGET)/release/$(BINARY_NAME)"
+
 # ─── Code Quality ───────────────────────────────────────────────────────────
 
 lint: ## Run clippy linter
@@ -52,6 +78,7 @@ coverage: ## Run tests with coverage (requires cargo-tarpaulin)
 	@$(CARGO) tarpaulin --workspace 2>&1
 
 clean: ## Clean build artifacts
+	@find crates -type f -name '*_gen.rs' -delete
 	@$(CARGO) clean
 
 # ─── Misc ───────────────────────────────────────────────────────────────────
@@ -60,6 +87,8 @@ prepare: ## Install required toolchain
 	@command -v cargo-binstall >/dev/null 2>&1 || $(CARGO) install cargo-binstall --locked
 	@command -v cargo-tarpaulin >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-tarpaulin
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
+	@command -v cross >/dev/null 2>&1 || $(CARGO) install cross --locked
+	@rustup target add $(CROSS_TARGET) 2>/dev/null || true
 
 # ─── Help ───────────────────────────────────────────────────────────────────
 
