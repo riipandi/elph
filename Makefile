@@ -35,7 +35,8 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage prepare cross bump-major bump-minor bump-patch help
+.PHONY: build run watch test lint fmt clean check coverage help
+.PHONY: prepare cross bump-major bump-minor bump-patch
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ lint: ## Run clippy linter
 fmt: ## Format all code
 	@$(CARGO) fmt --all
 
-coverage: ## Run tests with coverage (requires cargo-tarpaulin)
+coverage: ## Run tests with coverage (requires tarpaulin)
 	@$(CARGO) tarpaulin --workspace 2>&1
 
 clean: ## Clean build artifacts
@@ -96,6 +97,13 @@ prepare: ## Install required toolchain
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v cross >/dev/null 2>&1 || $(CARGO) install cross --locked
 	@rustup target add $(CROSS_TARGET) 2>/dev/null || true
+	@if [ "$(UNAME_S)" = "Darwin" ]; then \
+	  if xcrun --find metal 2>/dev/null >/dev/null; then \
+	    echo "Metal toolchain already installed at $$(xcrun --find metal)"; \
+	  else \
+	    xcodebuild -downloadComponent MetalToolchain 2>&1; \
+	  fi; \
+	fi
 
 # ─── Versioning ────────────────────────────────────────────────────────────────
 
