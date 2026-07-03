@@ -1,7 +1,7 @@
 mod app;
 mod cli;
-mod commands;
-mod components;
+mod command;
+mod component;
 
 use clap::Parser;
 
@@ -9,9 +9,9 @@ fn main() {
     let cli = cli::Cli::parse();
 
     if cli.version {
-        std::process::exit(commands::version::handle());
+        std::process::exit(command::version::handle());
     }
 
-    let code = commands::run(&cli);
+    let code = command::run(&cli);
     std::process::exit(code);
 }

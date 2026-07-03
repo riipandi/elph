@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.6"
+version = "0.0.7"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 repository = "https://github.com/riipandi/elph"

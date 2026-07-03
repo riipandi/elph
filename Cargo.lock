@@ -402,7 +402,7 @@ dependencies = [
 
 [[package]]
 name = "elph"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "chrono",
  "clap",
@@ -415,7 +415,7 @@ dependencies = [
 
 [[package]]
 name = "elph-agent"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "chrono",
  "elph-ai",
@@ -423,11 +423,11 @@ dependencies = [
 
 [[package]]
 name = "elph-ai"
-version = "0.0.6"
+version = "0.0.7"
 
 [[package]]
 name = "elph-tui"
-version = "0.0.6"
+version = "0.0.7"
 dependencies = [
  "iocraft",
 ]

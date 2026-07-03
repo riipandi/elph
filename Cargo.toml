@@ -4,9 +4,9 @@ members = ["crates/*"]
 
 [workspace.dependencies]
 # Internal dependencies
-elph-agent = { path = "crates/agent", version = "0.0.6" }
-elph-ai = { path = "crates/ai", version = "0.0.6" }
-elph-tui = { path = "crates/tui", version = "0.0.6" }
+elph-agent = { path = "crates/agent", version = "0.0.7" }
+elph-ai = { path = "crates/ai", version = "0.0.7" }
+elph-tui = { path = "crates/tui", version = "0.0.7" }
 
 # External dependencies
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }

@@ -1,6 +1,6 @@
 [package]
 name = "elph-ai"
-version = "0.0.6"
+version = "0.0.7"
 license = "MIT"
 description = "AI provider integration for Elph agent"
 repository = "https://github.com/riipandi/elph"

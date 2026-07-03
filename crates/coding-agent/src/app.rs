@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::components::Example;
+use super::component::Example;
 use iocraft::prelude::*;
 use std::sync::atomic::AtomicBool;
 
