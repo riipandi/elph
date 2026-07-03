@@ -1,26 +1,17 @@
 mod app;
+mod cli;
+mod commands;
 mod components;
 
-use nix::sys::signal::{Signal, kill};
-use nix::unistd::getppid;
-use std::sync::atomic::{AtomicBool, Ordering};
-
-#[cfg(unix)]
-static SHOULD_KILL_PARENT: AtomicBool = AtomicBool::new(false);
-
-#[cfg(unix)]
-fn kill_parent() {
-    let ppid = getppid();
-    if ppid.as_raw() > 1 {
-        let _ = kill(ppid, Signal::SIGTERM);
-    }
-}
+use clap::Parser;
 
 fn main() {
-    app::run();
+    let cli = cli::Cli::parse();
 
-    #[cfg(unix)]
-    if SHOULD_KILL_PARENT.load(Ordering::Relaxed) {
-        kill_parent();
+    if cli.version {
+        std::process::exit(commands::version::handle());
     }
+
+    let code = commands::run(&cli);
+    std::process::exit(code);
 }

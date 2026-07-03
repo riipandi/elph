@@ -20,3 +20,4 @@ elph-tui.workspace = true
 iocraft.workspace = true
 nix.workspace = true
 smol.workspace = true
+clap = { version = "4.5", features = ["derive"] }

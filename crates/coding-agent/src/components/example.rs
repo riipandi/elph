@@ -1,14 +1,13 @@
 use chrono::Local;
 use elph_tui::{Label, frame};
 use iocraft::prelude::*;
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 #[component]
 pub fn Example(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let (width, height) = hooks.use_terminal_size();
     let mut system = hooks.use_context_mut::<SystemContext>();
-    let mut time = hooks.use_state(|| Local::now());
+    let mut time = hooks.use_state(Local::now);
     let mut should_exit = hooks.use_state(|| false);
 
     hooks.use_future(async move {
@@ -18,17 +17,20 @@ pub fn Example(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
         }
     });
 
-    hooks.use_terminal_events({
-        move |event| match event {
-            TerminalEvent::Key(KeyEvent { code, kind, .. }) if kind != KeyEventKind::Release => match code {
-                KeyCode::Char('q') => {
-                    should_exit.set(true);
-                    #[cfg(unix)]
-                    crate::SHOULD_KILL_PARENT.store(true, Ordering::Relaxed);
-                }
-                _ => {}
-            },
-            _ => {}
+    hooks.use_terminal_events(move |event| {
+        if let TerminalEvent::Key(KeyEvent {
+            code: KeyCode::Char('q'),
+            kind,
+            ..
+        }) = event
+            && kind != KeyEventKind::Release
+        {
+            should_exit.set(true);
+            #[cfg(unix)]
+            {
+                use std::sync::atomic::Ordering;
+                crate::app::SHOULD_KILL_PARENT.store(true, Ordering::Relaxed);
+            }
         }
     });
 
