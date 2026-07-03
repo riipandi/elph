@@ -48,14 +48,14 @@ build: ## Build the application binary
 	$(CARGO) build --release 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
-	echo "Binary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"; \
+	echo "\nBinary size: $$(du -sh $(BUILD_DIR)/$(BINARY_NAME) | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$(BINARY_NAME) | cut -d' ' -f1))"; \
 	echo "Binary file: $(BUILD_DIR)/$(BINARY_NAME)"; \
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
 install: build ## Build and copy binary to $INSTALL_DIR
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(INSTALL_NAME)
-	@echo "Installed: $$(command -v $(INSTALL_DIR)/$(INSTALL_NAME) 2>/dev/null || echo $(INSTALL_DIR)/$(INSTALL_NAME))"
+	@echo "Installed at $$(command -v $(INSTALL_DIR)/$(INSTALL_NAME) 2>/dev/null || echo $(INSTALL_DIR)/$(INSTALL_NAME))"
 
 run: ## Run the application
 	@$(CARGO) run --bin $(BINARY_NAME) $(or $(_RESIDUAL_),$(ARGS))
