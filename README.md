@@ -6,7 +6,7 @@
 
 ## Quick Start
 
-You will need [`Rust >= 1.96.0`][rust] installed. Optional: `watchexec` and `cargo-tarpaulin` (installed via `make prepare`).
+You will need [`Rust >= 1.96.0`][rust] installed, plus `watchexec` and `cargo-tarpaulin` (installed via `make prepare`).
 
 Read the [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on contributing to this project.
 
