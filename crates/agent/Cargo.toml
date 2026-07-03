@@ -1,7 +1,13 @@
 [package]
 name = "elph-agent"
 version = "0.0.1"
+license = "MIT"
+description = "Agent runtime for Elph coding assistant"
+repository = "https://github.com/riipandi/elph-rs"
+authors = ["Aris Ripandi <aris@duck.com>"]
+rust-version = "1.96"
 edition = "2024"
+publish = true
 
 [dependencies]
 chrono.workspace = true

@@ -1,7 +1,13 @@
 [package]
-name = "coding-agent"
+name = "elph-coding-agent"
 version = "0.0.1"
+license = "MIT"
+description = "Minimalist AI agent companion for coding"
+repository = "https://github.com/riipandi/elph-rs"
+authors = ["Aris Ripandi <aris@duck.com>"]
+rust-version = "1.96"
 edition = "2024"
+publish = true
 
 [[bin]]
 name = "elph"

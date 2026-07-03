@@ -1,7 +1,13 @@
 [package]
 name = "elph-tui"
 version = "0.0.1"
+license = "MIT"
+description = "Terminal UI components for Elph agent"
+repository = "https://github.com/riipandi/elph-rs"
+authors = ["Aris Ripandi <aris@duck.com>"]
+rust-version = "1.96"
 edition = "2024"
+publish = true
 
 [dependencies]
 iocraft.workspace = true

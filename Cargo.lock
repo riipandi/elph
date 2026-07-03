@@ -219,18 +219,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "coding-agent"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "elph-agent",
- "elph-tui",
- "iocraft",
- "nix",
- "smol",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -330,6 +318,18 @@ dependencies = [
 [[package]]
 name = "elph-ai"
 version = "0.0.1"
+
+[[package]]
+name = "elph-coding-agent"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "elph-agent",
+ "elph-tui",
+ "iocraft",
+ "nix",
+ "smol",
+]
 
 [[package]]
 name = "elph-tui"
