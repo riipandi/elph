@@ -4,7 +4,7 @@ use crate::cli::RunArgs;
 pub fn handle(args: &RunArgs) -> ExitCode {
     let prompt = args.prompt.join(" ");
     eprintln!(
-        "Run — not yet implemented (prompt: {}, model: {:?}, format: {}, continue: {}, session: {:?}, fork: {}, files: {:?}, yolo: {})",
+        "Run — not yet implemented (prompt: {}, model: {:?}, format: {}, continue: {}, session: {:?}, fork: {}, files: {:?}, brave: {})",
         if prompt.is_empty() { "<none>" } else { &prompt },
         args.model,
         args.output_format,
@@ -12,7 +12,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         args.session,
         args.fork,
         args.files,
-        args.yolo,
+        args.brave,
     );
     EXIT_SUCCESS
 }

@@ -32,5 +32,5 @@ pub struct RunArgs {
 
     /// Auto-approve tool executions
     #[arg(short, long)]
-    pub yolo: bool,
+    pub brave: bool,
 }

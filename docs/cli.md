@@ -65,7 +65,7 @@ elph run [OPTIONS] [PROMPT]...
 | `-s`, `--session <ID>`     | Resume a specific session by ID                                           |
 | `--fork`                   | Fork the session before continuing (requires `--continue` or `--session`) |
 | `-f`, `--file <FILE>`      | File(s) to attach to the prompt (repeatable)                              |
-| `-y`, `--yolo`             | Auto-approve tool executions                                              |
+| `-b`, `--brave`            | Auto-approve tool executions                                              |
 
 ### `completions`
 
