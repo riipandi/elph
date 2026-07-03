@@ -15,13 +15,13 @@ nix = { version = "0.31", default-features = false, features = ["signal", "proce
 smol = "2.0.2"
 
 [profile.release]
-opt-level = "z"      # optimize for size — smaller binary, less memory
-lto = "fat"          # full link-time optimization across all crates
-codegen-units = 1    # single codegen unit = max LLVM optimization
-panic = "abort"      # no panic unwinding = smaller binary
-debug = false        # no debug symbols
-strip = true         # strip symbols from binary
+opt-level = 2        # Optimization level: 2 = balanced runtime perf vs compile time
+lto = "thin"         # Thin LTO: cross-crate inlining without full-program analysis cost
+codegen-units = 16   # Parallel codegen: 16 units = faster compile, minimal optimization loss
+panic = "abort"      # panic=abort: removes unwind tables — smaller binary, cannot catch panics
+strip = "symbols"    # Strip all symbols from final binary
+debug = false        # No debug symbols in release
 
 [profile.dev]
-incremental = true   # Compile your binary in smaller steps.
-debug = "limited"    # Debug info without type or variable-level information.
+incremental = true   # Incremental: rebuild only changed code — much faster iteration
+debug = "limited"    # Limited debug info: line numbers only, no type/variable debug
