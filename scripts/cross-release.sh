@@ -28,11 +28,20 @@ all_targets=(
   aarch64-apple-darwin
 )
 
+_start=$(python3 -c "import time; print(int(time.time()*1000))")
+
+cross_log_banner "Cross-release  all platforms"
+echo
 cross_print_plan "${all_targets[@]}"
 
 for target in "${all_targets[@]}"; do
   "${root}/scripts/cross-build.sh" "$target"
+  echo
 done
 
-echo "release/"
-ls -1 "${root}/release" 2>/dev/null | sort || true
+cross_print_release_tree "$root"
+echo
+
+_end=$(python3 -c "import time; print(int(time.time()*1000))")
+_elapsed=$((_end - _start))
+printf 'Done in %d.%03ds\n' $((_elapsed / 1000)) $((_elapsed % 1000))

@@ -1,5 +1,7 @@
+#[cfg(unix)]
+use crate::runtime::SHOULD_KILL_PARENT;
 use crate::runtime::exit_message::ExitSnapshot;
-use crate::runtime::{SHOULD_KILL_PARENT, WAS_INTERRUPTED, exit_message, handle_prompt_interrupt};
+use crate::runtime::{WAS_INTERRUPTED, exit_message, handle_prompt_interrupt};
 use elph_tui::{
     AgentMode, ChatStream, PromptInput, Theme, enable_keyboard_enhancement, is_force_quit_key, is_interrupt_key,
     is_mode_cycle_key, is_quit_command, is_theme_toggle_key, sigint_channel,

@@ -20,10 +20,13 @@ tag="${CROSS_IMAGE_TAG:-${cross_ver:-main}}"
 
 # cross-rs images are linux/amd64 only; Apple Silicon / ARM64 hosts need --platform.
 docker_platform=()
+platform_note=""
 if [[ -n "${CROSS_DOCKER_PLATFORM:-}" ]]; then
   docker_platform=(--platform "$CROSS_DOCKER_PLATFORM")
+  platform_note="${CROSS_DOCKER_PLATFORM}"
 elif [[ "$(cross_host_rust_arch)" == "aarch64" ]]; then
   docker_platform=(--platform linux/amd64)
+  platform_note="linux/amd64"
 fi
 
 # Docker targets only (macOS has no cross-rs image)
@@ -35,14 +38,6 @@ all_targets=(
   x86_64-pc-windows-gnu
   aarch64-pc-windows-msvc
 )
-
-# ghcr.io/cross-rs/<target> is not published for every Rust triple (e.g. aarch64-pc-windows-msvc).
-cross_image_published() {
-  case "$1" in
-  aarch64-pc-windows-msvc) return 1 ;;
-  *) return 0 ;;
-  esac
-}
 
 docker_targets=()
 for target in "${all_targets[@]}"; do
@@ -58,14 +53,11 @@ for target in "${all_targets[@]}"; do
   fi
 done
 
-echo "Host: $(cross_host_label)"
-if ((${#docker_platform[@]} > 0)); then
-  echo "Docker platform: ${docker_platform[1]}"
+banner="Cross-pull  tag:${tag}"
+if [[ -n "$platform_note" ]]; then
+  banner="${banner}  ·  ${platform_note}"
 fi
-echo "Pulling cross-rs images (tag: ${tag})"
-if ((${#skipped_targets[@]} > 0)); then
-  echo "Skipping (no ghcr.io image): ${skipped_targets[*]}"
-fi
+cross_log_banner "$banner"
 echo
 
 if ((${#docker_targets[@]} == 0)); then
@@ -76,23 +68,33 @@ fi
 pull_image() {
   local target="$1"
   local image="ghcr.io/cross-rs/${target}:${tag}"
-  echo "=> ${image}"
-  if docker pull "${docker_platform[@]}" "$image"; then
+  if docker pull --quiet "${docker_platform[@]}" "$image" >/dev/null 2>&1; then
+    printf '  %-34s  pulled\n' "$target"
     return 0
   fi
   if [[ "$tag" != "main" ]]; then
     local fallback="ghcr.io/cross-rs/${target}:main"
-    echo "   retry ${fallback}"
-    docker pull "${docker_platform[@]}" "$fallback"
-  else
-    return 1
+    if docker pull --quiet "${docker_platform[@]}" "$fallback" >/dev/null 2>&1; then
+      printf '  %-34s  pulled (main)\n' "$target"
+      return 0
+    fi
   fi
+  printf '  %-34s  failed\n' "$target" >&2
+  return 1
 }
 
 for target in "${docker_targets[@]}"; do
   pull_image "$target" || exit 1
 done
 
+if ((${#skipped_targets[@]} > 0)); then
+  echo
+  echo "Skipped"
+  for target in "${skipped_targets[@]}"; do
+    printf '  %-34s  no ghcr.io image\n' "$target"
+  done
+fi
+
 echo
-echo "Cached images:"
-docker image ls 'ghcr.io/cross-rs/*' --format '  {{.Repository}}:{{.Tag}}  {{.Size}}'
+echo "Cached"
+docker image ls 'ghcr.io/cross-rs/*' --format '  {{.Repository}}:{{.Tag}}  {{.Size}}' | sort

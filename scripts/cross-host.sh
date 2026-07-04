@@ -27,6 +27,14 @@ cross_host_is_windows() {
   [[ "$os" == MINGW* || "$os" == MSYS* || "$os" == CYGWIN* || "$os" == Windows* ]]
 }
 
+# ghcr.io/cross-rs/<target> is not published for every Rust triple.
+cross_image_published() {
+  case "$1" in
+  aarch64-pc-windows-msvc) return 1 ;;
+  *) return 0 ;;
+  esac
+}
+
 # Print: cargo | cross | skip
 cross_tool_for() {
   local target="$1"
@@ -86,21 +94,69 @@ cross_host_label() {
   printf '%s %s%s' "$os" "$arch" "$alpine"
 }
 
+cross_fmt_bytes() {
+  local bytes="$1"
+  if ((bytes >= 1048576)); then
+    printf '%dMB' $((bytes / 1048576))
+  elif ((bytes >= 1024)); then
+    printf '%dKB' $((bytes / 1024))
+  else
+    printf '%dB' "$bytes"
+  fi
+}
+
+cross_log_banner() {
+  printf '%s  ·  %s\n' "$1" "$(cross_host_label)"
+}
+
 cross_print_plan() {
   local -a targets=("$@")
-  local target tool os_label
-  os_label="$(cross_host_label)"
+  local target tool
 
-  echo "Host: ${os_label}"
-  echo "Plan:"
-
+  echo "Plan"
   for target in "${targets[@]}"; do
     tool="$(cross_tool_for "$target")"
-    case "$tool" in
-    cargo) echo "  cargo  ${target}" ;;
-    cross) echo "  cross  ${target}" ;;
-    skip) echo "  skip   ${target}" ;;
-    esac
+    if [[ "$tool" == "cross" ]] && ! cross_image_published "$target"; then
+      tool="skip"
+    fi
+    printf '  %-5s  %s\n' "$tool" "$target"
   done
   echo
+}
+
+cross_log_target() {
+  local target="$1"
+  local tool="$2"
+  printf '► %s  (%s)\n' "$target" "$tool"
+}
+
+cross_log_artifact() {
+  local pkg="$1"
+  local binary_name="$2"
+  local artifact_name="$3"
+  local bytes="$4"
+  local checksum="$5"
+  printf '  %-5s  %-26s  %-34s  %s  %s\n' \
+    "$pkg" "$binary_name" "$artifact_name" "$(cross_fmt_bytes "$bytes")" "$checksum"
+}
+
+cross_print_release_tree() {
+  local root="$1"
+  local dir name count
+
+  echo "Release"
+  for dir in archives binaries; do
+    count=0
+    while IFS= read -r name; do
+      [[ -z "$name" || "$name" == "SHA256SUMS" ]] && continue
+      if ((count == 0)); then
+        printf '  %s/\n' "$dir"
+      fi
+      printf '    %s\n' "$name"
+      count=$((count + 1))
+    done < <(ls -1 "${root}/release/${dir}" 2>/dev/null | sort)
+    if ((count == 0)); then
+      printf '  %s/  (empty)\n' "$dir"
+    fi
+  done
 }

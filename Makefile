@@ -65,7 +65,7 @@ test: ## Run all workspace tests
 	@$(CARGO) test --workspace $(or $(_RESIDUAL_),$(ARGS))
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
-# Output: release/{eclaw,elph}-<platform>-<arch>.{tar.gz,zip} + SHA256SUMS
+# Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)
 #   Linux: linux-glibc-* and linux-musl-* (not alpine-*)
 #   linux-glibc-*  Ubuntu / Raspberry Pi OS 64-bit (glibc, Pi 3/4/5)
 #   linux-musl-*   Alpine Linux (musl)

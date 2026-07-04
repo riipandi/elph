@@ -1,7 +1,7 @@
 # Cross-compilation config for eclaw.
 # Linux desktop: Ubuntu/Raspberry Pi OS 64-bit (glibc), Alpine (musl).
 # armv7 (Pi 3 32-bit) unsupported — turso/io-uring lacks armv7 bindings.
-# Artifacts packaged to release/eclaw-<platform>-<arch>.{tar.gz,zip}.
+# Artifacts staged to release/binaries/ and release/archives/.
 # Windows: optional. macOS: `make cross-darwin PKG=eclaw` (native).
 #
 # Usage:

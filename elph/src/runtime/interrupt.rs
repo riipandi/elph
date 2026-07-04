@@ -1,4 +1,6 @@
-use super::app::{SHOULD_KILL_PARENT, WAS_INTERRUPTED};
+#[cfg(unix)]
+use super::app::SHOULD_KILL_PARENT;
+use super::app::WAS_INTERRUPTED;
 use iocraft::prelude::*;
 
 /// First Ctrl+C / SIGINT clears the prompt; second exits (when prompt is empty).
