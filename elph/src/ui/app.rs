@@ -101,7 +101,7 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 width: 100pct,
                 overflow: Overflow::Hidden,
                 padding_left: 1,
-                padding_right: 1,
+                padding_right: 0,
                 padding_top: 0,
             ) {
                 ChatStream(messages: messages.read().clone(), theme: palette)
