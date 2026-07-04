@@ -1,12 +1,12 @@
 mod agent_mode;
 mod chat_stream;
 mod paste_guard;
-mod prompt_buffer;
+pub(crate) mod prompt_buffer;
 mod prompt_display;
-mod prompt_edit;
+pub(crate) mod prompt_edit;
 mod prompt_input;
 mod prompt_keys;
-mod prompt_paste;
+pub(crate) mod prompt_paste;
 mod prompt_transcript;
 
 pub use agent_mode::AgentMode;

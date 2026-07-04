@@ -16,3 +16,4 @@
 - https://github.com/run-llama/liteparse
 - https://github.com/teloxide/teloxide
 - https://github.com/pulldown-cmark/pulldown-cmark
+- https://crates.io/crates/syntect

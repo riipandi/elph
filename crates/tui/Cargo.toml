@@ -20,11 +20,14 @@ path = "src/lib.rs"
 crokey.workspace = true
 crossterm.workspace = true
 iocraft.workspace = true
+pulldown-cmark.workspace = true
+similar.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "signal", "sync", "time"] }
 unicode-width = "0.2"
 
 [dev-dependencies]
 futures = "0.3"
+similar-asserts = "2.0.0"
 tokio = { workspace = true, features = ["macros"] }
 
 [target.'cfg(unix)'.dev-dependencies]
