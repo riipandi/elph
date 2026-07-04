@@ -34,6 +34,7 @@ fn Harness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 auto_scroll: false,
                 line_scroll_step: 1u16,
                 page_scroll_step: 0u16,
+                theme: elph_tui::Theme::dark(),
             )
         }
     }
@@ -89,6 +90,7 @@ fn FastScrollHarness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 auto_scroll: false,
                 line_scroll_step: 3u16,
                 page_scroll_step: 0u16,
+                theme: elph_tui::Theme::dark(),
             )
         }
     }

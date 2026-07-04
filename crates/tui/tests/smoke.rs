@@ -1,6 +1,6 @@
 #[test]
 fn frame_renders() {
-    let _ = elph_tui::frame(vec![]);
+    let _ = elph_tui::frame(elph_tui::Theme::dark(), vec![]);
 }
 
 #[test]

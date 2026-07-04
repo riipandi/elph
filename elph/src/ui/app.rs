@@ -1,7 +1,8 @@
 use crate::runtime::exit_message::ExitSnapshot;
 use crate::runtime::{SHOULD_KILL_PARENT, WAS_INTERRUPTED, exit_message, handle_prompt_interrupt};
 use elph_tui::{
-    AgentMode, ChatStream, PromptInput, enable_keyboard_enhancement, is_interrupt_key, is_quit_command, sigint_channel,
+    AgentMode, ChatStream, PromptInput, Theme, enable_keyboard_enhancement, is_interrupt_key, is_quit_command,
+    sigint_channel,
 };
 use iocraft::prelude::*;
 use signal_hook::consts::SIGINT;
@@ -14,6 +15,7 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut prompt_reset = hooks.use_state(|| 0u32);
     let mut messages = hooks.use_state(Vec::<String>::new);
     let mut mode = hooks.use_state(AgentMode::default);
+    let mut theme = hooks.use_state(Theme::detect);
     let mut should_exit = hooks.use_state(|| false);
     let session_id = hooks.use_state(exit_message::new_session_id);
 
@@ -67,6 +69,11 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
             && !modifiers.contains(KeyModifiers::CONTROL)
         {
             mode.set(mode.get().next());
+            return;
+        }
+
+        if code == KeyCode::Char('t') && modifiers.contains(KeyModifiers::CONTROL) {
+            theme.set(theme.get().toggle());
         }
     });
 
@@ -78,11 +85,13 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
         system.exit();
     }
 
+    let palette = theme.get();
+
     element! {
         View(
             width,
             height,
-            background_color: Color::Reset,
+            background_color: palette.view_background(),
             flex_direction: FlexDirection::Column,
         ) {
             View(
@@ -94,22 +103,23 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 overflow: Overflow::Hidden,
                 padding_left: 1,
                 padding_right: 1,
-                padding_top: 1,
+                padding_top: 0,
             ) {
-                ChatStream(messages: messages.read().clone())
+                ChatStream(messages: messages.read().clone(), theme: palette)
             }
             View(
                 flex_shrink: 0.0,
                 width: 100pct,
-                padding_left: 1,
-                padding_right: 1,
-                padding_bottom: 1,
+                padding_left: 0,
+                padding_right: 0,
+                padding_bottom: 0,
             ) {
                 PromptInput(
                     value: Some(prompt),
                     reset_nonce: Some(prompt_reset),
                     model_name: "Claude Fable 5".to_string(),
                     mode: mode.get(),
+                    theme: palette,
                     has_focus: true,
                     on_submit: move |text: String| {
                         if is_quit_command(&text) {

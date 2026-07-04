@@ -1,15 +1,27 @@
+use crate::theme::Theme;
 use iocraft::prelude::*;
 
-#[derive(Default, Props)]
+#[derive(Props)]
 pub struct PromptTranscriptProps {
     /// Submitted prompt messages, oldest first.
     pub messages: Vec<String>,
+    pub theme: Theme,
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for PromptTranscriptProps {
+    fn default() -> Self {
+        Self {
+            messages: Vec::new(),
+            theme: Theme::default(),
+        }
+    }
 }
 
 #[component]
 pub fn PromptTranscript(props: &PromptTranscriptProps) -> impl Into<AnyElement<'static>> {
     element! {
-        Text(content: format_transcript(&props.messages))
+        Text(color: props.theme.text_color(), content: format_transcript(&props.messages))
     }
 }
 

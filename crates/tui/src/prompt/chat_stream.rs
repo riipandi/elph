@@ -1,4 +1,5 @@
 use super::prompt_transcript::PromptTranscript;
+use crate::theme::Theme;
 use iocraft::prelude::*;
 
 /// Default lines scrolled per Up/Down key press.
@@ -17,6 +18,8 @@ pub struct ChatStreamProps {
     pub line_scroll_step: u16,
     /// Lines to scroll per Page Up/Down. [`PAGE_SCROLL_VIEWPORT`] uses the visible height.
     pub page_scroll_step: u16,
+    /// Active color palette.
+    pub theme: Theme,
 }
 
 impl Default for ChatStreamProps {
@@ -26,6 +29,7 @@ impl Default for ChatStreamProps {
             auto_scroll: true,
             line_scroll_step: DEFAULT_LINE_SCROLL_STEP,
             page_scroll_step: PAGE_SCROLL_VIEWPORT,
+            theme: Theme::default(),
         }
     }
 }
@@ -38,6 +42,7 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
     let page_scroll_step = props.page_scroll_step;
     let auto_scroll = props.auto_scroll;
     let messages = props.messages.clone();
+    let theme = props.theme;
 
     hooks.use_terminal_events({
         let mut handle = handle;
@@ -84,9 +89,11 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
                 auto_scroll: auto_scroll,
                 keyboard_scroll: false,
                 scroll_step: Some(props.line_scroll_step.max(1)),
+                scrollbar_thumb_color: Some(theme.scrollbar_thumb),
+                scrollbar_track_color: Some(theme.scrollbar_track),
                 handle: Some(handle),
             ) {
-                PromptTranscript(messages: messages)
+                PromptTranscript(messages: messages, theme: theme)
             }
         }
     }

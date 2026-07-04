@@ -3,6 +3,7 @@
 pub mod components;
 pub mod prompt;
 pub mod terminal;
+pub mod theme;
 
 pub use components::{Label, LabelProps, frame};
 pub use prompt::{
@@ -11,3 +12,4 @@ pub use prompt::{
     is_newline_key, is_prompt_newline_key, is_quit_command, is_submit_key, mac_edit_action,
 };
 pub use terminal::{disable_keyboard_enhancement, enable_keyboard_enhancement, sigint_channel};
+pub use theme::{Theme, ThemeMode};
