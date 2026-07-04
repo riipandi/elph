@@ -1,8 +1,7 @@
 use crate::runtime::exit_message::ExitSnapshot;
 use crate::runtime::{SHOULD_KILL_PARENT, WAS_INTERRUPTED, exit_message, handle_prompt_interrupt};
 use elph_tui::{
-    AgentMode, PromptInput, PromptTranscript, enable_keyboard_enhancement, is_interrupt_key, is_quit_command,
-    sigint_channel,
+    AgentMode, ChatStream, PromptInput, enable_keyboard_enhancement, is_interrupt_key, is_quit_command, sigint_channel,
 };
 use iocraft::prelude::*;
 use signal_hook::consts::SIGINT;
@@ -90,15 +89,14 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 flex_grow: 1.0,
                 flex_shrink: 1.0,
                 min_height: 0,
+                height: 100pct,
                 width: 100pct,
                 overflow: Overflow::Hidden,
                 padding_left: 1,
                 padding_right: 1,
                 padding_top: 1,
             ) {
-                ScrollView(auto_scroll: true, keyboard_scroll: false) {
-                    PromptTranscript(messages: messages.read().clone())
-                }
+                ChatStream(messages: messages.read().clone())
             }
             View(
                 flex_shrink: 0.0,
