@@ -1,15 +1,16 @@
-mod cli;
+mod cmd;
 mod layout;
 mod runtime;
+mod server;
 
 use clap::Parser;
 
 fn main() {
-    let cli = cli::Cli::parse();
+    let cli = cmd::Cli::parse();
 
     if cli.version {
-        std::process::exit(cli::version::handle());
+        std::process::exit(cmd::version::handle());
     }
 
-    std::process::exit(cli::run(&cli));
+    std::process::exit(cmd::run(&cli));
 }

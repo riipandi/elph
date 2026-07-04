@@ -2,7 +2,6 @@
 
 ELPH_BIN     := elph
 ECLAW_BIN    := eclaw
-BIN          ?= $(ELPH_BIN)
 CARGO        := $$(which cargo)
 CROSS        := $$(which cross)
 PKG_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
@@ -39,8 +38,6 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 .PHONY: build run watch test lint fmt clean check coverage help
 .PHONY: prepare cross bump-major bump-minor bump-patch publish
-.PHONY: run-eclaw watch-eclaw
-
 # ─── Build ──────────────────────────────────────────────────────────────────
 
 check: ## Check code compiles (fast, no codegen)
@@ -69,17 +66,11 @@ install: build ## Install elph-next and eclaw-next to $INSTALL_DIR
 	  echo "Installed $$bin-next at $(INSTALL_DIR)/$$bin-next"; \
 	done
 
-run: ## Run a binary (BIN=elph|eclaw, default elph)
-	@$(CARGO) run --bin $(BIN) $(or $(_RESIDUAL_),$(ARGS))
+run: ## Run elph coding agent
+	@$(CARGO) run --bin $(ELPH_BIN) $(or $(_RESIDUAL_),$(ARGS))
 
-run-eclaw: ## Run eclaw
-	@$(MAKE) run BIN=$(ECLAW_BIN) $(_RESIDUAL_)
-
-watch: ## Run with hot reload (BIN=elph|eclaw, requires watchexec)
-	@-$(CARGO) watch -c -- cargo run --bin $(BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
-
-watch-eclaw: ## Run eclaw with hot reload
-	@$(MAKE) watch BIN=$(ECLAW_BIN) $(_RESIDUAL_)
+watch: ## Run eclaw with hot reload (requires watchexec)
+	@-$(CARGO) watch -c -- cargo run --bin $(ECLAW_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
 test: ## Run all workspace tests
 	@$(CARGO) test --workspace $(or $(_RESIDUAL_),$(ARGS))

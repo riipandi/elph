@@ -4,7 +4,6 @@ mod paths;
 mod settings;
 mod trust;
 mod version;
-
 use elph_agent::{DatabaseSpec, InitProgress, ensure_databases, ensure_dirs};
 
 pub use paths::Paths;

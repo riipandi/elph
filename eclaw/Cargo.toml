@@ -1,6 +1,6 @@
 [package]
 name = "eclaw"
-version = "0.0.10"
+version = "0.0.11"
 license = "MIT"
 description = "Personal AI assistant powered by Elph"
 homepage = "https://elph.space"
@@ -16,14 +16,23 @@ publish = true
 name = "eclaw"
 path = "src/main.rs"
 
+[features]
+default = ["web"]
+headless = []
+web = ["dep:rust-embed"]
+
 [dependencies]
+axum.workspace = true
 chrono.workspace = true
 clap.workspace = true
-elph-agent = { path = "../crates/agent", version = "^0.0.10" }
-serde.workspace = true
+elph-agent = { path = "../crates/agent", version = "^0.0.11" }
+rust-embed = { version = "8.9.0", optional = true }
 serde_json.workspace = true
-tokio = { workspace = true, features = ["rt", "macros"] }
-turso = "0.6.1"
+serde.workspace = true
+tokio = { workspace = true, features = ["macros", "net", "rt", "signal"] }
+tower-http.workspace = true
+turso.workspace = true
 
 [dev-dependencies]
 tempfile = "3.27.0"
+tower = { version = "0.5.2", features = ["util"] }

@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.10"
+version = "0.0.11"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 homepage = "https://elph.space"
@@ -22,7 +22,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
-turso = "0.6.1"
+turso.workspace = true
 
 [dev-dependencies]
 tempfile = "3.27.0"

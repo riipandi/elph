@@ -1,6 +1,6 @@
 [package]
 name = "elph-ai"
-version = "0.0.10"
+version = "0.0.11"
 license = "MIT"
 description = "AI provider integration for Elph agent"
 homepage = "https://elph.space"
