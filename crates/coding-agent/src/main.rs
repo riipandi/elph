@@ -1,6 +1,5 @@
 mod app;
 mod cli;
-mod command;
 mod component;
 mod exit_message;
 mod interrupt;
@@ -13,9 +12,9 @@ fn main() {
     let cli = cli::Cli::parse();
 
     if cli.version {
-        std::process::exit(command::version::handle());
+        std::process::exit(cli::version::handle());
     }
 
-    let code = command::run(&cli);
+    let code = cli::run(&cli);
     std::process::exit(code);
 }

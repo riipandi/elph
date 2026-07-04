@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::app::{EXIT_SUCCESS, ExitCode};
+
 #[derive(Args, Default)]
 pub struct ModelsArgs {
     /// Filter models by provider name
@@ -9,4 +11,13 @@ pub struct ModelsArgs {
     /// Fuzzy search filter for model names
     #[arg(long, value_name = "QUERY")]
     pub search: Option<String>,
+}
+
+pub fn handle(args: &ModelsArgs) -> ExitCode {
+    eprintln!(
+        "Models — not yet implemented (provider: {}, search: {:?})",
+        args.provider.as_deref().unwrap_or("<all>"),
+        args.search,
+    );
+    EXIT_SUCCESS
 }

@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::app::{EXIT_SUCCESS, ExitCode};
+
 #[derive(Args, Default)]
 pub struct RunArgs {
     /// Prompt to process non-interactively
@@ -33,4 +35,20 @@ pub struct RunArgs {
     /// Auto-approve tool executions
     #[arg(short, long)]
     pub brave: bool,
+}
+
+pub fn handle(args: &RunArgs) -> ExitCode {
+    let prompt = args.prompt.join(" ");
+    eprintln!(
+        "Run — not yet implemented (prompt: {}, model: {:?}, format: {}, continue: {}, session: {:?}, fork: {}, files: {:?}, brave: {})",
+        if prompt.is_empty() { "<none>" } else { &prompt },
+        args.model,
+        args.output_format,
+        args.r#continue,
+        args.session,
+        args.fork,
+        args.files,
+        args.brave,
+    );
+    EXIT_SUCCESS
 }

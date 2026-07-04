@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::app::{EXIT_SUCCESS, ExitCode};
+
 #[derive(Args)]
 pub struct ImportArgs {
     /// Path to session file, directory, or share URL
@@ -13,4 +15,14 @@ pub struct ImportArgs {
     /// Emit NDJSON output to stdout
     #[arg(long)]
     pub json: bool,
+}
+
+pub fn handle(args: &ImportArgs) -> ExitCode {
+    eprintln!(
+        "Import — not yet implemented (file: {}, list: {}, json: {})",
+        args.file.as_deref().unwrap_or("<none>"),
+        args.list,
+        args.json,
+    );
+    EXIT_SUCCESS
 }

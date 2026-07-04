@@ -1,4 +1,6 @@
+mod acp;
 mod completions;
+mod default;
 mod doctor;
 mod export;
 mod import;
@@ -11,24 +13,27 @@ mod server;
 mod session;
 mod stats;
 mod update;
+pub mod version;
 mod worktree;
 
 use clap::{Parser, Subcommand};
+
+use crate::app::ExitCode;
 
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
 pub use import::ImportArgs;
-pub use mcp::{McpArgs, McpCommands};
+pub use mcp::McpArgs;
 pub use models::ModelsArgs;
-pub use plugin::{PluginArgs, PluginCommands};
-pub use provider::{ProviderArgs, ProviderCommands};
+pub use plugin::PluginArgs;
+pub use provider::ProviderArgs;
 pub use run::RunArgs;
-pub use server::{ServerArgs, ServerCommands};
-pub use session::{SessionArgs, SessionCommands};
+pub use server::ServerArgs;
+pub use session::SessionArgs;
 pub use stats::StatsArgs;
 pub use update::UpdateArgs;
-pub use worktree::{WorktreeArgs, WorktreeCommands};
+pub use worktree::WorktreeArgs;
 
 /// Minimalist AI agent companion for coding
 #[derive(Parser)]
@@ -76,4 +81,29 @@ pub enum Commands {
     Version,
     /// Manage git worktrees
     Worktree(WorktreeArgs),
+}
+
+pub fn run(cli: &Cli) -> ExitCode {
+    let Some(cmd) = &cli.command else {
+        return default::handle();
+    };
+
+    match cmd {
+        Commands::Acp => acp::handle(),
+        Commands::Completions(args) => completions::handle(args),
+        Commands::Doctor(args) => doctor::handle(args),
+        Commands::Export(args) => export::handle(args),
+        Commands::Import(args) => import::handle(args),
+        Commands::Mcp(args) => mcp::handle(args),
+        Commands::Models(args) => models::handle(args),
+        Commands::Plugin(args) => plugin::handle(args),
+        Commands::Provider(args) => provider::handle(args),
+        Commands::Run(args) => run::handle(args),
+        Commands::Server(args) => server::handle(args),
+        Commands::Session(args) => session::handle(args),
+        Commands::Stats(args) => stats::handle(args),
+        Commands::Update(args) => update::handle(args),
+        Commands::Version => version::handle(),
+        Commands::Worktree(args) => worktree::handle(args),
+    }
 }

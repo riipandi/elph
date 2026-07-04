@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::app::{EXIT_SUCCESS, ExitCode};
+
 #[derive(Args, Default)]
 pub struct StatsArgs {
     /// Filter statistics to a specific session
@@ -9,4 +11,12 @@ pub struct StatsArgs {
     /// Emit machine-readable JSON output
     #[arg(long)]
     pub json: bool,
+}
+
+pub fn handle(args: &StatsArgs) -> ExitCode {
+    eprintln!(
+        "Stats — not yet implemented (session: {:?}, json: {})",
+        args.session, args.json
+    );
+    EXIT_SUCCESS
 }

@@ -1,5 +1,7 @@
 use clap::Args;
 
+use crate::app::{EXIT_SUCCESS, ExitCode};
+
 #[derive(Args)]
 pub struct UpdateArgs {
     /// Check for updates without installing
@@ -25,4 +27,27 @@ pub struct UpdateArgs {
     /// Switch to the stable release channel (default, weekly releases)
     #[arg(long)]
     pub stable: bool,
+}
+
+pub fn handle(args: &UpdateArgs) -> ExitCode {
+    println!("Update — not yet implemented");
+    if args.check {
+        println!("  --check: true");
+    }
+    if args.json {
+        println!("  --json: true");
+    }
+    if args.force_reinstall {
+        println!("  --force-reinstall: true");
+    }
+    if let Some(v) = &args.version {
+        println!("  --version: {v}");
+    }
+    if args.canary {
+        println!("  --canary: true");
+    }
+    if args.stable {
+        println!("  --stable: true");
+    }
+    EXIT_SUCCESS
 }
