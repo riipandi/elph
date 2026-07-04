@@ -35,6 +35,11 @@ pub fn is_mode_cycle_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     matches!(key_combination(code, modifiers), key!(tab))
 }
 
+/// Returns true for Escape (clear prompt when non-empty).
+pub fn is_clear_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
+    code == KeyCode::Esc && modifiers.is_empty()
+}
+
 /// Returns true for Ctrl+T (toggle theme).
 pub fn is_theme_toggle_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     matches!(key_combination(code, modifiers), key!(ctrl - t))
@@ -231,6 +236,12 @@ mod tests {
     fn detects_submit() {
         assert!(is_submit_key(KeyCode::Enter, KeyModifiers::empty()));
         assert!(!is_submit_key(KeyCode::Enter, KeyModifiers::SHIFT,));
+    }
+
+    #[test]
+    fn detects_clear() {
+        assert!(is_clear_key(KeyCode::Esc, KeyModifiers::empty()));
+        assert!(!is_clear_key(KeyCode::Esc, KeyModifiers::SHIFT));
     }
 
     #[test]

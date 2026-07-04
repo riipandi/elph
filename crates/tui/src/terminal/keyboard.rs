@@ -1,4 +1,5 @@
 use crokey::{pop_keyboard_enhancement_flags, push_keyboard_enhancement_flags};
+use crossterm::event::DisableBracketedPaste;
 use crossterm::terminal;
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -14,6 +15,7 @@ pub fn enable_keyboard_enhancement() -> io::Result<()> {
     }
 
     push_keyboard_enhancement_flags()?;
+    crossterm::execute!(io::stdout(), DisableBracketedPaste)?;
     io::stdout().flush()?;
     ENABLED.store(true, Ordering::Relaxed);
     Ok(())

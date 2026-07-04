@@ -1,13 +1,16 @@
-use std::time::{Duration, Instant};
+use super::prompt_paste::{PASTE_BURST_GAP, TAB_PASTE_GAP};
+use std::time::Instant;
 
-/// Minimum gap between pasted characters; terminal paste is far faster than human typing.
-const PASTE_BURST_GAP: Duration = Duration::from_millis(40);
+/// Rapid single-char inserts in a row that likely indicate a char-by-char paste.
+const PASTE_LIKELY_MIN_RAPID_INSERTS: u32 = 3;
 
 /// Tracks clipboard paste so Enter pressed as part of a paste does not submit the prompt.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PasteGuard {
     block_next_submit: bool,
     last_change_at: Option<Instant>,
+    rapid_insert_count: u32,
+    paste_likely: bool,
 }
 
 impl PasteGuard {
@@ -17,13 +20,51 @@ impl PasteGuard {
 
         if delta > 1 {
             self.block_next_submit = true;
+            self.paste_likely = true;
         }
 
         if delta > 0 {
+            if let Some(last) = self.last_change_at {
+                if at.duration_since(last) < PASTE_BURST_GAP {
+                    self.rapid_insert_count = self.rapid_insert_count.saturating_add(1);
+                } else {
+                    self.rapid_insert_count = 1;
+                }
+            } else {
+                self.rapid_insert_count = 1;
+            }
+
+            if self.rapid_insert_count >= PASTE_LIKELY_MIN_RAPID_INSERTS {
+                self.paste_likely = true;
+            }
+
             self.last_change_at = Some(at);
         } else if next_len < prev_len {
             self.last_change_at = None;
+            self.rapid_insert_count = 0;
+            self.paste_likely = false;
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.block_next_submit = false;
+        self.last_change_at = None;
+        self.rapid_insert_count = 0;
+        self.paste_likely = false;
+    }
+
+    /// Returns `true` while keystrokes are still arriving as one paste burst.
+    pub fn is_in_burst(&self, at: Instant) -> bool {
+        self.last_change_at
+            .is_some_and(|last| at.duration_since(last) < PASTE_BURST_GAP)
+    }
+
+    /// Returns `true` when recent input looked like a clipboard paste.
+    pub fn is_paste_likely(&self, at: Instant) -> bool {
+        self.paste_likely
+            && self
+                .last_change_at
+                .is_some_and(|last| at.duration_since(last) < TAB_PASTE_GAP)
     }
 
     /// Returns `true` when submit should be suppressed for this Enter press.
@@ -46,6 +87,7 @@ impl PasteGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     fn timeline() -> (Instant, Instant, Instant) {
         let base = Instant::now();
@@ -88,6 +130,15 @@ mod tests {
     }
 
     #[test]
+    fn tracks_burst_window() {
+        let (t0, t_mid, t_late) = timeline();
+        let mut guard = PasteGuard::default();
+        guard.record_change(0, 1, t0);
+        assert!(guard.is_in_burst(t_mid));
+        assert!(!guard.is_in_burst(t_late));
+    }
+
+    #[test]
     fn enter_after_pause_allows_submit() {
         let (t0, _, t_late) = timeline();
         let mut guard = PasteGuard::default();
@@ -95,5 +146,16 @@ mod tests {
             guard.record_change(len - 1, len, t0 + Duration::from_millis(len as u64));
         }
         assert!(!guard.should_block_submit(t_late));
+    }
+
+    #[test]
+    fn rapid_inserts_mark_paste_likely() {
+        let t0 = Instant::now();
+        let mut guard = PasteGuard::default();
+        for len in 1..=4 {
+            guard.record_change(len - 1, len, t0 + Duration::from_millis(len as u64));
+        }
+        assert!(guard.is_paste_likely(t0 + Duration::from_millis(200)));
+        assert!(!guard.is_paste_likely(t0 + Duration::from_secs(2)));
     }
 }

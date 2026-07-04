@@ -124,6 +124,27 @@ impl Theme {
             color => Some(color),
         }
     }
+
+    /// Block cursor color for the prompt field.
+    pub fn input_cursor(self) -> Color {
+        match self.mode {
+            ThemeMode::Dark => Color::Grey,
+            ThemeMode::Light => Color::DarkGrey,
+        }
+    }
+
+    /// Placeholder hint shown when the prompt is empty.
+    pub fn input_placeholder(self) -> Color {
+        match self.mode {
+            ThemeMode::Dark => Color::DarkGrey,
+            ThemeMode::Light => Color::Grey,
+        }
+    }
+
+    /// Label color for collapsed paste chips (`[Pasted: NN lines]`).
+    pub fn paste_label(self) -> Color {
+        self.muted
+    }
 }
 
 impl Default for Theme {

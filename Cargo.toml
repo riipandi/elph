@@ -16,7 +16,7 @@ members = [
 axum = { version = "0.8.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.5", default-features = false, features = ["color", "derive", "error-context", "help", "std", "usage"] }
 crokey = "1.4.0"
-crossterm = { version = "0.29", default-features = false, features = ["events"] }
+crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "events"] }
 libc = "0.2"
 cuid2 = "0.1.6"
 indicatif = { version = "0.18.6", default-features = false, features = ["unicode-width"] }

@@ -1,14 +1,19 @@
 use super::agent_mode::AgentMode;
 use super::paste_guard::PasteGuard;
+use super::prompt_buffer::{PromptBuffer, wrapped_row_count};
+use super::prompt_display::PromptDisplay;
 use super::prompt_edit::{
     char_left, char_right, delete_char_backward, delete_char_forward, delete_to_line_end, delete_to_line_start,
     delete_word_backward, delete_word_forward, line_end, line_start, word_left, word_right,
 };
-use super::prompt_keys::{EditAction, edit_action, is_newline_key, is_submit_key};
+use super::prompt_keys::{EditAction, edit_action, is_clear_key, is_mode_cycle_key, is_newline_key, is_submit_key};
+use super::prompt_paste::{
+    CollapsedPaste, PendingPaste, expand_paste_markers, finalize_pending_paste, paste_block_range, remove_paste_block,
+    should_collapse_paste,
+};
 use crate::theme::Theme;
 use iocraft::prelude::*;
 use std::time::Instant;
-use unicode_width::UnicodeWidthChar;
 
 const PROMPT_PREFIX: &str = "> ";
 const MIN_INPUT_LINES: u16 = 1;
@@ -45,67 +50,6 @@ pub struct PromptInputProps {
     pub theme: Theme,
 }
 
-#[derive(Default, Props)]
-struct PromptTextFieldProps {
-    value: String,
-    height: u16,
-    has_focus: bool,
-    handle: Option<Ref<TextInputHandle>>,
-    on_change: HandlerMut<'static, String>,
-    measured_width: Option<State<u16>>,
-}
-
-trait UseSize<'a> {
-    fn use_size(&mut self) -> (u16, u16);
-}
-
-impl<'a> UseSize<'a> for Hooks<'a, '_> {
-    fn use_size(&mut self) -> (u16, u16) {
-        self.use_hook(UseSizeImpl::default).size
-    }
-}
-
-#[derive(Default)]
-struct UseSizeImpl {
-    size: (u16, u16),
-}
-
-impl Hook for UseSizeImpl {
-    fn pre_component_draw(&mut self, drawer: &mut ComponentDrawer) {
-        let s = drawer.size();
-        self.size = (s.width, s.height);
-    }
-}
-
-#[component]
-fn PromptTextField(mut hooks: Hooks, props: &mut PromptTextFieldProps) -> impl Into<AnyElement<'static>> {
-    let (width, _) = hooks.use_size();
-    let Some(mut measured_width) = props.measured_width else {
-        panic!("measured_width is required");
-    };
-
-    hooks.use_effect(
-        move || {
-            if width > 0 && measured_width.get() != width {
-                measured_width.set(width);
-            }
-        },
-        width,
-    );
-
-    element! {
-        View(width: 100pct, height: props.height) {
-            TextInput(
-                has_focus: props.has_focus,
-                value: props.value.clone(),
-                on_change: props.on_change.take(),
-                multiline: true,
-                handle: props.handle,
-            )
-        }
-    }
-}
-
 #[component]
 pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<AnyElement<'static>> {
     let Some(mut value) = props.value else {
@@ -123,20 +67,18 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
     let current = value.read().clone();
     let text_width = measured_width.get().max(1);
     let mut stable_height = hooks.use_state(|| MIN_INPUT_LINES);
-    let mut input_handle = hooks.use_ref_default::<TextInputHandle>();
-    let mut last_cursor = hooks.use_ref(|| 0usize);
+    let mut cursor_offset = hooks.use_state(|| 0usize);
+    let mut vertical_col_pref = hooks.use_state(|| None::<u16>);
     let computed_height = visual_line_count(&current, text_width);
     let input_height = stable_height.get().max(computed_height).min(MAX_INPUT_LINES);
-    let mut append_at_end = hooks.use_ref(|| false);
-    let mut cursor_tick = hooks.use_state(|| 0u32);
-    let mut suppress_text_input = hooks.use_state(|| false);
     let mut field_clear_generation = hooks.use_state(|| 0u32);
-
-    let mut on_change_ref = hooks.use_ref(HandlerMut::default);
     let mut paste_guard = hooks.use_ref(PasteGuard::default);
+    let mut pending_paste = hooks.use_ref(|| None::<PendingPaste>);
+    let mut collapsed_pastes = hooks.use_ref(Vec::<CollapsedPaste>::new);
     let mut on_submit = props.on_submit.take();
+    let mut on_mode_change = props.on_mode_change.take();
+    let current_mode = props.mode;
     let has_focus = props.has_focus;
-    let _cursor_sync = cursor_tick.get();
     let reset_dep = props.reset_nonce.map(|nonce| nonce.get()).unwrap_or(0);
 
     let is_empty = current.is_empty();
@@ -157,10 +99,10 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                 return;
             }
             stable_height.set(MIN_INPUT_LINES);
-            last_cursor.set(0);
-            append_at_end.set(false);
-            suppress_text_input.set(false);
-            input_handle.write().set_cursor_offset(0);
+            cursor_offset.set(0);
+            vertical_col_pref.set(None);
+            pending_paste.write().take();
+            collapsed_pastes.write().clear();
         },
         reset_dep,
     );
@@ -171,10 +113,10 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             if clear_generation == 0 {
                 return;
             }
-            last_cursor.set(0);
-            append_at_end.set(false);
-            suppress_text_input.set(false);
-            input_handle.write().set_cursor_offset(0);
+            cursor_offset.set(0);
+            vertical_col_pref.set(None);
+            pending_paste.write().take();
+            collapsed_pastes.write().clear();
         },
         clear_generation,
     );
@@ -195,11 +137,63 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             return;
         }
 
+        let wrap_width = text_width.saturating_sub(1).max(1) as usize;
+        let now = Instant::now();
+
+        let mut text = value.read().clone();
+        let mut cursor = cursor_offset.get().min(text.len());
+
+        if is_press(kind) && should_finalize_paste(code) {
+            finalize_pending_paste_input(
+                &mut pending_paste.write(),
+                &mut collapsed_pastes.write(),
+                wrap_width,
+                &mut paste_guard.write(),
+                &mut value,
+                &mut cursor_offset,
+            );
+            text = value.read().clone();
+            cursor = cursor_offset.get().min(text.len());
+        }
+
+        if is_press(kind) && is_pasted_tab_key(code, modifiers) {
+            if should_absorb_tab_as_paste(pending_paste.read().as_ref(), &paste_guard.read(), &text, now) {
+                apply_pasted_char(
+                    '\t',
+                    &mut text,
+                    &mut cursor,
+                    &mut paste_guard.write(),
+                    &mut pending_paste.write(),
+                    &mut value,
+                    &mut cursor_offset,
+                    now,
+                );
+                vertical_col_pref.set(None);
+                return;
+            }
+        }
+
+        if is_mode_cycle_key(code, modifiers) && is_press(kind) {
+            on_mode_change(current_mode.next());
+            return;
+        }
+
+        if is_clear_key(code, modifiers) && is_press(kind) {
+            if !text.is_empty() {
+                value.set(String::new());
+                cursor_offset.set(0);
+                vertical_col_pref.set(None);
+                stable_height.set(MIN_INPUT_LINES);
+                field_clear_generation.set(field_clear_generation.get().wrapping_add(1));
+                pending_paste.write().take();
+                collapsed_pastes.write().clear();
+            }
+            return;
+        }
+
         if let Some(action) = edit_action(code, modifiers)
             && is_press(kind)
         {
-            let text = value.read().clone();
-            let cursor = input_handle.read().cursor_offset().min(text.len());
             let (next, new_cursor) = match action {
                 EditAction::DeleteToLineStart => delete_to_line_start(&text, cursor),
                 EditAction::DeleteToLineEnd => delete_to_line_end(&text, cursor),
@@ -216,75 +210,148 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             };
             if next != text {
                 value.set(next);
-                last_cursor.set(new_cursor);
-                input_handle.write().set_cursor_offset(new_cursor);
-                suppress_text_input.set(true);
-            } else if new_cursor != cursor {
-                last_cursor.set(new_cursor);
-                input_handle.write().set_cursor_offset(new_cursor);
-                cursor_tick.set(cursor_tick.get().wrapping_add(1));
             }
+            cursor_offset.set(new_cursor);
+            vertical_col_pref.set(None);
             return;
         }
 
-        if is_newline_key(code, modifiers) && is_press(kind) {
-            suppress_text_input.set(true);
-            let text = value.read().clone();
-            let cursor = newline_cursor(
-                &text,
-                input_handle.read().cursor_offset(),
-                last_cursor.get(),
-                append_at_end.get(),
-            );
-            append_at_end.set(false);
+        if (is_newline_key(code, modifiers) || is_pasted_newline_char(code)) && is_press(kind) {
+            vertical_col_pref.set(None);
+            if is_pasted_newline_char(code) {
+                apply_pasted_char(
+                    '\n',
+                    &mut text,
+                    &mut cursor,
+                    &mut paste_guard.write(),
+                    &mut pending_paste.write(),
+                    &mut value,
+                    &mut cursor_offset,
+                    now,
+                );
+                return;
+            }
             let (next, new_cursor) = insert_newline_at_cursor(&text, cursor);
             if next != text {
                 value.set(next);
-                last_cursor.set(new_cursor);
-                input_handle.write().set_cursor_offset(new_cursor);
-                cursor_tick.set(cursor_tick.get().wrapping_add(1));
+            }
+            cursor_offset.set(new_cursor);
+            return;
+        }
+
+        if is_submit_key(code, modifiers) && is_press(kind) {
+            if !text.is_empty() && !paste_guard.write().should_block_submit(now) {
+                let submitted = expand_paste_markers(&text, &collapsed_pastes.read());
+                on_submit(submitted);
+                value.set(String::new());
+                stable_height.set(MIN_INPUT_LINES);
+                field_clear_generation.set(field_clear_generation.get().wrapping_add(1));
+                cursor_offset.set(0);
+                vertical_col_pref.set(None);
+                pending_paste.write().take();
+                collapsed_pastes.write().clear();
             }
             return;
         }
 
-        let text = value.read().clone();
-        if is_submit_key(code, modifiers)
-            && is_press(kind)
-            && !text.is_empty()
-            && !paste_guard.write().should_block_submit(Instant::now())
-        {
-            on_submit(text);
-            value.set(String::new());
-            stable_height.set(MIN_INPUT_LINES);
-            field_clear_generation.set(field_clear_generation.get().wrapping_add(1));
-            last_cursor.set(0);
-            append_at_end.set(false);
-            input_handle.write().set_cursor_offset(0);
-            cursor_tick.set(cursor_tick.get().wrapping_add(1));
+        if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER) {
+            return;
+        }
+
+        let mut clear_vertical_pref = true;
+
+        match code {
+            KeyCode::Char(ch) => {
+                apply_pasted_char(
+                    ch,
+                    &mut text,
+                    &mut cursor,
+                    &mut paste_guard.write(),
+                    &mut pending_paste.write(),
+                    &mut value,
+                    &mut cursor_offset,
+                    now,
+                );
+            }
+            KeyCode::Backspace => {
+                let pastes = collapsed_pastes.read().clone();
+                if let Some(range) = paste_block_range(&text, cursor.saturating_sub(1), &pastes) {
+                    let (next, removed_idx) = remove_paste_block(&text, range.clone(), &pastes);
+                    if let Some(idx) = removed_idx {
+                        collapsed_pastes.write().remove(idx);
+                    }
+                    value.set(next);
+                    cursor_offset.set(range.start);
+                } else if cursor > 0 {
+                    let (next, new_cursor) = delete_char_backward(&text, cursor);
+                    value.set(next);
+                    cursor_offset.set(new_cursor);
+                }
+            }
+            KeyCode::Delete => {
+                let pastes = collapsed_pastes.read().clone();
+                if let Some(range) = paste_block_range(&text, cursor, &pastes) {
+                    let (next, removed_idx) = remove_paste_block(&text, range.clone(), &pastes);
+                    if let Some(idx) = removed_idx {
+                        collapsed_pastes.write().remove(idx);
+                    }
+                    value.set(next);
+                    cursor_offset.set(range.start);
+                } else if cursor < text.len() {
+                    let (next, new_cursor) = delete_char_forward(&text, cursor);
+                    value.set(next);
+                    cursor_offset.set(new_cursor);
+                }
+            }
+            KeyCode::Left => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                cursor_offset.set(buffer.left_of_offset(cursor));
+            }
+            KeyCode::Right => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                cursor_offset.set(buffer.right_of_offset(cursor));
+            }
+            KeyCode::Up => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                clear_vertical_pref = false;
+                if vertical_col_pref.get().is_none() {
+                    let (_, col) = buffer.row_column_for_offset(cursor);
+                    vertical_col_pref.set(Some(col));
+                }
+                cursor_offset.set(buffer.above_offset(cursor, vertical_col_pref.get()));
+            }
+            KeyCode::Down => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                clear_vertical_pref = false;
+                if vertical_col_pref.get().is_none() {
+                    let (_, col) = buffer.row_column_for_offset(cursor);
+                    vertical_col_pref.set(Some(col));
+                }
+                cursor_offset.set(buffer.below_offset(cursor, vertical_col_pref.get()));
+            }
+            KeyCode::Home => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                cursor_offset.set(buffer.row_start_offset(cursor));
+            }
+            KeyCode::End => {
+                cursor = cursor_offset.get();
+                let buffer = PromptBuffer::new(&text, wrap_width);
+                cursor_offset.set(buffer.row_end_offset(cursor));
+            }
+            _ => {
+                clear_vertical_pref = false;
+            }
+        }
+
+        if clear_vertical_pref {
+            vertical_col_pref.set(None);
         }
     });
-
-    on_change_ref.set(HandlerMut::from(move |next: String| {
-        let prev = value.read().clone();
-        let cursor = input_handle.read().cursor_offset();
-        if suppress_text_input.get() {
-            suppress_text_input.set(false);
-            if !(is_first_char_into_empty(&prev, &next) || is_single_char_growth(&prev, &next)) {
-                return;
-            }
-        }
-        if should_ignore_text_input_change(&prev, &next, cursor) {
-            return;
-        }
-        paste_guard
-            .write()
-            .record_change(prev.len(), next.len(), Instant::now());
-        let new_cursor = cursor_after_text_change(&prev, &next, cursor);
-        append_at_end.set(next.len() > prev.len() && new_cursor == next.len());
-        last_cursor.set(new_cursor);
-        value.set(next);
-        input_handle.write().set_cursor_offset(new_cursor);
-    }));
 
     element! {
         View(
@@ -296,6 +363,7 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                 border_style: BorderStyle::Round,
                 border_color: mode_color,
                 width: 100pct,
+                overflow: Overflow::Hidden,
                 padding_left: 1,
                 padding_right: 1,
             ) {
@@ -304,17 +372,19 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                     align_items: AlignItems::FlexStart,
                     width: 100pct,
                     height: input_height,
+                    overflow: Overflow::Hidden,
                 ) {
                     View(width: 2, height: input_height, justify_content: JustifyContent::FlexStart) {
                         Text(color: theme.prompt_prefix, content: PROMPT_PREFIX)
                     }
                     View(flex_grow: 1.0, width: 100pct, height: input_height) {
-                        PromptTextField(
+                        PromptDisplay(
                             value: current,
+                            cursor_offset: cursor_offset.get(),
                             height: input_height,
                             has_focus: props.has_focus,
-                            handle: Some(input_handle),
-                            on_change: move |next: String| on_change_ref.write()(next),
+                            theme,
+                            collapsed_pastes: collapsed_pastes.read().clone(),
                             measured_width: Some(measured_width),
                         )
                     }
@@ -336,16 +406,86 @@ fn is_press(kind: KeyEventKind) -> bool {
     kind == KeyEventKind::Press
 }
 
-/// Cursor for newline insertion when [`TextInputHandle`] may lag after append-at-end typing.
-fn newline_cursor(text: &str, handle_cursor: usize, last_cursor: usize, append_at_end: bool) -> usize {
-    let handle_cursor = handle_cursor.min(text.len());
-    if handle_cursor > 0 {
-        return handle_cursor;
+fn is_pasted_newline_char(code: KeyCode) -> bool {
+    matches!(code, KeyCode::Char('\n') | KeyCode::Char('\r'))
+}
+
+fn is_pasted_tab_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
+    modifiers.is_empty() && matches!(code, KeyCode::Tab | KeyCode::BackTab)
+}
+
+fn should_finalize_paste(code: KeyCode) -> bool {
+    !matches!(code, KeyCode::Char(_) | KeyCode::Tab | KeyCode::BackTab)
+}
+
+fn should_absorb_tab_as_paste(
+    pending: Option<&PendingPaste>,
+    paste_guard: &PasteGuard,
+    text: &str,
+    now: Instant,
+) -> bool {
+    if paste_guard.is_in_burst(now) || paste_guard.is_paste_likely(now) {
+        return true;
     }
-    if append_at_end {
-        return last_cursor.min(text.len());
+
+    let Some(run) = pending else {
+        return false;
+    };
+
+    if run.tab_follows_paste(now) {
+        return true;
     }
-    handle_cursor
+
+    should_collapse_paste(run.slice(text))
+}
+
+fn apply_pasted_char(
+    ch: char,
+    text: &mut String,
+    cursor: &mut usize,
+    paste_guard: &mut PasteGuard,
+    pending: &mut Option<PendingPaste>,
+    value: &mut State<String>,
+    cursor_offset: &mut State<usize>,
+    now: Instant,
+) {
+    let cursor_before = *cursor;
+    text.insert(*cursor, ch);
+    *cursor += ch.len_utf8();
+    paste_guard.record_change(value.read().len(), text.len(), now);
+    match pending.as_mut() {
+        Some(run) => run.extend(*cursor, now),
+        None => *pending = Some(PendingPaste::new(cursor_before, *cursor, now)),
+    }
+    value.set(text.clone());
+    cursor_offset.set(*cursor);
+}
+
+fn finalize_pending_paste_input(
+    pending: &mut Option<PendingPaste>,
+    pastes: &mut Vec<CollapsedPaste>,
+    wrap_width: usize,
+    paste_guard: &mut PasteGuard,
+    value: &mut State<String>,
+    cursor_offset: &mut State<usize>,
+) {
+    let Some(run) = pending.take() else {
+        return;
+    };
+
+    let mut text = value.read().clone();
+    let mut cursor = cursor_offset.get().min(text.len());
+    let collapsed = should_collapse_paste(run.slice(&text));
+    let before = text.clone();
+    let cursor_before = cursor;
+    *pending = finalize_pending_paste(Some(run), &mut text, &mut cursor, wrap_width, pastes, true);
+    if collapsed {
+        paste_guard.clear();
+    }
+    if text != before || cursor != cursor_before {
+        value.set(text);
+        cursor_offset.set(cursor);
+    }
 }
 
 /// Returns `true` when the cursor sits on a trailing empty line created by a single newline.
@@ -364,16 +504,6 @@ fn insert_newline_at_cursor(text: &str, cursor: usize) -> (String, usize) {
     let mut next = text.to_string();
     next.insert(cursor, '\n');
     (next, cursor + 1)
-}
-
-/// Computes the cursor offset after `TextInput` changes the value.
-fn cursor_after_text_change(prev: &str, next: &str, prev_cursor: usize) -> usize {
-    if next.len() > prev.len() {
-        let inserted = next.len() - prev.len();
-        prev_cursor.min(prev.len()) + inserted
-    } else {
-        prev_cursor.min(next.len())
-    }
 }
 
 /// Visible height for the prompt field: grows with content up to [`MAX_INPUT_LINES`].
@@ -401,74 +531,13 @@ fn logical_line_segments(value: &str) -> Vec<&str> {
 }
 
 fn wrapped_line_count(line: &str, wrap_width: usize) -> u16 {
-    if line.is_empty() {
-        return 1;
-    }
-
-    let mut lines = 0_u16;
-    let mut current_width = 0_usize;
-
-    for ch in line.chars() {
-        let ch_width = ch.width().unwrap_or(0);
-        if current_width > 0 && current_width + ch_width > wrap_width {
-            lines += 1;
-            current_width = 0;
-        }
-        current_width += ch_width;
-    }
-
-    lines + 1
-}
-
-/// Returns `true` when `TextInput` inserted a single `\n` from Enter (handled by `PromptInput`).
-fn is_text_input_newline_insertion(prev: &str, next: &str, cursor: usize) -> bool {
-    if next.len() != prev.len() + 1 {
-        return false;
-    }
-
-    let cursor = cursor.min(prev.len());
-    prev.get(..cursor) == next.get(..cursor)
-        && next.as_bytes().get(cursor) == Some(&b'\n')
-        && prev.get(cursor..) == next.get(cursor + 1..)
-}
-
-/// Returns `true` for the first typed character into a cleared prompt.
-fn is_first_char_into_empty(prev: &str, next: &str) -> bool {
-    prev.is_empty() && next.chars().count() == 1 && !next.starts_with('\n')
-}
-
-/// Returns `true` when `TextInput` appended exactly one character to `prev`.
-fn is_single_char_growth(prev: &str, next: &str) -> bool {
-    next.len() == prev.len() + 1 && next.starts_with(prev)
-}
-
-/// Returns `true` when a `TextInput` on_change should be dropped.
-fn should_ignore_text_input_change(prev: &str, next: &str, cursor: usize) -> bool {
-    if is_first_char_into_empty(prev, next) {
-        return false;
-    }
-    if is_text_input_newline_insertion(prev, next, cursor) || is_redundant_newline_insertion(prev, next, cursor) {
-        return true;
-    }
-    // Stale TextInput buffer replayed after submit cleared the field.
-    prev.is_empty() && (next == "\n" || next.len() > 1)
-}
-
-/// Returns `true` when `TextInput` echoes a newline that `PromptInput` already handled.
-fn is_redundant_newline_insertion(prev: &str, next: &str, cursor: usize) -> bool {
-    if is_text_input_newline_insertion(prev, next, cursor) {
-        return true;
-    }
-
-    let cursor = cursor.min(prev.len());
-    next.len() == prev.len() + 1
-        && next.as_bytes().get(cursor) == Some(&b'\n')
-        && is_on_trailing_empty_line(prev, cursor)
+    wrapped_row_count(line, wrap_width).max(1)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn insert_newline_at_cursor_from_middle_of_line() {
@@ -485,91 +554,10 @@ mod tests {
     }
 
     #[test]
-    fn insert_newline_at_cursor_when_handle_is_synced() {
-        let (text, cursor) = insert_newline_at_cursor("a", 1);
-        assert_eq!(text, "a\n");
-        assert_eq!(cursor, text.len());
-    }
-
-    #[test]
     fn insert_newline_on_trailing_empty_line_is_noop() {
         let (text, cursor) = insert_newline_at_cursor("a\n", 2);
         assert_eq!(text, "a\n");
         assert_eq!(cursor, 2);
-    }
-
-    #[test]
-    fn newline_cursor_prefers_handle_when_synced() {
-        assert_eq!(newline_cursor("hello", 3, 5, true), 3);
-    }
-
-    #[test]
-    fn newline_cursor_falls_back_after_append_at_end() {
-        assert_eq!(newline_cursor("a", 0, 1, true), 1);
-    }
-
-    #[test]
-    fn newline_cursor_respects_navigation_to_start() {
-        assert_eq!(newline_cursor("hello", 0, 5, false), 0);
-    }
-
-    #[test]
-    fn insert_newline_at_cursor_on_last_line() {
-        let (text, cursor) = insert_newline_at_cursor("line1\nline2", 11);
-        assert_eq!(text, "line1\nline2\n");
-        assert_eq!(cursor, text.len());
-    }
-
-    #[test]
-    fn insert_newline_at_cursor_on_earlier_line() {
-        let (text, cursor) = insert_newline_at_cursor("line1\nline2", 3);
-        assert_eq!(text, "lin\ne1\nline2");
-        assert_eq!(cursor, 4);
-    }
-
-    #[test]
-    fn cursor_after_append_from_start() {
-        assert_eq!(cursor_after_text_change("", "a", 0), 1);
-    }
-
-    #[test]
-    fn cursor_after_append_from_end() {
-        assert_eq!(cursor_after_text_change("hello", "hello!", 5), 6);
-    }
-
-    #[test]
-    fn detects_text_input_newline_insertion() {
-        assert!(is_text_input_newline_insertion("hello", "hello\n", 5));
-        assert!(is_text_input_newline_insertion("a\nb", "a\n\nb", 2));
-        assert!(!is_text_input_newline_insertion("hello", "hello!", 5));
-        assert!(!is_text_input_newline_insertion("hello", "hello\n\n", 5));
-    }
-
-    #[test]
-    fn detects_redundant_newline_on_trailing_empty_line() {
-        assert!(is_redundant_newline_insertion("a\n", "a\n\n", 2));
-    }
-
-    #[test]
-    fn first_char_into_empty_is_never_ignored() {
-        assert!(is_first_char_into_empty("", "a"));
-        assert!(!should_ignore_text_input_change("", "a", 0));
-    }
-
-    #[test]
-    fn stale_text_input_echo_after_clear_is_ignored() {
-        assert!(should_ignore_text_input_change("", "\n", 0));
-        assert!(should_ignore_text_input_change("", "hello\n", 0));
-    }
-
-    #[test]
-    fn suppress_text_input_does_not_block_first_char_after_clear() {
-        assert!(!should_ignore_text_input_change("", "n", 0));
-    }
-
-    #[test]
-    fn single_char_growth_after_newline_is_allowed() {
-        assert!(is_single_char_growth("a\n", "a\nb"));
     }
 
     #[test]
@@ -592,6 +580,75 @@ mod tests {
     #[test]
     fn visual_line_count_wraps_long_lines() {
         assert_eq!(visual_line_count(&"a".repeat(20), 10), 3);
+    }
+
+    #[test]
+    fn absorbs_tab_during_continued_paste_burst() {
+        let t0 = Instant::now();
+        let pending = PendingPaste::new(0, 1, t0);
+        let mut guard = PasteGuard::default();
+        guard.record_change(0, 1, t0);
+        assert!(should_absorb_tab_as_paste(
+            Some(&pending),
+            &guard,
+            "{",
+            t0 + Duration::from_millis(5)
+        ));
+        assert!(should_absorb_tab_as_paste(
+            Some(&pending),
+            &guard,
+            "{",
+            t0 + Duration::from_millis(100)
+        ));
+    }
+
+    #[test]
+    fn absorbs_tab_after_paste_gap_when_content_is_multiline() {
+        let t0 = Instant::now();
+        let text = "{\n";
+        let pending = PendingPaste::new(0, text.len(), t0);
+        let guard = PasteGuard::default();
+        let later = t0 + Duration::from_millis(200);
+        assert!(should_absorb_tab_as_paste(Some(&pending), &guard, text, later));
+    }
+
+    #[test]
+    fn absorbs_tab_when_paste_likely_after_rapid_inserts() {
+        let t0 = Instant::now();
+        let text = "{\"name\":";
+        let pending = PendingPaste::new(0, text.len(), t0 + Duration::from_millis(150));
+        let mut guard = PasteGuard::default();
+        for len in 1..=text.len() {
+            guard.record_change(len - 1, len, t0 + Duration::from_millis(len as u64));
+        }
+        let tab_at = t0 + Duration::from_millis(200);
+        assert!(should_absorb_tab_as_paste(Some(&pending), &guard, text, tab_at));
+    }
+
+    #[test]
+    fn manual_tab_after_pause_still_cycles_mode() {
+        let t0 = Instant::now();
+        let text = "hello";
+        let pending = PendingPaste::new(0, text.len(), t0);
+        let mut guard = PasteGuard::default();
+        for len in 1..=text.len() {
+            guard.record_change(len - 1, len, t0 + Duration::from_secs(1) * len as u32);
+        }
+        let tab_at = t0 + Duration::from_secs(10);
+        assert!(!should_absorb_tab_as_paste(Some(&pending), &guard, text, tab_at));
+    }
+
+    #[test]
+    fn pasted_newline_char_is_detected() {
+        assert!(is_pasted_newline_char(KeyCode::Char('\n')));
+        assert!(is_pasted_newline_char(KeyCode::Char('\r')));
+        assert!(!is_pasted_newline_char(KeyCode::Char('a')));
+    }
+
+    #[test]
+    fn visual_line_count_wraps_tab_indented_json() {
+        let json = "{\n\t\"name\": \"elph\"\n}";
+        assert!(visual_line_count(json, 20) >= 3);
     }
 
     #[test]
