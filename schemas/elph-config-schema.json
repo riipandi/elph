@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Elph settings configuration",
+    "description": "User preferences at ~/.elph/settings.json (or settings.jsonc). Optional project overrides live at <workDir>/.elph/settings.json — same shape; merged on load, saved to home only.",
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+}

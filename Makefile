@@ -23,7 +23,9 @@ $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 .PHONY: build run watch test lint fmt clean check coverage help
-.PHONY: prepare cross cross-pull release bump-major bump-minor bump-patch publish
+.PHONY: prepare cross cross-pull release
+.PHONY: build-linux-glibc build-linux-musl build-macos build-windows
+.PHONY: bump-major bump-minor bump-patch publish
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -64,10 +66,11 @@ test: ## Run all workspace tests
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/{eclaw,elph}-<platform>-<arch>.{tar.gz,zip} + SHA256SUMS
-#   linux-*     Ubuntu / Raspberry Pi OS 64-bit (glibc, Pi 3/4/5)
-#   alpine-*    Alpine Linux (musl)
-#   macos-*     macOS (native build on Mac)
-#   win-*       Windows
+#   Linux: linux-glibc-* and linux-musl-* (not alpine-*)
+#   linux-glibc-*  Ubuntu / Raspberry Pi OS 64-bit (glibc, Pi 3/4/5)
+#   linux-musl-*   Alpine Linux (musl)
+#   macos-*        macOS (native build on Mac)
+#   win-*          Windows
 
 cross-pull: ## Pull ghcr.io/cross-rs images into local Docker cache
 	@./scripts/cross-pull-images.sh
@@ -78,6 +81,18 @@ cross: ## Build one platform (CROSS_TARGET=<triple>, host-aware)
 
 release: ## Build release (host-aware: cargo native, cross remote)
 	@./scripts/cross-release.sh
+
+build-linux-glibc: ## Build Linux glibc release (x86_64 + arm64)
+	@./scripts/cross-platform.sh linux-glibc
+
+build-linux-musl: ## Build Linux musl/alpine release (x86_64 + arm64)
+	@./scripts/cross-platform.sh linux-musl
+
+build-macos: ## Build macOS release (x86_64 + arm64)
+	@./scripts/cross-platform.sh macos
+
+build-windows: ## Build Windows release (x86_64 + arm64)
+	@./scripts/cross-platform.sh windows
 
 # ─── Code Quality ───────────────────────────────────────────────────────────
 
@@ -90,7 +105,7 @@ fmt: ## Format all code
 coverage: ## Run tests with coverage (requires tarpaulin)
 	@$(CARGO) tarpaulin --workspace 2>&1
 
-clean: ## Clean build artifacts
+clean: ## Clean build artifacts and caches
 	@find crates -type f -name '*_gen.rs' -delete
 	@$(CARGO) clean
 

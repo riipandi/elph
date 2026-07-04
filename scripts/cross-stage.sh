@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Package a cross-compiled binary into release/<bin>-<platform>-<arch>.{tar.gz,zip}
+# Linux: linux-glibc-* (glibc) and linux-musl-* (musl/Alpine)
 # and refresh release/SHA256SUMS.
 set -euo pipefail
 
@@ -16,19 +17,19 @@ pack="tar.gz"
 
 case "$target" in
 x86_64-unknown-linux-gnu)
-  platform="linux"
+  platform="linux-glibc"
   arch="x86_64"
   ;;
 aarch64-unknown-linux-gnu)
-  platform="linux"
+  platform="linux-glibc"
   arch="arm64"
   ;;
 x86_64-unknown-linux-musl)
-  platform="alpine"
+  platform="linux-musl"
   arch="x86_64"
   ;;
 aarch64-unknown-linux-musl)
-  platform="alpine"
+  platform="linux-musl"
   arch="arm64"
   ;;
 x86_64-apple-darwin)
