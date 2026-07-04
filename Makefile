@@ -24,7 +24,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 .PHONY: build run watch test lint fmt clean check coverage help
 .PHONY: prepare cross cross-pull release
-.PHONY: build-linux-glibc build-linux-musl build-macos build-windows
+.PHONY: build-linux build-macos build-windows
 .PHONY: bump-major bump-minor bump-patch publish
 
 # ─── Build ──────────────────────────────────────────────────────────────────
@@ -82,11 +82,8 @@ cross: ## Build one platform (CROSS_TARGET=<triple>, host-aware)
 release: ## Build release (host-aware: cargo native, cross remote)
 	@./scripts/cross-release.sh
 
-build-linux-glibc: ## Build Linux glibc release (x86_64 + arm64)
-	@./scripts/cross-platform.sh linux-glibc
-
-build-linux-musl: ## Build Linux musl/alpine release (x86_64 + arm64)
-	@./scripts/cross-platform.sh linux-musl
+build-linux: ## Build Linux release (glibc + musl, x86_64 + arm64)
+	@./scripts/cross-platform.sh linux
 
 build-macos: ## Build macOS release (x86_64 + arm64)
 	@./scripts/cross-platform.sh macos

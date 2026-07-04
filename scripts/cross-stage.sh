@@ -131,11 +131,16 @@ fi
 refresh_checksums "$binaries_dir" eclaw-* elph-*
 refresh_checksums "$archives_dir" '*.tar.gz' '*.zip'
 
-if stat -f%z "$artifact_path" >/dev/null 2>&1; then
-  bytes=$(stat -f%z "$artifact_path")
-else
-  bytes=$(stat -c%s "$artifact_path")
-fi
+file_bytes() {
+  if stat -f%z "$1" >/dev/null 2>&1; then
+    stat -f%z "$1"
+  else
+    stat -c%s "$1"
+  fi
+}
+
+binary_bytes=$(file_bytes "$binary_path")
+archive_bytes=$(file_bytes "$artifact_path")
 checksum=$(grep " ${artifact_name}\$" "${archives_dir}/SHA256SUMS" | awk '{print $1}')
 
-cross_log_artifact "$bin" "$binary_name" "$artifact_name" "$bytes" "$checksum"
+cross_log_artifact "$bin" "$binary_name" "$artifact_name" "$binary_bytes" "$archive_bytes" "$checksum"

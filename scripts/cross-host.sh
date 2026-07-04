@@ -96,10 +96,38 @@ cross_host_label() {
 
 cross_fmt_bytes() {
   local bytes="$1"
+  local whole frac rem
+
   if ((bytes >= 1048576)); then
-    printf '%dMB' $((bytes / 1048576))
+    whole=$((bytes / 1048576))
+    rem=$((bytes % 1048576))
+    frac=$(((rem * 10 + 524288) / 1048576))
+    if ((frac >= 10)); then
+      whole=$((whole + 1))
+      frac=0
+    fi
+    if ((whole >= 100)); then
+      printf '%dMB' "$whole"
+    elif ((frac > 0)); then
+      printf '%d.%dMB' "$whole" "$frac"
+    else
+      printf '%dMB' "$whole"
+    fi
   elif ((bytes >= 1024)); then
-    printf '%dKB' $((bytes / 1024))
+    whole=$((bytes / 1024))
+    rem=$((bytes % 1024))
+    frac=$(((rem * 10 + 512) / 1024))
+    if ((frac >= 10)); then
+      whole=$((whole + 1))
+      frac=0
+    fi
+    if ((whole >= 100)); then
+      printf '%dKB' "$whole"
+    elif ((frac > 0)); then
+      printf '%d.%dKB' "$whole" "$frac"
+    else
+      printf '%dKB' "$whole"
+    fi
   else
     printf '%dB' "$bytes"
   fi
@@ -134,10 +162,12 @@ cross_log_artifact() {
   local pkg="$1"
   local binary_name="$2"
   local artifact_name="$3"
-  local bytes="$4"
-  local checksum="$5"
-  printf '  %-5s  %-26s  %-34s  %s  %s\n' \
-    "$pkg" "$binary_name" "$artifact_name" "$(cross_fmt_bytes "$bytes")" "$checksum"
+  local binary_bytes="$4"
+  local archive_bytes="$5"
+  local checksum="$6"
+  printf '  %-5s  %-26s  %-34s  %s / %s  %s\n' \
+    "$pkg" "$binary_name" "$artifact_name" \
+    "$(cross_fmt_bytes "$binary_bytes")" "$(cross_fmt_bytes "$archive_bytes")" "$checksum"
 }
 
 cross_print_release_tree() {

@@ -2,7 +2,7 @@
 # Build release bundles for one platform family (host-aware).
 set -euo pipefail
 
-platform="${1:?usage: cross-platform.sh <linux-glibc|linux-musl|macos|windows>}"
+platform="${1:?usage: cross-platform.sh <linux|macos|windows>}"
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
@@ -11,16 +11,11 @@ cd "$root"
 source "${root}/scripts/cross-host.sh"
 
 case "$platform" in
-linux-glibc)
-  label="linux-glibc"
+linux)
+  label="linux"
   targets=(
     x86_64-unknown-linux-gnu
     aarch64-unknown-linux-gnu
-  )
-  ;;
-linux-musl)
-  label="linux-musl"
-  targets=(
     x86_64-unknown-linux-musl
     aarch64-unknown-linux-musl
   )
@@ -41,7 +36,7 @@ windows)
   ;;
 *)
   echo "unknown platform: $platform" >&2
-  echo "usage: cross-platform.sh <linux-glibc|linux-musl|macos|windows>" >&2
+  echo "usage: cross-platform.sh <linux|macos|windows>" >&2
   exit 1
   ;;
 esac
