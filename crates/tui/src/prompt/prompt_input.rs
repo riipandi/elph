@@ -6,10 +6,13 @@ use super::prompt_edit::{
     char_left, char_right, delete_char_backward, delete_char_forward, delete_to_line_end, delete_to_line_start,
     delete_word_backward, delete_word_forward, line_end, line_start, word_left, word_right,
 };
-use super::prompt_keys::{EditAction, edit_action, is_clear_key, is_mode_cycle_key, is_newline_key, is_submit_key};
+use super::prompt_keys::{
+    EditAction, edit_action, is_clear_key, is_newline_key, is_pasted_tab_key, is_submit_key, should_cycle_agent_mode,
+    should_insert_tab_in_prompt,
+};
 use super::prompt_paste::{
-    CollapsedPaste, PendingPaste, expand_paste_markers, finalize_pending_paste, paste_block_range, remove_paste_block,
-    should_collapse_paste,
+    CollapsedPaste, PendingPaste, enter_should_finalize_paste, expand_paste_markers, finalize_pending_paste,
+    paste_block_range, remove_paste_block, should_collapse_paste,
 };
 use crate::theme::Theme;
 use iocraft::prelude::*;
@@ -18,6 +21,10 @@ use std::time::Instant;
 const PROMPT_PREFIX: &str = "> ";
 const MIN_INPUT_LINES: u16 = 1;
 const MAX_INPUT_LINES: u16 = 5;
+/// During rapid paste bursts, sync prompt state every N inserted bytes (iocraft `TextInput` uses one `on_change` per edit).
+const BURST_VALUE_SYNC_INTERVAL: usize = 48;
+/// Only batch state updates once a paste run is long enough to benefit from fewer re-renders.
+const BURST_BATCH_MIN_CHARS: usize = 200;
 /// Fallback before the text field has been measured.
 const FALLBACK_TEXT_WIDTH: u16 = 40;
 /// Horizontal space taken by app padding, border padding, prefix, and border glyphs.
@@ -64,17 +71,19 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
         .saturating_sub(HORIZONTAL_CHROME)
         .max(FALLBACK_TEXT_WIDTH);
     let measured_width = hooks.use_state(move || fallback_width);
-    let current = value.read().clone();
-    let text_width = measured_width.get().max(1);
     let mut stable_height = hooks.use_state(|| MIN_INPUT_LINES);
     let mut cursor_offset = hooks.use_state(|| 0usize);
     let mut vertical_col_pref = hooks.use_state(|| None::<u16>);
-    let computed_height = visual_line_count(&current, text_width);
-    let input_height = stable_height.get().max(computed_height).min(MAX_INPUT_LINES);
     let mut field_clear_generation = hooks.use_state(|| 0u32);
     let mut paste_guard = hooks.use_ref(PasteGuard::default);
     let mut pending_paste = hooks.use_ref(|| None::<PendingPaste>);
     let mut collapsed_pastes = hooks.use_ref(Vec::<CollapsedPaste>::new);
+    let mut draft_text = hooks.use_ref(|| None::<String>);
+    let mut burst_chars_since_sync = hooks.use_ref(|| 0usize);
+    let current = draft_text.read().clone().unwrap_or_else(|| value.read().clone());
+    let text_width = measured_width.get().max(1);
+    let computed_height = visual_line_count(&current, text_width);
+    let input_height = stable_height.get().max(computed_height).min(MAX_INPUT_LINES);
     let mut on_submit = props.on_submit.take();
     let mut on_mode_change = props.on_mode_change.take();
     let current_mode = props.mode;
@@ -103,6 +112,9 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             vertical_col_pref.set(None);
             pending_paste.write().take();
             collapsed_pastes.write().clear();
+            paste_guard.write().clear();
+            draft_text.write().take();
+            *burst_chars_since_sync.write() = 0;
         },
         reset_dep,
     );
@@ -117,6 +129,9 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             vertical_col_pref.set(None);
             pending_paste.write().take();
             collapsed_pastes.write().clear();
+            paste_guard.write().clear();
+            draft_text.write().take();
+            *burst_chars_since_sync.write() = 0;
         },
         clear_generation,
     );
@@ -140,24 +155,53 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
         let wrap_width = text_width.saturating_sub(1).max(1) as usize;
         let now = Instant::now();
 
-        let mut text = value.read().clone();
+        let mut text = load_prompt_text(&value, &draft_text.read());
         let mut cursor = cursor_offset.get().min(text.len());
 
-        if is_press(kind) && should_finalize_paste(code) {
+        if is_press(kind) {
+            let in_burst = paste_guard.read().is_in_burst(now);
+            if !in_burst {
+                flush_draft_if_any(&mut value, &mut draft_text.write(), &mut burst_chars_since_sync.write());
+            }
+            let paste_active = paste_guard.read().is_paste_active(now);
+            maybe_finalize_idle_paste(
+                &mut pending_paste.write(),
+                &mut collapsed_pastes.write(),
+                in_burst,
+                paste_active,
+                wrap_width,
+                &mut paste_guard.write(),
+                &mut value,
+                &mut draft_text.write(),
+                &mut burst_chars_since_sync.write(),
+                &mut cursor_offset,
+                now,
+            );
+            text = load_prompt_text(&value, &draft_text.read());
+            cursor = cursor_offset.get().min(text.len());
+        }
+
+        if is_press(kind) && should_finalize_paste(code, modifiers) {
             finalize_pending_paste_input(
                 &mut pending_paste.write(),
                 &mut collapsed_pastes.write(),
                 wrap_width,
                 &mut paste_guard.write(),
                 &mut value,
+                &mut draft_text.write(),
+                &mut burst_chars_since_sync.write(),
                 &mut cursor_offset,
+                now,
             );
-            text = value.read().clone();
+            text = load_prompt_text(&value, &draft_text.read());
             cursor = cursor_offset.get().min(text.len());
         }
 
+        let paste_active = paste_guard.read().is_paste_active(now);
+        let in_burst = paste_guard.read().is_in_burst(now);
+
         if is_press(kind) && is_pasted_tab_key(code, modifiers) {
-            if should_absorb_tab_as_paste(pending_paste.read().as_ref(), &paste_guard.read(), &text, now) {
+            if should_insert_tab_in_prompt(&text, paste_active, in_burst) {
                 apply_pasted_char(
                     '\t',
                     &mut text,
@@ -165,6 +209,8 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                     &mut paste_guard.write(),
                     &mut pending_paste.write(),
                     &mut value,
+                    &mut draft_text.write(),
+                    &mut burst_chars_since_sync.write(),
                     &mut cursor_offset,
                     now,
                 );
@@ -173,7 +219,7 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             }
         }
 
-        if is_mode_cycle_key(code, modifiers) && is_press(kind) {
+        if should_cycle_agent_mode(&text, paste_active, in_burst, code, modifiers) && is_press(kind) {
             on_mode_change(current_mode.next());
             return;
         }
@@ -187,6 +233,9 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                 field_clear_generation.set(field_clear_generation.get().wrapping_add(1));
                 pending_paste.write().take();
                 collapsed_pastes.write().clear();
+                paste_guard.write().clear();
+                draft_text.write().take();
+                *burst_chars_since_sync.write() = 0;
             }
             return;
         }
@@ -209,7 +258,12 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                 EditAction::CharRight => (text.clone(), char_right(&text, cursor)),
             };
             if next != text {
-                value.set(next);
+                commit_prompt_text(
+                    &mut value,
+                    &mut draft_text.write(),
+                    &mut burst_chars_since_sync.write(),
+                    next,
+                );
             }
             cursor_offset.set(new_cursor);
             vertical_col_pref.set(None);
@@ -226,6 +280,8 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                     &mut paste_guard.write(),
                     &mut pending_paste.write(),
                     &mut value,
+                    &mut draft_text.write(),
+                    &mut burst_chars_since_sync.write(),
                     &mut cursor_offset,
                     now,
                 );
@@ -233,14 +289,47 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             }
             let (next, new_cursor) = insert_newline_at_cursor(&text, cursor);
             if next != text {
-                value.set(next);
+                commit_prompt_text(
+                    &mut value,
+                    &mut draft_text.write(),
+                    &mut burst_chars_since_sync.write(),
+                    next,
+                );
             }
             cursor_offset.set(new_cursor);
             return;
         }
 
         if is_submit_key(code, modifiers) && is_press(kind) {
-            if !text.is_empty() && !paste_guard.write().should_block_submit(now) {
+            flush_draft_if_any(&mut value, &mut draft_text.write(), &mut burst_chars_since_sync.write());
+            text = load_prompt_text(&value, &draft_text.read());
+
+            let paste_recent = paste_guard.read().is_paste_active(now);
+            let in_burst = paste_guard.read().is_in_burst(now);
+            let pending_snapshot = pending_paste.read().clone();
+
+            if enter_should_finalize_paste(&text, pending_snapshot.as_ref(), paste_recent, in_burst) {
+                finalize_pending_paste_input(
+                    &mut pending_paste.write(),
+                    &mut collapsed_pastes.write(),
+                    wrap_width,
+                    &mut paste_guard.write(),
+                    &mut value,
+                    &mut draft_text.write(),
+                    &mut burst_chars_since_sync.write(),
+                    &mut cursor_offset,
+                    now,
+                );
+                return;
+            }
+
+            pending_paste.write().take();
+
+            if paste_guard.write().should_block_submit() {
+                return;
+            }
+
+            if !text.is_empty() {
                 let submitted = expand_paste_markers(&text, &collapsed_pastes.read());
                 on_submit(submitted);
                 value.set(String::new());
@@ -250,6 +339,9 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                 vertical_col_pref.set(None);
                 pending_paste.write().take();
                 collapsed_pastes.write().clear();
+                paste_guard.write().clear();
+                draft_text.write().take();
+                *burst_chars_since_sync.write() = 0;
             }
             return;
         }
@@ -262,16 +354,35 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
 
         match code {
             KeyCode::Char(ch) => {
-                apply_pasted_char(
-                    ch,
-                    &mut text,
-                    &mut cursor,
-                    &mut paste_guard.write(),
-                    &mut pending_paste.write(),
-                    &mut value,
-                    &mut cursor_offset,
-                    now,
-                );
+                if ch == '\t' {
+                    if should_insert_tab_in_prompt(&text, paste_active, in_burst) {
+                        apply_pasted_char(
+                            '\t',
+                            &mut text,
+                            &mut cursor,
+                            &mut paste_guard.write(),
+                            &mut pending_paste.write(),
+                            &mut value,
+                            &mut draft_text.write(),
+                            &mut burst_chars_since_sync.write(),
+                            &mut cursor_offset,
+                            now,
+                        );
+                    }
+                } else {
+                    apply_pasted_char(
+                        ch,
+                        &mut text,
+                        &mut cursor,
+                        &mut paste_guard.write(),
+                        &mut pending_paste.write(),
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        &mut cursor_offset,
+                        now,
+                    );
+                }
             }
             KeyCode::Backspace => {
                 let pastes = collapsed_pastes.read().clone();
@@ -280,11 +391,21 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                     if let Some(idx) = removed_idx {
                         collapsed_pastes.write().remove(idx);
                     }
-                    value.set(next);
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                    );
                     cursor_offset.set(range.start);
                 } else if cursor > 0 {
                     let (next, new_cursor) = delete_char_backward(&text, cursor);
-                    value.set(next);
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                    );
                     cursor_offset.set(new_cursor);
                 }
             }
@@ -295,11 +416,21 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                     if let Some(idx) = removed_idx {
                         collapsed_pastes.write().remove(idx);
                     }
-                    value.set(next);
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                    );
                     cursor_offset.set(range.start);
                 } else if cursor < text.len() {
                     let (next, new_cursor) = delete_char_forward(&text, cursor);
-                    value.set(next);
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                    );
                     cursor_offset.set(new_cursor);
                 }
             }
@@ -410,33 +541,33 @@ fn is_pasted_newline_char(code: KeyCode) -> bool {
     matches!(code, KeyCode::Char('\n') | KeyCode::Char('\r'))
 }
 
-fn is_pasted_tab_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
-    modifiers.is_empty() && matches!(code, KeyCode::Tab | KeyCode::BackTab)
-}
-
-fn should_finalize_paste(code: KeyCode) -> bool {
+fn should_finalize_paste(code: KeyCode, modifiers: KeyModifiers) -> bool {
+    if is_submit_key(code, modifiers) || is_newline_key(code, modifiers) {
+        return false;
+    }
     !matches!(code, KeyCode::Char(_) | KeyCode::Tab | KeyCode::BackTab)
 }
 
-fn should_absorb_tab_as_paste(
-    pending: Option<&PendingPaste>,
-    paste_guard: &PasteGuard,
-    text: &str,
-    now: Instant,
-) -> bool {
-    if paste_guard.is_in_burst(now) || paste_guard.is_paste_likely(now) {
-        return true;
+fn load_prompt_text(value: &State<String>, draft: &Option<String>) -> String {
+    draft.clone().unwrap_or_else(|| value.read().clone())
+}
+
+fn commit_prompt_text(
+    value: &mut State<String>,
+    draft: &mut Option<String>,
+    burst_since_sync: &mut usize,
+    text: String,
+) {
+    value.set(text);
+    draft.take();
+    *burst_since_sync = 0;
+}
+
+fn flush_draft_if_any(value: &mut State<String>, draft: &mut Option<String>, burst_since_sync: &mut usize) {
+    if let Some(text) = draft.take() {
+        value.set(text);
+        *burst_since_sync = 0;
     }
-
-    let Some(run) = pending else {
-        return false;
-    };
-
-    if run.tab_follows_paste(now) {
-        return true;
-    }
-
-    should_collapse_paste(run.slice(text))
 }
 
 fn apply_pasted_char(
@@ -446,19 +577,78 @@ fn apply_pasted_char(
     paste_guard: &mut PasteGuard,
     pending: &mut Option<PendingPaste>,
     value: &mut State<String>,
+    draft: &mut Option<String>,
+    burst_since_sync: &mut usize,
     cursor_offset: &mut State<usize>,
     now: Instant,
 ) {
+    let prev_len = text.len();
     let cursor_before = *cursor;
-    text.insert(*cursor, ch);
-    *cursor += ch.len_utf8();
-    paste_guard.record_change(value.read().len(), text.len(), now);
-    match pending.as_mut() {
-        Some(run) => run.extend(*cursor, now),
-        None => *pending = Some(PendingPaste::new(cursor_before, *cursor, now)),
+    let was_in_burst = paste_guard.is_in_burst(now);
+    if *cursor == text.len() {
+        text.push(ch);
+    } else {
+        text.insert(*cursor, ch);
     }
-    value.set(text.clone());
+    *cursor += ch.len_utf8();
+    paste_guard.record_change(prev_len, text.len(), now);
+    if paste_guard.is_paste_active(now) || was_in_burst {
+        match pending.as_mut() {
+            Some(run) => run.extend(*cursor, now),
+            None => *pending = Some(PendingPaste::new(cursor_before, *cursor, now)),
+        }
+    } else {
+        pending.take();
+    }
+
+    *draft = Some(text.clone());
+    *burst_since_sync += ch.len_utf8();
+    let paste_run_len = pending
+        .as_ref()
+        .map(|run| run.end.saturating_sub(run.start))
+        .unwrap_or(0);
+    let defer_sync = paste_guard.is_paste_active(now)
+        && paste_guard.is_in_burst(now)
+        && paste_run_len >= BURST_BATCH_MIN_CHARS
+        && *burst_since_sync < BURST_VALUE_SYNC_INTERVAL;
+    if !defer_sync {
+        commit_prompt_text(value, draft, burst_since_sync, text.clone());
+    }
     cursor_offset.set(*cursor);
+}
+
+fn maybe_finalize_idle_paste(
+    pending: &mut Option<PendingPaste>,
+    pastes: &mut Vec<CollapsedPaste>,
+    in_burst: bool,
+    _paste_active: bool,
+    wrap_width: usize,
+    paste_guard: &mut PasteGuard,
+    value: &mut State<String>,
+    draft: &mut Option<String>,
+    burst_since_sync: &mut usize,
+    cursor_offset: &mut State<usize>,
+    now: Instant,
+) {
+    let Some(run) = pending.as_ref() else {
+        return;
+    };
+
+    if in_burst || run.tab_follows_paste(now) {
+        return;
+    }
+
+    finalize_pending_paste_input(
+        pending,
+        pastes,
+        wrap_width,
+        paste_guard,
+        value,
+        draft,
+        burst_since_sync,
+        cursor_offset,
+        now,
+    );
 }
 
 fn finalize_pending_paste_input(
@@ -467,24 +657,31 @@ fn finalize_pending_paste_input(
     wrap_width: usize,
     paste_guard: &mut PasteGuard,
     value: &mut State<String>,
+    draft: &mut Option<String>,
+    burst_since_sync: &mut usize,
     cursor_offset: &mut State<usize>,
+    now: Instant,
 ) {
+    flush_draft_if_any(value, draft, burst_since_sync);
+
     let Some(run) = pending.take() else {
         return;
     };
 
     let mut text = value.read().clone();
+    let notify = paste_guard.is_paste_active(now) || should_collapse_paste(run.slice(&text));
     let mut cursor = cursor_offset.get().min(text.len());
-    let collapsed = should_collapse_paste(run.slice(&text));
     let before = text.clone();
     let cursor_before = cursor;
     *pending = finalize_pending_paste(Some(run), &mut text, &mut cursor, wrap_width, pastes, true);
-    if collapsed {
-        paste_guard.clear();
-    }
     if text != before || cursor != cursor_before {
-        value.set(text);
+        commit_prompt_text(value, draft, burst_since_sync, text);
         cursor_offset.set(cursor);
+    } else if notify {
+        commit_prompt_text(value, draft, burst_since_sync, text);
+    }
+    if notify {
+        paste_guard.release_paste_active();
     }
 }
 
@@ -537,7 +734,6 @@ fn wrapped_line_count(line: &str, wrap_width: usize) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
 
     #[test]
     fn insert_newline_at_cursor_from_middle_of_line() {
@@ -583,59 +779,37 @@ mod tests {
     }
 
     #[test]
-    fn absorbs_tab_during_continued_paste_burst() {
-        let t0 = Instant::now();
-        let pending = PendingPaste::new(0, 1, t0);
-        let mut guard = PasteGuard::default();
-        guard.record_change(0, 1, t0);
-        assert!(should_absorb_tab_as_paste(
-            Some(&pending),
-            &guard,
-            "{",
-            t0 + Duration::from_millis(5)
+    fn tab_inserts_when_prompt_has_content() {
+        assert!(should_insert_tab_in_prompt("{\"name\"", false, false));
+    }
+
+    #[test]
+    fn tab_cycles_only_on_empty_prompt() {
+        assert!(should_cycle_agent_mode(
+            "",
+            false,
+            false,
+            KeyCode::Tab,
+            KeyModifiers::empty()
         ));
-        assert!(should_absorb_tab_as_paste(
-            Some(&pending),
-            &guard,
-            "{",
-            t0 + Duration::from_millis(100)
+        assert!(!should_cycle_agent_mode(
+            "json",
+            false,
+            false,
+            KeyCode::Tab,
+            KeyModifiers::empty()
         ));
     }
 
     #[test]
-    fn absorbs_tab_after_paste_gap_when_content_is_multiline() {
-        let t0 = Instant::now();
-        let text = "{\n";
-        let pending = PendingPaste::new(0, text.len(), t0);
-        let guard = PasteGuard::default();
-        let later = t0 + Duration::from_millis(200);
-        assert!(should_absorb_tab_as_paste(Some(&pending), &guard, text, later));
-    }
-
-    #[test]
-    fn absorbs_tab_when_paste_likely_after_rapid_inserts() {
-        let t0 = Instant::now();
-        let text = "{\"name\":";
-        let pending = PendingPaste::new(0, text.len(), t0 + Duration::from_millis(150));
-        let mut guard = PasteGuard::default();
-        for len in 1..=text.len() {
-            guard.record_change(len - 1, len, t0 + Duration::from_millis(len as u64));
-        }
-        let tab_at = t0 + Duration::from_millis(200);
-        assert!(should_absorb_tab_as_paste(Some(&pending), &guard, text, tab_at));
-    }
-
-    #[test]
-    fn manual_tab_after_pause_still_cycles_mode() {
-        let t0 = Instant::now();
-        let text = "hello";
-        let pending = PendingPaste::new(0, text.len(), t0);
-        let mut guard = PasteGuard::default();
-        for len in 1..=text.len() {
-            guard.record_change(len - 1, len, t0 + Duration::from_secs(1) * len as u32);
-        }
-        let tab_at = t0 + Duration::from_secs(10);
-        assert!(!should_absorb_tab_as_paste(Some(&pending), &guard, text, tab_at));
+    fn ctrl_tab_always_cycles_mode() {
+        assert!(should_cycle_agent_mode(
+            "json",
+            true,
+            true,
+            KeyCode::Tab,
+            KeyModifiers::CONTROL
+        ));
     }
 
     #[test]

@@ -5,13 +5,13 @@ use std::time::{Duration, Instant};
 pub const PASTE_BURST_GAP: Duration = Duration::from_millis(40);
 
 /// Longer gap for treating Tab as pasted text instead of cycling agent mode.
-pub const TAB_PASTE_GAP: Duration = Duration::from_millis(500);
+pub const TAB_PASTE_GAP: Duration = Duration::from_millis(1000);
 
 /// Collapse pastes with at least this many logical lines.
 pub const PASTE_COLLAPSE_MIN_LINES: usize = 2;
 
-/// Collapse pastes with at least this many bytes.
-pub const PASTE_COLLAPSE_MIN_CHARS: usize = 80;
+/// Collapse pastes with at least this many bytes (single-line pastes stay expanded longer).
+pub const PASTE_COLLAPSE_MIN_CHARS: usize = 256;
 
 const MARKER_PREFIX: &str = "[Pasted: ";
 const MARKER_SUFFIX: &str = " lines] ";
@@ -47,6 +47,23 @@ impl PendingPaste {
     }
 }
 
+/// Normalizes clipboard text for insertion (iocraft delivers char-by-char without `Event::Paste`).
+pub fn normalize_paste_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\r' => {
+                if chars.peek() != Some(&'\n') {
+                    out.push('\n');
+                }
+            }
+            ch => out.push(ch),
+        }
+    }
+    out
+}
+
 /// Collapsed paste stored in the prompt field.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CollapsedPaste {
@@ -67,6 +84,26 @@ pub fn line_count(text: &str) -> usize {
         return 0;
     }
     text.chars().filter(|&c| c == '\n').count() + 1
+}
+
+/// Minimum pasted run length before a burst-ending Enter finalizes instead of submitting.
+const PASTE_ENTER_FINALIZE_MIN_CHARS: usize = 3;
+
+/// Returns `true` when Enter should finalize/collapse a pending paste instead of submitting.
+pub fn enter_should_finalize_paste(
+    text: &str,
+    pending: Option<&PendingPaste>,
+    paste_recent: bool,
+    in_burst: bool,
+) -> bool {
+    let Some(run) = pending else {
+        return false;
+    };
+    let slice = run.slice(text);
+    if should_collapse_paste(slice) {
+        return true;
+    }
+    paste_recent && in_burst && slice.len() >= PASTE_ENTER_FINALIZE_MIN_CHARS
 }
 
 /// Returns `true` when pasted text should collapse to a summary chip.
@@ -100,11 +137,14 @@ pub fn finalize_pending_paste(
     pastes: &mut Vec<CollapsedPaste>,
     burst_ended: bool,
 ) -> Option<PendingPaste> {
-    let Some(pending) = pending else {
+    let Some(mut pending) = pending else {
         return None;
     };
 
-    let raw = pending.slice(text).to_string();
+    let raw = normalize_paste_text(pending.slice(text));
+    let cursor_delta = replace_pending_slice(text, &mut pending, &raw);
+    adjust_cursor_for_slice_replace(cursor, cursor_delta, pending.start, pending.end);
+
     if !should_collapse_paste(&raw) {
         return if burst_ended { None } else { Some(pending) };
     }
@@ -213,12 +253,43 @@ fn first_line_preview(full: &str, max_chars: usize) -> String {
     let line = full
         .lines()
         .find(|line| !line.trim().is_empty())
-        .unwrap_or_else(|| full.lines().next().unwrap_or(""));
-    let line = line.trim();
+        .or_else(|| full.lines().next())
+        .unwrap_or("");
+    let line = line.trim_end();
     if line.is_empty() {
         return String::new();
     }
     truncate_to_char_boundary(line, max_chars)
+}
+
+/// Replaces the pending paste byte range with normalized text, preserving surrounding content.
+///
+/// Returns the byte-length delta applied to the replaced slice (`new_len - old_len`).
+fn replace_pending_slice(text: &mut String, pending: &mut PendingPaste, normalized: &str) -> isize {
+    let old_len = pending.end.saturating_sub(pending.start);
+    if old_len == normalized.len() && pending.slice(text) == normalized {
+        return 0;
+    }
+
+    let old_end = pending.end;
+    let tail = text[old_end..].to_string();
+    text.truncate(pending.start);
+    text.push_str(normalized);
+    pending.end = pending.start + normalized.len();
+    text.push_str(&tail);
+    pending.end as isize - old_end as isize
+}
+
+fn adjust_cursor_for_slice_replace(cursor: &mut usize, delta: isize, range_start: usize, range_end: usize) {
+    if delta == 0 || *cursor < range_start {
+        return;
+    }
+    if *cursor >= range_end {
+        *cursor = ((*cursor as isize + delta).max(0)) as usize;
+    } else {
+        let new_end = ((range_end as isize + delta).max(range_start as isize)) as usize;
+        *cursor = new_end;
+    }
 }
 
 fn truncate_to_char_boundary(text: &str, max_chars: usize) -> String {
@@ -238,6 +309,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn normalizes_windows_line_endings() {
+        assert_eq!(normalize_paste_text("a\r\nb"), "a\nb");
+        assert_eq!(normalize_paste_text("a\rb"), "a\nb");
+    }
+
+    #[test]
     fn collapses_multiline_paste() {
         assert!(should_collapse_paste("a\nb"));
         assert!(!should_collapse_paste("short"));
@@ -248,6 +325,45 @@ mod tests {
         let summary = format_paste_summary("alpha\nbeta", 40);
         assert!(summary.starts_with("[Pasted: 02 lines] "));
         assert!(summary.contains("alpha"));
+    }
+
+    #[test]
+    fn short_typed_prompt_does_not_finalize_on_enter() {
+        let text = "hi".to_string();
+        let pending = PendingPaste::new(0, text.len(), Instant::now());
+        assert!(!enter_should_finalize_paste(&text, Some(&pending), false, false));
+    }
+
+    #[test]
+    fn multiline_paste_finalizes_on_enter() {
+        let text = "line one\nline two".to_string();
+        let pending = PendingPaste::new(0, text.len(), Instant::now());
+        assert!(enter_should_finalize_paste(&text, Some(&pending), true, true));
+    }
+
+    #[test]
+    fn trailing_enter_after_rapid_paste_finalizes() {
+        let text = "pasted text".to_string();
+        let pending = PendingPaste::new(0, text.len(), Instant::now());
+        assert!(enter_should_finalize_paste(&text, Some(&pending), true, true));
+    }
+
+    #[test]
+    fn preview_preserves_leading_indentation() {
+        let summary = format_paste_summary("    fn main() {\n        println!();\n    }", 50);
+        assert!(summary.contains("    fn main()"));
+    }
+
+    #[test]
+    fn finalizes_with_normalized_line_endings() {
+        let body = format!("{}\r\n{}", "x".repeat(200), "y".repeat(50));
+        let mut text = body.clone();
+        let pending = PendingPaste::new(0, text.len(), Instant::now());
+        let mut cursor = text.len();
+        let mut pastes = Vec::new();
+        finalize_pending_paste(Some(pending), &mut text, &mut cursor, 40, &mut pastes, true);
+        assert!(!text.contains('\r'));
+        assert_eq!(pastes[0].full, normalize_paste_text(&body));
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub use chat_stream::{ChatStream, ChatStreamProps, DEFAULT_LINE_SCROLL_STEP, PAG
 pub use prompt_input::{PromptInput, PromptInputProps};
 pub use prompt_keys::{
     EditAction, MacEditAction, edit_action, is_clear_key, is_force_quit_key, is_interrupt_key, is_mode_cycle_key,
-    is_newline_key, is_prompt_newline_key, is_quit_command, is_submit_key, is_theme_toggle_key, mac_edit_action,
+    is_mode_cycle_override_key, is_newline_key, is_pasted_tab_key, is_prompt_newline_key, is_quit_command,
+    is_submit_key, is_theme_toggle_key, mac_edit_action, should_cycle_agent_mode, should_insert_tab_in_prompt,
 };
 pub use prompt_transcript::{PromptTranscript, PromptTranscriptProps};

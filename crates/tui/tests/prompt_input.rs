@@ -319,6 +319,24 @@ async fn multiline_paste_collapses_to_summary_with_preview() {
 }
 
 #[tokio::test]
+async fn collapsed_json_paste_submits_tabs_and_indentation() {
+    let pasted = "{\n\t\"name\": \"elph\"\n}";
+    let events = submit_after_collapsed_paste_events(pasted);
+
+    let output = element!(PasteSubmitHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(events))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    let expected = "{\n\t\"name\": \"elph\"\n}".replace('\n', "\\n");
+    assert!(
+        output.iter().any(|frame| frame.contains(&expected)),
+        "submit should preserve tabs and newlines from pasted json, got: {output:?}"
+    );
+}
+
+#[tokio::test]
 async fn collapsed_paste_submits_full_text() {
     let pasted = "line one\nline two";
     let events = submit_after_collapsed_paste_events(pasted);
@@ -416,6 +434,48 @@ async fn json_paste_with_tabs_does_not_cycle_agent_mode() {
 }
 
 #[tokio::test]
+async fn very_large_multiline_paste_is_retained_after_finalize() {
+    let pasted = format!("{}\n{}", "x".repeat(400), "y".repeat(400));
+    let events = collapse_then_exit_events(&pasted);
+
+    let output = element!(CollapseHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(events))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output.iter().any(|frame| frame.contains("[Pasted:")),
+        "very large paste should collapse after finalize, got: {output:?}"
+    );
+}
+
+#[tokio::test]
+async fn very_long_multiline_paste_is_retained() {
+    let pasted = format!("{}\n", "x".repeat(500));
+    let mut events = paste_chars(&pasted);
+    events.extend([
+        finalize_paste_event(),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::F(1))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('!'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Char('!'))),
+    ]);
+
+    let output = element!(Harness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(stream::iter(events)))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output
+            .iter()
+            .any(|frame| frame.contains("[Pasted: 02 lines]") && frame.contains('x')),
+        "very long paste should collapse with retained preview after finalize, got: {output:?}"
+    );
+}
+
+#[tokio::test]
 async fn long_single_line_paste_is_retained() {
     let pasted = "x".repeat(120);
     let mut events = paste_chars(&pasted);
@@ -455,6 +515,81 @@ async fn paste_with_trailing_enter_does_not_submit() {
     assert!(
         output.iter().any(|frame| frame.contains("pasted text")),
         "pasted text should remain in the prompt, got: {output:?}"
+    );
+}
+
+#[tokio::test]
+async fn multiline_json_paste_enter_does_not_submit() {
+    let pasted = "{\n\t\"name\": \"elph\"\n}";
+    let mut events = paste_chars(pasted);
+    events.extend([
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('!'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Char('!'))),
+    ]);
+
+    let output = element!(PasteHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(stream::iter(events)))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output
+            .iter()
+            .any(|frame| frame.contains("[Pasted:") || frame.contains("elph")),
+        "json paste should stay in the prompt after enter, got: {output:?}"
+    );
+}
+
+#[tokio::test]
+async fn multiline_paste_enter_collapses_without_submitting() {
+    let pasted = "fn main() {\n    println!(\"hi\");\n}";
+    let mut events = paste_chars(pasted);
+    events.extend([
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('!'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Char('!'))),
+    ]);
+
+    let output = element!(CollapseHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(stream::iter(events)))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output.iter().any(|frame| frame.contains("[Pasted: 03 lines]")),
+        "enter after multiline paste should collapse without submitting, got: {output:?}"
+    );
+    assert!(
+        !output.iter().any(|frame| frame.contains("println")),
+        "collapsed body should not render in the prompt, got: {output:?}"
+    );
+}
+
+#[tokio::test]
+async fn multiline_paste_requires_second_enter_to_submit() {
+    let pasted = "line one\nline two";
+    let mut events = paste_chars(pasted);
+    events.extend([
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Enter)),
+    ]);
+
+    let output = element!(PasteSubmitHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(stream::iter(events)))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output.iter().any(|frame| frame.contains("line one\\nline two")),
+        "second enter after paste should submit full text, got: {output:?}"
     );
 }
 
@@ -511,6 +646,29 @@ async fn first_keystroke_after_submit_registers_immediately() {
     assert!(
         shows_post_submit_text,
         "first character after submit should appear after one press, got: {output:?}"
+    );
+}
+
+#[tokio::test]
+async fn short_typed_prompt_submits_on_first_enter() {
+    let events = stream::iter([
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('h'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Char('h'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('i'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Char('i'))),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Enter)),
+        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Release, KeyCode::Enter)),
+    ]);
+
+    let output = element!(EnterHarness)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(events))
+        .map(|frame| frame.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    assert!(
+        output.len() > 1,
+        "short typed prompt should submit on the first Enter, got: {output:?}"
     );
 }
 

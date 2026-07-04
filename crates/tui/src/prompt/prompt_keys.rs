@@ -30,9 +30,38 @@ pub fn is_force_quit_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     matches!(key_combination(code, modifiers), key!(ctrl - q))
 }
 
-/// Returns true for Tab (cycle agent mode).
+/// Returns true for Tab (cycle agent mode when the prompt is empty).
 pub fn is_mode_cycle_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     matches!(key_combination(code, modifiers), key!(tab))
+}
+
+/// Returns true for Ctrl+Tab (always cycle agent mode).
+pub fn is_mode_cycle_override_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
+    matches!(key_combination(code, modifiers), key!(ctrl - tab))
+}
+
+/// Returns true for plain Tab / Shift+Tab key events (not Ctrl+Tab).
+pub fn is_pasted_tab_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
+    modifiers.is_empty() && matches!(code, KeyCode::Tab | KeyCode::BackTab)
+}
+
+/// Returns true when Tab should insert a tab character instead of cycling agent mode.
+pub fn should_insert_tab_in_prompt(text: &str, paste_active: bool, in_burst: bool) -> bool {
+    !text.is_empty() || paste_active || in_burst
+}
+
+/// Returns true when the key should cycle agent mode.
+pub fn should_cycle_agent_mode(
+    text: &str,
+    paste_active: bool,
+    in_burst: bool,
+    code: KeyCode,
+    modifiers: KeyModifiers,
+) -> bool {
+    if is_mode_cycle_override_key(code, modifiers) {
+        return true;
+    }
+    is_mode_cycle_key(code, modifiers) && text.is_empty() && !paste_active && !in_burst
 }
 
 /// Returns true for Escape (clear prompt when non-empty).
@@ -242,6 +271,27 @@ mod tests {
     fn detects_clear() {
         assert!(is_clear_key(KeyCode::Esc, KeyModifiers::empty()));
         assert!(!is_clear_key(KeyCode::Esc, KeyModifiers::SHIFT));
+    }
+
+    #[test]
+    fn tab_insert_vs_mode_cycle() {
+        assert!(should_insert_tab_in_prompt("x", false, false));
+        assert!(!should_insert_tab_in_prompt("", false, false));
+        assert!(should_insert_tab_in_prompt("", true, false));
+        assert!(should_cycle_agent_mode(
+            "",
+            false,
+            false,
+            KeyCode::Tab,
+            KeyModifiers::empty()
+        ));
+        assert!(!should_cycle_agent_mode(
+            "x",
+            false,
+            false,
+            KeyCode::Tab,
+            KeyModifiers::empty()
+        ));
     }
 
     #[test]
