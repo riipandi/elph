@@ -88,15 +88,50 @@ pub enum Commands {
     Worktree(WorktreeArgs),
 }
 
-pub fn run(cli: &Cli) -> ExitCode {
-    if let Err(err) = crate::layout::ensure_blocking(env!("CARGO_PKG_VERSION")) {
+fn init_layout() -> Result<crate::layout::Paths, ExitCode> {
+    crate::layout::ensure_layout_blocking(env!("CARGO_PKG_VERSION")).map_err(|err| {
         eprintln!("failed to initialize elph home: {err}");
-        return crate::runtime::EXIT_ERROR;
-    }
+        crate::runtime::EXIT_ERROR
+    })
+}
+
+fn init_datastore(paths: &crate::layout::Paths) -> Result<(), ExitCode> {
+    crate::layout::ensure_datastore_blocking(paths).map_err(|err| {
+        eprintln!("failed to initialize elph databases: {err}");
+        crate::runtime::EXIT_ERROR
+    })
+}
+
+fn command_needs_datastore(cmd: &Commands) -> bool {
+    matches!(
+        cmd,
+        Commands::Export(_)
+            | Commands::Import(_)
+            | Commands::Run(_)
+            | Commands::Server(_)
+            | Commands::Session(_)
+            | Commands::Stats(_)
+    )
+}
+
+pub fn run(cli: &Cli) -> ExitCode {
+    let paths = match init_layout() {
+        Ok(paths) => paths,
+        Err(code) => return code,
+    };
 
     let Some(cmd) = &cli.command else {
+        if let Err(code) = init_datastore(&paths) {
+            return code;
+        }
         return default::handle();
     };
+
+    if command_needs_datastore(cmd) {
+        if let Err(code) = init_datastore(&paths) {
+            return code;
+        }
+    }
 
     match cmd {
         Commands::Acp => acp::handle(),

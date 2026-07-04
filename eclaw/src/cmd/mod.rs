@@ -35,14 +35,33 @@ pub enum Commands {
     Version,
 }
 
-pub fn run(cli: &Cli) -> ExitCode {
-    if let Err(err) = crate::layout::ensure_blocking(env!("CARGO_PKG_VERSION")) {
+fn init_layout() -> Result<crate::layout::Paths, ExitCode> {
+    crate::layout::ensure_layout_blocking(env!("CARGO_PKG_VERSION")).map_err(|err| {
         eprintln!("failed to initialize eclaw home: {err}");
-        return crate::runtime::EXIT_ERROR;
-    }
+        crate::runtime::EXIT_ERROR
+    })
+}
+
+fn init_datastore(paths: &crate::layout::Paths) -> Result<(), ExitCode> {
+    crate::layout::ensure_datastore_blocking(paths).map_err(|err| {
+        eprintln!("failed to initialize eclaw databases: {err}");
+        crate::runtime::EXIT_ERROR
+    })
+}
+
+pub fn run(cli: &Cli) -> ExitCode {
+    let paths = match init_layout() {
+        Ok(paths) => paths,
+        Err(code) => return code,
+    };
 
     match &cli.command {
-        None => default::handle(cli),
+        None => {
+            if let Err(code) = init_datastore(&paths) {
+                return code;
+            }
+            default::handle(cli)
+        }
         Some(Commands::Doctor(args)) => doctor::handle(args),
         Some(Commands::Version) => version::handle(),
     }

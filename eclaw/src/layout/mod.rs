@@ -1,17 +1,20 @@
 mod bundled;
+mod datastore;
 mod migrations;
 mod paths;
 mod settings;
 mod trust;
 mod version;
-use elph_agent::{DatabaseSpec, InitProgress, ensure_databases, ensure_dirs};
 
+use elph_agent::{InitProgress, ensure_dirs};
+
+pub use datastore::ensure_blocking as ensure_datastore_blocking;
 pub use paths::Paths;
 
 pub type InitError = elph_agent::InitError;
 pub type Result<T> = std::result::Result<T, InitError>;
 
-const INIT_STEPS: u64 = 4;
+const INIT_STEPS: u64 = 3;
 
 /// Create required directories and default files for a fresh Eclaw install.
 pub async fn ensure(app_version: &str) -> Result<Paths> {
@@ -32,8 +35,8 @@ pub async fn ensure_with_paths(paths: &Paths, app_version: &str) -> Result<()> {
     Ok(())
 }
 
-/// Blocking wrapper for CLI startup code paths that are not async yet.
-pub fn ensure_blocking(app_version: &str) -> Result<Paths> {
+/// Blocking wrapper for layout initialization (dirs + config, no databases).
+pub fn ensure_layout_blocking(app_version: &str) -> Result<Paths> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -49,19 +52,6 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
 
     progress.advance("Writing configuration");
     ensure_files(paths, app_version)?;
-
-    progress.advance("Initializing databases");
-    ensure_databases(&[
-        DatabaseSpec {
-            path: &paths.metadata_db_path(),
-            migrations: migrations::metadata_migrations(),
-        },
-        DatabaseSpec {
-            path: &paths.memory_db_path(),
-            migrations: migrations::memory_migrations(),
-        },
-    ])
-    .await?;
 
     Ok(())
 }
@@ -89,6 +79,8 @@ mod tests {
         assert!(paths.trust_path().exists());
         assert!(paths.version_path().exists());
         assert!(paths.bundled_manifest_path().exists());
+
+        datastore::ensure(&paths).await.expect("ensure datastore");
         assert!(paths.metadata_db_path().exists());
         assert!(paths.memory_db_path().exists());
         assert!(paths.bundled_dir().join("agents").is_dir());

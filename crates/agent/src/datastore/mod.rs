@@ -1,5 +1,6 @@
 //! Turso local database helpers and migration runner.
 
+mod lazy;
 mod migrations;
 
 use std::path::Path;
@@ -7,7 +8,9 @@ use std::path::Path;
 use thiserror::Error;
 use turso::Builder;
 
-pub use migrations::{Migration, run as run_migrations};
+pub use crate::migration::Migration;
+pub use lazy::ensure_databases_once;
+pub use migrations::run as run_migrations;
 
 #[derive(Debug, Error)]
 pub enum DatastoreError {

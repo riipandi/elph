@@ -1,0 +1,35 @@
+use super::{Result, migrations, paths::Paths};
+use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once};
+
+const DATASTORE_STEPS: u64 = 1;
+
+/// Lazily initialize local databases on first use.
+pub async fn ensure(paths: &Paths) -> Result<()> {
+    let metadata_db = paths.metadata_db_path();
+    let memory_db = paths.memory_db_path();
+    let specs = [
+        DatabaseSpec {
+            path: &metadata_db,
+            migrations: migrations::metadata_migrations(),
+        },
+        DatabaseSpec {
+            path: &memory_db,
+            migrations: migrations::memory_migrations(),
+        },
+    ];
+
+    let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
+    progress.advance("Initializing databases");
+    ensure_databases_once(&specs).await?;
+    progress.finish();
+    Ok(())
+}
+
+/// Blocking wrapper for CLI commands that need persistence.
+pub fn ensure_blocking(paths: &Paths) -> Result<()> {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|err| elph_agent::InitError::Io(std::io::Error::other(err)))?
+        .block_on(ensure(paths))
+}

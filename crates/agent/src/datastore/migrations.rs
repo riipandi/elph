@@ -1,12 +1,8 @@
 use turso::Connection;
 
-use super::DatastoreError;
+use crate::migration::Migration;
 
-pub struct Migration {
-    pub version: i64,
-    pub name: &'static str,
-    pub up: &'static str,
-}
+use super::DatastoreError;
 
 pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<(), DatastoreError> {
     conn.execute(
