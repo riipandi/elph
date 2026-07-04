@@ -1,8 +1,14 @@
-use clap::{Args, Subcommand};
+use clap::{Parser, Subcommand};
 
+use super::help;
 use crate::runtime::{EXIT_SUCCESS, ExitCode};
 
-#[derive(Args, Default)]
+#[derive(Parser, Default)]
+#[command(
+    name = "plugin",
+    about = "Manage plugins and extensions",
+    color = clap::ColorChoice::Auto
+)]
 pub struct PluginArgs {
     #[command(subcommand)]
     pub command: Option<PluginCommands>,
@@ -56,23 +62,11 @@ pub enum PluginCommands {
 
 pub fn handle(args: &PluginArgs) -> ExitCode {
     let Some(cmd) = &args.command else {
-        eprintln!("Manage plugins and extensions");
-        eprintln!();
-        eprintln!("Usage: elph plugin <command>");
-        eprintln!();
-        eprintln!("Commands:");
-        eprintln!("  list     List installed plugins");
-        eprintln!("  install  Install a plugin from a git URL or local path");
-        eprintln!("  remove   Remove an installed plugin");
-        eprintln!("  update   Update installed plugin(s)");
-        eprintln!("  enable   Enable a disabled plugin");
-        eprintln!("  disable  Disable a plugin without uninstalling it");
-        eprintln!("  help     Print this message or the help of the given subcommand(s)");
-        return EXIT_SUCCESS;
+        return help::print_subcommand_help::<PluginArgs>();
     };
     match cmd {
         PluginCommands::List => {
-            eprintln!("Plugin list — not yet implemented");
+            help::unimplemented("Plugin list — not yet implemented");
             EXIT_SUCCESS
         }
         PluginCommands::Install {
@@ -81,28 +75,30 @@ pub fn handle(args: &PluginArgs) -> ExitCode {
             global,
             force,
         } => {
-            eprintln!(
+            help::unimplemented(&format!(
                 "Plugin install — not yet implemented (source: {source}, trust: {trust}, global: {global}, force: {force})"
-            );
+            ));
             EXIT_SUCCESS
         }
         PluginCommands::Remove { name, global } => {
-            eprintln!("Plugin remove — not yet implemented (name: {name}, global: {global})");
+            help::unimplemented(&format!(
+                "Plugin remove — not yet implemented (name: {name}, global: {global})"
+            ));
             EXIT_SUCCESS
         }
         PluginCommands::Update { name, all } => {
-            eprintln!(
+            help::unimplemented(&format!(
                 "Plugin update — not yet implemented (name: {}, all: {all})",
                 name.as_deref().unwrap_or("<none>")
-            );
+            ));
             EXIT_SUCCESS
         }
         PluginCommands::Enable { name } => {
-            eprintln!("Plugin enable — not yet implemented (name: {name})");
+            help::unimplemented(&format!("Plugin enable — not yet implemented (name: {name})"));
             EXIT_SUCCESS
         }
         PluginCommands::Disable { name } => {
-            eprintln!("Plugin disable — not yet implemented (name: {name})");
+            help::unimplemented(&format!("Plugin disable — not yet implemented (name: {name})"));
             EXIT_SUCCESS
         }
     }

@@ -19,13 +19,14 @@ path = "src/main.rs"
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
+colored.workspace = true
 cuid2.workspace = true
 elph-agent = { path = "../crates/agent", version = "^0.0.11" }
 elph-tui = { path = "../crates/tui", version = "^0.0.11" }
 iocraft.workspace = true
 nix.workspace = true
-serde.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 signal-hook.workspace = true
 tokio = { workspace = true, features = ["rt", "macros"] }
 turso.workspace = true

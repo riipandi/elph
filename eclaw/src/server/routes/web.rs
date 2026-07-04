@@ -1,5 +1,6 @@
 #![cfg(feature = "web")]
 
+use crate::server::{error::ErrorResponse, web_assets::WebAssets};
 use axum::{
     Router,
     body::Body,
@@ -7,7 +8,6 @@ use axum::{
     response::Response,
     routing::get,
 };
-use crate::server::{error::ErrorResponse, web_assets::WebAssets};
 
 pub fn router() -> Router {
     Router::new()

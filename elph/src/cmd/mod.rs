@@ -1,8 +1,10 @@
 mod acp;
+mod codegraph;
 mod completions;
 mod default;
 mod doctor;
 mod export;
+mod help;
 mod import;
 mod mcp;
 mod models;
@@ -20,6 +22,7 @@ use clap::{Parser, Subcommand};
 
 use crate::runtime::ExitCode;
 
+pub use codegraph::CodegraphArgs;
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
@@ -37,7 +40,7 @@ pub use worktree::WorktreeArgs;
 
 /// Minimalist AI agent companion for coding
 #[derive(Parser)]
-#[command(name = "elph", about, disable_version_flag = true)]
+#[command(name = "elph", about, disable_version_flag = true, color = clap::ColorChoice::Auto)]
 pub struct Cli {
     /// Print version information
     #[arg(short = 'V', long = "version", help = "Print version information")]
@@ -51,6 +54,8 @@ pub struct Cli {
 pub enum Commands {
     /// Run Elph as an Agent Client Protocol (ACP) server over stdio
     Acp,
+    /// Structural knowledge graph for smarter code reviews
+    Codegraph(CodegraphArgs),
     /// Generate shell completion scripts (bash, zsh, fish, powershell, etc)
     Completions(CompletionsArgs),
     /// Show the configuration Elph discovers for this directory
@@ -95,6 +100,7 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     match cmd {
         Commands::Acp => acp::handle(),
+        Commands::Codegraph(args) => codegraph::handle(args),
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),
         Commands::Export(args) => export::handle(args),

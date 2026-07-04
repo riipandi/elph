@@ -52,18 +52,18 @@ build: ## Build all application binaries (elph + eclaw)
 	echo ""; \
 	for bin in $(APP_BINS); do \
 	  if [ -f "$(BUILD_DIR)/$$bin" ]; then \
-	    echo "$$bin: $$(du -sh $(BUILD_DIR)/$$bin | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$$bin | cut -d' ' -f1))"; \
+	    echo "Binary $$bin:$$(du -sh $(BUILD_DIR)/$$bin | cut -f1) ($$(shasum -a 1 $(BUILD_DIR)/$$bin | cut -d' ' -f1))"; \
 	  else \
-	    echo "$$bin: (not built)"; \
+	    echo "Binary $$bin:(not built)"; \
 	  fi; \
 	done; \
-	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
+	printf "Build time: %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
 install: build ## Install elph-next and eclaw-next to $INSTALL_DIR
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin-next"; \
-	  echo "Installed $$bin-next at $(INSTALL_DIR)/$$bin-next"; \
+	  echo "$$bin-next installed at: $(INSTALL_DIR)/$$bin-next"; \
 	done
 
 run: ## Run elph coding agent

@@ -1,8 +1,14 @@
-use clap::{Args, Subcommand};
+use clap::{Parser, Subcommand};
 
+use super::help;
 use crate::runtime::{EXIT_SUCCESS, ExitCode};
 
-#[derive(Args, Default)]
+#[derive(Parser, Default)]
+#[command(
+    name = "session",
+    about = "Manage coding-agent sessions",
+    color = clap::ColorChoice::Auto
+)]
 pub struct SessionArgs {
     #[command(subcommand)]
     pub command: Option<SessionCommands>,
@@ -26,31 +32,22 @@ pub enum SessionCommands {
 
 pub fn handle(args: &SessionArgs) -> ExitCode {
     let Some(cmd) = &args.command else {
-        eprintln!("Manage coding-agent sessions");
-        eprintln!();
-        eprintln!("Usage: elph session <command>");
-        eprintln!();
-        eprintln!("Commands:");
-        eprintln!("  list    List recent sessions (same as search with no query)");
-        eprintln!("  search  Search sessions by keyword");
-        eprintln!("  delete  Permanently delete a session from history");
-        eprintln!("  help    Print this message or the help of the given subcommand(s)");
-        return EXIT_SUCCESS;
+        return help::print_subcommand_help::<SessionArgs>();
     };
     match cmd {
         SessionCommands::List => {
-            eprintln!("Session list — not yet implemented");
+            help::unimplemented("Session list — not yet implemented");
             EXIT_SUCCESS
         }
         SessionCommands::Search { query } => {
-            eprintln!(
+            help::unimplemented(&format!(
                 "Session search — not yet implemented (query: {})",
                 query.as_deref().unwrap_or("<all>")
-            );
+            ));
             EXIT_SUCCESS
         }
         SessionCommands::Delete { id } => {
-            eprintln!("Session delete — not yet implemented (id: {id})");
+            help::unimplemented(&format!("Session delete — not yet implemented (id: {id})"));
             EXIT_SUCCESS
         }
     }

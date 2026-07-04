@@ -1,8 +1,14 @@
-use clap::{Args, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
+use super::help;
 use crate::runtime::{EXIT_SUCCESS, ExitCode};
 
-#[derive(Args, Default)]
+#[derive(Parser, Default)]
+#[command(
+    name = "server",
+    about = "Run the local Elph server (REST + WebSocket + web UI)",
+    color = clap::ColorChoice::Auto
+)]
 pub struct ServerArgs {
     #[command(subcommand)]
     pub command: Option<ServerCommands>,
@@ -37,40 +43,26 @@ pub struct ServerRunArgs {
 
 pub fn handle(args: &ServerArgs) -> ExitCode {
     let Some(cmd) = &args.command else {
-        eprintln!("Run the local Elph server (REST + WebSocket + web UI)");
-        eprintln!();
-        eprintln!("Usage: elph server [OPTIONS] [COMMAND]");
-        eprintln!();
-        eprintln!("Commands:");
-        eprintln!("  run           Start the Elph server");
-        eprintln!("  ps            List connected clients");
-        eprintln!("  kill          Stop the running server");
-        eprintln!("  rotate-token  Generate a new persistent server token");
-        eprintln!("  help          Print this message or the help of the given subcommand(s)");
-        eprintln!();
-        eprintln!("Options:");
-        eprintln!("  -p, --port <PORT>  Port to listen on [default: 8080]");
-        eprintln!("      --host <HOST>  Hostname to bind to [default: 127.0.0.1]");
-        return EXIT_SUCCESS;
+        return help::print_subcommand_help::<ServerArgs>();
     };
     match cmd {
         ServerCommands::Run(run_args) => {
-            eprintln!(
+            help::unimplemented(&format!(
                 "Server run — not yet implemented (port: {}, host: {}, foreground: {})",
                 args.port, args.host, run_args.foreground
-            );
+            ));
             EXIT_SUCCESS
         }
         ServerCommands::Ps => {
-            eprintln!("Server ps — not yet implemented");
+            help::unimplemented("Server ps — not yet implemented");
             EXIT_SUCCESS
         }
         ServerCommands::Kill => {
-            eprintln!("Server kill — not yet implemented");
+            help::unimplemented("Server kill — not yet implemented");
             EXIT_SUCCESS
         }
         ServerCommands::RotateToken => {
-            eprintln!("Server rotate-token — not yet implemented");
+            help::unimplemented("Server rotate-token — not yet implemented");
             EXIT_SUCCESS
         }
     }
