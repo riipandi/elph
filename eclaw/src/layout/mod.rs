@@ -6,7 +6,7 @@ mod settings;
 mod trust;
 mod version;
 
-use elph_agent::{InitProgress, ensure_dirs};
+use elph_agent::{InitProgress, ensure_dirs, try_block_on};
 
 pub use datastore::ensure_blocking as ensure_datastore_blocking;
 pub use paths::Paths;
@@ -37,11 +37,7 @@ pub async fn ensure_with_paths(paths: &Paths, app_version: &str) -> Result<()> {
 
 /// Blocking wrapper for layout initialization (dirs + config, no databases).
 pub fn ensure_layout_blocking(app_version: &str) -> Result<Paths> {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|err| InitError::Io(std::io::Error::other(err)))?
-        .block_on(ensure(app_version))
+    try_block_on(ensure(app_version)).map_err(InitError::Io)?
 }
 
 async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgress) -> Result<()> {

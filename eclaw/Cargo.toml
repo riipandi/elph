@@ -23,7 +23,6 @@ web = ["dep:rust-embed"]
 
 [dependencies]
 axum.workspace = true
-chrono.workspace = true
 clap.workspace = true
 elph-agent = { path = "../crates/agent", version = "^0.0.11" }
 rust-embed = { version = "8.9.0", optional = true }

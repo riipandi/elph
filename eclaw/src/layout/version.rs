@@ -1,5 +1,4 @@
-use chrono::Utc;
-use elph_agent::write_json_file;
+use elph_agent::{utc_rfc3339_now, write_json_file};
 use serde::{Deserialize, Serialize};
 
 use super::InitError;
@@ -19,7 +18,7 @@ pub struct VersionFile {
 
 impl VersionFile {
     pub fn defaults(app_version: &str) -> Self {
-        let now = Utc::now().to_rfc3339();
+        let now = utc_rfc3339_now();
         Self {
             last_sync_providers: None,
             release_checked_at: Some(now),

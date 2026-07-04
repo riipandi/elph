@@ -1,5 +1,4 @@
 use elph_agent::write_json_file;
-use serde_json::{Map, Value};
 
 use super::InitError;
 use super::paths::Paths;
@@ -13,8 +12,7 @@ impl TrustStore {
             return Ok(());
         }
 
-        let empty = Value::Object(Map::new());
-        write_json_file(&path, &empty)?;
+        write_json_file(&path, &serde_json::json!({}))?;
         Ok(())
     }
 }

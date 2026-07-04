@@ -18,11 +18,9 @@ path = "src/lib.rs"
 
 [dependencies]
 crokey.workspace = true
-crossbeam.workspace = true
 crossterm.workspace = true
 iocraft.workspace = true
-signal-hook.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+tokio = { workspace = true, features = ["macros", "rt", "signal", "sync", "time"] }
 unicode-width = "0.2"
 
 [dev-dependencies]
@@ -30,4 +28,4 @@ futures = "0.3"
 tokio = { workspace = true, features = ["macros"] }
 
 [target.'cfg(unix)'.dev-dependencies]
-nix = { workspace = true }
+libc.workspace = true

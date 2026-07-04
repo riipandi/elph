@@ -1,5 +1,5 @@
 use super::{Result, migrations, paths::Paths};
-use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once};
+use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once, try_block_on};
 
 const DATASTORE_STEPS: u64 = 1;
 
@@ -27,9 +27,5 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
 
 /// Blocking wrapper for CLI commands that need persistence.
 pub fn ensure_blocking(paths: &Paths) -> Result<()> {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|err| elph_agent::InitError::Io(std::io::Error::other(err)))?
-        .block_on(ensure(paths))
+    try_block_on(ensure(paths)).map_err(elph_agent::InitError::Io)?
 }

@@ -1,7 +1,6 @@
 use elph_tui::{AgentMode, PromptInput, sigint_channel};
 use futures::{StreamExt, stream};
 use iocraft::prelude::*;
-use signal_hook::consts::SIGINT;
 use std::time::Duration;
 
 fn shift_enter(kind: KeyEventKind) -> KeyEvent {
@@ -498,11 +497,8 @@ fn SigintPromptHarness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
 
     hooks.use_future(async move {
         let mut sigint = sigint_channel();
-        while let Some(signal) = sigint.recv().await {
-            if signal == SIGINT {
-                interrupted.set(true);
-                break;
-            }
+        if sigint.recv().await {
+            interrupted.set(true);
         }
     });
 
@@ -534,7 +530,9 @@ fn SigintPromptHarness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
 async fn sigint_channel_interrupts_prompt_input_loop() {
     std::thread::spawn(|| {
         std::thread::sleep(Duration::from_millis(100));
-        nix::sys::signal::kill(nix::unistd::getpid(), nix::sys::signal::Signal::SIGINT).unwrap();
+        unsafe {
+            libc::raise(libc::SIGINT);
+        }
     });
 
     let events = stream::iter([] as [TerminalEvent; 0]);

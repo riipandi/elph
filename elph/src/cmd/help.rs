@@ -1,5 +1,5 @@
 use clap::CommandFactory;
-use colored::Colorize;
+use std::io::{IsTerminal, stderr};
 
 use crate::runtime::{EXIT_ERROR, EXIT_SUCCESS, ExitCode};
 
@@ -13,5 +13,13 @@ pub fn print_subcommand_help<T: CommandFactory>() -> ExitCode {
 }
 
 pub fn unimplemented(message: &str) {
-    eprintln!("{}", message.yellow());
+    eprintln!("{}", format_warning(message));
+}
+
+fn format_warning(message: &str) -> String {
+    if std::env::var("NO_COLOR").as_deref() == Ok("true") || !stderr().is_terminal() {
+        message.to_string()
+    } else {
+        format!("\x1b[33m{message}\x1b[0m")
+    }
 }

@@ -1,7 +1,6 @@
 #![cfg(unix)]
 
 use elph_tui::sigint_channel;
-use signal_hook::consts::SIGINT;
 use std::time::Duration;
 
 #[tokio::test]
@@ -10,13 +9,14 @@ async fn sigint_channel_delivers_sigint_to_receiver() {
 
     std::thread::spawn(|| {
         std::thread::sleep(Duration::from_millis(100));
-        nix::sys::signal::kill(nix::unistd::getpid(), nix::sys::signal::Signal::SIGINT).unwrap();
+        unsafe {
+            libc::raise(libc::SIGINT);
+        }
     });
 
-    let signal = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+    let received = tokio::time::timeout(Duration::from_secs(2), rx.recv())
         .await
-        .expect("timed out waiting for SIGINT")
-        .expect("sigint channel closed");
+        .expect("timed out waiting for SIGINT");
 
-    assert_eq!(signal, SIGINT);
+    assert!(received);
 }

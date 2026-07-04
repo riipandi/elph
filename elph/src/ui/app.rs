@@ -7,7 +7,6 @@ use elph_tui::{
     is_mode_cycle_key, is_quit_command, is_theme_toggle_key, sigint_channel,
 };
 use iocraft::prelude::*;
-use signal_hook::consts::SIGINT;
 
 #[component]
 pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
@@ -30,10 +29,7 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
 
     hooks.use_future(async move {
         let mut sigint = sigint_channel();
-        while let Some(signal) = sigint.recv().await {
-            if signal != SIGINT {
-                continue;
-            }
+        while sigint.recv().await {
             handle_prompt_interrupt(&mut prompt, &mut should_exit, &mut prompt_reset);
         }
     });
