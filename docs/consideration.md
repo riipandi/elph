@@ -1,5 +1,7 @@
 # Cconsideration
 
+- https://github.com/kivikakk/comrak
+- https://crates.io/crates/fff-search
 - https://github.com/tomasz-tomczyk/crit
 - https://github.com/ast-grep/ast-grep
 - https://github.com/64bit/async-openai
@@ -9,3 +11,7 @@
 - https://github.com/wooorm/markdown-rs
 - https://github.com/Canop/termimad
 - https://docs.obscura.sh/guides/use-as-a-rust-library
+- https://github.com/tokio-rs/tracing
+- https://github.com/pest-parser/pest
+- https://github.com/run-llama/liteparse
+- https://github.com/teloxide/teloxide
