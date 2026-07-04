@@ -56,6 +56,7 @@ Or publish individually:
 cargo publish -p elph-ai
 cargo publish -p elph-agent
 cargo publish -p elph-tui
+cargo publish -p eclaw
 cargo publish -p elph
 ```
 
@@ -67,6 +68,7 @@ Publish all crates to crates.io (order matters):
 cargo publish -p elph-ai
 cargo publish -p elph-agent
 cargo publish -p elph-tui
+cargo publish -p eclaw
 cargo publish -p elph
 ```
 

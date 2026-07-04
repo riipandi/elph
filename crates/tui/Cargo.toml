@@ -1,6 +1,6 @@
 [package]
 name = "elph-tui"
-version = "0.0.7"
+version = "0.0.8"
 license = "MIT"
 description = "Terminal UI components for Elph agent"
 repository = "https://github.com/riipandi/elph"
@@ -9,8 +9,15 @@ rust-version = "1.96"
 edition = "2024"
 publish = true
 
+[lib]
+name = "elph_tui"
+path = "src/lib.rs"
+
 [dependencies]
+crossterm.workspace = true
 iocraft.workspace = true
+signal-hook.workspace = true
+smol.workspace = true
 unicode-width = "0.2"
 
 [dev-dependencies]

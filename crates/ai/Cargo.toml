@@ -1,6 +1,6 @@
 [package]
 name = "elph-ai"
-version = "0.0.7"
+version = "0.0.8"
 license = "MIT"
 description = "AI provider integration for Elph agent"
 repository = "https://github.com/riipandi/elph"
@@ -8,3 +8,7 @@ authors = ["Aris Ripandi <aris@duck.com>"]
 rust-version = "1.96"
 edition = "2024"
 publish = true
+
+[lib]
+name = "elph_ai"
+path = "src/lib.rs"

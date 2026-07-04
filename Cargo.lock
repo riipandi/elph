@@ -492,18 +492,18 @@ dependencies = [
 
 [[package]]
 name = "eclaw"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "clap",
+ "elph-agent",
 ]
 
 [[package]]
 name = "elph"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "chrono",
  "clap",
- "crossterm",
  "cuid2",
  "elph-agent",
  "elph-tui",
@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "elph-agent"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
  "chrono",
  "elph-ai",
@@ -523,15 +523,18 @@ dependencies = [
 
 [[package]]
 name = "elph-ai"
-version = "0.0.7"
+version = "0.0.8"
 
 [[package]]
 name = "elph-tui"
-version = "0.0.7"
+version = "0.0.8"
 dependencies = [
+ "crossterm",
  "futures",
  "iocraft",
  "macro_rules_attribute",
+ "signal-hook 0.4.4",
+ "smol",
  "smol-macros",
  "unicode-width 0.2.2",
 ]

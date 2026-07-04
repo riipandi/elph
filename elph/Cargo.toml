@@ -1,0 +1,25 @@
+[package]
+name = "elph"
+version = "0.0.8"
+license = "MIT"
+description = "Minimalist AI agent companion for coding"
+repository = "https://github.com/riipandi/elph"
+authors = ["Aris Ripandi <aris@duck.com>"]
+rust-version = "1.96"
+edition = "2024"
+publish = true
+
+[[bin]]
+name = "elph"
+path = "src/main.rs"
+
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+cuid2.workspace = true
+elph-agent = { path = "../crates/agent", version = "0.0.8" }
+elph-tui = { path = "../crates/tui", version = "0.0.8" }
+iocraft.workspace = true
+nix.workspace = true
+signal-hook.workspace = true
+smol.workspace = true

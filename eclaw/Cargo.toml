@@ -1,18 +1,18 @@
 [package]
-name = "elph-agent"
+name = "eclaw"
 version = "0.0.8"
 license = "MIT"
-description = "Agent runtime for Elph coding assistant"
+description = "Personal AI assistant powered by Elph"
 repository = "https://github.com/riipandi/elph"
 authors = ["Aris Ripandi <aris@duck.com>"]
 rust-version = "1.96"
 edition = "2024"
 publish = true
 
-[lib]
-name = "elph_agent"
-path = "src/lib.rs"
+[[bin]]
+name = "eclaw"
+path = "src/main.rs"
 
 [dependencies]
-chrono.workspace = true
-elph-ai = { path = "../ai", version = "0.0.8" }
+clap.workspace = true
+elph-agent = { path = "../crates/agent", version = "0.0.8" }

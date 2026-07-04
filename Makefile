@@ -5,7 +5,7 @@ ECLAW_BIN    := eclaw
 BIN          ?= $(ELPH_BIN)
 CARGO        := $$(which cargo)
 CROSS        := $$(which cross)
-PKG_VERSION  := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+PKG_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS     := $(ELPH_BIN) $(ECLAW_BIN)
 INSTALL_DIR  := $(HOME)/.local/bin
@@ -63,7 +63,7 @@ build: ## Build all application binaries (elph + eclaw)
 	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
 install: build ## Install elph-next and eclaw-next to $INSTALL_DIR
-	@mkdir -p $(INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
 	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin-next"; \
 	  echo "Installed $$bin-next at $(INSTALL_DIR)/$$bin-next"; \
@@ -126,19 +126,19 @@ prepare: ## Install required toolchain
 
 # ─── Versioning ────────────────────────────────────────────────────────────────
 
-_CUR := $(shell grep '^version' crates/coding-agent/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+_CUR := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 _MAJ := $(word 1,$(subst ., ,$(_CUR)))
 _MIN := $(word 2,$(subst ., ,$(_CUR)))
 _PAT := $(word 3,$(subst ., ,$(_CUR)))
 
 define _bump
 	@echo "Bumping $(_CUR) → $(1)..."
-	@for f in crates/*/Cargo.toml; do \
+	@for f in crates/*/Cargo.toml elph/Cargo.toml eclaw/Cargo.toml; do \
 	  sed -i '' 's/^version = "[0-9]*\.[0-9]*\.[0-9]*"/version = "$(1)"/' "$$f"; \
 	done
-	@sed -i '' 's/\(elph-agent = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' Cargo.toml
-	@sed -i '' 's/\(elph-ai = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' Cargo.toml
-	@sed -i '' 's/\(elph-tui = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' Cargo.toml
+	@sed -i '' 's/\(elph-agent = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' elph/Cargo.toml
+	@sed -i '' 's/\(elph-tui = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' elph/Cargo.toml
+	@sed -i '' 's/\(elph-ai = .* version = \)"[0-9]*\.[0-9]*\.[0-9]*"/\1"$(1)"/' crates/agent/Cargo.toml
 endef
 
 bump-patch: ## Bump patch (0.0.x)
