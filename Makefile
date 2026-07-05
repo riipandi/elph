@@ -143,9 +143,9 @@ define _bump
 	  sed -i '' 's/^version = "[0-9]*\.[0-9]*\.[0-9]*"/version = "$(1)"/' "$$f"; \
 	done
 	@sed -i '' \
-	  -e 's/\(elph-ai = { path = "crates\/ai", version = \)"[0-9.]*"/\1"$(1)"/' \
-	  -e 's/\(elph-agent = { path = "crates\/agent", version = \)"[0-9.]*"/\1"$(1)"/' \
-	  -e 's/\(elph-tui = { path = "crates\/tui", version = \)"[0-9.]*"/\1"$(1)"/' \
+	  -e 's/\(elph-ai = { path = "crates\/elph-ai", version = \)"[0-9.]*"/\1"$(1)"/' \
+	  -e 's/\(elph-agent = { path = "crates\/elph-agent", version = \)"[0-9.]*"/\1"$(1)"/' \
+	  -e 's/\(elph-tui = { path = "crates\/elph-tui", version = \)"[0-9.]*"/\1"$(1)"/' \
 	  Cargo.toml
 endef
 

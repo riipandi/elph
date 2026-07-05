@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/agent", "crates/ai", "crates/tui", "eclaw", "elph"]
+members = ["crates/elph-*", "eclaw", "elph"]
 
 [workspace.dependencies]
 # Planned — not yet wired into crates:
@@ -8,9 +8,9 @@ members = ["crates/agent", "crates/ai", "crates/tui", "eclaw", "elph"]
 # fff-search = "0.9.6"
 # rmcp = { version = "2.1.0", features = ["auth", "client"] }
 anyhow = "1.0.103"
-elph-ai = { path = "crates/ai", version = "0.0.12" }
-elph-agent = { path = "crates/agent", version = "0.0.12" }
-elph-tui = { path = "crates/tui", version = "0.0.12" }
+elph-ai = { path = "crates/elph-ai", version = "0.0.12" }
+elph-agent = { path = "crates/elph-agent", version = "0.0.12" }
+elph-tui = { path = "crates/elph-tui", version = "0.0.12" }
 axum = { version = "0.8.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.5", default-features = false, features = [
   "color",
