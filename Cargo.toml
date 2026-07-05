@@ -2,6 +2,12 @@
 resolver = "2"
 members = ["crates/elph-*", "eclaw", "elph"]
 
+[workspace.package]
+homepage = "https://elph.space"
+repository = "https://github.com/riipandi/elph"
+rust-version = "1.96"
+edition = "2024"
+
 [workspace.dependencies]
 # Planned — not yet wired into crates:
 # agent-client-protocol = "1.0.1"

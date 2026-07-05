@@ -3,12 +3,12 @@ name = "eclaw"
 version = "0.0.12"
 license = "MIT"
 description = "Personal AI assistant powered by Elph"
-homepage = "https://elph.space"
-repository = "https://github.com/riipandi/elph"
 keywords = ["ai", "assistant", "cli", "elph", "personal"]
 categories = ["command-line-utilities", "development-tools"]
-rust-version = "1.96"
-edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 publish = true
 
 [[bin]]
@@ -28,7 +28,7 @@ elph-agent.workspace = true
 rust-embed = { version = "8.9.0", optional = true }
 serde_json.workspace = true
 serde.workspace = true
-tokio = { workspace = true, features = ["net", "rt-multi-thread", "signal", "time"] }
+tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 tower-http.workspace = true
 
 [dev-dependencies]

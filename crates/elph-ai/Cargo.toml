@@ -3,12 +3,12 @@ name = "elph-ai"
 version = "0.0.12"
 license = "MIT"
 description = "AI provider integration for Elph agent"
-homepage = "https://elph.space"
-repository = "https://github.com/riipandi/elph"
 keywords = ["ai", "llm", "provider", "api", "elph"]
 categories = ["api-bindings", "development-tools"]
-rust-version = "1.96"
-edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 publish = true
 
 [lib]

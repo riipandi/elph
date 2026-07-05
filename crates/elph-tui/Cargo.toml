@@ -3,12 +3,12 @@ name = "elph-tui"
 version = "0.0.12"
 license = "MIT"
 description = "Terminal UI components for Elph agent"
-homepage = "https://elph.space"
-repository = "https://github.com/riipandi/elph"
 keywords = ["tui", "terminal", "prompt", "iocraft", "elph"]
 categories = ["command-line-utilities", "gui"]
-rust-version = "1.96"
-edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 publish = true
 
 [lib]

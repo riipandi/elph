@@ -3,12 +3,12 @@ name = "elph-agent"
 version = "0.0.12"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
-homepage = "https://elph.space"
-repository = "https://github.com/riipandi/elph"
 keywords = ["agent", "runtime", "ai", "coding", "elph"]
 categories = ["development-tools", "asynchronous"]
-rust-version = "1.96"
-edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 publish = true
 
 [lib]

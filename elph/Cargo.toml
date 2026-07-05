@@ -3,12 +3,12 @@ name = "elph"
 version = "0.0.12"
 license = "MIT"
 description = "Minimalist AI agent companion for coding"
-homepage = "https://elph.space"
-repository = "https://github.com/riipandi/elph"
 keywords = ["ai", "agent", "cli", "coding", "llm"]
 categories = ["command-line-utilities", "development-tools"]
-rust-version = "1.96"
-edition = "2024"
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 publish = true
 
 [[bin]]
@@ -24,7 +24,7 @@ elph-tui.workspace = true
 iocraft.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tokio = { workspace = true, features = ["net", "time"] }
+tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

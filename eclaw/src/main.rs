@@ -6,7 +6,8 @@ mod server;
 use anyhow::Result;
 use clap::Parser;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli = cmd::Cli::parse();
 
     if cli.version {

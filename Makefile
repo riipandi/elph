@@ -31,6 +31,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
+	@$(CARGO) bloat --release -n 20
 
 build: ## Build all application binaries (elph + eclaw)
 	@echo "Building workspace v$(PKG_VERSION) ($(BUILD_HASH))"
@@ -69,7 +70,7 @@ watch: ## Run eclaw with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(ECLAW_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
 
 test: ## Run all workspace tests
-	@$(CARGO) test --workspace $(or $(_RESIDUAL_),$(ARGS))
+	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)
@@ -117,6 +118,8 @@ clean: ## Clean build artifacts and caches
 
 prepare: ## Install required toolchain
 	@command -v cargo-binstall >/dev/null 2>&1 || $(CARGO) install cargo-binstall --locked
+	@command -v cargo-bloat >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-bloat
+	@command -v cargo-nextest >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-nextest
 	@command -v cargo-tarpaulin >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-tarpaulin
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
