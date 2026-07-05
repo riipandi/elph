@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use elph_agent::PathResolver;
+use elph_agent::utils::PathResolver;
 
 pub const RESOLVER: PathResolver = PathResolver {
     home_env: "ECLAW_HOME",

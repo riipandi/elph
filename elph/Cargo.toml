@@ -7,7 +7,6 @@ homepage = "https://elph.space"
 repository = "https://github.com/riipandi/elph"
 keywords = ["ai", "agent", "cli", "coding", "llm"]
 categories = ["command-line-utilities", "development-tools"]
-authors = ["Aris Ripandi <aris@duck.com>"]
 rust-version = "1.96"
 edition = "2024"
 publish = true

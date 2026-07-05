@@ -1,6 +1,4 @@
-use elph_tui::{
-    AgentMode, PromptInput, PromptSegmentKind, prompt_styled_segments, sigint_channel,
-};
+use elph_tui::{AgentMode, PromptInput, PromptSegmentKind, prompt_styled_segments, sigint_channel};
 use futures::{Stream, StreamExt, stream};
 use iocraft::prelude::*;
 use std::sync::{Arc, Mutex};

@@ -1,4 +1,5 @@
-use elph_agent::{utc_rfc3339_now, write_json_file};
+use elph_agent::utils::utc_rfc3339_now;
+use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 
 use super::InitError;

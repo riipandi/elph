@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use elph_agent::{PathResolver, ResolvedPaths};
+use elph_agent::utils::{PathResolver, ResolvedPaths};
 
 const PROJECT_DIR_NAME: &str = ".elph";
 

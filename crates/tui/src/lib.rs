@@ -19,10 +19,10 @@ pub use diff::{
 };
 pub use prompt::{
     AgentMode, ChatStream, ChatStreamProps, CollapsedPaste, DEFAULT_LINE_SCROLL_STEP, EditAction, MacEditAction,
-    PAGE_SCROLL_VIEWPORT, PromptInput, PromptInputProps, PromptSegmentKind,
-    PromptStyledSegment, PromptTranscript, PromptTranscriptProps, edit_action, is_force_quit_key, is_interrupt_key,
-    is_mode_cycle_key, is_newline_key, is_prompt_newline_key, is_quit_command, is_submit_key, is_theme_toggle_key,
-    mac_edit_action, prompt_styled_segments, reconcile_paste_offsets,
+    PAGE_SCROLL_VIEWPORT, PromptInput, PromptInputProps, PromptSegmentKind, PromptStyledSegment, PromptTranscript,
+    PromptTranscriptProps, edit_action, is_force_quit_key, is_interrupt_key, is_mode_cycle_key, is_newline_key,
+    is_prompt_newline_key, is_quit_command, is_submit_key, is_theme_toggle_key, mac_edit_action,
+    prompt_styled_segments, reconcile_paste_offsets,
 };
 pub use terminal::{
     SigintReceiver, disable_keyboard_enhancement, enable_keyboard_enhancement, key_combination, sigint_channel,
