@@ -3,10 +3,12 @@ mod app;
 mod bootstrap;
 mod datastore;
 pub mod exit_message;
+mod hooks;
 mod interrupt;
 mod migrations;
 mod paths;
 mod project;
+mod session;
 mod settings;
 
 pub use app::{EXIT_ERROR, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode, WAS_INTERRUPTED, run};
