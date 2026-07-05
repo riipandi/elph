@@ -9,9 +9,7 @@ fn health_ready(port: u16) -> bool {
         Err(_) => return false,
     };
     let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
-    let request = format!(
-        "GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
-    );
+    let request = format!("GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }

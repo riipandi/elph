@@ -29,7 +29,7 @@ cargo install --locked elph
 
 ```sh
 # Clone the repository
-git clone <repository-url>
+git clone REPOSITORY_URL
 cd elph
 
 # Install required toolchain
@@ -44,7 +44,7 @@ make run
 
 ### Publishing
 
-Publish all crates to crates.io (order matters: ai → agent → tui → elph):
+Publish all crates to crates.io (order matters: core → ai → agent → tui → elph):
 
 ```sh
 make publish
@@ -53,6 +53,7 @@ make publish
 Or publish individually:
 
 ```sh
+cargo publish -p elph-core
 cargo publish -p elph-ai
 cargo publish -p elph-agent
 cargo publish -p elph-tui
@@ -61,18 +62,6 @@ cargo publish -p elph
 ```
 
 **Note:** crates.io is immutable — once published, a version cannot be overwritten or deleted.
-
-Publish all crates to crates.io (order matters):
-
-```sh
-cargo publish -p elph-ai
-cargo publish -p elph-agent
-cargo publish -p elph-tui
-cargo publish -p eclaw
-cargo publish -p elph
-```
-
-**Note:** crates.io is immutable. Once published, a version cannot be overwritten or deleted.
 
 ## Documentation
 
@@ -89,5 +78,6 @@ This project licensed under the [MIT license][license-mit]. See the [LICENSE](./
 [![Made by](https://badgen.net/badge/icon/Aris%20Ripandi?label=Made+by&color=black&labelColor=black)](https://x.com/intent/follow?screen_name=riipandi)
 
 <!-- References -->
+
 [rust]: https://rust-lang.org/tools/install/
 [license-mit]: https://www.tldrlegal.com/license/mit-license

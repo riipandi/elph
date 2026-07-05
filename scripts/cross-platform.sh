@@ -12,33 +12,33 @@ source "${root}/scripts/cross-host.sh"
 
 case "$platform" in
 linux)
-  label="linux"
-  targets=(
-    x86_64-unknown-linux-gnu
-    aarch64-unknown-linux-gnu
-    x86_64-unknown-linux-musl
-    aarch64-unknown-linux-musl
-  )
-  ;;
+    label="linux"
+    targets=(
+        x86_64-unknown-linux-gnu
+        aarch64-unknown-linux-gnu
+        x86_64-unknown-linux-musl
+        aarch64-unknown-linux-musl
+    )
+    ;;
 macos)
-  label="macos"
-  targets=(
-    x86_64-apple-darwin
-    aarch64-apple-darwin
-  )
-  ;;
+    label="macos"
+    targets=(
+        x86_64-apple-darwin
+        aarch64-apple-darwin
+    )
+    ;;
 windows)
-  label="windows"
-  targets=(
-    x86_64-pc-windows-gnu
-    aarch64-pc-windows-msvc
-  )
-  ;;
+    label="windows"
+    targets=(
+        x86_64-pc-windows-gnu
+        aarch64-pc-windows-msvc
+    )
+    ;;
 *)
-  echo "unknown platform: $platform" >&2
-  echo "usage: cross-platform.sh <linux|macos|windows>" >&2
-  exit 1
-  ;;
+    echo "unknown platform: $platform" >&2
+    echo "usage: cross-platform.sh <linux|macos|windows>" >&2
+    exit 1
+    ;;
 esac
 
 _start=$(python3 -c "import time; print(int(time.time()*1000))")
@@ -48,8 +48,8 @@ echo
 cross_print_plan "${targets[@]}"
 
 for target in "${targets[@]}"; do
-  "${root}/scripts/cross-build.sh" "$target"
-  echo
+    "${root}/scripts/cross-build.sh" "$target"
+    echo
 done
 
 cross_print_release_tree "$root"

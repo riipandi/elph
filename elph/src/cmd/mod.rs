@@ -20,6 +20,7 @@ mod worktree;
 
 use clap::{Parser, Subcommand};
 use elph_agent::AgentBuilder;
+use elph_core::utils::path::AppPaths;
 
 use crate::runtime::ExitCode;
 
@@ -126,11 +127,11 @@ pub fn run(cli: &Cli) -> ExitCode {
     let _log_guard = match crate::runtime::Paths::resolve() {
         Ok(paths) => {
             let init = agent_builder.logs_dir(paths.logs_dir()).build();
-            crate::logger::init(init.logging)
+            elph_core::logger::init(init.logging)
         }
         Err(_) => {
             let init = agent_builder.build();
-            crate::logger::init(init.logging)
+            elph_core::logger::init(init.logging)
         }
     };
 

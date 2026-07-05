@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.12"
+version = "0.0.15"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 keywords = ["agent", "runtime", "ai", "coding", "elph"]
@@ -17,6 +17,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow.workspace = true
+elph-core.workspace = true
 indicatif.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -1,6 +1,9 @@
 use anyhow::Result;
 
-use super::{migrations, paths::Paths};
+use super::{
+    migrations,
+    paths::{AppPaths, Paths},
+};
 use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once, try_block_on};
 
 const DATASTORE_STEPS: u64 = 1;

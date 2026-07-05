@@ -23,81 +23,81 @@ is_windows=0
 
 case "$target" in
 x86_64-unknown-linux-gnu)
-  platform="linux-glibc"
-  arch="x86_64"
-  ;;
+    platform="linux-glibc"
+    arch="x86_64"
+    ;;
 aarch64-unknown-linux-gnu)
-  platform="linux-glibc"
-  arch="arm64"
-  ;;
+    platform="linux-glibc"
+    arch="arm64"
+    ;;
 x86_64-unknown-linux-musl)
-  platform="linux-musl"
-  arch="x86_64"
-  ;;
+    platform="linux-musl"
+    arch="x86_64"
+    ;;
 aarch64-unknown-linux-musl)
-  platform="linux-musl"
-  arch="arm64"
-  ;;
+    platform="linux-musl"
+    arch="arm64"
+    ;;
 x86_64-apple-darwin)
-  platform="macos"
-  arch="x86_64"
-  ;;
+    platform="macos"
+    arch="x86_64"
+    ;;
 aarch64-apple-darwin)
-  platform="macos"
-  arch="arm64"
-  ;;
+    platform="macos"
+    arch="arm64"
+    ;;
 x86_64-pc-windows-gnu | x86_64-pc-windows-msvc)
-  platform="win"
-  arch="x86_64"
-  pack="zip"
-  is_windows=1
-  ;;
+    platform="win"
+    arch="x86_64"
+    pack="zip"
+    is_windows=1
+    ;;
 aarch64-pc-windows-msvc)
-  platform="win"
-  arch="arm64"
-  pack="zip"
-  is_windows=1
-  ;;
+    platform="win"
+    arch="arm64"
+    pack="zip"
+    is_windows=1
+    ;;
 *)
-  echo "unsupported release target: $target" >&2
-  exit 1
-  ;;
+    echo "unsupported release target: $target" >&2
+    exit 1
+    ;;
 esac
 
 refresh_checksums() {
-  local dir="$1"
-  shift
-  (
-    cd "$dir"
-    rm -f SHA256SUMS
-    shopt -s nullglob
-    local -a files=()
-    if ((${#@} > 0)); then
-      local pattern
-      for pattern in "$@"; do
-        files+=($pattern)
-      done
-    else
-      local entry
-      for entry in *; do
-        [[ "$entry" == "SHA256SUMS" || ! -f "$entry" ]] && continue
-        files+=("$entry")
-      done
-    fi
-    if ((${#files[@]} == 0)); then
-      echo "no files to checksum in ${dir}" >&2
-      exit 1
-    fi
-    if command -v rapidhash >/dev/null 2>&1; then
-      for f in "${files[@]}"; do
-        printf '%s  %s\n' "$(rapidhash "$f")" "$f"
-      done >SHA256SUMS
-    elif command -v sha256sum >/dev/null 2>&1; then
-      sha256sum -- "${files[@]}" >SHA256SUMS
-    else
-      shasum -a 256 -- "${files[@]}" >SHA256SUMS
-    fi
-  )
+    local dir="$1"
+    shift
+    (
+        cd "$dir"
+        rm -f SHA256SUMS
+        shopt -s nullglob
+        local -a files=()
+        if ((${#@} > 0)); then
+            local pattern
+            for pattern in "$@"; do
+                files+=($pattern)
+            done
+        else
+            local entry
+            for entry in *; do
+                [[ "$entry" == "SHA256SUMS" || ! -f "$entry" ]] && continue
+                files+=("$entry")
+            done
+        fi
+        if ((${#files[@]} == 0)); then
+            echo "no files to checksum in ${dir}" >&2
+            exit 1
+        fi
+        if command -v rapidhash >/dev/null 2>&1; then
+            for f in "${files[@]}"; do
+                printf '%s  %s\n' "$(rapidhash "$f")" "$f"
+            done >SHA256SUMS
+        elif command -v sha256sum >/dev/null 2>&1; then
+            sha256sum -- "${files[@]}" >SHA256SUMS
+        else
+            shasum -a 256 -- "${files[@]}" >SHA256SUMS
+        fi
+    )
 }
 
 base_name="${bin}-${platform}-${arch}"
@@ -110,37 +110,37 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 if [[ "$is_windows" == 1 ]]; then
-  src="${src}.exe"
-  binary_name="${base_name}.exe"
-  binary_path="${binaries_dir}/${binary_name}"
+    src="${src}.exe"
+    binary_name="${base_name}.exe"
+    binary_path="${binaries_dir}/${binary_name}"
 fi
 
 if [[ ! -f "$src" ]]; then
-  echo "binary not found: $src" >&2
-  exit 1
+    echo "binary not found: $src" >&2
+    exit 1
 fi
 
 cp "$src" "$binary_path"
 chmod +x "$binary_path"
 
 if [[ "$pack" == "zip" ]]; then
-  cp "$src" "${tmp}/${bin}.exe"
-  (cd "$tmp" && zip -q -j "$artifact_path" "${bin}.exe")
+    cp "$src" "${tmp}/${bin}.exe"
+    (cd "$tmp" && zip -q -j "$artifact_path" "${bin}.exe")
 else
-  cp "$src" "${tmp}/${bin}"
-  chmod +x "${tmp}/${bin}"
-  tar -C "$tmp" -czf "$artifact_path" "$bin"
+    cp "$src" "${tmp}/${bin}"
+    chmod +x "${tmp}/${bin}"
+    tar -C "$tmp" -czf "$artifact_path" "$bin"
 fi
 
 refresh_checksums "$binaries_dir" eclaw-* elph-*
 refresh_checksums "$archives_dir" '*.tar.gz' '*.zip'
 
 file_bytes() {
-  if stat -f%z "$1" >/dev/null 2>&1; then
-    stat -f%z "$1"
-  else
-    stat -c%s "$1"
-  fi
+    if stat -f%z "$1" >/dev/null 2>&1; then
+        stat -f%z "$1"
+    else
+        stat -c%s "$1"
+    fi
 }
 
 binary_bytes=$(file_bytes "$binary_path")

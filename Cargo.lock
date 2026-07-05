@@ -762,23 +762,21 @@ dependencies = [
 
 [[package]]
 name = "eclaw"
-version = "0.0.12"
+version = "0.0.15"
 dependencies = [
  "anyhow",
  "axum",
  "clap",
  "elph-agent",
+ "elph-core",
  "rust-embed",
  "serde",
  "serde_json",
  "tempfile",
- "time",
  "tokio",
  "tower",
  "tower-http",
  "tracing",
- "tracing-appender",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -789,30 +787,29 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "elph"
-version = "0.0.12"
+version = "0.0.15"
 dependencies = [
  "anyhow",
  "clap",
  "cuid2",
  "elph-agent",
+ "elph-core",
  "elph-tui",
  "iocraft",
  "libc",
  "serde",
  "serde_json",
  "tempfile",
- "time",
  "tokio",
  "tracing",
- "tracing-appender",
- "tracing-subscriber",
 ]
 
 [[package]]
 name = "elph-agent"
-version = "0.0.12"
+version = "0.0.15"
 dependencies = [
  "anyhow",
+ "elph-core",
  "indicatif",
  "serde",
  "serde_json",
@@ -823,14 +820,27 @@ dependencies = [
 
 [[package]]
 name = "elph-ai"
-version = "0.0.12"
+version = "0.0.15"
 dependencies = [
  "anyhow",
 ]
 
 [[package]]
+name = "elph-core"
+version = "0.0.3"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "time",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "elph-tui"
-version = "0.0.12"
+version = "0.0.15"
 dependencies = [
  "anyhow",
  "crokey",

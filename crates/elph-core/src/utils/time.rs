@@ -1,3 +1,5 @@
+//! UTC timestamp helpers.
+
 /// Returns the current UTC timestamp in RFC 3339 format.
 pub fn utc_rfc3339_now() -> String {
     let duration = std::time::SystemTime::now()

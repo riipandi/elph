@@ -1,6 +1,5 @@
 mod agent_mode;
 mod app;
-mod bundled;
 mod datastore;
 pub mod exit_message;
 mod interrupt;
@@ -9,8 +8,6 @@ mod migrations;
 mod paths;
 mod project;
 mod settings;
-mod trust;
-mod version;
 
 pub use app::{EXIT_ERROR, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode, WAS_INTERRUPTED, run};
 #[cfg(unix)]

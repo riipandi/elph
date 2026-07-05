@@ -1,6 +1,7 @@
+mod options;
 mod rotation;
 
-use elph_agent::LoggingOptions;
+pub use options::{LogRotation, LoggingOptions};
 use tracing_appender::non_blocking::{NonBlockingBuilder, WorkerGuard};
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 

@@ -78,6 +78,98 @@ impl ResolvedPaths {
     }
 }
 
+/// Common config/data path helpers shared by Elph applications.
+pub trait AppPaths {
+    fn config_dir(&self) -> &PathBuf;
+    fn data_dir(&self) -> &PathBuf;
+
+    fn settings_path(&self) -> PathBuf {
+        self.config_dir().join("settings.json")
+    }
+
+    fn trust_path(&self) -> PathBuf {
+        self.config_dir().join("trust.json")
+    }
+
+    fn bundled_dir(&self) -> PathBuf {
+        self.config_dir().join("bundled")
+    }
+
+    fn bundled_manifest_path(&self) -> PathBuf {
+        self.bundled_dir().join("manifest.json")
+    }
+
+    fn prompts_dir(&self) -> PathBuf {
+        self.config_dir().join("prompts")
+    }
+
+    fn providers_dir(&self) -> PathBuf {
+        self.config_dir().join("providers")
+    }
+
+    fn sessions_dir(&self) -> PathBuf {
+        self.config_dir().join("sessions")
+    }
+
+    fn skills_dir(&self) -> PathBuf {
+        self.config_dir().join("skills")
+    }
+
+    fn worktrees_dir(&self) -> PathBuf {
+        self.config_dir().join("worktrees")
+    }
+
+    fn attachments_dir(&self) -> PathBuf {
+        self.data_dir().join("attachments")
+    }
+
+    fn downloads_dir(&self) -> PathBuf {
+        self.data_dir().join("downloads")
+    }
+
+    fn logs_dir(&self) -> PathBuf {
+        self.data_dir().join("logs")
+    }
+
+    fn vendor_dir(&self) -> PathBuf {
+        self.data_dir().join("vendor")
+    }
+
+    fn metadata_db_path(&self) -> PathBuf {
+        self.data_dir().join("metadata.db")
+    }
+
+    fn version_path(&self) -> PathBuf {
+        self.data_dir().join("version.json")
+    }
+
+    fn bundled_content_dirs(&self) -> [PathBuf; 4] {
+        let bundled = self.bundled_dir();
+        [
+            bundled.join("agents"),
+            bundled.join("personas"),
+            bundled.join("skills"),
+            bundled.join("user-guide"),
+        ]
+    }
+
+    fn standard_required_dirs(&self) -> Vec<PathBuf> {
+        let mut dirs = self.bundled_content_dirs().into_iter().collect::<Vec<_>>();
+        dirs.extend([
+            self.prompts_dir(),
+            self.providers_dir(),
+            self.sessions_dir(),
+            self.skills_dir(),
+            self.worktrees_dir(),
+            self.attachments_dir(),
+            self.downloads_dir(),
+            self.logs_dir(),
+            self.vendor_dir(),
+        ]);
+        dirs
+    }
+}
+
 fn env_path(name: &str) -> Option<PathBuf> {
     let value = std::env::var(name).ok()?;
     let trimmed = value.trim();
@@ -104,6 +196,21 @@ mod tests {
         data_dir_name: "test-agent",
     };
 
+    struct TestPaths {
+        config_dir: PathBuf,
+        data_dir: PathBuf,
+    }
+
+    impl AppPaths for TestPaths {
+        fn config_dir(&self) -> &PathBuf {
+            &self.config_dir
+        }
+
+        fn data_dir(&self) -> &PathBuf {
+            &self.data_dir
+        }
+    }
+
     #[test]
     fn resolves_from_explicit_dirs() {
         let paths = ResolvedPaths::from_dirs(PathBuf::from("/cfg"), PathBuf::from("/data"), PathBuf::from("/repo"));
@@ -117,5 +224,20 @@ mod tests {
     fn resolver_exposes_static_names() {
         assert_eq!(TEST_RESOLVER.config_dir_name, ".test-agent");
         assert_eq!(TEST_RESOLVER.data_dir_name, "test-agent");
+    }
+
+    #[test]
+    fn app_paths_builds_expected_file_paths() {
+        let paths = TestPaths {
+            config_dir: PathBuf::from("/cfg"),
+            data_dir: PathBuf::from("/data"),
+        };
+
+        assert_eq!(paths.metadata_db_path(), PathBuf::from("/data/metadata.db"));
+        assert_eq!(
+            paths.bundled_manifest_path(),
+            PathBuf::from("/cfg/bundled/manifest.json")
+        );
+        assert_eq!(paths.standard_required_dirs().len(), 13);
     }
 }

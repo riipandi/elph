@@ -16,36 +16,36 @@ tool="$(cross_tool_for "$target")"
 skip_reason=""
 
 if [[ "$tool" == "cross" ]] && ! cross_image_published "$target"; then
-  tool="skip"
-  skip_reason="no cross-rs image"
+    tool="skip"
+    skip_reason="no cross-rs image"
 fi
 
 if [[ "$tool" == "skip" ]]; then
-  if [[ -z "$skip_reason" ]]; then
-    skip_reason="not available on this host"
-  fi
-  printf '► %s  (skip — %s)\n' "$target" "$skip_reason"
-  exit 0
+    if [[ -z "$skip_reason" ]]; then
+        skip_reason="not available on this host"
+    fi
+    printf '► %s  (skip — %s)\n' "$target" "$skip_reason"
+    exit 0
 fi
 
 if [[ "$tool" == "cross" && -z "$cross_bin" ]]; then
-  echo "cross is required for ${target}; run: make prepare" >&2
-  exit 1
+    echo "cross is required for ${target}; run: make prepare" >&2
+    exit 1
 fi
 
 if [[ -z "$cargo_bin" ]]; then
-  echo "cargo is required" >&2
-  exit 1
+    echo "cargo is required" >&2
+    exit 1
 fi
 
 builder="$cargo_bin"
 if [[ "$tool" == "cross" ]]; then
-  builder="$cross_bin"
+    builder="$cross_bin"
 fi
 
 cross_log_target "$target" "$tool"
 
 for pkg in eclaw elph; do
-  "$builder" build --release -q -p "$pkg" --target "$target"
-  "$stage" "$target" "$pkg"
+    "$builder" build --release -q -p "$pkg" --target "$target"
+    "$stage" "$target" "$pkg"
 done

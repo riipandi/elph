@@ -4,7 +4,8 @@ ELPH_BIN     := elph
 ECLAW_BIN    := eclaw
 CARGO        := $$(which cargo)
 CROSS        := $$(which cross)
-PKG_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
+ECLAW_VERSION := $(shell grep '^version' eclaw/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS     := $(ELPH_BIN) $(ECLAW_BIN)
 INSTALL_DIR  := $(HOME)/.local/bin
@@ -25,7 +26,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 .PHONY: build run watch test lint fmt clean check coverage help
 .PHONY: prepare cross cross-pull release
 .PHONY: build-linux build-macos build-windows
-.PHONY: bump-major bump-minor bump-patch publish
+.PHONY: bump bump-elph bump-eclaw bump-libs publish publish-dry-run
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) bloat --release -n 20
 
 build: ## Build all application binaries (elph + eclaw)
-	@echo "Building workspace v$(PKG_VERSION) ($(BUILD_HASH))"
+	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION) ($(BUILD_HASH))"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	$(CARGO) build --release 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
@@ -134,40 +135,94 @@ prepare: ## Install required toolchain
 	fi
 
 # ─── Versioning ────────────────────────────────────────────────────────────────
+# Independent version streams:
+#   bump-elph  — elph/Cargo.toml
+#   bump-eclaw — eclaw/Cargo.toml
+#   bump-libs  — crates/elph-{core,agent,ai,tui} (+ workspace pins)
+#   bump       — bump-libs + bump-elph + bump-eclaw
+#
+# Usage (level is required):
+#   make bump       patch|minor|major
+#   make bump-elph  patch|minor|major
+#   make bump-eclaw patch|minor|major
+#   make bump-libs  patch|minor|major
 
-_CUR := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-_MAJ := $(word 1,$(subst ., ,$(_CUR)))
-_MIN := $(word 2,$(subst ., ,$(_CUR)))
-_PAT := $(word 3,$(subst ., ,$(_CUR)))
+ifeq ($(UNAME_S),Darwin)
+  SED_INPLACE := sed -i ''
+else
+  SED_INPLACE := sed -i
+endif
 
-define _bump
-	@echo "Bumping $(_CUR) → $(1)..."
-	@for f in crates/*/Cargo.toml elph/Cargo.toml eclaw/Cargo.toml; do \
-	  sed -i '' 's/^version = "[0-9]*\.[0-9]*\.[0-9]*"/version = "$(1)"/' "$$f"; \
-	done
-	@sed -i '' \
-	  -e 's/\(elph-ai = { path = "crates\/elph-ai", version = \)"[0-9.]*"/\1"$(1)"/' \
-	  -e 's/\(elph-agent = { path = "crates\/elph-agent", version = \)"[0-9.]*"/\1"$(1)"/' \
-	  -e 's/\(elph-tui = { path = "crates\/elph-tui", version = \)"[0-9.]*"/\1"$(1)"/' \
-	  Cargo.toml
+_BUMP_LEVEL := $(firstword $(_RESIDUAL_))
+_BUMP_PY    := python3 -c "import sys;m,M,p=sys.argv[1].split('.');l=sys.argv[2];print(f'{m}.{M}.{int(p)+1}' if l=='patch' else f'{m}.{int(M)+1}.0' if l=='minor' else f'{int(m)+1}.0.0')"
+
+_LIBS := elph-core elph-agent elph-ai elph-tui
+
+define _require_bump_level
+	@case "$(1)" in patch|minor|major) ;; *) \
+	  echo "Usage: make $(2) {patch|minor|major}" >&2; \
+	  exit 1;; esac
 endef
 
-bump-patch: ## Bump patch (0.0.x)
-	$(call _bump,$(_MAJ).$(_MIN).$(shell expr $(_PAT) + 1))
+define _bump_manifest
+	@_f="$(1)"; _l="$(2)"; \
+	_cur=$$(grep '^version = ' "$$_f" | head -1 | sed 's/.*= *"\(.*\)"/\1/'); \
+	_new=$$($(_BUMP_PY) "$$_cur" "$$_l"); \
+	$(SED_INPLACE) "s/^version = \"[^\"]*\"/version = \"$$_new\"/" "$$_f"; \
+	echo "  $$_f: $$_cur → $$_new"
+endef
 
-bump-minor: ## Bump minor (0.x.0)
-	$(call _bump,$(_MAJ).$(shell expr $(_MIN) + 1).0)
+define _sync_workspace_pin
+	@_crate="$(1)"; \
+	_ver=$$(grep '^version = ' "crates/$$_crate/Cargo.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/'); \
+	$(SED_INPLACE) "s/\($$_crate = { path = \"crates\/$$_crate\", version = \)\"[^\"]*\"/\1\"$$_ver\"/" Cargo.toml; \
+	echo "  Cargo.toml: $$_crate → $$_ver"
+endef
 
-bump-major: ## Bump major (x.0.0)
-	$(call _bump,$(shell expr $(_MAJ) + 1).0.0)
+bump-elph: ## Bump elph app version (patch|minor|major required)
+	$(call _require_bump_level,$(_BUMP_LEVEL),bump-elph)
+	@echo "bump-elph ($(_BUMP_LEVEL))..."
+	$(call _bump_manifest,elph/Cargo.toml,$(_BUMP_LEVEL))
+	@echo "Done."
 
-publish: ## Publish all crates to crates.io
-	@echo "Publishing elph-ai v$(PKG_VERSION) to crates.io" && $(CARGO) publish --quiet -p elph-ai --allow-dirty 2>&1
-	@echo "Publishing elph-agent v$(PKG_VERSION) to crates.io" && $(CARGO) publish --quiet -p elph-agent --allow-dirty 2>&1
-	@echo "Publishing elph-tui v$(PKG_VERSION) to crates.io" && $(CARGO) publish --quiet -p elph-tui --allow-dirty 2>&1
-	@echo "Publishing elph v$(PKG_VERSION) to crates.io" && $(CARGO) publish --quiet -p elph --allow-dirty 2>&1
-	@echo "Publishing eclaw v$(PKG_VERSION) to crates.io" && $(CARGO) publish --quiet -p eclaw --allow-dirty 2>&1
-	@echo "All crates published."
+bump-eclaw: ## Bump eclaw app version (patch|minor|major required)
+	$(call _require_bump_level,$(_BUMP_LEVEL),bump-eclaw)
+	@echo "bump-eclaw ($(_BUMP_LEVEL))..."
+	$(call _bump_manifest,eclaw/Cargo.toml,$(_BUMP_LEVEL))
+	@echo "Done."
+
+bump-libs: ## Bump all library crates independently (patch|minor|major required)
+	$(call _require_bump_level,$(_BUMP_LEVEL),bump-libs)
+	@echo "bump-libs ($(_BUMP_LEVEL))..."
+	@for c in $(_LIBS); do \
+	  $(MAKE) --no-print-directory _bump_lib LIB=$$c LEVEL=$(_BUMP_LEVEL); \
+	done
+	@for c in $(_LIBS); do \
+	  $(MAKE) --no-print-directory _sync_lib_pin LIB=$$c; \
+	done
+	@echo "Done."
+
+bump: ## Bump all libs and apps independently (patch|minor|major required)
+	$(call _require_bump_level,$(_BUMP_LEVEL),bump)
+	@echo "bump ($(_BUMP_LEVEL))..."
+	@$(MAKE) --no-print-directory bump-libs $(_BUMP_LEVEL)
+	@$(MAKE) --no-print-directory bump-elph $(_BUMP_LEVEL)
+	@$(MAKE) --no-print-directory bump-eclaw $(_BUMP_LEVEL)
+	@echo "Done."
+
+_bump_lib:
+	$(call _bump_manifest,crates/$(LIB)/Cargo.toml,$(LEVEL))
+
+_sync_lib_pin:
+	$(call _sync_workspace_pin,$(LIB))
+
+.PHONY: _bump_lib _sync_lib_pin
+
+publish: ## Publish to crates.io (elph-core first, then libs, then apps)
+	@CARGO="$(CARGO)" ./scripts/publish-crates.sh
+
+publish-dry-run: ## Dry-run publish checks (elph-core first)
+	@DRY_RUN=1 CARGO="$(CARGO)" ./scripts/publish-crates.sh
 
 # ─── Help ───────────────────────────────────────────────────────────────────
 

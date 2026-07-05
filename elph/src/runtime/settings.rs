@@ -1,7 +1,7 @@
 use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 
-use super::paths::Paths;
+use super::paths::{AppPaths, Paths};
 use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

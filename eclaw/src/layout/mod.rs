@@ -1,18 +1,17 @@
-mod bundled;
 mod datastore;
 mod migrations;
 mod paths;
 mod settings;
-mod trust;
-mod version;
 
 use anyhow::Result;
 use elph_agent::{InitProgress, ensure_dirs, try_block_on};
+use elph_core::{BundledManifest, TrustStore, VersionFile};
 
 pub use datastore::ensure_blocking as ensure_datastore_blocking;
 pub use paths::Paths;
 
 const INIT_STEPS: u64 = 3;
+const APP_ID: &str = "eclaw";
 
 /// Create required directories and default files for a fresh Eclaw install.
 pub async fn ensure(app_version: &str) -> Result<Paths> {
@@ -40,9 +39,7 @@ pub fn ensure_layout_blocking(app_version: &str) -> Result<Paths> {
 
 async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgress) -> Result<()> {
     progress.advance("Creating directories");
-    let mut dirs = vec![paths.config_dir.clone(), paths.data_dir.clone()];
-    dirs.extend(paths.required_dirs());
-    ensure_dirs(&dirs)?;
+    ensure_dirs(&paths.required_dirs())?;
 
     progress.advance("Writing configuration");
     ensure_files(paths, app_version)?;
@@ -52,15 +49,16 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
 
 fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
     settings::Settings::ensure(paths)?;
-    trust::TrustStore::ensure(paths)?;
-    version::VersionFile::ensure(paths, app_version)?;
-    bundled::BundledManifest::ensure(paths, app_version)?;
+    TrustStore::ensure(paths)?;
+    VersionFile::ensure(paths, app_version)?;
+    BundledManifest::ensure(paths, APP_ID, app_version)?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_core::utils::path::AppPaths;
 
     #[tokio::test]
     async fn ensure_creates_eclaw_layout() {

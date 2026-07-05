@@ -1,10 +1,12 @@
 use anyhow::Result;
 use elph_agent::{InitProgress, ensure_dirs, try_block_on};
+use elph_core::{BundledManifest, TrustStore, VersionFile};
 
 pub use super::datastore::ensure_blocking as ensure_datastore_blocking;
 pub use super::paths::Paths;
 
 const INIT_STEPS: u64 = 3;
+const APP_ID: &str = "elph";
 
 /// Create required directories and default files for a fresh Elph install.
 pub async fn ensure(app_version: &str) -> Result<Paths> {
@@ -41,16 +43,14 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
 }
 
 fn ensure_layout_dirs(paths: &Paths) -> Result<()> {
-    let mut dirs = vec![paths.config_dir().clone(), paths.data_dir().clone()];
-    dirs.extend(paths.required_dirs());
-    ensure_dirs(&dirs)
+    ensure_dirs(&paths.required_dirs())
 }
 
 fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
     super::settings::Settings::ensure(paths)?;
-    super::trust::TrustStore::ensure(paths)?;
-    super::version::VersionFile::ensure(paths, app_version)?;
-    super::bundled::BundledManifest::ensure(paths, app_version)?;
+    TrustStore::ensure(paths)?;
+    VersionFile::ensure(paths, app_version)?;
+    BundledManifest::ensure(paths, APP_ID, app_version)?;
     super::project::ensure(paths)?;
     Ok(())
 }
@@ -58,6 +58,7 @@ fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_core::utils::path::AppPaths;
 
     #[tokio::test]
     async fn ensure_creates_full_layout() {

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
 
-use elph_agent::LogRotation;
+use crate::logger::LogRotation;
 use time::{Duration, OffsetDateTime, Time};
 
 pub struct RollingWriter {
@@ -154,7 +154,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn period_key_uses_compact_timestamp() {
+        use time::{Date, Month};
+        let timestamp = Date::from_calendar_date(2024, Month::July, 15)
+            .expect("valid date")
+            .with_hms(13, 45, 0)
+            .expect("valid time")
+            .assume_utc();
+        assert_eq!(period_key(LogRotation::Hourly, timestamp), "20240715_13");
+    }
+
+    #[test]
     fn log_filename_matches_expected_pattern() {
+        assert_eq!(log_filename("elph", "20240715_13"), "elph-20240715_13.jsonl");
         assert_eq!(log_filename("eclaw", "20240715_00"), "eclaw-20240715_00.jsonl");
     }
 }
