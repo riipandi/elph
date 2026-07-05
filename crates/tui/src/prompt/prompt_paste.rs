@@ -1,3 +1,4 @@
+use super::paste_guard::PasteGuard;
 use std::ops::Range;
 use std::time::{Duration, Instant};
 
@@ -44,6 +45,72 @@ impl PendingPaste {
 
     pub fn slice<'a>(&self, text: &'a str) -> &'a str {
         &text[self.start..self.end.min(text.len())]
+    }
+}
+
+/// Mutable paste-insert state for the pure char-by-char reducer.
+#[derive(Debug, Clone, Default)]
+pub struct PasteInsertCtx {
+    pub text: String,
+    pub cursor: usize,
+    pub pending: Option<PendingPaste>,
+    pub pastes: Vec<CollapsedPaste>,
+    pub guard: PasteGuard,
+    /// Minimum byte index for a new pending paste (byte after a typed separator space).
+    pub separator_after: Option<usize>,
+}
+
+/// Computes the byte offset for a new [`PendingPaste`] without swallowing a typed separator.
+pub fn pending_paste_start(
+    guard: &PasteGuard,
+    cursor_before: usize,
+    separator_after: Option<usize>,
+    now: Instant,
+) -> usize {
+    let was_in_burst = guard.is_in_burst(now);
+    let mut start = cursor_before;
+    if guard.is_paste_active(now) && was_in_burst && guard.rapid_insert_count() > 1 {
+        start = guard.burst_run_start(cursor_before);
+    }
+    if let Some(min_start) = separator_after {
+        start = start.max(min_start);
+    }
+    start
+}
+
+/// Inserts one pasted/typed character and updates pending-paste tracking.
+pub fn apply_pasted_char_pure(ctx: &mut PasteInsertCtx, ch: char, now: Instant) {
+    let was_in_burst = ctx.guard.is_in_burst(now);
+    let paste_active_before = ctx.guard.is_paste_active(now);
+    let prev_len = ctx.text.len();
+    let cursor_before = ctx.cursor;
+
+    if ctx.cursor == ctx.text.len() {
+        ctx.text.push(ch);
+    } else {
+        ctx.text.insert(ctx.cursor, ch);
+    }
+    let inserted = ch.len_utf8();
+    shift_paste_offsets_for_insert(&mut ctx.pastes, cursor_before, inserted);
+    ctx.cursor += inserted;
+    ctx.guard.record_change(prev_len, ctx.text.len(), now);
+
+    if ch == ' ' && !was_in_burst && !paste_active_before {
+        ctx.guard.reset_burst_chain();
+        ctx.separator_after = Some(ctx.cursor);
+    }
+
+    let track_paste = ctx.guard.is_paste_active(now) || ctx.guard.is_in_burst(now);
+    if track_paste {
+        match ctx.pending.as_mut() {
+            Some(run) => run.extend(ctx.cursor, now),
+            None => {
+                let start = pending_paste_start(&ctx.guard, cursor_before, ctx.separator_after, now);
+                ctx.pending = Some(PendingPaste::new(start, ctx.cursor, now));
+            }
+        }
+    } else {
+        ctx.pending = None;
     }
 }
 
@@ -120,7 +187,8 @@ pub fn format_paste_summary(full: &str, preview_width: usize) -> String {
     let preview_budget = preview_width.saturating_sub(marker.chars().count());
     let preview = first_line_preview(full, preview_budget);
     if preview.is_empty() {
-        marker.trim_end().to_string()
+        // Keep the canonical suffix (trailing space) so display styling can parse the marker.
+        marker
     } else {
         format!("{marker}{preview}")
     }
@@ -340,12 +408,17 @@ pub fn find_paste_marker_for_display(text: &str) -> Option<PasteDisplayMarker> {
         .last()
         .map(|(idx, ch)| idx + ch.len_utf8())?;
     let after_digits = &after_prefix[digits_end..];
-    if !after_digits.starts_with(MARKER_SUFFIX) {
+    let label_end = if after_digits.starts_with(MARKER_SUFFIX) {
+        start + MARKER_PREFIX.len() + digits_end + MARKER_SUFFIX.len()
+    } else if after_digits.starts_with(" lines]") {
+        start + MARKER_PREFIX.len() + digits_end + " lines]".len()
+    } else {
         return None;
-    }
-    let label_end = start + MARKER_PREFIX.len() + digits_end + MARKER_SUFFIX.len();
+    };
     let label = text[start..label_end].to_string();
-    let preview = text[label_end..].trim_end().to_string();
+    let preview_raw = &text[label_end..];
+    let preview_end = preview_raw.find(MARKER_PREFIX).unwrap_or(preview_raw.len());
+    let preview = preview_raw[..preview_end].trim_end().to_string();
     Some(PasteDisplayMarker {
         start,
         end: label_end + preview.len(),
@@ -426,6 +499,22 @@ mod tests {
     fn collapses_multiline_paste() {
         assert!(should_collapse_paste("a\nb"));
         assert!(!should_collapse_paste("short"));
+    }
+
+    #[test]
+    fn marker_preview_stops_before_next_chip() {
+        let text = "[Pasted: 02 lines] alpha[Pasted: 02 lines] gamma";
+        let marker = find_paste_marker_for_display(text).expect("first marker");
+        assert_eq!(marker.preview, "alpha");
+        let second = find_paste_marker_for_display(&text[marker.end..]).expect("second marker");
+        assert_eq!(second.preview, "gamma");
+    }
+
+    #[test]
+    fn narrow_summary_keeps_marker_suffix_for_styling() {
+        let summary = format_paste_summary("alpha\nbeta", 18);
+        assert!(summary.ends_with(" lines] "));
+        assert!(find_paste_marker_for_display(&summary).is_some());
     }
 
     #[test]
@@ -609,6 +698,54 @@ mod tests {
         let next = remove_paste_block_and_adjust(&display, range, &mut pastes).expect("delete");
         assert_eq!(next, "X");
         assert!(pastes.is_empty());
+    }
+
+    #[test]
+    fn dual_collapsed_pastes_preserve_separator_space() {
+        let t0 = Instant::now();
+        let step = Duration::from_millis(1);
+        let mut ctx = PasteInsertCtx::default();
+        let wrap = 40;
+
+        for (i, ch) in "alpha\nbeta".chars().enumerate() {
+            apply_pasted_char_pure(&mut ctx, ch, t0 + step * (i as u32 + 1));
+        }
+        ctx.pending = finalize_pending_paste(
+            ctx.pending.take(),
+            &mut ctx.text,
+            &mut ctx.cursor,
+            wrap,
+            &mut ctx.pastes,
+            true,
+        );
+        ctx.guard.release_paste_active();
+
+        apply_pasted_char_pure(&mut ctx, ' ', t0 + Duration::from_millis(50));
+
+        for (i, ch) in "gamma\ndelta".chars().enumerate() {
+            apply_pasted_char_pure(&mut ctx, ch, t0 + Duration::from_millis(51 + i as u64));
+        }
+        ctx.pending = finalize_pending_paste(
+            ctx.pending.take(),
+            &mut ctx.text,
+            &mut ctx.cursor,
+            wrap,
+            &mut ctx.pastes,
+            true,
+        );
+
+        assert!(
+            ctx.text.contains("alpha [Pasted:"),
+            "separator must stay between chips, got: {:?}",
+            ctx.text
+        );
+        assert_eq!(ctx.pastes.len(), 2);
+        assert_eq!(
+            ctx.text.as_bytes().get(ctx.pastes[1].offset - 1),
+            Some(&b' '),
+            "byte before second chip must be a space, text={:?}",
+            ctx.text
+        );
     }
 
     #[test]

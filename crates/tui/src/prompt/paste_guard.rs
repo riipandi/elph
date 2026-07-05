@@ -60,6 +60,25 @@ impl PasteGuard {
         self.last_change_at = None;
     }
 
+    /// Breaks a rapid-insert chain (e.g. typed space between collapsed paste chips).
+    pub fn reset_burst_chain(&mut self) {
+        self.rapid_insert_count = 0;
+        self.last_change_at = None;
+    }
+
+    pub fn rapid_insert_count(&self) -> u32 {
+        self.rapid_insert_count
+    }
+
+    /// Byte offset where the current rapid-insert run began (includes the first keystroke).
+    pub fn burst_run_start(&self, cursor_before: usize) -> usize {
+        if self.rapid_insert_count <= 1 {
+            cursor_before
+        } else {
+            cursor_before.saturating_sub(self.rapid_insert_count as usize - 1)
+        }
+    }
+
     /// Returns `true` while keystrokes are still arriving as one paste burst.
     pub fn is_in_burst(&self, at: Instant) -> bool {
         self.last_change_at
@@ -160,6 +179,26 @@ mod tests {
         }
         assert!(guard.is_paste_active(t0 + Duration::from_millis(200)));
         assert!(!guard.is_paste_active(t0 + Duration::from_secs(2)));
+    }
+
+    #[test]
+    fn typed_space_breaks_burst_chain() {
+        let t0 = Instant::now();
+        let mut guard = PasteGuard::default();
+        guard.record_change(20, 21, t0);
+        guard.reset_burst_chain();
+        guard.record_change(21, 22, t0 + Duration::from_millis(1));
+        guard.record_change(22, 23, t0 + Duration::from_millis(2));
+        assert_eq!(guard.burst_run_start(23), 22);
+    }
+
+    #[test]
+    fn burst_run_start_includes_first_keystroke() {
+        let t0 = Instant::now();
+        let mut guard = PasteGuard::default();
+        guard.record_change(0, 1, t0);
+        guard.record_change(1, 2, t0 + Duration::from_millis(5));
+        assert_eq!(guard.burst_run_start(1), 0);
     }
 
     #[test]

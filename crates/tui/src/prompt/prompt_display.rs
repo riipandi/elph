@@ -1,7 +1,39 @@
 use super::prompt_buffer::{PromptBuffer, expand_for_display};
-use super::prompt_paste::{self, CollapsedPaste};
+use super::prompt_paste::{self, CollapsedPaste, reconcile_paste_offsets};
 use crate::theme::Theme;
 use iocraft::prelude::*;
+
+/// Styled segment kind for prompt display (exported for integration tests).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PromptSegmentKind {
+    Text,
+    PasteLabel,
+    PastePreview,
+}
+
+/// Byte-range segment with styling kind (exported for integration tests).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PromptStyledSegment {
+    pub start: usize,
+    pub end: usize,
+    pub kind: PromptSegmentKind,
+}
+
+/// Returns styled byte ranges for `value`, sorted by offset.
+pub fn prompt_styled_segments(value: &str, pastes: &[CollapsedPaste]) -> Vec<PromptStyledSegment> {
+    styled_segments(value, pastes)
+        .into_iter()
+        .map(|segment| PromptStyledSegment {
+            start: segment.start,
+            end: segment.end,
+            kind: match segment.style {
+                SegmentStyle::Text => PromptSegmentKind::Text,
+                SegmentStyle::PasteLabel => PromptSegmentKind::PasteLabel,
+                SegmentStyle::PastePreview => PromptSegmentKind::PastePreview,
+            },
+        })
+        .collect()
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SegmentStyle {
@@ -10,7 +42,7 @@ enum SegmentStyle {
     PastePreview,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct StyledSegment {
     start: usize,
     end: usize,
@@ -100,7 +132,11 @@ pub fn PromptDisplay(mut hooks: Hooks, props: &mut PromptDisplayProps) -> impl I
     let text_color = props.theme.text_color();
     let cursor_color = props.theme.input_cursor();
     let segments = styled_segments(&props.value, &props.collapsed_pastes);
-    let row_children = row_elements(&props.value, &buffer, &segments, props.theme, text_color);
+    let row_children = if props.value.is_empty() {
+        Vec::new()
+    } else {
+        row_elements(&props.value, &buffer, &segments, props.theme, text_color)
+    };
 
     element! {
         View(
@@ -223,45 +259,69 @@ fn row_chunks(
     chunks
 }
 
+fn push_marker_segments(segments: &mut Vec<StyledSegment>, base: usize, summary: &str) {
+    let Some(marker) = prompt_paste::find_paste_marker_for_display(summary) else {
+        segments.push(StyledSegment {
+            start: base,
+            end: base + summary.len(),
+            style: SegmentStyle::Text,
+        });
+        return;
+    };
+
+    let label_start = base + marker.start;
+    let label_end = label_start + marker.label.len();
+    segments.push(StyledSegment {
+        start: label_start,
+        end: label_end,
+        style: SegmentStyle::PasteLabel,
+    });
+    if !marker.preview.is_empty() {
+        segments.push(StyledSegment {
+            start: label_end,
+            end: base + marker.end,
+            style: SegmentStyle::PastePreview,
+        });
+    }
+}
+
 fn styled_segments(value: &str, pastes: &[CollapsedPaste]) -> Vec<StyledSegment> {
     if value.is_empty() {
         return Vec::new();
     }
 
-    let mut segments = Vec::new();
-    let mut rest_start = 0usize;
-    let mut rest = value;
+    if !pastes.is_empty() {
+        let mut resolved = pastes.to_vec();
+        reconcile_paste_offsets(value, &mut resolved);
 
-    for paste in pastes {
-        let Some(local_start) = rest.find(&paste.summary) else {
+        let mut ordered: Vec<&CollapsedPaste> = resolved.iter().collect();
+        ordered.sort_by_key(|paste| paste.offset);
+
+        let mut segments = Vec::new();
+        for paste in ordered {
+            let start = paste.offset;
+            let end = start.saturating_add(paste.summary.len());
+            if end > value.len() || value[start..end] != paste.summary {
+                continue;
+            }
+            push_marker_segments(&mut segments, start, &paste.summary);
+        }
+        segments.sort_by_key(|segment| segment.start);
+        return segments;
+    }
+
+    let mut segments = Vec::new();
+    let mut search = 0usize;
+    while search < value.len() {
+        let Some(marker) = prompt_paste::find_paste_marker_for_display(&value[search..]) else {
+            search += 1;
             continue;
         };
-        let start = rest_start + local_start;
-        let end = start + paste.summary.len();
 
-        if let Some(marker) = prompt_paste::find_paste_marker_for_display(&paste.summary) {
-            segments.push(StyledSegment {
-                start: start + marker.start,
-                end: start + marker.start + marker.label.len(),
-                style: SegmentStyle::PasteLabel,
-            });
-            if !marker.preview.is_empty() {
-                segments.push(StyledSegment {
-                    start: start + marker.start + marker.label.len(),
-                    end,
-                    style: SegmentStyle::PastePreview,
-                });
-            }
-        } else {
-            segments.push(StyledSegment {
-                start,
-                end,
-                style: SegmentStyle::Text,
-            });
-        }
-
-        rest_start = end;
-        rest = &value[rest_start..];
+        let chip_start = search + marker.start;
+        let chip_end = search + marker.end;
+        push_marker_segments(&mut segments, chip_start, &value[chip_start..chip_end]);
+        search = chip_end;
     }
 
     segments.sort_by_key(|segment| segment.start);
@@ -282,6 +342,44 @@ mod tests {
         assert_eq!(segments[1].style, SegmentStyle::PastePreview);
         assert_eq!(&value[segments[0].start..segments[0].end], "[Pasted: 02 lines] ");
         assert_eq!(&value[segments[1].start..segments[1].end], "alpha");
+    }
+
+    #[test]
+    fn styles_both_pastes_when_vec_order_differs_from_text_order() {
+        let first = CollapsedPaste::new("alpha\nbeta".into(), 40, 0);
+        let second = CollapsedPaste::new("gamma\ndelta".into(), 40, 0);
+        let gap = 1usize;
+        let offset_second = first.summary.len() + gap;
+        let paste_first = CollapsedPaste {
+            offset: offset_second,
+            ..first.clone()
+        };
+        let paste_second = CollapsedPaste { offset: 0, ..second };
+        let value = format!("{} {}", paste_second.summary, paste_first.summary);
+        let segments = styled_segments(&value, &[paste_first, paste_second]);
+
+        let labels: Vec<_> = segments
+            .iter()
+            .filter(|segment| segment.style == SegmentStyle::PasteLabel)
+            .collect();
+        let previews: Vec<_> = segments
+            .iter()
+            .filter(|segment| segment.style == SegmentStyle::PastePreview)
+            .collect();
+        assert_eq!(labels.len(), 2, "expected two paste labels, got {segments:?}");
+        assert_eq!(previews.len(), 2, "expected two paste previews, got {segments:?}");
+        assert_eq!(&value[previews[0].start..previews[0].end], "gamma");
+        assert_eq!(&value[previews[1].start..previews[1].end], "alpha");
+    }
+
+    #[test]
+    fn styles_narrow_chip_without_preview_as_label() {
+        let paste = CollapsedPaste::new("alpha\nbeta".into(), 18, 0);
+        let value = paste.summary.clone();
+        let segments = styled_segments(&value, &[paste]);
+        assert_eq!(segments.len(), 1);
+        assert_eq!(segments[0].style, SegmentStyle::PasteLabel);
+        assert_eq!(&value[segments[0].start..segments[0].end], "[Pasted: 02 lines] ");
     }
 
     #[test]

@@ -157,6 +157,7 @@ mod tests {
         assert!(is_newline_key(KeyCode::Enter, KeyModifiers::SHIFT,));
         assert!(is_prompt_newline_key(KeyCode::Enter, KeyModifiers::SHIFT,));
         assert!(is_prompt_newline_key(KeyCode::Char('j'), KeyModifiers::CONTROL,));
+        assert!(is_prompt_newline_key(KeyCode::Char('x'), KeyModifiers::CONTROL,));
     }
 
     #[test]
