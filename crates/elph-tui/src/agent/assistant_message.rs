@@ -2,28 +2,41 @@ use crate::diff::{MarkdownTheme, render_markdown_lines};
 use crate::theme::Theme;
 use iocraft::prelude::*;
 
-#[derive(Props)]
+#[derive(Default, Props)]
 pub struct AssistantMessageProps {
     pub content: String,
     pub is_streaming: bool,
     pub theme: Theme,
 }
 
-impl Default for AssistantMessageProps {
-    fn default() -> Self {
-        Self {
-            content: String::new(),
-            is_streaming: false,
-            theme: Theme::default(),
-        }
-    }
+#[derive(Clone)]
+struct RenderCache {
+    content: String,
+    is_streaming: bool,
+    rendered: String,
 }
 
 #[component]
-pub fn AssistantMessage(props: &AssistantMessageProps) -> impl Into<AnyElement<'static>> {
+pub fn AssistantMessage(mut hooks: Hooks, props: &AssistantMessageProps) -> impl Into<AnyElement<'static>> {
+    let mut cache = hooks.use_ref(|| None::<RenderCache>);
     let palette = markdown_theme_from(props.theme);
-    let rendered = render_markdown_lines(&props.content, 120, palette).join("\n");
     let suffix = if props.is_streaming { " ▌" } else { "" };
+
+    let body = {
+        let mut guard = cache.write();
+        let needs_rebuild = guard
+            .as_ref()
+            .is_none_or(|c| c.content != props.content || c.is_streaming != props.is_streaming);
+        if needs_rebuild {
+            let rendered = render_markdown_lines(&props.content, 120, palette).join("\n");
+            *guard = Some(RenderCache {
+                content: props.content.clone(),
+                is_streaming: props.is_streaming,
+                rendered,
+            });
+        }
+        format!("{}{}", guard.as_ref().expect("cache populated").rendered, suffix)
+    };
 
     element! {
         View(
@@ -31,7 +44,7 @@ pub fn AssistantMessage(props: &AssistantMessageProps) -> impl Into<AnyElement<'
             width: 100pct,
             padding_left: 1,
         ) {
-            Text(content: format!("{rendered}{suffix}"))
+            Text(content: body)
         }
     }
 }

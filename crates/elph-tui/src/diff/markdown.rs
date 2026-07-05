@@ -95,7 +95,7 @@ pub struct Markdown {
     padding_y: u16,
     theme: MarkdownTheme,
     use_hyperlinks: bool,
-    cache_key: Option<(String, u16)>,
+    cache_width: Option<u16>,
     cache_lines: Vec<Line>,
 }
 
@@ -111,7 +111,7 @@ impl Markdown {
             padding_y: 0,
             theme,
             use_hyperlinks: true,
-            cache_key: None,
+            cache_width: None,
             cache_lines: Vec::new(),
         }
     }
@@ -156,18 +156,17 @@ pub fn render_markdown_lines(text: &str, width: u16, theme: MarkdownTheme) -> Ve
 
 impl LineComponent for Markdown {
     fn render(&mut self, width: u16) -> Vec<Line> {
-        let key = (self.text.clone(), width);
-        if self.cache_key.as_ref() == Some(&key) {
+        if self.cache_width == Some(width) && !self.cache_lines.is_empty() {
             return self.cache_lines.clone();
         }
         let lines = self.build_lines(width);
-        self.cache_key = Some(key);
+        self.cache_width = Some(width);
         self.cache_lines = lines.clone();
         lines
     }
 
     fn invalidate(&mut self) {
-        self.cache_key = None;
+        self.cache_width = None;
         self.cache_lines.clear();
     }
 }

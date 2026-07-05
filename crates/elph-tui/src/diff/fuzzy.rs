@@ -10,17 +10,13 @@ pub struct FuzzyMatch {
 /// Returns true when all query characters appear in order within `text`.
 /// Lower score is a better match.
 pub fn fuzzy_match(query: &str, text: &str) -> FuzzyMatch {
-    let query_lower = query.to_lowercase();
-    let text_lower = text.to_lowercase();
-
-    let primary = match_query(&query_lower, &text_lower);
+    let primary = match_query(query, text);
     if primary.matches {
         return primary;
     }
 
-    let swapped = swap_alpha_numeric(&query_lower);
-    if let Some(swapped_query) = swapped {
-        let swapped_match = match_query(&swapped_query, &text_lower);
+    if let Some(swapped_query) = swap_alpha_numeric(query) {
+        let swapped_match = match_query(&swapped_query, text);
         if swapped_match.matches {
             return FuzzyMatch {
                 matches: true,
@@ -32,6 +28,14 @@ pub fn fuzzy_match(query: &str, text: &str) -> FuzzyMatch {
     primary
 }
 
+fn fold_ascii(c: char) -> char {
+    c.to_ascii_lowercase()
+}
+
+fn chars_match(a: char, b: char) -> bool {
+    a == b || fold_ascii(a) == fold_ascii(b)
+}
+
 fn match_query(query: &str, text: &str) -> FuzzyMatch {
     if query.is_empty() {
         return FuzzyMatch {
@@ -39,29 +43,29 @@ fn match_query(query: &str, text: &str) -> FuzzyMatch {
             score: 0.0,
         };
     }
-    if query.len() > text.len() {
+    if query.chars().count() > text.chars().count() {
         return FuzzyMatch {
             matches: false,
             score: 0.0,
         };
     }
 
-    let chars: Vec<char> = text.chars().collect();
-    let query_chars: Vec<char> = query.chars().collect();
+    let query_chars: Vec<char> = query.chars().map(fold_ascii).collect();
+    let text_chars: Vec<char> = text.chars().collect();
     let mut query_index = 0usize;
     let mut score = 0.0f64;
     let mut last_match_index: Option<usize> = None;
     let mut consecutive_matches = 0usize;
 
-    for (i, &ch) in chars.iter().enumerate() {
+    for (i, &ch) in text_chars.iter().enumerate() {
         if query_index >= query_chars.len() {
             break;
         }
-        if ch == query_chars[query_index] {
+        if chars_match(ch, query_chars[query_index]) {
             let is_boundary = i == 0
-                || chars
+                || text_chars
                     .get(i - 1)
-                    .is_some_and(|prev| prev.is_ascii_whitespace() || matches!(prev, '-' | '_' | '.' | '/' | ':'));
+                    .is_some_and(|prev| prev.is_ascii_whitespace() || matches!(*prev, '-' | '_' | '.' | '/' | ':'));
 
             if i > 0 && last_match_index == Some(i - 1) {
                 consecutive_matches += 1;
@@ -91,7 +95,7 @@ fn match_query(query: &str, text: &str) -> FuzzyMatch {
         };
     }
 
-    if query == text {
+    if query.eq_ignore_ascii_case(text) {
         score -= 100.0;
     }
 
@@ -184,5 +188,11 @@ mod tests {
         let out = fuzzy_filter(&items, "git st", |s| (*s).to_string());
         assert_eq!(out.len(), 1);
         assert_eq!(out[0], "git status");
+    }
+
+    #[test]
+    fn matches_case_insensitive() {
+        let m = fuzzy_match("ABC", "abc");
+        assert!(m.matches);
     }
 }

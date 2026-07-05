@@ -77,7 +77,15 @@ impl OverlayStack {
         }
         entry.alive = false;
         entry.component.set_focused(false);
+        self.purge_dead_entries();
         true
+    }
+
+    /// Drops tombstoned overlays once none remain alive, freeing component memory.
+    fn purge_dead_entries(&mut self) {
+        if self.entries.iter().all(|e| !e.alive) {
+            self.entries.clear();
+        }
     }
 
     pub fn set_hidden(&mut self, handle: OverlayHandle, hidden: bool) {
@@ -123,7 +131,7 @@ impl OverlayStack {
     pub fn render(&mut self, term_width: u16, term_height: u16) -> Vec<Line> {
         let width = term_width.max(1);
         let height = term_height.max(1);
-        let mut base: Vec<Line> = (0..height as usize).map(|_| String::new()).collect();
+        let base: Vec<Line> = std::iter::repeat_n(String::new(), height as usize).collect();
         composite_overlays(base, &mut self.entries[..], width, height)
     }
 
@@ -151,6 +159,18 @@ mod tests {
         let handle = stack.show(OverlaySlot::new(Box::new(list), OverlayOptions::default()));
         assert!(!stack.is_empty());
         stack.hide(handle);
+        assert!(stack.is_empty());
+    }
+
+    #[test]
+    fn stack_purges_dead_entries_when_all_hidden() {
+        let mut stack = OverlayStack::new();
+        let h1 = stack.show(OverlaySlot::new(Box::new(Text::new("one")), OverlayOptions::default()));
+        let h2 = stack.show(OverlaySlot::new(Box::new(Text::new("two")), OverlayOptions::default()));
+        assert!(!stack.is_empty());
+        stack.hide(h1);
+        assert!(!stack.is_empty());
+        stack.hide(h2);
         assert!(stack.is_empty());
     }
 

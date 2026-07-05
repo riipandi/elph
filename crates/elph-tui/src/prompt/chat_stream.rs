@@ -53,8 +53,6 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
     let page_scroll_step = props.page_scroll_step;
     let auto_scroll = props.auto_scroll;
     let scroll_enabled = props.scroll_enabled;
-    let messages = props.messages.clone();
-    let entries = props.entries.clone();
     let show_thinking = props.show_thinking;
     let theme = props.theme;
 
@@ -111,10 +109,10 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
                 scrollbar_track_color: Some(theme.scrollbar_track),
                 handle: Some(handle),
             ) {
-                #(if let Some(entries) = entries {
+                #(if let Some(entries) = props.entries.clone() {
                     element!(TranscriptView(entries: entries, theme: theme, show_thinking: show_thinking)).into_any()
                 } else {
-                    element!(PromptTranscript(messages: messages, theme: theme)).into_any()
+                    element!(PromptTranscript(messages: props.messages.clone(), theme: theme)).into_any()
                 })
             }
         }

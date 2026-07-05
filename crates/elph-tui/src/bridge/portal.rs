@@ -1,6 +1,7 @@
 //! iocraft portal that embeds diff overlay components.
 
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
+use std::sync::Mutex;
 
 use iocraft::prelude::*;
 
@@ -8,11 +9,11 @@ use super::overlay_state::OverlayStack;
 
 /// Shared overlay stack for mounting diff components inside iocraft trees.
 #[derive(Clone)]
-pub struct OverlayStackHandle(Arc<Mutex<OverlayStack>>);
+pub struct OverlayStackHandle(Rc<Mutex<OverlayStack>>);
 
 impl Default for OverlayStackHandle {
     fn default() -> Self {
-        Self(Arc::new(Mutex::new(OverlayStack::new())))
+        Self(Rc::new(Mutex::new(OverlayStack::new())))
     }
 }
 

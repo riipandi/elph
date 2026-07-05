@@ -50,6 +50,27 @@ struct StyledSegment {
     style: SegmentStyle,
 }
 
+struct RowRenderCtx<'a> {
+    value: &'a str,
+    buffer: &'a PromptBuffer,
+    segments: &'a [StyledSegment],
+    theme: Theme,
+    text_color: Option<Color>,
+    show_ime_cursor: bool,
+    cursor_row: u16,
+    cursor_col: u16,
+}
+
+struct ChunkRenderCtx<'a> {
+    theme: Theme,
+    text_color: Option<Color>,
+    ime_row: bool,
+    cursor_col: u16,
+    row_start: usize,
+    row_end: usize,
+    value: &'a str,
+}
+
 #[derive(Default, Props)]
 pub struct PromptDisplayProps {
     pub value: String,
@@ -138,16 +159,16 @@ pub fn PromptDisplay(mut hooks: Hooks, props: &mut PromptDisplayProps) -> impl I
     let row_children = if props.value.is_empty() {
         Vec::new()
     } else {
-        row_elements(
-            &props.value,
-            &buffer,
-            &segments,
-            props.theme,
+        row_elements(RowRenderCtx {
+            value: &props.value,
+            buffer: &buffer,
+            segments: &segments,
+            theme: props.theme,
             text_color,
-            props.has_focus && props.show_hardware_cursor,
+            show_ime_cursor: props.has_focus && props.show_hardware_cursor,
             cursor_row,
             cursor_col,
-        )
+        })
     };
 
     element! {
@@ -184,33 +205,26 @@ pub fn PromptDisplay(mut hooks: Hooks, props: &mut PromptDisplayProps) -> impl I
     }
 }
 
-fn row_elements(
-    value: &str,
-    buffer: &PromptBuffer,
-    segments: &[StyledSegment],
-    theme: Theme,
-    text_color: Option<Color>,
-    ime_cursor: bool,
-    cursor_row: u16,
-    cursor_col: u16,
-) -> Vec<AnyElement<'static>> {
-    buffer
+fn row_elements(ctx: RowRenderCtx<'_>) -> Vec<AnyElement<'static>> {
+    ctx.buffer
         .rows()
         .iter()
         .enumerate()
         .map(|(row_index, row)| {
             let row_start = row.offset;
             let row_end = row.offset + row.len;
-            let chunks = row_chunks(value, row_start, row_end, segments);
+            let chunks = row_chunks(ctx.value, row_start, row_end, ctx.segments);
             let children = styled_chunks(
                 chunks,
-                theme,
-                text_color,
-                ime_cursor && row_index as u16 == cursor_row,
-                cursor_col,
-                row_start,
-                row_end,
-                value,
+                ChunkRenderCtx {
+                    theme: ctx.theme,
+                    text_color: ctx.text_color,
+                    ime_row: ctx.show_ime_cursor && row_index as u16 == ctx.cursor_row,
+                    cursor_col: ctx.cursor_col,
+                    row_start,
+                    row_end,
+                    value: ctx.value,
+                },
             );
             element! {
                 View(
@@ -227,25 +241,21 @@ fn row_elements(
         .collect()
 }
 
-fn styled_chunks(
-    chunks: Vec<(SegmentStyle, String)>,
-    theme: Theme,
-    text_color: Option<Color>,
-    ime_row: bool,
-    cursor_col: u16,
-    row_start: usize,
-    row_end: usize,
-    value: &str,
-) -> Vec<AnyElement<'static>> {
-    if ime_row {
-        let cursor_offset = row_start + byte_offset_for_display_col(value, row_start, row_end, cursor_col);
-        let before = &value[row_start..cursor_offset.min(row_end)];
-        let at = value.get(cursor_offset..).and_then(|s| s.chars().next()).unwrap_or(' ');
+fn styled_chunks(chunks: Vec<(SegmentStyle, String)>, ctx: ChunkRenderCtx<'_>) -> Vec<AnyElement<'static>> {
+    if ctx.ime_row {
+        let cursor_offset =
+            ctx.row_start + byte_offset_for_display_col(ctx.value, ctx.row_start, ctx.row_end, ctx.cursor_col);
+        let before = &ctx.value[ctx.row_start..cursor_offset.min(ctx.row_end)];
+        let at = ctx
+            .value
+            .get(cursor_offset..)
+            .and_then(|s| s.chars().next())
+            .unwrap_or(' ');
         let after_start = cursor_offset + at.len_utf8();
-        let after = value.get(after_start.min(row_end)..row_end).unwrap_or("");
+        let after = ctx.value.get(after_start.min(ctx.row_end)..ctx.row_end).unwrap_or("");
         let mut out = Vec::new();
         if !before.is_empty() {
-            out.push(element! { Text(color: text_color, content: expand_for_display(before)) }.into_any());
+            out.push(element! { Text(color: ctx.text_color, content: expand_for_display(before)) }.into_any());
         }
         out.push(
             element! {
@@ -254,7 +264,7 @@ fn styled_chunks(
             .into_any(),
         );
         if !after.is_empty() {
-            out.push(element! { Text(color: text_color, content: expand_for_display(after)) }.into_any());
+            out.push(element! { Text(color: ctx.text_color, content: expand_for_display(after)) }.into_any());
         }
         return out;
     }
@@ -266,11 +276,11 @@ fn styled_chunks(
             let content = expand_for_display(&content);
             match style {
                 SegmentStyle::PasteLabel => element! {
-                    Text(color: theme.paste_label(), content)
+                    Text(color: ctx.theme.paste_label(), content)
                 }
                 .into_any(),
                 SegmentStyle::Text | SegmentStyle::PastePreview => element! {
-                    Text(color: text_color, content)
+                    Text(color: ctx.text_color, content)
                 }
                 .into_any(),
             }

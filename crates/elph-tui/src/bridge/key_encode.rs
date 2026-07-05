@@ -28,11 +28,9 @@ pub fn key_event_to_terminal_data(event: &KeyEvent) -> Option<String> {
         KeyCode::Home => Some("\x1b[H".to_string()),
         KeyCode::End => Some("\x1b[F".to_string()),
         KeyCode::Char(ch) => {
-            if mods.contains(KeyModifiers::CONTROL) {
-                if ch.is_ascii_alphabetic() {
-                    let byte = (ch as u8) & 0x1f;
-                    return Some(String::from(char::from(byte)));
-                }
+            if mods.contains(KeyModifiers::CONTROL) && ch.is_ascii_alphabetic() {
+                let byte = (ch as u8) & 0x1f;
+                return Some(String::from(char::from(byte)));
             }
             Some(ch.to_string())
         }

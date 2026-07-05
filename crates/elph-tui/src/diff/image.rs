@@ -30,7 +30,7 @@ pub struct Image {
     mime: String,
     theme: ImageTheme,
     options: ImageOptions,
-    cache_key: Option<(usize, u16)>,
+    cache_width: Option<u16>,
     cache_lines: Vec<Line>,
 }
 
@@ -41,7 +41,7 @@ impl Image {
             mime: mime.into(),
             theme,
             options: ImageOptions::default(),
-            cache_key: None,
+            cache_width: None,
             cache_lines: Vec::new(),
         }
     }
@@ -52,9 +52,9 @@ impl Image {
     }
 
     fn cell_dimensions(&self) -> (u16, u16) {
-        let (mut w, mut h) = png_dimensions(&self.data).unwrap_or((80, 40));
-        let mut width_cells = ((w + 7) / 8).min(120) as u16;
-        let mut height_cells = ((h + 15) / 16).min(40) as u16;
+        let (w, h) = png_dimensions(&self.data).unwrap_or((80, 40));
+        let mut width_cells = w.div_ceil(8).min(120) as u16;
+        let mut height_cells = h.div_ceil(16).min(40) as u16;
         if let Some(max_w) = self.options.max_width_cells {
             width_cells = width_cells.min(max_w);
         }
@@ -86,18 +86,17 @@ impl Image {
 
 impl LineComponent for Image {
     fn render(&mut self, width: u16) -> Vec<Line> {
-        let key = (self.data.len(), width);
-        if self.cache_key == Some(key) {
+        if self.cache_width == Some(width) && !self.cache_lines.is_empty() {
             return self.cache_lines.clone();
         }
         let lines = self.build_lines(width);
-        self.cache_key = Some(key);
+        self.cache_width = Some(width);
         self.cache_lines = lines.clone();
         lines
     }
 
     fn invalidate(&mut self) {
-        self.cache_key = None;
+        self.cache_width = None;
         self.cache_lines.clear();
     }
 }

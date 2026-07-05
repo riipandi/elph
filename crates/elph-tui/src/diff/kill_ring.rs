@@ -1,5 +1,8 @@
 //! Emacs-style kill ring for yank / yank-pop.
 
+/// Maximum number of kill entries retained (Emacs default is 60).
+const MAX_KILL_RING: usize = 60;
+
 /// Ring buffer for killed text.
 #[derive(Debug, Default)]
 pub struct KillRing {
@@ -20,6 +23,10 @@ impl KillRing {
             self.ring.push(merged);
         } else {
             self.ring.push(text.to_string());
+        }
+        if self.ring.len() > MAX_KILL_RING {
+            let excess = self.ring.len() - MAX_KILL_RING;
+            self.ring.drain(..excess);
         }
     }
 
@@ -50,5 +57,15 @@ mod tests {
         ring.push("cd", false, true);
         assert_eq!(ring.peek(), Some("abcd"));
         assert_eq!(ring.len(), 1);
+    }
+
+    #[test]
+    fn drops_oldest_entries_when_full() {
+        let mut ring = KillRing::default();
+        for i in 0..70 {
+            ring.push(&format!("kill-{i}"), false, false);
+        }
+        assert_eq!(ring.len(), 60);
+        assert_eq!(ring.peek(), Some("kill-69"));
     }
 }

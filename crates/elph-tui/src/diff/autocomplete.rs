@@ -29,15 +29,11 @@ pub trait AutocompleteProvider: Send {
 /// Combined slash + file autocomplete (pi-tui `CombinedAutocompleteProvider`).
 pub struct CombinedAutocompleteProvider {
     commands: Vec<SlashCommand>,
-    cwd: PathBuf,
 }
 
 impl CombinedAutocompleteProvider {
-    pub fn new(commands: Vec<SlashCommand>, cwd: impl Into<PathBuf>) -> Self {
-        Self {
-            commands,
-            cwd: cwd.into(),
-        }
+    pub fn new(commands: Vec<SlashCommand>) -> Self {
+        Self { commands }
     }
 }
 
@@ -51,8 +47,6 @@ impl AutocompleteProvider for CombinedAutocompleteProvider {
             cwd.to_path_buf()
         } else if prefix.starts_with("~/") {
             dirs_home().join(prefix.trim_start_matches("~/"))
-        } else if prefix.starts_with("./") || prefix.starts_with("../") {
-            cwd.join(prefix)
         } else {
             cwd.join(prefix)
         };

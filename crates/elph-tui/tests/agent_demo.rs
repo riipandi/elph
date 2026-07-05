@@ -14,7 +14,7 @@ fn streaming_buffer_throttles_and_accumulates() {
 
 #[test]
 fn transcript_entries_cover_pi_roles() {
-    let entries = vec![
+    let entries = [
         TranscriptEntry::user("fix the bug"),
         TranscriptEntry::assistant_streaming("Looking at **main.rs**…"),
         TranscriptEntry::tool(
@@ -52,6 +52,6 @@ fn markdown_renders_assistant_style_output() {
 
 #[test]
 fn mock_selectors_use_select_items() {
-    let sessions = vec![SelectItem::new("s1", "Session 1"), SelectItem::new("s2", "Session 2")];
+    let sessions = [SelectItem::new("s1", "Session 1"), SelectItem::new("s2", "Session 2")];
     assert_eq!(sessions.len(), 2);
 }

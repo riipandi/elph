@@ -25,11 +25,13 @@ impl Default for TranscriptViewProps {
 pub fn TranscriptView(props: &TranscriptViewProps) -> impl Into<AnyElement<'static>> {
     let theme = props.theme;
     let show_thinking = props.show_thinking;
-    let children: Vec<AnyElement<'static>> = props
-        .entries
-        .iter()
-        .filter_map(|entry| render_entry(entry, theme, show_thinking))
-        .collect();
+    let mut children = Vec::with_capacity(props.entries.len());
+    children.extend(
+        props
+            .entries
+            .iter()
+            .filter_map(|entry| render_entry(entry, theme, show_thinking)),
+    );
 
     element! {
         View(flex_direction: FlexDirection::Column, width: 100pct) {

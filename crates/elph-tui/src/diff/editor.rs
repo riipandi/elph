@@ -70,7 +70,7 @@ pub struct Editor {
     pastes: Vec<CollapsedPaste>,
     last_yank_len: usize,
     last_width: u16,
-    cache_key: Option<(String, usize, u16, usize)>,
+    cache_key: Option<(usize, u16, usize)>,
     cache_lines: Vec<Line>,
     pub on_submit: Option<EditorSubmitCallback>,
     pub on_change: Option<EditorChangeCallback>,
@@ -570,8 +570,8 @@ impl Editor {
 impl LineComponent for Editor {
     fn render(&mut self, width: u16) -> Vec<Line> {
         self.last_width = width;
-        let key = (self.text.clone(), self.cursor, width, self.scroll_row);
-        if self.cache_key.as_ref() == Some(&key) {
+        let key = (self.cursor, width, self.scroll_row);
+        if self.cache_key == Some(key) && !self.cache_lines.is_empty() {
             return self.cache_lines.clone();
         }
         let lines = self.build_lines(width);

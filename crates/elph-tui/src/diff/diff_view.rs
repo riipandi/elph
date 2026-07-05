@@ -12,7 +12,7 @@ pub struct DiffView {
     new_text: String,
     tab_width: usize,
     title: Option<String>,
-    cache_key: Option<(String, String, u16)>,
+    cache_width: Option<u16>,
     cache_lines: Vec<Line>,
 }
 
@@ -23,7 +23,7 @@ impl DiffView {
             new_text: new_text.into(),
             tab_width: DEFAULT_TAB_WIDTH,
             title: None,
-            cache_key: None,
+            cache_width: None,
             cache_lines: Vec::new(),
         }
     }
@@ -78,18 +78,17 @@ impl DiffView {
 
 impl LineComponent for DiffView {
     fn render(&mut self, width: u16) -> Vec<Line> {
-        let key = (self.old_text.clone(), self.new_text.clone(), width);
-        if self.cache_key.as_ref() == Some(&key) {
+        if self.cache_width == Some(width) && !self.cache_lines.is_empty() {
             return self.cache_lines.clone();
         }
         let lines = self.build_lines(width);
-        self.cache_key = Some(key);
+        self.cache_width = Some(width);
         self.cache_lines = lines.clone();
         lines
     }
 
     fn invalidate(&mut self) {
-        self.cache_key = None;
+        self.cache_width = None;
         self.cache_lines.clear();
     }
 }

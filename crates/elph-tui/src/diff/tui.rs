@@ -136,6 +136,9 @@ impl DiffTui {
                 .unwrap_or(FocusTarget::None);
             self.set_focus(fallback);
         }
+        if self.overlays.iter().all(|e| !e.alive) {
+            self.overlays.clear();
+        }
         self.request_render(false);
         true
     }
