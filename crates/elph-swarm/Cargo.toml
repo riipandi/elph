@@ -1,8 +1,8 @@
 [package]
-name = "elph-core"
-version = "0.0.6"
+name = "elph-swarm"
+version = "0.0.1"
 license = "MIT"
-description = "Shared core utilities for Elph applications"
+description = "Orchestration library for elph AI coding agents."
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
@@ -10,17 +10,14 @@ edition.workspace = true
 publish = true
 
 [lib]
-name = "elph_core"
+name = "elph_swarm"
 path = "src/lib.rs"
 
 [dependencies]
 anyhow.workspace = true
+memorable-ids = "0.1.0"
 serde.workspace = true
 serde_json.workspace = true
-time.workspace = true
-tracing.workspace = true
-tracing-appender.workspace = true
-tracing-subscriber.workspace = true
 
 [dev-dependencies]
 tempfile = "3.27.0"

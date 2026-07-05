@@ -1,6 +1,6 @@
 [package]
 name = "eclaw"
-version = "0.0.17"
+version = "0.0.18"
 license = "MIT"
 description = "Personal AI assistant powered by Elph"
 keywords = ["ai", "assistant", "cli", "elph", "personal"]

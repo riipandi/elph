@@ -56,6 +56,7 @@ Or publish individually:
 cargo publish -p elph-core
 cargo publish -p elph-ai
 cargo publish -p elph-agent
+cargo publish -p elph-swarm
 cargo publish -p elph-tui
 cargo publish -p eclaw
 cargo publish -p elph

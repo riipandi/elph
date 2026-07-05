@@ -15,6 +15,7 @@ PACKAGES=(
     elph-core
     elph-ai
     elph-agent
+    elph-swarm
     elph-tui
     elph
     eclaw

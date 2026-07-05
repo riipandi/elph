@@ -1,6 +1,6 @@
 [package]
 name = "elph-tui"
-version = "0.0.17"
+version = "0.0.18"
 license = "MIT"
 description = "Terminal UI components for Elph agent"
 keywords = ["tui", "terminal", "prompt", "iocraft", "elph"]

@@ -138,7 +138,7 @@ prepare: ## Install required toolchain
 # Independent version streams:
 #   bump-elph  — elph/Cargo.toml
 #   bump-eclaw — eclaw/Cargo.toml
-#   bump-libs  — crates/elph-{core,agent,ai,tui} (+ workspace pins)
+#   bump-libs  — crates/elph-{core,agent,ai,tui,swarm} (+ workspace pins)
 #   bump       — bump-libs + bump-elph + bump-eclaw
 #
 # Usage (level is required):
@@ -156,7 +156,7 @@ endif
 _BUMP_LEVEL := $(firstword $(_RESIDUAL_))
 _BUMP_PY    := python3 -c "import sys;m,M,p=sys.argv[1].split('.');l=sys.argv[2];print(f'{m}.{M}.{int(p)+1}' if l=='patch' else f'{m}.{int(M)+1}.0' if l=='minor' else f'{int(m)+1}.0.0')"
 
-_LIBS := elph-core elph-agent elph-ai elph-tui
+_LIBS := elph-core elph-ai elph-agent elph-swarm elph-tui
 
 define _require_bump_level
 	@case "$(1)" in patch|minor|major) ;; *) \
