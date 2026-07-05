@@ -1,5 +1,7 @@
 use super::prompt_transcript::PromptTranscript;
+use crate::agent::TranscriptView;
 use crate::theme::Theme;
+use crate::transcript::TranscriptEntry;
 use iocraft::prelude::*;
 
 /// Default lines scrolled per Up/Down key press.
@@ -22,6 +24,10 @@ pub struct ChatStreamProps {
     pub page_scroll_step: u16,
     /// Active color palette.
     pub theme: Theme,
+    /// Rich transcript entries. When set, renders [`TranscriptView`] instead of plain messages.
+    pub entries: Option<Vec<TranscriptEntry>>,
+    /// Whether thinking blocks are shown in rich transcript mode.
+    pub show_thinking: bool,
 }
 
 impl Default for ChatStreamProps {
@@ -33,6 +39,8 @@ impl Default for ChatStreamProps {
             line_scroll_step: DEFAULT_LINE_SCROLL_STEP,
             page_scroll_step: PAGE_SCROLL_VIEWPORT,
             theme: Theme::default(),
+            entries: None,
+            show_thinking: true,
         }
     }
 }
@@ -46,6 +54,8 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
     let auto_scroll = props.auto_scroll;
     let scroll_enabled = props.scroll_enabled;
     let messages = props.messages.clone();
+    let entries = props.entries.clone();
+    let show_thinking = props.show_thinking;
     let theme = props.theme;
 
     hooks.use_terminal_events({
@@ -101,7 +111,11 @@ pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<An
                 scrollbar_track_color: Some(theme.scrollbar_track),
                 handle: Some(handle),
             ) {
-                PromptTranscript(messages: messages, theme: theme)
+                #(if let Some(entries) = entries {
+                    element!(TranscriptView(entries: entries, theme: theme, show_thinking: show_thinking)).into_any()
+                } else {
+                    element!(PromptTranscript(messages: messages, theme: theme)).into_any()
+                })
             }
         }
     }

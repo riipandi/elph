@@ -17,6 +17,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow.workspace = true
+base64 = "0.22"
 crokey.workspace = true
 crossterm.workspace = true
 iocraft.workspace = true

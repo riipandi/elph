@@ -855,6 +855,7 @@ name = "elph-tui"
 version = "0.0.18"
 dependencies = [
  "anyhow",
+ "base64",
  "crokey",
  "crossterm",
  "futures",

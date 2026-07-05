@@ -148,6 +148,12 @@ impl Markdown {
     }
 }
 
+/// Renders markdown to ANSI lines without maintaining component state.
+pub fn render_markdown_lines(text: &str, width: u16, theme: MarkdownTheme) -> Vec<Line> {
+    let mut md = Markdown::with_theme(text, theme);
+    md.render(width)
+}
+
 impl LineComponent for Markdown {
     fn render(&mut self, width: u16) -> Vec<Line> {
         let key = (self.text.clone(), width);

@@ -58,6 +58,9 @@ pub struct PromptInputProps {
     /// Active color palette.
     pub theme: Theme,
 
+    /// Enables IME hardware cursor via [`CURSOR_MARKER`] in the prompt display.
+    pub show_hardware_cursor: bool,
+
     /// Test-only mirror of committed prompt value (updated when value changes).
     #[doc(hidden)]
     pub value_probe: Option<Arc<Mutex<String>>>,
@@ -567,6 +570,7 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
                             theme,
                             collapsed_pastes: collapsed_pastes.read().clone(),
                             measured_width: Some(measured_width),
+                            show_hardware_cursor: props.show_hardware_cursor,
                         )
                     }
                 }

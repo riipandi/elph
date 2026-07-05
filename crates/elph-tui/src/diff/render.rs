@@ -133,15 +133,7 @@ pub fn do_render(terminal: &mut dyn Terminal, state: &mut RenderState, next_line
 
     terminal.write(SYNC_END);
 
-    if let Some(pos) = hardware_cursor {
-        terminal.move_to(pos.col as u16, pos.line as u16);
-        if std::env::var("PI_HARDWARE_CURSOR")
-            .ok()
-            .is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        {
-            terminal.show_cursor();
-        }
-    }
+    super::hardware_cursor::apply_hardware_cursor(terminal, hardware_cursor);
 
     state.previous_lines = stripped;
     state.previous_width = width;

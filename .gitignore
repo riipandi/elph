@@ -2,6 +2,7 @@
 /.idea
 /.pnp
 /.husky
+/.snippets
 .pnp.js
 .DS_Store
 .DS_Store?
@@ -72,4 +73,3 @@ docsite/public/
 # Misc
 .agents/prompts/
 .agents/skills/
-

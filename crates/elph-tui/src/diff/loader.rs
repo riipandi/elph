@@ -1,7 +1,10 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use super::ansi::{self, styled};
-use super::component::{Line, LineComponent};
+use super::component::{InputResult, Line, LineComponent};
+use super::keys;
 use super::text::Text;
 
 const DEFAULT_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -106,6 +109,75 @@ impl LineComponent for Loader {
     }
 }
 
+/// Animated loader that can be cancelled with Escape (pi-tui `CancellableLoader`).
+pub struct CancellableLoader {
+    inner: Loader,
+    aborted: Arc<AtomicBool>,
+    pub on_abort: Option<Box<dyn FnMut()>>,
+}
+
+impl CancellableLoader {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            inner: Loader::new(message),
+            aborted: Arc::new(AtomicBool::new(false)),
+            on_abort: None,
+        }
+    }
+
+    pub fn with_colors(mut self, spinner: u8, message: u8) -> Self {
+        self.inner = self.inner.with_colors(spinner, message);
+        self
+    }
+
+    pub fn start(&mut self) {
+        self.aborted.store(false, Ordering::Relaxed);
+        self.inner.start();
+    }
+
+    pub fn stop(&mut self) {
+        self.inner.stop();
+    }
+
+    pub fn set_message(&mut self, message: impl Into<String>) {
+        self.inner.set_message(message);
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.inner.is_running()
+    }
+
+    pub fn aborted(&self) -> bool {
+        self.aborted.load(Ordering::Relaxed)
+    }
+
+    pub fn signal(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.aborted)
+    }
+}
+
+impl LineComponent for CancellableLoader {
+    fn render(&mut self, width: u16) -> Vec<Line> {
+        self.inner.render(width)
+    }
+
+    fn invalidate(&mut self) {
+        self.inner.invalidate();
+    }
+
+    fn handle_input(&mut self, data: &str) -> InputResult {
+        if keys::is_cancel(data) {
+            self.aborted.store(true, Ordering::Relaxed);
+            self.inner.stop();
+            if let Some(cb) = &mut self.on_abort {
+                cb();
+            }
+            return InputResult::Consumed;
+        }
+        InputResult::Ignored
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,5 +189,14 @@ mod tests {
         let lines = loader.render(40);
         assert_eq!(lines.len(), 2);
         assert!(lines[1].contains("Working"));
+    }
+
+    #[test]
+    fn cancellable_loader_aborts_on_escape() {
+        let mut loader = CancellableLoader::new("Working");
+        loader.start();
+        loader.handle_input("\x1b");
+        assert!(loader.aborted());
+        assert!(!loader.is_running());
     }
 }

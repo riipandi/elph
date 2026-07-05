@@ -14,6 +14,7 @@ use crate::utils::{pad_lines, truncate_to_width_no_ellipsis};
 
 use super::ansi::RESET as ANSI_RESET;
 use super::ansi::{self, styled};
+use super::autocomplete::{AutocompletePopup, AutocompleteProvider};
 use super::component::{InputResult, Line, LineComponent};
 use super::cursor::CURSOR_MARKER;
 use super::keybindings::{EditorAction, match_editor_action};
@@ -73,6 +74,8 @@ pub struct Editor {
     cache_lines: Vec<Line>,
     pub on_submit: Option<EditorSubmitCallback>,
     pub on_change: Option<EditorChangeCallback>,
+    autocomplete_provider: Option<Box<dyn AutocompleteProvider>>,
+    pending_autocomplete: Option<AutocompletePopup>,
 }
 
 impl Editor {
@@ -97,7 +100,43 @@ impl Editor {
             cache_lines: Vec::new(),
             on_submit: None,
             on_change: None,
+            autocomplete_provider: None,
+            pending_autocomplete: None,
         }
+    }
+
+    pub fn set_autocomplete_provider(&mut self, provider: Box<dyn AutocompleteProvider>) {
+        self.autocomplete_provider = Some(provider);
+    }
+
+    pub fn take_autocomplete_popup(&mut self) -> Option<AutocompletePopup> {
+        self.pending_autocomplete.take()
+    }
+
+    fn token_before_cursor(&self) -> String {
+        let before = &self.text[..self.cursor.min(self.text.len())];
+        before.split_whitespace().next_back().unwrap_or(before).to_string()
+    }
+
+    fn open_path_autocomplete(&mut self) {
+        let Some(provider) = self.autocomplete_provider.as_ref() else {
+            return;
+        };
+        let token = self.token_before_cursor();
+        let cwd = std::env::current_dir().unwrap_or_else(|_| ".".into());
+        let paths = provider.complete_path(&token, &cwd);
+        if !paths.is_empty() {
+            self.pending_autocomplete = Some(AutocompletePopup::paths(paths));
+        }
+    }
+
+    fn open_slash_autocomplete(&mut self) {
+        let Some(provider) = self.autocomplete_provider.as_ref() else {
+            return;
+        };
+        let token = self.token_before_cursor();
+        let filter = token.trim_start_matches('/');
+        self.pending_autocomplete = Some(AutocompletePopup::slash_commands(provider.slash_commands(), filter));
     }
 
     pub fn with_max_visible_rows(mut self, rows: usize) -> Self {
@@ -493,6 +532,12 @@ impl Editor {
                 InputResult::Consumed
             }
             EditorAction::Tab => {
+                if self.autocomplete_provider.is_some() {
+                    self.open_path_autocomplete();
+                    if self.pending_autocomplete.is_some() {
+                        return InputResult::Consumed;
+                    }
+                }
                 self.push_undo();
                 shift_paste_offsets_for_insert(&mut self.pastes, self.cursor, 2);
                 self.text.insert_str(self.cursor, "  ");
@@ -502,6 +547,11 @@ impl Editor {
                 InputResult::Consumed
             }
             EditorAction::InsertText => {
+                if data == "/" && self.autocomplete_provider.is_some() {
+                    let result = self.handle_action(EditorAction::InsertText, data);
+                    self.open_slash_autocomplete();
+                    return result;
+                }
                 if data.chars().count() == 1 {
                     self.paste_burst.on_plain_char(now);
                 } else if line_count(data) >= PASTE_COLLAPSE_MIN_LINES || data.len() >= PASTE_COLLAPSE_MIN_CHARS {

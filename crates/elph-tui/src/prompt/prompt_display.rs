@@ -1,5 +1,6 @@
 use super::prompt_buffer::{PromptBuffer, expand_for_display};
 use super::prompt_paste::{self, CollapsedPaste, reconcile_paste_offsets};
+use crate::diff::CURSOR_MARKER;
 use crate::theme::Theme;
 use iocraft::prelude::*;
 
@@ -58,6 +59,8 @@ pub struct PromptDisplayProps {
     pub theme: Theme,
     pub collapsed_pastes: Vec<CollapsedPaste>,
     pub measured_width: Option<State<u16>>,
+    /// When true, emit [`CURSOR_MARKER`] with reverse-video cursor for IME positioning.
+    pub show_hardware_cursor: bool,
 }
 
 trait UseSize<'a> {
@@ -135,7 +138,16 @@ pub fn PromptDisplay(mut hooks: Hooks, props: &mut PromptDisplayProps) -> impl I
     let row_children = if props.value.is_empty() {
         Vec::new()
     } else {
-        row_elements(&props.value, &buffer, &segments, props.theme, text_color)
+        row_elements(
+            &props.value,
+            &buffer,
+            &segments,
+            props.theme,
+            text_color,
+            props.has_focus && props.show_hardware_cursor,
+            cursor_row,
+            cursor_col,
+        )
     };
 
     element! {
@@ -150,7 +162,7 @@ pub fn PromptDisplay(mut hooks: Hooks, props: &mut PromptDisplayProps) -> impl I
                 top: -(scroll_row.get() as i32),
                 left: -(scroll_col.get() as i32),
             ) {
-                #(if props.has_focus {
+                #(if props.has_focus && !props.show_hardware_cursor {
                     Some(element! {
                         View(
                             position: Position::Absolute,
@@ -178,15 +190,28 @@ fn row_elements(
     segments: &[StyledSegment],
     theme: Theme,
     text_color: Option<Color>,
+    ime_cursor: bool,
+    cursor_row: u16,
+    cursor_col: u16,
 ) -> Vec<AnyElement<'static>> {
     buffer
         .rows()
         .iter()
-        .map(|row| {
+        .enumerate()
+        .map(|(row_index, row)| {
             let row_start = row.offset;
             let row_end = row.offset + row.len;
             let chunks = row_chunks(value, row_start, row_end, segments);
-            let children = styled_chunks(chunks, theme, text_color);
+            let children = styled_chunks(
+                chunks,
+                theme,
+                text_color,
+                ime_cursor && row_index as u16 == cursor_row,
+                cursor_col,
+                row_start,
+                row_end,
+                value,
+            );
             element! {
                 View(
                     flex_direction: FlexDirection::Row,
@@ -206,7 +231,34 @@ fn styled_chunks(
     chunks: Vec<(SegmentStyle, String)>,
     theme: Theme,
     text_color: Option<Color>,
+    ime_row: bool,
+    cursor_col: u16,
+    row_start: usize,
+    row_end: usize,
+    value: &str,
 ) -> Vec<AnyElement<'static>> {
+    if ime_row {
+        let cursor_offset = row_start + byte_offset_for_display_col(value, row_start, row_end, cursor_col);
+        let before = &value[row_start..cursor_offset.min(row_end)];
+        let at = value.get(cursor_offset..).and_then(|s| s.chars().next()).unwrap_or(' ');
+        let after_start = cursor_offset + at.len_utf8();
+        let after = value.get(after_start.min(row_end)..row_end).unwrap_or("");
+        let mut out = Vec::new();
+        if !before.is_empty() {
+            out.push(element! { Text(color: text_color, content: expand_for_display(before)) }.into_any());
+        }
+        out.push(
+            element! {
+                Text(content: format!("{CURSOR_MARKER}\x1b[7m{at}\x1b[27m"))
+            }
+            .into_any(),
+        );
+        if !after.is_empty() {
+            out.push(element! { Text(color: text_color, content: expand_for_display(after)) }.into_any());
+        }
+        return out;
+    }
+
     chunks
         .into_iter()
         .filter(|(_, text)| !text.is_empty())
@@ -224,6 +276,18 @@ fn styled_chunks(
             }
         })
         .collect()
+}
+
+fn byte_offset_for_display_col(value: &str, row_start: usize, row_end: usize, col: u16) -> usize {
+    let slice = &value[row_start..row_end];
+    let mut width = 0usize;
+    for (idx, ch) in slice.char_indices() {
+        if width >= col as usize {
+            return row_start + idx;
+        }
+        width += crate::utils::char_display_width(ch, width);
+    }
+    row_end
 }
 
 fn row_chunks(
