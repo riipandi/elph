@@ -78,7 +78,7 @@ impl DiffTui {
         self.render_requested = true;
     }
 
-    pub fn start(&mut self) -> std::io::Result<()> {
+    pub fn start(&mut self) -> anyhow::Result<()> {
         self.stopped = false;
         self.terminal.start(Box::new(|_| {}), Box::new(|| {}))?;
         self.request_render(true);
@@ -86,7 +86,7 @@ impl DiffTui {
         Ok(())
     }
 
-    pub fn stop(&mut self) -> std::io::Result<()> {
+    pub fn stop(&mut self) -> anyhow::Result<()> {
         self.stopped = true;
         self.terminal.stop()
     }
@@ -183,7 +183,7 @@ impl DiffTui {
     }
 
     /// Process pending render if the minimum interval has elapsed.
-    pub fn pump_render(&mut self) -> std::io::Result<()> {
+    pub fn pump_render(&mut self) -> anyhow::Result<()> {
         if self.stopped || !self.render_requested {
             return Ok(());
         }

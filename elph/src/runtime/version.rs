@@ -2,8 +2,8 @@ use elph_agent::utils::utc_rfc3339_now;
 use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 
-use super::layout::InitError;
 use super::paths::Paths;
+use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -28,7 +28,7 @@ impl VersionFile {
         }
     }
 
-    pub fn ensure(paths: &Paths, app_version: &str) -> Result<(), InitError> {
+    pub fn ensure(paths: &Paths, app_version: &str) -> Result<()> {
         let path = paths.version_path();
         if path.exists() {
             return Ok(());

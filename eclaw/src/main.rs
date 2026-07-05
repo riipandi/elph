@@ -3,9 +3,10 @@ mod layout;
 mod runtime;
 mod server;
 
+use anyhow::Result;
 use clap::Parser;
 
-fn main() {
+fn main() -> Result<()> {
     let cli = cmd::Cli::parse();
 
     if cli.version {

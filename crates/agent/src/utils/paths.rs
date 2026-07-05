@@ -2,6 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
+
 /// Environment and naming knobs for an application layout.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PathResolver {
@@ -26,7 +28,7 @@ pub struct ResolvedPaths {
 }
 
 impl PathResolver {
-    pub fn resolve(&self) -> std::io::Result<ResolvedPaths> {
+    pub fn resolve(&self) -> Result<ResolvedPaths> {
         Ok(ResolvedPaths::from_dirs(
             self.config_dir()?,
             self.data_dir()?,
@@ -34,7 +36,7 @@ impl PathResolver {
         ))
     }
 
-    fn config_dir(&self) -> std::io::Result<PathBuf> {
+    fn config_dir(&self) -> Result<PathBuf> {
         if let Some(path) = env_path(self.home_env) {
             return Ok(path);
         }
@@ -42,7 +44,7 @@ impl PathResolver {
         Ok(user_home()?.join(self.config_dir_name))
     }
 
-    fn data_dir(&self) -> std::io::Result<PathBuf> {
+    fn data_dir(&self) -> Result<PathBuf> {
         if let Some(path) = env_path(self.data_env) {
             return Ok(path);
         }
@@ -57,12 +59,12 @@ impl PathResolver {
         Ok(user_home()?.join(".local").join("share").join(self.data_dir_name))
     }
 
-    fn project_dir(&self) -> std::io::Result<PathBuf> {
+    fn project_dir(&self) -> Result<PathBuf> {
         if let Some(path) = env_path(self.project_env) {
             return Ok(path);
         }
 
-        std::env::current_dir()
+        std::env::current_dir().map_err(Into::into)
     }
 }
 
@@ -86,10 +88,8 @@ fn env_path(name: &str) -> Option<PathBuf> {
     }
 }
 
-fn user_home() -> std::io::Result<PathBuf> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "HOME is not set"))
+fn user_home() -> Result<PathBuf> {
+    std::env::var_os("HOME").map(PathBuf::from).context("HOME is not set")
 }
 
 #[cfg(test)]

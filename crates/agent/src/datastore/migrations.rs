@@ -1,10 +1,9 @@
+use anyhow::Result;
 use turso::Connection;
 
 use crate::migration::Migration;
 
-use super::DatastoreError;
-
-pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<(), DatastoreError> {
+pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

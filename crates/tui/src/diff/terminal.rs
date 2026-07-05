@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::io::{self, IsTerminal, Write};
 
 use crossterm::{
@@ -7,8 +8,8 @@ use crossterm::{
 
 /// Terminal backend for differential rendering.
 pub trait Terminal {
-    fn start(&mut self, on_input: Box<dyn FnMut(&str) + Send>, on_resize: Box<dyn FnMut() + Send>) -> io::Result<()>;
-    fn stop(&mut self) -> io::Result<()>;
+    fn start(&mut self, on_input: Box<dyn FnMut(&str) + Send>, on_resize: Box<dyn FnMut() + Send>) -> Result<()>;
+    fn stop(&mut self) -> Result<()>;
     fn write(&mut self, data: &str);
     fn columns(&self) -> u16;
     fn rows(&self) -> u16;
@@ -23,7 +24,7 @@ pub trait Terminal {
 }
 
 /// Opens the writer that drives the TUI. Falls back to `/dev/tty` when stdout is captured.
-pub fn open_tui_writer() -> io::Result<Box<dyn Write + Send>> {
+pub fn open_tui_writer() -> Result<Box<dyn Write + Send>> {
     if io::stdout().is_terminal() {
         return Ok(Box::new(io::stdout()));
     }
@@ -46,7 +47,7 @@ pub struct CrosstermTerminal {
 }
 
 impl CrosstermTerminal {
-    pub fn new() -> io::Result<Self> {
+    pub fn new() -> Result<Self> {
         let (columns, rows) = terminal::size().unwrap_or((80, 24));
         Ok(Self {
             writer: open_tui_writer()?,
@@ -56,7 +57,7 @@ impl CrosstermTerminal {
         })
     }
 
-    pub fn with_size(columns: u16, rows: u16) -> io::Result<Self> {
+    pub fn with_size(columns: u16, rows: u16) -> Result<Self> {
         Ok(Self {
             writer: open_tui_writer()?,
             columns,
@@ -69,7 +70,7 @@ impl CrosstermTerminal {
         let _ = self.writer.flush();
     }
 
-    fn queue_command<I>(&mut self, cmd: I) -> io::Result<()>
+    fn queue_command<I>(&mut self, cmd: I) -> Result<()>
     where
         I: crossterm::Command,
     {
@@ -80,7 +81,7 @@ impl CrosstermTerminal {
 }
 
 impl Terminal for CrosstermTerminal {
-    fn start(&mut self, _on_input: Box<dyn FnMut(&str) + Send>, _on_resize: Box<dyn FnMut() + Send>) -> io::Result<()> {
+    fn start(&mut self, _on_input: Box<dyn FnMut(&str) + Send>, _on_resize: Box<dyn FnMut() + Send>) -> Result<()> {
         if !self.raw_mode {
             terminal::enable_raw_mode()?;
             self.raw_mode = true;
@@ -89,7 +90,7 @@ impl Terminal for CrosstermTerminal {
         Ok(())
     }
 
-    fn stop(&mut self) -> io::Result<()> {
+    fn stop(&mut self) -> Result<()> {
         self.show_cursor();
         if self.raw_mode {
             terminal::disable_raw_mode()?;
@@ -291,11 +292,11 @@ impl RecordingTerminal {
 }
 
 impl Terminal for RecordingTerminal {
-    fn start(&mut self, _on_input: Box<dyn FnMut(&str) + Send>, _on_resize: Box<dyn FnMut() + Send>) -> io::Result<()> {
+    fn start(&mut self, _on_input: Box<dyn FnMut(&str) + Send>, _on_resize: Box<dyn FnMut() + Send>) -> Result<()> {
         Ok(())
     }
 
-    fn stop(&mut self) -> io::Result<()> {
+    fn stop(&mut self) -> Result<()> {
         Ok(())
     }
 

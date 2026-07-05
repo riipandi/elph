@@ -1,7 +1,9 @@
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::{DatabaseSpec, Result, ensure_databases};
+use anyhow::Result;
+
+use super::{DatabaseSpec, ensure_databases};
 
 static READY: AtomicBool = AtomicBool::new(false);
 static LOCK: Mutex<()> = Mutex::new(());

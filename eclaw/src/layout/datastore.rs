@@ -1,4 +1,6 @@
-use super::{Result, migrations, paths::Paths};
+use anyhow::Result;
+
+use super::{migrations, paths::Paths};
 use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once, try_block_on};
 
 const DATASTORE_STEPS: u64 = 1;
@@ -27,5 +29,5 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
 
 /// Blocking wrapper for CLI commands that need persistence.
 pub fn ensure_blocking(paths: &Paths) -> Result<()> {
-    try_block_on(ensure(paths)).map_err(elph_agent::InitError::Io)?
+    try_block_on(ensure(paths))?
 }

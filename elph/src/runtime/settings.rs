@@ -1,8 +1,8 @@
 use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 
-use super::layout::InitError;
 use super::paths::Paths;
+use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -72,7 +72,7 @@ impl Settings {
         }
     }
 
-    pub fn ensure(paths: &Paths) -> Result<(), InitError> {
+    pub fn ensure(paths: &Paths) -> Result<()> {
         let path = paths.settings_path();
         if path.exists() {
             return Ok(());

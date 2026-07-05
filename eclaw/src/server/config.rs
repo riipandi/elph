@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use anyhow::{Context, Result};
+
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     pub host: String,
@@ -14,7 +16,9 @@ impl ServerConfig {
         }
     }
 
-    pub fn socket_addr(&self) -> Result<SocketAddr, std::net::AddrParseError> {
-        format!("{}:{}", self.host, self.port).parse()
+    pub fn socket_addr(&self) -> Result<SocketAddr> {
+        format!("{}:{}", self.host, self.port)
+            .parse()
+            .with_context(|| format!("invalid listen address {}:{}", self.host, self.port))
     }
 }

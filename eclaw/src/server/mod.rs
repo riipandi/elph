@@ -11,11 +11,12 @@ pub use config::ServerConfig;
 pub use error::AppError;
 pub use router::build;
 
+use anyhow::Result;
 use axum::serve;
 use tokio::net::TcpListener;
 use tokio::signal;
 
-pub async fn run(config: ServerConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(config: ServerConfig) -> Result<()> {
     let addr = config.socket_addr()?;
     let app = build();
 
@@ -50,7 +51,7 @@ async fn shutdown_signal() {
     eprintln!("eclaw server shutting down");
 }
 
-pub fn run_blocking(config: ServerConfig) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run_blocking(config: ServerConfig) -> Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?

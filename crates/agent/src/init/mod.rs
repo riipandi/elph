@@ -1,25 +1,12 @@
 mod progress;
 
 use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use serde::Serialize;
-use thiserror::Error;
 
 pub use progress::InitProgress;
-
-pub type Result<T> = std::result::Result<T, InitError>;
-
-#[derive(Debug, Error)]
-pub enum InitError {
-    #[error("io error: {0}")]
-    Io(#[from] io::Error),
-    #[error("json error: {0}")]
-    Json(#[from] serde_json::Error),
-    #[error("datastore error: {0}")]
-    Datastore(#[from] crate::datastore::DatastoreError),
-}
 
 /// Create every directory in `dirs`, including parents.
 pub fn ensure_dirs(dirs: &[PathBuf]) -> Result<()> {

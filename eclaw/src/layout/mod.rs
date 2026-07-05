@@ -6,13 +6,11 @@ mod settings;
 mod trust;
 mod version;
 
+use anyhow::Result;
 use elph_agent::{InitProgress, ensure_dirs, try_block_on};
 
 pub use datastore::ensure_blocking as ensure_datastore_blocking;
 pub use paths::Paths;
-
-pub type InitError = elph_agent::InitError;
-pub type Result<T> = std::result::Result<T, InitError>;
 
 const INIT_STEPS: u64 = 3;
 
@@ -37,7 +35,7 @@ pub async fn ensure_with_paths(paths: &Paths, app_version: &str) -> Result<()> {
 
 /// Blocking wrapper for layout initialization (dirs + config, no databases).
 pub fn ensure_layout_blocking(app_version: &str) -> Result<Paths> {
-    try_block_on(ensure(app_version)).map_err(InitError::Io)?
+    try_block_on(ensure(app_version))?
 }
 
 async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgress) -> Result<()> {

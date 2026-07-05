@@ -1,5 +1,6 @@
 use std::future::Future;
-use std::io;
+
+use anyhow::Result;
 
 /// Runs an async future on a current-thread Tokio runtime.
 pub fn block_on<F, T>(future: F) -> T
@@ -13,8 +14,8 @@ where
         .block_on(future)
 }
 
-/// Runs an async future, returning runtime construction errors as [`io::Error`].
-pub fn try_block_on<F, T>(future: F) -> io::Result<T>
+/// Runs an async future on a current-thread Tokio runtime.
+pub fn try_block_on<F, T>(future: F) -> Result<T>
 where
     F: Future<Output = T>,
 {

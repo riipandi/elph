@@ -764,6 +764,7 @@ dependencies = [
 name = "eclaw"
 version = "0.0.12"
 dependencies = [
+ "anyhow",
  "axum",
  "clap",
  "elph-agent",
@@ -803,11 +804,11 @@ dependencies = [
 name = "elph-agent"
 version = "0.0.12"
 dependencies = [
+ "anyhow",
  "indicatif",
  "serde",
  "serde_json",
  "tempfile",
- "thiserror",
  "tokio",
  "turso",
 ]
@@ -815,11 +816,15 @@ dependencies = [
 [[package]]
 name = "elph-ai"
 version = "0.0.12"
+dependencies = [
+ "anyhow",
+]
 
 [[package]]
 name = "elph-tui"
 version = "0.0.12"
 dependencies = [
+ "anyhow",
  "crokey",
  "crossterm",
  "futures",

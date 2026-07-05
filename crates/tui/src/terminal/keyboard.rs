@@ -1,3 +1,4 @@
+use anyhow::Result;
 use crokey::{pop_keyboard_enhancement_flags, push_keyboard_enhancement_flags};
 use crossterm::event::{DisableBracketedPaste, EnableBracketedPaste};
 use crossterm::terminal;
@@ -10,7 +11,7 @@ static BRACKETED_PASTE_DISABLED: AtomicBool = AtomicBool::new(false);
 /// Enables xterm keyboard enhancements needed for ⌘/⌥ modifier reporting.
 ///
 /// Must be called after the terminal is in raw mode (iocraft enables this on first draw).
-pub fn enable_keyboard_enhancement() -> io::Result<()> {
+pub fn enable_keyboard_enhancement() -> Result<()> {
     if ENABLED.load(Ordering::Relaxed) || !terminal::supports_keyboard_enhancement().unwrap_or(false) {
         return Ok(());
     }
@@ -24,7 +25,7 @@ pub fn enable_keyboard_enhancement() -> io::Result<()> {
 }
 
 /// Tears down enhancements pushed by [`enable_keyboard_enhancement`].
-pub fn disable_keyboard_enhancement() -> io::Result<()> {
+pub fn disable_keyboard_enhancement() -> Result<()> {
     if !ENABLED.swap(false, Ordering::Relaxed) {
         return Ok(());
     }

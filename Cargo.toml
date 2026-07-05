@@ -30,7 +30,6 @@ pulldown-cmark = { version = "0.13", default-features = false, features = ["simd
 similar = { version = "3.1.1", features = ["inline", "unicode"] }
 serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.150", default-features = false, features = ["std"] }
-thiserror = { version = "2.0.18", default-features = false }
 tokio = { version = "1", default-features = false, features = ["macros", "rt"] }
 tower-http = { version = "0.7.0", default-features = false, features = ["catch-panic", "trace"] }
 turso = { version = "0.6.1", default-features = false }

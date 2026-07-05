@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Result;
 use elph_agent::utils::PathResolver;
 
 pub const RESOLVER: PathResolver = PathResolver {
@@ -18,7 +19,7 @@ pub struct Paths {
 }
 
 impl Paths {
-    pub fn resolve() -> std::io::Result<Self> {
+    pub fn resolve() -> Result<Self> {
         let resolved = RESOLVER.resolve()?;
         Ok(Self {
             config_dir: resolved.config_dir,

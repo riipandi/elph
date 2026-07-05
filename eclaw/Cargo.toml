@@ -21,6 +21,7 @@ headless = []
 web = ["dep:rust-embed"]
 
 [dependencies]
+anyhow.workspace = true
 axum.workspace = true
 clap.workspace = true
 elph-agent.workspace = true

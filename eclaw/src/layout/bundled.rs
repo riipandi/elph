@@ -2,8 +2,8 @@ use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use super::InitError;
 use super::paths::Paths;
+use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BundledManifest {
@@ -20,7 +20,7 @@ impl BundledManifest {
         }
     }
 
-    pub fn ensure(paths: &Paths, app_version: &str) -> Result<(), InitError> {
+    pub fn ensure(paths: &Paths, app_version: &str) -> Result<()> {
         let path = paths.bundled_manifest_path();
         if path.exists() {
             return Ok(());

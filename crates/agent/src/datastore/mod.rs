@@ -5,22 +5,12 @@ mod migrations;
 
 use std::path::Path;
 
-use thiserror::Error;
+use anyhow::Result;
 use turso::Builder;
 
 pub use crate::migration::Migration;
 pub use lazy::ensure_databases_once;
 pub use migrations::run as run_migrations;
-
-#[derive(Debug, Error)]
-pub enum DatastoreError {
-    #[error("turso database error: {0}")]
-    Turso(#[from] turso::Error),
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
-}
-
-pub type Result<T> = std::result::Result<T, DatastoreError>;
 
 /// A local database file and its pending migrations.
 pub struct DatabaseSpec<'a> {
