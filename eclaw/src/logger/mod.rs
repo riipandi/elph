@@ -1,10 +1,14 @@
 mod rotation;
 
 use elph_agent::LoggingOptions;
-use tracing_appender::non_blocking::WorkerGuard;
+use tracing_appender::non_blocking::{NonBlockingBuilder, WorkerGuard};
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 pub use rotation::build_writer;
+
+/// Bounded queue for the async file writer. Caps memory under sustained log bursts
+/// (default upstream limit is 128_000 lines).
+const FILE_WRITER_BUFFER_LINES: usize = 16_384;
 
 /// Initializes the global tracing subscriber.
 ///
@@ -18,14 +22,20 @@ pub fn init(options: LoggingOptions) -> Option<WorkerGuard> {
     install_subscriber(&options)
 }
 
+fn non_blocking_writer(options: &LoggingOptions) -> (tracing_appender::non_blocking::NonBlocking, WorkerGuard) {
+    let writer = build_writer(&options.logs_dir, options.app_name, options.rotation, options.max_files)
+        .expect("failed to initialize rolling log writer");
+    NonBlockingBuilder::default()
+        .buffered_lines_limit(FILE_WRITER_BUFFER_LINES)
+        .finish(writer)
+}
+
 fn install_subscriber(options: &LoggingOptions) -> Option<WorkerGuard> {
     let env_filter = EnvFilter::new(options.level.clone());
 
     match (options.file_enabled, options.console_enabled) {
         (true, true) => {
-            let writer = build_writer(&options.logs_dir, options.app_name, options.rotation, options.max_files)
-                .expect("failed to initialize rolling log writer");
-            let (non_blocking, guard) = tracing_appender::non_blocking(writer);
+            let (non_blocking, guard) = non_blocking_writer(options);
 
             tracing_subscriber::registry()
                 .with(env_filter)
@@ -47,9 +57,7 @@ fn install_subscriber(options: &LoggingOptions) -> Option<WorkerGuard> {
             Some(guard)
         }
         (true, false) => {
-            let writer = build_writer(&options.logs_dir, options.app_name, options.rotation, options.max_files)
-                .expect("failed to initialize rolling log writer");
-            let (non_blocking, guard) = tracing_appender::non_blocking(writer);
+            let (non_blocking, guard) = non_blocking_writer(options);
 
             tracing_subscriber::registry()
                 .with(env_filter)

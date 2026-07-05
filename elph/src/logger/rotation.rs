@@ -2,6 +2,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::time::Instant;
 
 use elph_agent::LogRotation;
 use time::{Duration, OffsetDateTime, Time};
@@ -10,6 +11,8 @@ pub struct RollingWriter {
     inner: Mutex<RollingWriterInner>,
 }
 
+const ROTATION_CHECK_INTERVAL: std::time::Duration = std::time::Duration::from_secs(1);
+
 struct RollingWriterInner {
     directory: PathBuf,
     app: String,
@@ -17,6 +20,7 @@ struct RollingWriterInner {
     max_files: Option<usize>,
     period: String,
     file: File,
+    last_period_check: Instant,
 }
 
 impl RollingWriter {
@@ -37,6 +41,7 @@ impl RollingWriter {
                 max_files,
                 period,
                 file,
+                last_period_check: Instant::now(),
             }),
         })
     }
@@ -45,13 +50,16 @@ impl RollingWriter {
 impl Write for RollingWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut inner = self.inner.lock().expect("rolling log mutex poisoned");
-        let now = OffsetDateTime::now_utc();
-        let period = period_key(inner.rotation, now);
-        if period != inner.period {
-            inner.file = open_log_file(&inner.directory, &inner.app, &period)?;
-            inner.period = period;
-            if let Some(max) = inner.max_files {
-                prune_old_logs(&inner.directory, &inner.app, max)?;
+        if inner.last_period_check.elapsed() >= ROTATION_CHECK_INTERVAL {
+            let now = OffsetDateTime::now_utc();
+            let period = period_key(inner.rotation, now);
+            inner.last_period_check = Instant::now();
+            if period != inner.period {
+                inner.file = open_log_file(&inner.directory, &inner.app, &period)?;
+                inner.period = period;
+                if let Some(max) = inner.max_files {
+                    prune_old_logs(&inner.directory, &inner.app, max)?;
+                }
             }
         }
         inner.file.write(buf)
@@ -124,9 +132,8 @@ fn prune_old_logs(logs_dir: &Path, app: &str, max_files: usize) -> io::Result<()
         if !name.starts_with(&prefix) || !name.ends_with(suffix) {
             continue;
         }
-        let metadata = entry.metadata()?;
-        if metadata.is_file() {
-            files.push((name.to_string(), metadata.modified()?));
+        if entry.file_type()?.is_file() {
+            files.push(name.to_string());
         }
     }
 
@@ -134,8 +141,8 @@ fn prune_old_logs(logs_dir: &Path, app: &str, max_files: usize) -> io::Result<()
         return Ok(());
     }
 
-    files.sort_by_key(|(_, modified)| *modified);
-    for (name, _) in files.iter().take(files.len().saturating_sub(max_files - 1)) {
+    files.sort_unstable();
+    for name in files.iter().take(files.len().saturating_sub(max_files - 1)) {
         fs::remove_file(logs_dir.join(name))?;
     }
 

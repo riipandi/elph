@@ -6,28 +6,15 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
-use tracing::Instrument;
 
 pub async fn request_logger(request: Request<Body>, next: Next) -> Response {
     let method = request.method().clone();
-    let uri = request.uri().clone();
-    let path = uri.path().to_string();
-    let query = uri.query().unwrap_or("").to_string();
-    let span = tracing::info_span!(
-        "http",
-        method = %method,
-        path = %path,
-        query = %query,
-    );
-
-    async move {
-        let start = Instant::now();
-        let response = next.run(request).await;
-        log_request(&method, &path, &query, response.status(), start.elapsed());
-        response
-    }
-    .instrument(span)
-    .await
+    let path = request.uri().path().to_owned();
+    let query = request.uri().query().unwrap_or("").to_owned();
+    let start = Instant::now();
+    let response = next.run(request).await;
+    log_request(&method, &path, &query, response.status(), start.elapsed());
+    response
 }
 
 fn request_outcome(status: u16) -> &'static str {

@@ -1,6 +1,29 @@
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::process::Command;
 use std::time::{Duration, Instant};
+
+fn health_ready(port: u16) -> bool {
+    let mut stream = match TcpStream::connect(format!("127.0.0.1:{port}")) {
+        Ok(stream) => stream,
+        Err(_) => return false,
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+    let request = format!(
+        "GET /api/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+    );
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+
+    let mut buf = [0u8; 512];
+    let Ok(n) = stream.read(&mut buf) else {
+        return false;
+    };
+    std::str::from_utf8(&buf[..n])
+        .ok()
+        .is_some_and(|response| response.contains("200"))
+}
 
 fn eclaw_cmd() -> Command {
     Command::new(env!("CARGO_BIN_EXE_eclaw"))
@@ -25,31 +48,23 @@ fn default_run_starts_server() {
     let (mut cmd, _tmp) = with_isolated_home(eclaw_cmd());
     let mut child = cmd
         .args(["--port", &port.to_string()])
-        .stdout(Stdio::piped())
         .spawn()
         .expect("failed to spawn eclaw");
 
-    let stdout = child.stdout.take().expect("failed to capture stdout");
-    let reader = BufReader::new(stdout);
-
     let started = Instant::now();
-    let mut saw_listening = false;
-    for line in reader.lines() {
-        let line = line.expect("failed to read eclaw stdout");
-        if line.contains("listening") {
-            saw_listening = true;
+    let mut ready = false;
+    while started.elapsed() < Duration::from_secs(5) {
+        if health_ready(port) {
+            ready = true;
             break;
         }
-        assert!(
-            started.elapsed() < Duration::from_secs(5),
-            "timed out waiting for eclaw to start"
-        );
+        std::thread::sleep(Duration::from_millis(50));
     }
 
     let _ = child.kill();
     let _ = child.wait();
 
-    assert!(saw_listening);
+    assert!(ready, "timed out waiting for eclaw /api/health");
 }
 
 #[test]
