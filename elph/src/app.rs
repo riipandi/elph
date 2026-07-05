@@ -23,7 +23,7 @@ pub fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     hooks.use_effect(
         || {
             if let Err(err) = enable_keyboard_enhancement() {
-                eprintln!("keyboard enhancement unavailable: {err}");
+                tracing::warn!(error = %err, "keyboard enhancement unavailable");
             }
         },
         (),

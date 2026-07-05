@@ -1,5 +1,6 @@
 mod cmd;
 mod layout;
+mod logger;
 mod runtime;
 mod server;
 

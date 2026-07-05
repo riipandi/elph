@@ -39,16 +39,16 @@ pub struct RunArgs {
 
 pub fn handle(args: &RunArgs) -> ExitCode {
     let prompt = args.prompt.join(" ");
-    eprintln!(
-        "Run — not yet implemented (prompt: {}, model: {:?}, format: {}, continue: {}, session: {:?}, fork: {}, files: {:?}, brave: {})",
-        if prompt.is_empty() { "<none>" } else { &prompt },
-        args.model,
-        args.output_format,
-        args.r#continue,
-        args.session,
-        args.fork,
-        args.files,
-        args.brave,
+    tracing::warn!(
+        prompt = if prompt.is_empty() { "<none>" } else { prompt.as_str() },
+        model = ?args.model,
+        format = %args.output_format,
+        continue_session = args.r#continue,
+        session = ?args.session,
+        fork = args.fork,
+        files = ?args.files,
+        brave = args.brave,
+        "Run — not yet implemented"
     );
     EXIT_SUCCESS
 }

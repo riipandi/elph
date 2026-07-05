@@ -41,7 +41,7 @@ struct KeyboardEnhancementGuard;
 impl Drop for KeyboardEnhancementGuard {
     fn drop(&mut self) {
         if let Err(e) = disable_keyboard_enhancement() {
-            eprintln!("Failed to restore keyboard enhancements: {e}");
+            tracing::error!(error = %e, "failed to restore keyboard enhancements");
         }
     }
 }
@@ -51,7 +51,7 @@ pub fn run() {
     let result = block_on(element!(App).fullscreen().disable_mouse_capture().ignore_ctrl_c());
     exit_message::print_and_clear();
     if let Err(e) = result {
-        eprintln!("App error: {e}");
+        tracing::error!(error = %e, "app error");
     }
 }
 

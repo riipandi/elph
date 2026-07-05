@@ -21,7 +21,7 @@ pub async fn run(config: ServerConfig) -> Result<()> {
     let addr = config.socket_addr()?;
     let app = build();
 
-    eprintln!("eclaw server listening on http://{addr}");
+    tracing::info!(%addr, "eclaw server listening");
 
     let listener = TcpListener::bind(addr).await?;
     serve(listener, app).with_graceful_shutdown(shutdown_signal()).await?;
@@ -49,7 +49,7 @@ async fn shutdown_signal() {
         () = terminate => {},
     }
 
-    eprintln!("eclaw server shutting down");
+    tracing::info!("eclaw server shutting down");
 }
 
 pub fn run_blocking(config: ServerConfig) -> Result<()> {

@@ -10,6 +10,6 @@ pub struct CompletionsArgs {
 }
 
 pub fn handle(args: &CompletionsArgs) -> ExitCode {
-    eprintln!("Completions — not yet implemented (shell: {})", args.shell);
+    tracing::warn!(shell = %args.shell, "Completions — not yet implemented");
     EXIT_SUCCESS
 }

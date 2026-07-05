@@ -34,13 +34,13 @@ pub enum ExportFormat {
 }
 
 pub fn handle(args: &ExportArgs) -> ExitCode {
-    eprintln!(
-        "Export — not yet implemented (session: {}, output: {}, format: {:?}, clipboard: {}, sanitize: {})",
-        args.session_id.as_deref().unwrap_or("<recent>"),
-        args.output.as_deref().unwrap_or("<stdout>"),
-        args.format,
-        args.clipboard,
-        args.sanitize,
+    tracing::warn!(
+        session = args.session_id.as_deref().unwrap_or("<recent>"),
+        output = args.output.as_deref().unwrap_or("<stdout>"),
+        format = ?args.format,
+        clipboard = args.clipboard,
+        sanitize = args.sanitize,
+        "Export — not yet implemented"
     );
     EXIT_SUCCESS
 }

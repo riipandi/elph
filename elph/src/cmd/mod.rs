@@ -19,6 +19,7 @@ pub mod version;
 mod worktree;
 
 use clap::{Parser, Subcommand};
+use elph_agent::AgentBuilder;
 
 use crate::runtime::ExitCode;
 
@@ -90,14 +91,14 @@ pub enum Commands {
 
 fn init_layout() -> Result<crate::runtime::Paths, ExitCode> {
     crate::runtime::ensure_layout_blocking(env!("CARGO_PKG_VERSION")).map_err(|err| {
-        eprintln!("failed to initialize elph home: {err}");
+        tracing::error!(error = %err, "failed to initialize elph home");
         crate::runtime::EXIT_ERROR
     })
 }
 
 fn init_datastore(paths: &crate::runtime::Paths) -> Result<(), ExitCode> {
     crate::runtime::ensure_datastore_blocking(paths).map_err(|err| {
-        eprintln!("failed to initialize elph databases: {err}");
+        tracing::error!(error = %err, "failed to initialize elph databases");
         crate::runtime::EXIT_ERROR
     })
 }
@@ -115,6 +116,24 @@ fn command_needs_datastore(cmd: &Commands) -> bool {
 }
 
 pub fn run(cli: &Cli) -> ExitCode {
+    let console_enabled = cli.command.is_some();
+    let agent_builder = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
+        .env_prefix("ELPH")
+        .app_name("elph")
+        .quiet_env("ELPH_QUIET")
+        .console_enabled(console_enabled);
+
+    let _log_guard = match crate::runtime::Paths::resolve() {
+        Ok(paths) => {
+            let init = agent_builder.logs_dir(paths.logs_dir()).build();
+            crate::logger::init(init.logging)
+        }
+        Err(_) => {
+            let init = agent_builder.build();
+            crate::logger::init(init.logging)
+        }
+    };
+
     let paths = match init_layout() {
         Ok(paths) => paths,
         Err(code) => return code,

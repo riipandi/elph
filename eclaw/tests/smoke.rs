@@ -25,17 +25,17 @@ fn default_run_starts_server() {
     let (mut cmd, _tmp) = with_isolated_home(eclaw_cmd());
     let mut child = cmd
         .args(["--port", &port.to_string()])
-        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
         .spawn()
         .expect("failed to spawn eclaw");
 
-    let stderr = child.stderr.take().expect("failed to capture stderr");
-    let reader = BufReader::new(stderr);
+    let stdout = child.stdout.take().expect("failed to capture stdout");
+    let reader = BufReader::new(stdout);
 
     let started = Instant::now();
     let mut saw_listening = false;
     for line in reader.lines() {
-        let line = line.expect("failed to read eclaw stderr");
+        let line = line.expect("failed to read eclaw stdout");
         if line.contains("listening") {
             saw_listening = true;
             break;
@@ -57,8 +57,8 @@ fn doctor_exits_successfully() {
     let (mut cmd, _tmp) = with_isolated_home(eclaw_cmd());
     let output = cmd.arg("doctor").output().expect("failed to run eclaw doctor");
     assert!(output.status.success());
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("not yet implemented"));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("not yet implemented"));
 }
 
 #[test]

@@ -5,7 +5,7 @@ use crate::server::{ServerConfig, run_blocking};
 pub fn handle(cli: &super::Cli) -> ExitCode {
     let config = ServerConfig::new(&cli.host, cli.port);
     if let Err(err) = run_blocking(config) {
-        eprintln!("server error: {err}");
+        tracing::error!(error = %err, "server error");
         return EXIT_ERROR;
     }
 

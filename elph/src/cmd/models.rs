@@ -14,10 +14,10 @@ pub struct ModelsArgs {
 }
 
 pub fn handle(args: &ModelsArgs) -> ExitCode {
-    eprintln!(
-        "Models — not yet implemented (provider: {}, search: {:?})",
-        args.provider.as_deref().unwrap_or("<all>"),
-        args.search,
+    tracing::warn!(
+        provider = args.provider.as_deref().unwrap_or("<all>"),
+        search = ?args.search,
+        "Models — not yet implemented"
     );
     EXIT_SUCCESS
 }

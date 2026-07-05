@@ -14,9 +14,10 @@ pub struct StatsArgs {
 }
 
 pub fn handle(args: &StatsArgs) -> ExitCode {
-    eprintln!(
-        "Stats — not yet implemented (session: {:?}, json: {})",
-        args.session, args.json
+    tracing::warn!(
+        session = ?args.session,
+        json = args.json,
+        "Stats — not yet implemented"
     );
     EXIT_SUCCESS
 }
