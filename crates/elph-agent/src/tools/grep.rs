@@ -3,15 +3,16 @@
 use std::sync::Arc;
 
 use elph_ai::Tool;
-use regex::Regex;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
 use crate::harness::types::{ExecutionEnv, FileKind, Result as HarnessResult};
-use crate::harness::utils::truncate::{
-    DEFAULT_MAX_BYTES, GREP_MAX_LINE_LENGTH, TruncationOptions, truncate_head, truncate_line,
-};
+use crate::harness::utils::truncate::{DEFAULT_MAX_BYTES, TruncationOptions, truncate_head};
 use crate::tools::common::{check_aborted, resolve_path};
+use crate::tools::fff_picker::{
+    build_grep_mode, build_grep_options, build_grep_query, build_picker, format_grep_output, parse_grep_query,
+    resolve_path_scope, resolve_search_base, run_with_abort_signal,
+};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
@@ -62,26 +63,42 @@ async fn execute_grep(
         .unwrap_or(DEFAULT_LIMIT as u64) as usize;
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
-    let regex = if literal {
-        Regex::new(&regex::escape(pattern))?
-    } else {
-        let mut builder = regex::RegexBuilder::new(pattern);
-        builder.case_insensitive(ignore_case);
-        builder.build()?
+    let info = match env.file_info(&absolute, signal.as_ref()).await {
+        HarnessResult::Ok(info) => info,
+        HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
     };
+    let is_file = info.kind == FileKind::File;
+    if info.kind != FileKind::File && info.kind != FileKind::Directory {
+        return Ok(AgentToolResult {
+            content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(
+                String::new(),
+            ))],
+            details: json!({
+                "matchLimitReached": false,
+                "linesTruncated": false,
+                "truncated": false
+            }),
+            terminate: None,
+        });
+    }
 
-    let mut matches = Vec::new();
-    let mut lines_truncated = false;
-    collect_matches(
-        &env,
-        &absolute,
-        &regex,
-        &mut matches,
-        &mut lines_truncated,
-        limit,
-        signal.as_ref(),
-    )
-    .await?;
+    let base_path = resolve_search_base(&absolute, is_file);
+    let path_scope = resolve_path_scope(&absolute, is_file);
+    let (grep_pattern, mode) = build_grep_mode(pattern, literal, ignore_case);
+    let query_text = build_grep_query(&grep_pattern, &path_scope);
+    let signal_for_blocking = signal.clone();
+
+    let (matches, lines_truncated, limit_reached) = tokio::task::spawn_blocking(move || {
+        run_with_abort_signal(signal_for_blocking.as_ref(), |abort| {
+            let parsed_query = parse_grep_query(&query_text);
+            let picker = build_picker(&base_path)?;
+            let options = build_grep_options(limit, mode, ignore_case, abort);
+            let result = picker.grep(&parsed_query, &options);
+            let (matches, lines_truncated) = format_grep_output(&picker, &result);
+            Ok((matches, lines_truncated, result.matches.len() >= limit))
+        })
+    })
+    .await??;
 
     let output = matches.join("\n");
     let truncation = truncate_head(
@@ -92,7 +109,7 @@ async fn execute_grep(
         },
     );
     let mut text = truncation.content;
-    if matches.len() >= limit {
+    if limit_reached {
         text.push_str(&format!("\n\n[{limit} matches limit]"));
     }
     if truncation.truncated {
@@ -102,76 +119,10 @@ async fn execute_grep(
     Ok(AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(text))],
         details: json!({
-            "matchLimitReached": matches.len() >= limit,
+            "matchLimitReached": limit_reached,
             "linesTruncated": lines_truncated,
             "truncated": truncation.truncated
         }),
         terminate: None,
     })
-}
-
-async fn collect_matches(
-    env: &Arc<dyn ExecutionEnv>,
-    path: &str,
-    regex: &Regex,
-    matches: &mut Vec<String>,
-    lines_truncated: &mut bool,
-    limit: usize,
-    signal: Option<&CancellationToken>,
-) -> anyhow::Result<()> {
-    if matches.len() >= limit {
-        return Ok(());
-    }
-    check_aborted(signal)?;
-    let info = match env.file_info(path, signal).await {
-        HarnessResult::Ok(info) => info,
-        HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
-    };
-    if info.kind == FileKind::File {
-        let content = match env.read_text_file(path, signal).await {
-            HarnessResult::Ok(content) => content,
-            HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
-        };
-        for (index, line) in content.lines().enumerate() {
-            if matches.len() >= limit {
-                break;
-            }
-            if regex.is_match(line) {
-                let (rendered, truncated) = truncate_line(line, GREP_MAX_LINE_LENGTH);
-                if truncated {
-                    *lines_truncated = true;
-                }
-                matches.push(format!("{}:{}:{}", path, index + 1, rendered));
-            }
-        }
-        return Ok(());
-    }
-    if info.kind != FileKind::Directory {
-        return Ok(());
-    }
-    let entries = match env.list_dir(path, signal).await {
-        HarnessResult::Ok(entries) => entries,
-        HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
-    };
-    let mut sorted = entries;
-    sorted.sort_by(|a, b| a.name.cmp(&b.name));
-    for entry in sorted {
-        if entry.name == ".git" || entry.name == "node_modules" || entry.name == "target" {
-            continue;
-        }
-        Box::pin(collect_matches(
-            env,
-            &entry.path,
-            regex,
-            matches,
-            lines_truncated,
-            limit,
-            signal,
-        ))
-        .await?;
-        if matches.len() >= limit {
-            break;
-        }
-    }
-    Ok(())
 }

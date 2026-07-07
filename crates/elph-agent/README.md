@@ -409,15 +409,25 @@ let read_file_tool = simple_tool(
 );
 ```
 
-Built-in coding tools are available via `create_coding_tools`, `create_read_only_tools`, and `create_all_tools`, backed by `ExecutionEnv`:
+Built-in tools are grouped by capability:
+
+| Helper                   | Tools                           |
+| ------------------------ | ------------------------------- |
+| `create_coding_tools`    | `read`, `bash`, `edit`, `write` |
+| `create_read_only_tools` | `read`, `grep`, `find`, `ls`    |
+| `create_all_tools`       | all seven tools above           |
 
 ```rust
-use elph_agent::{LocalExecutionEnv, create_coding_tools};
+use elph_agent::{LocalExecutionEnv, create_all_tools};
 use std::sync::Arc;
 
 let env = Arc::new(LocalExecutionEnv::new(cwd));
-let tools = create_coding_tools(env);
+let tools = create_all_tools(env);
 ```
+
+`grep` and `find` use [`fff-search`](https://crates.io/crates/fff-search) for fast filesystem indexing and content search. `read`, `write`, `edit`, `bash`, and `ls` use `ExecutionEnv` directly.
+
+See [docs/tools.md](./docs/tools.md) for parameters, output formats, truncation limits, and examples.
 
 ### Error Handling
 
@@ -583,10 +593,25 @@ let skills = load_skills(&env, &search_paths).await?;
 let templates = load_prompt_templates(&env, &search_paths).await?;
 ```
 
+## Examples
+
+| Example                     | Description                                 |
+| --------------------------- | ------------------------------------------- |
+| `basic_agent`               | Minimal `Agent` loop with the faux provider |
+| `opencode_big_pickle_agent` | OpenCode Zen `big-pickle` through `Agent`   |
+
+```bash
+cargo run -p elph-agent --example basic_agent
+cargo run -p elph-agent --example opencode_big_pickle_agent -- --prompt "Hello!"
+```
+
+For provider-level OpenCode streaming (without the agent loop), see `elph-ai` example `opencode_big_pickle`.
+
 ## Documentation
 
 | Document                                        | Description                                |
 | ----------------------------------------------- | ------------------------------------------ |
+| [tools.md](./docs/tools.md)                     | Built-in tools, `fff-search`, parameters   |
 | [agent-harness.md](./docs/agent-harness.md)     | Harness lifecycle, phases, save points     |
 | [hooks.md](./docs/hooks.md)                     | Hook design and mutation semantics         |
 | [models.md](./docs/models.md)                   | `elph_ai::Models` integration with harness |

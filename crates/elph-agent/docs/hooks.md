@@ -22,7 +22,17 @@ harness.subscribe(|event, signal| async move {
     }
 }).await;
 
-// Typed mutation hooks
+// Upstream-compatible generic hook registration (snake_case event names)
+harness.on("before_provider_payload", |event| async move {
+    let AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
+        return None;
+    };
+    Some(HarnessHookResult::BeforeProviderPayload(BeforeProviderPayloadResult {
+        payload: event.payload, // transform as needed
+    }))
+}).await?;
+
+// Typed mutation hooks (Rust-idiomatic aliases)
 harness.on_before_agent_start(|event| async move {
     Ok(Some(BeforeAgentStartResult {
         messages: None,

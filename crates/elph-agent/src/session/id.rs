@@ -20,3 +20,8 @@ pub fn generate_entry_id(by_id: &HashMap<String, SessionTreeEntry>) -> String {
 pub fn generate_session_id() -> String {
     Uuid::now_v7().to_string()
 }
+
+/// UUID v7 string (upstream `uuidv7`).
+pub fn uuidv7() -> String {
+    Uuid::now_v7().to_string()
+}

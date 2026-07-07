@@ -8,7 +8,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use elph_ai::{ImageContent, Message, SimpleStreamOptions, ThinkingBudgets, Transport, UserContent, builtin_models};
+use elph_ai::{
+    ImageContent, Message, OnPayloadCallback, OnResponseCallback, SimpleStreamOptions, ThinkingBudgets, Transport,
+    UserContent, builtin_models,
+};
 use tokio::sync::{Mutex, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -57,6 +60,8 @@ pub struct AgentOptions {
     pub transform_context: Option<crate::types::TransformContextFn>,
     pub stream_fn: Option<StreamFn>,
     pub get_api_key: Option<crate::types::GetApiKeyFn>,
+    pub on_payload: Option<OnPayloadCallback>,
+    pub on_response: Option<OnResponseCallback>,
     pub before_tool_call: Option<crate::types::BeforeToolCallFn>,
     pub after_tool_call: Option<crate::types::AfterToolCallFn>,
     pub prepare_next_turn: Option<crate::types::PrepareNextTurnFn>,
@@ -85,6 +90,8 @@ pub struct Agent {
     transform_context: Option<crate::types::TransformContextFn>,
     stream_fn: StreamFn,
     get_api_key: Option<crate::types::GetApiKeyFn>,
+    on_payload: Option<OnPayloadCallback>,
+    on_response: Option<OnResponseCallback>,
     before_tool_call: Option<crate::types::BeforeToolCallFn>,
     after_tool_call: Option<crate::types::AfterToolCallFn>,
     prepare_next_turn: Option<crate::types::PrepareNextTurnFn>,
@@ -115,6 +122,8 @@ impl Agent {
             transform_context: options.transform_context,
             stream_fn: options.stream_fn.unwrap_or(default_stream),
             get_api_key: options.get_api_key,
+            on_payload: options.on_payload,
+            on_response: options.on_response,
             before_tool_call: options.before_tool_call,
             after_tool_call: options.after_tool_call,
             prepare_next_turn: options.prepare_next_turn,
@@ -386,6 +395,8 @@ impl Agent {
         stream_options.base.session_id = self.session_id.lock().expect("session id lock").clone();
         stream_options.base.transport = Some(self.transport);
         stream_options.base.max_retry_delay_ms = self.max_retry_delay_ms;
+        stream_options.base.on_payload = self.on_payload.clone();
+        stream_options.base.on_response = self.on_response.clone();
 
         AgentLoopConfig {
             model,

@@ -428,7 +428,12 @@ fn estimate_tokens_across_supported_message_roles() {
     let bash_execution = AgentMessage::Custom(CustomAgentMessage::BashExecution {
         command: "npm run check".to_string(),
         output: Some("ok".to_string()),
+        exit_code: None,
+        cancelled: false,
+        truncated: false,
+        full_output_path: None,
         timestamp: 0,
+        exclude_from_context: false,
     });
     let branch_summary = AgentMessage::Custom(CustomAgentMessage::BranchSummary {
         summary: "branch".to_string(),
@@ -860,10 +865,12 @@ async fn generate_summary_includes_previous_summary_and_instructions() {
     let (faux, models, _) = faux_models_with_capture(faux_model_options(false, 8192));
     let model = faux.provider.get_models()[0].clone();
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
-        if let Some(Message::User { content, .. }) = context.messages.first() {
-            if let UserContent::Text(text) = content {
-                *prompt_capture.lock().expect("prompt lock") = text.clone();
-            }
+        if let Some(Message::User {
+            content: UserContent::Text(text),
+            ..
+        }) = context.messages.first()
+        {
+            *prompt_capture.lock().expect("prompt lock") = text.clone();
         }
         faux_assistant_message(vec![faux_text("## Goal\nTest summary")], None)
     }))]);

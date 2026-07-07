@@ -77,6 +77,38 @@ pub enum CustomMessageBlock {
     Image(ImageContent),
 }
 
+/// Format a bash execution custom message for LLM context (pi-agent `bashExecutionToText` parity).
+pub fn bash_execution_to_text(msg: &CustomAgentMessage) -> Option<String> {
+    let CustomAgentMessage::BashExecution {
+        command,
+        output,
+        exit_code,
+        cancelled,
+        truncated,
+        full_output_path,
+        ..
+    } = msg
+    else {
+        return None;
+    };
+
+    let mut text = format!("Ran `{command}`\n");
+    if let Some(out) = output.as_deref().filter(|out| !out.is_empty()) {
+        text.push_str(&format!("```\n{out}\n```"));
+    } else {
+        text.push_str("(no output)");
+    }
+    if *cancelled {
+        text.push_str("\n\n(command cancelled)");
+    } else if let Some(code) = exit_code.filter(|&code| code != 0) {
+        text.push_str(&format!("\n\nCommand exited with code {code}"));
+    }
+    if *truncated && let Some(path) = full_output_path {
+        text.push_str(&format!("\n\n[Output truncated. Full output: {path}]"));
+    }
+    Some(text)
+}
+
 /// Default conversion: keep user, assistant, and tool-result LLM messages.
 pub fn default_convert_to_llm(messages: Vec<AgentMessage>) -> Vec<Message> {
     messages
@@ -84,15 +116,11 @@ pub fn default_convert_to_llm(messages: Vec<AgentMessage>) -> Vec<Message> {
         .filter_map(|message| match message {
             AgentMessage::Llm(m) if matches!(m.role(), "user" | "assistant" | "toolResult") => Some(*m),
             AgentMessage::Custom(CustomAgentMessage::BashExecution {
-                command,
-                output,
-                timestamp,
-            }) => {
-                let text = match output {
-                    Some(out) => format!("$ {command}\n{out}"),
-                    None => format!("$ {command}"),
-                };
-                Some(Message::User {
+                exclude_from_context: true,
+                ..
+            }) => None,
+            AgentMessage::Custom(msg @ CustomAgentMessage::BashExecution { timestamp, .. }) => {
+                bash_execution_to_text(&msg).map(|text| Message::User {
                     content: elph_ai::UserContent::Text(text),
                     timestamp,
                 })

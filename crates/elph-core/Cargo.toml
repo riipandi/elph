@@ -1,6 +1,6 @@
 [package]
 name = "elph-core"
-version = "0.0.9"
+version = "0.0.10"
 license = "MIT"
 description = "Shared core utilities for Elph applications"
 homepage.workspace = true

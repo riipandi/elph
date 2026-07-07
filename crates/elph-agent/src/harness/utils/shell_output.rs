@@ -42,7 +42,7 @@ pub fn sanitize_binary_output(value: &str) -> String {
 /// Sanitize and truncate captured shell output from the tail.
 pub fn finalize_shell_capture(output: &str, options: Option<TruncationOptions>) -> ShellCaptureResult {
     let sanitized = sanitize_binary_output(output).replace('\r', "");
-    let truncation = truncate_tail(&sanitized, options.unwrap_or(TruncationOptions::default()));
+    let truncation = truncate_tail(&sanitized, options.unwrap_or_default());
     ShellCaptureResult {
         output: truncation.content,
         exit_code: None,

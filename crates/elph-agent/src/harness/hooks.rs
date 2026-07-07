@@ -9,11 +9,12 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 use crate::harness::types::{
-    AgentHarnessError, AgentHarnessErrorCode, AgentHarnessOwnEvent, AgentHarnessStreamOptions, BeforeAgentStartEvent,
-    BeforeAgentStartResult, BeforeProviderPayloadEvent, BeforeProviderPayloadResult, BeforeProviderRequestEvent,
-    BeforeProviderRequestResult, ContextEvent, ContextResult, SessionBeforeCompactEvent, SessionBeforeCompactResult,
-    SessionBeforeTreeEvent, SessionBeforeTreeResult, ToolCallEvent, ToolCallHookResult, ToolResultEvent,
-    ToolResultPatch, apply_stream_options_patch, clone_stream_options,
+    AfterProviderResponseEvent, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessOwnEvent,
+    AgentHarnessStreamOptions, BeforeAgentStartEvent, BeforeAgentStartResult, BeforeProviderPayloadEvent,
+    BeforeProviderPayloadResult, BeforeProviderRequestEvent, BeforeProviderRequestResult, ContextEvent, ContextResult,
+    SessionBeforeCompactEvent, SessionBeforeCompactResult, SessionBeforeTreeEvent, SessionBeforeTreeResult,
+    ToolCallEvent, ToolCallHookResult, ToolResultEvent, ToolResultPatch, apply_stream_options_patch,
+    clone_stream_options,
 };
 use crate::types::AgentEvent;
 
@@ -67,6 +68,8 @@ type SessionBeforeTreeHandler = Arc<
         + Send
         + Sync,
 >;
+type AfterProviderResponseHandler =
+    Arc<dyn Fn(&AfterProviderResponseEvent) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 #[derive(Default)]
 struct TypedHandlers {
@@ -78,6 +81,7 @@ struct TypedHandlers {
     tool_result: Vec<ToolResultHandler>,
     session_before_compact: Vec<SessionBeforeCompactHandler>,
     session_before_tree: Vec<SessionBeforeTreeHandler>,
+    after_provider_response: Vec<AfterProviderResponseHandler>,
 }
 
 #[derive(Clone)]
@@ -155,6 +159,24 @@ impl HookRegistry {
         typed.tool_result.len() - 1
     }
 
+    pub async fn register_session_before_compact(&self, handler: SessionBeforeCompactHandler) -> usize {
+        let mut typed = self.typed.lock().await;
+        typed.session_before_compact.push(handler);
+        typed.session_before_compact.len() - 1
+    }
+
+    pub async fn register_session_before_tree(&self, handler: SessionBeforeTreeHandler) -> usize {
+        let mut typed = self.typed.lock().await;
+        typed.session_before_tree.push(handler);
+        typed.session_before_tree.len() - 1
+    }
+
+    pub async fn register_after_provider_response(&self, handler: AfterProviderResponseHandler) -> usize {
+        let mut typed = self.typed.lock().await;
+        typed.after_provider_response.push(handler);
+        typed.after_provider_response.len() - 1
+    }
+
     pub async fn emit_subscriber(
         &self,
         event: AgentHarnessEvent,
@@ -164,6 +186,17 @@ impl HookRegistry {
         for listener in subscribers.iter() {
             listener(event.clone(), signal.clone()).await;
         }
+
+        if let AgentHarnessEvent::Own(ref own) = event {
+            let hook_type = own.hook_type().to_string();
+            let named = self.named.lock().await;
+            if let Some(handlers) = named.get(&hook_type) {
+                for listener in handlers {
+                    listener(event.clone(), signal.clone()).await;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -288,6 +321,21 @@ impl HookRegistry {
             }
         }
         Ok(last)
+    }
+
+    pub async fn emit_after_provider_response(&self, event: &AfterProviderResponseEvent) {
+        {
+            let typed = self.typed.lock().await;
+            for handler in &typed.after_provider_response {
+                handler(event).await;
+            }
+        }
+        let _ = self
+            .emit_subscriber(
+                AgentHarnessEvent::Own(AgentHarnessOwnEvent::AfterProviderResponse(event.clone())),
+                None,
+            )
+            .await;
     }
 }
 

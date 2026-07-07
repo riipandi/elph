@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::Value;
 
 use crate::types::{
-    AssistantContentBlock, AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams,
+    AssistantContentBlock, AssistantMessage, AssistantMessageEvent, Context, Model, ProviderResponse, ProviderStreams,
     SimpleStreamOptions, StopReason, StreamOptions, TextContent, ThinkingContent, ToolCall,
 };
 use crate::utils::event_stream::AssistantMessageEventStream;
@@ -201,6 +201,19 @@ async fn run_faux(
             m
         }
     };
+
+    crate::api::common::apply_on_response(
+        options.and_then(|o| o.on_response.as_ref()),
+        ProviderResponse {
+            status: 200,
+            headers: HashMap::from([
+                ("x-faux-provider".to_string(), "ok".to_string()),
+                ("content-type".to_string(), "text/event-stream".to_string()),
+            ]),
+        },
+        model,
+    )
+    .await;
 
     let message = with_usage_estimate(message, context, options, &core.prompt_cache);
     stream_with_deltas(

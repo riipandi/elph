@@ -1,6 +1,6 @@
 [package]
 name = "elph-ai"
-version = "0.0.21"
+version = "0.0.22"
 license = "MIT"
 description = "Unified LLM API with provider collections, auth resolution, and streaming"
 keywords = ["ai", "llm", "provider", "api", "elph"]

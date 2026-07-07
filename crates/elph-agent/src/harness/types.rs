@@ -839,6 +839,59 @@ pub enum AgentHarnessOwnEvent {
     ResourcesUpdate(ResourcesUpdateEvent),
 }
 
+impl AgentHarnessOwnEvent {
+    /// Snake-case hook name matching upstream `AgentHarnessEventResultMap` keys.
+    pub fn hook_type(&self) -> &'static str {
+        match self {
+            Self::QueueUpdate(_) => "queue_update",
+            Self::SavePoint(_) => "save_point",
+            Self::Abort(_) => "abort",
+            Self::Settled(_) => "settled",
+            Self::BeforeAgentStart(_) => "before_agent_start",
+            Self::Context(_) => "context",
+            Self::BeforeProviderRequest(_) => "before_provider_request",
+            Self::BeforeProviderPayload(_) => "before_provider_payload",
+            Self::AfterProviderResponse(_) => "after_provider_response",
+            Self::ToolCall(_) => "tool_call",
+            Self::ToolResult(_) => "tool_result",
+            Self::SessionBeforeCompact(_) => "session_before_compact",
+            Self::SessionCompact(_) => "session_compact",
+            Self::SessionBeforeTree(_) => "session_before_tree",
+            Self::SessionTree(_) => "session_tree",
+            Self::ModelUpdate(_) => "model_update",
+            Self::ThinkingLevelUpdate(_) => "thinking_level_update",
+            Self::ToolsUpdate(_) => "tools_update",
+            Self::ResourcesUpdate(_) => "resources_update",
+        }
+    }
+}
+
+/// Returns `true` when `event_type` is a known upstream harness hook name.
+pub fn is_known_harness_hook_type(event_type: &str) -> bool {
+    matches!(
+        event_type,
+        "before_agent_start"
+            | "context"
+            | "before_provider_request"
+            | "before_provider_payload"
+            | "after_provider_response"
+            | "tool_call"
+            | "tool_result"
+            | "session_before_compact"
+            | "session_compact"
+            | "session_before_tree"
+            | "session_tree"
+            | "model_update"
+            | "thinking_level_update"
+            | "tools_update"
+            | "resources_update"
+            | "queue_update"
+            | "save_point"
+            | "abort"
+            | "settled"
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Harness hook result types
 // ---------------------------------------------------------------------------
@@ -882,6 +935,7 @@ pub struct ToolResultPatch {
 pub struct SessionBeforeCompactResult {
     pub cancel: bool,
     pub compaction: Option<CompactResult>,
+    pub custom_instructions: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -897,6 +951,19 @@ pub struct SessionBeforeTreeResult {
 pub struct BranchSummarySummary {
     pub summary: String,
     pub details: Option<Value>,
+}
+
+/// Result returned from generic [`AgentHarness::on`](super::agent_harness::AgentHarness::on) handlers.
+#[derive(Debug, Clone)]
+pub enum HarnessHookResult {
+    BeforeAgentStart(BeforeAgentStartResult),
+    Context(ContextResult),
+    BeforeProviderRequest(BeforeProviderRequestResult),
+    BeforeProviderPayload(BeforeProviderPayloadResult),
+    ToolCall(ToolCallHookResult),
+    ToolResult(ToolResultPatch),
+    SessionBeforeCompact(SessionBeforeCompactResult),
+    SessionBeforeTree(SessionBeforeTreeResult),
 }
 
 #[derive(Debug, Clone, Default)]

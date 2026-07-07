@@ -79,6 +79,8 @@ let harness = AgentHarness::builder()
     .await?;
 ```
 
+Built-in tool names: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`. See [tools.md](./tools.md).
+
 For active tools:
 
 - `active_tools_change` entries are branch-scoped durable config (already persisted today)

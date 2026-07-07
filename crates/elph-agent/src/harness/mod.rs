@@ -1,6 +1,7 @@
 //! Agent harness — elph-agent module.
 
 pub mod agent_harness;
+pub mod generic_on;
 pub mod hooks;
 pub mod system_prompt;
 pub mod types;
@@ -17,13 +18,14 @@ pub use types::{
     BranchSummaryError, BranchSummaryErrorCode, BranchSummaryResult, BranchSummarySummary, CompactResult,
     CompactionError, CompactionErrorCode, CompactionPreparation, CompactionSettings, ContextEvent, ContextResult,
     CreateDirOptions, CreateTempFileOptions, DEFAULT_COMPACTION_SETTINGS, ExecutionEnv, ExecutionError,
-    ExecutionErrorCode, FileError, FileErrorCode, FileInfo, FileKind, FileOperations, FileSystem, HarnessResult,
-    ModelUpdateEvent, ModelUpdateSource, NavigateTreeResult, PendingSessionWrite, PromptTemplate, QueueUpdateEvent,
-    ReadTextLinesOptions, RemoveOptions, ResourcesUpdateEvent, Result, SavePointEvent, SessionBeforeCompactEvent,
-    SessionBeforeCompactResult, SessionBeforeTreeEvent, SessionBeforeTreeResult, SessionCompactEvent, SessionTreeEvent,
-    SettledEvent, Shell, ShellExecOptions, ShellExecResult, Skill, SystemPrompt, SystemPromptContext, SystemPromptFn,
-    ThinkingLevelUpdateEvent, ToolCallEvent, ToolCallHookResult, ToolResultEvent, ToolResultPatch, ToolsUpdateEvent,
-    TreePreparation, err, get_or_throw, get_or_undefined, ok, to_error,
+    ExecutionErrorCode, FileError, FileErrorCode, FileInfo, FileKind, FileOperations, FileSystem, HarnessHookResult,
+    HarnessResult, ModelUpdateEvent, ModelUpdateSource, NavigateTreeResult, PendingSessionWrite, PromptTemplate,
+    QueueUpdateEvent, ReadTextLinesOptions, RemoveOptions, ResourcesUpdateEvent, Result, SavePointEvent,
+    SessionBeforeCompactEvent, SessionBeforeCompactResult, SessionBeforeTreeEvent, SessionBeforeTreeResult,
+    SessionCompactEvent, SessionTreeEvent, SettledEvent, Shell, ShellExecOptions, ShellExecResult, Skill, SystemPrompt,
+    SystemPromptContext, SystemPromptFn, ThinkingLevelUpdateEvent, ToolCallEvent, ToolCallHookResult, ToolResultEvent,
+    ToolResultPatch, ToolsUpdateEvent, TreePreparation, err, get_or_throw, get_or_undefined,
+    is_known_harness_hook_type, ok, to_error,
 };
 pub use utils::{
     DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, GREP_MAX_LINE_LENGTH, ShellCaptureOptions, TruncatedBy, TruncationOptions,

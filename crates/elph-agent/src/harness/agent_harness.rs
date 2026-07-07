@@ -5,7 +5,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex as StdMutex};
 
-use elph_ai::{AssistantMessage, ImageContent, Message, Model, Models, SimpleStreamOptions, StopReason, UserContent};
+use elph_ai::{
+    AssistantMessage, ImageContent, Message, Model, Models, ProviderResponse, SimpleStreamOptions, StopReason,
+    UserContent,
+};
 use serde_json::json;
 use tokio::sync::{Mutex, oneshot};
 use tokio_util::sync::CancellationToken;
@@ -17,12 +20,12 @@ use crate::compaction::{
 };
 use crate::harness::hooks::{AgentHarnessEvent, HookRegistry};
 use crate::harness::types::{
-    AbortResult, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessOptions, AgentHarnessOwnEvent,
-    AgentHarnessPhase, AgentHarnessPromptOptions, AgentHarnessResources, AgentHarnessStreamOptions,
-    BeforeAgentStartEvent, BeforeProviderPayloadEvent, BeforeProviderRequestEvent, CompactResult, CompactionError,
-    ContextEvent, ExecutionEnv, ModelUpdateSource, NavigateTreeResult, PendingSessionWrite, QueueUpdateEvent,
-    SessionBeforeCompactEvent, SessionBeforeTreeEvent, SystemPrompt, ToolCallEvent, ToolResultEvent,
-    apply_stream_options_patch, clone_stream_options,
+    AbortResult, AfterProviderResponseEvent, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessOptions,
+    AgentHarnessOwnEvent, AgentHarnessPhase, AgentHarnessPromptOptions, AgentHarnessResources,
+    AgentHarnessStreamOptions, BeforeAgentStartEvent, BeforeProviderPayloadEvent, BeforeProviderRequestEvent,
+    CompactResult, CompactionError, ContextEvent, ExecutionEnv, ModelUpdateSource, NavigateTreeResult,
+    PendingSessionWrite, QueueUpdateEvent, SessionBeforeCompactEvent, SessionBeforeTreeEvent, SystemPrompt,
+    ToolCallEvent, ToolResultEvent, clone_stream_options,
 };
 use crate::messages::default_convert_to_llm_fn;
 use crate::prompt_templates::format_prompt_template_invocation;
@@ -450,6 +453,60 @@ where
         self.shared.hooks.register_before_provider_payload(handler).await
     }
 
+    pub async fn on_session_before_compact<F, Fut>(&self, handler: F) -> usize
+    where
+        F: Fn(&SessionBeforeCompactEvent) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Option<crate::harness::types::SessionBeforeCompactResult>> + Send + 'static,
+    {
+        let handler = Arc::new(move |event: &SessionBeforeCompactEvent| {
+            let fut = handler(event);
+            Box::pin(fut)
+                as Pin<Box<dyn Future<Output = Option<crate::harness::types::SessionBeforeCompactResult>> + Send>>
+        });
+        self.shared.hooks.register_session_before_compact(handler).await
+    }
+
+    pub async fn on_session_before_tree<F, Fut>(&self, handler: F) -> usize
+    where
+        F: Fn(&SessionBeforeTreeEvent) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Option<crate::harness::types::SessionBeforeTreeResult>> + Send + 'static,
+    {
+        let handler = Arc::new(move |event: &SessionBeforeTreeEvent| {
+            let fut = handler(event);
+            Box::pin(fut)
+                as Pin<Box<dyn Future<Output = Option<crate::harness::types::SessionBeforeTreeResult>> + Send>>
+        });
+        self.shared.hooks.register_session_before_tree(handler).await
+    }
+
+    pub async fn on_after_provider_response<F, Fut>(&self, handler: F) -> usize
+    where
+        F: Fn(&AfterProviderResponseEvent) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let handler = Arc::new(move |event: &AfterProviderResponseEvent| {
+            let fut = handler(event);
+            Box::pin(fut) as Pin<Box<dyn Future<Output = ()> + Send>>
+        });
+        self.shared.hooks.register_after_provider_response(handler).await
+    }
+
+    /// Upstream-compatible hook registration by snake_case event name.
+    ///
+    /// Mutation hooks return an optional [`HarnessHookResult`] to alter harness behavior.
+    /// Observe-only hooks (for example `session_compact`, `model_update`) may return `None`.
+    pub async fn on<F, Fut>(&self, event_type: &str, handler: F) -> HarnessOpResult<usize>
+    where
+        F: Fn(AgentHarnessOwnEvent) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Option<crate::harness::types::HarnessHookResult>> + Send + 'static,
+    {
+        crate::harness::generic_on::register_generic_on(self, event_type, handler).await
+    }
+
+    pub(crate) fn hook_registry(&self) -> &crate::harness::hooks::HookRegistry {
+        &self.shared.hooks
+    }
+
     pub async fn prompt(
         &self,
         text: impl Into<String>,
@@ -654,6 +711,10 @@ where
         }
 
         let from_hook = hook_result.as_ref().and_then(|r| r.compaction.clone());
+        let effective_custom_instructions = hook_result
+            .as_ref()
+            .and_then(|r| r.custom_instructions.clone())
+            .or_else(|| custom_instructions.map(str::to_string));
         let compact_result = if let Some(result) = from_hook.clone() {
             result
         } else {
@@ -662,7 +723,7 @@ where
                 preparation,
                 &self.shared.models,
                 &model,
-                custom_instructions,
+                effective_custom_instructions.as_deref(),
                 None,
                 thinking,
             )
@@ -1302,6 +1363,24 @@ where
                         }
                     }
                     Some(current)
+                })
+            }));
+
+            let hooks_for_response = hooks.clone();
+            let existing_on_response = simple.base.on_response.take();
+            simple.base.on_response = Some(Arc::new(move |response: ProviderResponse, model_ref| {
+                let hooks = hooks_for_response.clone();
+                let existing = existing_on_response.clone();
+                Box::pin(async move {
+                    hooks
+                        .emit_after_provider_response(&AfterProviderResponseEvent {
+                            status: response.status,
+                            headers: response.headers.clone(),
+                        })
+                        .await;
+                    if let Some(previous) = existing {
+                        previous(response, model_ref).await;
+                    }
                 })
             }));
 

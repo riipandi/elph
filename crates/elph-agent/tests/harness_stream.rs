@@ -9,8 +9,9 @@ use elph_agent::harness::types::AgentHarnessStreamOptionsPatch;
 use elph_agent::runtime::try_block_on;
 use elph_agent::session::types::HasSessionId;
 use elph_agent::{
-    AgentHarness, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessResources, AgentHarnessStreamOptions,
-    AgentThinkingLevel, InMemorySessionStorage, LocalExecutionEnv, Session, SystemPrompt, simple_tool,
+    AgentHarness, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessOwnEvent, AgentHarnessResources,
+    AgentHarnessStreamOptions, AgentThinkingLevel, InMemorySessionStorage, LocalExecutionEnv, Session, SystemPrompt,
+    simple_tool,
 };
 use elph_ai::{FauxResponseStep, StopReason, Tool, faux_assistant_message, faux_text, faux_tool_call};
 use serde_json::json;
@@ -393,4 +394,239 @@ async fn harness_chains_provider_payload_hooks() {
         final_payload.lock().expect("final payload lock").clone(),
         Some(json!({ "steps": ["provider", "first", "second"] }))
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_on_chains_provider_payload_hooks() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let seen_payloads = Arc::new(StdMutex::new(Vec::new()));
+    let final_payload = Arc::new(StdMutex::new(None));
+    let seen_payloads_clone = seen_payloads.clone();
+    let final_payload_clone = final_payload.clone();
+
+    faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
+        move |_context, options, _, model| {
+            let payload = if let Some(on_payload) = options.and_then(|o| o.on_payload.clone()) {
+                try_block_on(on_payload(json!({ "steps": ["provider"] }), model.clone()))
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| json!({ "steps": ["provider"] }))
+            } else {
+                json!({ "steps": ["provider"] })
+            };
+            *final_payload_clone.lock().expect("final payload lock") = Some(payload);
+            faux_assistant_message(vec![faux_text("ok")], None)
+        },
+    ))]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session storage")),
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: elph_agent::QueueMode::OneAtATime,
+        follow_up_mode: elph_agent::QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    let seen_payloads_first = seen_payloads_clone.clone();
+    harness
+        .on("before_provider_payload", move |event| {
+            let seen_payloads = seen_payloads_first.clone();
+            async move {
+                let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
+                    return None;
+                };
+                seen_payloads
+                    .lock()
+                    .expect("seen payloads lock")
+                    .push(event.payload.clone());
+                Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
+                    elph_agent::BeforeProviderPayloadResult {
+                        payload: json!({ "steps": ["provider", "first"] }),
+                    },
+                ))
+            }
+        })
+        .await
+        .expect("first hook");
+
+    let seen_payloads_second = seen_payloads_clone.clone();
+    harness
+        .on("before_provider_payload", move |event| {
+            let seen_payloads = seen_payloads_second.clone();
+            async move {
+                let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
+                    return None;
+                };
+                seen_payloads
+                    .lock()
+                    .expect("seen payloads lock")
+                    .push(event.payload.clone());
+                Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
+                    elph_agent::BeforeProviderPayloadResult {
+                        payload: json!({ "steps": ["provider", "first", "second"] }),
+                    },
+                ))
+            }
+        })
+        .await
+        .expect("second hook");
+
+    harness.prompt("hello", None).await.expect("prompt");
+
+    assert_eq!(
+        seen_payloads.lock().expect("seen payloads lock").clone(),
+        vec![
+            json!({ "steps": ["provider"] }),
+            json!({ "steps": ["provider", "first"] })
+        ]
+    );
+    assert_eq!(
+        final_payload.lock().expect("final payload lock").clone(),
+        Some(json!({ "steps": ["provider", "first", "second"] }))
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_on_rejects_unknown_hook_type() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session storage")),
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: elph_agent::QueueMode::OneAtATime,
+        follow_up_mode: elph_agent::QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    let result = harness.on("not_a_real_hook", |_| async { None }).await;
+
+    assert!(result.is_err());
+    assert!(
+        result
+            .expect_err("unknown hook")
+            .to_string()
+            .contains("Unknown harness hook type")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_after_provider_response_captures_status_and_headers() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+    faux.set_responses(vec![FauxResponseStep::Static(faux_assistant_message(
+        vec![faux_text("ok")],
+        None,
+    ))]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session storage")),
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: elph_agent::QueueMode::OneAtATime,
+        follow_up_mode: elph_agent::QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    let captured = Arc::new(StdMutex::new(None::<(u16, HashMap<String, String>)>));
+    let captured_clone = captured.clone();
+    harness
+        .on_after_provider_response(move |event| {
+            let captured = captured_clone.clone();
+            let status = event.status;
+            let headers = event.headers.clone();
+            async move {
+                *captured.lock().expect("capture lock") = Some((status, headers));
+            }
+        })
+        .await;
+
+    harness.prompt("hello", None).await.expect("prompt");
+
+    let (status, headers) = captured
+        .lock()
+        .expect("capture lock")
+        .clone()
+        .expect("response metadata");
+    assert_eq!(status, 200);
+    assert_eq!(headers.get("x-faux-provider").map(String::as_str), Some("ok"));
+    assert_eq!(
+        headers.get("content-type").map(String::as_str),
+        Some("text/event-stream")
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_subscribe_receives_after_provider_response_own_event() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+    faux.set_responses(vec![FauxResponseStep::Static(faux_assistant_message(
+        vec![faux_text("ok")],
+        None,
+    ))]);
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session: Session::new(InMemorySessionStorage::new(None).expect("session storage")),
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: elph_agent::QueueMode::OneAtATime,
+        follow_up_mode: elph_agent::QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    let responses = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let responses_clone = responses.clone();
+    harness
+        .subscribe(move |event, _| {
+            let responses = responses_clone.clone();
+            async move {
+                if let AgentHarnessEvent::Own(AgentHarnessOwnEvent::AfterProviderResponse(response)) = event {
+                    responses.lock().await.push((response.status, response.headers.clone()));
+                }
+            }
+        })
+        .await;
+
+    harness.prompt("hello", None).await.expect("prompt");
+
+    let responses = responses.lock().await.clone();
+    assert_eq!(responses.len(), 1);
+    assert_eq!(responses[0].0, 200);
+    assert_eq!(responses[0].1.get("x-faux-provider").map(String::as_str), Some("ok"));
 }

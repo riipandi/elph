@@ -36,10 +36,11 @@ pub use compaction::{
     serialize_conversation, should_compact,
 };
 pub use datastore::{DatabaseSpec, ensure_database, ensure_databases, ensure_databases_once};
+pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
 pub use elph_core::logger::{LogRotation, LoggingOptions};
 pub use elph_core::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use env::LocalExecutionEnv;
-pub use event_stream::AgentEventStream;
+pub use event_stream::{AgentEventSink, AgentEventStream};
 pub use harness::utils::TruncationResult;
 pub use harness::{
     AfterProviderResponseEvent, AgentHarness, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessEvent,
@@ -50,21 +51,22 @@ pub use harness::{
     CompactionError, CompactionErrorCode, ContextEvent, ContextResult, CreateDirOptions, CreateTempFileOptions,
     DEFAULT_COMPACTION_SETTINGS as HARNESS_DEFAULT_COMPACTION_SETTINGS, DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES,
     ExecutionEnv, ExecutionError, ExecutionErrorCode, FileError, FileErrorCode, FileInfo, FileKind,
-    FileOperations as HarnessFileOperations, FileSystem, GREP_MAX_LINE_LENGTH, HarnessOpResult, HarnessResult,
-    ModelUpdateEvent, ModelUpdateSource, NavigateTreeOptions, NavigateTreeResult, PendingSessionWrite, PromptTemplate,
-    QueueUpdateEvent, ReadTextLinesOptions, RemoveOptions, ResourcesUpdateEvent, Result as HarnessTypedResult,
-    SavePointEvent, SessionBeforeCompactEvent, SessionBeforeCompactResult, SessionBeforeTreeEvent,
-    SessionBeforeTreeResult, SessionCompactEvent, SessionTreeEvent, SettledEvent, Shell, ShellCaptureOptions,
-    ShellExecOptions, ShellExecResult, Skill, SystemPrompt, SystemPromptContext, SystemPromptFn,
+    FileOperations as HarnessFileOperations, FileSystem, GREP_MAX_LINE_LENGTH, HarnessHookResult, HarnessOpResult,
+    HarnessResult, ModelUpdateEvent, ModelUpdateSource, NavigateTreeOptions, NavigateTreeResult, PendingSessionWrite,
+    PromptTemplate, QueueUpdateEvent, ReadTextLinesOptions, RemoveOptions, ResourcesUpdateEvent,
+    Result as HarnessTypedResult, SavePointEvent, SessionBeforeCompactEvent, SessionBeforeCompactResult,
+    SessionBeforeTreeEvent, SessionBeforeTreeResult, SessionCompactEvent, SessionTreeEvent, SettledEvent, Shell,
+    ShellCaptureOptions, ShellExecOptions, ShellExecResult, Skill, SystemPrompt, SystemPromptContext, SystemPromptFn,
     ThinkingLevelUpdateEvent, ToolCallEvent, ToolCallHookResult, ToolResultEvent, ToolResultPatch, ToolsUpdateEvent,
     TreePreparation, TruncatedBy, TruncationOptions, err, execute_shell_with_capture, finalize_shell_capture,
-    format_size, format_skills_for_system_prompt, get_or_throw, get_or_undefined, ok, sanitize_binary_output, to_error,
-    truncate_head, truncate_line, truncate_tail,
+    format_size, format_skills_for_system_prompt, get_or_throw, get_or_undefined, is_known_harness_hook_type, ok,
+    sanitize_binary_output, to_error, truncate_head, truncate_line, truncate_tail,
 };
 pub use init::InitProgress;
 pub use messages::{
-    CustomMessageContent, create_branch_summary_message, create_compaction_summary_message, create_custom_message,
-    default_convert_to_llm, default_convert_to_llm_fn, now_iso_timestamp,
+    CustomMessageContent, bash_execution_to_text, create_branch_summary_message, create_compaction_summary_message,
+    create_custom_message, default_convert_to_llm, default_convert_to_llm as convert_to_llm, default_convert_to_llm_fn,
+    now_iso_timestamp,
 };
 pub use migration::Migration;
 pub use prompt_templates::{
@@ -73,15 +75,17 @@ pub use prompt_templates::{
     format_prompt_template_invocation, load_prompt_templates, load_sourced_prompt_templates, parse_command_args,
     substitute_args,
 };
-pub use proxy::{ProxyStreamOptions, stream_proxy};
+pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions, stream_proxy};
 pub use runtime::{block_on, try_block_on};
+pub use session::id::uuidv7;
 pub use session::{
     BranchSummaryOptions, CustomMessageEntryBlock, CustomMessageEntryContent, ForkEntriesOptions, ForkPosition,
     InMemorySessionCreateOptions, InMemorySessionOptions, InMemorySessionRepo, InMemorySessionStorage,
     JsonlSessionCreateOptions, JsonlSessionListOptions, JsonlSessionMetadata, JsonlSessionRepo,
     JsonlSessionRepoCreateOptions, JsonlSessionStorage, SESSION_TREE_MIGRATIONS, Session, SessionContext, SessionError,
     SessionErrorCode, SessionMetadata, SessionModelRef, SessionStorage, SessionTreeEntry, TursoSessionMetadata,
-    TursoSessionStorage, build_session_context, create_session_id, create_timestamp, load_jsonl_session_metadata,
+    TursoSessionStorage, build_session_context, create_session_id, create_timestamp, get_entries_to_fork,
+    load_jsonl_session_metadata, to_session,
 };
 pub use skills::{
     LoadSkillsResult, LoadSourcedSkillsResult, SkillDiagnostic, SkillDiagnosticCode, SourcedSkill,

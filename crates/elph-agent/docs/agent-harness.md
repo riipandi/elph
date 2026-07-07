@@ -218,6 +218,13 @@ let env = Arc::new(LocalExecutionEnv::new(cwd));
 
 `ExecutionEnv` methods return `HarnessResult<T, ExecutionError>` or `HarnessResult<T, FileError>` — expected failures do not panic.
 
+Built-in tool wiring:
+
+- `read`, `write`, `edit`, `bash`, `ls` — `ExecutionEnv` file and shell APIs
+- `grep`, `find` — resolve paths via `ExecutionEnv`, then search the real filesystem with [`fff-search`](https://crates.io/crates/fff-search) (`FilePicker::collect_files`, `watch: false`)
+
+See [tools.md](./tools.md) for tool groups, parameters, and output formats.
+
 ## Test organization
 
 Harness tests live in `crates/elph-agent/tests/harness.rs` and cover:
@@ -249,7 +256,8 @@ cargo test -p elph-agent --test harness
 - Provider hooks: `before_provider_request`, `before_provider_payload`, `after_provider_response`
 - Typed hook handlers with result chaining
 - `ExecutionEnv` with typed `Result` returns
-- Built-in coding tools backed by `ExecutionEnv`
+- Built-in coding and exploration tools (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`)
+- `grep` / `find` backed by `fff-search`; other tools use `ExecutionEnv` directly
 
 ### Planned
 

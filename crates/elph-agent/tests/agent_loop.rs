@@ -667,7 +667,7 @@ async fn run_agent_loop_injects_queued_steering_after_tools() {
         let executed_for_steering = executed_for_steering.clone();
         let queued_delivered_capture = queued_delivered_capture.clone();
         Box::pin(async move {
-            if executed_for_steering.lock().await.len() >= 1 && !queued_delivered_capture.load(Ordering::SeqCst) {
+            if !executed_for_steering.lock().await.is_empty() && !queued_delivered_capture.load(Ordering::SeqCst) {
                 queued_delivered_capture.store(true, Ordering::SeqCst);
                 return vec![user_agent_message("interrupt")];
             }

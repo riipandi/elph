@@ -3,20 +3,72 @@
 mod common;
 
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 
 use elph_agent::{
     Agent, AgentEvent, AgentMessage, AgentOptions, AgentThinkingLevel, AgentTool, AgentToolResult, PartialAgentState,
     QueueMode, ToolResultContent, llm_message_to_agent, simple_tool,
 };
 use elph_ai::{
-    FauxResponseStep, Message, StopReason, Tool, UserContent, builtin_models, faux_assistant_message, faux_provider,
-    faux_text, faux_tool_call,
+    FauxResponseStep, Message, StopReason, Tool, UserContent, api::common::wrap_on_payload, builtin_models,
+    faux_assistant_message, faux_provider, faux_text, faux_tool_call,
 };
 use serde_json::json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::{Mutex, oneshot};
 
 use common::{error_stream_fn, faux_stream_fn, hanging_until_abort_stream_fn};
+
+#[tokio::test(flavor = "multi_thread")]
+async fn agent_wires_on_payload_to_stream_options() {
+    use elph_agent::runtime::try_block_on;
+
+    let faux = faux_provider(Default::default());
+    let model = faux.provider.get_models()[0].clone();
+
+    let final_payload = Arc::new(StdMutex::new(None));
+    let final_payload_clone = final_payload.clone();
+
+    faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
+        move |_context, options, _, model| {
+            let payload = if let Some(on_payload) = options.and_then(|o| o.on_payload.clone()) {
+                try_block_on(on_payload(json!({ "source": "provider" }), model.clone()))
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| json!({ "source": "provider" }))
+            } else {
+                json!({ "source": "provider" })
+            };
+            *final_payload_clone.lock().expect("final payload lock") = Some(payload);
+            faux_assistant_message(vec![faux_text("ok")], None)
+        },
+    ))]);
+
+    let on_payload = wrap_on_payload(|payload, _model| {
+        Box::pin(async move {
+            let mut mutated = payload;
+            mutated["mutated"] = json!(true);
+            Some(mutated)
+        })
+    });
+
+    let agent = Agent::new(AgentOptions {
+        initial_state: Some(PartialAgentState {
+            model: Some(model),
+            ..Default::default()
+        }),
+        stream_fn: Some(faux_stream_fn(&faux)),
+        on_payload: Some(on_payload),
+        ..Default::default()
+    });
+
+    agent.prompt_text("hello", None).await.expect("prompt");
+
+    assert_eq!(
+        final_payload.lock().expect("final payload lock").clone(),
+        Some(json!({ "source": "provider", "mutated": true }))
+    );
+}
 
 #[tokio::test]
 async fn agent_creates_with_default_state() {
@@ -618,13 +670,13 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
             let update_tx_capture = update_tx_capture.clone();
             Box::pin(async move {
                 *update_tx_capture.lock().await = on_update.clone();
-                on_update.as_ref().map(|cb| {
+                if let Some(cb) = on_update.as_ref() {
                     cb(AgentToolResult {
                         content: vec![ToolResultContent::Text(elph_ai::TextContent::new("running"))],
                         details: json!({ "status": "running" }),
                         terminate: None,
                     });
-                });
+                }
                 Ok(AgentToolResult {
                     content: vec![ToolResultContent::Text(elph_ai::TextContent::new("ok"))],
                     details: json!({ "status": "done" }),

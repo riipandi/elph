@@ -112,22 +112,12 @@ fn make_agent(faux: &elph_ai::FauxProviderHandle, options: AgentTestOptions) -> 
     })
 }
 
+#[derive(Default)]
 struct AgentTestOptions {
     system_prompt: Option<String>,
     thinking_level: Option<AgentThinkingLevel>,
     tools: Option<Vec<AgentTool>>,
     messages: Option<Vec<AgentMessage>>,
-}
-
-impl Default for AgentTestOptions {
-    fn default() -> Self {
-        Self {
-            system_prompt: None,
-            thinking_level: None,
-            tools: None,
-            messages: None,
-        }
-    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

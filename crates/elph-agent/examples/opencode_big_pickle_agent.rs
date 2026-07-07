@@ -2,10 +2,10 @@
 //!
 //! ```bash
 //! export OPENCODE_API_KEY="your-key"
-//! cargo run -p elph-agent --example opencode_big_pickle
+//! cargo run -p elph-agent --example opencode_big_pickle_agent
 //!
 //! # Custom prompt:
-//! cargo run -p elph-agent --example opencode_big_pickle -- --prompt "Explain async in Rust briefly."
+//! cargo run -p elph-agent --example opencode_big_pickle_agent -- --prompt "Explain async in Rust briefly."
 //! ```
 
 use std::io::{IsTerminal, Write, stderr};
@@ -101,11 +101,10 @@ async fn main() -> anyhow::Result<()> {
                             let _ = std::io::stdout().flush();
                         }
                     }
-                    AgentEvent::AgentEnd { .. } => {
-                        if !saw_delta.load(Ordering::SeqCst) {
-                            generating.finish_and_clear();
-                        }
+                    AgentEvent::AgentEnd { .. } if !saw_delta.load(Ordering::SeqCst) => {
+                        generating.finish_and_clear();
                     }
+                    AgentEvent::AgentEnd { .. } => {}
                     _ => {}
                 }
             })
@@ -174,8 +173,8 @@ fn print_help() {
            -h, --help         Show this help\n\
          \n\
          Examples:\n\
-           cargo run -p elph-agent --example opencode_big_pickle\n\
-           cargo run -p elph-agent --example opencode_big_pickle -- --prompt \"Hello!\""
+           cargo run -p elph-agent --example opencode_big_pickle_agent\n\
+           cargo run -p elph-agent --example opencode_big_pickle_agent -- --prompt \"Hello!\""
     );
 }
 

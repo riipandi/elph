@@ -20,7 +20,9 @@ pub use repo::{
     InMemorySessionCreateOptions, InMemorySessionRepo, JsonlSessionListOptions, JsonlSessionRepo,
     JsonlSessionRepoCreateOptions,
 };
-pub use repo_utils::{ForkEntriesOptions, ForkPosition, create_session_id, create_timestamp};
+pub use repo_utils::{
+    ForkEntriesOptions, ForkPosition, create_session_id, create_timestamp, get_entries_to_fork, to_session,
+};
 pub use tree::{BranchSummaryOptions, Session};
 pub use types::{
     CustomMessageEntryBlock, CustomMessageEntryContent, JsonlSessionMetadata, SessionContext, SessionError,

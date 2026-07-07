@@ -22,7 +22,7 @@ pub struct ProxyStreamOptions {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-enum ProxyAssistantMessageEvent {
+pub enum ProxyAssistantMessageEvent {
     Start,
     TextStart {
         content_index: usize,

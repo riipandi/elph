@@ -3,13 +3,13 @@
 use std::sync::Arc;
 
 use elph_ai::Tool;
-use glob::glob;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
 use crate::harness::types::ExecutionEnv;
 use crate::harness::utils::truncate::{DEFAULT_MAX_BYTES, TruncationOptions, truncate_head};
 use crate::tools::common::{check_aborted, resolve_path};
+use crate::tools::fff_picker::{build_find_glob_pattern, build_find_options, build_picker, run_with_abort_signal};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
@@ -56,27 +56,26 @@ async fn execute_find(
         .unwrap_or(DEFAULT_LIMIT as u64) as usize;
 
     let base = resolve_path(&env, path, signal.as_ref()).await?;
-    let glob_pattern = if pattern.contains('/') {
-        format!("{base}/{pattern}")
-    } else {
-        format!("{base}/**/{pattern}")
-    };
+    let glob_pattern = build_find_glob_pattern(pattern);
+    let signal_for_blocking = signal.clone();
 
-    let mut results = Vec::new();
-    for entry in glob(&glob_pattern).map_err(|error| anyhow::anyhow!("{error}"))? {
-        check_aborted(signal.as_ref())?;
-        let entry = entry.map_err(|error| anyhow::anyhow!("{error}"))?;
-        let display = entry.to_string_lossy().replace('\\', "/");
-        let relative = display
-            .strip_prefix(&format!("{base}/"))
-            .unwrap_or(&display)
-            .to_string();
-        results.push(relative);
-        if results.len() >= limit {
-            break;
-        }
-    }
-    results.sort();
+    let (results, limit_reached) = tokio::task::spawn_blocking(move || {
+        run_with_abort_signal(signal_for_blocking.as_ref(), |abort| {
+            if abort.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err(anyhow::anyhow!("Operation aborted"));
+            }
+            let picker = build_picker(&base)?;
+            let search = picker.glob(&glob_pattern, build_find_options(limit));
+            let mut results: Vec<String> = search.items.iter().map(|item| item.relative_path(&picker)).collect();
+            results.sort();
+            let limit_reached = results.len() >= limit || search.total_matched > limit;
+            if results.len() > limit {
+                results.truncate(limit);
+            }
+            Ok((results, limit_reached))
+        })
+    })
+    .await??;
 
     let output = results.join("\n");
     let truncation = truncate_head(
@@ -87,7 +86,7 @@ async fn execute_find(
         },
     );
     let mut text = truncation.content;
-    if results.len() >= limit {
+    if limit_reached {
         text.push_str(&format!("\n\n[{limit} results limit]"));
     }
     if truncation.truncated {
@@ -97,7 +96,7 @@ async fn execute_find(
     Ok(AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(text))],
         details: json!({
-            "resultLimitReached": results.len() >= limit,
+            "resultLimitReached": limit_reached,
             "truncated": truncation.truncated
         }),
         terminate: None,

@@ -97,9 +97,19 @@ impl AgentMessage {
 pub enum CustomAgentMessage {
     BashExecution {
         command: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         output: Option<String>,
+        #[serde(rename = "exitCode", default, skip_serializing_if = "Option::is_none")]
+        exit_code: Option<i32>,
+        #[serde(default)]
+        cancelled: bool,
+        #[serde(default)]
+        truncated: bool,
+        #[serde(rename = "fullOutputPath", default, skip_serializing_if = "Option::is_none")]
+        full_output_path: Option<String>,
         timestamp: i64,
+        #[serde(rename = "excludeFromContext", default, skip_serializing_if = "std::ops::Not::not")]
+        exclude_from_context: bool,
     },
     BranchSummary {
         summary: String,

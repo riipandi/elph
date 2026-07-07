@@ -1,5 +1,7 @@
 //! Shared test helpers for elph-agent integration tests.
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

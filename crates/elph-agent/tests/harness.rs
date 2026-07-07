@@ -11,9 +11,10 @@ use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 use elph_agent::session::types::SessionTreeEntry;
 use elph_agent::{
     AgentHarness, AgentHarnessErrorCode, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessOwnEvent,
-    AgentHarnessResources, AgentThinkingLevel, AgentTool, CustomMessageContent, InMemorySessionStorage,
-    LocalExecutionEnv, QueueMode, Session, Skill, SystemPrompt, ToolResultPatch, create_custom_message,
-    llm_message_to_agent, simple_tool,
+    AgentHarnessPhase, AgentHarnessResources, AgentThinkingLevel, AgentTool, BranchSummarySummary,
+    CustomMessageContent, InMemorySessionStorage, LocalExecutionEnv, NavigateTreeOptions, QueueMode, Session,
+    SessionBeforeTreeResult, Skill, SystemPrompt, ToolResultPatch, create_custom_message, llm_message_to_agent,
+    simple_tool,
 };
 use elph_ai::{
     ContentBlock, FauxResponseStep, Message, Models, StopReason, Tool, UserContent, builtin_models,
@@ -673,7 +674,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
     let second_model = faux
         .provider
         .get_models()
-        .into_iter()
+        .iter()
         .find(|model| model.id == "second")
         .expect("second model");
 
@@ -875,18 +876,22 @@ async fn harness_wait_for_idle_waits_for_async_subscribers() {
     let barrier = Arc::new(tokio::sync::Mutex::new(None::<tokio::sync::oneshot::Receiver<()>>));
     let (barrier_tx, barrier_rx) = tokio::sync::oneshot::channel::<()>();
     *barrier.lock().await = Some(barrier_rx);
+    let listener_waiting = Arc::new(AtomicBool::new(false));
     let listener_finished = Arc::new(AtomicBool::new(false));
 
     let barrier_clone = barrier.clone();
+    let listener_waiting_clone = listener_waiting.clone();
     let listener_finished_clone = listener_finished.clone();
     harness
         .subscribe(move |event, _| {
             let barrier = barrier_clone.clone();
+            let listener_waiting = listener_waiting_clone.clone();
             let listener_finished = listener_finished_clone.clone();
             async move {
                 if matches!(event, AgentHarnessEvent::Agent(elph_agent::AgentEvent::AgentEnd { .. }))
                     && let Some(rx) = barrier.lock().await.take()
                 {
+                    listener_waiting.store(true, Ordering::SeqCst);
                     let _ = rx.await;
                     listener_finished.store(true, Ordering::SeqCst);
                 }
@@ -896,18 +901,25 @@ async fn harness_wait_for_idle_waits_for_async_subscribers() {
 
     let harness_for_prompt = harness.clone();
     let prompt_task = tokio::spawn(async move { harness_for_prompt.prompt("hello", None).await });
+
+    while harness.phase().await == AgentHarnessPhase::Idle {
+        tokio::task::yield_now().await;
+    }
+
     let idle_resolved = Arc::new(AtomicBool::new(false));
     let idle_resolved_for_task = idle_resolved.clone();
-    let idle_resolved_for_assert = idle_resolved.clone();
     let harness_for_idle = harness.clone();
     let idle_task = tokio::spawn(async move {
         harness_for_idle.wait_for_idle().await.expect("wait for idle");
         idle_resolved_for_task.store(true, Ordering::SeqCst);
     });
 
-    tokio::time::sleep(Duration::from_millis(10)).await;
-    assert!(!idle_resolved_for_assert.load(Ordering::SeqCst));
+    while !listener_waiting.load(Ordering::SeqCst) {
+        tokio::task::yield_now().await;
+    }
+    assert!(!idle_resolved.load(Ordering::SeqCst));
     assert!(!listener_finished.load(Ordering::SeqCst));
+
     barrier_tx.send(()).expect("release barrier");
     prompt_task.await.expect("prompt task").expect("prompt");
     idle_task.await.expect("idle task");
@@ -1045,24 +1057,24 @@ async fn harness_tools_update_events_and_validation() {
 
     let missing = harness.set_active_tools(vec!["missing".into()]).await;
     assert_eq!(
-        missing.err().expect("missing active tool error").code,
+        missing.expect_err("missing active tool error").code,
         AgentHarnessErrorCode::InvalidArgument
     );
     let duplicate_active = harness.set_active_tools(vec!["search".into(), "search".into()]).await;
     assert_eq!(
-        duplicate_active.err().expect("duplicate active tool error").code,
+        duplicate_active.expect_err("duplicate active tool error").code,
         AgentHarnessErrorCode::InvalidArgument
     );
     let duplicate_tools = harness.set_tools(vec![inspect.clone()], None).await;
     assert_eq!(
-        duplicate_tools.err().expect("single tool set error").code,
+        duplicate_tools.expect_err("single tool set error").code,
         AgentHarnessErrorCode::InvalidArgument
     );
     let duplicate_names = harness
         .set_tools(vec![inspect.clone(), inspect], Some(vec!["inspect".into()]))
         .await;
     assert_eq!(
-        duplicate_names.err().expect("duplicate tool names error").code,
+        duplicate_names.expect_err("duplicate tool names error").code,
         AgentHarnessErrorCode::InvalidArgument
     );
 
@@ -1148,4 +1160,190 @@ async fn harness_resources_update_events_clone_resources() {
     assert_eq!(updates[0].1, None);
     assert_eq!(updates[1].0.as_deref(), Some("Use inspection tools."));
     assert_eq!(updates[1].1.as_deref(), Some("Use inspection tools."));
+}
+
+fn user_agent_message(text: &str) -> elph_agent::AgentMessage {
+    llm_message_to_agent(Message::User {
+        content: UserContent::Text(text.into()),
+        timestamp: 0,
+    })
+}
+
+fn assistant_agent_message(text: &str) -> elph_agent::AgentMessage {
+    elph_agent::AgentMessage::Llm(Box::new(Message::Assistant(faux_assistant_message(
+        vec![faux_text(text)],
+        None,
+    ))))
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_session_before_compact_overrides_custom_instructions() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let captured_prompt = Arc::new(StdMutex::new(String::new()));
+    let captured_prompt_clone = captured_prompt.clone();
+    faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
+        let prompt = context
+            .messages
+            .iter()
+            .filter_map(|message| match message {
+                Message::User { content, .. } => match content {
+                    UserContent::Text(text) => Some(text.clone()),
+                    UserContent::Blocks(_) => None,
+                },
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        *captured_prompt_clone.lock().expect("capture lock") = prompt;
+        faux_assistant_message(vec![faux_text("## Goal\nCompacted")], None)
+    }))]);
+
+    let mut session = Session::new(InMemorySessionStorage::new(None).expect("session"));
+    session
+        .append_message(user_agent_message(&"old ".repeat(200)))
+        .await
+        .expect("append old user");
+    session
+        .append_message(assistant_agent_message("old reply"))
+        .await
+        .expect("append old assistant");
+    session
+        .append_message(user_agent_message(&"recent ".repeat(200)))
+        .await
+        .expect("append recent user");
+    session
+        .append_message(assistant_agent_message("recent reply"))
+        .await
+        .expect("append recent assistant");
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session,
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    harness
+        .on_session_before_compact(|event| {
+            let custom_instructions = event.custom_instructions.clone();
+            async move {
+                assert_eq!(custom_instructions.as_deref(), Some("original"));
+                Some(elph_agent::SessionBeforeCompactResult {
+                    custom_instructions: Some("hook override".into()),
+                    ..Default::default()
+                })
+            }
+        })
+        .await;
+
+    harness.compact(Some("original")).await.expect("compact");
+
+    let prompt = captured_prompt.lock().expect("capture lock").clone();
+    assert!(
+        prompt.contains("Additional focus: hook override"),
+        "expected hook override in prompt, got: {prompt}"
+    );
+    assert!(
+        !prompt.contains("Additional focus: original"),
+        "expected original instructions to be replaced, got: {prompt}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_session_before_tree_runs_during_navigate_tree() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let model = faux.provider.get_models()[0].clone();
+
+    let mut session = Session::new(InMemorySessionStorage::new(None).expect("session"));
+    let user1 = session
+        .append_message(user_agent_message("branch root"))
+        .await
+        .expect("user1");
+    session
+        .append_message(assistant_agent_message("first reply"))
+        .await
+        .expect("assistant1");
+    session
+        .append_message(user_agent_message("current path"))
+        .await
+        .expect("user2");
+    session
+        .append_message(assistant_agent_message("current reply"))
+        .await
+        .expect("assistant2");
+
+    let harness = AgentHarness::new(AgentHarnessOptions {
+        env,
+        session,
+        models,
+        tools: vec![],
+        resources: AgentHarnessResources::default(),
+        system_prompt: SystemPrompt::Static("You are helpful.".into()),
+        stream_options: Default::default(),
+        model,
+        thinking_level: AgentThinkingLevel::Off,
+        active_tool_names: vec![],
+        steering_mode: QueueMode::OneAtATime,
+        follow_up_mode: QueueMode::OneAtATime,
+    })
+    .expect("harness");
+
+    let hook_target = Arc::new(StdMutex::new(None::<String>));
+    let hook_target_clone = hook_target.clone();
+    let target_id = user1.clone();
+    harness
+        .on_session_before_tree(move |event| {
+            let hook_target = hook_target_clone.clone();
+            let hook_target_id = event.preparation.target_id.clone();
+            let user_wants_summary = event.preparation.user_wants_summary;
+            async move {
+                *hook_target.lock().expect("hook target lock") = Some(hook_target_id);
+                assert!(user_wants_summary);
+                Some(SessionBeforeTreeResult {
+                    summary: Some(BranchSummarySummary {
+                        summary: "hook-provided summary".into(),
+                        details: None,
+                    }),
+                    ..Default::default()
+                })
+            }
+        })
+        .await;
+
+    let result = harness
+        .navigate_tree(
+            &target_id,
+            Some(NavigateTreeOptions {
+                summarize: true,
+                ..Default::default()
+            }),
+        )
+        .await
+        .expect("navigate tree");
+
+    assert_eq!(
+        hook_target.lock().expect("hook target lock").as_deref(),
+        Some(target_id.as_str())
+    );
+    assert!(!result.cancelled);
+    let summary_entry = result.summary_entry.expect("summary entry");
+    match summary_entry {
+        SessionTreeEntry::BranchSummary { summary, .. } => {
+            assert_eq!(summary, "hook-provided summary");
+        }
+        other => panic!("expected branch summary entry, got {other:?}"),
+    }
 }

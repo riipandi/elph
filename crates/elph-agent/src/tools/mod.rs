@@ -3,6 +3,7 @@
 mod bash;
 mod common;
 mod edit;
+mod fff_picker;
 mod find;
 mod grep;
 mod ls;
