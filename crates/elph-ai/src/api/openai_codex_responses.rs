@@ -1,8 +1,4 @@
 //! OpenAI Codex Responses API (ChatGPT backend).
-//!
-//! SSE transport is fully implemented. WebSocket transport, zstd request
-//! compression, and session-scoped connection caching are **blockers** pending
-//! native WebSocket + zstd support in Rust.
 
 use std::collections::HashSet;
 
@@ -13,7 +9,9 @@ use serde_json::{Value, json};
 use crate::api::codex_transport::{
     CodexTransport, CodexTransportOptions, collect_codex_events_detailed, update_codex_websocket_continuation,
 };
-use crate::api::common::{apply_on_payload, build_http_client, finish_stream_error, merge_model_headers};
+use crate::api::common::{
+    apply_on_payload, build_http_client_for_target, finish_stream_error, is_request_aborted, merge_model_headers,
+};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::{
     ConvertResponsesMessagesOptions, convert_responses_messages, convert_responses_tools, process_responses_stream,
@@ -21,7 +19,7 @@ use crate::api::openai_responses_shared::{
 use crate::api::simple_options::build_base_options;
 use crate::models::{clamp_thinking_level, thinking_level_to_str};
 use crate::types::{
-    AssistantMessage, AssistantMessageEvent, Context, Message, Model, ProviderStreams, SimpleStreamOptions,
+    AssistantMessage, AssistantMessageEvent, Context, Message, Model, ProviderStreams, SimpleStreamOptions, StopReason,
     StreamOptions, Usage,
 };
 use crate::utils::event_stream::AssistantMessageEventStream;
@@ -90,7 +88,8 @@ impl OpenAICodexResponsesApi {
         tokio::spawn(async move {
             let mut output = AssistantMessage::empty(&model);
             if let Err(e) = run_codex(&model, &context, &options, &s, &mut output).await {
-                finish_stream_error(&s, &mut output, e, false);
+                let aborted = crate::api::common::is_abort_error(&e);
+                finish_stream_error(&s, &mut output, e, aborted);
             }
         });
         stream
@@ -125,8 +124,8 @@ async fn run_codex(
         headers.insert("x-client-request-id".to_string(), sid.clone());
     }
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = resolve_codex_url(&model.base_url);
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
 
     stream.push(AssistantMessageEvent::Start {
         partial: output.clone(),
@@ -142,6 +141,8 @@ async fn run_codex(
             transport: options.transport.clone(),
             websocket_connect_timeout_ms: options.websocket_connect_timeout_ms,
             session_id: options.base.session_id.clone(),
+            signal: options.base.signal.clone(),
+            env: options.base.env.clone(),
         },
     )
     .await?;
@@ -172,6 +173,9 @@ async fn run_codex(
         update_codex_websocket_continuation(session_id, &full_body, response_id, json!(response_items));
     }
 
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    }
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,
         message: output.clone(),

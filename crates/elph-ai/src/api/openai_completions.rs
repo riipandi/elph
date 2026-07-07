@@ -5,8 +5,8 @@ use anyhow::Result;
 use serde_json::{Value, json};
 
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, get_client_api_key, invoke_on_response_from_reqwest,
-    merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, get_client_api_key,
+    invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers,
 };
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_compat::{ResolvedOpenAICompletionsCompat, get_compat, has_tool_history};
@@ -23,7 +23,7 @@ use crate::utils::json_parse::parse_streaming_json;
 use crate::utils::provider_env::get_provider_env_value;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 #[derive(Clone, Default)]
 pub struct OpenAICompletionsOptions {
@@ -114,8 +114,8 @@ async fn run_openai_completions(
     let mut params = build_params(model, context, options)?;
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!("{}/chat/completions", model.base_url.trim_end_matches('/'));
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).bearer_auth(&api_key).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
@@ -132,8 +132,7 @@ async fn run_openai_completions(
     let mut tool_blocks: HashMap<usize, (usize, String)> = HashMap::new();
     let mut has_finish = false;
 
-    let chunks = collect_sse_json_events(response).await?;
-    for chunk in chunks {
+    for_each_sse_json_event(response, &options.base.signal, |chunk| {
         output.response_id = output
             .response_id
             .clone()
@@ -221,7 +220,9 @@ async fn run_openai_completions(
                 }
             }
         }
-    }
+        Ok(())
+    })
+    .await?;
 
     if let Some(idx) = text_idx
         && let AssistantContentBlock::Text(t) = &output.content[idx]
@@ -251,7 +252,9 @@ async fn run_openai_completions(
             });
         }
     }
-    if !has_finish {
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    } else if !has_finish {
         return Err(anyhow::anyhow!("Stream ended without finish_reason"));
     }
     stream.push(AssistantMessageEvent::Done {

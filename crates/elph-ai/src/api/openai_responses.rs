@@ -5,23 +5,25 @@ use anyhow::Result;
 use serde_json::{Value, json};
 
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, get_client_api_key, invoke_on_response_from_reqwest,
-    merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, get_client_api_key,
+    invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers,
 };
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::{
-    OpenAIResponsesStreamOptions, convert_responses_messages, convert_responses_tools, process_responses_stream,
+    OpenAIResponsesStreamOptions, ResponsesStreamState, convert_responses_messages, convert_responses_tools,
+    process_responses_stream_event,
 };
 use crate::api::simple_options::build_base_options;
 use crate::models::{clamp_thinking_level, thinking_level_to_str};
 use crate::types::{
-    AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions, StreamOptions, Usage,
+    AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions, StopReason,
+    StreamOptions, Usage,
 };
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::provider_env::get_provider_env_value;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 const OPENAI_TOOL_CALL_PROVIDERS: &[&str] = &["openai", "openai-codex", "opencode"];
 const OPENAI_RESPONSES_MIN_OUTPUT_TOKENS: u32 = 16;
@@ -111,8 +113,8 @@ async fn run_openai_responses(
     let mut params = build_params(model, context, options, &providers)?;
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!("{}/responses", model.base_url.trim_end_matches('/'));
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).bearer_auth(&api_key).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
@@ -124,24 +126,35 @@ async fn run_openai_responses(
     stream.push(AssistantMessageEvent::Start {
         partial: output.clone(),
     });
-    let events = collect_sse_json_events(response).await?;
-
     let service_tier = options.service_tier.clone();
     let model_id = model.id.clone();
-    process_responses_stream(
-        events,
-        output,
-        stream,
-        model,
-        Some(OpenAIResponsesStreamOptions {
-            service_tier: service_tier.clone(),
-            resolve_service_tier: None,
-            apply_service_tier_pricing: Some(Box::new(move |usage, tier| {
-                apply_service_tier_pricing(usage, tier, &model_id);
-            })),
-        }),
-    )
+    let stream_options = OpenAIResponsesStreamOptions {
+        service_tier: service_tier.clone(),
+        resolve_service_tier: None,
+        apply_service_tier_pricing: Some(Box::new(move |usage, tier| {
+            apply_service_tier_pricing(usage, tier, &model_id);
+        })),
+    };
+    let mut responses_state = ResponsesStreamState::default();
+    for_each_sse_json_event(response, &options.base.signal, |event| {
+        process_responses_stream_event(
+            &event,
+            &mut responses_state,
+            output,
+            stream,
+            model,
+            Some(&stream_options),
+        )
+    })
     .await?;
+
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    } else if !responses_state.saw_terminal {
+        return Err(anyhow::anyhow!(
+            "OpenAI Responses stream ended before a terminal response event"
+        ));
+    }
 
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,

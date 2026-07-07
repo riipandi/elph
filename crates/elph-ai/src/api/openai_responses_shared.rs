@@ -329,6 +329,211 @@ fn create_output_slot(
     }
 }
 
+#[derive(Default)]
+pub struct ResponsesStreamState {
+    pub saw_terminal: bool,
+    output_slots: HashMap<usize, OutputSlot>,
+}
+
+pub fn process_responses_stream_event(
+    event: &Value,
+    state: &mut ResponsesStreamState,
+    output: &mut AssistantMessage,
+    stream: &AssistantMessageEventStream,
+    model: &Model,
+    options: Option<&OpenAIResponsesStreamOptions>,
+) -> Result<()> {
+    let event_type = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
+    match event_type {
+        "response.created" => {
+            if let Some(id) = event.pointer("/response/id").and_then(|v| v.as_str()) {
+                output.response_id = Some(id.to_string());
+            }
+        }
+        "response.output_item.added" => {
+            let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            if let Some(item) = event.get("item") {
+                create_output_slot(idx, item, output, stream, &mut state.output_slots);
+            }
+        }
+        "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
+            let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
+            if let Some(OutputSlot::Thinking { block, content_index }) = state.output_slots.get_mut(&idx) {
+                block.thinking.push_str(delta);
+                if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
+                    t.thinking = block.thinking.clone();
+                }
+                stream.push(AssistantMessageEvent::ThinkingDelta {
+                    content_index: *content_index,
+                    delta: delta.to_string(),
+                    partial: output.clone(),
+                });
+            }
+        }
+        "response.output_text.delta" | "response.refusal.delta" => {
+            let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
+            if let Some(OutputSlot::Text { block, content_index }) = state.output_slots.get_mut(&idx) {
+                block.text.push_str(delta);
+                if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
+                    t.text = block.text.clone();
+                }
+                stream.push(AssistantMessageEvent::TextDelta {
+                    content_index: *content_index,
+                    delta: delta.to_string(),
+                    partial: output.clone(),
+                });
+            }
+        }
+        "response.function_call_arguments.delta" => {
+            let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
+            if let Some(OutputSlot::ToolCall { block, content_index }) = state.output_slots.get_mut(&idx) {
+                block.partial_json.push_str(delta);
+                block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
+                if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
+                    tc.arguments = block.tool_call.arguments.clone();
+                }
+                stream.push(AssistantMessageEvent::ToolcallDelta {
+                    content_index: *content_index,
+                    delta: delta.to_string(),
+                    partial: output.clone(),
+                });
+            }
+        }
+        "response.output_item.done" => {
+            let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            if let Some(item) = event.get("item") {
+                match state.output_slots.get_mut(&idx) {
+                    Some(OutputSlot::Thinking { block, content_index }) => {
+                        if let Some(summary) = item.get("summary").and_then(|v| v.as_array()) {
+                            let text: String = summary
+                                .iter()
+                                .filter_map(|s| s.get("text").and_then(|t| t.as_str()))
+                                .collect::<Vec<_>>()
+                                .join("\n\n");
+                            if !text.is_empty() {
+                                block.thinking = text;
+                            }
+                        }
+                        block.thinking_signature = Some(item.to_string());
+                        if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
+                            t.thinking = block.thinking.clone();
+                            t.thinking_signature = block.thinking_signature.clone();
+                        }
+                        stream.push(AssistantMessageEvent::ThinkingEnd {
+                            content_index: *content_index,
+                            content: block.thinking.clone(),
+                            partial: output.clone(),
+                        });
+                        state.output_slots.remove(&idx);
+                    }
+                    Some(OutputSlot::Text { block, content_index }) => {
+                        if let Some(content) = item.get("content").and_then(|v| v.as_array()) {
+                            block.text = content
+                                .iter()
+                                .filter_map(|c| {
+                                    if c.get("type")?.as_str()? == "output_text" {
+                                        c.get("text")?.as_str()
+                                    } else {
+                                        c.get("refusal")?.as_str()
+                                    }
+                                })
+                                .collect::<String>();
+                        }
+                        if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+                            let phase = item.get("phase").and_then(|v| v.as_str());
+                            block.text_signature = Some(encode_text_signature_v1(id, phase));
+                        }
+                        if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
+                            t.text = block.text.clone();
+                            t.text_signature = block.text_signature.clone();
+                        }
+                        stream.push(AssistantMessageEvent::TextEnd {
+                            content_index: *content_index,
+                            content: block.text.clone(),
+                            partial: output.clone(),
+                        });
+                        state.output_slots.remove(&idx);
+                    }
+                    Some(OutputSlot::ToolCall { block, content_index }) => {
+                        if let Some(args) = item.get("arguments").and_then(|v| v.as_str()) {
+                            block.partial_json = args.to_string();
+                        }
+                        block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
+                        if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
+                            tc.arguments = block.tool_call.arguments.clone();
+                        }
+                        stream.push(AssistantMessageEvent::ToolcallEnd {
+                            content_index: *content_index,
+                            tool_call: block.tool_call.clone(),
+                            partial: output.clone(),
+                        });
+                        state.output_slots.remove(&idx);
+                    }
+                    None => {
+                        create_output_slot(idx, item, output, stream, &mut state.output_slots);
+                    }
+                }
+            }
+        }
+        "response.completed" | "response.incomplete" => {
+            state.saw_terminal = true;
+            if let Some(response) = event.get("response") {
+                if let Some(id) = response.get("id").and_then(|v| v.as_str()) {
+                    output.response_id = Some(id.to_string());
+                }
+                if let Some(usage) = response.get("usage") {
+                    let cached = usage
+                        .pointer("/input_tokens_details/cached_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    let input = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    output.usage.input = input.saturating_sub(cached);
+                    output.usage.output = output_tokens;
+                    output.usage.cache_read = cached;
+                    output.usage.reasoning = usage
+                        .pointer("/output_tokens_details/reasoning_tokens")
+                        .and_then(|v| v.as_u64());
+                    output.usage.total_tokens = usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    calculate_cost(model, &mut output.usage);
+                    if let Some(opts) = &options
+                        && let Some(apply) = &opts.apply_service_tier_pricing
+                    {
+                        let tier = response.get("service_tier").and_then(|v| v.as_str());
+                        apply(&mut output.usage, tier);
+                    }
+                }
+                output.stop_reason = map_stop_reason(response.get("status").and_then(|v| v.as_str()));
+                if output.content.iter().any(|b| b.is_tool_call()) && output.stop_reason == StopReason::Stop {
+                    output.stop_reason = StopReason::ToolUse;
+                }
+            }
+        }
+        "error" => {
+            let code = event.get("code").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let message = event.get("message").and_then(|v| v.as_str()).unwrap_or("unknown");
+            return Err(anyhow!("Error Code {code}: {message}"));
+        }
+        "response.failed" => {
+            let err = event.pointer("/response/error");
+            let code = err
+                .and_then(|e| e.get("code"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            let message = err
+                .and_then(|e| e.get("message"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error");
+            return Err(anyhow!("{code}: {message}"));
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 pub async fn process_responses_stream(
     events: Vec<Value>,
     output: &mut AssistantMessage,
@@ -336,201 +541,11 @@ pub async fn process_responses_stream(
     model: &Model,
     options: Option<OpenAIResponsesStreamOptions>,
 ) -> Result<()> {
-    let mut saw_terminal = false;
-    let mut output_slots: HashMap<usize, OutputSlot> = HashMap::new();
-
+    let mut state = ResponsesStreamState::default();
     for event in events {
-        let event_type = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
-        match event_type {
-            "response.created" => {
-                if let Some(id) = event.pointer("/response/id").and_then(|v| v.as_str()) {
-                    output.response_id = Some(id.to_string());
-                }
-            }
-            "response.output_item.added" => {
-                let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                if let Some(item) = event.get("item") {
-                    create_output_slot(idx, item, output, stream, &mut output_slots);
-                }
-            }
-            "response.reasoning_summary_text.delta" | "response.reasoning_text.delta" => {
-                let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
-                if let Some(OutputSlot::Thinking { block, content_index }) = output_slots.get_mut(&idx) {
-                    block.thinking.push_str(delta);
-                    if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
-                        t.thinking = block.thinking.clone();
-                    }
-                    stream.push(AssistantMessageEvent::ThinkingDelta {
-                        content_index: *content_index,
-                        delta: delta.to_string(),
-                        partial: output.clone(),
-                    });
-                }
-            }
-            "response.output_text.delta" | "response.refusal.delta" => {
-                let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
-                if let Some(OutputSlot::Text { block, content_index }) = output_slots.get_mut(&idx) {
-                    block.text.push_str(delta);
-                    if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
-                        t.text = block.text.clone();
-                    }
-                    stream.push(AssistantMessageEvent::TextDelta {
-                        content_index: *content_index,
-                        delta: delta.to_string(),
-                        partial: output.clone(),
-                    });
-                }
-            }
-            "response.function_call_arguments.delta" => {
-                let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
-                if let Some(OutputSlot::ToolCall { block, content_index }) = output_slots.get_mut(&idx) {
-                    block.partial_json.push_str(delta);
-                    block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
-                    if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
-                        tc.arguments = block.tool_call.arguments.clone();
-                    }
-                    stream.push(AssistantMessageEvent::ToolcallDelta {
-                        content_index: *content_index,
-                        delta: delta.to_string(),
-                        partial: output.clone(),
-                    });
-                }
-            }
-            "response.output_item.done" => {
-                let idx = event.get("output_index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                if let Some(item) = event.get("item") {
-                    match output_slots.get_mut(&idx) {
-                        Some(OutputSlot::Thinking { block, content_index }) => {
-                            if let Some(summary) = item.get("summary").and_then(|v| v.as_array()) {
-                                let text: String = summary
-                                    .iter()
-                                    .filter_map(|s| s.get("text").and_then(|t| t.as_str()))
-                                    .collect::<Vec<_>>()
-                                    .join("\n\n");
-                                if !text.is_empty() {
-                                    block.thinking = text;
-                                }
-                            }
-                            block.thinking_signature = Some(item.to_string());
-                            if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
-                                t.thinking = block.thinking.clone();
-                                t.thinking_signature = block.thinking_signature.clone();
-                            }
-                            stream.push(AssistantMessageEvent::ThinkingEnd {
-                                content_index: *content_index,
-                                content: block.thinking.clone(),
-                                partial: output.clone(),
-                            });
-                            output_slots.remove(&idx);
-                        }
-                        Some(OutputSlot::Text { block, content_index }) => {
-                            if let Some(content) = item.get("content").and_then(|v| v.as_array()) {
-                                block.text = content
-                                    .iter()
-                                    .filter_map(|c| {
-                                        if c.get("type")?.as_str()? == "output_text" {
-                                            c.get("text")?.as_str()
-                                        } else {
-                                            c.get("refusal")?.as_str()
-                                        }
-                                    })
-                                    .collect::<String>();
-                            }
-                            if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
-                                let phase = item.get("phase").and_then(|v| v.as_str());
-                                block.text_signature = Some(encode_text_signature_v1(id, phase));
-                            }
-                            if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
-                                t.text = block.text.clone();
-                                t.text_signature = block.text_signature.clone();
-                            }
-                            stream.push(AssistantMessageEvent::TextEnd {
-                                content_index: *content_index,
-                                content: block.text.clone(),
-                                partial: output.clone(),
-                            });
-                            output_slots.remove(&idx);
-                        }
-                        Some(OutputSlot::ToolCall { block, content_index }) => {
-                            if let Some(args) = item.get("arguments").and_then(|v| v.as_str()) {
-                                block.partial_json = args.to_string();
-                            }
-                            block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
-                            if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
-                                tc.arguments = block.tool_call.arguments.clone();
-                            }
-                            stream.push(AssistantMessageEvent::ToolcallEnd {
-                                content_index: *content_index,
-                                tool_call: block.tool_call.clone(),
-                                partial: output.clone(),
-                            });
-                            output_slots.remove(&idx);
-                        }
-                        None => {
-                            create_output_slot(idx, item, output, stream, &mut output_slots);
-                        }
-                    }
-                }
-            }
-            "response.completed" | "response.incomplete" => {
-                saw_terminal = true;
-                if let Some(response) = event.get("response") {
-                    if let Some(id) = response.get("id").and_then(|v| v.as_str()) {
-                        output.response_id = Some(id.to_string());
-                    }
-                    if let Some(usage) = response.get("usage") {
-                        let cached = usage
-                            .pointer("/input_tokens_details/cached_tokens")
-                            .and_then(|v| v.as_u64())
-                            .unwrap_or(0);
-                        let input = usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        let output_tokens = usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        output.usage.input = input.saturating_sub(cached);
-                        output.usage.output = output_tokens;
-                        output.usage.cache_read = cached;
-                        output.usage.reasoning = usage
-                            .pointer("/output_tokens_details/reasoning_tokens")
-                            .and_then(|v| v.as_u64());
-                        output.usage.total_tokens = usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                        calculate_cost(model, &mut output.usage);
-                        if let Some(opts) = &options
-                            && let Some(apply) = &opts.apply_service_tier_pricing
-                        {
-                            let tier = response.get("service_tier").and_then(|v| v.as_str());
-                            apply(&mut output.usage, tier);
-                        }
-                    }
-                    output.stop_reason = map_stop_reason(response.get("status").and_then(|v| v.as_str()));
-                    if output.content.iter().any(|b| b.is_tool_call()) && output.stop_reason == StopReason::Stop {
-                        output.stop_reason = StopReason::ToolUse;
-                    }
-                }
-            }
-            "error" => {
-                let code = event.get("code").and_then(|v| v.as_str()).unwrap_or("unknown");
-                let message = event.get("message").and_then(|v| v.as_str()).unwrap_or("unknown");
-                return Err(anyhow!("Error Code {code}: {message}"));
-            }
-            "response.failed" => {
-                let err = event.pointer("/response/error");
-                let code = err
-                    .and_then(|e| e.get("code"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
-                let message = err
-                    .and_then(|e| e.get("message"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Unknown error");
-                return Err(anyhow!("{code}: {message}"));
-            }
-            _ => {}
-        }
+        process_responses_stream_event(&event, &mut state, output, stream, model, options.as_ref())?;
     }
-
-    if !saw_terminal {
+    if !state.saw_terminal {
         return Err(anyhow!(
             "OpenAI Responses stream ended before a terminal response event"
         ));

@@ -30,8 +30,11 @@ Rust port of [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/m
 - [Image Input](#image-input)
 - [Image Generation](#image-generation)
 - [Thinking/Reasoning](#thinkingreasoning)
+- [Stream Options](#stream-options)
+- [Request Cancellation](#request-cancellation)
 - [Stop Reasons](#stop-reasons)
 - [Error Handling](#error-handling)
+- [HTTP and WebSocket Proxies](#http-and-websocket-proxies)
 - [Custom Providers](#custom-providers)
 - [Faux Provider for Tests](#faux-provider-for-tests)
 - [Cross-Provider Handoffs](#cross-provider-handoffs)
@@ -81,7 +84,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-elph-ai = "0.0.20"
+elph-ai = "0.0.21"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -189,6 +192,22 @@ See [`examples/opencode_big_pickle.rs`](examples/opencode_big_pickle.rs) for a r
 A **provider** is the runtime unit: it owns its model catalog, its auth (API key resolution, OAuth flows), and its stream behavior. A `Models` collection holds providers and routes every request to the provider that owns the model.
 
 Providers internally share **API implementations** (the wire protocols): Anthropic models use `anthropic-messages`, OpenAI uses `openai-responses`, while xAI, Groq, Cerebras, OpenRouter, and most others share `openai-completions`. Mixed-API providers (GitHub Copilot, OpenCode Zen, Fireworks) dispatch per model.
+
+Nine chat APIs are registered in `elph_ai::api::builtin_apis()`:
+
+| API ID                    | Typical providers                                                       |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `anthropic-messages`      | Anthropic, Kimi For Coding, parts of Fireworks / GitHub Copilot         |
+| `openai-completions`      | Groq, Cerebras, OpenRouter, DeepSeek, Ollama-compatible endpoints, etc. |
+| `openai-responses`        | OpenAI                                                                  |
+| `openai-codex-responses`  | OpenAI Codex (ChatGPT subscription)                                     |
+| `azure-openai-responses`  | Azure OpenAI                                                            |
+| `google-generative-ai`    | Google Gemini                                                           |
+| `google-vertex`           | Vertex AI                                                               |
+| `mistral-conversations`   | Mistral                                                                 |
+| `bedrock-converse-stream` | Amazon Bedrock                                                          |
+
+Image generation uses a separate `openrouter-images` API (see [Image Generation](#image-generation)). Use `api_for("anthropic-messages")` or call modules under `elph_ai::api` for lower-level control.
 
 Model catalogs are embedded as JSON under [`models/`](models/) and loaded at compile time via `include_str!`.
 
@@ -354,39 +373,48 @@ API-key credentials can carry provider-scoped env/config values:
 
 Built-in providers resolve these environment variables:
 
-| Provider                               | Environment Variable(s)                                                                                                                                    |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenAI                                 | `OPENAI_API_KEY`                                                                                                                                           |
-| Ant Ling                               | `ANT_LING_API_KEY`                                                                                                                                         |
-| Azure OpenAI                           | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Optional: `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP` |
-| Anthropic                              | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                                                             |
-| DeepSeek                               | `DEEPSEEK_API_KEY`                                                                                                                                         |
-| NVIDIA NIM                             | `NVIDIA_API_KEY`                                                                                                                                           |
-| Google                                 | `GEMINI_API_KEY`                                                                                                                                           |
-| Vertex AI                              | `GOOGLE_CLOUD_API_KEY` or `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) + `GOOGLE_CLOUD_LOCATION` + ADC                                                     |
-| Mistral                                | `MISTRAL_API_KEY`                                                                                                                                          |
-| Groq                                   | `GROQ_API_KEY`                                                                                                                                             |
-| Cerebras                               | `CEREBRAS_API_KEY`                                                                                                                                         |
-| Cloudflare AI Gateway                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_GATEWAY_ID`                                                                                   |
-| Cloudflare Workers AI                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID`                                                                                                             |
-| xAI                                    | `XAI_API_KEY`                                                                                                                                              |
-| Fireworks                              | `FIREWORKS_API_KEY`                                                                                                                                        |
-| Together AI                            | `TOGETHER_API_KEY`                                                                                                                                         |
-| OpenRouter                             | `OPENROUTER_API_KEY`                                                                                                                                       |
-| Vercel AI Gateway                      | `VERCEL_AI_GATEWAY_API_KEY`                                                                                                                                |
-| ZAI Coding Plan (Global)               | `ZAI_API_KEY`                                                                                                                                              |
-| ZAI Coding Plan (China)                | `ZAI_CODING_CN_API_KEY`                                                                                                                                    |
-| MiniMax (Global)                       | `MINIMAX_API_KEY`                                                                                                                                          |
-| MiniMax (China)                        | `MINIMAX_CN_API_KEY`                                                                                                                                       |
-| Moonshot AI / Moonshot AI (China)      | `MOONSHOT_API_KEY`                                                                                                                                         |
-| Hugging Face                           | `HF_TOKEN`                                                                                                                                                 |
-| OpenCode Zen / OpenCode Go             | `OPENCODE_API_KEY`                                                                                                                                         |
-| Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                             |
-| Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                           |
-| Xiaomi MiMo Token Plan (China/AMS/SGP) | `XIAOMI_API_KEY`                                                                                                                                           |
-| GitHub Copilot                         | `COPILOT_GITHUB_TOKEN`                                                                                                                                     |
+| Provider                               | Environment Variable(s)                                                                                                                                              |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI                                 | `OPENAI_API_KEY`                                                                                                                                                     |
+| Ant Ling                               | `ANT_LING_API_KEY`                                                                                                                                                   |
+| Azure OpenAI                           | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Optional: `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP`           |
+| Anthropic                              | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                                                                       |
+| DeepSeek                               | `DEEPSEEK_API_KEY`                                                                                                                                                   |
+| NVIDIA NIM                             | `NVIDIA_API_KEY`                                                                                                                                                     |
+| Google                                 | `GEMINI_API_KEY`                                                                                                                                                     |
+| Vertex AI                              | `GOOGLE_CLOUD_API_KEY` or `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) + `GOOGLE_CLOUD_LOCATION` + ADC                                                               |
+| Mistral                                | `MISTRAL_API_KEY`                                                                                                                                                    |
+| Groq                                   | `GROQ_API_KEY`                                                                                                                                                       |
+| Cerebras                               | `CEREBRAS_API_KEY`                                                                                                                                                   |
+| Cloudflare AI Gateway                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_GATEWAY_ID`                                                                                             |
+| Cloudflare Workers AI                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID`                                                                                                                       |
+| xAI                                    | `XAI_API_KEY`                                                                                                                                                        |
+| Fireworks                              | `FIREWORKS_API_KEY`                                                                                                                                                  |
+| Together AI                            | `TOGETHER_API_KEY`                                                                                                                                                   |
+| OpenRouter                             | `OPENROUTER_API_KEY`                                                                                                                                                 |
+| Vercel AI Gateway                      | `VERCEL_AI_GATEWAY_API_KEY`                                                                                                                                          |
+| ZAI Coding Plan (Global)               | `ZAI_API_KEY`                                                                                                                                                        |
+| ZAI Coding Plan (China)                | `ZAI_CODING_CN_API_KEY`                                                                                                                                              |
+| MiniMax (Global)                       | `MINIMAX_API_KEY`                                                                                                                                                    |
+| MiniMax (China)                        | `MINIMAX_CN_API_KEY`                                                                                                                                                 |
+| Moonshot AI / Moonshot AI (China)      | `MOONSHOT_API_KEY`                                                                                                                                                   |
+| Hugging Face                           | `HF_TOKEN`                                                                                                                                                           |
+| OpenCode Zen / OpenCode Go             | `OPENCODE_API_KEY`                                                                                                                                                   |
+| Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                                       |
+| Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                                     |
+| Xiaomi MiMo Token Plan (China/AMS/SGP) | `XIAOMI_API_KEY`                                                                                                                                                     |
+| GitHub Copilot                         | `COPILOT_GITHUB_TOKEN`                                                                                                                                               |
+| Amazon Bedrock                         | `AWS_REGION` or `AWS_DEFAULT_REGION`, `AWS_PROFILE`, `AWS_BEARER_TOKEN_BEDROCK` (bearer auth path). Optional: `AWS_BEDROCK_FORCE_CACHE=1`, `PI_CACHE_RETENTION=long` |
 
-Amazon Bedrock resolves ambient AWS credentials (`AWS_PROFILE`, access key pairs, `AWS_BEARER_TOKEN_BEDROCK`, ECS task roles, web identity tokens). Vertex AI resolves either an explicit key or gcloud Application Default Credentials plus project/location.
+Amazon Bedrock also resolves ambient AWS credentials (access key pairs, ECS task roles, web identity tokens) when no bearer token is set. Vertex AI resolves either an explicit key or gcloud Application Default Credentials plus project/location.
+
+Per-request `StreamOptions.env` and stored credential `env` maps override process environment for the same keys. Global tuning variables:
+
+| Variable                                   | Effect                                                                                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `PI_CACHE_RETENTION=long`                  | Default prompt cache retention to `long` when `cache_retention` is unset (Anthropic, OpenAI Responses, Bedrock Claude models) |
+| `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` | HTTP(S) proxy for outbound provider requests (see [HTTP and WebSocket Proxies](#http-and-websocket-proxies))                  |
+| `NO_PROXY`                                 | Hostnames/ports to bypass the proxy (`*`, comma-separated, optional `:port` suffix)                                           |
 
 ## Tools
 
@@ -600,6 +628,31 @@ println!("output: {:?}", model.output); // ["image"] or ["image", "text"]
 
 Failures return an `AssistantImages` with `stop_reason: Error` rather than panicking.
 
+`ImagesOptions` mirrors chat `StreamOptions` for auth, timeouts, retries, proxy env, payload/response hooks, and cancellation:
+
+```rust
+use elph_ai::ImagesOptions;
+use tokio_util::sync::CancellationToken;
+
+let token = CancellationToken::new();
+// cancel token when the user dismisses the UI
+images.generate_images(
+    &model,
+    &context,
+    Some(ImagesOptions {
+        signal: Some(token),
+        api_key: None,
+        env: None,
+        headers: None,
+        timeout_ms: None,
+        max_retries: None,
+        on_payload: None,
+        on_response: None,
+    }),
+)
+.await;
+```
+
 ## Thinking/Reasoning
 
 Many models support thinking/reasoning. Check `model.reasoning`; options passed to non-reasoning models are silently ignored.
@@ -646,6 +699,58 @@ while let Some(event) = events.next().await {
     }
 }
 ```
+
+## Stream Options
+
+`stream()` / `complete()` accept `StreamOptions`; `stream_simple()` / `complete_simple()` wrap the same fields in `SimpleStreamOptions.base` plus reasoning knobs.
+
+| Field                                        | Purpose                                                                                                              |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `temperature`, `max_tokens`                  | Sampling controls (`max_tokens` is clamped to remaining context)                                                     |
+| `api_key`                                    | Explicit key; overrides provider auth resolution                                                                     |
+| `transport`                                  | Transport hint (`sse`, `websocket`, `websocket-cached`, `auto`) — used by OpenAI Codex when calling the API directly |
+| `cache_retention`                            | Prompt cache retention (`none`, `short`, `long`); defaults from `PI_CACHE_RETENTION`                                 |
+| `session_id`                                 | Stable session id (Codex WebSocket context reuse, request tracing headers)                                           |
+| `headers`                                    | Per-request header overrides (`None` removes a model default header)                                                 |
+| `timeout_ms`, `websocket_connect_timeout_ms` | HTTP and Codex WebSocket connect timeouts                                                                            |
+| `max_retries`, `max_retry_delay_ms`          | Retry policy for transient failures                                                                                  |
+| `metadata`                                   | Opaque JSON attached to provider payloads where supported                                                            |
+| `env`                                        | Scoped environment map (proxy vars, Bedrock region, provider config)                                                 |
+| `on_payload`                                 | Async hook to inspect or rewrite the outgoing JSON body                                                              |
+| `on_response`                                | Async hook invoked with HTTP status/headers after the provider responds                                              |
+| `signal`                                     | `CancellationToken` for cooperative abort (see [Request Cancellation](#request-cancellation))                        |
+
+Provider-specific option structs (`AnthropicOptions`, `OpenAICompletionsOptions`, `BedrockOptions`, etc.) extend `base: StreamOptions` when you call `elph_ai::api` modules directly.
+
+Chat streams parse provider SSE incrementally — events are emitted as chunks arrive rather than buffering the full response body first.
+
+## Request Cancellation
+
+Pass a `tokio_util::sync::CancellationToken` in `StreamOptions.signal` (or `SimpleStreamOptions.base.signal` / `ImagesOptions.signal`). When cancelled:
+
+- In-flight HTTP requests and SSE parsers stop promptly
+- The final `AssistantMessage` / `AssistantImages` uses `stop_reason: Aborted`
+- Mid-stream partial content may be preserved on the final message when cancellation happens during generation
+
+```rust
+use tokio_util::sync::CancellationToken;
+
+let token = CancellationToken::new();
+let stream = models.stream(
+    &model,
+    &context,
+    Some(StreamOptions {
+        signal: Some(token.clone()),
+        ..Default::default()
+    }),
+);
+
+// elsewhere: token.cancel();
+let message = stream.result().await;
+assert_eq!(message.stop_reason, StopReason::Aborted);
+```
+
+Cancellation is checked before the request is sent, while waiting on the network, and between SSE/WebSocket events. See [`tests/abort.rs`](tests/abort.rs) and [`tests/sse_abort.rs`](tests/sse_abort.rs).
 
 ## Stop Reasons
 
@@ -694,6 +799,31 @@ let options = StreamOptions {
 ```
 
 Supported by `stream`, `complete`, `stream_simple`, and `complete_simple`.
+
+Use `on_response` to capture raw HTTP metadata (status, headers) without logging full bodies:
+
+```rust
+use elph_ai::ProviderResponse;
+use elph_ai::api::common::wrap_on_response;
+
+let options = StreamOptions {
+    on_response: Some(wrap_on_response(|response: ProviderResponse, _model| {
+        Box::pin(async move {
+            println!("status {}", response.status);
+        })
+    })),
+    ..Default::default()
+};
+```
+
+## HTTP and WebSocket Proxies
+
+Outbound HTTP(S) provider traffic respects standard proxy environment variables, including values supplied through `StreamOptions.env` / stored credential `env` maps:
+
+- `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` — must be `http://` or `https://` URLs (SOCKS and PAC are not supported)
+- `NO_PROXY` — comma- or whitespace-separated hostnames; prefix with `.` or `*` for suffix/wildcard matches; optional `:port`
+
+WebSocket URLs (`ws://`, `wss://`) map to `http://` / `https://` for proxy rule lookup. OpenAI Codex WebSocket transport tunnels through HTTPS proxies (CONNECT + nested TLS). See [`tests/http_proxy.rs`](tests/http_proxy.rs) and [`tests/codex_websocket_proxy.rs`](tests/codex_websocket_proxy.rs).
 
 ## Custom Providers
 
@@ -808,6 +938,34 @@ let tokens = login_anthropic(&callbacks).await?;
 
 Use `get_oauth_api_key()`, `refresh_oauth_token()`, and the `CredentialStore` to persist tokens across sessions.
 
+### OpenAI Codex Transport
+
+OpenAI Codex models (`openai-codex-responses` API) support SSE and WebSocket transports with automatic fallback when connection limits are hit. Collection-level `models.stream()` defaults to `auto` (WebSocket with cached context when `session_id` is set, SSE fallback on limit errors).
+
+For explicit transport control, call the API module directly:
+
+```rust
+use elph_ai::api::codex_transport::CodexTransport;
+use elph_ai::api::{OpenAICodexResponsesApi, OpenAICodexResponsesOptions};
+
+let api = OpenAICodexResponsesApi;
+let _stream = api.stream_with_options(
+    &model,
+    &context,
+    OpenAICodexResponsesOptions {
+        transport: CodexTransport::WebSocketCached,
+        base: StreamOptions {
+            session_id: Some("my-session".into()),
+            env: Some(proxy_env), // HTTP_PROXY / NO_PROXY for corporate networks
+            ..Default::default()
+        },
+        ..Default::default()
+    },
+);
+```
+
+`CodexTransport` values: `Auto`, `Sse`, `WebSocket`, `WebSocketCached`. Debug helpers (`get_codex_websocket_debug_stats`, `close_codex_websocket_sessions`) are exported from the crate root.
+
 ### Vertex AI
 
 Vertex AI supports either an API key or Application Default Credentials:
@@ -859,12 +1017,21 @@ Subcommands:
 ### Running Tests
 
 ```bash
+# Unit and integration tests (default — skips #[ignore] live tests)
 cargo nextest run -p elph-ai
-# Live provider tests (require API keys):
-cargo nextest run -p elph-ai --test e2e_live
+
+# Run all tests including live provider tests (requires API keys)
+cargo nextest run -p elph-ai -- --ignored
+
+# Individual live test binaries
+cargo nextest run -p elph-ai --test e2e_live -- --ignored
+cargo nextest run -p elph-ai --test abort_live -- --ignored
+cargo nextest run -p elph-ai --test cross_provider_handoff_live -- --ignored
+cargo nextest run -p elph-ai --test openrouter_cache_write_live -- --ignored
+cargo nextest run -p elph-ai --test tool_call_id_normalization_live -- --ignored
 ```
 
-Integration tests mirror pi-ai coverage: provider auth, SSE parsing, tool schemas, retry/overflow, OAuth, faux provider, and more under [`tests/`](tests/).
+Integration tests mirror pi-ai coverage: provider auth, SSE parsing and mid-stream abort, HTTP/WebSocket proxy routing, tool schemas, retry/overflow, OAuth, Bedrock endpoint resolution, Codex WebSocket transport, faux provider, and more under [`tests/`](tests/).
 
 ## License
 

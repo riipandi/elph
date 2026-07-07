@@ -3,7 +3,8 @@ use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, invoke_on_response_from_reqwest,
+    is_request_aborted, merge_model_headers,
 };
 use crate::api::simple_options::build_base_options;
 use crate::api::transform_messages::transform_messages;
@@ -17,7 +18,7 @@ use crate::utils::hash::short_hash;
 use crate::utils::json_parse::parse_streaming_json;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 const MISTRAL_TOOL_CALL_ID_LENGTH: usize = 9;
 
@@ -120,8 +121,8 @@ async fn run_mistral(
     payload = apply_on_payload(options.base.on_payload.as_ref(), payload, model).await;
     let headers = merge_model_headers(model, Some(&options.base));
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!("{}/v1/chat/completions", model.base_url.trim_end_matches('/'));
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).bearer_auth(api_key).json(&payload);
     for (k, v) in &headers {
         req = req.header(k, v);
@@ -135,8 +136,7 @@ async fn run_mistral(
     });
     let mut current_block: Option<usize> = None;
     let mut tool_blocks: std::collections::HashMap<String, (usize, String)> = std::collections::HashMap::new();
-    let chunks = collect_sse_json_events(response).await?;
-    for chunk in chunks {
+    for_each_sse_json_event(response, &options.base.signal, |chunk| {
         output.response_id = output
             .response_id
             .clone()
@@ -203,7 +203,9 @@ async fn run_mistral(
                 }
             }
         }
-    }
+        Ok(())
+    })
+    .await?;
     finish_current(output, stream, &mut current_block);
     for (_, (idx, partial)) in tool_blocks {
         if let AssistantContentBlock::ToolCall(tc) = &mut output.content[idx] {
@@ -214,6 +216,9 @@ async fn run_mistral(
                 partial: output.clone(),
             });
         }
+    }
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
     }
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,

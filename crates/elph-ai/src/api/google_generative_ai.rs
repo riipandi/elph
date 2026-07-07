@@ -3,7 +3,8 @@ use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, invoke_on_response_from_reqwest,
+    is_request_aborted, merge_model_headers,
 };
 use crate::api::google_shared::{
     convert_messages, convert_tools, is_thinking_part, map_stop_reason_finish, map_tool_choice,
@@ -18,7 +19,7 @@ use crate::types::{
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 #[derive(Clone, Default)]
 pub struct GoogleOptions {
@@ -127,13 +128,13 @@ async fn run_google(
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
     let headers = merge_model_headers(model, Some(&options.base));
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!(
         "{}/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
         model.base_url.trim_end_matches('/'),
         model.id,
         api_key
     );
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
@@ -146,8 +147,7 @@ async fn run_google(
         partial: output.clone(),
     });
     let mut current_block: Option<usize> = None;
-    let chunks = collect_sse_json_events(response).await?;
-    for chunk in chunks {
+    for_each_sse_json_event(response, &options.base.signal, |chunk| {
         output.response_id = output
             .response_id
             .clone()
@@ -242,8 +242,13 @@ async fn run_google(
             output.usage.total_tokens = meta.get("totalTokenCount").and_then(|v| v.as_u64()).unwrap_or(0);
             calculate_cost(model, &mut output.usage);
         }
-    }
+        Ok(())
+    })
+    .await?;
     end_current_block(output, stream, &mut current_block);
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    }
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,
         message: output.clone(),

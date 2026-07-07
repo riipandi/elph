@@ -13,6 +13,7 @@ pub mod github_copilot_headers;
 pub mod google_generative_ai;
 pub mod google_shared;
 pub mod google_vertex;
+pub mod http_proxy;
 pub mod mistral_conversations;
 pub mod openai_codex_responses;
 pub mod openai_compat;
@@ -24,6 +25,7 @@ pub mod openrouter_images;
 pub mod simple_options;
 pub mod sse;
 pub mod transform_messages;
+pub mod websocket_connect;
 
 pub use anthropic_messages::{AnthropicMessagesApi, AnthropicOptions};
 pub use azure_openai_responses::{AzureOpenAIResponsesApi, AzureOpenAIResponsesOptions};

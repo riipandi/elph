@@ -6,21 +6,19 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::{Result, anyhow};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::Value;
-use tokio_tungstenite::MaybeTlsStream;
-use tokio_tungstenite::WebSocketStream;
-use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as WsMessage;
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use tokio_tungstenite::tungstenite::http::HeaderValue;
 
-use crate::api::sse::collect_sse_json_events;
+use crate::api::websocket_connect::{WsStream, connect_websocket_with_proxy};
+use crate::types::ProviderEnv;
+
+use crate::api::common::send_with_abort;
+use crate::api::sse::for_each_sse_json_event;
+use tokio_util::sync::CancellationToken;
 
 const OPENAI_BETA_RESPONSES_WEBSOCKETS: &str = "responses_websockets=2026-02-06";
 const WEBSOCKET_CONNECTION_LIMIT_REACHED: &str = "websocket_connection_limit_reached";
 const SESSION_WEBSOCKET_CACHE_TTL_MS: u64 = 5 * 60 * 1000;
 const SESSION_WEBSOCKET_MAX_AGE_MS: u64 = 55 * 60 * 1000;
-
-type WsStream = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub enum CodexTransport {
@@ -35,6 +33,8 @@ pub struct CodexTransportOptions {
     pub transport: CodexTransport,
     pub websocket_connect_timeout_ms: Option<u64>,
     pub session_id: Option<String>,
+    pub signal: Option<CancellationToken>,
+    pub env: Option<ProviderEnv>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -216,26 +216,15 @@ fn schedule_idle_expiry(session_id: String, entry: Arc<CachedWebSocketConnection
     }
 }
 
-async fn connect_websocket(ws_url: &str, headers: &HashMap<String, String>, timeout_ms: u64) -> Result<WsStream> {
-    let mut request = ws_url.into_client_request()?;
-    for (k, v) in headers {
-        if k.eq_ignore_ascii_case("accept") {
-            continue;
-        }
-        request.headers_mut().insert(
-            http::HeaderName::from_bytes(k.as_bytes()).map_err(|e| anyhow!("invalid header name {k}: {e}"))?,
-            HeaderValue::from_str(v).map_err(|e| anyhow!("invalid header {k}: {e}"))?,
-        );
-    }
-    request.headers_mut().insert(
-        "OpenAI-Beta",
-        HeaderValue::from_static(OPENAI_BETA_RESPONSES_WEBSOCKETS),
-    );
-
-    let timeout = Duration::from_millis(timeout_ms);
-    let connect = tokio::time::timeout(timeout, connect_async(request));
-    let (socket, _) = connect.await.map_err(|_| anyhow!("WebSocket connect timeout"))??;
-    Ok(socket)
+async fn connect_websocket(
+    ws_url: &str,
+    headers: &HashMap<String, String>,
+    timeout_ms: u64,
+    env: Option<&ProviderEnv>,
+) -> Result<WsStream> {
+    let mut request_headers = headers.clone();
+    request_headers.insert("OpenAI-Beta".to_string(), OPENAI_BETA_RESPONSES_WEBSOCKETS.to_string());
+    connect_websocket_with_proxy(ws_url, &request_headers, timeout_ms, env).await
 }
 
 async fn acquire_websocket(
@@ -243,9 +232,10 @@ async fn acquire_websocket(
     headers: &HashMap<String, String>,
     session_id: Option<&str>,
     timeout_ms: u64,
+    env: Option<&ProviderEnv>,
 ) -> Result<WebSocketLease> {
     let Some(session_id) = session_id else {
-        let socket = connect_websocket(ws_url, headers, timeout_ms).await?;
+        let socket = connect_websocket(ws_url, headers, timeout_ms, env).await?;
         return Ok(WebSocketLease {
             socket: Arc::new(tokio::sync::Mutex::new(socket)),
             entry: None,
@@ -294,7 +284,7 @@ async fn acquire_websocket(
                 close_socket_quietly(&entry.socket).await;
             }
             CacheAction::Busy => {
-                let socket = connect_websocket(ws_url, headers, timeout_ms).await?;
+                let socket = connect_websocket(ws_url, headers, timeout_ms, env).await?;
                 return Ok(WebSocketLease {
                     socket: Arc::new(tokio::sync::Mutex::new(socket)),
                     entry: None,
@@ -306,7 +296,7 @@ async fn acquire_websocket(
         }
     }
 
-    let socket = connect_websocket(ws_url, headers, timeout_ms).await?;
+    let socket = connect_websocket(ws_url, headers, timeout_ms, env).await?;
     let entry = Arc::new(CachedWebSocketConnection {
         socket: Arc::new(tokio::sync::Mutex::new(socket)),
         busy: Arc::new(AtomicBool::new(true)),
@@ -524,7 +514,7 @@ pub async fn collect_codex_events_detailed(
         }
     }
 
-    let events = collect_codex_sse_events(client, sse_url, &body, &headers).await?;
+    let events = collect_codex_sse_events(client, sse_url, &body, &headers, &options.signal).await?;
     Ok(CodexCollectResult {
         events,
         websocket_reused: false,
@@ -541,7 +531,14 @@ async fn try_websocket_stream(
     timeout_ms: u64,
 ) -> Result<CodexCollectResult> {
     let ws_url = resolve_codex_websocket_url(base_url);
-    let lease = acquire_websocket(&ws_url, headers, options.session_id.as_deref(), timeout_ms).await?;
+    let lease = acquire_websocket(
+        &ws_url,
+        headers,
+        options.session_id.as_deref(),
+        timeout_ms,
+        options.env.as_ref(),
+    )
+    .await?;
 
     if let (Some(session_id), true) = (options.session_id.as_deref(), lease.reused) {
         update_debug_stats(session_id, |stats| {
@@ -679,6 +676,7 @@ async fn collect_codex_sse_events(
     url: &str,
     body: &Value,
     headers: &HashMap<String, String>,
+    signal: &Option<CancellationToken>,
 ) -> Result<Vec<Value>> {
     let body_json = serde_json::to_string(body)?;
     let mut req = if let Some(compressed) = compress_request_body_zstd(&body_json) {
@@ -692,7 +690,13 @@ async fn collect_codex_sse_events(
     for (k, v) in headers {
         req = req.header(k, v);
     }
-    let response = req.send().await?;
+    let response = send_with_abort(signal, req).await?;
     let response = crate::api::common::check_response_ok(response).await?;
-    collect_sse_json_events(response).await
+    let mut events = Vec::new();
+    for_each_sse_json_event(response, signal, |event| {
+        events.push(event);
+        Ok(())
+    })
+    .await?;
+    Ok(events)
 }

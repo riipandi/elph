@@ -4,7 +4,9 @@ use std::pin::Pin;
 use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 
-use crate::api::common::{apply_on_payload, build_http_client, invoke_on_response_from_reqwest, merge_model_headers};
+use crate::api::common::{
+    apply_on_payload, build_http_client_for_target, invoke_on_response_from_reqwest, merge_model_headers,
+};
 use crate::types::{
     AssistantImages, ContentBlock, ImagesContext, ImagesModel, ImagesOptions, ProviderImages, StopReason,
 };
@@ -126,8 +128,8 @@ async fn run_generate(
         return Err(anyhow!("Request aborted"));
     }
 
-    let client = build_http_client(options.timeout_ms)?;
     let url = format!("{}/chat/completions", model.base_url.trim_end_matches('/'));
+    let client = build_http_client_for_target(options.timeout_ms, Some(&url), options.env.as_ref())?;
     let mut req = client.post(&url).bearer_auth(api_key).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);

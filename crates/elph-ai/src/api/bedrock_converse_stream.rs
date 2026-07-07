@@ -15,7 +15,8 @@ use crate::api::bedrock_shared::{
     build_bedrock_system_blocks, resolve_bedrock_runtime_config, resolve_cache_retention,
 };
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, invoke_on_response_from_reqwest,
+    is_request_aborted, merge_model_headers,
 };
 use crate::api::simple_options::{adjust_max_tokens_for_thinking, build_base_options, clamp_max_tokens_to_context};
 use crate::api::transform_messages::transform_messages;
@@ -29,7 +30,7 @@ use crate::utils::json_parse::parse_streaming_json;
 use crate::utils::provider_env::get_provider_env_value;
 use crate::utils::sanitize_unicode::sanitize_surrogates;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 #[derive(Clone, Default)]
 pub struct BedrockOptions {
@@ -170,7 +171,8 @@ async fn run_bedrock(
     body = apply_on_payload(options.base.on_payload.as_ref(), body, model).await;
     let headers = merge_model_headers(model, Some(&options.base));
 
-    let events = if let Some(bearer) = bearer {
+    let mut blocks: Vec<(usize, String)> = Vec::new();
+    if let Some(bearer) = bearer {
         run_bedrock_bearer(
             &region,
             runtime.endpoint.as_deref(),
@@ -179,104 +181,20 @@ async fn run_bedrock(
             &headers,
             &bearer,
             options,
+            stream,
+            output,
+            &mut blocks,
         )
-        .await?
+        .await?;
     } else {
-        run_bedrock_sigv4(&region, runtime.endpoint.as_deref(), model, &body, options).await?
-    };
-
-    let mut blocks: Vec<(usize, String)> = Vec::new();
-    for event in events {
-        if event.get("messageStart").is_some() {
-            stream.push(AssistantMessageEvent::Start {
-                partial: output.clone(),
-            });
-        } else if let Some(start) = event.get("contentBlockStart") {
-            let idx = start.get("contentBlockIndex").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-            if let Some(tool) = start.pointer("/start/toolUse") {
-                let block_idx = output.content.len();
-                output
-                    .content
-                    .push(AssistantContentBlock::ToolCall(crate::types::ToolCall::new(
-                        tool.get("toolUseId").and_then(|v| v.as_str()).unwrap_or(""),
-                        tool.get("name").and_then(|v| v.as_str()).unwrap_or(""),
-                        json!({}),
-                    )));
-                blocks.push((idx, String::new()));
-                stream.push(AssistantMessageEvent::ToolcallStart {
-                    content_index: block_idx,
-                    partial: output.clone(),
-                });
-            }
-        } else if let Some(delta) = event.get("contentBlockDelta") {
-            let idx = delta.get("contentBlockIndex").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-            if let Some(text) = delta.pointer("/delta/text").and_then(|v| v.as_str()) {
-                let block_idx = output.content.len();
-                if !blocks.iter().any(|(i, _)| *i == idx) {
-                    output
-                        .content
-                        .push(AssistantContentBlock::Text(crate::types::TextContent::new("")));
-                    blocks.push((idx, String::new()));
-                    stream.push(AssistantMessageEvent::TextStart {
-                        content_index: block_idx,
-                        partial: output.clone(),
-                    });
-                }
-                let pos = blocks.iter().position(|(i, _)| *i == idx).unwrap_or(block_idx);
-                if let AssistantContentBlock::Text(t) = &mut output.content[pos] {
-                    t.text.push_str(text);
-                    stream.push(AssistantMessageEvent::TextDelta {
-                        content_index: pos,
-                        delta: text.to_string(),
-                        partial: output.clone(),
-                    });
-                }
-            }
-            if let Some(input) = delta.pointer("/delta/toolUse/input").and_then(|v| v.as_str())
-                && let Some(pos) = blocks.iter().position(|(i, _)| *i == idx)
-            {
-                blocks[pos].1.push_str(input);
-                if let AssistantContentBlock::ToolCall(tc) = &mut output.content[pos] {
-                    tc.arguments = parse_streaming_json(Some(&blocks[pos].1));
-                    stream.push(AssistantMessageEvent::ToolcallDelta {
-                        content_index: pos,
-                        delta: input.to_string(),
-                        partial: output.clone(),
-                    });
-                }
-            }
-            if let Some(text) = delta
-                .pointer("/delta/reasoningContent/reasoningText/text")
-                .and_then(|v| v.as_str())
-            {
-                let block_idx = output.content.len();
-                output
-                    .content
-                    .push(AssistantContentBlock::Thinking(crate::types::ThinkingContent::new(
-                        text,
-                    )));
-                stream.push(AssistantMessageEvent::ThinkingStart {
-                    content_index: block_idx,
-                    partial: output.clone(),
-                });
-                stream.push(AssistantMessageEvent::ThinkingDelta {
-                    content_index: block_idx,
-                    delta: text.to_string(),
-                    partial: output.clone(),
-                });
-            }
-        } else if let Some(stop) = event.get("messageStop") {
-            output.stop_reason = map_stop_reason(stop.get("stopReason").and_then(|v| v.as_str()));
-        } else if let Some(meta) = event.get("metadata")
-            && let Some(usage) = meta.get("usage")
-        {
-            output.usage.input = usage.get("inputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            output.usage.output = usage.get("outputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            output.usage.cache_read = usage.get("cacheReadInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            output.usage.cache_write = usage.get("cacheWriteInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            output.usage.total_tokens = usage.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-            calculate_cost(model, &mut output.usage);
+        let events = run_bedrock_sigv4(&region, runtime.endpoint.as_deref(), model, &body, options).await?;
+        for event in events {
+            process_bedrock_sse_event(&event, stream, output, model, &mut blocks)?;
         }
+    }
+
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
     }
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,
@@ -522,6 +440,107 @@ fn bedrock_converse_stream_url(model: &Model, region: &str, endpoint: Option<&st
     }
 }
 
+fn process_bedrock_sse_event(
+    event: &Value,
+    stream: &AssistantMessageEventStream,
+    output: &mut AssistantMessage,
+    model: &Model,
+    blocks: &mut Vec<(usize, String)>,
+) -> Result<()> {
+    if event.get("messageStart").is_some() {
+        stream.push(AssistantMessageEvent::Start {
+            partial: output.clone(),
+        });
+    } else if let Some(start) = event.get("contentBlockStart") {
+        let idx = start.get("contentBlockIndex").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+        if let Some(tool) = start.pointer("/start/toolUse") {
+            let block_idx = output.content.len();
+            output
+                .content
+                .push(AssistantContentBlock::ToolCall(crate::types::ToolCall::new(
+                    tool.get("toolUseId").and_then(|v| v.as_str()).unwrap_or(""),
+                    tool.get("name").and_then(|v| v.as_str()).unwrap_or(""),
+                    json!({}),
+                )));
+            blocks.push((idx, String::new()));
+            stream.push(AssistantMessageEvent::ToolcallStart {
+                content_index: block_idx,
+                partial: output.clone(),
+            });
+        }
+    } else if let Some(delta) = event.get("contentBlockDelta") {
+        let idx = delta.get("contentBlockIndex").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+        if let Some(text) = delta.pointer("/delta/text").and_then(|v| v.as_str()) {
+            let block_idx = output.content.len();
+            if !blocks.iter().any(|(i, _)| *i == idx) {
+                output
+                    .content
+                    .push(AssistantContentBlock::Text(crate::types::TextContent::new("")));
+                blocks.push((idx, String::new()));
+                stream.push(AssistantMessageEvent::TextStart {
+                    content_index: block_idx,
+                    partial: output.clone(),
+                });
+            }
+            let pos = blocks.iter().position(|(i, _)| *i == idx).unwrap_or(block_idx);
+            if let AssistantContentBlock::Text(t) = &mut output.content[pos] {
+                t.text.push_str(text);
+                stream.push(AssistantMessageEvent::TextDelta {
+                    content_index: pos,
+                    delta: text.to_string(),
+                    partial: output.clone(),
+                });
+            }
+        }
+        if let Some(input) = delta.pointer("/delta/toolUse/input").and_then(|v| v.as_str())
+            && let Some(pos) = blocks.iter().position(|(i, _)| *i == idx)
+        {
+            blocks[pos].1.push_str(input);
+            if let AssistantContentBlock::ToolCall(tc) = &mut output.content[pos] {
+                tc.arguments = parse_streaming_json(Some(&blocks[pos].1));
+                stream.push(AssistantMessageEvent::ToolcallDelta {
+                    content_index: pos,
+                    delta: input.to_string(),
+                    partial: output.clone(),
+                });
+            }
+        }
+        if let Some(text) = delta
+            .pointer("/delta/reasoningContent/reasoningText/text")
+            .and_then(|v| v.as_str())
+        {
+            let block_idx = output.content.len();
+            output
+                .content
+                .push(AssistantContentBlock::Thinking(crate::types::ThinkingContent::new(
+                    text,
+                )));
+            stream.push(AssistantMessageEvent::ThinkingStart {
+                content_index: block_idx,
+                partial: output.clone(),
+            });
+            stream.push(AssistantMessageEvent::ThinkingDelta {
+                content_index: block_idx,
+                delta: text.to_string(),
+                partial: output.clone(),
+            });
+        }
+    } else if let Some(stop) = event.get("messageStop") {
+        output.stop_reason = map_stop_reason(stop.get("stopReason").and_then(|v| v.as_str()));
+    } else if let Some(meta) = event.get("metadata")
+        && let Some(usage) = meta.get("usage")
+    {
+        output.usage.input = usage.get("inputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        output.usage.output = usage.get("outputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        output.usage.cache_read = usage.get("cacheReadInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        output.usage.cache_write = usage.get("cacheWriteInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        output.usage.total_tokens = usage.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+        calculate_cost(model, &mut output.usage);
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn run_bedrock_bearer(
     region: &str,
     endpoint: Option<&str>,
@@ -530,9 +549,12 @@ async fn run_bedrock_bearer(
     headers: &std::collections::HashMap<String, String>,
     bearer: &str,
     options: &BedrockOptions,
-) -> Result<Vec<Value>> {
-    let client = build_http_client(options.base.timeout_ms)?;
+    stream: &AssistantMessageEventStream,
+    output: &mut AssistantMessage,
+    blocks: &mut Vec<(usize, String)>,
+) -> Result<()> {
     let url = bedrock_converse_stream_url(model, region, endpoint);
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client
         .post(&url)
         .header("Authorization", format!("Bearer {bearer}"))
@@ -545,7 +567,10 @@ async fn run_bedrock_bearer(
     let response = crate::api::common::send_with_abort(&options.base.signal, req).await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
-    collect_sse_json_events(response).await
+    for_each_sse_json_event(response, &options.base.signal, |event| {
+        process_bedrock_sse_event(&event, stream, output, model, blocks)
+    })
+    .await
 }
 
 async fn run_bedrock_sigv4(

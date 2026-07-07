@@ -1,6 +1,6 @@
 # Consideration
 
-Dependency candidates for elph-rs, mapped to crates and planned workspace deps (`fff-search`, `rmcp`, `jsonschema`, `agent-client-protocol`).
+Dependency candidates for Elph, mapped to crates and planned workspace deps (`fff-search`, `rmcp`, `jsonschema`, `agent-client-protocol`).
 
 **Verdicts:** **Adopt** · **Keep** · **Defer** · **Ref** (study only) · **Skip**
 
@@ -112,14 +112,14 @@ Schema: `schemas/elph-config-schema.json`. Types: `elph/src/runtime/settings.rs`
 
 ## Memory & integrations
 
-| Verdict   | Item                                                            | Rationale                                                 |
-| --------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| Verdict   | Item                                                            | Rationale                                                                           |
+| --------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **Done**  | [memelord](https://github.com/glommer/memelord) → `memz`        | Ported in-tree as `memz`; Turso agent memory with vector search and weight scoring. |
-| **Defer** | [cortex-mem](https://github.com/sopaco/cortex-mem)              | Long-term memory layer (⭐288).                           |
-| **Defer** | [liteparse](https://github.com/run-llama/liteparse)             | RAG ingestion (⭐11k).                                    |
-| **Defer** | [obscura](https://docs.obscura.sh/guides/use-as-a-rust-library) | Embedded browser; high build cost.                        |
-| **Defer** | [pest](https://github.com/pest-parser/pest)                     | Custom DSL only.                                          |
-| **Skip**  | [teloxide](https://github.com/teloxide/teloxide)                | Telegram; out of scope.                                   |
+| **Defer** | [cortex-mem](https://github.com/sopaco/cortex-mem)              | Long-term memory layer (⭐288).                                                     |
+| **Defer** | [liteparse](https://github.com/run-llama/liteparse)             | RAG ingestion (⭐11k).                                                              |
+| **Defer** | [obscura](https://docs.obscura.sh/guides/use-as-a-rust-library) | Embedded browser; high build cost.                                                  |
+| **Defer** | [pest](https://github.com/pest-parser/pest)                     | Custom DSL only.                                                                    |
+| **Skip**  | [teloxide](https://github.com/teloxide/teloxide)                | Telegram; out of scope.                                                             |
 
 ---
 

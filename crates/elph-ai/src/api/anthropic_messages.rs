@@ -3,12 +3,12 @@ use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, get_client_api_key, invoke_on_response_from_reqwest,
-    merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, get_client_api_key,
+    invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers,
 };
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::simple_options::{adjust_max_tokens_for_thinking, build_base_options, clamp_max_tokens_to_context};
-use crate::api::sse::{ANTHROPIC_MESSAGE_EVENTS, decode_sse_buffer};
+use crate::api::sse::{ANTHROPIC_MESSAGE_EVENTS, ServerSentEvent, decode_sse_buffer, for_each_anthropic_sse_event};
 use crate::api::transform_messages::transform_messages;
 use crate::models::{calculate_cost, thinking_level_to_str};
 use crate::types::{
@@ -141,8 +141,8 @@ async fn run_anthropic_stream(
     let mut params = build_params(model, context, options)?;
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
 
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!("{}/v1/messages", model.base_url.trim_end_matches('/'));
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
@@ -169,8 +169,188 @@ async fn run_anthropic_stream(
         partial: output.clone(),
     });
 
-    let body = response.text().await?;
-    process_anthropic_sse_buffer(&body, output, stream, model).await
+    let mut state = AnthropicStreamState::default();
+    for_each_anthropic_sse_event(response, &options.base.signal, |sse| {
+        process_anthropic_sse_event(&sse, &mut state, output, stream, model)
+    })
+    .await?;
+
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    } else if state.saw_start && !state.saw_end {
+        return Err(anyhow!("Anthropic stream ended before message_stop"));
+    }
+    stream.push(AssistantMessageEvent::Done {
+        reason: output.stop_reason,
+        message: output.clone(),
+    });
+    stream.end();
+    Ok(())
+}
+
+#[derive(Default)]
+struct AnthropicStreamState {
+    saw_start: bool,
+    saw_end: bool,
+    blocks: Vec<(usize, AssistantContentBlock, Option<String>)>,
+}
+
+fn process_anthropic_sse_event(
+    sse: &ServerSentEvent,
+    state: &mut AnthropicStreamState,
+    output: &mut AssistantMessage,
+    stream: &AssistantMessageEventStream,
+    model: &Model,
+) -> Result<()> {
+    if sse.event.as_deref() == Some("error") {
+        return Err(anyhow!(sse.data.clone()));
+    }
+    if !ANTHROPIC_MESSAGE_EVENTS.contains(&sse.event.as_deref().unwrap_or("")) {
+        return Ok(());
+    }
+    let event: Value = parse_json_with_repair(&sse.data)?;
+    let event_type = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
+    match event_type {
+        "message_start" => {
+            state.saw_start = true;
+            if let Some(id) = event.pointer("/message/id").and_then(|v| v.as_str()) {
+                output.response_id = Some(id.to_string());
+            }
+            if let Some(usage) = event.pointer("/message/usage") {
+                update_usage_from_anthropic(output, usage);
+                calculate_cost(model, &mut output.usage);
+            }
+        }
+        "content_block_start" => {
+            let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            let block_type = event
+                .pointer("/content_block/type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let block = match block_type {
+                "text" => AssistantContentBlock::Text(crate::types::TextContent::new("")),
+                "thinking" => AssistantContentBlock::Thinking(crate::types::ThinkingContent::new("")),
+                "tool_use" => AssistantContentBlock::ToolCall(crate::types::ToolCall::new(
+                    event
+                        .pointer("/content_block/id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(""),
+                    event
+                        .pointer("/content_block/name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(""),
+                    event.pointer("/content_block/input").cloned().unwrap_or(json!({})),
+                )),
+                _ => return Ok(()),
+            };
+            let content_index = output.content.len();
+            output.content.push(block.clone());
+            state.blocks.push((index, block, None));
+            match output.content.last().unwrap() {
+                AssistantContentBlock::Text(_) => stream.push(AssistantMessageEvent::TextStart {
+                    content_index,
+                    partial: output.clone(),
+                }),
+                AssistantContentBlock::Thinking(_) => stream.push(AssistantMessageEvent::ThinkingStart {
+                    content_index,
+                    partial: output.clone(),
+                }),
+                AssistantContentBlock::ToolCall(_) => stream.push(AssistantMessageEvent::ToolcallStart {
+                    content_index,
+                    partial: output.clone(),
+                }),
+            }
+        }
+        "content_block_delta" => {
+            let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            let delta_type = event.pointer("/delta/type").and_then(|v| v.as_str()).unwrap_or("");
+            let pos = state.blocks.iter().position(|(i, _, _)| *i == index);
+            if let Some(pos) = pos {
+                let content_index = pos;
+                match delta_type {
+                    "text_delta" => {
+                        let delta = event.pointer("/delta/text").and_then(|v| v.as_str()).unwrap_or("");
+                        if let AssistantContentBlock::Text(t) = &mut output.content[content_index] {
+                            t.text.push_str(delta);
+                            stream.push(AssistantMessageEvent::TextDelta {
+                                content_index,
+                                delta: delta.to_string(),
+                                partial: output.clone(),
+                            });
+                        }
+                    }
+                    "thinking_delta" => {
+                        let delta = event.pointer("/delta/thinking").and_then(|v| v.as_str()).unwrap_or("");
+                        if let AssistantContentBlock::Thinking(t) = &mut output.content[content_index] {
+                            t.thinking.push_str(delta);
+                            stream.push(AssistantMessageEvent::ThinkingDelta {
+                                content_index,
+                                delta: delta.to_string(),
+                                partial: output.clone(),
+                            });
+                        }
+                    }
+                    "input_json_delta" => {
+                        let delta = event
+                            .pointer("/delta/partial_json")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        state.blocks[pos].2 = Some(state.blocks[pos].2.clone().unwrap_or_default() + delta);
+                        if let AssistantContentBlock::ToolCall(tc) = &mut output.content[content_index] {
+                            let partial = state.blocks[pos].2.as_deref().unwrap_or("");
+                            tc.arguments = parse_streaming_json(Some(partial));
+                            stream.push(AssistantMessageEvent::ToolcallDelta {
+                                content_index,
+                                delta: delta.to_string(),
+                                partial: output.clone(),
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        "content_block_stop" => {
+            let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+            if let Some(pos) = state.blocks.iter().position(|(i, _, _)| *i == index) {
+                let content_index = pos;
+                match &output.content[content_index] {
+                    AssistantContentBlock::Text(t) => stream.push(AssistantMessageEvent::TextEnd {
+                        content_index,
+                        content: t.text.clone(),
+                        partial: output.clone(),
+                    }),
+                    AssistantContentBlock::Thinking(t) => stream.push(AssistantMessageEvent::ThinkingEnd {
+                        content_index,
+                        content: t.thinking.clone(),
+                        partial: output.clone(),
+                    }),
+                    AssistantContentBlock::ToolCall(tc) => stream.push(AssistantMessageEvent::ToolcallEnd {
+                        content_index,
+                        tool_call: tc.clone(),
+                        partial: output.clone(),
+                    }),
+                }
+            }
+        }
+        "message_delta" => {
+            if let Some(reason) = event.pointer("/delta/stop_reason").and_then(|v| v.as_str()) {
+                let stop_details = event.pointer("/delta/stop_details");
+                let result = map_stop_reason(reason, stop_details);
+                output.stop_reason = result.stop_reason;
+                if let Some(message) = result.error_message {
+                    output.error_message = Some(message);
+                }
+            }
+            if let Some(usage) = event.get("usage") {
+                update_usage_from_anthropic(output, usage);
+                calculate_cost(model, &mut output.usage);
+            }
+        }
+        "message_stop" => state.saw_end = true,
+        _ => {}
+    }
+    Ok(())
 }
 
 /// Process raw Anthropic Messages SSE bytes (used by integration tests mirroring pi-ai).
@@ -180,163 +360,13 @@ pub async fn process_anthropic_sse_buffer(
     stream: &AssistantMessageEventStream,
     model: &Model,
 ) -> Result<()> {
-    let mut state = crate::api::sse::SseDecoderState::default();
-    let mut saw_start = false;
-    let mut saw_end = false;
-    let mut blocks: Vec<(usize, AssistantContentBlock, Option<String>)> = Vec::new();
-
-    for sse in decode_sse_buffer(buffer, &mut state) {
-        if sse.event.as_deref() == Some("error") {
-            return Err(anyhow!(sse.data));
-        }
-        if !ANTHROPIC_MESSAGE_EVENTS.contains(&sse.event.as_deref().unwrap_or("")) {
-            continue;
-        }
-        let event: Value = parse_json_with_repair(&sse.data)?;
-        let event_type = event.get("type").and_then(|v| v.as_str()).unwrap_or("");
-        match event_type {
-            "message_start" => {
-                saw_start = true;
-                if let Some(id) = event.pointer("/message/id").and_then(|v| v.as_str()) {
-                    output.response_id = Some(id.to_string());
-                }
-                if let Some(usage) = event.pointer("/message/usage") {
-                    update_usage_from_anthropic(output, usage);
-                    calculate_cost(model, &mut output.usage);
-                }
-            }
-            "content_block_start" => {
-                let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                let block_type = event
-                    .pointer("/content_block/type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let block = match block_type {
-                    "text" => AssistantContentBlock::Text(crate::types::TextContent::new("")),
-                    "thinking" => AssistantContentBlock::Thinking(crate::types::ThinkingContent::new("")),
-                    "tool_use" => AssistantContentBlock::ToolCall(crate::types::ToolCall::new(
-                        event
-                            .pointer("/content_block/id")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(""),
-                        event
-                            .pointer("/content_block/name")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(""),
-                        event.pointer("/content_block/input").cloned().unwrap_or(json!({})),
-                    )),
-                    _ => continue,
-                };
-                let content_index = output.content.len();
-                output.content.push(block.clone());
-                blocks.push((index, block, None));
-                match output.content.last().unwrap() {
-                    AssistantContentBlock::Text(_) => stream.push(AssistantMessageEvent::TextStart {
-                        content_index,
-                        partial: output.clone(),
-                    }),
-                    AssistantContentBlock::Thinking(_) => stream.push(AssistantMessageEvent::ThinkingStart {
-                        content_index,
-                        partial: output.clone(),
-                    }),
-                    AssistantContentBlock::ToolCall(_) => stream.push(AssistantMessageEvent::ToolcallStart {
-                        content_index,
-                        partial: output.clone(),
-                    }),
-                }
-            }
-            "content_block_delta" => {
-                let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                let delta_type = event.pointer("/delta/type").and_then(|v| v.as_str()).unwrap_or("");
-                let pos = blocks.iter().position(|(i, _, _)| *i == index);
-                if let Some(pos) = pos {
-                    let content_index = pos;
-                    match delta_type {
-                        "text_delta" => {
-                            let delta = event.pointer("/delta/text").and_then(|v| v.as_str()).unwrap_or("");
-                            if let AssistantContentBlock::Text(t) = &mut output.content[content_index] {
-                                t.text.push_str(delta);
-                                stream.push(AssistantMessageEvent::TextDelta {
-                                    content_index,
-                                    delta: delta.to_string(),
-                                    partial: output.clone(),
-                                });
-                            }
-                        }
-                        "thinking_delta" => {
-                            let delta = event.pointer("/delta/thinking").and_then(|v| v.as_str()).unwrap_or("");
-                            if let AssistantContentBlock::Thinking(t) = &mut output.content[content_index] {
-                                t.thinking.push_str(delta);
-                                stream.push(AssistantMessageEvent::ThinkingDelta {
-                                    content_index,
-                                    delta: delta.to_string(),
-                                    partial: output.clone(),
-                                });
-                            }
-                        }
-                        "input_json_delta" => {
-                            let delta = event
-                                .pointer("/delta/partial_json")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("");
-                            blocks[pos].2 = Some(blocks[pos].2.clone().unwrap_or_default() + delta);
-                            if let AssistantContentBlock::ToolCall(tc) = &mut output.content[content_index] {
-                                let partial = blocks[pos].2.as_deref().unwrap_or("");
-                                tc.arguments = parse_streaming_json(Some(partial));
-                                stream.push(AssistantMessageEvent::ToolcallDelta {
-                                    content_index,
-                                    delta: delta.to_string(),
-                                    partial: output.clone(),
-                                });
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            "content_block_stop" => {
-                let index = event.get("index").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
-                if let Some(pos) = blocks.iter().position(|(i, _, _)| *i == index) {
-                    let content_index = pos;
-                    match &output.content[content_index] {
-                        AssistantContentBlock::Text(t) => stream.push(AssistantMessageEvent::TextEnd {
-                            content_index,
-                            content: t.text.clone(),
-                            partial: output.clone(),
-                        }),
-                        AssistantContentBlock::Thinking(t) => stream.push(AssistantMessageEvent::ThinkingEnd {
-                            content_index,
-                            content: t.thinking.clone(),
-                            partial: output.clone(),
-                        }),
-                        AssistantContentBlock::ToolCall(tc) => stream.push(AssistantMessageEvent::ToolcallEnd {
-                            content_index,
-                            tool_call: tc.clone(),
-                            partial: output.clone(),
-                        }),
-                    }
-                }
-            }
-            "message_delta" => {
-                if let Some(reason) = event.pointer("/delta/stop_reason").and_then(|v| v.as_str()) {
-                    let stop_details = event.pointer("/delta/stop_details");
-                    let result = map_stop_reason(reason, stop_details);
-                    output.stop_reason = result.stop_reason;
-                    if let Some(message) = result.error_message {
-                        output.error_message = Some(message);
-                    }
-                }
-                if let Some(usage) = event.get("usage") {
-                    update_usage_from_anthropic(output, usage);
-                    calculate_cost(model, &mut output.usage);
-                }
-            }
-            "message_stop" => saw_end = true,
-            _ => {}
-        }
+    let mut decoder = crate::api::sse::SseDecoderState::default();
+    let mut state = AnthropicStreamState::default();
+    for sse in decode_sse_buffer(buffer, &mut decoder) {
+        process_anthropic_sse_event(&sse, &mut state, output, stream, model)?;
     }
 
-    if saw_start && !saw_end {
+    if state.saw_start && !state.saw_end {
         return Err(anyhow!("Anthropic stream ended before message_stop"));
     }
     stream.push(AssistantMessageEvent::Done {

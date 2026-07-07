@@ -209,6 +209,7 @@ async fn run_faux(
         core.min_token_size,
         core.max_token_size,
         core.tokens_per_second,
+        options.and_then(|o| o.signal.clone()),
     )
     .await;
     Ok(())
@@ -362,6 +363,7 @@ async fn stream_with_deltas(
     min_token_size: usize,
     max_token_size: usize,
     tokens_per_second: Option<f64>,
+    signal: Option<tokio_util::sync::CancellationToken>,
 ) {
     let mut partial = AssistantMessage {
         content: vec![],
@@ -372,6 +374,17 @@ async fn stream_with_deltas(
     });
 
     for (index, block) in message.content.iter().enumerate() {
+        if crate::api::common::is_request_aborted(&signal) {
+            let mut output = partial.clone();
+            output.stop_reason = StopReason::Aborted;
+            crate::api::common::finish_stream_error(
+                stream,
+                &mut output,
+                crate::api::common::request_aborted_error(),
+                true,
+            );
+            return;
+        }
         match block {
             AssistantContentBlock::Thinking(t) => {
                 partial
@@ -383,6 +396,17 @@ async fn stream_with_deltas(
                 });
                 for chunk in split_by_token_size(&t.thinking, min_token_size, max_token_size) {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    if crate::api::common::is_request_aborted(&signal) {
+                        let mut output = partial.clone();
+                        output.stop_reason = StopReason::Aborted;
+                        crate::api::common::finish_stream_error(
+                            stream,
+                            &mut output,
+                            crate::api::common::request_aborted_error(),
+                            true,
+                        );
+                        return;
+                    }
                     if let AssistantContentBlock::Thinking(tc) = &mut partial.content[index] {
                         tc.thinking.push_str(&chunk);
                     }
@@ -406,6 +430,17 @@ async fn stream_with_deltas(
                 });
                 for chunk in split_by_token_size(&t.text, min_token_size, max_token_size) {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    if crate::api::common::is_request_aborted(&signal) {
+                        let mut output = partial.clone();
+                        output.stop_reason = StopReason::Aborted;
+                        crate::api::common::finish_stream_error(
+                            stream,
+                            &mut output,
+                            crate::api::common::request_aborted_error(),
+                            true,
+                        );
+                        return;
+                    }
                     if let AssistantContentBlock::Text(tc) = &mut partial.content[index] {
                         tc.text.push_str(&chunk);
                     }
@@ -434,6 +469,17 @@ async fn stream_with_deltas(
                 let args = tc.arguments.to_string();
                 for chunk in split_by_token_size(&args, min_token_size, max_token_size) {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    if crate::api::common::is_request_aborted(&signal) {
+                        let mut output = partial.clone();
+                        output.stop_reason = StopReason::Aborted;
+                        crate::api::common::finish_stream_error(
+                            stream,
+                            &mut output,
+                            crate::api::common::request_aborted_error(),
+                            true,
+                        );
+                        return;
+                    }
                     stream.push(AssistantMessageEvent::ToolcallDelta {
                         content_index: index,
                         delta: chunk,

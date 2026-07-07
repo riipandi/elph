@@ -6,21 +6,23 @@ use serde_json::{Value, json};
 
 use crate::api::azure_base_url::{build_default_azure_base_url, normalize_azure_base_url};
 use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
+    apply_on_payload, build_http_client_for_target, finish_stream_error, invoke_on_response_from_reqwest,
+    is_request_aborted, merge_model_headers, send_with_abort,
 };
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::{
-    convert_responses_messages, convert_responses_tools, process_responses_stream,
+    ResponsesStreamState, convert_responses_messages, convert_responses_tools, process_responses_stream_event,
 };
 use crate::api::simple_options::build_base_options;
 use crate::models::{clamp_thinking_level, thinking_level_to_str};
 use crate::types::{
-    AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions, StreamOptions,
+    AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions, StopReason,
+    StreamOptions,
 };
 use crate::utils::event_stream::AssistantMessageEventStream;
 use crate::utils::provider_env::get_provider_env_value;
 
-use super::sse::collect_sse_json_events;
+use super::sse::for_each_sse_json_event;
 
 const DEFAULT_AZURE_API_VERSION: &str = "v1";
 const AZURE_TOOL_CALL_PROVIDERS: &[&str] = &["openai", "openai-codex", "opencode", "azure-openai-responses"];
@@ -87,7 +89,8 @@ impl AzureOpenAIResponsesApi {
         tokio::spawn(async move {
             let mut output = AssistantMessage::empty(&model);
             if let Err(e) = run_azure(&model, &context, &options, &s, &mut output).await {
-                finish_stream_error(&s, &mut output, e, false);
+                let aborted = crate::api::common::is_abort_error(&e);
+                finish_stream_error(&s, &mut output, e, aborted);
             }
         });
         stream
@@ -113,21 +116,33 @@ async fn run_azure(
     params = apply_on_payload(options.base.on_payload.as_ref(), params, model).await;
 
     let (base_url, api_version) = resolve_azure_config(model, options)?;
-    let client = build_http_client(options.base.timeout_ms)?;
     let url = format!("{base_url}/deployments/{deployment}/responses?api-version={api_version}");
+    let client = build_http_client_for_target(options.base.timeout_ms, Some(&url), options.base.env.as_ref())?;
     let mut req = client.post(&url).header("api-key", api_key).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let response = req.send().await?;
+    let response = send_with_abort(&options.base.signal, req).await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
 
     stream.push(AssistantMessageEvent::Start {
         partial: output.clone(),
     });
-    let events = collect_sse_json_events(response).await?;
-    process_responses_stream(events, output, stream, model, None).await?;
+    let mut responses_state = ResponsesStreamState::default();
+    for_each_sse_json_event(response, &options.base.signal, |event| {
+        process_responses_stream_event(&event, &mut responses_state, output, stream, model, None)
+    })
+    .await?;
+
+    if is_request_aborted(&options.base.signal) {
+        output.stop_reason = StopReason::Aborted;
+    } else if !responses_state.saw_terminal {
+        return Err(anyhow!(
+            "OpenAI Responses stream ended before a terminal response event"
+        ));
+    }
+
     stream.push(AssistantMessageEvent::Done {
         reason: output.stop_reason,
         message: output.clone(),

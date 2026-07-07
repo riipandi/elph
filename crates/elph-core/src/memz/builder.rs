@@ -1,6 +1,9 @@
 use anyhow::{Result, bail};
 
-use super::embed::{DEFAULT_EMBED_MODEL, FastEmbedOptions, create_fastembed};
+use super::embed::{FastEmbedOptions, create_fastembed};
+
+#[cfg(feature = "fastembed")]
+use super::embed::DEFAULT_EMBED_MODEL;
 #[cfg(feature = "fastembed")]
 use super::embed::{embedding_dims, resolve_embedding_model};
 use super::paths::MemzPaths;
@@ -88,7 +91,7 @@ impl MemzBuilder {
     }
 
     #[cfg(not(feature = "fastembed"))]
-    pub fn fastembed(mut self, _options: FastEmbedOptions) -> Result<Self> {
+    pub fn fastembed(self, _options: FastEmbedOptions) -> Result<Self> {
         bail!("fastembed backend requires the `fastembed` feature on this crate");
     }
 
