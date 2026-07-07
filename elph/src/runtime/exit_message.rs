@@ -22,9 +22,9 @@ pub struct ExitSnapshot {
     pub has_history: bool,
 }
 
-/// Creates a CUID2 session identifier for resume hints.
+/// Creates a TSID session identifier for resume hints.
 pub fn new_session_id() -> String {
-    cuid2::create_id()
+    tsid::create_tsid().to_string()
 }
 
 pub fn record(snapshot: ExitSnapshot) {
@@ -63,10 +63,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn session_id_is_cuid2() {
+    fn session_id_is_tsid() {
         let id = new_session_id();
-        assert_eq!(id.len(), 24);
-        assert!(cuid2::is_cuid2(&id));
+        assert_eq!(id.len(), 13);
+        assert!(tsid::TSID::try_from(id.as_str()).is_ok());
     }
 
     #[test]

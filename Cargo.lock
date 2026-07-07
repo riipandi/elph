@@ -1506,28 +1506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cuid-util"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d59a706635108a7e8eaae7ec8e6154504fafa4a415ef38690d94fccea051757"
-
-[[package]]
-name = "cuid2"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71de6c6a14e38eeae421efba9a6e94631cd84cbb15fd42c9c15abfc45460ba6b"
-dependencies = [
- "ahash",
- "cuid-util",
- "getrandom 0.3.4",
- "getrandom 0.4.3",
- "num",
- "rand 0.10.2",
- "sha3",
- "web-time",
-]
-
-[[package]]
 name = "darling"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1783,7 +1761,6 @@ version = "0.0.22"
 dependencies = [
  "anyhow",
  "clap",
- "cuid2",
  "elph-agent",
  "elph-ai",
  "elph-core",
@@ -1795,6 +1772,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
+ "tsid",
 ]
 
 [[package]]
@@ -3299,16 +3277,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbd1086b01b9349fd4ef9a07433965af64c8ce8159abe633a189e4ff817bd13"
 dependencies = [
  "regex-syntax",
-]
-
-[[package]]
-name = "keccak"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e24a010dd405bd7ed803e5253182815b41bf2e6a80cc3bfc066658e03a198aa"
-dependencies = [
- "cfg-if",
- "cpufeatures 0.3.0",
 ]
 
 [[package]]
@@ -5319,16 +5287,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sha3"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be176f1a57ce4e3d31c1a166222d9768de5954f811601fb7ca06fc8203905ce1"
-dependencies = [
- "digest 0.11.3",
- "keccak",
-]
-
-[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6081,6 +6039,19 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "tsid"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f731773163475b3efb59d4171423e87fcb6f8732ae4d82cf0a9df7806abfee28"
+dependencies = [
+ "chrono",
+ "getrandom 0.2.17",
+ "lazy_static",
+ "phf",
+ "rand 0.8.6",
+]
 
 [[package]]
 name = "tungstenite"

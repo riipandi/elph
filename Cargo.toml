@@ -28,7 +28,6 @@ clap = { version = "4.5", default-features = false, features = [
 ] }
 crokey = "1.4.0"
 crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "events"] }
-cuid2 = "0.1.6"
 elph-agent = { path = "crates/elph-agent", version = "0.0.22" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.22" }
 elph-core = { path = "crates/elph-core", version = "0.0.10" }
@@ -47,6 +46,7 @@ tower-http = { version = "0.7.0", default-features = false, features = ["catch-p
 tracing = "0.1"
 tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "json", "std"] }
+tsid = "0.3.4"
 turso = { version = "0.6.1", default-features = false }
 
 [profile.release]

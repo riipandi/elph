@@ -91,6 +91,9 @@ impl JsonlSessionStorage {
         file.write_all(format!("{line}\n").as_bytes())
             .await
             .map_err(|error| storage_error(&self.file_path, format!("failed to append entry: {error}")))?;
+        file.flush()
+            .await
+            .map_err(|error| storage_error(&self.file_path, format!("failed to flush session: {error}")))?;
         Ok(())
     }
 }

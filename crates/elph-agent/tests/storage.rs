@@ -187,11 +187,11 @@ async fn jsonl_storage_writes_header_on_create() {
 
     let content = fs::read_to_string(&file_path).expect("read");
     let lines: Vec<_> = content.trim().lines().collect();
+    assert_eq!(lines.len(), 2, "expected header + entry lines, got: {content:?}");
     let header: serde_json::Value = serde_json::from_str(lines[0]).expect("header");
     let entry: serde_json::Value = serde_json::from_str(lines[1]).expect("entry");
     assert_eq!(header.get("type"), Some(&json!("session")));
     assert_eq!(entry.get("id"), Some(&json!("user-1")));
-    assert_eq!(lines.len(), 2);
 }
 
 #[tokio::test]
