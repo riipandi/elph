@@ -768,6 +768,7 @@ dependencies = [
  "axum",
  "clap",
  "elph-agent",
+ "elph-ai",
  "elph-core",
  "rust-embed",
  "serde",
@@ -793,6 +794,7 @@ dependencies = [
  "clap",
  "cuid2",
  "elph-agent",
+ "elph-ai",
  "elph-core",
  "elph-tui",
  "iocraft",
@@ -830,13 +832,17 @@ name = "elph-core"
 version = "0.0.6"
 dependencies = [
  "anyhow",
+ "rand 0.10.2",
  "serde",
  "serde_json",
  "tempfile",
  "time",
+ "tokio",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "turso",
+ "uuid",
 ]
 
 [[package]]

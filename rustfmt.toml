@@ -1,14 +1,14 @@
 # https://doc.rust-lang.org/beta/style-guide/index.html
-max_width = 120
+edition = "2024"
+force_explicit_abi = true
 hard_tabs = false
-tab_spaces = 4
+max_width = 120
+merge_derives = true
 newline_style = "Unix"
-use_small_heuristics = "Default"
+remove_nested_parens = true
 reorder_imports = true
 reorder_modules = true
-remove_nested_parens = true
-edition = "2024"
-merge_derives = true
-use_try_shorthand = false
+tab_spaces = 4
 use_field_init_shorthand = false
-force_explicit_abi = true
+use_small_heuristics = "Default"
+use_try_shorthand = false
