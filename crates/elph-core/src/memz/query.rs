@@ -282,7 +282,7 @@ impl MemoryStore {
                 let errors = row.get::<Option<i64>>(3)?.unwrap_or(0);
                 let desc: String = row.get::<Option<String>>(0)?.unwrap_or_default();
                 let desc = if desc.len() > 80 {
-                    format!("{}…", &desc[..80])
+                    format!("{}...", &desc[..80])
                 } else {
                     desc
                 };
@@ -306,7 +306,7 @@ impl MemoryStore {
                 let weight: f64 = row.get(2)?;
                 let content: String = row.get(0)?;
                 let preview = if content.len() > 80 {
-                    format!("{}…", &content[..80])
+                    format!("{}...", &content[..80])
                 } else {
                     content
                 };

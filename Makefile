@@ -35,6 +35,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
 	@$(CARGO) bloat --release -n 50
+	@tokei .
 
 build: ## Build all application binaries (elph + eclaw)
 	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION) ($(BUILD_HASH))"
@@ -134,6 +135,7 @@ prepare: ## Install required toolchain
 	@command -v cargo-tarpaulin >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-tarpaulin
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
+	@command -v tokei >/dev/null 2>&1 || $(CARGO) binstall --locked -y tokei
 	@command -v cross >/dev/null 2>&1 || $(CARGO) install cross --locked
 	@while read -r t; do rustup target add "$$t" 2>/dev/null || true; done < ./scripts/cross-targets.sh
 	@if [ "$(UNAME_S)" = "Darwin" ]; then \

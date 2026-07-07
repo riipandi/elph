@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     println!("Mode:     {}", if args.stream { "streaming" } else { "buffered" });
     println!();
 
-    let setup = progress_spinner("Resolving auth…");
+    let setup = progress_spinner("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
     setup.finish_and_clear();
@@ -79,9 +79,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let generating = progress_spinner(if args.stream {
-        "Streaming from big-pickle…"
+        "Streaming from big-pickle..."
     } else {
-        "Waiting for big-pickle…"
+        "Waiting for big-pickle..."
     });
 
     let stream = models.stream(&model, &context, None);

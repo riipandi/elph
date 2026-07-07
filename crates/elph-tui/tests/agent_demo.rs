@@ -16,7 +16,7 @@ fn streaming_buffer_throttles_and_accumulates() {
 fn transcript_entries_cover_pi_roles() {
     let entries = [
         TranscriptEntry::user("fix the bug"),
-        TranscriptEntry::assistant_streaming("Looking at **main.rs**…"),
+        TranscriptEntry::assistant_streaming("Looking at **main.rs**..."),
         TranscriptEntry::tool(
             ToolExecutionState::new("bash", "bash")
                 .with_args("npm test")

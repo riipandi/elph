@@ -264,8 +264,13 @@ pub enum ContentBlock {
     Image { data: String, mime_type: String },
 }
 
+fn assistant_role_default() -> String {
+    "assistant".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssistantMessage {
+    #[serde(skip_serializing, default = "assistant_role_default")]
     pub role: String,
     pub content: Vec<AssistantContentBlock>,
     pub api: Api,

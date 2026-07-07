@@ -1,7 +1,7 @@
 //! Turso local database helpers and migration runner.
 
 mod lazy;
-mod migrations;
+pub(crate) mod migrations;
 
 use std::path::Path;
 

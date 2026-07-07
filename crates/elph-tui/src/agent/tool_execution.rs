@@ -54,7 +54,7 @@ pub fn ToolExecutionCard(props: &ToolExecutionCardProps) -> impl Into<AnyElement
             })
             #(if tool.status == ToolExecutionStatus::Running {
                 Some(element! {
-                    Text(content: "⠋ Running… (Esc to cancel)".to_string())
+                    Text(content: "⠋ Running... (Esc to cancel)".to_string())
                 })
             } else {
                 None

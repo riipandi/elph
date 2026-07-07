@@ -75,7 +75,7 @@ fn render_entry(entry: &TranscriptEntry, theme: Theme, show_thinking: bool) -> O
             let label = if entry.thinking_expanded {
                 format!("Thinking:\n{}", entry.content)
             } else {
-                "Thinking… (collapsed)".to_string()
+                "Thinking... (collapsed)".to_string()
             };
             Some(
                 element! {

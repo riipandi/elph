@@ -418,6 +418,11 @@ pub fn create_models(options: Option<CreateModelsOptions>) -> MutableModels {
 }
 
 impl MutableModels {
+    /// Consume the mutable wrapper and share the underlying [`Models`] via [`Arc`].
+    pub fn into_arc(self) -> std::sync::Arc<Models> {
+        std::sync::Arc::new(self.inner)
+    }
+
     pub fn set_provider(&mut self, provider: Provider) {
         self.inner.providers.insert(provider.id.clone(), provider);
     }

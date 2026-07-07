@@ -1,6 +1,6 @@
 use super::width::{char_display_width, str_display_width};
 
-const ELLIPSIS: &str = "…";
+const ELLIPSIS: &str = "...";
 
 /// Truncates `text` to at most `max_width` display columns, appending `ellipsis` when truncated.
 pub fn truncate_to_width(text: &str, max_width: usize, ellipsis: &str) -> String {
@@ -73,13 +73,13 @@ mod tests {
 
     #[test]
     fn truncates_plain_text() {
-        assert_eq!(truncate_to_width("Hello World", 8, ELLIPSIS), "Hello W…");
+        assert_eq!(truncate_to_width("Hello World", 8, ELLIPSIS), "Hello...");
     }
 
     #[test]
     fn preserves_ansi_prefix() {
         let styled = "\x1b[31mHello\x1b[0m World".to_string();
-        let truncated = truncate_to_width(&styled, 8, "…");
+        let truncated = truncate_to_width(&styled, 8, "...");
         assert!(truncated.contains("\x1b[31m"));
         assert!(str_display_width(&truncated) <= 8);
     }

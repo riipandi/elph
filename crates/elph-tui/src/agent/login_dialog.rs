@@ -26,7 +26,7 @@ pub fn LoginDialog(props: &LoginDialogProps) -> impl Into<AnyElement<'static>> {
     let body = match props.status {
         AuthStatus::Idle => format!("Connect to {} to continue.", props.provider),
         AuthStatus::Waiting => format!(
-            "Waiting for {} authorization…\n{link}\nPress Esc to cancel.",
+            "Waiting for {} authorization...\n{link}\nPress Esc to cancel.",
             props.provider
         ),
         AuthStatus::Success => format!("Successfully connected to {}.", props.provider),
@@ -49,7 +49,7 @@ pub fn LoginDialog(props: &LoginDialogProps) -> impl Into<AnyElement<'static>> {
             Text(content: body)
             #(if props.status == AuthStatus::Waiting {
                 Some(element! {
-                    Text(content: "⠋ Waiting for browser callback…".to_string())
+                    Text(content: "⠋ Waiting for browser callback...".to_string())
                 })
             } else {
                 None

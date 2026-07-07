@@ -481,7 +481,7 @@ fn truncate_to_char_boundary(text: &str, max_chars: usize) -> String {
     for ch in text.chars().take(max_chars.saturating_sub(1)) {
         out.push(ch);
     }
-    out.push('…');
+    out.push_str("...");
     out
 }
 
