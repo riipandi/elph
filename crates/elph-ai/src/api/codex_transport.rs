@@ -157,10 +157,10 @@ pub fn reset_codex_websocket_debug_stats(session_id: Option<&str>) {
 
 pub fn close_codex_websocket_sessions(session_id: Option<&str>) {
     let close_entry = |entry: &CachedWebSocketConnection| {
-        if let Ok(mut task) = entry.idle_task.try_lock() {
-            if let Some(handle) = task.take() {
-                handle.abort();
-            }
+        if let Ok(mut task) = entry.idle_task.try_lock()
+            && let Some(handle) = task.take()
+        {
+            handle.abort();
         }
         if let Ok(mut socket) = entry.socket.try_lock() {
             let _ = futures_util::future::FutureExt::now_or_never(socket.close(None));
@@ -209,10 +209,10 @@ fn schedule_idle_expiry(session_id: String, entry: Arc<CachedWebSocketConnection
             cache.remove(&session_id);
         }
     });
-    if let Ok(mut slot) = task_slot.try_lock() {
-        if let Some(old) = slot.replace(handle) {
-            old.abort();
-        }
+    if let Ok(mut slot) = task_slot.try_lock()
+        && let Some(old) = slot.replace(handle)
+    {
+        old.abort();
     }
 }
 
@@ -263,10 +263,10 @@ async fn acquire_websocket(
 
     let cache_action = WEBSOCKET_SESSION_CACHE.lock().ok().and_then(|mut cache| {
         let entry = cache.get(session_id)?.clone();
-        if let Ok(mut task) = entry.idle_task.try_lock() {
-            if let Some(handle) = task.take() {
-                handle.abort();
-            }
+        if let Ok(mut task) = entry.idle_task.try_lock()
+            && let Some(handle) = task.take()
+        {
+            handle.abort();
         }
         if entry.busy.load(Ordering::SeqCst) {
             return Some(CacheAction::Busy);
@@ -380,7 +380,7 @@ fn get_cached_websocket_input_delta(body: &Value, continuation: &CachedWebSocket
         .unwrap_or(Value::Array(vec![]));
     let response_items = continuation.last_response_items.clone();
 
-    let mut baseline = match baseline_items {
+    let baseline = match baseline_items {
         Value::Array(mut items) => {
             if let Value::Array(extra) = response_items {
                 items.extend(extra);
@@ -463,12 +463,11 @@ pub fn update_codex_websocket_continuation(
 }
 
 pub fn clear_codex_websocket_continuation(session_id: &str) {
-    if let Ok(cache) = WEBSOCKET_SESSION_CACHE.lock() {
-        if let Some(entry) = cache.get(session_id) {
-            if let Ok(mut guard) = entry.continuation.lock() {
-                *guard = None;
-            }
-        }
+    if let Ok(cache) = WEBSOCKET_SESSION_CACHE.lock()
+        && let Some(entry) = cache.get(session_id)
+        && let Ok(mut guard) = entry.continuation.lock()
+    {
+        *guard = None;
     }
 }
 
@@ -596,12 +595,11 @@ async fn try_websocket_stream(
     let reused = lease.reused;
     let collect_result = collect_websocket_events(&lease.socket, &request_body).await;
     let keep = collect_result.is_ok();
-    if !keep {
-        if let Some(entry) = &lease.entry {
-            if let Ok(mut guard) = entry.continuation.lock() {
-                *guard = None;
-            }
-        }
+    if !keep
+        && let Some(entry) = &lease.entry
+        && let Ok(mut guard) = entry.continuation.lock()
+    {
+        *guard = None;
     }
     release_websocket(lease, keep).await;
     let events = collect_result?;

@@ -213,13 +213,11 @@ impl EventStreamIterator {
     pub async fn next(&mut self) -> Option<AssistantMessageEvent> {
         loop {
             let next = {
-                let mut q = self.queue.lock().expect("event stream mutex poisoned");
+                let q = self.queue.lock().expect("event stream mutex poisoned");
                 if self.index < q.events.len() {
                     let event = q.events[self.index].clone();
                     self.index += 1;
                     Some(event)
-                } else if q.done {
-                    None
                 } else {
                     None
                 }

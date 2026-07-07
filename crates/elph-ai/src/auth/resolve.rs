@@ -3,8 +3,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use super::types::{
-    ApiKeyCredential, AuthContext, AuthModel, AuthResult, Credential, CredentialStore, ModelAuth, OAuthCredential,
-    ProviderAuth,
+    ApiKeyCredential, AuthContext, AuthModel, AuthResult, Credential, CredentialStore, OAuthCredential, ProviderAuth,
 };
 use crate::types::ProviderEnv;
 
@@ -66,17 +65,17 @@ pub async fn resolve_provider_auth(
         auth_context
     };
 
-    if let Some(key) = overrides.as_ref().and_then(|o| o.api_key.clone()) {
-        if let Some(api_key) = &provider.auth.api_key {
-            return Ok(resolve_api_key(
-                ctx,
-                api_key,
-                model,
-                Some(ApiKeyCredential::new(key)),
-                overrides.as_ref().and_then(|o| o.env.clone()),
-            )
-            .await?);
-        }
+    if let Some(key) = overrides.as_ref().and_then(|o| o.api_key.clone())
+        && let Some(api_key) = &provider.auth.api_key
+    {
+        return resolve_api_key(
+            ctx,
+            api_key,
+            model,
+            Some(ApiKeyCredential::new(key)),
+            overrides.as_ref().and_then(|o| o.env.clone()),
+        )
+        .await;
     }
 
     let stored = credentials.read(&provider.id).await;
@@ -107,7 +106,7 @@ pub async fn resolve_provider_auth(
     }
 
     if let Some(api_key) = &provider.auth.api_key {
-        return Ok(resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await?);
+        return resolve_api_key(ctx, api_key, model, None, overrides.and_then(|o| o.env)).await;
     }
 
     Ok(None)

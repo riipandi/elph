@@ -4,7 +4,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, openai_codex_oauth};
-use crate::auth::{AuthModel, AuthResolveInput, AuthResult, ModelAuth, ProviderAuth, env_api_key_auth};
+use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth, env_api_key_auth};
 use crate::models::catalog::*;
 use crate::models::{
     CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi, create_models, create_provider,

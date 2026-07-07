@@ -70,7 +70,7 @@ pub struct ProviderResponse {
     pub headers: HashMap<String, String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct StreamOptions {
     pub temperature: Option<f64>,
     pub max_tokens: Option<u32>,
@@ -87,28 +87,6 @@ pub struct StreamOptions {
     pub env: Option<ProviderEnv>,
     pub on_payload: Option<OnPayloadCallback>,
     pub on_response: Option<OnResponseCallback>,
-}
-
-impl Default for StreamOptions {
-    fn default() -> Self {
-        Self {
-            temperature: None,
-            max_tokens: None,
-            api_key: None,
-            transport: None,
-            cache_retention: None,
-            session_id: None,
-            headers: None,
-            timeout_ms: None,
-            websocket_connect_timeout_ms: None,
-            max_retries: None,
-            max_retry_delay_ms: None,
-            metadata: None,
-            env: None,
-            on_payload: None,
-            on_response: None,
-        }
-    }
 }
 
 pub type OnPayloadCallback =
@@ -249,6 +227,7 @@ pub enum StopReason {
     Aborted,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "role", rename_all = "camelCase")]
 pub enum Message {

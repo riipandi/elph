@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::{Result, anyhow};
 
 use serde_json::{Value, json};
@@ -12,7 +10,7 @@ use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copi
 use crate::api::simple_options::{adjust_max_tokens_for_thinking, build_base_options, clamp_max_tokens_to_context};
 use crate::api::sse::{ANTHROPIC_MESSAGE_EVENTS, decode_sse_buffer};
 use crate::api::transform_messages::transform_messages;
-use crate::models::{calculate_cost, clamp_thinking_level, thinking_level_to_str};
+use crate::models::{calculate_cost, thinking_level_to_str};
 use crate::types::{
     AssistantContentBlock, AssistantMessage, AssistantMessageEvent, ContentBlock, Context, Message, Model,
     ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, ThinkingLevel, UserContent,
@@ -428,25 +426,22 @@ fn apply_anthropic_payload_cache_control(params: &mut Value, model: &Model, rete
         return;
     };
     let compat = get_anthropic_compat(model);
-    if let Some(system) = params.get_mut("system").and_then(|v| v.as_array_mut()) {
-        if let Some(first) = system.first_mut() {
-            first["cache_control"] = cache_control.clone();
-        }
+    if let Some(system) = params.get_mut("system").and_then(|v| v.as_array_mut())
+        && let Some(first) = system.first_mut()
+    {
+        first["cache_control"] = cache_control.clone();
     }
-    if compat.supports_cache_control_on_tools {
-        if let Some(tools) = params.get_mut("tools").and_then(|v| v.as_array_mut()) {
-            if let Some(last) = tools.last_mut() {
-                last["cache_control"] = cache_control.clone();
-            }
-        }
+    if compat.supports_cache_control_on_tools
+        && let Some(tools) = params.get_mut("tools").and_then(|v| v.as_array_mut())
+        && let Some(last) = tools.last_mut()
+    {
+        last["cache_control"] = cache_control.clone();
     }
     if let Some(messages) = params.get_mut("messages").and_then(|v| v.as_array_mut()) {
         for message in messages.iter_mut().rev() {
             let role = message.get("role").and_then(|v| v.as_str()).unwrap_or("");
-            if role == "user" || role == "assistant" {
-                if add_cache_control_to_text_content(message, &cache_control) {
-                    break;
-                }
+            if (role == "user" || role == "assistant") && add_cache_control_to_text_content(message, &cache_control) {
+                break;
             }
         }
     }
@@ -464,15 +459,17 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
         params["system"] = json!([{ "type": "text", "text": sanitize_surrogates(sp) }]);
     }
     let compat = get_anthropic_compat(model);
-    if compat.supports_temperature && options.thinking_enabled != Some(true) {
-        if let Some(temp) = options.base.temperature {
-            params["temperature"] = json!(temp);
-        }
+    if compat.supports_temperature
+        && options.thinking_enabled != Some(true)
+        && let Some(temp) = options.base.temperature
+    {
+        params["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            let eager = compat.supports_eager_tool_input_streaming;
-            params["tools"] = json!(tools.iter().map(|t| {
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        let eager = compat.supports_eager_tool_input_streaming;
+        params["tools"] = json!(tools.iter().map(|t| {
                 let mut tool = json!({
                     "name": t.name,
                     "description": t.description,
@@ -483,7 +480,6 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
                 }
                 tool
             }).collect::<Vec<_>>());
-        }
     }
     if options.thinking_enabled == Some(true) {
         if model.anthropic_compat.as_ref().and_then(|c| c.force_adaptive_thinking) == Some(true) {
@@ -602,10 +598,10 @@ fn map_stop_reason(reason: &str, stop_details: Option<&Value>) -> AnthropicStopR
 }
 
 fn map_thinking_level_to_effort(model: &Model, level: ThinkingLevel) -> String {
-    if let Some(map) = &model.thinking_level_map {
-        if let Some(Some(v)) = map.get(thinking_level_to_str(level)) {
-            return v.clone();
-        }
+    if let Some(map) = &model.thinking_level_map
+        && let Some(Some(v)) = map.get(thinking_level_to_str(level))
+    {
+        return v.clone();
     }
     match level {
         ThinkingLevel::Minimal | ThinkingLevel::Low => "low".to_string(),

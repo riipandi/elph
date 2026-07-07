@@ -147,44 +147,44 @@ async fn run_openai_completions(
                 has_finish = true;
             }
             if let Some(delta) = choice.get("delta") {
-                if let Some(text) = delta.get("content").and_then(|v| v.as_str()) {
-                    if !text.is_empty() {
-                        let idx = ensure_text_block(output, stream, &mut text_idx);
-                        if let AssistantContentBlock::Text(t) = &mut output.content[idx] {
-                            t.text.push_str(text);
-                            stream.push(AssistantMessageEvent::TextDelta {
-                                content_index: idx,
-                                delta: text.to_string(),
-                                partial: output.clone(),
-                            });
-                        }
+                if let Some(text) = delta.get("content").and_then(|v| v.as_str())
+                    && !text.is_empty()
+                {
+                    let idx = ensure_text_block(output, stream, &mut text_idx);
+                    if let AssistantContentBlock::Text(t) = &mut output.content[idx] {
+                        t.text.push_str(text);
+                        stream.push(AssistantMessageEvent::TextDelta {
+                            content_index: idx,
+                            delta: text.to_string(),
+                            partial: output.clone(),
+                        });
                     }
                 }
                 let mut found_reasoning_field: Option<&str> = None;
                 for field in ["reasoning_content", "reasoning", "reasoning_text"] {
-                    if let Some(reasoning) = delta.get(field).and_then(|v| v.as_str()) {
-                        if !reasoning.is_empty() {
-                            found_reasoning_field = Some(field);
-                            break;
-                        }
+                    if let Some(reasoning) = delta.get(field).and_then(|v| v.as_str())
+                        && !reasoning.is_empty()
+                    {
+                        found_reasoning_field = Some(field);
+                        break;
                     }
                 }
-                if let Some(field) = found_reasoning_field {
-                    if let Some(reasoning) = delta.get(field).and_then(|v| v.as_str()) {
-                        let signature = if model.provider == "opencode-go" && field == "reasoning" {
-                            "reasoning_content"
-                        } else {
-                            field
-                        };
-                        let idx = ensure_thinking_block(output, stream, &mut thinking_idx, signature);
-                        if let AssistantContentBlock::Thinking(t) = &mut output.content[idx] {
-                            t.thinking.push_str(reasoning);
-                            stream.push(AssistantMessageEvent::ThinkingDelta {
-                                content_index: idx,
-                                delta: reasoning.to_string(),
-                                partial: output.clone(),
-                            });
-                        }
+                if let Some(field) = found_reasoning_field
+                    && let Some(reasoning) = delta.get(field).and_then(|v| v.as_str())
+                {
+                    let signature = if model.provider == "opencode-go" && field == "reasoning" {
+                        "reasoning_content"
+                    } else {
+                        field
+                    };
+                    let idx = ensure_thinking_block(output, stream, &mut thinking_idx, signature);
+                    if let AssistantContentBlock::Thinking(t) = &mut output.content[idx] {
+                        t.thinking.push_str(reasoning);
+                        stream.push(AssistantMessageEvent::ThinkingDelta {
+                            content_index: idx,
+                            delta: reasoning.to_string(),
+                            partial: output.clone(),
+                        });
                     }
                 }
                 if let Some(tool_calls) = delta.get("tool_calls").and_then(|v| v.as_array()) {
@@ -222,23 +222,23 @@ async fn run_openai_completions(
         }
     }
 
-    if let Some(idx) = text_idx {
-        if let AssistantContentBlock::Text(t) = &output.content[idx] {
-            stream.push(AssistantMessageEvent::TextEnd {
-                content_index: idx,
-                content: t.text.clone(),
-                partial: output.clone(),
-            });
-        }
+    if let Some(idx) = text_idx
+        && let AssistantContentBlock::Text(t) = &output.content[idx]
+    {
+        stream.push(AssistantMessageEvent::TextEnd {
+            content_index: idx,
+            content: t.text.clone(),
+            partial: output.clone(),
+        });
     }
-    if let Some(idx) = thinking_idx {
-        if let AssistantContentBlock::Thinking(t) = &output.content[idx] {
-            stream.push(AssistantMessageEvent::ThinkingEnd {
-                content_index: idx,
-                content: t.thinking.clone(),
-                partial: output.clone(),
-            });
-        }
+    if let Some(idx) = thinking_idx
+        && let AssistantContentBlock::Thinking(t) = &output.content[idx]
+    {
+        stream.push(AssistantMessageEvent::ThinkingEnd {
+            content_index: idx,
+            content: t.thinking.clone(),
+            partial: output.clone(),
+        });
     }
     for (_, (idx, partial)) in tool_blocks {
         if let AssistantContentBlock::ToolCall(tc) = &mut output.content[idx] {
@@ -377,17 +377,15 @@ fn apply_anthropic_cache_control(
             break;
         }
     }
-    if let Some(tools) = tools {
-        if let Some(last) = tools.as_array_mut().and_then(|arr| arr.last_mut()) {
-            last["cache_control"] = cache_control.to_value();
-        }
+    if let Some(tools) = tools
+        && let Some(last) = tools.as_array_mut().and_then(|arr| arr.last_mut())
+    {
+        last["cache_control"] = cache_control.to_value();
     }
     for message in messages.iter_mut().rev() {
         let role = message.get("role").and_then(|v| v.as_str()).unwrap_or("");
-        if role == "user" || role == "assistant" {
-            if add_cache_control_to_text_content(message, cache_control) {
-                break;
-            }
+        if (role == "user" || role == "assistant") && add_cache_control_to_text_content(message, cache_control) {
+            break;
         }
     }
 }
@@ -502,11 +500,11 @@ fn apply_thinking_params(
             } else {
                 json!({ "type": "disabled" })
             };
-            if let Some(effort) = effort {
-                if compat.supports_reasoning_effort {
-                    let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
-                    params["reasoning_effort"] = json!(mapped);
-                }
+            if let Some(effort) = effort
+                && compat.supports_reasoning_effort
+            {
+                let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
+                params["reasoning_effort"] = json!(mapped);
             }
         }
         "qwen" => {
@@ -524,11 +522,11 @@ fn apply_thinking_params(
             } else {
                 params["thinking"] = json!({ "type": "disabled" });
             }
-            if let Some(effort) = effort {
-                if compat.supports_reasoning_effort {
-                    let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
-                    params["reasoning_effort"] = json!(mapped);
-                }
+            if let Some(effort) = effort
+                && compat.supports_reasoning_effort
+            {
+                let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
+                params["reasoning_effort"] = json!(mapped);
             }
         }
         "openrouter" => {
@@ -541,19 +539,19 @@ fn apply_thinking_params(
             }
         }
         "ant-ling" => {
-            if let Some(effort) = effort {
-                if let Some(mapped) = thinking_level_value(model, effort) {
-                    params["reasoning"] = json!({ "effort": mapped });
-                }
+            if let Some(effort) = effort
+                && let Some(mapped) = thinking_level_value(model, effort)
+            {
+                params["reasoning"] = json!({ "effort": mapped });
             }
         }
         "together" => {
             params["reasoning"] = json!({ "enabled": effort.is_some() });
-            if let Some(effort) = effort {
-                if compat.supports_reasoning_effort {
-                    let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
-                    params["reasoning_effort"] = json!(mapped);
-                }
+            if let Some(effort) = effort
+                && compat.supports_reasoning_effort
+            {
+                let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
+                params["reasoning_effort"] = json!(mapped);
             }
         }
         "string-thinking" => {
@@ -571,10 +569,10 @@ fn apply_thinking_params(
                     let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());
                     params["reasoning_effort"] = json!(mapped);
                 }
-            } else if compat.supports_reasoning_effort {
-                if let Some(off) = thinking_level_value(model, "off") {
-                    params["reasoning_effort"] = json!(off);
-                }
+            } else if compat.supports_reasoning_effort
+                && let Some(off) = thinking_level_value(model, "off")
+            {
+                params["reasoning_effort"] = json!(off);
             }
         }
     }
@@ -629,16 +627,15 @@ pub fn convert_messages(model: &Model, context: &Context, compat: &ResolvedOpenA
                 UserContent::Blocks(blocks) => {
                     let content: Vec<Value> = blocks
                         .iter()
-                        .filter_map(|b| match b {
-                            ContentBlock::Text { text } => Some(json!({
+                        .map(|b| match b {
+                            ContentBlock::Text { text } => json!({
                                 "type": "text",
                                 "text": sanitize_surrogates(text)
-                            })),
-                            ContentBlock::Image { data, mime_type } => Some(json!({
+                            }),
+                            ContentBlock::Image { data, mime_type } => json!({
                                 "type": "image_url",
                                 "image_url": { "url": format!("data:{mime_type};base64,{data}") }
-                            })),
-                            _ => None,
+                            }),
                         })
                         .collect();
                     if !content.is_empty() {

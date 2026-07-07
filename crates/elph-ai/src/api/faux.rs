@@ -19,6 +19,7 @@ const DEFAULT_MAX_TOKEN_SIZE: usize = 5;
 pub type FauxResponseFactory =
     Arc<dyn Fn(&Context, Option<&StreamOptions>, &FauxState, &Model) -> AssistantMessage + Send + Sync>;
 
+#[allow(clippy::large_enum_variant)]
 pub enum FauxResponseStep {
     Static(AssistantMessage),
     Factory(FauxResponseFactory),
@@ -342,11 +343,11 @@ fn split_by_token_size(text: &str, min: usize, max: usize) -> Vec<String> {
 }
 
 async fn schedule_chunk(chunk: &str, tokens_per_second: Option<f64>) {
-    if let Some(tps) = tokens_per_second {
-        if tps > 0.0 {
-            let delay_ms = (estimate_tokens(chunk) as f64 / tps * 1000.0) as u64;
-            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-        }
+    if let Some(tps) = tokens_per_second
+        && tps > 0.0
+    {
+        let delay_ms = (estimate_tokens(chunk) as f64 / tps * 1000.0) as u64;
+        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
     }
 }
 

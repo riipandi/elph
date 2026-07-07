@@ -141,10 +141,10 @@ fn resolve_deployment_name(model: &Model, options: &AzureOpenAIResponsesOptions)
     }
     if let Some(map) = get_provider_env_value("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", options.base.env.as_ref()) {
         for entry in map.split(',') {
-            if let Some((id, dep)) = entry.split_once('=') {
-                if id.trim() == model.id {
-                    return dep.trim().to_string();
-                }
+            if let Some((id, dep)) = entry.split_once('=')
+                && id.trim() == model.id
+            {
+                return dep.trim().to_string();
             }
         }
     }
@@ -211,16 +211,16 @@ fn build_params(
     if let Some(temp) = options.base.temperature {
         params["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            params["tools"] = json!(convert_responses_tools(tools, None));
-        }
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        params["tools"] = json!(convert_responses_tools(tools, None));
     }
-    if model.reasoning {
-        if let Some(effort) = &options.reasoning_effort {
-            params["reasoning"] = json!({ "effort": effort, "summary": options.reasoning_summary.clone().unwrap_or_else(|| "auto".to_string()) });
-            params["include"] = json!(["reasoning.encrypted_content"]);
-        }
+    if model.reasoning
+        && let Some(effort) = &options.reasoning_effort
+    {
+        params["reasoning"] = json!({ "effort": effort, "summary": options.reasoning_summary.clone().unwrap_or_else(|| "auto".to_string()) });
+        params["include"] = json!(["reasoning.encrypted_content"]);
     }
     Ok(params)
 }

@@ -1,9 +1,9 @@
 use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
+use elph_ai::create_models;
 use elph_ai::{
-    AssistantContentBlock, Context, FauxResponseStep, Message, ProviderStreams, StopReason, UserContent,
-    faux_assistant_message, faux_provider, faux_text, faux_thinking, faux_tool_call,
+    AssistantContentBlock, Context, FauxResponseStep, Message, StopReason, UserContent, faux_assistant_message,
+    faux_provider, faux_text, faux_thinking, faux_tool_call,
 };
-use elph_ai::{CreateModelsOptions, create_models};
 use serde_json::json;
 
 #[tokio::test]

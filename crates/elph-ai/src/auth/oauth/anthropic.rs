@@ -1,5 +1,3 @@
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::auth::types::{AuthEvent, AuthLoginCallbacks, AuthPrompt, OAuthAuth, OAuthCredential};
@@ -64,7 +62,7 @@ fn oauth_credential(creds: OAuthTokens) -> OAuthCredential {
     }
 }
 
-struct OAuthTokens {
+pub struct OAuthTokens {
     access: String,
     refresh: String,
     expires: i64,
@@ -107,11 +105,10 @@ pub async fn login_anthropic(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow:
                 .ok()
                 .and_then(|input| {
                     let (code, state) = parse_authorization_input(&input);
-                    if let Some(ref s) = state {
-                        if s != &verifier_for_manual {
+                    if let Some(ref s) = state
+                        && s != &verifier_for_manual {
                             return None;
                         }
-                    }
                     code.map(|c| CallbackResult {
                         code: c,
                         state: state.or(Some(verifier_for_manual.clone())),

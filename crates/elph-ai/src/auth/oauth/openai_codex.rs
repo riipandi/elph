@@ -17,7 +17,6 @@ pub const OPENAI_CODEX_BROWSER_LOGIN_METHOD: &str = "browser";
 pub const OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD: &str = "device_code";
 
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
-const AUTH_BASE_URL: &str = "https://auth.openai.com";
 const AUTHORIZE_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
@@ -88,7 +87,7 @@ fn openai_codex_oauth_impl() -> OAuthAuth {
     }
 }
 
-struct CodexOAuthTokens {
+pub struct CodexOAuthTokens {
     access: String,
     refresh: String,
     expires: i64,
@@ -132,11 +131,10 @@ pub async fn login_openai_codex(callbacks: Arc<dyn AuthLoginCallbacks>) -> anyho
                 .ok()
                 .and_then(|input| {
                     let (code, state_parsed) = parse_authorization_input(&input);
-                    if let Some(ref s) = state_parsed {
-                        if s != &state_for_manual {
+                    if let Some(ref s) = state_parsed
+                        && s != &state_for_manual {
                             return None;
                         }
-                    }
                     code
                 })
         } => input,

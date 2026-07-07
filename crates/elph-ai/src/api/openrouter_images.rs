@@ -162,28 +162,26 @@ async fn run_generate(
     };
 
     if let Some(choice) = body.get("choices").and_then(|c| c.get(0)) {
-        if let Some(content) = choice.pointer("/message/content").and_then(|v| v.as_str()) {
-            if !content.is_empty() {
-                output.output.push(ContentBlock::Text {
-                    text: content.to_string(),
-                });
-            }
+        if let Some(content) = choice.pointer("/message/content").and_then(|v| v.as_str())
+            && !content.is_empty()
+        {
+            output.output.push(ContentBlock::Text {
+                text: content.to_string(),
+            });
         }
         if let Some(images) = choice.pointer("/message/images").and_then(|v| v.as_array()) {
+            let data_url_re = regex::Regex::new(r"^data:([^;]+);base64,(.+)$").ok();
             for image in images {
                 let image_url = image
                     .get("image_url")
                     .and_then(|v| v.as_str().or_else(|| v.get("url").and_then(|u| u.as_str())));
-                if let Some(url) = image_url {
-                    if let Some(caps) = regex::Regex::new(r"^data:([^;]+);base64,(.+)$")
-                        .ok()
-                        .and_then(|re| re.captures(url))
-                    {
-                        output.output.push(ContentBlock::Image {
-                            mime_type: caps.get(1).unwrap().as_str().to_string(),
-                            data: caps.get(2).unwrap().as_str().to_string(),
-                        });
-                    }
+                if let Some(url) = image_url
+                    && let Some(caps) = data_url_re.as_ref().and_then(|re| re.captures(url))
+                {
+                    output.output.push(ContentBlock::Image {
+                        mime_type: caps.get(1).unwrap().as_str().to_string(),
+                        data: caps.get(2).unwrap().as_str().to_string(),
+                    });
                 }
             }
         }

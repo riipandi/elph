@@ -10,7 +10,7 @@ use crate::api::google_shared::{
     retain_thought_signature,
 };
 use crate::api::simple_options::build_base_options;
-use crate::models::{calculate_cost, clamp_thinking_level, thinking_level_to_str};
+use crate::models::{calculate_cost, clamp_thinking_level};
 use crate::types::{
     AssistantContentBlock, AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams,
     SimpleStreamOptions, StopReason, StreamOptions,
@@ -258,11 +258,10 @@ fn ensure_block(
     thinking: bool,
 ) -> usize {
     let need_new = current.is_none()
-        || match (thinking, current.and_then(|i| output.content.get(i))) {
-            (true, Some(AssistantContentBlock::Thinking(_))) => false,
-            (false, Some(AssistantContentBlock::Text(_))) => false,
-            _ => true,
-        };
+        || !matches!(
+            (thinking, current.and_then(|i| output.content.get(i))),
+            (true, Some(AssistantContentBlock::Thinking(_))) | (false, Some(AssistantContentBlock::Text(_)))
+        );
     if need_new {
         end_current_block(output, stream, current);
         let idx = output.content.len();
@@ -327,16 +326,17 @@ fn build_params(model: &Model, context: &Context, options: &GoogleOptions) -> Re
             body["toolConfig"] = json!({ "functionCallingConfig": { "mode": map_tool_choice(choice) } });
         }
     }
-    if let Some(thinking) = &options.thinking {
-        if thinking.enabled && model.reasoning {
-            let mut tc = json!({ "includeThoughts": true });
-            if let Some(level) = &thinking.level {
-                tc["thinkingLevel"] = json!(level);
-            } else if let Some(budget) = thinking.budget_tokens {
-                tc["thinkingBudget"] = json!(budget);
-            }
-            generation_config["thinkingConfig"] = tc;
+    if let Some(thinking) = &options.thinking
+        && thinking.enabled
+        && model.reasoning
+    {
+        let mut tc = json!({ "includeThoughts": true });
+        if let Some(level) = &thinking.level {
+            tc["thinkingLevel"] = json!(level);
+        } else if let Some(budget) = thinking.budget_tokens {
+            tc["thinkingBudget"] = json!(budget);
         }
+        generation_config["thinkingConfig"] = tc;
     }
     if generation_config.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
         body["generationConfig"] = generation_config;

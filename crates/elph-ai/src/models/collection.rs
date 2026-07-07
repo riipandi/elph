@@ -498,14 +498,14 @@ pub fn clamp_thinking_level(model: &Model, level: crate::types::ThinkingLevel) -
         crate::types::ThinkingLevel::Xhigh,
     ];
     let idx = all.iter().position(|l| *l == level).unwrap_or(0);
-    for i in idx..all.len() {
-        if available.contains(&all[i]) {
-            return all[i];
+    for &candidate in &all[idx..] {
+        if available.contains(&candidate) {
+            return candidate;
         }
     }
-    for i in (0..idx).rev() {
-        if available.contains(&all[i]) {
-            return all[i];
+    for &candidate in all[..idx].iter().rev() {
+        if available.contains(&candidate) {
+            return candidate;
         }
     }
     crate::types::ThinkingLevel::High

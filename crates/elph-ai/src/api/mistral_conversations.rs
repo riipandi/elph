@@ -368,10 +368,10 @@ fn build_chat_payload(
             .unwrap()
             .insert(0, json!({ "role": "system", "content": sanitize_surrogates(sp) }));
     }
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            payload["tools"] = json!(tools.iter().map(|t| json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.parameters, "strict": false } })).collect::<Vec<_>>());
-        }
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        payload["tools"] = json!(tools.iter().map(|t| json!({ "type": "function", "function": { "name": t.name, "description": t.description, "parameters": t.parameters, "strict": false } })).collect::<Vec<_>>());
     }
     if let Some(temp) = options.base.temperature {
         payload["temperature"] = json!(temp);
@@ -385,10 +385,10 @@ fn build_chat_payload(
     if let Some(effort) = &options.reasoning_effort {
         payload["reasoning_effort"] = json!(effort);
     }
-    if options.base.cache_retention != Some(crate::types::CacheRetention::None) {
-        if let Some(sid) = &options.base.session_id {
-            payload["prompt_cache_key"] = json!(sid);
-        }
+    if options.base.cache_retention != Some(crate::types::CacheRetention::None)
+        && let Some(sid) = &options.base.session_id
+    {
+        payload["prompt_cache_key"] = json!(sid);
     }
     Ok(payload)
 }

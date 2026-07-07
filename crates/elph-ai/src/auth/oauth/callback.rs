@@ -64,10 +64,10 @@ pub async fn start_callback_server(
                     let Some(code) = query.code else {
                         return Html(oauth_error_html("Missing authorization code.", None));
                     };
-                    if let Some(ref expected) = expected_state {
-                        if query.state.as_deref() != Some(expected.as_str()) {
-                            return Html(oauth_error_html("State mismatch.", None));
-                        }
+                    if let Some(ref expected) = expected_state
+                        && query.state.as_deref() != Some(expected.as_str())
+                    {
+                        return Html(oauth_error_html("State mismatch.", None));
                     }
                     if let Some(tx) = result_tx.lock().await.take() {
                         let _ = tx.send(Some(CallbackResult {
@@ -94,6 +94,7 @@ pub async fn start_callback_server(
 }
 
 impl CallbackServer {
+    #[allow(dead_code)]
     pub fn cancel_wait(&self) {
         if let Some(tx) = self.shutdown.lock().ok().and_then(|mut g| g.take()) {
             let _ = tx.send(());
@@ -113,6 +114,7 @@ impl CallbackServer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn close(self) {
         if let Some(tx) = self.shutdown.lock().ok().and_then(|mut g| g.take()) {
             let _ = tx.send(());

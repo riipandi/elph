@@ -17,11 +17,13 @@ pub enum DeviceCodePollResult<T> {
     Complete(T),
 }
 
+type DeviceCodePollFn<T> = Box<dyn Fn() -> Pin<Box<dyn Future<Output = DeviceCodePollResult<T>> + Send>> + Send>;
+
 pub struct DeviceCodePollOptions<T> {
     pub interval_seconds: Option<u64>,
     pub expires_in_seconds: Option<u64>,
     pub wait_before_first_poll: bool,
-    pub poll: Box<dyn Fn() -> Pin<Box<dyn Future<Output = DeviceCodePollResult<T>> + Send>> + Send>,
+    pub poll: DeviceCodePollFn<T>,
 }
 
 pub async fn poll_oauth_device_code_flow<T>(options: DeviceCodePollOptions<T>) -> anyhow::Result<T> {
@@ -71,6 +73,7 @@ pub async fn poll_oauth_device_code_flow<T>(options: DeviceCodePollOptions<T>) -
     }
 }
 
+#[allow(dead_code)]
 pub fn login_cancelled() -> anyhow::Error {
     anyhow::anyhow!(CANCEL_MESSAGE)
 }

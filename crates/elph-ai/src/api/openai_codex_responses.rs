@@ -13,10 +13,7 @@ use serde_json::{Value, json};
 use crate::api::codex_transport::{
     CodexTransport, CodexTransportOptions, collect_codex_events_detailed, update_codex_websocket_continuation,
 };
-use crate::api::common::{
-    apply_on_payload, build_http_client, finish_stream_error, get_client_api_key, invoke_on_response_from_reqwest,
-    merge_model_headers,
-};
+use crate::api::common::{apply_on_payload, build_http_client, finish_stream_error, merge_model_headers};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::{
     ConvertResponsesMessagesOptions, convert_responses_messages, convert_responses_tools, process_responses_stream,
@@ -167,13 +164,12 @@ async fn run_codex(
     )
     .await?;
 
-    if collect.used_cached_context {
-        if let (Some(session_id), Some(response_id)) =
+    if collect.used_cached_context
+        && let (Some(session_id), Some(response_id)) =
             (options.base.session_id.as_deref(), output.response_id.as_deref())
-        {
-            let response_items = response_items_from_output(model, output, &providers);
-            update_codex_websocket_continuation(session_id, &full_body, response_id, json!(response_items));
-        }
+    {
+        let response_items = response_items_from_output(model, output, &providers);
+        update_codex_websocket_continuation(session_id, &full_body, response_id, json!(response_items));
     }
 
     stream.push(AssistantMessageEvent::Done {
@@ -192,10 +188,10 @@ fn map_codex_event(mut event: Value) -> Result<Value> {
             return Err(anyhow!("{msg}"));
         }
         "response.done" | "response.completed" | "response.incomplete" => {
-            if let Some(response) = event.get_mut("response") {
-                if let Some(status) = response.get("status").and_then(|v| v.as_str()) {
-                    response["status"] = json!(normalize_codex_status(status));
-                }
+            if let Some(response) = event.get_mut("response")
+                && let Some(status) = response.get("status").and_then(|v| v.as_str())
+            {
+                response["status"] = json!(normalize_codex_status(status));
             }
             event["type"] = json!("response.completed");
         }
@@ -237,10 +233,10 @@ fn build_request_body(
         "tool_choice": "auto",
         "parallel_tool_calls": true
     });
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            body["tools"] = json!(convert_responses_tools(tools, Some(false)));
-        }
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        body["tools"] = json!(convert_responses_tools(tools, Some(false)));
     }
     if let Some(effort) = &options.reasoning_effort {
         body["reasoning"] = json!({

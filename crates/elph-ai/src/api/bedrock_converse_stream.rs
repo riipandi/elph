@@ -69,7 +69,7 @@ impl ProviderStreams for BedrockConverseStreamApi {
             );
         }
         let reasoning = opts.unwrap().reasoning;
-        let (max_tokens, thinking_budget) = adjust_max_tokens_for_thinking(
+        let (max_tokens, _thinking_budget) = adjust_max_tokens_for_thinking(
             base.max_tokens,
             model.max_tokens,
             reasoning.unwrap(),
@@ -188,17 +188,17 @@ async fn run_bedrock(
                     });
                 }
             }
-            if let Some(input) = delta.pointer("/delta/toolUse/input").and_then(|v| v.as_str()) {
-                if let Some(pos) = blocks.iter().position(|(i, _)| *i == idx) {
-                    blocks[pos].1.push_str(input);
-                    if let AssistantContentBlock::ToolCall(tc) = &mut output.content[pos] {
-                        tc.arguments = parse_streaming_json(Some(&blocks[pos].1));
-                        stream.push(AssistantMessageEvent::ToolcallDelta {
-                            content_index: pos,
-                            delta: input.to_string(),
-                            partial: output.clone(),
-                        });
-                    }
+            if let Some(input) = delta.pointer("/delta/toolUse/input").and_then(|v| v.as_str())
+                && let Some(pos) = blocks.iter().position(|(i, _)| *i == idx)
+            {
+                blocks[pos].1.push_str(input);
+                if let AssistantContentBlock::ToolCall(tc) = &mut output.content[pos] {
+                    tc.arguments = parse_streaming_json(Some(&blocks[pos].1));
+                    stream.push(AssistantMessageEvent::ToolcallDelta {
+                        content_index: pos,
+                        delta: input.to_string(),
+                        partial: output.clone(),
+                    });
                 }
             }
             if let Some(text) = delta
@@ -223,15 +223,15 @@ async fn run_bedrock(
             }
         } else if let Some(stop) = event.get("messageStop") {
             output.stop_reason = map_stop_reason(stop.get("stopReason").and_then(|v| v.as_str()));
-        } else if let Some(meta) = event.get("metadata") {
-            if let Some(usage) = meta.get("usage") {
-                output.usage.input = usage.get("inputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                output.usage.output = usage.get("outputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                output.usage.cache_read = usage.get("cacheReadInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                output.usage.cache_write = usage.get("cacheWriteInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                output.usage.total_tokens = usage.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                calculate_cost(model, &mut output.usage);
-            }
+        } else if let Some(meta) = event.get("metadata")
+            && let Some(usage) = meta.get("usage")
+        {
+            output.usage.input = usage.get("inputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            output.usage.output = usage.get("outputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            output.usage.cache_read = usage.get("cacheReadInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            output.usage.cache_write = usage.get("cacheWriteInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            output.usage.total_tokens = usage.get("totalTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+            calculate_cost(model, &mut output.usage);
         }
     }
     stream.push(AssistantMessageEvent::Done {
@@ -262,18 +262,18 @@ fn build_converse_body(model: &Model, context: &Context, options: &BedrockOption
     if let Some(temp) = options.base.temperature {
         body["inferenceConfig"]["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            body["toolConfig"] = json!({
-                "tools": tools.iter().map(|t| json!({
-                    "toolSpec": {
-                        "name": t.name,
-                        "description": t.description,
-                        "inputSchema": { "json": t.parameters }
-                    }
-                })).collect::<Vec<_>>()
-            });
-        }
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        body["toolConfig"] = json!({
+            "tools": tools.iter().map(|t| json!({
+                "toolSpec": {
+                    "name": t.name,
+                    "description": t.description,
+                    "inputSchema": { "json": t.parameters }
+                }
+            })).collect::<Vec<_>>()
+        });
     }
     Ok(body)
 }
@@ -337,7 +337,7 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
     while index < transformed.len() {
         match &transformed[index] {
             Message::User { content, .. } => {
-                let mut blocks = match content {
+                let blocks = match content {
                     UserContent::Text(t) => vec![create_required_text_block(t)],
                     UserContent::Blocks(bs) => {
                         let mut blocks = Vec::new();
@@ -499,14 +499,14 @@ async fn run_bedrock_sigv4(region: &str, model: &Model, body: &Value, _options: 
             builder = builder.set_system(Some(blocks));
         }
     }
-    if let Some(inference) = body.get("inferenceConfig") {
-        if let Some(max) = inference.get("maxTokens").and_then(|v| v.as_i64()) {
-            builder = builder.inference_config(
-                aws_sdk_bedrockruntime::types::InferenceConfiguration::builder()
-                    .max_tokens(max as i32)
-                    .build(),
-            );
-        }
+    if let Some(inference) = body.get("inferenceConfig")
+        && let Some(max) = inference.get("maxTokens").and_then(|v| v.as_i64())
+    {
+        builder = builder.inference_config(
+            aws_sdk_bedrockruntime::types::InferenceConfiguration::builder()
+                .max_tokens(max as i32)
+                .build(),
+        );
     }
 
     let mut response = builder

@@ -11,8 +11,7 @@ use crate::api::common::{
 use crate::api::github_copilot_headers::{build_copilot_dynamic_headers, has_copilot_vision_input};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::{
-    ConvertResponsesMessagesOptions, OpenAIResponsesStreamOptions, convert_responses_messages, convert_responses_tools,
-    process_responses_stream,
+    OpenAIResponsesStreamOptions, convert_responses_messages, convert_responses_tools, process_responses_stream,
 };
 use crate::api::simple_options::build_base_options;
 use crate::models::{clamp_thinking_level, thinking_level_to_str};
@@ -198,16 +197,16 @@ fn build_params(
     if let Some(temp) = options.base.temperature {
         params["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools {
-        if !tools.is_empty() {
-            params["tools"] = json!(convert_responses_tools(tools, None));
-        }
+    if let Some(tools) = &context.tools
+        && !tools.is_empty()
+    {
+        params["tools"] = json!(convert_responses_tools(tools, None));
     }
-    if model.reasoning {
-        if let Some(effort) = &options.reasoning_effort {
-            params["reasoning"] = json!({ "effort": effort, "summary": options.reasoning_summary.clone().unwrap_or_else(|| "auto".to_string()) });
-            params["include"] = json!(["reasoning.encrypted_content"]);
-        }
+    if model.reasoning
+        && let Some(effort) = &options.reasoning_effort
+    {
+        params["reasoning"] = json!({ "effort": effort, "summary": options.reasoning_summary.clone().unwrap_or_else(|| "auto".to_string()) });
+        params["include"] = json!(["reasoning.encrypted_content"]);
     }
     Ok(params)
 }

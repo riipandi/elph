@@ -25,20 +25,22 @@ fn encode_text_signature_v1(id: &str, phase: Option<&str>) -> String {
 
 fn parse_text_signature(signature: Option<&str>) -> Option<(String, Option<String>)> {
     let sig = signature?;
-    if sig.starts_with('{') {
-        if let Ok(parsed) = serde_json::from_str::<TextSignatureV1>(sig) {
-            if parsed.v == 1 {
-                return Some((parsed.id, parsed.phase));
-            }
-        }
+    if sig.starts_with('{')
+        && let Ok(parsed) = serde_json::from_str::<TextSignatureV1>(sig)
+        && parsed.v == 1
+    {
+        return Some((parsed.id, parsed.phase));
     }
     Some((sig.to_string(), None))
 }
 
+type ServiceTierResolver = Box<dyn Fn(Option<&str>, Option<&str>) -> Option<String> + Send + Sync>;
+type ServiceTierPricingApplier = Box<dyn Fn(&mut Usage, Option<&str>) + Send + Sync>;
+
 pub struct OpenAIResponsesStreamOptions {
     pub service_tier: Option<String>,
-    pub resolve_service_tier: Option<Box<dyn Fn(Option<&str>, Option<&str>) -> Option<String> + Send + Sync>>,
-    pub apply_service_tier_pricing: Option<Box<dyn Fn(&mut Usage, Option<&str>) + Send + Sync>>,
+    pub resolve_service_tier: Option<ServiceTierResolver>,
+    pub apply_service_tier_pricing: Option<ServiceTierPricingApplier>,
 }
 
 pub struct ConvertResponsesMessagesOptions {
@@ -94,19 +96,16 @@ pub fn convert_responses_messages(
         format!("{call_id}|{normalized_item_id}")
     };
 
-    let transformed = transform_messages(context.messages.clone(), model, |id, m, src| {
+    let transformed = transform_messages(context.messages.clone(), model, |id, _m, src| {
         normalize_tool_call_id(id, src)
     });
 
-    if include_system {
-        if let Some(sp) = &context.system_prompt {
-            let role = if model.reasoning { "developer" } else { "system" };
-            messages.push(json!({ "role": role, "content": sanitize_surrogates(sp) }));
-        }
+    if include_system && let Some(sp) = &context.system_prompt {
+        let role = if model.reasoning { "developer" } else { "system" };
+        messages.push(json!({ "role": role, "content": sanitize_surrogates(sp) }));
     }
 
-    let mut msg_index = 0usize;
-    for msg in transformed {
+    for (msg_index, msg) in transformed.into_iter().enumerate() {
         match msg {
             Message::User { content, .. } => match content {
                 UserContent::Text(text) => {
@@ -142,10 +141,10 @@ pub fn convert_responses_messages(
                 for block in &assistant.content {
                     match block {
                         AssistantContentBlock::Thinking(t) => {
-                            if let Some(sig) = &t.thinking_signature {
-                                if let Ok(item) = serde_json::from_str::<Value>(sig) {
-                                    output.push(item);
-                                }
+                            if let Some(sig) = &t.thinking_signature
+                                && let Ok(item) = serde_json::from_str::<Value>(sig)
+                            {
+                                output.push(item);
                             }
                         }
                         AssistantContentBlock::Text(text) => {
@@ -176,10 +175,8 @@ pub fn convert_responses_messages(
                             let parts: Vec<&str> = tc.id.splitn(2, '|').collect();
                             let call_id = parts[0];
                             let mut item_id = parts.get(1).map(|s| s.to_string());
-                            if is_different_model {
-                                if item_id.as_deref().map(|s| s.starts_with("fc_")) == Some(true) {
-                                    item_id = None;
-                                }
+                            if is_different_model && item_id.as_deref().map(|s| s.starts_with("fc_")) == Some(true) {
+                                item_id = None;
                             }
                             output.push(json!({
                                 "type": "function_call",
@@ -240,7 +237,6 @@ pub fn convert_responses_messages(
                 }));
             }
         }
-        msg_index += 1;
     }
     messages
 }
@@ -500,11 +496,11 @@ pub async fn process_responses_stream(
                             .and_then(|v| v.as_u64());
                         output.usage.total_tokens = usage.get("total_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
                         calculate_cost(model, &mut output.usage);
-                        if let Some(opts) = &options {
-                            if let Some(apply) = &opts.apply_service_tier_pricing {
-                                let tier = response.get("service_tier").and_then(|v| v.as_str());
-                                apply(&mut output.usage, tier);
-                            }
+                        if let Some(opts) = &options
+                            && let Some(apply) = &opts.apply_service_tier_pricing
+                        {
+                            let tier = response.get("service_tier").and_then(|v| v.as_str());
+                            apply(&mut output.usage, tier);
                         }
                     }
                     output.stop_reason = map_stop_reason(response.get("status").and_then(|v| v.as_str()));
@@ -519,7 +515,6 @@ pub async fn process_responses_stream(
                 return Err(anyhow!("Error Code {code}: {message}"));
             }
             "response.failed" => {
-                saw_terminal = true;
                 let err = event.pointer("/response/error");
                 let code = err
                     .and_then(|e| e.get("code"))

@@ -12,10 +12,10 @@ pub fn is_thinking_part(part: &Value) -> bool {
 }
 
 pub fn retain_thought_signature(existing: Option<&str>, incoming: Option<&str>) -> Option<String> {
-    if let Some(incoming) = incoming {
-        if !incoming.is_empty() {
-            return Some(incoming.to_string());
-        }
+    if let Some(incoming) = incoming
+        && !incoming.is_empty()
+    {
+        return Some(incoming.to_string());
     }
     existing.map(|s| s.to_string())
 }
@@ -57,7 +57,7 @@ pub fn convert_messages(model: &Model, context: &Context) -> Vec<Value> {
         sanitized.chars().take(64).collect()
     };
 
-    let transformed = transform_messages(context.messages.clone(), model, |id, m, src| normalize(id));
+    let transformed = transform_messages(context.messages.clone(), model, |id, _m, _src| normalize(id));
 
     for msg in transformed {
         match msg {

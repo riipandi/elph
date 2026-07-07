@@ -58,7 +58,7 @@ fn github_copilot_oauth_impl() -> OAuthAuth {
 }
 
 #[derive(Debug, Clone)]
-struct CopilotOAuthTokens {
+pub struct CopilotOAuthTokens {
     access: String,
     refresh: String,
     expires: i64,
@@ -97,10 +97,10 @@ fn copilot_enterprise_domain(credential: &OAuthCredential) -> Option<String> {
 }
 
 pub fn get_github_copilot_base_url(token: Option<&str>, enterprise_domain: Option<&str>) -> String {
-    if let Some(token) = token {
-        if let Some(url) = base_url_from_token(token) {
-            return url;
-        }
+    if let Some(token) = token
+        && let Some(url) = base_url_from_token(token)
+    {
+        return url;
     }
     if let Some(domain) = enterprise_domain {
         return format!("https://copilot-api.{domain}");

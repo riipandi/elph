@@ -17,9 +17,9 @@ fn validator(schema: &Value) -> Option<Validator> {
         hasher.finish()
     };
     let mut guard = cache.lock().ok()?;
-    if !guard.contains_key(&key) {
+    if let std::collections::hash_map::Entry::Vacant(e) = guard.entry(key) {
         let compiled = Validator::new(schema).ok()?;
-        guard.insert(key, compiled);
+        e.insert(compiled);
     }
     guard.remove(&key)
 }

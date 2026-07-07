@@ -72,7 +72,7 @@ pub fn adjust_max_tokens_for_thinking(
             ThinkingLevel::Medium => b.medium,
             ThinkingLevel::High | ThinkingLevel::Xhigh => b.high,
         })
-        .or_else(|| match level {
+        .or(match level {
             ThinkingLevel::Minimal => default_budgets.minimal,
             ThinkingLevel::Low => default_budgets.low,
             ThinkingLevel::Medium => default_budgets.medium,

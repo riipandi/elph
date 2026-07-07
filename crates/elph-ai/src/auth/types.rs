@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -131,6 +130,11 @@ pub trait AuthLoginCallbacks: Send + Sync {
 
 pub type ApiKeyResolveFn =
     Arc<dyn Fn(AuthResolveInput) -> Pin<Box<dyn Future<Output = Option<AuthResult>> + Send>> + Send + Sync>;
+pub type ApiKeyLoginFn = Arc<
+    dyn Fn(Arc<dyn AuthLoginCallbacks>) -> Pin<Box<dyn Future<Output = anyhow::Result<ApiKeyCredential>> + Send>>
+        + Send
+        + Sync,
+>;
 
 pub struct AuthResolveInput {
     pub model: AuthModel,
@@ -148,15 +152,7 @@ pub enum AuthModel {
 pub struct ApiKeyAuth {
     pub name: String,
     pub resolve: ApiKeyResolveFn,
-    pub login: Option<
-        Arc<
-            dyn Fn(
-                    Arc<dyn AuthLoginCallbacks>,
-                ) -> Pin<Box<dyn Future<Output = anyhow::Result<ApiKeyCredential>> + Send>>
-                + Send
-                + Sync,
-        >,
-    >,
+    pub login: Option<ApiKeyLoginFn>,
 }
 
 pub type OAuthLoginFn = Arc<
