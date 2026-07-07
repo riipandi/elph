@@ -526,8 +526,8 @@ async fn process_event(
         }
     }
 
-    let listeners = listeners.lock().await;
-    for listener in listeners.iter() {
+    let listeners = listeners.lock().await.clone();
+    for listener in &listeners {
         listener(event.clone(), token.clone()).await;
     }
 }

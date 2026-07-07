@@ -8,12 +8,22 @@ pub struct AssistantMessageEventStream {
     queue: Arc<Mutex<EventQueue>>,
 }
 
+/// Compact consumed prefix once this many events have been read.
+const EVENT_COMPACT_THRESHOLD: usize = 64;
+
 struct EventQueue {
     events: Vec<AssistantMessageEvent>,
     read_index: usize,
     done: bool,
     final_result: Option<AssistantMessage>,
     waiters: Vec<tokio::sync::oneshot::Sender<()>>,
+}
+
+fn compact_consumed_events(queue: &mut EventQueue) {
+    if queue.read_index >= EVENT_COMPACT_THRESHOLD {
+        queue.events.drain(0..queue.read_index);
+        queue.read_index = 0;
+    }
 }
 
 impl Default for AssistantMessageEventStream {
@@ -170,6 +180,7 @@ impl AssistantMessageEventStream {
         if q.read_index < q.events.len() {
             let event = q.events[q.read_index].clone();
             q.read_index += 1;
+            compact_consumed_events(&mut q);
             Some(event)
         } else {
             None
@@ -190,7 +201,12 @@ impl AssistantMessageEventStream {
 
     fn register_waiter(&self) -> tokio::sync::oneshot::Receiver<()> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.queue.lock().expect("event stream mutex poisoned").waiters.push(tx);
+        let mut q = self.queue.lock().expect("event stream mutex poisoned");
+        if q.read_index < q.events.len() || q.done {
+            let _ = tx.send(());
+        } else {
+            q.waiters.push(tx);
+        }
         rx
     }
 }
@@ -213,10 +229,14 @@ impl EventStreamIterator {
     pub async fn next(&mut self) -> Option<AssistantMessageEvent> {
         loop {
             let next = {
-                let q = self.queue.lock().expect("event stream mutex poisoned");
+                let mut q = self.queue.lock().expect("event stream mutex poisoned");
                 if self.index < q.events.len() {
                     let event = q.events[self.index].clone();
                     self.index += 1;
+                    if self.index >= EVENT_COMPACT_THRESHOLD {
+                        q.events.drain(0..self.index);
+                        self.index = 0;
+                    }
                     Some(event)
                 } else {
                     None
@@ -225,12 +245,101 @@ impl EventStreamIterator {
             if next.is_some() {
                 return next;
             }
-            if self.queue.lock().expect("event stream mutex poisoned").done {
+            let (done, register_waiter) = {
+                let q = self.queue.lock().expect("event stream mutex poisoned");
+                let done = q.done;
+                let register_waiter = self.index >= q.events.len() && !q.done;
+                (done, register_waiter)
+            };
+            if done {
                 return None;
             }
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            self.queue.lock().expect("event stream mutex poisoned").waiters.push(tx);
+            if !register_waiter {
+                continue;
+            }
+            let rx = {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                let mut q = self.queue.lock().expect("event stream mutex poisoned");
+                if self.index < q.events.len() || q.done {
+                    let _ = tx.send(());
+                } else {
+                    q.waiters.push(tx);
+                }
+                rx
+            };
             let _ = rx.await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{AssistantMessageEvent, Model, StopReason};
+
+    fn test_model() -> Model {
+        Model {
+            id: "test".to_string(),
+            name: "test".to_string(),
+            api: "test".to_string(),
+            provider: "test".to_string(),
+            base_url: "http://localhost".to_string(),
+            reasoning: false,
+            thinking_level_map: None,
+            input: vec!["text".to_string()],
+            cost: crate::types::ModelCost {
+                input: 0.0,
+                output: 0.0,
+                cache_read: 0.0,
+                cache_write: 0.0,
+            },
+            context_window: 128_000,
+            max_tokens: 16_384,
+            headers: None,
+            openai_completions_compat: None,
+            openai_responses_compat: None,
+            anthropic_compat: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn consumed_events_are_compacted_to_bound_memory() {
+        let stream = AssistantMessageEventStream::new();
+        let model = test_model();
+        for _ in 0..EVENT_COMPACT_THRESHOLD + 8 {
+            stream.push(AssistantMessageEvent::TextDelta {
+                content_index: 0,
+                delta: "x".to_string(),
+                partial: AssistantMessage::empty(&model),
+            });
+        }
+        stream.end();
+
+        let queue = stream.queue.clone();
+        let mut events = stream.into_stream();
+        let mut consumed = 0usize;
+        while events.next().await.is_some() {
+            consumed += 1;
+        }
+
+        let retained = queue.lock().expect("event stream mutex poisoned").events.len();
+        assert_eq!(consumed, EVENT_COMPACT_THRESHOLD + 8);
+        assert!(retained < EVENT_COMPACT_THRESHOLD);
+    }
+
+    #[tokio::test]
+    async fn waiter_is_not_registered_when_events_are_already_available() {
+        let mut stream = AssistantMessageEventStream::new();
+        let model = test_model();
+        let mut partial = AssistantMessage::empty(&model);
+        partial.stop_reason = StopReason::Stop;
+        stream.push(AssistantMessageEvent::Done {
+            reason: StopReason::Stop,
+            message: partial,
+        });
+        stream.end();
+
+        let event = stream.next_event().await.expect("stream event");
+        assert!(matches!(event, AssistantMessageEvent::Done { .. }));
     }
 }

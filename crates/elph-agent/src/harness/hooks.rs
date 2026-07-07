@@ -189,11 +189,12 @@ impl HookRegistry {
 
         if let AgentHarnessEvent::Own(ref own) = event {
             let hook_type = own.hook_type().to_string();
-            let named = self.named.lock().await;
-            if let Some(handlers) = named.get(&hook_type) {
-                for listener in handlers {
-                    listener(event.clone(), signal.clone()).await;
-                }
+            let named_handlers = {
+                let named = self.named.lock().await;
+                named.get(&hook_type).cloned().unwrap_or_default()
+            };
+            for listener in &named_handlers {
+                listener(event.clone(), signal.clone()).await;
             }
         }
 
@@ -204,9 +205,9 @@ impl HookRegistry {
         &self,
         event: &BeforeAgentStartEvent,
     ) -> std::result::Result<Option<BeforeAgentStartResult>, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.before_agent_start.clone();
         let mut last = None;
-        for handler in &typed.before_agent_start {
+        for handler in &handlers {
             if let Some(result) = handler(event).await {
                 last = Some(result);
             }
@@ -232,9 +233,9 @@ impl HookRegistry {
         &self,
         event: &BeforeProviderRequestEvent,
     ) -> std::result::Result<AgentHarnessStreamOptions, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.before_provider_request.clone();
         let mut current = clone_stream_options(&event.stream_options);
-        for handler in &typed.before_provider_request {
+        for handler in &handlers {
             let hook_event = BeforeProviderRequestEvent {
                 model: event.model.clone(),
                 session_id: event.session_id.clone(),
@@ -253,9 +254,9 @@ impl HookRegistry {
         &self,
         event: &BeforeProviderPayloadEvent,
     ) -> std::result::Result<serde_json::Value, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.before_provider_payload.clone();
         let mut current = event.payload.clone();
-        for handler in &typed.before_provider_payload {
+        for handler in &handlers {
             let hook_event = BeforeProviderPayloadEvent {
                 model: event.model.clone(),
                 payload: current.clone(),
@@ -271,9 +272,9 @@ impl HookRegistry {
         &self,
         event: &ToolCallEvent,
     ) -> std::result::Result<Option<ToolCallHookResult>, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.tool_call.clone();
         let mut last = None;
-        for handler in &typed.tool_call {
+        for handler in &handlers {
             if let Some(result) = handler(event).await {
                 last = Some(result);
             }
@@ -285,9 +286,9 @@ impl HookRegistry {
         &self,
         event: &ToolResultEvent,
     ) -> std::result::Result<Option<ToolResultPatch>, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.tool_result.clone();
         let mut last = None;
-        for handler in &typed.tool_result {
+        for handler in &handlers {
             if let Some(result) = handler(event).await {
                 last = Some(result);
             }
@@ -299,9 +300,9 @@ impl HookRegistry {
         &self,
         event: &SessionBeforeCompactEvent,
     ) -> std::result::Result<Option<SessionBeforeCompactResult>, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.session_before_compact.clone();
         let mut last = None;
-        for handler in &typed.session_before_compact {
+        for handler in &handlers {
             if let Some(result) = handler(event).await {
                 last = Some(result);
             }
@@ -313,9 +314,9 @@ impl HookRegistry {
         &self,
         event: &SessionBeforeTreeEvent,
     ) -> std::result::Result<Option<SessionBeforeTreeResult>, AgentHarnessError> {
-        let typed = self.typed.lock().await;
+        let handlers = self.typed.lock().await.session_before_tree.clone();
         let mut last = None;
-        for handler in &typed.session_before_tree {
+        for handler in &handlers {
             if let Some(result) = handler(event).await {
                 last = Some(result);
             }
@@ -325,8 +326,8 @@ impl HookRegistry {
 
     pub async fn emit_after_provider_response(&self, event: &AfterProviderResponseEvent) {
         {
-            let typed = self.typed.lock().await;
-            for handler in &typed.after_provider_response {
+            let handlers = self.typed.lock().await.after_provider_response.clone();
+            for handler in &handlers {
                 handler(event).await;
             }
         }

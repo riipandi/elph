@@ -33,14 +33,10 @@ impl PendingMessageQueue {
     }
 
     pub fn drain(&self) -> Vec<AgentMessage> {
-        let mut messages = self.messages.lock().expect("queue mutex");
         let mode = *self.mode.lock().expect("queue mode mutex");
+        let mut messages = self.messages.lock().expect("queue mutex");
         match mode {
-            QueueMode::All => {
-                let drained = messages.clone();
-                messages.clear();
-                drained
-            }
+            QueueMode::All => std::mem::take(&mut *messages),
             QueueMode::OneAtATime => {
                 if messages.is_empty() {
                     Vec::new()

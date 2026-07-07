@@ -11,12 +11,22 @@ pub struct AgentEventStream {
     queue: Arc<Mutex<EventQueue>>,
 }
 
+/// Compact consumed prefix once this many events have been read.
+const EVENT_COMPACT_THRESHOLD: usize = 64;
+
 struct EventQueue {
     events: Vec<AgentEvent>,
     read_index: usize,
     done: bool,
     final_messages: Option<Vec<AgentMessage>>,
     waiters: Vec<tokio::sync::oneshot::Sender<()>>,
+}
+
+fn compact_consumed_events(queue: &mut EventQueue) {
+    if queue.read_index >= EVENT_COMPACT_THRESHOLD {
+        queue.events.drain(0..queue.read_index);
+        queue.read_index = 0;
+    }
 }
 
 impl Default for AgentEventStream {
@@ -91,6 +101,7 @@ impl AgentEventStream {
         if q.read_index < q.events.len() {
             let event = q.events[q.read_index].clone();
             q.read_index += 1;
+            compact_consumed_events(&mut q);
             return Some(event);
         }
         None
@@ -114,3 +125,40 @@ impl AgentEventStream {
 }
 
 pub type AgentEventSink = Arc<dyn Fn(AgentEvent) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn consumed_events_are_compacted_to_bound_memory() {
+        let mut stream = AgentEventStream::new();
+        for _ in 0..EVENT_COMPACT_THRESHOLD + 8 {
+            stream.push(AgentEvent::TurnStart);
+        }
+        stream.end(vec![]);
+
+        let mut consumed = 0usize;
+        while let Some(_event) = stream.next_event().await {
+            consumed += 1;
+        }
+
+        let retained = stream
+            .queue
+            .lock()
+            .expect("agent event stream mutex poisoned")
+            .events
+            .len();
+        assert_eq!(consumed, EVENT_COMPACT_THRESHOLD + 8 + 1);
+        assert!(retained < EVENT_COMPACT_THRESHOLD);
+    }
+
+    #[tokio::test]
+    async fn waiter_is_not_registered_when_events_are_already_available() {
+        let mut stream = AgentEventStream::new();
+        stream.push(AgentEvent::AgentEnd { messages: vec![] });
+
+        let event = stream.next_event().await.expect("stream event");
+        assert!(matches!(event, AgentEvent::AgentEnd { .. }));
+    }
+}

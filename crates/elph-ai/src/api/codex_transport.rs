@@ -19,6 +19,9 @@ const OPENAI_BETA_RESPONSES_WEBSOCKETS: &str = "responses_websockets=2026-02-06"
 const WEBSOCKET_CONNECTION_LIMIT_REACHED: &str = "websocket_connection_limit_reached";
 const SESSION_WEBSOCKET_CACHE_TTL_MS: u64 = 5 * 60 * 1000;
 const SESSION_WEBSOCKET_MAX_AGE_MS: u64 = 55 * 60 * 1000;
+const MAX_WEBSOCKET_SESSION_CACHE_ENTRIES: usize = 64;
+const MAX_SSE_FALLBACK_SESSIONS: usize = 256;
+const MAX_WEBSOCKET_DEBUG_STATS_ENTRIES: usize = 256;
 
 #[derive(Clone, Default, PartialEq, Eq)]
 pub enum CodexTransport {
@@ -109,8 +112,12 @@ pub fn is_websocket_sse_fallback_active(session_id: Option<&str>) -> bool {
 
 fn mark_sse_fallback(session_id: Option<&str>) {
     if let Some(id) = session_id {
-        SSE_FALLBACK_SESSIONS.lock().unwrap().insert(id.to_string());
+        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
+            prune_sse_fallback_sessions(&mut sessions);
+            sessions.insert(id.to_string());
+        }
         if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+            prune_websocket_debug_stats(&mut stats);
             let entry = stats.entry(id.to_string()).or_default();
             entry.sse_fallbacks += 1;
             entry.websocket_fallback_active = Some(true);
@@ -131,8 +138,75 @@ fn now_ms() -> u64 {
 
 fn update_debug_stats(session_id: &str, update: impl FnOnce(&mut CodexWebSocketDebugStats)) {
     if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+        prune_websocket_debug_stats(&mut stats);
         let entry = stats.entry(session_id.to_string()).or_default();
         update(entry);
+    }
+}
+
+fn prune_sse_fallback_sessions(sessions: &mut HashSet<String>) {
+    while sessions.len() >= MAX_SSE_FALLBACK_SESSIONS {
+        let Some(oldest) = sessions.iter().next().cloned() else {
+            break;
+        };
+        sessions.remove(&oldest);
+    }
+}
+
+fn prune_websocket_debug_stats(stats: &mut HashMap<String, CodexWebSocketDebugStats>) {
+    while stats.len() >= MAX_WEBSOCKET_DEBUG_STATS_ENTRIES {
+        let Some(oldest) = stats.keys().next().cloned() else {
+            break;
+        };
+        stats.remove(&oldest);
+    }
+}
+
+fn close_cache_entry_sync(entry: &CachedWebSocketConnection) {
+    if let Ok(mut task) = entry.idle_task.try_lock()
+        && let Some(handle) = task.take()
+    {
+        handle.abort();
+    }
+    if let Ok(mut socket) = entry.socket.try_lock() {
+        let _ = futures_util::future::FutureExt::now_or_never(socket.close(None));
+    }
+}
+
+fn prune_websocket_session_cache(cache: &mut HashMap<String, Arc<CachedWebSocketConnection>>) {
+    let expired: Vec<String> = cache
+        .iter()
+        .filter_map(|(id, entry)| is_session_expired(entry).then_some(id.clone()))
+        .collect();
+    for id in expired {
+        if let Some(entry) = cache.remove(&id) {
+            close_cache_entry_sync(&entry);
+        }
+        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
+            sessions.remove(&id);
+        }
+        if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+            stats.remove(&id);
+        }
+    }
+
+    while cache.len() >= MAX_WEBSOCKET_SESSION_CACHE_ENTRIES {
+        let Some(oldest_id) = cache
+            .iter()
+            .min_by_key(|(_, entry)| entry.created_at)
+            .map(|(id, _)| id.clone())
+        else {
+            break;
+        };
+        if let Some(entry) = cache.remove(&oldest_id) {
+            close_cache_entry_sync(&entry);
+        }
+        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
+            sessions.remove(&oldest_id);
+        }
+        if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+            stats.remove(&oldest_id);
+        }
     }
 }
 
@@ -304,10 +378,10 @@ async fn acquire_websocket(
         continuation: Arc::new(Mutex::new(None)),
         idle_task: Arc::new(tokio::sync::Mutex::new(None)),
     });
-    WEBSOCKET_SESSION_CACHE
-        .lock()
-        .unwrap()
-        .insert(session_id.to_string(), entry.clone());
+    if let Ok(mut cache) = WEBSOCKET_SESSION_CACHE.lock() {
+        prune_websocket_session_cache(&mut cache);
+        cache.insert(session_id.to_string(), entry.clone());
+    }
 
     Ok(WebSocketLease {
         socket: entry.socket.clone(),

@@ -15,6 +15,7 @@ const DEFAULT_MODEL_ID: &str = "faux-1";
 const DEFAULT_BASE_URL: &str = "http://localhost:0";
 const DEFAULT_MIN_TOKEN_SIZE: usize = 3;
 const DEFAULT_MAX_TOKEN_SIZE: usize = 5;
+const MAX_PROMPT_CACHE_ENTRIES: usize = 128;
 
 pub type FauxResponseFactory =
     Arc<dyn Fn(&Context, Option<&StreamOptions>, &FauxState, &Model) -> AssistantMessage + Send + Sync>;
@@ -304,6 +305,12 @@ fn with_usage_estimate(
 
     if let Some(session_id) = options.and_then(|o| o.session_id.as_deref()) {
         let mut cache = prompt_cache.lock().unwrap();
+        if cache.len() >= MAX_PROMPT_CACHE_ENTRIES
+            && !cache.contains_key(session_id)
+            && let Some(evicted) = cache.keys().next().cloned()
+        {
+            cache.remove(&evicted);
+        }
         if let Some(previous) = cache.get(session_id).cloned() {
             let cached_chars = common_prefix_len(&previous, &prompt_text);
             cache_read = estimate_tokens(&previous[..cached_chars.min(previous.len())]);
