@@ -15,7 +15,7 @@ pub mod utils;
 
 pub use api::codex_transport::{
     CodexWebSocketDebugStats, close_codex_websocket_sessions, get_codex_websocket_debug_stats,
-    reset_codex_websocket_debug_stats,
+    get_codex_websocket_input_delta, reset_codex_websocket_debug_stats,
 };
 pub use api::faux::FauxResponseStep;
 pub use auth::oauth::{
@@ -25,8 +25,8 @@ pub use auth::oauth::{
     refresh_oauth_token, register_oauth_provider, reset_oauth_providers, unregister_oauth_provider,
 };
 pub use auth::{
-    DefaultAuthContext, InMemoryCredentialStore, ModelsError, ModelsErrorCode, default_auth_context, env_api_key_auth,
-    resolve_provider_auth,
+    DefaultAuthContext, InMemoryCredentialStore, ModelsError, ModelsErrorCode, OAuthCredential, default_auth_context,
+    env_api_key_auth, resolve_provider_auth,
 };
 pub use images::{CreateImagesModelsOptions, ImagesModels, builtin_images_models, generate_images};
 pub use models::{

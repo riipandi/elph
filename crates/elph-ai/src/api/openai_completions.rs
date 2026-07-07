@@ -409,6 +409,15 @@ fn convert_tools(tools: &[crate::types::Tool], compat: &ResolvedOpenAICompletion
         .collect()
 }
 
+/// Build chat/completions request params (used by tests mirroring pi-ai payload capture).
+pub fn build_openai_completions_params(
+    model: &Model,
+    context: &Context,
+    options: &OpenAICompletionsOptions,
+) -> Result<Value> {
+    build_params(model, context, options)
+}
+
 fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOptions) -> Result<Value> {
     let compat = get_compat(model);
     let cache_retention = resolve_cache_retention(&options.base);
@@ -434,6 +443,8 @@ fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOpt
     let mut tools_value = if let Some(tools) = &context.tools {
         if !tools.is_empty() {
             Some(json!(convert_tools(tools, &compat)))
+        } else if has_tool_history(&context.messages) {
+            Some(json!([]))
         } else {
             None
         }
@@ -451,6 +462,9 @@ fn build_params(model: &Model, context: &Context, options: &OpenAICompletionsOpt
     if let Some(cache_control) = &cache_control {
         apply_anthropic_cache_control(&mut messages, tools_value.as_mut(), cache_control);
         params["messages"] = json!(messages);
+        if let Some(tools) = tools_value {
+            params["tools"] = tools;
+        }
     }
     apply_thinking_params(model, options, &compat, &mut params);
     if cache_retention != crate::types::CacheRetention::None {
@@ -483,10 +497,11 @@ fn apply_thinking_params(
     }
     match compat.thinking_format.as_str() {
         "zai" => {
-            params["thinking"] = json!({
-                "type": if effort.is_some() { "enabled" } else { "disabled" },
-                "clear_thinking": false
-            });
+            params["thinking"] = if effort.is_some() {
+                json!({ "type": "enabled", "clear_thinking": false })
+            } else {
+                json!({ "type": "disabled" })
+            };
             if let Some(effort) = effort {
                 if compat.supports_reasoning_effort {
                     let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());

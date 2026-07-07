@@ -1,6 +1,6 @@
 [package]
 name = "elph-ai"
-version = "0.0.20"
+version = "0.0.21"
 license = "MIT"
 description = "Unified LLM API with provider collections, auth resolution, and streaming"
 keywords = ["ai", "llm", "provider", "api", "elph"]
@@ -10,6 +10,7 @@ repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 publish = true
+include = ["Cargo.toml", "src/**/*", "bin/**/*", "models/**/*.json", "tests/data/**/*", "examples/**/*"]
 
 [lib]
 name = "elph_ai"
@@ -25,10 +26,12 @@ aws-smithy-types = "1"
 axum = { workspace = true, features = ["query"] }
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { workspace = true, features = ["derive", "env"] }
 eventsource-stream = "0.2"
 futures = "0.3"
 futures-util = "0.3"
 http = "1"
+image = "0.25"
 jsonschema = "0.46.10"
 lazy_static = "1.5"
 once_cell = "1.21"
@@ -47,10 +50,15 @@ tracing = { workspace = true }
 url = "2"
 zstd = "0.13"
 
+[[bin]]
+name = "generate-models"
+path = "bin/generate_models/main.rs"
+
 [[example]]
 name = "opencode_big_pickle"
 path = "examples/opencode_big_pickle.rs"
 
 [dev-dependencies]
+async-trait = "0.1"
 indicatif.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

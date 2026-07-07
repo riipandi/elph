@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::auth::types::{AuthEvent, AuthLoginCallbacks, AuthPrompt, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::auth::{OAuthLoader, lazy_oauth};
-use crate::providers::models::GITHUB_COPILOT_MODELS;
+use crate::models::catalog::GITHUB_COPILOT_MODELS;
 
 use super::device_code::{DeviceCodePollOptions, DeviceCodePollResult, poll_oauth_device_code_flow};
 
@@ -43,12 +43,13 @@ fn github_copilot_oauth_impl() -> OAuthAuth {
         }),
         to_auth: Arc::new(|credential| {
             Box::pin(async move {
+                let enterprise_domain = copilot_enterprise_domain(&credential);
                 Ok(ModelAuth {
                     api_key: Some(credential.access.clone()),
                     headers: None,
                     base_url: Some(get_github_copilot_base_url(
                         Some(&credential.access),
-                        credential.enterprise_url.as_deref(),
+                        enterprise_domain.as_deref(),
                     )),
                 })
             })
@@ -89,6 +90,10 @@ pub fn normalize_domain(input: &str) -> Option<String> {
         return url.host_str().map(|s| s.to_string());
     }
     None
+}
+
+fn copilot_enterprise_domain(credential: &OAuthCredential) -> Option<String> {
+    credential.enterprise_url.as_deref().and_then(normalize_domain)
 }
 
 pub fn get_github_copilot_base_url(token: Option<&str>, enterprise_domain: Option<&str>) -> String {

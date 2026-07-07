@@ -166,12 +166,22 @@ async fn run_anthropic_stream(
     });
 
     let body = response.text().await?;
+    process_anthropic_sse_buffer(&body, output, stream, model).await
+}
+
+/// Process raw Anthropic Messages SSE bytes (used by integration tests mirroring pi-ai).
+pub async fn process_anthropic_sse_buffer(
+    buffer: &str,
+    output: &mut AssistantMessage,
+    stream: &AssistantMessageEventStream,
+    model: &Model,
+) -> Result<()> {
     let mut state = crate::api::sse::SseDecoderState::default();
     let mut saw_start = false;
     let mut saw_end = false;
     let mut blocks: Vec<(usize, AssistantContentBlock, Option<String>)> = Vec::new();
 
-    for sse in decode_sse_buffer(&body, &mut state) {
+    for sse in decode_sse_buffer(buffer, &mut state) {
         if sse.event.as_deref() == Some("error") {
             return Err(anyhow!(sse.data));
         }
@@ -236,7 +246,6 @@ async fn run_anthropic_stream(
                 let delta_type = event.pointer("/delta/type").and_then(|v| v.as_str()).unwrap_or("");
                 let pos = blocks.iter().position(|(i, _, _)| *i == index);
                 if let Some(pos) = pos {
-                    let content_index = output.content.iter().position(|_| true).unwrap_or(0);
                     let content_index = pos;
                     match delta_type {
                         "text_delta" => {
@@ -306,7 +315,12 @@ async fn run_anthropic_stream(
             }
             "message_delta" => {
                 if let Some(reason) = event.pointer("/delta/stop_reason").and_then(|v| v.as_str()) {
-                    output.stop_reason = map_stop_reason(reason);
+                    let stop_details = event.pointer("/delta/stop_details");
+                    let result = map_stop_reason(reason, stop_details);
+                    output.stop_reason = result.stop_reason;
+                    if let Some(message) = result.error_message {
+                        output.error_message = Some(message);
+                    }
                 }
                 if let Some(usage) = event.get("usage") {
                     update_usage_from_anthropic(output, usage);
@@ -346,6 +360,98 @@ fn update_usage_from_anthropic(output: &mut AssistantMessage, usage: &Value) {
         output.usage.input + output.usage.output + output.usage.cache_read + output.usage.cache_write;
 }
 
+/// Build Anthropic Messages request params (used by integration tests mirroring pi-ai).
+pub fn build_anthropic_messages_params(model: &Model, context: &Context, options: &AnthropicOptions) -> Result<Value> {
+    build_params(model, context, options)
+}
+
+struct ResolvedAnthropicCompat {
+    supports_long_cache_retention: bool,
+    supports_cache_control_on_tools: bool,
+    supports_eager_tool_input_streaming: bool,
+    supports_temperature: bool,
+}
+
+fn get_anthropic_compat(model: &Model) -> ResolvedAnthropicCompat {
+    let compat = model.anthropic_compat.as_ref();
+    ResolvedAnthropicCompat {
+        supports_long_cache_retention: compat.and_then(|c| c.supports_long_cache_retention).unwrap_or(true),
+        supports_cache_control_on_tools: compat.and_then(|c| c.supports_cache_control_on_tools).unwrap_or(true),
+        supports_eager_tool_input_streaming: compat
+            .and_then(|c| c.supports_eager_tool_input_streaming)
+            .unwrap_or(true),
+        supports_temperature: compat.and_then(|c| c.supports_temperature).unwrap_or(true),
+    }
+}
+
+fn anthropic_cache_control(model: &Model, retention: crate::types::CacheRetention) -> Option<Value> {
+    if retention == crate::types::CacheRetention::None {
+        return None;
+    }
+    let compat = get_anthropic_compat(model);
+    let mut control = json!({ "type": "ephemeral" });
+    if retention == crate::types::CacheRetention::Long && compat.supports_long_cache_retention {
+        control["ttl"] = json!("1h");
+    }
+    Some(control)
+}
+
+fn add_cache_control_to_text_content(message: &mut Value, cache_control: &Value) -> bool {
+    let Some(content) = message.get_mut("content") else {
+        return false;
+    };
+    if let Some(text) = content.as_str() {
+        if text.is_empty() {
+            return false;
+        }
+        *content = json!([{
+            "type": "text",
+            "text": text,
+            "cache_control": cache_control.clone(),
+        }]);
+        return true;
+    }
+    let Some(parts) = content.as_array_mut() else {
+        return false;
+    };
+    for part in parts.iter_mut().rev() {
+        if part.get("type").and_then(|v| v.as_str()) == Some("text") {
+            part["cache_control"] = cache_control.clone();
+            return true;
+        }
+    }
+    false
+}
+
+fn apply_anthropic_payload_cache_control(params: &mut Value, model: &Model, retention: crate::types::CacheRetention) {
+    let Some(cache_control) = anthropic_cache_control(model, retention) else {
+        return;
+    };
+    let compat = get_anthropic_compat(model);
+    if let Some(system) = params.get_mut("system").and_then(|v| v.as_array_mut()) {
+        if let Some(first) = system.first_mut() {
+            first["cache_control"] = cache_control.clone();
+        }
+    }
+    if compat.supports_cache_control_on_tools {
+        if let Some(tools) = params.get_mut("tools").and_then(|v| v.as_array_mut()) {
+            if let Some(last) = tools.last_mut() {
+                last["cache_control"] = cache_control.clone();
+            }
+        }
+    }
+    if let Some(messages) = params.get_mut("messages").and_then(|v| v.as_array_mut()) {
+        for message in messages.iter_mut().rev() {
+            let role = message.get("role").and_then(|v| v.as_str()).unwrap_or("");
+            if role == "user" || role == "assistant" {
+                if add_cache_control_to_text_content(message, &cache_control) {
+                    break;
+                }
+            }
+        }
+    }
+}
+
 fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) -> Result<Value> {
     let messages = convert_messages(context, model);
     let mut params = json!({
@@ -357,22 +463,42 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
     if let Some(sp) = &context.system_prompt {
         params["system"] = json!([{ "type": "text", "text": sanitize_surrogates(sp) }]);
     }
-    if let Some(temp) = options.base.temperature {
-        params["temperature"] = json!(temp);
+    let compat = get_anthropic_compat(model);
+    if compat.supports_temperature && options.thinking_enabled != Some(true) {
+        if let Some(temp) = options.base.temperature {
+            params["temperature"] = json!(temp);
+        }
     }
     if let Some(tools) = &context.tools {
         if !tools.is_empty() {
-            params["tools"] = json!(tools.iter().map(|t| json!({
-                "name": t.name,
-                "description": t.description,
-                "input_schema": { "type": "object", "properties": t.parameters.get("properties").cloned().unwrap_or(json!({})), "required": t.parameters.get("required").cloned().unwrap_or(json!([])) }
-            })).collect::<Vec<_>>());
+            let eager = compat.supports_eager_tool_input_streaming;
+            params["tools"] = json!(tools.iter().map(|t| {
+                let mut tool = json!({
+                    "name": t.name,
+                    "description": t.description,
+                    "input_schema": { "type": "object", "properties": t.parameters.get("properties").cloned().unwrap_or(json!({})), "required": t.parameters.get("required").cloned().unwrap_or(json!([])) }
+                });
+                if eager {
+                    tool["eager_input_streaming"] = json!(true);
+                }
+                tool
+            }).collect::<Vec<_>>());
         }
     }
     if options.thinking_enabled == Some(true) {
-        params["thinking"] =
-            json!({ "type": "enabled", "budget_tokens": options.thinking_budget_tokens.unwrap_or(1024) });
+        if model.anthropic_compat.as_ref().and_then(|c| c.force_adaptive_thinking) == Some(true) {
+            let mut thinking = json!({ "type": "adaptive" });
+            if let Some(effort) = &options.effort {
+                thinking["effort"] = json!(effort);
+            }
+            params["thinking"] = thinking;
+        } else {
+            params["thinking"] =
+                json!({ "type": "enabled", "budget_tokens": options.thinking_budget_tokens.unwrap_or(1024) });
+        }
     }
+    let cache_retention = resolve_cache_retention(&options.base);
+    apply_anthropic_payload_cache_control(&mut params, model, cache_retention);
     Ok(params)
 }
 
@@ -405,7 +531,27 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
             Message::Assistant(a) => {
                 let blocks: Vec<Value> = a.content.iter().filter_map(|b| match b {
                     AssistantContentBlock::Text(t) if !t.text.trim().is_empty() => Some(json!({ "type": "text", "text": sanitize_surrogates(&t.text) })),
-                    AssistantContentBlock::Thinking(t) if !t.thinking.trim().is_empty() => Some(json!({ "type": "thinking", "thinking": sanitize_surrogates(&t.thinking), "signature": t.thinking_signature.clone().unwrap_or_default() })),
+                    AssistantContentBlock::Thinking(t) if !t.thinking.trim().is_empty() => {
+                        if t.redacted == Some(true) {
+                            Some(json!({ "type": "redacted_thinking", "data": t.thinking_signature.clone().unwrap_or_default() }))
+                        } else {
+                            let signature = t.thinking_signature.as_deref().unwrap_or("");
+                            let allow_empty = model
+                                .anthropic_compat
+                                .as_ref()
+                                .and_then(|c| c.allow_empty_signature)
+                                .unwrap_or(false);
+                            if signature.trim().is_empty() {
+                                if allow_empty {
+                                    Some(json!({ "type": "thinking", "thinking": sanitize_surrogates(&t.thinking), "signature": "" }))
+                                } else {
+                                    Some(json!({ "type": "text", "text": sanitize_surrogates(&t.thinking) }))
+                                }
+                            } else {
+                                Some(json!({ "type": "thinking", "thinking": sanitize_surrogates(&t.thinking), "signature": signature }))
+                            }
+                        }
+                    }
                     AssistantContentBlock::ToolCall(tc) => Some(json!({ "type": "tool_use", "id": tc.id, "name": tc.name, "input": tc.arguments })),
                     _ => None,
                 }).collect();
@@ -419,12 +565,39 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
         .collect()
 }
 
-fn map_stop_reason(reason: &str) -> StopReason {
+struct AnthropicStopReasonResult {
+    stop_reason: StopReason,
+    error_message: Option<String>,
+}
+
+fn map_stop_reason(reason: &str, stop_details: Option<&Value>) -> AnthropicStopReasonResult {
     match reason {
-        "end_turn" | "pause_turn" | "stop_sequence" => StopReason::Stop,
-        "max_tokens" => StopReason::Length,
-        "tool_use" => StopReason::ToolUse,
-        _ => StopReason::Error,
+        "end_turn" | "pause_turn" | "stop_sequence" => AnthropicStopReasonResult {
+            stop_reason: StopReason::Stop,
+            error_message: None,
+        },
+        "max_tokens" => AnthropicStopReasonResult {
+            stop_reason: StopReason::Length,
+            error_message: None,
+        },
+        "tool_use" => AnthropicStopReasonResult {
+            stop_reason: StopReason::ToolUse,
+            error_message: None,
+        },
+        "refusal" => AnthropicStopReasonResult {
+            stop_reason: StopReason::Error,
+            error_message: Some(
+                stop_details
+                    .and_then(|d| d.get("explanation"))
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string)
+                    .unwrap_or_else(|| "The model refused to complete the request".to_string()),
+            ),
+        },
+        _ => AnthropicStopReasonResult {
+            stop_reason: StopReason::Error,
+            error_message: None,
+        },
     }
 }
 

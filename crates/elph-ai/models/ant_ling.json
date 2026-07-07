@@ -1,0 +1,91 @@
+{
+  "Ling-2.6-1T": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.ant-ling.com/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "ant-ling"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.06,
+      "output": 0.25
+    },
+    "id": "Ling-2.6-1T",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Ling 2.6 1T",
+    "provider": "ant-ling",
+    "reasoning": false
+  },
+  "Ling-2.6-flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.ant-ling.com/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "ant-ling"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.01,
+      "output": 0.02
+    },
+    "id": "Ling-2.6-flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Ling 2.6 Flash",
+    "provider": "ant-ling",
+    "reasoning": false
+  },
+  "Ring-2.6-1T": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.ant-ling.com/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "thinkingFormat": "ant-ling"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.06,
+      "output": 0.25
+    },
+    "id": "Ring-2.6-1T",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Ring 2.6 1T",
+    "provider": "ant-ling",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "high",
+      "low": null,
+      "medium": null,
+      "minimal": null,
+      "off": null,
+      "xhigh": "xhigh"
+    }
+  }
+}

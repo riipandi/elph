@@ -151,6 +151,16 @@ async fn run_openai_responses(
     Ok(())
 }
 
+/// Build OpenAI Responses request params (used by integration tests mirroring pi-ai).
+pub fn build_openai_responses_params(
+    model: &Model,
+    context: &Context,
+    options: &OpenAIResponsesOptions,
+) -> Result<Value> {
+    let providers: HashSet<String> = OPENAI_TOOL_CALL_PROVIDERS.iter().map(|s| s.to_string()).collect();
+    build_params(model, context, options, &providers)
+}
+
 fn build_params(
     model: &Model,
     context: &Context,
@@ -166,11 +176,20 @@ fn build_params(
         "store": false
     });
     if cache_retention != crate::types::CacheRetention::None {
-        if let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref()) {
-            params["prompt_cache_key"] = json!(key);
-        }
-        if cache_retention == crate::types::CacheRetention::Long {
-            params["prompt_cache_retention"] = json!("24h");
+        let supports_long = model
+            .openai_responses_compat
+            .as_ref()
+            .and_then(|c| c.supports_long_cache_retention)
+            .unwrap_or(true);
+        let is_openai_host = model.base_url.contains("api.openai.com");
+        let allow_cache = cache_retention != crate::types::CacheRetention::Long || supports_long || !is_openai_host;
+        if allow_cache {
+            if let Some(key) = clamp_openai_prompt_cache_key(options.base.session_id.as_deref()) {
+                params["prompt_cache_key"] = json!(key);
+            }
+            if cache_retention == crate::types::CacheRetention::Long {
+                params["prompt_cache_retention"] = json!("24h");
+            }
         }
     }
     if let Some(max) = options.base.max_tokens {

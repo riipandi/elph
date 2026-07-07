@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, openai_codex_oauth_loader};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
-use crate::providers::models::GITHUB_COPILOT_MODELS;
+use crate::models::catalog::GITHUB_COPILOT_MODELS;
 use crate::types::Model;
 
 pub type OAuthProviderId = String;
@@ -57,8 +57,12 @@ fn built_in_providers() -> Vec<OAuthProviderInterface> {
 }
 
 fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {
+    let enterprise_domain = credential
+        .enterprise_url
+        .as_deref()
+        .and_then(crate::auth::oauth::normalize_domain);
     let base_url =
-        crate::auth::oauth::get_github_copilot_base_url(Some(&credential.access), credential.enterprise_url.as_deref());
+        crate::auth::oauth::get_github_copilot_base_url(Some(&credential.access), enterprise_domain.as_deref());
     models
         .into_iter()
         .map(|mut model| {

@@ -1,0 +1,255 @@
+{
+  "kimi-k2-0711-preview": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.5
+    },
+    "id": "kimi-k2-0711-preview",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "Kimi K2 0711",
+    "provider": "moonshotai",
+    "reasoning": false
+  },
+  "kimi-k2-0905-preview": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.5
+    },
+    "id": "kimi-k2-0905-preview",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2 0905",
+    "provider": "moonshotai",
+    "reasoning": false
+  },
+  "kimi-k2-thinking": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.5
+    },
+    "id": "kimi-k2-thinking",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2 Thinking",
+    "provider": "moonshotai",
+    "reasoning": true
+  },
+  "kimi-k2-thinking-turbo": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0,
+      "input": 1.15,
+      "output": 8
+    },
+    "id": "kimi-k2-thinking-turbo",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2 Thinking Turbo",
+    "provider": "moonshotai",
+    "reasoning": true
+  },
+  "kimi-k2-turbo-preview": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.6,
+      "cacheWrite": 0,
+      "input": 2.4,
+      "output": 10
+    },
+    "id": "kimi-k2-turbo-preview",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2 Turbo",
+    "provider": "moonshotai",
+    "reasoning": false
+  },
+  "kimi-k2.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.1,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 3
+    },
+    "id": "kimi-k2.5",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.5",
+    "provider": "moonshotai",
+    "reasoning": true
+  },
+  "kimi-k2.6": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.16,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "kimi-k2.6",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.6",
+    "provider": "moonshotai",
+    "reasoning": true
+  },
+  "kimi-k2.7-code": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.19,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "kimi-k2.7-code",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.7 Code",
+    "provider": "moonshotai",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "off": null
+    }
+  },
+  "kimi-k2.7-code-highspeed": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.moonshot.ai/v1",
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": false,
+      "supportsStore": false,
+      "supportsStrictMode": false,
+      "thinkingFormat": "deepseek"
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.38,
+      "cacheWrite": 0,
+      "input": 1.9,
+      "output": 8
+    },
+    "id": "kimi-k2.7-code-highspeed",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.7 Code HighSpeed",
+    "provider": "moonshotai",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "off": null
+    }
+  }
+}

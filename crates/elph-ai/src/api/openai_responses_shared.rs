@@ -362,6 +362,9 @@ pub async fn process_responses_stream(
                 let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
                 if let Some(OutputSlot::Thinking { block, content_index }) = output_slots.get_mut(&idx) {
                     block.thinking.push_str(delta);
+                    if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
+                        t.thinking = block.thinking.clone();
+                    }
                     stream.push(AssistantMessageEvent::ThinkingDelta {
                         content_index: *content_index,
                         delta: delta.to_string(),
@@ -374,6 +377,9 @@ pub async fn process_responses_stream(
                 let delta = event.get("delta").and_then(|v| v.as_str()).unwrap_or("");
                 if let Some(OutputSlot::Text { block, content_index }) = output_slots.get_mut(&idx) {
                     block.text.push_str(delta);
+                    if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
+                        t.text = block.text.clone();
+                    }
                     stream.push(AssistantMessageEvent::TextDelta {
                         content_index: *content_index,
                         delta: delta.to_string(),
@@ -387,6 +393,9 @@ pub async fn process_responses_stream(
                 if let Some(OutputSlot::ToolCall { block, content_index }) = output_slots.get_mut(&idx) {
                     block.partial_json.push_str(delta);
                     block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
+                    if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
+                        tc.arguments = block.tool_call.arguments.clone();
+                    }
                     stream.push(AssistantMessageEvent::ToolcallDelta {
                         content_index: *content_index,
                         delta: delta.to_string(),
@@ -410,6 +419,10 @@ pub async fn process_responses_stream(
                                 }
                             }
                             block.thinking_signature = Some(item.to_string());
+                            if let Some(AssistantContentBlock::Thinking(t)) = output.content.get_mut(*content_index) {
+                                t.thinking = block.thinking.clone();
+                                t.thinking_signature = block.thinking_signature.clone();
+                            }
                             stream.push(AssistantMessageEvent::ThinkingEnd {
                                 content_index: *content_index,
                                 content: block.thinking.clone(),
@@ -434,6 +447,10 @@ pub async fn process_responses_stream(
                                 let phase = item.get("phase").and_then(|v| v.as_str());
                                 block.text_signature = Some(encode_text_signature_v1(id, phase));
                             }
+                            if let Some(AssistantContentBlock::Text(t)) = output.content.get_mut(*content_index) {
+                                t.text = block.text.clone();
+                                t.text_signature = block.text_signature.clone();
+                            }
                             stream.push(AssistantMessageEvent::TextEnd {
                                 content_index: *content_index,
                                 content: block.text.clone(),
@@ -446,6 +463,9 @@ pub async fn process_responses_stream(
                                 block.partial_json = args.to_string();
                             }
                             block.tool_call.arguments = parse_streaming_json(Some(&block.partial_json));
+                            if let Some(AssistantContentBlock::ToolCall(tc)) = output.content.get_mut(*content_index) {
+                                tc.arguments = block.tool_call.arguments.clone();
+                            }
                             stream.push(AssistantMessageEvent::ToolcallEnd {
                                 content_index: *content_index,
                                 tool_call: block.tool_call.clone(),
@@ -501,11 +521,15 @@ pub async fn process_responses_stream(
             "response.failed" => {
                 saw_terminal = true;
                 let err = event.pointer("/response/error");
-                let msg = err
+                let code = err
+                    .and_then(|e| e.get("code"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                let message = err
                     .and_then(|e| e.get("message"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("Unknown error");
-                return Err(anyhow!("{msg}"));
+                return Err(anyhow!("{code}: {message}"));
             }
             _ => {}
         }

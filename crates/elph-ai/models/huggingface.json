@@ -1,0 +1,1073 @@
+{
+  "MiniMaxAI/MiniMax-M2": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 1.2
+    },
+    "id": "MiniMaxAI/MiniMax-M2",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 128000,
+    "name": "MiniMax-M2",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "MiniMaxAI/MiniMax-M2.1": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 1.2
+    },
+    "id": "MiniMaxAI/MiniMax-M2.1",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiniMax-M2.1",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "MiniMaxAI/MiniMax-M2.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.03,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 1.2
+    },
+    "id": "MiniMaxAI/MiniMax-M2.5",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiniMax-M2.5",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "MiniMaxAI/MiniMax-M2.7": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.06,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 1.2
+    },
+    "id": "MiniMaxAI/MiniMax-M2.7",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiniMax-M2.7",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "MiniMaxAI/MiniMax-M3": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 524288,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 1.2
+    },
+    "id": "MiniMaxAI/MiniMax-M3",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 128000,
+    "name": "MiniMax-M3",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3-235B-A22B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 40960,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.2,
+      "output": 0.8
+    },
+    "id": "Qwen/Qwen3-235B-A22B",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "Qwen3 235B-A22B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3-235B-A22B-Thinking-2507": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 3
+    },
+    "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "Qwen3-235B-A22B-Thinking-2507",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3-32B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.29,
+      "output": 0.59
+    },
+    "id": "Qwen/Qwen3-32B",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "Qwen3 32B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.07,
+      "output": 0.26
+    },
+    "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3-Coder 30B-A3B Instruct",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 2,
+      "output": 2
+    },
+    "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 66536,
+    "name": "Qwen3-Coder-480B-A35B-Instruct",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "Qwen/Qwen3-Coder-Next": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.2,
+      "output": 1.5
+    },
+    "id": "Qwen/Qwen3-Coder-Next",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3-Coder-Next",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "Qwen/Qwen3-Next-80B-A3B-Instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.25,
+      "output": 1
+    },
+    "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 66536,
+    "name": "Qwen3-Next-80B-A3B-Instruct",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "Qwen/Qwen3-Next-80B-A3B-Thinking": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 2
+    },
+    "id": "Qwen/Qwen3-Next-80B-A3B-Thinking",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "Qwen3-Next-80B-A3B-Thinking",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "Qwen/Qwen3.5-122B-A10B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.4,
+      "output": 3.2
+    },
+    "id": "Qwen/Qwen3.5-122B-A10B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.5 122B-A10B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.5-27B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.3,
+      "output": 2.4
+    },
+    "id": "Qwen/Qwen3.5-27B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.5 27B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.5-35B-A3B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.25,
+      "output": 2
+    },
+    "id": "Qwen/Qwen3.5-35B-A3B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.5 35B-A3B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.5-397B-A17B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 3.6
+    },
+    "id": "Qwen/Qwen3.5-397B-A17B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 32768,
+    "name": "Qwen3.5-397B-A17B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.5-9B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.17,
+      "output": 0.25
+    },
+    "id": "Qwen/Qwen3.5-9B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.5 9B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.6-27B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.47,
+      "output": 3.19
+    },
+    "id": "Qwen/Qwen3.6-27B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.6 27B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "Qwen/Qwen3.6-35B-A3B": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.15,
+      "output": 0.95
+    },
+    "id": "Qwen/Qwen3.6-35B-A3B",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 65536,
+    "name": "Qwen3.6 35B-A3B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "XiaomiMiMo/MiMo-V2-Flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.1,
+      "output": 0.3
+    },
+    "id": "XiaomiMiMo/MiMo-V2-Flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 4096,
+    "name": "MiMo-V2-Flash",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "XiaomiMiMo/MiMo-V2.5-Pro": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 1,
+      "output": 3
+    },
+    "id": "XiaomiMiMo/MiMo-V2.5-Pro",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "MiMo-V2.5-Pro",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "deepseek-ai/DeepSeek-R1": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 64000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.7,
+      "output": 2.5
+    },
+    "id": "deepseek-ai/DeepSeek-R1",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 32768,
+    "name": "DeepSeek-R1",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "deepseek-ai/DeepSeek-R1-0528": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 163840,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 3,
+      "output": 5
+    },
+    "id": "deepseek-ai/DeepSeek-R1-0528",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 163840,
+    "name": "DeepSeek-R1-0528",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "deepseek-ai/DeepSeek-V3.2": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 163840,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.28,
+      "output": 0.4
+    },
+    "id": "deepseek-ai/DeepSeek-V3.2",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "DeepSeek-V3.2",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "deepseek-ai/DeepSeek-V4-Flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.14,
+      "output": 0.28
+    },
+    "id": "deepseek-ai/DeepSeek-V4-Flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 384000,
+    "name": "DeepSeek V4 Flash",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "deepseek-ai/DeepSeek-V4-Pro": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 1048576,
+    "cost": {
+      "cacheRead": 0.003625,
+      "cacheWrite": 0,
+      "input": 0.435,
+      "output": 0.87
+    },
+    "id": "deepseek-ai/DeepSeek-V4-Pro",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 393216,
+    "name": "DeepSeek V4 Pro",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "google/gemma-4-26B-A4B-it": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.13,
+      "output": 0.4
+    },
+    "id": "google/gemma-4-26B-A4B-it",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 32768,
+    "name": "Gemma 4 26B A4B IT",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "google/gemma-4-31B-it": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.14,
+      "output": 0.4
+    },
+    "id": "google/gemma-4-31B-it",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 32768,
+    "name": "Gemma 4 31B IT",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "meta-llama/Llama-3.3-70B-Instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.59,
+      "output": 0.79
+    },
+    "id": "meta-llama/Llama-3.3-70B-Instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 4096,
+    "name": "Llama-3.3-70B-Instruct",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "moonshotai/Kimi-K2-Instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 1,
+      "output": 3
+    },
+    "id": "moonshotai/Kimi-K2-Instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "Kimi-K2-Instruct",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "moonshotai/Kimi-K2-Instruct-0905": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 1,
+      "output": 3
+    },
+    "id": "moonshotai/Kimi-K2-Instruct-0905",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "Kimi-K2-Instruct-0905",
+    "provider": "huggingface",
+    "reasoning": false
+  },
+  "moonshotai/Kimi-K2-Thinking": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.15,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.5
+    },
+    "id": "moonshotai/Kimi-K2-Thinking",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi-K2-Thinking",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "moonshotai/Kimi-K2.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.1,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 3
+    },
+    "id": "moonshotai/Kimi-K2.5",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi-K2.5",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "moonshotai/Kimi-K2.6": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.16,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "moonshotai/Kimi-K2.6",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi-K2.6",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "moonshotai/Kimi-K2.7-Code": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "moonshotai/Kimi-K2.7-Code",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.7 Code",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "openai/gpt-oss-120b": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.25,
+      "output": 0.69
+    },
+    "id": "openai/gpt-oss-120b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 32768,
+    "name": "GPT OSS 120B",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "stepfun-ai/Step-3.5-Flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.1,
+      "output": 0.3
+    },
+    "id": "stepfun-ai/Step-3.5-Flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 256000,
+    "name": "Step 3.5 Flash",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "stepfun-ai/Step-3.7-Flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.2,
+      "output": 1.15
+    },
+    "id": "stepfun-ai/Step-3.7-Flash",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 256000,
+    "name": "Step 3.7 Flash",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.5": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.2
+    },
+    "id": "zai-org/GLM-4.5",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 98304,
+    "name": "GLM-4.5",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.5-Air": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.13,
+      "output": 0.85
+    },
+    "id": "zai-org/GLM-4.5-Air",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 98304,
+    "name": "GLM-4.5-Air",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.5V": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 65536,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 1.8
+    },
+    "id": "zai-org/GLM-4.5V",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 16384,
+    "name": "GLM-4.5V",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.6": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.55,
+      "output": 2.2
+    },
+    "id": "zai-org/GLM-4.6",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-4.6",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.7": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 204800,
+    "cost": {
+      "cacheRead": 0.11,
+      "cacheWrite": 0,
+      "input": 0.6,
+      "output": 2.2
+    },
+    "id": "zai-org/GLM-4.7",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-4.7",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-4.7-Flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 200000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0,
+      "output": 0
+    },
+    "id": "zai-org/GLM-4.7-Flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 128000,
+    "name": "GLM-4.7-Flash",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-5": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 202752,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0,
+      "input": 1,
+      "output": 3.2
+    },
+    "id": "zai-org/GLM-5",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-5",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-5.1": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 202752,
+    "cost": {
+      "cacheRead": 0.2,
+      "cacheWrite": 0,
+      "input": 1,
+      "output": 3.2
+    },
+    "id": "zai-org/GLM-5.1",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-5.1",
+    "provider": "huggingface",
+    "reasoning": true
+  },
+  "zai-org/GLM-5.2": {
+    "api": "openai-completions",
+    "baseUrl": "https://router.huggingface.co/v1",
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 1.4,
+      "output": 4.4
+    },
+    "id": "zai-org/GLM-5.2",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-5.2",
+    "provider": "huggingface",
+    "reasoning": true
+  }
+}

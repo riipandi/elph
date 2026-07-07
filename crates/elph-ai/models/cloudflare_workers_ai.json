@@ -1,0 +1,331 @@
+{
+  "@cf/google/gemma-4-26b-a4b-it": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 256000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.1,
+      "output": 0.3
+    },
+    "id": "@cf/google/gemma-4-26b-a4b-it",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 16384,
+    "name": "Gemma 4 26B A4B IT",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/ibm-granite/granite-4.0-h-micro": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 131000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.017,
+      "output": 0.112
+    },
+    "id": "@cf/ibm-granite/granite-4.0-h-micro",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131000,
+    "name": "Granite 4.0 H Micro",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": false
+  },
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 24000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.293,
+      "output": 2.253
+    },
+    "id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 24000,
+    "name": "Llama 3.3 70B Instruct fp8 Fast",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": false
+  },
+  "@cf/meta/llama-4-scout-17b-16e-instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 131000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.27,
+      "output": 0.85
+    },
+    "id": "@cf/meta/llama-4-scout-17b-16e-instruct",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 16384,
+    "name": "Llama 4 Scout 17B 16E Instruct",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": false
+  },
+  "@cf/mistralai/mistral-small-3.1-24b-instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 128000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.351,
+      "output": 0.555
+    },
+    "id": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 128000,
+    "name": "Mistral Small 3.1 24B Instruct",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": false
+  },
+  "@cf/moonshotai/kimi-k2.6": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.16,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "@cf/moonshotai/kimi-k2.6",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 256000,
+    "name": "Kimi K2.6",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/moonshotai/kimi-k2.7-code": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.19,
+      "cacheWrite": 0,
+      "input": 0.95,
+      "output": 4
+    },
+    "id": "@cf/moonshotai/kimi-k2.7-code",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 262144,
+    "name": "Kimi K2.7 Code",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/nvidia/nemotron-3-120b-a12b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 256000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.5,
+      "output": 1.5
+    },
+    "id": "@cf/nvidia/nemotron-3-120b-a12b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 256000,
+    "name": "Nemotron 3 Super 120B",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/openai/gpt-oss-120b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 128000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.35,
+      "output": 0.75
+    },
+    "id": "@cf/openai/gpt-oss-120b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "GPT OSS 120B",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/openai/gpt-oss-20b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 128000,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.2,
+      "output": 0.3
+    },
+    "id": "@cf/openai/gpt-oss-20b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 16384,
+    "name": "GPT OSS 20B",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/qwen/qwen3-30b-a3b-fp8": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 32768,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.0509,
+      "output": 0.335
+    },
+    "id": "@cf/qwen/qwen3-30b-a3b-fp8",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 32768,
+    "name": "Qwen3 30B A3b fp8",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/zai-org/glm-4.7-flash": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.0605,
+      "output": 0.4
+    },
+    "id": "@cf/zai-org/glm-4.7-flash",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "GLM-4.7-Flash",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  },
+  "@cf/zai-org/glm-5.2": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+    "compat": {
+      "sendSessionAffinityHeaders": true,
+      "supportsDeveloperRole": false,
+      "supportsLongCacheRetention": false,
+      "supportsStore": false
+    },
+    "contextWindow": 262144,
+    "cost": {
+      "cacheRead": 0.26,
+      "cacheWrite": 0,
+      "input": 1.4,
+      "output": 4.4
+    },
+    "id": "@cf/zai-org/glm-5.2",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 262144,
+    "name": "Glm 5.2",
+    "provider": "cloudflare-workers-ai",
+    "reasoning": true
+  }
+}

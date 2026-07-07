@@ -1,6 +1,6 @@
 [package]
 name = "elph-swarm"
-version = "0.0.3"
+version = "0.0.4"
 license = "MIT"
 description = "Orchestration library for elph AI coding agents."
 homepage.workspace = true

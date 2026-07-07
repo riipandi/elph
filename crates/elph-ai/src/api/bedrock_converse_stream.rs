@@ -242,6 +242,11 @@ async fn run_bedrock(
     Ok(())
 }
 
+/// Build Bedrock Converse request body (used by integration tests mirroring pi-ai).
+pub fn build_bedrock_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
+    build_converse_body(model, context, options)
+}
+
 fn build_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
     let messages = convert_messages(context, model);
     let mut body = json!({
@@ -273,6 +278,46 @@ fn build_converse_body(model: &Model, context: &Context, options: &BedrockOption
     Ok(body)
 }
 
+const EMPTY_TEXT_PLACEHOLDER: &str = "<empty>";
+
+fn create_non_blank_text_block(text: &str) -> Option<Value> {
+    let sanitized = sanitize_surrogates(text);
+    if sanitized.trim().is_empty() {
+        None
+    } else {
+        Some(json!({ "text": sanitized }))
+    }
+}
+
+fn create_required_text_block(text: &str) -> Value {
+    create_non_blank_text_block(text).unwrap_or_else(|| json!({ "text": EMPTY_TEXT_PLACEHOLDER }))
+}
+
+fn convert_tool_result_content(content: &[ContentBlock]) -> Vec<Value> {
+    let mut result = Vec::new();
+    for block in content {
+        match block {
+            ContentBlock::Text { text } => {
+                if let Some(text_block) = create_non_blank_text_block(text) {
+                    result.push(text_block);
+                }
+            }
+            ContentBlock::Image { data, mime_type } => {
+                result.push(json!({
+                    "image": {
+                        "format": mime_type.strip_prefix("image/").unwrap_or("png"),
+                        "source": { "bytes": data }
+                    }
+                }));
+            }
+        }
+    }
+    if result.is_empty() {
+        result.push(json!({ "text": EMPTY_TEXT_PLACEHOLDER }));
+    }
+    result
+}
+
 fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
     let transformed = transform_messages(context.messages.clone(), model, |id, _, _| {
         let s: String = id
@@ -287,30 +332,118 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
             .collect();
         s.chars().take(64).collect()
     });
-    transformed.into_iter().filter_map(|msg| match msg {
-        Message::User { content, .. } => {
-            let blocks = match content {
-                UserContent::Text(t) => vec![json!({ "text": sanitize_surrogates(&t) })],
-                UserContent::Blocks(bs) => bs.into_iter().map(|b| match b {
-                    ContentBlock::Text { text } => json!({ "text": sanitize_surrogates(&text) }),
-                    ContentBlock::Image { .. } => json!({ "text": "<image>" }),
-                }).collect(),
-            };
-            Some(json!({ "role": "user", "content": blocks }))
+    let mut result = Vec::new();
+    let mut index = 0usize;
+    while index < transformed.len() {
+        match &transformed[index] {
+            Message::User { content, .. } => {
+                let mut blocks = match content {
+                    UserContent::Text(t) => vec![create_required_text_block(t)],
+                    UserContent::Blocks(bs) => {
+                        let mut blocks = Vec::new();
+                        for block in bs {
+                            match block {
+                                ContentBlock::Text { text } => {
+                                    if let Some(text_block) = create_non_blank_text_block(text) {
+                                        blocks.push(text_block);
+                                    }
+                                }
+                                ContentBlock::Image { data, mime_type } => {
+                                    blocks.push(json!({
+                                        "image": {
+                                            "format": mime_type.strip_prefix("image/").unwrap_or("png"),
+                                            "source": { "bytes": data }
+                                        }
+                                    }));
+                                }
+                            }
+                        }
+                        if blocks.is_empty() {
+                            blocks.push(json!({ "text": EMPTY_TEXT_PLACEHOLDER }));
+                        }
+                        blocks
+                    }
+                };
+                result.push(json!({ "role": "user", "content": blocks }));
+                index += 1;
+            }
+            Message::Assistant(a) => {
+                if a.content.is_empty() {
+                    index += 1;
+                    continue;
+                }
+                let blocks: Vec<Value> = a
+                    .content
+                    .iter()
+                    .filter_map(|b| match b {
+                        AssistantContentBlock::Text(t) => create_non_blank_text_block(&t.text),
+                        AssistantContentBlock::ToolCall(tc) => Some(json!({
+                            "toolUse": { "toolUseId": tc.id, "name": tc.name, "input": tc.arguments }
+                        })),
+                        AssistantContentBlock::Thinking(t) => {
+                            let thinking = sanitize_surrogates(&t.thinking);
+                            if thinking.trim().is_empty() {
+                                None
+                            } else if t.thinking_signature.as_deref().unwrap_or("").trim().is_empty() {
+                                Some(json!({ "text": thinking }))
+                            } else {
+                                Some(json!({
+                                    "reasoningContent": {
+                                        "reasoningText": {
+                                            "text": thinking,
+                                            "signature": t.thinking_signature.clone().unwrap_or_default()
+                                        }
+                                    }
+                                }))
+                            }
+                        }
+                    })
+                    .collect();
+                if !blocks.is_empty() {
+                    result.push(json!({ "role": "assistant", "content": blocks }));
+                }
+                index += 1;
+            }
+            Message::ToolResult {
+                tool_call_id,
+                content,
+                is_error,
+                ..
+            } => {
+                let mut tool_results = vec![json!({
+                    "toolResult": {
+                        "toolUseId": tool_call_id,
+                        "content": convert_tool_result_content(content),
+                        "status": if *is_error { "error" } else { "success" }
+                    }
+                })];
+                let mut j = index + 1;
+                while j < transformed.len() {
+                    if let Message::ToolResult {
+                        tool_call_id,
+                        content,
+                        is_error,
+                        ..
+                    } = &transformed[j]
+                    {
+                        tool_results.push(json!({
+                            "toolResult": {
+                                "toolUseId": tool_call_id,
+                                "content": convert_tool_result_content(content),
+                                "status": if *is_error { "error" } else { "success" }
+                            }
+                        }));
+                        j += 1;
+                    } else {
+                        break;
+                    }
+                }
+                result.push(json!({ "role": "user", "content": tool_results }));
+                index = j;
+            }
         }
-        Message::Assistant(a) => {
-            let blocks: Vec<Value> = a.content.iter().filter_map(|b| match b {
-                AssistantContentBlock::Text(t) if !t.text.trim().is_empty() => Some(json!({ "text": sanitize_surrogates(&t.text) })),
-                AssistantContentBlock::ToolCall(tc) => Some(json!({ "toolUse": { "toolUseId": tc.id, "name": tc.name, "input": tc.arguments } })),
-                _ => None,
-            }).collect();
-            if blocks.is_empty() { None } else { Some(json!({ "role": "assistant", "content": blocks })) }
-        }
-        Message::ToolResult { tool_call_id, content, is_error, .. } => {
-            let text = content.iter().filter_map(|b| match b { ContentBlock::Text { text } => Some(text.as_str()), _ => None }).collect::<Vec<_>>().join("\n");
-            Some(json!({ "role": "user", "content": [{ "toolResult": { "toolUseId": tool_call_id, "content": [{ "text": text }], "status": if is_error { "error" } else { "success" } } }] }))
-        }
-    }).collect()
+    }
+    result
 }
 
 async fn run_bedrock_bearer(

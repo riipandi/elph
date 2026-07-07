@@ -1,0 +1,142 @@
+{
+  "llama-3.1-8b-instant": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.05,
+      "output": 0.08
+    },
+    "id": "llama-3.1-8b-instant",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 131072,
+    "name": "Llama 3.1 8B",
+    "provider": "groq",
+    "reasoning": false
+  },
+  "llama-3.3-70b-versatile": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.59,
+      "output": 0.79
+    },
+    "id": "llama-3.3-70b-versatile",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 32768,
+    "name": "Llama 3.3 70B",
+    "provider": "groq",
+    "reasoning": false
+  },
+  "meta-llama/llama-4-scout-17b-16e-instruct": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.11,
+      "output": 0.34
+    },
+    "id": "meta-llama/llama-4-scout-17b-16e-instruct",
+    "input": [
+      "text",
+      "image"
+    ],
+    "maxTokens": 8192,
+    "name": "Llama 4 Scout 17B 16E",
+    "provider": "groq",
+    "reasoning": false
+  },
+  "openai/gpt-oss-120b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.075,
+      "cacheWrite": 0,
+      "input": 0.15,
+      "output": 0.6
+    },
+    "id": "openai/gpt-oss-120b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "GPT OSS 120B",
+    "provider": "groq",
+    "reasoning": true
+  },
+  "openai/gpt-oss-20b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0.0375,
+      "cacheWrite": 0,
+      "input": 0.075,
+      "output": 0.3
+    },
+    "id": "openai/gpt-oss-20b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "GPT OSS 20B",
+    "provider": "groq",
+    "reasoning": true
+  },
+  "openai/gpt-oss-safeguard-20b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.075,
+      "output": 0.3
+    },
+    "id": "openai/gpt-oss-safeguard-20b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 65536,
+    "name": "Safety GPT OSS 20B",
+    "provider": "groq",
+    "reasoning": true
+  },
+  "qwen/qwen3-32b": {
+    "api": "openai-completions",
+    "baseUrl": "https://api.groq.com/openai/v1",
+    "contextWindow": 131072,
+    "cost": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "input": 0.29,
+      "output": 0.59
+    },
+    "id": "qwen/qwen3-32b",
+    "input": [
+      "text"
+    ],
+    "maxTokens": 40960,
+    "name": "Qwen3-32B",
+    "provider": "groq",
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "default",
+      "low": null,
+      "medium": null,
+      "minimal": null
+    }
+  }
+}

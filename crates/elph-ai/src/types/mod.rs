@@ -409,6 +409,7 @@ pub enum AssistantMessageEvent {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenAICompletionsCompat {
     pub supports_store: Option<bool>,
     pub supports_developer_role: Option<bool>,
@@ -428,6 +429,7 @@ pub struct OpenAICompletionsCompat {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenAIResponsesCompat {
     pub supports_developer_role: Option<bool>,
     pub send_session_id_header: Option<bool>,
@@ -435,6 +437,7 @@ pub struct OpenAIResponsesCompat {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AnthropicMessagesCompat {
     pub supports_eager_tool_input_streaming: Option<bool>,
     pub supports_long_cache_retention: Option<bool>,

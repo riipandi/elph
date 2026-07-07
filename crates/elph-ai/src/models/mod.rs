@@ -1,5 +1,8 @@
+pub mod catalog;
+
 mod collection;
 
+pub use catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};
 pub use collection::*;
 
 use crate::types::{Model, ThinkingLevel, Usage};

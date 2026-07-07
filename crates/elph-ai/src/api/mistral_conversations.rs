@@ -341,6 +341,16 @@ fn finish_current(output: &mut AssistantMessage, stream: &AssistantMessageEventS
     }
 }
 
+/// Build Mistral chat payload (used by integration tests mirroring pi-ai).
+pub fn build_mistral_conversations_payload(
+    model: &Model,
+    context: &Context,
+    messages: &[Message],
+    options: &MistralOptions,
+) -> Result<Value> {
+    build_chat_payload(model, context, messages, options)
+}
+
 fn build_chat_payload(
     model: &Model,
     context: &Context,

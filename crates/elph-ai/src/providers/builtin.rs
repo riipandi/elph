@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, openai_codex_oauth};
 use crate::auth::{AuthModel, AuthResolveInput, AuthResult, ModelAuth, ProviderAuth, env_api_key_auth};
+use crate::models::catalog::*;
 use crate::models::{
     CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi, create_models, create_provider,
 };
@@ -14,7 +15,6 @@ use crate::providers::adapter::{
     openai_completions_api, openai_responses_api,
 };
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
-use crate::providers::models::*;
 
 macro_rules! simple_provider {
     ($id:expr, $name:expr, $models:expr, $api:expr, $env:expr) => {
@@ -507,4 +507,4 @@ pub fn builtin_models(options: Option<CreateModelsOptions>) -> MutableModels {
     models
 }
 
-pub use crate::providers::models::{get_builtin_model, get_builtin_models, get_builtin_providers};
+pub use crate::models::catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};

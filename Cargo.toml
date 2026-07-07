@@ -12,8 +12,11 @@ edition = "2024"
 # Planned — not yet wired into crates:
 # agent-client-protocol = "1.0.1"
 # fff-search = "0.9.6"
-# rmcp = { version = "2.1.0", features = ["auth", "client"] }
+# git2 = { version = "0.21.0", features = ["cred", "https", "ssh"] }
 # jsonschema = "=0.46.10"
+# rmcp = { version = "2.1.0", features = ["auth", "client"] }
+# ropey = { version = "1.6.1", features = ["metric_lines_lf_cr", "simd"] }
+# rustc-hash = { version = "2.1.3", features = ["rand", "std"] }
 anyhow = "1.0.103"
 axum = { version = "0.8.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 clap = { version = "4.5", default-features = false, features = [
@@ -27,10 +30,10 @@ clap = { version = "4.5", default-features = false, features = [
 crokey = "1.4.0"
 crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "events"] }
 cuid2 = "0.1.6"
-elph-agent = { path = "crates/elph-agent", version = "0.0.20" }
-elph-ai = { path = "crates/elph-ai", version = "0.0.20" }
-elph-core = { path = "crates/elph-core", version = "0.0.8" }
-elph-tui = { path = "crates/elph-tui", version = "0.0.20" }
+elph-agent = { path = "crates/elph-agent", version = "0.0.21" }
+elph-ai = { path = "crates/elph-ai", version = "0.0.21" }
+elph-core = { path = "crates/elph-core", version = "0.0.9" }
+elph-tui = { path = "crates/elph-tui", version = "0.0.21" }
 indicatif = { version = "0.18.6", default-features = false, features = ["unicode-width"] }
 iocraft = "0.8.3"
 libc = "0.2"

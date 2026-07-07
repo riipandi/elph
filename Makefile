@@ -18,12 +18,14 @@ UNAME_S := $(shell uname -s)
 # ─── Args ───────────────────────────────────────────────────────────────────
 
 # Named args:  make run ARGS="-- --nocapture"  /  make test PKG=foo
+# pi-ai:      make generate-models PI_AI_DIR=/path/to/pi/packages/ai ARGS="--skip-pi"
+PI_AI_DIR  ?= ../pi/packages/ai
 ARGS       :=
 _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage help
+.PHONY: build run watch test lint fmt clean check coverage help generate-models
 .PHONY: prepare cross cross-pull release
 .PHONY: build-linux build-macos build-windows
 .PHONY: bump bump-elph bump-eclaw bump-libs publish publish-dry-run
@@ -72,6 +74,14 @@ watch: ## Run eclaw with hot reload (requires watchexec)
 
 test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
+
+generate-models: ## Regenerate elph-ai model catalogs from pi-ai (PI_AI_DIR, ARGS=--skip-pi)
+	@test -f "$(PI_AI_DIR)/scripts/generate-models.ts" || { \
+	  echo "pi-ai not found at: $(PI_AI_DIR)" >&2; \
+	  echo "Set PI_AI_DIR to the pi packages/ai root, e.g. PI_AI_DIR=/path/to/pi/packages/ai" >&2; \
+	  exit 1; \
+	}
+	@$(CARGO) run -p elph-ai --bin generate-models -- all --pi-dir "$(PI_AI_DIR)" $(ARGS)
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)

@@ -661,34 +661,19 @@ async fn collect_websocket_events(socket: &Arc<tokio::sync::Mutex<WsStream>>, bo
     Ok(events)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn cached_input_delta_extracts_only_new_messages() {
-        let continuation = CachedWebSocketContinuationState {
-            last_request_body: json!({
-                "model": "gpt-5",
-                "store": false,
-                "input": [{ "role": "user", "content": "hello" }]
-            }),
-            last_response_id: "resp_1".to_string(),
-            last_response_items: json!([{ "role": "assistant", "content": "hi" }]),
-        };
-        let body = json!({
-            "model": "gpt-5",
-            "store": false,
-            "input": [
-                { "role": "user", "content": "hello" },
-                { "role": "assistant", "content": "hi" },
-                { "role": "user", "content": "world" }
-            ]
-        });
-        let delta = get_cached_websocket_input_delta(&body, &continuation).expect("delta");
-        assert_eq!(delta, json!([{ "role": "user", "content": "world" }]));
-    }
+/// Exposed for integration tests (pi-ai codex websocket cache parity).
+#[doc(hidden)]
+pub fn get_codex_websocket_input_delta(
+    body: &Value,
+    last_request_body: &Value,
+    last_response_items: &Value,
+) -> Option<Value> {
+    let continuation = CachedWebSocketContinuationState {
+        last_request_body: last_request_body.clone(),
+        last_response_id: "resp_test".to_string(),
+        last_response_items: last_response_items.clone(),
+    };
+    get_cached_websocket_input_delta(body, &continuation)
 }
 
 async fn collect_codex_sse_events(

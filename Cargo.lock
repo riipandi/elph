@@ -1676,7 +1676,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "eclaw"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "axum",
@@ -1702,7 +1702,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "elph"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "clap",
@@ -1722,7 +1722,7 @@ dependencies = [
 
 [[package]]
 name = "elph-agent"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "elph-core",
@@ -1736,7 +1736,7 @@ dependencies = [
 
 [[package]]
 name = "elph-ai"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1747,10 +1747,12 @@ dependencies = [
  "axum",
  "base64 0.22.1",
  "chrono",
+ "clap",
  "eventsource-stream",
  "futures",
  "futures-util",
  "http 1.4.2",
+ "image",
  "indicatif",
  "jsonschema",
  "lazy_static",
@@ -1773,7 +1775,7 @@ dependencies = [
 
 [[package]]
 name = "elph-core"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "fastembed",
@@ -1792,7 +1794,7 @@ dependencies = [
 
 [[package]]
 name = "elph-swarm"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anyhow",
  "memorable-ids",
@@ -1803,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "elph-tui"
-version = "0.0.20"
+version = "0.0.21"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

@@ -12,7 +12,7 @@ mod registry;
 pub use anthropic::{anthropic_oauth, anthropic_oauth_loader, login_anthropic, refresh_anthropic_token};
 pub use github_copilot::{
     get_github_copilot_base_url, github_copilot_oauth, github_copilot_oauth_loader, login_github_copilot,
-    refresh_github_copilot_token,
+    normalize_domain, refresh_github_copilot_token,
 };
 pub use openai_codex::{
     OPENAI_CODEX_BROWSER_LOGIN_METHOD, OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD, login_openai_codex,
