@@ -9,10 +9,7 @@ pub const DEFAULT_DATA_DIR: &str = ".memz";
 /// Database file name inside the data directory.
 pub const DB_FILE_NAME: &str = "memory.db";
 
-/// Environment variable for the memz data directory.
-pub const ENV_DATA_DIR: &str = "MEMZ_DIR";
-
-/// Resolved filesystem paths for a memz store. Agnostic — no MCP/CLI/hook side effects.
+/// Resolved filesystem paths for a memz store.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemzPaths {
     pub data_dir: PathBuf,
@@ -30,10 +27,8 @@ impl MemzPaths {
         Self::new(DEFAULT_DATA_DIR)
     }
 
-    /// Resolve from `MEMZ_DIR`, else `.memz`.
-    pub fn from_env() -> Self {
-        let dir = std::env::var(ENV_DATA_DIR).unwrap_or_else(|_| DEFAULT_DATA_DIR.to_string());
-        Self::new(dir)
+    pub fn data_dir(&self) -> &Path {
+        &self.data_dir
     }
 
     pub fn db_path(&self) -> PathBuf {

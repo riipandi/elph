@@ -1,16 +1,17 @@
 //! Versioned schema migrations for the memz memory store.
 //!
 //! Schema derived from [memelord](https://github.com/glommer/memelord) (`packages/sdk`).
-//! Host applications (e.g. Elph) can map [`MemzMigration`] entries into their own
-//! migration runner — see `elph::runtime::migrations::memory_migrations`.
+//! Host applications can map [`MemzMigration`] entries into their own migration runner.
 
 use anyhow::Result;
 use turso::Connection;
 
+use super::util::drain_rows;
+
 /// One versioned SQL migration for the memz store.
 ///
-/// Field layout matches host migration runners (e.g. `elph_agent::Migration`) so
-/// consumers can map entries without coupling `elph-core` to the agent crate.
+/// Field layout matches common host migration runners so consumers can map entries
+/// without coupling this module to a specific application crate.
 #[derive(Debug, Clone, Copy)]
 pub struct MemzMigration {
     pub version: i64,
@@ -64,8 +65,17 @@ CREATE TABLE IF NOT EXISTS meta (
 pub const V2_NAME: &str = "memz_fix_truncated_embeddings";
 pub const V2_UP: &str = "UPDATE memories SET embedding = NULL WHERE embedding IS NOT NULL AND length(embedding) < 1536";
 
+pub const V3_NAME: &str = "memz_query_indexes";
+pub const V3_UP: &str = r#"
+CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);
+CREATE INDEX IF NOT EXISTS idx_memories_source_task ON memories(source_task);
+CREATE INDEX IF NOT EXISTS idx_memories_created_at ON memories(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memory_retrievals_task_id ON memory_retrievals(task_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_started_at ON tasks(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memories_pending_embed ON memories(id) WHERE embedding IS NULL"#;
+
 /// Latest memz schema version. Hosts should start custom migrations above this.
-pub const LAST_VERSION: i64 = 2;
+pub const LAST_VERSION: i64 = 3;
 
 /// Canonical memz migration set — inject or extend in the host migration registry.
 pub const MIGRATIONS: &[MemzMigration] = &[
@@ -78,6 +88,11 @@ pub const MIGRATIONS: &[MemzMigration] = &[
         version: 2,
         name: V2_NAME,
         up: V2_UP,
+    },
+    MemzMigration {
+        version: 3,
+        name: V3_NAME,
+        up: V3_UP,
     },
 ];
 
@@ -115,7 +130,7 @@ async fn run(conn: &Connection, migrations: &[MemzMigration]) -> Result<()> {
             0
         };
         // Drain the cursor before DDL — Turso blocks execute_batch on open queries.
-        while rows.next().await?.is_some() {}
+        drain_rows(&mut rows).await?;
         version
     };
 

@@ -1,5 +1,5 @@
 use elph_agent::Migration;
-use elph_core::memz::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP};
+use elph_core::memz::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
@@ -108,6 +108,11 @@ pub fn memory_migrations() -> &'static [Migration] {
             version: 2,
             name: V2_NAME,
             up: V2_UP,
+        },
+        Migration {
+            version: 3,
+            name: V3_NAME,
+            up: V3_UP,
         },
     ];
     MIGRATIONS

@@ -56,19 +56,19 @@ Path resolution: `Paths::memory_db_path()` → `PROJECT_DIR/.elph/memory.db`.
 
 Migrations run through Elph's datastore bootstrap (`elph::runtime::migrations::memory_migrations`),
 composed from `elph_core::memz::migrations::MIGRATIONS`. Host-specific migrations use
-`version > memz::migrations::LAST_VERSION` (currently `2`).
+`version > memz::migrations::LAST_VERSION` (currently `3`).
 
 ### Standalone library use
 
-For non-Elph consumers, `MemzPaths` resolves:
+For non-Elph consumers, pass paths explicitly via [`MemzPaths`] or [`MemzBuilder`]:
 
-| Constant / env     | Value       |
+| Constant           | Value       |
 | ------------------ | ----------- |
 | `DEFAULT_DATA_DIR` | `.memz`     |
-| `ENV_DATA_DIR`     | `MEMZ_DIR`  |
 | `DB_FILE_NAME`     | `memory.db` |
 
-Default path: `./.memz/memory.db`.
+Default: `MemzPaths::project_local()` → `./.memz/memory.db`. The memz module does not read
+environment variables; hosts supply directories and options as arguments.
 
 ### Model cache (Elph)
 
@@ -184,34 +184,31 @@ Read-only commands (`status`, `list`, `tasks`, `log`, `purge`) use a no-op embed
 
 ### Opening a store
 
+Prefer [`MemzBuilder`] — all configuration is explicit (no environment variables):
+
 ```rust
-use std::sync::Arc;
-use elph_core::memz::{
-    MemzConfig, MemoryStore, create_memory_store,
-    create_fastembed, FastEmbedOptions, EmbedFn,
-    resolve_embedding_model, embedding_dims,
-};
+use elph_core::memz::{MemzBuilder, MemzPaths, FastEmbedOptions};
 
-// With local embeddings (feature fastembed)
-let model = resolve_embedding_model("AllMiniLML6V2", true)?;
-let dims = embedding_dims(&model);
-let embed = create_fastembed(
-    FastEmbedOptions::default().model("AllMiniLML6V2").quantized(true),
-)?;
-
-// Or a custom embedder — set MemzConfig::dimensions to match your vectors
-let embed: EmbedFn = Arc::new(|text| {
-    Box::pin(async move {
-        Ok(my_embed(text).await?)
-    })
-});
-
-let store = create_memory_store(
-    MemzConfig::new("/path/to/memory.db", "session-id").dimensions(dims),
-    embed,
-);
+// Standalone path + local embeddings (feature fastembed)
+let store = MemzPaths::project_local()
+    .builder("session-id")
+    .fastembed(
+        FastEmbedOptions::default()
+            .model("AllMiniLML6V2")
+            .quantized(true)
+            .cache_dir("/path/to/models"),
+    )?
+    .build()?;
 store.init().await?;
+
+// Read-only inspection without a model
+let store = MemzBuilder::new("/path/to/memory.db", "session-id")
+    .dimensions(384)
+    .noop_embed()
+    .build()?;
 ```
+
+Lower-level: `create_memory_store(MemzConfig, EmbedFn)` remains available for custom wiring.
 
 ### Task lifecycle
 
@@ -335,14 +332,15 @@ Names that already end in `Q` are left unchanged.
 Embedding dimensions are read from fastembed model metadata via `embedding_dims()` (384 for
 `AllMiniLML6V2`; other models vary).
 
-### Configuration precedence
+### Configuration
 
-| Context         | Order (highest first)                                                                    |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| Elph CLI        | `settings.json` → (`FastEmbedOptions` built from settings)                               |
-| Library / API   | `FastEmbedOptions::model` → `MEMZ_EMBED_MODEL` env → default                             |
-| Quantized flag  | `settings.json` / `FastEmbedOptions::quantized` (default: `true`)                        |
-| Cache directory | Elph: `Paths::models_dir()`; library: `FastEmbedOptions::cache_dir` or fastembed default |
+| Context      | Source                                                               |
+| ------------ | -------------------------------------------------------------------- |
+| memz library | [`MemzBuilder`] / [`FastEmbedOptions`] builder methods and arguments |
+| Elph CLI     | `settings.json` mapped into `MemzBuilder` by `elph::memory::store`   |
+
+memz itself does not read environment variables. Unset `FastEmbedOptions::model` falls back to
+[`DEFAULT_EMBED_MODEL`] (`AllMiniLML6V2`).
 
 ### First-run download
 
@@ -398,6 +396,7 @@ Memz ships versioned migrations in `elph_core::memz::migrations`:
 | ------- | ------------------------------- | ---------------------------------- |
 | 1       | `memz_create_schema`            | Core tables                        |
 | 2       | `memz_fix_truncated_embeddings` | Null out truncated embedding blobs |
+| 3       | `memz_query_indexes`            | Indexes for list/search/task joins |
 
 Elph maps these into `memory_migrations()` and applies them during `ensure_datastore`.
 `MemoryStore::init()` also calls `migrations::apply()` (idempotent).
@@ -415,7 +414,7 @@ To extend the schema in Elph, append migrations with `version > LAST_VERSION` in
 | `elph::runtime::settings`  | `memory.embedModel` / `memory.embedQuantized` in `settings.json`         |
 | `elph::runtime::datastore` | Runs metadata + memory migrations                                        |
 | `elph::runtime::project`   | Creates `.elph/` and gitignore                                           |
-| `elph::memory::store`      | Opens `MemoryStore` with settings-driven embedder + dims                 |
+| `elph::memory::store`      | Opens `MemoryStore` via `MemzBuilder` (`apply_migrations(false)`)        |
 | `elph memory`              | CLI over `elph_core::memz::MemoryStore`                                  |
 
 The agent runtime can open the same store path and call the task lifecycle API during
@@ -425,14 +424,18 @@ sessions. The CLI is for inspection and manual maintenance.
 
 ## Environment variables
 
-| Variable           | Scope           | Description                                                     |
-| ------------------ | --------------- | --------------------------------------------------------------- |
-| `ELPH_HOME`        | Elph            | Config directory (default `~/.elph`; holds `settings.json`)     |
-| `ELPH_DATA_DIR`    | Elph            | Data directory (default `~/.local/share/elph`; holds `models/`) |
-| `ELPH_PROJECT_DIR` | Elph            | Project root (determines `.elph/memory.db`)                     |
-| `XDG_DATA_HOME`    | Elph            | Base for data dir when `ELPH_DATA_DIR` is unset                 |
-| `MEMZ_DIR`         | memz standalone | Data directory (default `.memz`)                                |
-| `MEMZ_EMBED_MODEL` | Library         | Override model when `FastEmbedOptions::model` is unset          |
+| Variable           | Scope | Description                                                     |
+| ------------------ | ----- | --------------------------------------------------------------- |
+| `ELPH_HOME`        | Elph  | Config directory (default `~/.elph`; holds `settings.json`)     |
+| `ELPH_DATA_DIR`    | Elph  | Data directory (default `~/.local/share/elph`; holds `models/`) |
+| `ELPH_PROJECT_DIR` | Elph  | Project root (determines `.elph/memory.db`)                     |
+| `XDG_DATA_HOME`    | Elph  | Base for data dir when `ELPH_DATA_DIR` is unset                 |
+
+---
+
+[`MemzBuilder`]: ../crates/elph-core/src/memz/builder.rs
+[`MemzPaths`]: ../crates/elph-core/src/memz/paths.rs
+[`DEFAULT_EMBED_MODEL`]: ../crates/elph-core/src/memz/embed.rs
 
 ---
 

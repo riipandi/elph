@@ -11,7 +11,7 @@ use super::types::{
 use super::util::{category_from_str, drain_rows, embedding_status, vec_buf};
 
 impl MemoryStore {
-    /// Extended store status (`elph memory status`).
+    /// Extended store statistics (counts, categories, top memories, task metrics).
     pub async fn get_status(&self) -> Result<StoreStatus> {
         self.init().await?;
         self.with_db(|conn| async move {
@@ -80,7 +80,7 @@ impl MemoryStore {
         .await
     }
 
-    /// List memories, optionally filtered by category (`elph memory list`).
+    /// List memories, optionally filtered by category.
     pub async fn list_memories(&self, category: Option<MemoryCategory>) -> Result<Vec<MemoryRecord>> {
         self.init().await?;
         let filter = category.map(super::util::category_str);
@@ -112,7 +112,7 @@ impl MemoryStore {
                     weight: row.get(3)?,
                     retrieval_count: row.get(4)?,
                     created_at: row.get(5)?,
-                    embedding_status: embedding_status(row.get::<Option<i64>>(6)?),
+                    embedding_status: embedding_status(row.get::<Option<i64>>(6)?, self.dimensions()),
                 });
             }
             drain_rows(&mut rows).await?;
@@ -121,7 +121,7 @@ impl MemoryStore {
         .await
     }
 
-    /// List recent tasks with retrievals and memories created during each task (`elph memory tasks`).
+    /// List recent tasks with retrievals and memories created during each task.
     pub async fn list_tasks(&self, limit: u32) -> Result<Vec<TaskRecord>> {
         self.init().await?;
         self.with_db(move |conn| async move {
@@ -252,7 +252,7 @@ impl MemoryStore {
         .await
     }
 
-    /// Merged timeline of tasks and memory events (`elph memory log`).
+    /// Merged timeline of tasks and memory events.
     pub async fn get_timeline(&self, limit: u32) -> Result<Vec<TimelineEvent>> {
         self.init().await?;
         self.with_db(move |conn| async move {
@@ -329,7 +329,7 @@ impl MemoryStore {
         self.init().await?;
         let embedding = (self.embed_fn())(query).await?;
         let emb_buf = vec_buf(&embedding);
-        let sql = self.retrieval_sql().to_string();
+        let sql = self.retrieval_sql();
         let decay_rate = self.decay_rate();
         let top_k = self.top_k();
         let now = super::store::now_secs();
@@ -337,7 +337,7 @@ impl MemoryStore {
         self.with_db(move |conn| async move {
             let mut rows = conn
                 .query(
-                    &sql,
+                    sql.as_ref(),
                     params![emb_buf.as_slice(), emb_buf.as_slice(), decay_rate, now, top_k],
                 )
                 .await?;
@@ -361,9 +361,8 @@ impl MemoryStore {
         .await
     }
 
-    /// Semantic search via full task lifecycle (`elph memory search` — creates a task).
+    /// Semantic search via full task lifecycle (creates a task record).
     pub async fn search(&self, query: &str) -> Result<super::types::StartTaskResult> {
-        let _ = self.embed_pending().await?;
         self.start_task(query).await
     }
 }

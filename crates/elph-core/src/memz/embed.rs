@@ -14,9 +14,6 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "fastembed")]
 use super::store::EmbedFuture;
 
-/// Environment variable to override the embedding model name.
-pub const ENV_EMBED_MODEL: &str = "MEMZ_EMBED_MODEL";
-
 /// Default embedding model when none is configured.
 pub const DEFAULT_EMBED_MODEL: &str = "AllMiniLML6V2";
 
@@ -57,6 +54,11 @@ impl FastEmbedOptions {
 
     pub fn quantized(mut self, quantized: bool) -> Self {
         self.quantized = quantized;
+        self
+    }
+
+    pub fn show_download_progress(mut self, show: bool) -> Self {
+        self.show_download_progress = Some(show);
         self
     }
 }
@@ -125,10 +127,7 @@ pub fn embedding_dims(model: &fastembed::EmbeddingModel) -> u32 {
 pub fn create_fastembed(options: FastEmbedOptions) -> anyhow::Result<EmbedFn> {
     use fastembed::{TextEmbedding, TextInitOptions};
 
-    let model_name = options
-        .model
-        .or_else(|| std::env::var(ENV_EMBED_MODEL).ok())
-        .unwrap_or_else(|| DEFAULT_EMBED_MODEL.to_string());
+    let model_name = options.model.unwrap_or_else(|| DEFAULT_EMBED_MODEL.to_string());
 
     let embedding_model =
         resolve_embedding_model(&model_name, options.quantized).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -171,7 +170,7 @@ pub fn create_fastembed(options: FastEmbedOptions) -> anyhow::Result<EmbedFn> {
 
 #[cfg(not(feature = "fastembed"))]
 pub fn create_fastembed(_options: FastEmbedOptions) -> anyhow::Result<EmbedFn> {
-    anyhow::bail!("fastembed embedder requires the `fastembed` feature on elph-core");
+    anyhow::bail!("fastembed embedder requires the `fastembed` feature");
 }
 
 #[cfg(feature = "fastembed")]

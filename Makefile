@@ -32,7 +32,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
-	@$(CARGO) bloat --release -n 20
+	@$(CARGO) bloat --release -n 50
 
 build: ## Build all application binaries (elph + eclaw)
 	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION) ($(BUILD_HASH))"

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, OnceLock};
+
 use std::time::{SystemTime, UNIX_EPOCH};
 use turso::{Builder, Connection, Database, params};
 use uuid::Uuid;
@@ -16,13 +17,55 @@ use super::types::{
     DecayResult, Memory, MemoryCategory, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
     StartTaskResult, TaskBaseline, TaskEndInput, TopMemory, VectorType,
 };
-use super::util::{category_from_str, category_str, drain_rows, retrieval_sql, vec_buf};
+use super::util::{DEFAULT_EMBEDDING_DIMS, category_from_str, category_str, drain_rows, retrieval_sql, vec_buf};
 
 pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
 pub type EmbedFn = Arc<dyn Fn(&str) -> EmbedFuture + Send + Sync>;
 
+/// Embedder that returns zero vectors (read-only inspection without a model).
+pub fn noop_embedder(dimensions: u32) -> EmbedFn {
+    Arc::new(move |_| {
+        let dims = dimensions as usize;
+        Box::pin(async move { Ok(vec![0.0f32; dims]) })
+    })
+}
+
 type WeightUpdate = (String, f64);
 type SelfReportRow = (String, u8, f64);
+
+/// Max memories backfilled per [`MemoryStore::embed_pending`] round-trip.
+const EMBED_PENDING_BATCH: i64 = 64;
+
+fn in_placeholders(n: usize) -> String {
+    std::iter::repeat_n("?", n).collect::<Vec<_>>().join(", ")
+}
+
+async fn touch_retrieved_memories(conn: &Connection, memory_ids: &[String], now: i64) -> Result<()> {
+    if memory_ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders = in_placeholders(memory_ids.len());
+    let sql = format!(
+        "UPDATE memories SET last_retrieved = ?, retrieval_count = retrieval_count + 1 WHERE id IN ({placeholders})"
+    );
+    let now_str = now.to_string();
+    let mut param_refs: Vec<&str> = Vec::with_capacity(1 + memory_ids.len());
+    param_refs.push(now_str.as_str());
+    param_refs.extend(memory_ids.iter().map(String::as_str));
+    conn.execute(&sql, turso::params_from_iter(param_refs)).await?;
+    Ok(())
+}
+
+async fn batch_set_weights(conn: &Connection, updates: &[WeightUpdate]) -> Result<()> {
+    for (id, weight) in updates {
+        conn.execute(
+            "UPDATE memories SET weight = ? WHERE id = ?",
+            params![weight, id.as_str()],
+        )
+        .await?;
+    }
+    Ok(())
+}
 
 pub(crate) fn now_secs() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
@@ -65,10 +108,12 @@ pub struct MemoryStore {
     session_id: String,
     embed: EmbedFn,
     vector_type: VectorType,
-    retrieval_sql: OnceLock<String>,
+    retrieval_sql: OnceLock<Arc<str>>,
     top_k: u32,
     learning_rate: f64,
     decay_rate: f64,
+    dimensions: u32,
+    apply_migrations: bool,
 
     initialized: Mutex<bool>,
     current_task_id: Mutex<Option<String>>,
@@ -86,10 +131,16 @@ impl MemoryStore {
             top_k: config.top_k.unwrap_or(5),
             learning_rate: config.learning_rate.unwrap_or(0.1),
             decay_rate: config.decay_rate.unwrap_or(0.995),
+            dimensions: config.dimensions.unwrap_or(DEFAULT_EMBEDDING_DIMS),
+            apply_migrations: config.apply_migrations.unwrap_or(true),
             initialized: Mutex::new(false),
             current_task_id: Mutex::new(None),
             baseline: Mutex::new(empty_baseline()),
         }
+    }
+
+    pub fn dimensions(&self) -> u32 {
+        self.dimensions
     }
 
     pub(crate) fn vector_fn(&self) -> &'static str {
@@ -101,8 +152,10 @@ impl MemoryStore {
         }
     }
 
-    pub(crate) fn retrieval_sql(&self) -> &str {
-        self.retrieval_sql.get_or_init(|| retrieval_sql(self.vector_fn()))
+    pub(crate) fn retrieval_sql(&self) -> Arc<str> {
+        self.retrieval_sql
+            .get_or_init(|| Arc::from(retrieval_sql(self.vector_fn())))
+            .clone()
     }
 
     pub(crate) fn embed_fn(&self) -> &EmbedFn {
@@ -180,8 +233,11 @@ impl MemoryStore {
         if *self.initialized.lock().unwrap() {
             return Ok(());
         }
-        self.with_db(|conn| async move {
-            migrations::apply(&conn).await?;
+        let apply_migrations = self.apply_migrations;
+        self.with_db(move |conn| async move {
+            if apply_migrations {
+                migrations::apply(&conn).await?;
+            }
 
             // Load baseline
             let mut rows = conn.query("SELECT value FROM meta WHERE key = 'baseline'", ()).await?;
@@ -222,7 +278,7 @@ impl MemoryStore {
         let decay_rate = self.decay_rate;
         let top_k = self.top_k;
         let emb_buf = vec_buf(&task_embedding);
-        let retrieval_sql = self.retrieval_sql().to_string();
+        let retrieval_sql = self.retrieval_sql();
         let task_id_clone = task_id.clone();
         let description = description.to_string();
 
@@ -236,7 +292,7 @@ impl MemoryStore {
 
                 let mut rows = conn
                     .query(
-                        &retrieval_sql,
+                        retrieval_sql.as_ref(),
                         params![emb_buf.as_slice(), emb_buf.as_slice(), decay_rate, now, top_k],
                     )
                     .await?;
@@ -259,16 +315,13 @@ impl MemoryStore {
                 for mem in &mems {
                     conn.execute(
                         "INSERT OR IGNORE INTO memory_retrievals (memory_id, task_id, similarity) VALUES (?, ?, ?)",
-                        params![mem.id.clone(), task_id_clone.clone(), mem.score],
-                    )
-                    .await?;
-
-                    conn.execute(
-                        "UPDATE memories SET last_retrieved = ?, retrieval_count = retrieval_count + 1 WHERE id = ?",
-                        params![now, mem.id.clone()],
+                        params![mem.id.as_str(), task_id_clone.as_str(), mem.score],
                     )
                     .await?;
                 }
+
+                let memory_ids: Vec<String> = mems.iter().map(|m| m.id.clone()).collect();
+                touch_retrieved_memories(&conn, &memory_ids, now).await?;
 
                 Ok(mems)
             })
@@ -434,13 +487,7 @@ impl MemoryStore {
             )
             .await?;
 
-            for (memory_id, new_weight) in &weight_updates {
-                conn.execute(
-                    "UPDATE memories SET weight = ? WHERE id = ?",
-                    params![new_weight, memory_id.clone()],
-                )
-                .await?;
-            }
+            batch_set_weights(&conn, &weight_updates).await?;
 
             for (memory_id, score, credit) in &self_report_entries {
                 conn.execute(
@@ -599,11 +646,25 @@ impl MemoryStore {
 
     pub async fn embed_pending(&self) -> Result<usize> {
         self.init().await?;
+        let mut total = 0usize;
+        loop {
+            let n = self.embed_pending_batch().await?;
+            if n == 0 {
+                break;
+            }
+            total += n;
+        }
+        Ok(total)
+    }
 
+    async fn embed_pending_batch(&self) -> Result<usize> {
         let rows: Vec<(String, String)> = self
             .with_db(|conn| async move {
                 let mut r = conn
-                    .query("SELECT id, content FROM memories WHERE embedding IS NULL", ())
+                    .query(
+                        "SELECT id, content FROM memories WHERE embedding IS NULL LIMIT ?",
+                        params![EMBED_PENDING_BATCH],
+                    )
                     .await?;
                 let mut out = Vec::new();
                 while let Some(row) = r.next().await? {
@@ -627,8 +688,11 @@ impl MemoryStore {
         let n = rows.len();
         self.with_db(move |conn| async move {
             for (id, emb) in embedded {
-                conn.execute("UPDATE memories SET embedding = ? WHERE id = ?", params![emb, id])
-                    .await?;
+                conn.execute(
+                    "UPDATE memories SET embedding = ? WHERE id = ?",
+                    params![emb.as_slice(), id],
+                )
+                .await?;
             }
             Ok(())
         })
@@ -743,6 +807,7 @@ mod tests {
             top_k: Some(3),
             learning_rate: Some(0.1),
             decay_rate: Some(0.995),
+            apply_migrations: None,
         }
     }
 
@@ -995,7 +1060,9 @@ mod tests {
                     .await
                     .map_err(anyhow::Error::from)?
                     .ok_or_else(|| anyhow::anyhow!("no row"))?;
-                row.get(0).map_err(anyhow::Error::from)
+                let count: i64 = row.get(0).map_err(anyhow::Error::from)?;
+                drain_rows(&mut rows).await?;
+                Ok(count)
             })
             .await
             .expect("orphan count");

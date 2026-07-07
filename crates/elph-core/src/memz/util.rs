@@ -44,10 +44,11 @@ pub fn vec_buf(v: &[f32]) -> Vec<u8> {
     v.iter().flat_map(|f| f.to_le_bytes()).collect()
 }
 
-pub fn embedding_status(byte_len: Option<i64>) -> EmbeddingStatus {
+pub fn embedding_status(byte_len: Option<i64>, dimensions: u32) -> EmbeddingStatus {
+    let expected_bytes = (dimensions as usize) * std::mem::size_of::<f32>();
     match byte_len {
         None | Some(0) => EmbeddingStatus::Pending,
-        Some(n) if n == VALID_EMBEDDING_BYTES as i64 => EmbeddingStatus::Ok,
+        Some(n) if n == expected_bytes as i64 => EmbeddingStatus::Ok,
         Some(_) => EmbeddingStatus::Truncated,
     }
 }

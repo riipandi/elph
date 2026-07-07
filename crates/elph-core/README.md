@@ -11,11 +11,11 @@ scoring, and task-scoped lifecycle tracking. Memories persist across sessions so
 reuse lessons from past work.
 
 ```rust
-use elph_core::memz::{MemzConfig, create_memory_store, create_fastembed, FastEmbedOptions};
+use elph_core::memz::{MemzBuilder, FastEmbedOptions};
 
-let config = MemzConfig::new("/path/to/memory.db", "session-id");
-let embed = create_fastembed(FastEmbedOptions::default())?; // requires `fastembed`
-let store = create_memory_store(config, embed);
+let store = MemzBuilder::new("/path/to/memory.db", "session-id")
+    .fastembed(FastEmbedOptions::default())? // requires `fastembed`
+    .build()?;
 
 store.init().await?;
 let result = store.start_task("implement auth middleware").await?;
@@ -25,7 +25,8 @@ let result = store.start_task("implement auth middleware").await?;
 **Feature:** `fastembed` — local embeddings via [fastembed](https://github.com/Anush008/fastembed-rs) (all-MiniLM-L6-v2, 384 dims).
 Without it, supply your own [`EmbedFn`](https://docs.rs/elph_core/latest/elph_core/memz/type.EmbedFn.html).
 
-**Paths:** Elph stores project memory at `PROJECT_DIR/.elph/memory.db`. Standalone use defaults to `./.memz/memory.db` (`MEMZ_DIR`).
+**Configuration:** explicit via [`MemzBuilder`](src/memz/builder.rs) — memz does not read environment variables.
+**Paths:** Elph stores project memory at `PROJECT_DIR/.elph/memory.db`. Standalone default: `MemzPaths::project_local()` → `./.memz/memory.db`.
 
 Full documentation: [docs/memory.md](../../docs/memory.md).
 

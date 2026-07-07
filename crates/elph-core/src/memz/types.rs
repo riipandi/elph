@@ -47,6 +47,9 @@ pub struct MemzConfig {
     pub learning_rate: Option<f64>,
     /// Daily decay rate for unused memories (default: 0.995)
     pub decay_rate: Option<f64>,
+    /// Run memz migrations in [`MemoryStore::init`] (default: true). Set `false` when the host
+    /// already applied [`crate::memz::migrations::MIGRATIONS`].
+    pub apply_migrations: Option<bool>,
 }
 
 impl MemzConfig {
@@ -59,6 +62,7 @@ impl MemzConfig {
             top_k: None,
             learning_rate: None,
             decay_rate: None,
+            apply_migrations: None,
         }
     }
 
@@ -84,6 +88,11 @@ impl MemzConfig {
 
     pub fn decay_rate(mut self, decay_rate: f64) -> Self {
         self.decay_rate = Some(decay_rate);
+        self
+    }
+
+    pub fn apply_migrations(mut self, apply: bool) -> Self {
+        self.apply_migrations = Some(apply);
         self
     }
 }
@@ -122,7 +131,7 @@ pub enum EmbeddingStatus {
     Truncated,
 }
 
-/// Full memory row for inspection APIs (`elph memory list`).
+/// Full memory row for inspection and listing APIs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryRecord {
     pub id: String,
@@ -140,7 +149,7 @@ pub struct CategoryCount {
     pub count: u32,
 }
 
-/// Extended status (`elph memory status`).
+/// Extended store status (counts, categories, top memories, task metrics).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreStatus {
     pub total_memories: u32,

@@ -7,8 +7,12 @@
 //!
 //! This Rust port preserves the core design (Turso-backed vector search,
 //! Welford baseline scoring, EMA weight updates) with platform-specific
-//! adaptations for the Turso Rust driver and the Elph runtime.
+//! adaptations for the Turso Rust driver.
+//!
+//! Configuration is explicit: use [`MemzBuilder`] or [`MemzConfig`] builder methods.
+//! No environment variables are read inside this module.
 
+mod builder;
 mod embed;
 pub mod migrations;
 mod paths;
@@ -19,12 +23,13 @@ mod store;
 mod types;
 mod util;
 
-pub use embed::{DEFAULT_EMBED_MODEL, ENV_EMBED_MODEL, FastEmbedOptions, create_fastembed};
+pub use builder::MemzBuilder;
+pub use embed::{DEFAULT_EMBED_MODEL, FastEmbedOptions, create_fastembed};
 #[cfg(feature = "fastembed")]
 pub use embed::{embedding_dims, resolve_embedding_model};
-pub use migrations::{LAST_VERSION, MIGRATIONS, MemzMigration, V1_NAME, V1_UP, V2_NAME, V2_UP};
-pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, ENV_DATA_DIR, MemzPaths};
-pub use store::{EmbedFn, MemoryStore};
+pub use migrations::{LAST_VERSION, MIGRATIONS, MemzMigration, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
+pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, MemzPaths};
+pub use store::{EmbedFn, MemoryStore, noop_embedder};
 pub use types::{
     CategoryCount, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult, Memory, MemoryCategory,
     MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
@@ -53,6 +58,7 @@ mod tests {
             top_k: None,
             learning_rate: None,
             decay_rate: None,
+            apply_migrations: None,
         };
         let embed: EmbedFn = std::sync::Arc::new(|_| Box::pin(async { Ok(vec![1.0, 0.0, 0.0, 0.0]) }));
         let _store = create_memory_store(config, embed);
