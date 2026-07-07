@@ -1,8 +1,10 @@
 //! Provider API implementation layer — ported from pi-ai `src/api/`.
 
 pub mod anthropic_messages;
+pub mod azure_base_url;
 pub mod azure_openai_responses;
 pub mod bedrock_converse_stream;
+pub mod bedrock_shared;
 pub mod cloudflare;
 pub mod codex_transport;
 pub mod common;

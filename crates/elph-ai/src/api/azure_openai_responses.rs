@@ -4,6 +4,7 @@ use anyhow::{Result, anyhow};
 
 use serde_json::{Value, json};
 
+use crate::api::azure_base_url::{build_default_azure_base_url, normalize_azure_base_url};
 use crate::api::common::{
     apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
 };
@@ -166,28 +167,11 @@ fn resolve_azure_config(model: &Model, options: &AzureOpenAIResponsesOptions) ->
                 .azure_resource_name
                 .clone()
                 .or_else(|| get_provider_env_value("AZURE_OPENAI_RESOURCE_NAME", options.base.env.as_ref()))
-                .map(|r| format!("https://{r}.openai.azure.com/openai/v1"))
+                .map(|r| build_default_azure_base_url(&r))
         })
         .or_else(|| Some(model.base_url.clone()))
         .ok_or_else(|| anyhow!("Azure OpenAI base URL is required"))?;
-    Ok((normalize_azure_base_url(&base_url), api_version))
-}
-
-fn normalize_azure_base_url(base_url: &str) -> String {
-    let trimmed = base_url.trim().trim_end_matches('/');
-    if let Ok(mut url) = url::Url::parse(trimmed) {
-        let host = url.host_str().unwrap_or("").to_lowercase();
-        let is_azure = host.ends_with(".openai.azure.com")
-            || host.ends_with(".cognitiveservices.azure.com")
-            || host.ends_with(".ai.azure.com");
-        let path = url.path().trim_end_matches('/');
-        if is_azure && (path.is_empty() || path == "/" || path == "/openai" || path == "/openai/v1/responses") {
-            url.set_path("/openai/v1");
-            url.set_query(None);
-        }
-        return url.to_string().trim_end_matches('/').to_string();
-    }
-    trimmed.to_string()
+    Ok((normalize_azure_base_url(&base_url)?, api_version))
 }
 
 fn build_params(
@@ -223,4 +207,51 @@ fn build_params(
         params["include"] = json!(["reasoning.encrypted_content"]);
     }
     Ok(params)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::api::openai_prompt_cache::OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH;
+    use crate::types::{Message, UserContent};
+
+    fn sample_context() -> Context {
+        Context {
+            system_prompt: None,
+            messages: vec![Message::User {
+                content: UserContent::Text("hello".to_string()),
+                timestamp: 0,
+            }],
+            tools: None,
+        }
+    }
+
+    fn sample_model() -> Model {
+        get_builtin_model_for_test()
+    }
+
+    fn get_builtin_model_for_test() -> Model {
+        crate::get_builtin_model("azure-openai-responses", "gpt-4o-mini").expect("model")
+    }
+
+    #[test]
+    fn build_params_clamps_prompt_cache_key_and_disables_store() {
+        let model = sample_model();
+        let context = sample_context();
+        let long_session = "x".repeat(OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH + 3);
+        let options = AzureOpenAIResponsesOptions {
+            base: StreamOptions {
+                session_id: Some(long_session),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let providers: HashSet<String> = AZURE_TOOL_CALL_PROVIDERS.iter().map(|s| s.to_string()).collect();
+        let params = build_params(&model, &context, &options, "gpt-4o-mini", &providers).expect("params");
+        assert_eq!(
+            params["prompt_cache_key"].as_str(),
+            Some("x".repeat(OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH).as_str())
+        );
+        assert_eq!(params["store"], false);
+    }
 }

@@ -56,8 +56,13 @@ async fn generate_images_inner(
     match run_generate(model, context, options).await {
         Ok(result) => result,
         Err(error) => {
-            output.stop_reason = StopReason::Error;
-            output.error_message = Some(format_provider_error(&normalize_provider_error(&error), None));
+            if error.to_string() == "Request aborted" {
+                output.stop_reason = StopReason::Aborted;
+                output.error_message = Some("Request aborted".to_string());
+            } else {
+                output.stop_reason = StopReason::Error;
+                output.error_message = Some(format_provider_error(&normalize_provider_error(&error), None));
+            }
             output
         }
     }
@@ -117,13 +122,26 @@ async fn run_generate(
         None,
     );
 
+    if options.signal.as_ref().is_some_and(|token| token.is_cancelled()) {
+        return Err(anyhow!("Request aborted"));
+    }
+
     let client = build_http_client(options.timeout_ms)?;
     let url = format!("{}/chat/completions", model.base_url.trim_end_matches('/'));
     let mut req = client.post(&url).bearer_auth(api_key).json(&params);
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let response = req.send().await?;
+    let response = match &options.signal {
+        Some(token) => {
+            let token = token.clone();
+            tokio::select! {
+                result = req.send() => result?,
+                _ = token.cancelled() => return Err(anyhow!("Request aborted")),
+            }
+        }
+        None => req.send().await?,
+    };
     invoke_on_response_from_reqwest(
         options.on_response.as_ref(),
         &response,

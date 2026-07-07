@@ -178,6 +178,11 @@ async fn run_faux(
     options: Option<&StreamOptions>,
     stream: &AssistantMessageEventStream,
 ) -> anyhow::Result<()> {
+    if crate::api::common::is_request_aborted(&options.and_then(|o| o.signal.clone())) {
+        let mut output = AssistantMessage::empty(model);
+        crate::api::common::finish_stream_error(stream, &mut output, crate::api::common::request_aborted_error(), true);
+        return Ok(());
+    }
     {
         let mut state = core.state.lock().unwrap();
         state.call_count += 1;

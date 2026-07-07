@@ -57,6 +57,39 @@ pub fn merge_model_headers(model: &Model, options: Option<&StreamOptions>) -> Ha
     merge_provider_headers(&base, options.and_then(|o| o.headers.as_ref()))
 }
 
+pub const REQUEST_ABORTED: &str = "Request aborted";
+
+pub fn is_request_aborted(token: &Option<tokio_util::sync::CancellationToken>) -> bool {
+    token.as_ref().is_some_and(|t| t.is_cancelled())
+}
+
+pub fn request_aborted_error() -> anyhow::Error {
+    anyhow!(REQUEST_ABORTED)
+}
+
+pub fn is_abort_error(error: &anyhow::Error) -> bool {
+    error.to_string() == REQUEST_ABORTED
+}
+
+pub async fn send_with_abort(
+    token: &Option<tokio_util::sync::CancellationToken>,
+    request: reqwest::RequestBuilder,
+) -> Result<reqwest::Response> {
+    if is_request_aborted(token) {
+        return Err(request_aborted_error());
+    }
+    match token {
+        Some(token) => {
+            let token = token.clone();
+            tokio::select! {
+                result = request.send() => result.map_err(Into::into),
+                _ = token.cancelled() => Err(request_aborted_error()),
+            }
+        }
+        None => request.send().await.map_err(Into::into),
+    }
+}
+
 pub fn finish_stream_error(
     stream: &AssistantMessageEventStream,
     output: &mut AssistantMessage,

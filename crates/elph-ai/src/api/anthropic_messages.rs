@@ -112,7 +112,8 @@ impl AnthropicMessagesApi {
         tokio::spawn(async move {
             let mut output = AssistantMessage::empty(&model);
             if let Err(error) = run_anthropic_stream(&model, &context, &options, &stream_clone, &mut output).await {
-                finish_stream_error(&stream_clone, &mut output, error, false);
+                let aborted = crate::api::common::is_abort_error(&error);
+                finish_stream_error(&stream_clone, &mut output, error, aborted);
             }
         });
 
@@ -155,7 +156,12 @@ async fn run_anthropic_stream(
         }
     }
 
-    let response = req.send().await?;
+    if crate::api::common::is_request_aborted(&options.base.signal) {
+        crate::api::common::finish_stream_error(stream, output, crate::api::common::request_aborted_error(), true);
+        return Ok(());
+    }
+
+    let response = crate::api::common::send_with_abort(&options.base.signal, req).await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
 

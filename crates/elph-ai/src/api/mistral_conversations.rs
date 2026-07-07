@@ -94,7 +94,8 @@ impl MistralConversationsApi {
         tokio::spawn(async move {
             let mut output = AssistantMessage::empty(&model);
             if let Err(e) = run_mistral(&model, &context, &options, &s, &mut output).await {
-                finish_stream_error(&s, &mut output, e, false);
+                let aborted = crate::api::common::is_abort_error(&e);
+                finish_stream_error(&s, &mut output, e, aborted);
             }
         });
         stream
@@ -125,7 +126,7 @@ async fn run_mistral(
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let response = req.send().await?;
+    let response = crate::api::common::send_with_abort(&options.base.signal, req).await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
 
@@ -338,6 +339,37 @@ fn finish_current(output: &mut AssistantMessage, stream: &AssistantMessageEventS
             }),
             _ => {}
         }
+    }
+}
+
+/// Build Mistral options from simple stream options (used by integration tests mirroring pi-ai).
+pub fn mistral_options_from_simple(
+    model: &Model,
+    context: &Context,
+    opts: Option<&SimpleStreamOptions>,
+) -> MistralOptions {
+    let base = build_base_options(model, context, opts, opts.and_then(|o| o.base.api_key.clone()));
+    let reasoning = opts.and_then(|o| o.reasoning).map(|r| clamp_thinking_level(model, r));
+    let should_reason = model.reasoning && reasoning.is_some();
+    MistralOptions {
+        base,
+        prompt_mode: if should_reason && uses_prompt_mode_reasoning(model) {
+            Some("reasoning".to_string())
+        } else {
+            None
+        },
+        reasoning_effort: if should_reason && uses_reasoning_effort(model) {
+            reasoning.map(|r| {
+                model
+                    .thinking_level_map
+                    .as_ref()
+                    .and_then(|m| m.get(thinking_level_to_str(r)).cloned().flatten())
+                    .unwrap_or_else(|| "high".to_string())
+            })
+        } else {
+            None
+        },
+        ..Default::default()
     }
 }
 

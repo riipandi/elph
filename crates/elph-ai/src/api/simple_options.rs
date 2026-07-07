@@ -42,6 +42,7 @@ pub fn build_base_options(
         env: opts.and_then(|o| o.env.clone()),
         on_payload: opts.and_then(|o| o.on_payload.clone()),
         on_response: opts.and_then(|o| o.on_response.clone()),
+        signal: opts.and_then(|o| o.signal.clone()),
     }
 }
 

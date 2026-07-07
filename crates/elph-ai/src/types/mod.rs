@@ -87,6 +87,7 @@ pub struct StreamOptions {
     pub env: Option<ProviderEnv>,
     pub on_payload: Option<OnPayloadCallback>,
     pub on_response: Option<OnResponseCallback>,
+    pub signal: Option<tokio_util::sync::CancellationToken>,
 }
 
 pub type OnPayloadCallback =
@@ -475,7 +476,7 @@ pub struct ImagesContext {
 #[derive(Clone)]
 pub struct ImagesOptions {
     pub api_key: Option<String>,
-    pub signal: Option<()>,
+    pub signal: Option<tokio_util::sync::CancellationToken>,
     pub env: Option<ProviderEnv>,
     pub headers: Option<ProviderHeaders>,
     pub timeout_ms: Option<u64>,

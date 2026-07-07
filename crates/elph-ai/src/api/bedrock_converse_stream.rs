@@ -10,6 +10,10 @@ use aws_sdk_bedrockruntime::types::{
 
 use serde_json::{Value, json};
 
+use crate::api::bedrock_shared::{
+    BedrockThinkingOptions, append_cache_point_to_last_user_message, build_additional_model_request_fields,
+    build_bedrock_system_blocks, resolve_bedrock_runtime_config, resolve_cache_retention,
+};
 use crate::api::common::{
     apply_on_payload, build_http_client, finish_stream_error, invoke_on_response_from_reqwest, merge_model_headers,
 };
@@ -31,9 +35,13 @@ use super::sse::collect_sse_json_events;
 pub struct BedrockOptions {
     pub base: StreamOptions,
     pub region: Option<String>,
+    pub profile: Option<String>,
     pub bearer_token: Option<String>,
     pub tool_choice: Option<String>,
     pub reasoning: Option<crate::types::ThinkingLevel>,
+    pub thinking_budgets: Option<crate::types::ThinkingBudgets>,
+    pub thinking_display: Option<String>,
+    pub interleaved_thinking: Option<bool>,
 }
 
 pub struct BedrockConverseStreamApi;
@@ -69,6 +77,18 @@ impl ProviderStreams for BedrockConverseStreamApi {
             );
         }
         let reasoning = opts.unwrap().reasoning;
+        if crate::api::bedrock_shared::supports_adaptive_thinking(&model.id, &model.name) {
+            return self.stream_with_options(
+                model,
+                context,
+                BedrockOptions {
+                    base,
+                    reasoning,
+                    thinking_budgets: opts.and_then(|o| o.thinking_budgets.clone()),
+                    ..Default::default()
+                },
+            );
+        }
         let (max_tokens, _thinking_budget) = adjust_max_tokens_for_thinking(
             base.max_tokens,
             model.max_tokens,
@@ -85,6 +105,7 @@ impl ProviderStreams for BedrockConverseStreamApi {
                     ..base
                 },
                 reasoning,
+                thinking_budgets: opts.and_then(|o| o.thinking_budgets.clone()),
                 ..Default::default()
             },
         )
@@ -105,7 +126,8 @@ impl BedrockConverseStreamApi {
         tokio::spawn(async move {
             let mut output = AssistantMessage::empty(&model);
             if let Err(e) = run_bedrock(&model, &context, &options, &s, &mut output).await {
-                finish_stream_error(&s, &mut output, e, false);
+                let aborted = crate::api::common::is_abort_error(&e);
+                finish_stream_error(&s, &mut output, e, aborted);
             }
         });
         stream
@@ -119,26 +141,48 @@ async fn run_bedrock(
     stream: &AssistantMessageEventStream,
     output: &mut AssistantMessage,
 ) -> Result<()> {
+    if crate::api::common::is_request_aborted(&options.base.signal) {
+        crate::api::common::finish_stream_error(stream, output, crate::api::common::request_aborted_error(), true);
+        return Ok(());
+    }
     let bearer = options
         .bearer_token
         .clone()
         .or_else(|| get_provider_env_value("AWS_BEARER_TOKEN_BEDROCK", options.base.env.as_ref()));
 
-    let region = options
-        .region
-        .clone()
-        .or_else(|| get_provider_env_value("AWS_REGION", options.base.env.as_ref()))
-        .or_else(|| get_provider_env_value("AWS_DEFAULT_REGION", options.base.env.as_ref()))
-        .unwrap_or_else(|| "us-east-1".to_string());
+    let ambient_profile = std::env::var("AWS_PROFILE").ok();
+    let env_profile = get_provider_env_value("AWS_PROFILE", options.base.env.as_ref());
+    let profile = options.profile.as_deref().or(env_profile.as_deref());
+    let thinking_opts = BedrockThinkingOptions {
+        region: options.region.as_deref(),
+        profile,
+        ambient_profile: ambient_profile.as_deref(),
+        reasoning: options.reasoning,
+        thinking_budgets: options.thinking_budgets.as_ref(),
+        thinking_display: options.thinking_display.as_deref(),
+        interleaved_thinking: options.interleaved_thinking.unwrap_or(true),
+        env: options.base.env.as_ref(),
+    };
+    let runtime = resolve_bedrock_runtime_config(model, &thinking_opts);
+    let region = runtime.region.clone().unwrap_or_else(|| "us-east-1".to_string());
 
     let mut body = build_converse_body(model, context, options)?;
     body = apply_on_payload(options.base.on_payload.as_ref(), body, model).await;
     let headers = merge_model_headers(model, Some(&options.base));
 
     let events = if let Some(bearer) = bearer {
-        run_bedrock_bearer(&region, model, &body, &headers, &bearer, options).await?
+        run_bedrock_bearer(
+            &region,
+            runtime.endpoint.as_deref(),
+            model,
+            &body,
+            &headers,
+            &bearer,
+            options,
+        )
+        .await?
     } else {
-        run_bedrock_sigv4(&region, model, &body, options).await?
+        run_bedrock_sigv4(&region, runtime.endpoint.as_deref(), model, &body, options).await?
     };
 
     let mut blocks: Vec<(usize, String)> = Vec::new();
@@ -248,13 +292,34 @@ pub fn build_bedrock_converse_body(model: &Model, context: &Context, options: &B
 }
 
 fn build_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
-    let messages = convert_messages(context, model);
+    let cache_retention = resolve_cache_retention(options.base.cache_retention, options.base.env.as_ref());
+    let mut messages = convert_messages(context, model);
+    append_cache_point_to_last_user_message(&mut messages, cache_retention);
     let mut body = json!({
         "messages": messages,
         "inferenceConfig": {}
     });
-    if let Some(sp) = &context.system_prompt {
-        body["system"] = json!([{ "text": sanitize_surrogates(sp) }]);
+    if let Some(system) = build_bedrock_system_blocks(
+        context.system_prompt.as_deref(),
+        model,
+        cache_retention,
+        options.base.env.as_ref(),
+        sanitize_surrogates,
+    ) {
+        body["system"] = json!(system);
+    }
+    let thinking_opts = BedrockThinkingOptions {
+        region: options.region.as_deref(),
+        profile: options.profile.as_deref(),
+        ambient_profile: None,
+        reasoning: options.reasoning,
+        thinking_budgets: options.thinking_budgets.as_ref(),
+        thinking_display: options.thinking_display.as_deref(),
+        interleaved_thinking: options.interleaved_thinking.unwrap_or(true),
+        env: options.base.env.as_ref(),
+    };
+    if let Some(additional) = build_additional_model_request_fields(model, &thinking_opts) {
+        body["additionalModelRequestFields"] = additional;
     }
     if let Some(max) = options.base.max_tokens {
         body["inferenceConfig"]["maxTokens"] = json!(max);
@@ -446,8 +511,20 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
     result
 }
 
+fn bedrock_converse_stream_url(model: &Model, region: &str, endpoint: Option<&str>) -> String {
+    if let Some(endpoint) = endpoint {
+        format!("{}/model/{}/converse-stream", endpoint.trim_end_matches('/'), model.id)
+    } else {
+        format!(
+            "https://bedrock-runtime.{region}.amazonaws.com/model/{}/converse-stream",
+            model.id
+        )
+    }
+}
+
 async fn run_bedrock_bearer(
     region: &str,
+    endpoint: Option<&str>,
     model: &Model,
     body: &Value,
     headers: &std::collections::HashMap<String, String>,
@@ -455,27 +532,36 @@ async fn run_bedrock_bearer(
     options: &BedrockOptions,
 ) -> Result<Vec<Value>> {
     let client = build_http_client(options.base.timeout_ms)?;
-    let url = format!(
-        "https://bedrock-runtime.{region}.amazonaws.com/model/{}/converse-stream",
-        model.id
-    );
+    let url = bedrock_converse_stream_url(model, region, endpoint);
     let mut req = client
         .post(&url)
         .header("Authorization", format!("Bearer {bearer}"))
         .json(body);
     for (k, v) in headers {
-        req = req.header(k, v);
+        if !crate::api::bedrock_shared::is_reserved_bedrock_header(k) {
+            req = req.header(k, v);
+        }
     }
-    let response = req.send().await?;
+    let response = crate::api::common::send_with_abort(&options.base.signal, req).await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
     collect_sse_json_events(response).await
 }
 
-async fn run_bedrock_sigv4(region: &str, model: &Model, body: &Value, _options: &BedrockOptions) -> Result<Vec<Value>> {
+async fn run_bedrock_sigv4(
+    region: &str,
+    endpoint: Option<&str>,
+    model: &Model,
+    body: &Value,
+    options: &BedrockOptions,
+) -> Result<Vec<Value>> {
     let mut loader = aws_config::defaults(BehaviorVersion::latest());
-    if let Ok(profile) = std::env::var("AWS_PROFILE") {
+    let env_profile = get_provider_env_value("AWS_PROFILE", options.base.env.as_ref());
+    if let Some(profile) = options.profile.as_deref().or(env_profile.as_deref()) {
         loader = loader.profile_name(profile);
+    }
+    if let Some(endpoint) = endpoint {
+        loader = loader.endpoint_url(endpoint);
     }
     let config = loader.region(aws_config::Region::new(region.to_string())).load().await;
     let client = BedrockClient::new(&config);

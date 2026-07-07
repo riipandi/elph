@@ -172,7 +172,18 @@ impl ImagesModels {
                 opts.api_key = res.auth.api_key;
             }
             if let Some(headers) = res.auth.headers {
-                opts.headers = Some(headers);
+                let mut merged = headers;
+                if let Some(request_headers) = opts.headers.take() {
+                    merged.extend(request_headers);
+                }
+                opts.headers = Some(merged);
+            }
+            if res.env.is_some() || opts.env.is_some() {
+                let mut merged = res.env.unwrap_or_default();
+                if let Some(request_env) = opts.env.take() {
+                    merged.extend(request_env);
+                }
+                opts.env = Some(merged);
             }
         }
 
