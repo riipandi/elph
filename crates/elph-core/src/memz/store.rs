@@ -8,6 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use turso::{Builder, Connection, Database, params};
 use uuid::Uuid;
 
+use super::migrations;
 use super::scoring::{
     compute_credit, compute_task_score, empty_baseline, initial_weight, update_baseline, update_weight,
 };
@@ -15,88 +16,17 @@ use super::types::{
     DecayResult, Memory, MemoryCategory, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
     StartTaskResult, TaskBaseline, TaskEndInput, TopMemory, VectorType,
 };
+use super::util::{category_from_str, category_str, retrieval_sql, vec_buf};
 
 pub type EmbedFuture = Pin<Box<dyn Future<Output = Result<Vec<f32>>> + Send>>;
 pub type EmbedFn = Arc<dyn Fn(&str) -> EmbedFuture + Send + Sync>;
 
-const SCHEMA: &str = r#"
-CREATE TABLE IF NOT EXISTS memories (
-    id              TEXT PRIMARY KEY,
-    content         TEXT NOT NULL,
-    embedding       BLOB,
-    category        TEXT NOT NULL,
-    weight          REAL DEFAULT 1.0,
-    initial_cost    INTEGER DEFAULT 0,
-    created_at      INTEGER NOT NULL,
-    last_retrieved  INTEGER,
-    retrieval_count INTEGER DEFAULT 0,
-    source_task     TEXT
-);
-
-CREATE TABLE IF NOT EXISTS tasks (
-    id               TEXT PRIMARY KEY,
-    description      TEXT,
-    embedding        BLOB,
-    tokens_used      INTEGER,
-    tool_calls       INTEGER,
-    errors           INTEGER,
-    user_corrections INTEGER,
-    completed        INTEGER,
-    task_score       REAL,
-    started_at       INTEGER,
-    finished_at      INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS memory_retrievals (
-    memory_id   TEXT,
-    task_id     TEXT,
-    similarity  REAL,
-    self_report REAL,
-    credit      REAL,
-    PRIMARY KEY (memory_id, task_id)
-);
-
-CREATE TABLE IF NOT EXISTS meta (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-"#;
-
-fn now_secs() -> i64 {
+pub(crate) fn now_secs() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 
 fn new_id() -> String {
     Uuid::now_v7().to_string()
-}
-
-/// f32 vec -> raw LE bytes. Mirrors TS vecBuf: preserve float32 binary layout for the driver.
-fn vec_buf(v: &[f32]) -> Vec<u8> {
-    let byte_len = v.len() * std::mem::size_of::<f32>();
-    let mut buf = Vec::with_capacity(byte_len);
-    // SAFETY: f32 is plain-old-data; layout matches LE byte sequence the Turso driver expects.
-    unsafe {
-        buf.set_len(byte_len);
-        std::ptr::copy_nonoverlapping(v.as_ptr().cast(), buf.as_mut_ptr(), byte_len);
-    }
-    buf
-}
-
-fn retrieval_sql(vfn: &str) -> String {
-    format!(
-        r#"
-        SELECT
-          id, content, category, weight, created_at, retrieval_count,
-          vector_distance_cos({vfn}(embedding), {vfn}(?)) AS distance
-        FROM memories
-        WHERE embedding IS NOT NULL
-        ORDER BY
-          (1.0 - vector_distance_cos({vfn}(embedding), {vfn}(?)))
-          * POWER(?, (CAST(? AS REAL) - COALESCE(last_retrieved, created_at)) / 86400.0)
-        DESC
-        LIMIT ?
-        "#
-    )
 }
 
 /// Remove retrieval rows whose memory was deleted (prevents unbounded table growth).
@@ -123,26 +53,6 @@ async fn fetch_weights(conn: &Connection, ids: &[String]) -> Result<HashMap<Stri
         out.insert(row.get::<String>(0)?, row.get::<f64>(1)?);
     }
     Ok(out)
-}
-
-fn category_str(c: MemoryCategory) -> &'static str {
-    match c {
-        MemoryCategory::Correction => "correction",
-        MemoryCategory::Insight => "insight",
-        MemoryCategory::User => "user",
-        MemoryCategory::Consolidated => "consolidated",
-        MemoryCategory::Discovery => "discovery",
-    }
-}
-
-fn category_from_str(s: &str) -> MemoryCategory {
-    match s {
-        "correction" => MemoryCategory::Correction,
-        "insight" => MemoryCategory::Insight,
-        "user" => MemoryCategory::User,
-        "consolidated" => MemoryCategory::Consolidated,
-        _ => MemoryCategory::Discovery,
-    }
 }
 
 pub struct MemoryStore {
@@ -178,7 +88,7 @@ impl MemoryStore {
         }
     }
 
-    fn vfn(&self) -> &'static str {
+    pub(crate) fn vector_fn(&self) -> &'static str {
         match self.vector_type {
             VectorType::Vector32 => "vector32",
             VectorType::Vector64 => "vector64",
@@ -187,8 +97,20 @@ impl MemoryStore {
         }
     }
 
-    fn retrieval_sql(&self) -> &str {
-        self.retrieval_sql.get_or_init(|| retrieval_sql(self.vfn()))
+    pub(crate) fn retrieval_sql(&self) -> &str {
+        self.retrieval_sql.get_or_init(|| retrieval_sql(self.vector_fn()))
+    }
+
+    pub(crate) fn embed_fn(&self) -> &EmbedFn {
+        &self.embed
+    }
+
+    pub(crate) fn top_k(&self) -> u32 {
+        self.top_k
+    }
+
+    pub(crate) fn decay_rate(&self) -> f64 {
+        self.decay_rate
     }
 
     async fn open_db(&self) -> Result<Database> {
@@ -219,7 +141,7 @@ impl MemoryStore {
     /// Open short-lived conn, run fn, then drop both conn and db. Turso embedded driver
     /// locks the file at connect()-time; keep `Database` alive for the whole operation.
     /// Retry connect() w/ backoff if another process holds the lock.
-    async fn with_db<T, F, Fut>(&self, f: F) -> Result<T>
+    pub(crate) async fn with_db<T, F, Fut>(&self, f: F) -> Result<T>
     where
         F: FnOnce(Connection) -> Fut,
         Fut: Future<Output = Result<T>>,
@@ -255,18 +177,7 @@ impl MemoryStore {
             return Ok(());
         }
         self.with_db(|conn| async move {
-            conn.execute_batch(SCHEMA).await?;
-
-            // One-time migration: embeddings truncated by driver bug
-            let changes = conn
-                .execute(
-                    "UPDATE memories SET embedding = NULL WHERE embedding IS NOT NULL AND length(embedding) < 1536",
-                    (),
-                )
-                .await?;
-            if changes > 0 {
-                eprintln!("[memz] Fixed {changes} truncated embeddings (will re-embed on next start_task)");
-            }
+            migrations::apply(&conn).await?;
 
             // Load baseline
             let mut rows = conn.query("SELECT value FROM meta WHERE key = 'baseline'", ()).await?;

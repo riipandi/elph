@@ -6,7 +6,7 @@ use super::{
 };
 use elph_agent::{DatabaseSpec, InitProgress, ensure_databases_once, try_block_on};
 
-const DATASTORE_STEPS: u64 = 1;
+const DATASTORE_STEPS: u64 = 2;
 
 /// Lazily initialize local databases on first use.
 pub async fn ensure(paths: &Paths) -> Result<()> {

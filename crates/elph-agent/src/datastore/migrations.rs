@@ -22,14 +22,17 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     )
     .await?;
 
-    let mut rows = conn
-        .query("SELECT COALESCE(MAX(version), 0) FROM app_migrations", ())
-        .await?;
-
-    let current_version = if let Some(row) = rows.next().await? {
-        row.get::<i64>(0)?
-    } else {
-        0
+    let current_version = {
+        let mut rows = conn
+            .query("SELECT COALESCE(MAX(version), 0) FROM app_migrations", ())
+            .await?;
+        let version = if let Some(row) = rows.next().await? {
+            row.get::<i64>(0)?
+        } else {
+            0
+        };
+        while rows.next().await?.is_some() {}
+        version
     };
 
     for migration in migrations {
@@ -37,9 +40,7 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
             continue;
         }
 
-        for statement in split_sql(migration.up) {
-            conn.execute(statement, ()).await?;
-        }
+        conn.execute_batch(migration.up).await?;
 
         conn.execute(
             "INSERT INTO app_migrations (version, name) VALUES (?, ?)",
@@ -49,22 +50,4 @@ pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn split_sql(sql: &str) -> Vec<&str> {
-    sql.split(';')
-        .map(str::trim)
-        .filter(|statement| !statement.is_empty())
-        .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn split_sql_handles_multiple_statements() {
-        let parts = split_sql("CREATE TABLE a (id INT); CREATE INDEX idx ON a(id);");
-        assert_eq!(parts.len(), 2);
-    }
 }

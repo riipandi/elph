@@ -7,6 +7,7 @@ mod export;
 mod help;
 mod import;
 mod mcp;
+mod memory;
 mod models;
 mod plugin;
 mod provider;
@@ -30,6 +31,7 @@ pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
 pub use import::ImportArgs;
 pub use mcp::McpArgs;
+pub use memory::{MemoryArgs, MemoryCommands};
 pub use models::ModelsArgs;
 pub use plugin::PluginArgs;
 pub use provider::ProviderArgs;
@@ -68,6 +70,8 @@ pub enum Commands {
     Import(ImportArgs),
     /// Manage MCP server configurations
     Mcp(McpArgs),
+    /// Inspect and manage agent memory (memz)
+    Memory(MemoryArgs),
     /// List available models and exit
     Models(ModelsArgs),
     /// Manage plugins and extensions
@@ -161,6 +165,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         Commands::Export(args) => export::handle(args),
         Commands::Import(args) => import::handle(args),
         Commands::Mcp(args) => mcp::handle(args),
+        Commands::Memory(args) => memory::handle(args),
         Commands::Models(args) => models::handle(args),
         Commands::Plugin(args) => plugin::handle(args),
         Commands::Provider(args) => provider::handle(args),

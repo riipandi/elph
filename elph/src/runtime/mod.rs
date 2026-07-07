@@ -18,3 +18,4 @@ pub use bootstrap::ensure_home_blocking;
 pub use datastore::ensure_blocking as ensure_datastore_blocking;
 pub use interrupt::handle_prompt_interrupt;
 pub use paths::Paths;
+pub use project::ensure as ensure_project;

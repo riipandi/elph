@@ -43,6 +43,7 @@ impl Paths {
         self.inner.project_dir.join(PROJECT_DIR_NAME)
     }
 
+    /// Project-local memz store (Turso DB).
     pub fn memory_db_path(&self) -> PathBuf {
         self.project_elph_dir().join("memory.db")
     }

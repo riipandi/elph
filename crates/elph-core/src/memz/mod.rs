@@ -9,19 +9,34 @@
 //! Welford baseline scoring, EMA weight updates) with platform-specific
 //! adaptations for the Turso Rust driver and the Elph runtime.
 
+mod embed;
+pub mod migrations;
+mod paths;
+mod query;
+mod report;
 mod scoring;
 mod store;
 mod types;
+mod util;
 
+pub use embed::{ENV_EMBED_MODEL, FastEmbedOptions, create_fastembed};
+pub use migrations::{LAST_VERSION, MIGRATIONS, MemzMigration, V1_NAME, V1_UP, V2_NAME, V2_UP};
+pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, ENV_DATA_DIR, MemzPaths};
 pub use store::{EmbedFn, MemoryStore};
 pub use types::{
-    DecayResult, Memory, MemoryCategory, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
-    SelfReportEntry, StartTaskResult, TaskBaseline, TaskEndInput, UserInputSource, VectorType,
+    CategoryCount, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult, Memory, MemoryCategory,
+    MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
+    SelfReportEntry, StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord,
+    TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType,
 };
+pub use util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES, category_str};
 
 pub fn create_memory_store(config: MemzConfig, embed: EmbedFn) -> MemoryStore {
     MemoryStore::new(config, embed)
 }
+
+#[cfg(test)]
+mod query_tests;
 
 #[cfg(test)]
 mod tests {

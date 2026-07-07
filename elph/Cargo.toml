@@ -21,7 +21,7 @@ clap.workspace = true
 cuid2.workspace = true
 elph-agent.workspace = true
 elph-ai.workspace = true
-elph-core.workspace = true
+elph-core = { workspace = true, features = ["fastembed"] }
 elph-tui.workspace = true
 iocraft.workspace = true
 serde.workspace = true

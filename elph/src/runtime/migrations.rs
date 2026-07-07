@@ -1,4 +1,5 @@
 use elph_agent::Migration;
+use elph_core::memz::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP};
 
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
@@ -91,20 +92,38 @@ pub fn metadata_migrations() -> &'static [Migration] {
     ]
 }
 
+/// Project-local memory store (`.elph/memory.db`).
+///
+/// Composed from memz schema migrations (ported from
+/// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with
+/// `version > migrations::LAST_VERSION`.
 pub fn memory_migrations() -> &'static [Migration] {
-    &[Migration {
-        version: 1,
-        name: "create_memories_table",
-        up: "CREATE TABLE IF NOT EXISTS memories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                workspace_id TEXT NOT NULL,
-                category TEXT NOT NULL,
-                content TEXT NOT NULL,
-                metadata TEXT,
-                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE INDEX IF NOT EXISTS idx_memories_workspace_id ON memories(workspace_id);
-            CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);",
-    }]
+    const MIGRATIONS: &[Migration] = &[
+        Migration {
+            version: 1,
+            name: V1_NAME,
+            up: V1_UP,
+        },
+        Migration {
+            version: 2,
+            name: V2_NAME,
+            up: V2_UP,
+        },
+    ];
+    MIGRATIONS
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_core::memz::migrations;
+
+    #[test]
+    fn memory_migrations_track_memz_versions() {
+        assert_eq!(memory_migrations().len(), migrations::MIGRATIONS.len());
+        assert_eq!(
+            memory_migrations().last().map(|m| m.version),
+            Some(migrations::LAST_VERSION)
+        );
+    }
 }

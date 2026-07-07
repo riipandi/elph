@@ -13,8 +13,13 @@ publish = true
 name = "elph_core"
 path = "src/lib.rs"
 
+[features]
+default = []
+fastembed = ["dep:fastembed"]
+
 [dependencies]
 anyhow.workspace = true
+fastembed = { version = "5", optional = true }
 rand = "0.10.2"
 serde.workspace = true
 serde_json.workspace = true

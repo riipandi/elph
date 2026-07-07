@@ -114,7 +114,7 @@ Schema: `schemas/elph-config-schema.json`. Types: `elph/src/runtime/settings.rs`
 
 | Verdict   | Item                                                            | Rationale                                                 |
 | --------- | --------------------------------------------------------------- | --------------------------------------------------------- |
-| **Defer** | [memelord](https://github.com/glommer/memelord)                 | Turso agent memory (⭐187); evaluate with memory feature. |
+| **Done**  | [memelord](https://github.com/glommer/memelord) → `memz`        | Ported in-tree as `memz`; Turso agent memory with vector search and weight scoring. |
 | **Defer** | [cortex-mem](https://github.com/sopaco/cortex-mem)              | Long-term memory layer (⭐288).                           |
 | **Defer** | [liteparse](https://github.com/run-llama/liteparse)             | RAG ingestion (⭐11k).                                    |
 | **Defer** | [obscura](https://docs.obscura.sh/guides/use-as-a-rust-library) | Embedded browser; high build cost.                        |
