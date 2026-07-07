@@ -1,4 +1,4 @@
-//! Live cross-provider tool call ID normalization tests mirroring pi-ai issue #1022.
+//! Live cross-provider tool call ID normalization tests for elph-ai issue #1022.
 //! Run with: `cargo test -p elph-ai --test tool_call_id_normalization_live -- --ignored`
 
 mod common;

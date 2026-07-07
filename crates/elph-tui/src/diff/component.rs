@@ -8,7 +8,7 @@ pub enum InputResult {
     Consumed,
 }
 
-/// Core component contract (pi-tui `Component`).
+/// Core component contract.
 pub trait LineComponent {
     fn render(&mut self, width: u16) -> Vec<Line>;
     fn invalidate(&mut self);

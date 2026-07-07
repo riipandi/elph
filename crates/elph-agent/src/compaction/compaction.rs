@@ -1,4 +1,4 @@
-//! Context compaction logic — ported from pi-agent `harness/compaction/compaction.ts`.
+//! Context compaction logic — elph-agent module.
 
 use elph_ai::{
     AssistantContentBlock, Context, Message, Model, Models, SimpleStreamOptions, StopReason, ThinkingLevel, Usage,

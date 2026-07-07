@@ -1,4 +1,4 @@
-//! Fuzzy matching utilities (pi-tui `fuzzy.ts`).
+//! Fuzzy matching utilities.
 
 /// Result of a fuzzy match attempt.
 #[derive(Debug, Clone, Copy, PartialEq)]

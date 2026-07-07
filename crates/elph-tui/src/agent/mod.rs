@@ -1,4 +1,4 @@
-//! Agent-facing iocraft components (Pi-parity UI).
+//! Agent-facing iocraft components (Elph-parity UI).
 
 mod assistant_message;
 mod login_dialog;

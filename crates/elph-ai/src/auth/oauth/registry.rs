@@ -1,4 +1,4 @@
-//! Global OAuth provider registry matching pi-ai `utils/oauth/index.ts`.
+//! Global OAuth provider registry for elph-ai.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

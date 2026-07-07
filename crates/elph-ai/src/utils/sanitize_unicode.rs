@@ -1,4 +1,4 @@
-/// Remove unpaired UTF-16 surrogates (invalid in UTF-8), matching pi-ai behavior.
+/// Remove unpaired UTF-16 surrogates (invalid in UTF-8), matching elph-ai behavior.
 pub fn sanitize_surrogates(input: &str) -> String {
     let units: Vec<u16> = input.encode_utf16().collect();
     String::from_utf16(&sanitize_utf16_code_units(&units)).expect("sanitized UTF-16 must be valid Unicode")

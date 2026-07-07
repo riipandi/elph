@@ -1,4 +1,4 @@
-//! Skill discovery — ported from pi-agent `harness/skills.ts`.
+//! Skill discovery — elph-agent module.
 
 use ignore::Match;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};

@@ -1,4 +1,4 @@
-//! Compaction utility helpers — ported from pi-agent `harness/compaction/utils.ts`.
+//! Compaction utility helpers — elph-agent module.
 
 use std::collections::HashSet;
 

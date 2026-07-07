@@ -1,4 +1,4 @@
-//! Shared truncation utilities for tool outputs — ported from pi-agent `harness/utils/truncate.ts`.
+//! Shared truncation utilities for tool outputs — elph-agent module.
 //!
 //! Truncation is based on two independent limits — whichever is hit first wins:
 //! - Line limit (default: 2000 lines)

@@ -18,8 +18,8 @@ UNAME_S := $(shell uname -s)
 # ─── Args ───────────────────────────────────────────────────────────────────
 
 # Named args:  make run ARGS="-- --nocapture"  /  make test PKG=foo
-# pi-ai:      make generate-models PI_AI_DIR=/path/to/pi/packages/ai ARGS="--skip-pi"
-PI_AI_DIR  ?= ../pi/packages/ai
+# catalog:    make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
+ELPH_AI_CATALOG_DIR  ?= ../catalog/packages/ai
 ARGS       :=
 _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
@@ -76,13 +76,13 @@ watch: ## Run eclaw with hot reload (requires watchexec)
 test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
 
-generate-models: ## Regenerate elph-ai model catalogs from pi-ai (PI_AI_DIR, ARGS=--skip-pi)
-	@test -f "$(PI_AI_DIR)/scripts/generate-models.ts" || { \
-	  echo "pi-ai not found at: $(PI_AI_DIR)" >&2; \
-	  echo "Set PI_AI_DIR to the pi packages/ai root, e.g. PI_AI_DIR=/path/to/pi/packages/ai" >&2; \
+generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_AI_CATALOG_DIR, ARGS=--skip-scripts)
+	@test -f "$(ELPH_AI_CATALOG_DIR)/scripts/generate-models.ts" || { \
+	  echo "catalog source not found at: $(ELPH_AI_CATALOG_DIR)" >&2; \
+	  echo "Set ELPH_AI_CATALOG_DIR to the packages/ai root, e.g. ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai" >&2; \
 	  exit 1; \
 	}
-	@$(CARGO) run -p elph-ai --bin generate-models -- all --pi-dir "$(PI_AI_DIR)" $(ARGS)
+	@$(CARGO) run -p elph-ai --bin generate-models -- all --catalog-dir "$(ELPH_AI_CATALOG_DIR)" $(ARGS)
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)

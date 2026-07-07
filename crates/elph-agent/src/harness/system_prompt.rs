@@ -1,4 +1,4 @@
-//! System prompt formatting — ported from pi-agent `harness/system-prompt.ts`.
+//! System prompt formatting — elph-agent module.
 
 use crate::harness::types::Skill;
 

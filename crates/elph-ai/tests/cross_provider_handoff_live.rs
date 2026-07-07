@@ -1,4 +1,4 @@
-//! Cross-provider handoff live test mirroring pi-ai `cross-provider-handoff.test.ts`.
+//! Cross-provider handoff live test for elph-ai.
 //! Run with: `cargo test -p elph-ai --test cross_provider_handoff_live -- --ignored`
 
 use std::collections::HashMap;

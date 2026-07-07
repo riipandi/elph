@@ -206,7 +206,7 @@ async fn session_with_jsonl_storage() {
 }
 
 #[tokio::test]
-async fn jsonl_file_format_matches_pi_v3() {
+async fn jsonl_file_format_matches_elph_v3() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("session.jsonl");
     let mut session = Session::new(

@@ -1,7 +1,6 @@
 //! App-agnostic agent runtime for Elph applications.
 //!
 //! Rust port of [@earendil-works/pi-agent](https://github.com/earendil-works/pi/tree/main/packages/agent).
-
 pub mod agent;
 pub mod agent_loop;
 pub mod builder;

@@ -1,6 +1,6 @@
 use crate::types::{AssistantMessage, StopReason};
 
-/// Heuristic context-overflow detection from pi-ai `isContextOverflow`.
+/// Heuristic context-overflow detection from elph-ai.
 pub fn is_context_overflow(message: &AssistantMessage) -> bool {
     if message.stop_reason != StopReason::Error {
         return false;

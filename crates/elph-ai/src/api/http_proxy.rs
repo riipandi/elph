@@ -116,7 +116,7 @@ fn get_proxy_for_url(target_url: &str, env: Option<&ProviderEnv>) -> String {
     proxy
 }
 
-/// Map a WebSocket URL to an HTTP(S) URL for proxy rule lookup (mirroring pi-ai Codex).
+/// Map a WebSocket URL to an HTTP(S) URL for proxy rule lookup (mirroring elph-ai Codex).
 pub fn websocket_proxy_lookup_url(ws_url: &str) -> String {
     if let Some(rest) = ws_url.strip_prefix("wss://") {
         format!("https://{rest}")

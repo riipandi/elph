@@ -1,4 +1,4 @@
-//! Live abort tests mirroring pi-ai `abort.test.ts`.
+//! Live abort tests for elph-ai.
 //! Run with: `cargo test -p elph-ai --test abort_live -- --ignored`
 
 mod common;

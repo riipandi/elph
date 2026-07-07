@@ -57,7 +57,7 @@ pub type SelectCallback = Box<dyn FnMut(&SelectItem)>;
 /// Callback when list selection changes.
 pub type SelectChangeCallback = Box<dyn FnMut(&SelectItem)>;
 
-/// Scrollable fuzzy-filtered list (pi-tui `SelectList`).
+/// Scrollable fuzzy-filtered list.
 pub struct SelectList {
     items: Vec<SelectItem>,
     filtered: Vec<SelectItem>,

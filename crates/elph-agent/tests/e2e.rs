@@ -1,4 +1,4 @@
-//! End-to-end agent integration tests — ported from pi-agent `e2e.test.ts`.
+//! End-to-end agent integration tests.
 
 mod common;
 

@@ -1,6 +1,6 @@
 //! Editor keybinding matching for raw terminal input.
 
-/// Editor actions mapped from pi-tui `tui.editor.*` bindings.
+/// Editor actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditorAction {
     CursorUp,

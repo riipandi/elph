@@ -1,4 +1,4 @@
-//! JSONL session file storage (pi v3 format).
+//! JSONL session file storage (elph v3 format).
 
 use std::path::{Path, PathBuf};
 

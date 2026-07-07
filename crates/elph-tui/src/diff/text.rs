@@ -2,7 +2,7 @@ use crate::utils::{pad_lines, wrap_ansi_text};
 
 use super::component::{Line, LineComponent};
 
-/// Word-wrapped static text with optional padding (pi-tui `Text`).
+/// Word-wrapped static text with optional padding.
 pub struct Text {
     text: String,
     padding_x: u16,

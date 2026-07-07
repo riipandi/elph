@@ -2,7 +2,7 @@ use elph_ai::api::openai_compat::{detect_compat, get_compat};
 use elph_ai::get_builtin_model;
 
 #[test]
-fn detect_compat_matches_pi_ai_defaults() {
+fn detect_compat_matches_elph_ai_defaults() {
     let model = get_builtin_model("deepseek", "deepseek-v4-flash").expect("model exists");
     let compat = detect_compat(&model);
     assert_eq!(compat.thinking_format, "deepseek");

@@ -1,4 +1,4 @@
-//! Agent harness integration tests — ported from pi-agent `agent-harness.test.ts`.
+//! Agent harness integration tests.
 
 mod common;
 

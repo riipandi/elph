@@ -353,7 +353,7 @@ fn process_anthropic_sse_event(
     Ok(())
 }
 
-/// Process raw Anthropic Messages SSE bytes (used by integration tests mirroring pi-ai).
+/// Process raw Anthropic Messages SSE bytes (used by integration tests mirroring elph-ai).
 pub async fn process_anthropic_sse_buffer(
     buffer: &str,
     output: &mut AssistantMessage,
@@ -394,7 +394,7 @@ fn update_usage_from_anthropic(output: &mut AssistantMessage, usage: &Value) {
         output.usage.input + output.usage.output + output.usage.cache_read + output.usage.cache_write;
 }
 
-/// Build Anthropic Messages request params (used by integration tests mirroring pi-ai).
+/// Build Anthropic Messages request params (used by integration tests mirroring elph-ai).
 pub fn build_anthropic_messages_params(model: &Model, context: &Context, options: &AnthropicOptions) -> Result<Value> {
     build_params(model, context, options)
 }

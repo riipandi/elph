@@ -1,4 +1,4 @@
-//! Read tool — ported from pi coding-agent `tools/read.ts`.
+//! Read tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

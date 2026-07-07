@@ -1,4 +1,4 @@
-//! Harness utility helpers — ported from pi-agent `harness/utils/`.
+//! Harness utility helpers — elph-agent module.
 
 pub mod shell_output;
 pub mod truncate;

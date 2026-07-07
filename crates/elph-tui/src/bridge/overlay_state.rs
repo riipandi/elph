@@ -26,7 +26,7 @@ impl OverlaySlot {
     }
 }
 
-/// Stack of overlays with focus and input routing (subset of pi-tui `TUI` overlay API).
+/// Stack of overlays with focus and input routing.
 #[derive(Default)]
 pub struct OverlayStack {
     entries: Vec<OverlayEntry>,

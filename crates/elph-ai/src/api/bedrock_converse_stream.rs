@@ -204,7 +204,7 @@ async fn run_bedrock(
     Ok(())
 }
 
-/// Build Bedrock Converse request body (used by integration tests mirroring pi-ai).
+/// Build Bedrock Converse request body (used by integration tests mirroring elph-ai).
 pub fn build_bedrock_converse_body(model: &Model, context: &Context, options: &BedrockOptions) -> Result<Value> {
     build_converse_body(model, context, options)
 }

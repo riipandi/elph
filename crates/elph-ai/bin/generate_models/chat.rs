@@ -6,7 +6,7 @@ use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::common::{run_pi_npm_script, ts_catalog_to_json};
+use super::common::{CATALOG_CHAT_SCRIPT, CATALOG_MODELS_SUFFIX, run_catalog_npm_script, ts_catalog_to_json};
 
 #[derive(Serialize)]
 pub struct CatalogIndexEntry {
@@ -18,40 +18,43 @@ pub struct CatalogIndexEntry {
 }
 
 pub struct ChatOptions {
-    pub pi_dir: PathBuf,
-    pub skip_pi: bool,
+    pub catalog_dir: PathBuf,
+    pub skip_scripts: bool,
     pub models_dir: PathBuf,
     pub catalog_rs: PathBuf,
     pub no_regenerate_catalog: bool,
 }
 
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
-    if !options.pi_dir.join("scripts/generate-models.ts").is_file() {
+    if !options.catalog_dir.join(CATALOG_CHAT_SCRIPT).is_file() {
         bail!(
-            "pi-ai package not found at {} (expected scripts/generate-models.ts)",
-            options.pi_dir.display()
+            "catalog source package not found at {} (expected npm catalog scripts)",
+            options.catalog_dir.display()
         );
     }
 
-    if !options.skip_pi {
-        run_pi_npm_script(&options.pi_dir, "generate-models")?;
+    if !options.skip_scripts {
+        run_catalog_npm_script(&options.catalog_dir, "generate-models")?;
     }
 
-    let providers_dir = options.pi_dir.join("src/providers");
+    let providers_dir = options.catalog_dir.join("src/providers");
     if !providers_dir.is_dir() {
-        bail!("missing pi-ai providers directory at {}", providers_dir.display());
+        bail!(
+            "missing catalog source providers directory at {}",
+            providers_dir.display()
+        );
     }
 
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
 
     let mut catalogs: BTreeMap<String, (String, Value)> = BTreeMap::new();
-    for entry in fs::read_dir(&providers_dir).context("read pi providers directory")? {
+    for entry in fs::read_dir(&providers_dir).context("read catalog providers directory")? {
         let entry = entry?;
         let path = entry.path();
         let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        let Some(provider_id) = file_name.strip_suffix(".models.ts") else {
+        let Some(provider_id) = file_name.strip_suffix(CATALOG_MODELS_SUFFIX) else {
             continue;
         };
         let rust_mod = provider_id.replace('-', "_");
@@ -66,7 +69,7 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     }
 
     if catalogs.is_empty() {
-        bail!("no *.models.ts catalogs found under {}", providers_dir.display());
+        bail!("no model catalog files found under {}", providers_dir.display());
     }
 
     let mut index = Vec::new();

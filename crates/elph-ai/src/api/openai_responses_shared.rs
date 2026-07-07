@@ -150,9 +150,9 @@ pub fn convert_responses_messages(
                         AssistantContentBlock::Text(text) => {
                             let parsed = parse_text_signature(text.text_signature.as_deref());
                             let fallback = if text_block_index == 0 {
-                                format!("msg_pi_{msg_index}")
+                                format!("msg_elph_{msg_index}")
                             } else {
-                                format!("msg_pi_{msg_index}_{text_block_index}")
+                                format!("msg_elph_{msg_index}_{text_block_index}")
                             };
                             text_block_index += 1;
                             let mut msg_id = parsed.as_ref().map(|(id, _)| id.clone()).unwrap_or(fallback);

@@ -1,4 +1,4 @@
-//! Edit tool — ported from pi coding-agent `tools/edit.ts`.
+//! Edit tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

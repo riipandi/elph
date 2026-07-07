@@ -1,4 +1,4 @@
-//! Session repository tests — ported from pi-agent `harness/repo.test.ts`.
+//! Session repository tests.
 
 mod common;
 

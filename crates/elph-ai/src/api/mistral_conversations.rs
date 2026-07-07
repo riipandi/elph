@@ -347,7 +347,7 @@ fn finish_current(output: &mut AssistantMessage, stream: &AssistantMessageEventS
     }
 }
 
-/// Build Mistral options from simple stream options (used by integration tests mirroring pi-ai).
+/// Build Mistral options from simple stream options (used by integration tests mirroring elph-ai).
 pub fn mistral_options_from_simple(
     model: &Model,
     context: &Context,
@@ -378,7 +378,7 @@ pub fn mistral_options_from_simple(
     }
 }
 
-/// Build Mistral chat payload (used by integration tests mirroring pi-ai).
+/// Build Mistral chat payload (used by integration tests mirroring elph-ai).
 pub fn build_mistral_conversations_payload(
     model: &Model,
     context: &Context,

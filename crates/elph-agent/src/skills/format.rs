@@ -1,4 +1,4 @@
-//! Skill invocation formatting — ported from pi-agent `harness/skills.ts`.
+//! Skill invocation formatting — elph-agent module.
 
 use crate::env::{basename_env_path, dirname_env_path};
 use crate::harness::types::Skill;

@@ -1,4 +1,4 @@
-//! Bracketed-paste aware stdin splitting (pi-tui `stdin-buffer.ts`).
+//! Bracketed-paste aware stdin splitting.
 
 const BRACKETED_PASTE_START: &str = "\x1b[200~";
 const BRACKETED_PASTE_END: &str = "\x1b[201~";

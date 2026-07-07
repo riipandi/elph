@@ -1,4 +1,4 @@
-//! Agent integration tests — ported from pi-agent `agent.test.ts`.
+//! Agent integration tests.
 
 mod common;
 

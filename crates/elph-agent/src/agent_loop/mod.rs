@@ -1,4 +1,4 @@
-//! Agent loop — ported from pi-agent `agent-loop.ts`.
+//! Agent loop — elph-agent module.
 
 mod tools;
 

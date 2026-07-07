@@ -1,4 +1,4 @@
-//! Local filesystem and shell execution environment — ported from pi-agent `harness/env/nodejs.ts`.
+//! Local filesystem and shell execution environment — elph-agent module.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

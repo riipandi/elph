@@ -1,4 +1,4 @@
-//! Bash tool — ported from pi coding-agent `tools/bash.ts`.
+//! Bash tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

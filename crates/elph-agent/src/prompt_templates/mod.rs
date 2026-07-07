@@ -1,4 +1,4 @@
-//! Named prompt template invocation — ported from pi-agent `harness/prompt-templates.ts`.
+//! Named prompt template invocation — elph-agent module.
 
 use serde::Deserialize;
 

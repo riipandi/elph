@@ -1,4 +1,4 @@
-//! AgentHarness stream configuration tests — ported from pi-agent `agent-harness-stream.test.ts`.
+//! AgentHarness stream configuration tests.
 
 mod common;
 

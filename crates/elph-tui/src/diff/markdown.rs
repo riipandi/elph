@@ -88,7 +88,7 @@ impl MarkdownTheme {
     }
 }
 
-/// Renders markdown to ANSI terminal lines (pi-tui `Markdown`).
+/// Renders markdown to ANSI terminal lines.
 pub struct Markdown {
     text: String,
     padding_x: u16,

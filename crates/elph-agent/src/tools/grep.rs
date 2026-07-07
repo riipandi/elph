@@ -1,4 +1,4 @@
-//! Grep tool — ported from pi coding-agent `tools/grep.ts`.
+//! Grep tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

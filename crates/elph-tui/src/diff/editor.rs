@@ -53,7 +53,7 @@ struct EditorSnapshot {
     cursor: usize,
 }
 
-/// Multi-line editor with pi-tui semantics (`LineComponent` + `CURSOR_MARKER`).
+/// Multi-line editor (`LineComponent` + `CURSOR_MARKER`).
 pub struct Editor {
     text: String,
     cursor: usize,

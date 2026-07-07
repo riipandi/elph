@@ -2,7 +2,6 @@
 //! cost tracking, and session context hand-off between models.
 //!
 //! Ported from [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai).
-
 pub use anyhow::Result;
 
 pub mod api;

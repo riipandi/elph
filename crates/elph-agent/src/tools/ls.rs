@@ -1,4 +1,4 @@
-//! List directory tool — ported from pi coding-agent `tools/ls.ts`.
+//! List directory tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

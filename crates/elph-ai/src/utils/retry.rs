@@ -56,7 +56,7 @@ lazy_static::lazy_static! {
     ]);
 }
 
-/// Whether an assistant error message is likely retryable (pi-ai `isRetryable`).
+/// Whether an assistant error message is likely retryable (elph-ai).
 pub fn is_retryable(message: &AssistantMessage) -> bool {
     let Some(text) = &message.error_message else {
         return false;

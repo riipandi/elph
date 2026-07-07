@@ -1,4 +1,4 @@
-//! Agent harness — ported from pi-agent `harness/agent-harness.ts`.
+//! Agent harness — elph-agent module.
 
 pub mod agent_harness;
 pub mod hooks;

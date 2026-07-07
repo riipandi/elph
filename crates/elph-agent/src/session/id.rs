@@ -1,4 +1,4 @@
-//! Short session entry ID generation (pi-compatible).
+//! Short session entry ID generation (elph-compatible).
 
 use std::collections::HashMap;
 

@@ -24,7 +24,7 @@ pub struct ImageOptions {
     pub filename: Option<&'static str>,
 }
 
-/// Renders inline terminal images with Kitty/iTerm2 fallback (pi-tui `Image`).
+/// Renders inline terminal images with Kitty/iTerm2 fallback.
 pub struct Image {
     data: Vec<u8>,
     mime: String,

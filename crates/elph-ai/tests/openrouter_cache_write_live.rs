@@ -1,4 +1,4 @@
-//! Live OpenRouter cache_write regression test mirroring pi-ai.
+//! Live OpenRouter cache_write regression test for elph-ai.
 //! Run with: `cargo test -p elph-ai --test openrouter_cache_write_live -- --ignored`
 
 use std::pin::Pin;

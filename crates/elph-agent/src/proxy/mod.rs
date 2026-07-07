@@ -1,4 +1,4 @@
-//! Browser stream proxy — ported from pi-agent `proxy.ts`.
+//! Browser stream proxy — elph-agent module.
 
 use elph_ai::utils::event_stream::AssistantMessageEventStream;
 use elph_ai::utils::json_parse::parse_streaming_json;

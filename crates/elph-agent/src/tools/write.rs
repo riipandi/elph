@@ -1,4 +1,4 @@
-//! Write tool — ported from pi coding-agent `tools/write.ts`.
+//! Write tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

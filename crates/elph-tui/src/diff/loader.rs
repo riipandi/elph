@@ -10,7 +10,7 @@ use super::text::Text;
 const DEFAULT_FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const DEFAULT_INTERVAL: Duration = Duration::from_millis(80);
 
-/// Animated spinner with message (pi-tui `Loader`).
+/// Animated spinner with message.
 pub struct Loader {
     message: String,
     inner: Text,
@@ -109,7 +109,7 @@ impl LineComponent for Loader {
     }
 }
 
-/// Animated loader that can be cancelled with Escape (pi-tui `CancellableLoader`).
+/// Animated loader that can be cancelled with Escape.
 pub struct CancellableLoader {
     inner: Loader,
     aborted: Arc<AtomicBool>,

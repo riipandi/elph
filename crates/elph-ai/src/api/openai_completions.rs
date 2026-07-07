@@ -411,7 +411,7 @@ fn convert_tools(tools: &[crate::types::Tool], compat: &ResolvedOpenAICompletion
         .collect()
 }
 
-/// Build chat/completions request params (used by tests mirroring pi-ai payload capture).
+/// Build chat/completions request params (used by tests mirroring elph-ai payload capture).
 pub fn build_openai_completions_params(
     model: &Model,
     context: &Context,

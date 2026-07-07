@@ -15,7 +15,7 @@ enum FocusTarget {
     Overlay(usize),
 }
 
-/// Main diff-TUI engine (pi-tui `TUI`).
+/// Main diff-TUI engine.
 pub struct DiffTui {
     container: Container,
     overlays: Vec<OverlayEntry>,

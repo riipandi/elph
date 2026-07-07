@@ -1,4 +1,4 @@
-//! Shell output capture helpers — ported from pi-agent `harness/utils/shell-output.ts`.
+//! Shell output capture helpers — elph-agent module.
 
 use std::sync::{Arc, Mutex};
 
@@ -60,7 +60,7 @@ pub fn ok_shell_capture(result: ShellCaptureResult) -> Result<ShellCaptureResult
     crate::harness::types::ok(result)
 }
 
-/// Options for shell capture — mirrors pi-agent `ShellCaptureOptions`.
+/// Options for shell capture — mirrors elph-agent.
 #[derive(Debug, Clone, Default)]
 pub struct ShellCaptureOptions {
     pub cwd: Option<String>,

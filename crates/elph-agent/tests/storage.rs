@@ -1,4 +1,4 @@
-//! Session storage tests — ported from pi-agent `harness/storage.test.ts`.
+//! Session storage tests.
 
 mod common;
 

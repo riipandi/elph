@@ -109,7 +109,7 @@ fn to_oauth_credential(creds: CodexOAuthTokens) -> OAuthCredential {
 pub async fn login_openai_codex(callbacks: Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<CodexOAuthTokens> {
     let (verifier, challenge) = generate_pkce().await;
     let state = create_state();
-    let auth_url = build_authorize_url(&challenge, &state, "pi");
+    let auth_url = build_authorize_url(&challenge, &state, "elph");
     let server = start_callback_server(1455, "/auth/callback", Some(&state), "OpenAI authentication completed").await?;
 
     callbacks.notify(AuthEvent::AuthUrl {

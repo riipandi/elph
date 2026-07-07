@@ -26,7 +26,7 @@ pub trait AutocompleteProvider: Send {
     fn complete_path(&self, prefix: &str, cwd: &Path) -> Vec<String>;
 }
 
-/// Combined slash + file autocomplete (pi-tui `CombinedAutocompleteProvider`).
+/// Combined slash + file autocomplete.
 pub struct CombinedAutocompleteProvider {
     commands: Vec<SlashCommand>,
 }

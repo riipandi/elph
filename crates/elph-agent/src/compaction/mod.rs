@@ -1,4 +1,4 @@
-//! Context compaction — ported from pi-agent `harness/compaction/`.
+//! Context compaction — elph-agent module.
 
 #![allow(clippy::module_inception)]
 

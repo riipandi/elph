@@ -5,38 +5,41 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
-use super::common::{catalog_const_name, find_matching_brace, run_pi_npm_script, ts_object_to_json};
+use super::common::{
+    CATALOG_IMAGE_GENERATED, CATALOG_IMAGE_SCRIPT, catalog_const_name, find_matching_brace, run_catalog_npm_script,
+    ts_object_to_json,
+};
 
 pub struct ImageOptions {
-    pub pi_dir: PathBuf,
-    pub skip_pi: bool,
+    pub catalog_dir: PathBuf,
+    pub skip_scripts: bool,
     pub images_dir: PathBuf,
     pub models_rs: PathBuf,
     pub no_regenerate_catalog: bool,
 }
 
 pub fn generate_image(options: ImageOptions) -> Result<()> {
-    if !options.pi_dir.join("scripts/generate-image-models.ts").is_file() {
+    if !options.catalog_dir.join(CATALOG_IMAGE_SCRIPT).is_file() {
         bail!(
-            "pi-ai package not found at {} (expected scripts/generate-image-models.ts)",
-            options.pi_dir.display()
+            "catalog source package not found at {} (expected npm catalog scripts)",
+            options.catalog_dir.display()
         );
     }
 
-    if !options.skip_pi {
-        run_pi_npm_script(&options.pi_dir, "generate-image-models")?;
+    if !options.skip_scripts {
+        run_catalog_npm_script(&options.catalog_dir, "generate-image-models")?;
     }
 
-    let generated = options.pi_dir.join("src/image-models.generated.ts");
+    let generated = options.catalog_dir.join(CATALOG_IMAGE_GENERATED);
     if !generated.is_file() {
         bail!(
-            "missing {} — run pi-ai generate-image-models first",
+            "missing {} — run catalog generate-image-models first",
             generated.display()
         );
     }
 
-    let ts = fs::read_to_string(&generated).context("read image-models.generated.ts")?;
-    let providers = ts_image_models_to_providers(&ts)?;
+    let catalog_source = fs::read_to_string(&generated).context("read generated image catalog")?;
+    let providers = ts_image_models_to_providers(&catalog_source)?;
 
     fs::create_dir_all(&options.images_dir).context("create images output directory")?;
 

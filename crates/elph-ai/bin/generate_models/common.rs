@@ -5,6 +5,11 @@ use anyhow::{Context, Result, bail};
 use regex::Regex;
 use serde_json::Value;
 
+pub const CATALOG_CHAT_SCRIPT: &str = "scripts/generate-models.ts";
+pub const CATALOG_IMAGE_SCRIPT: &str = "scripts/generate-image-models.ts";
+pub const CATALOG_MODELS_SUFFIX: &str = ".models.ts";
+pub const CATALOG_IMAGE_GENERATED: &str = "src/image-models.generated.ts";
+
 pub fn find_matching_brace(text: &str, open_index: usize) -> Option<usize> {
     let mut depth = 0usize;
     for (offset, ch) in text[open_index..].char_indices() {
@@ -41,7 +46,7 @@ pub fn ts_object_to_json(body: &str) -> Result<Value> {
     serde_json::from_str(&body).context("parse converted object json")
 }
 
-/// Convert a pi-ai `*.models.ts` catalog export to JSON.
+/// Convert a catalog source model catalog export to JSON.
 pub fn ts_catalog_to_json(ts: &str) -> Result<Value> {
     let start = ts.find('=').context("missing catalog assignment")?;
     let brace_start = ts[start..].find('{').context("missing catalog object")? + start;
@@ -49,12 +54,12 @@ pub fn ts_catalog_to_json(ts: &str) -> Result<Value> {
     ts_object_to_json(&ts[brace_start..=brace_end])
 }
 
-pub fn run_pi_npm_script(pi_dir: &Path, script: &str) -> Result<()> {
-    println!("Running pi-ai {script} in {}...", pi_dir.display());
+pub fn run_catalog_npm_script(catalog_dir: &Path, script: &str) -> Result<()> {
+    println!("Running catalog source {script} in {}...", catalog_dir.display());
 
     if Command::new("npm")
         .args(["run", script, "--silent"])
-        .current_dir(pi_dir)
+        .current_dir(catalog_dir)
         .status()
         .with_context(|| format!("spawn npm run {script}"))?
         .success()
@@ -62,15 +67,15 @@ pub fn run_pi_npm_script(pi_dir: &Path, script: &str) -> Result<()> {
         return Ok(());
     }
 
-    let ts_script = format!("scripts/{script}.ts");
+    let script_path = format!("scripts/{script}.ts");
     for (bin, args) in [
-        ("npx", vec!["tsx", &ts_script]),
-        ("node", vec!["--experimental-strip-types", &ts_script]),
-        ("node", vec![&ts_script]),
+        ("npx", vec!["tsx", &script_path]),
+        ("node", vec!["--experimental-strip-types", &script_path]),
+        ("node", vec![&script_path]),
     ] {
         let status = Command::new(bin)
             .args(&args)
-            .current_dir(pi_dir)
+            .current_dir(catalog_dir)
             .status()
             .with_context(|| format!("spawn {bin} {}", args.join(" ")))?;
         if status.success() {
@@ -79,8 +84,8 @@ pub fn run_pi_npm_script(pi_dir: &Path, script: &str) -> Result<()> {
     }
 
     bail!(
-        "failed to run pi-ai `{script}`; install deps with `npm install` in {}",
-        pi_dir.display()
+        "failed to run catalog source `{script}`; install deps with `npm install` in {}",
+        catalog_dir.display()
     );
 }
 

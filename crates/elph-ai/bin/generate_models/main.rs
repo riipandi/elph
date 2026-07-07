@@ -2,11 +2,11 @@
 //!
 //! Usage:
 //!   make generate-models
-//!   make generate-models PI_AI_DIR=/path/to/pi/packages/ai ARGS="--skip-pi"
-//!   cargo run -p elph-ai --bin generate-models -- chat --pi-dir /path/to/pi/packages/ai
-//!   cargo run -p elph-ai --bin generate-models -- image --pi-dir /path/to/pi/packages/ai
+//!   make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
+//!   cargo run -p elph-ai --bin generate-models -- chat --catalog-dir /path/to/catalog/packages/ai
+//!   cargo run -p elph-ai --bin generate-models -- image --catalog-dir /path/to/catalog/packages/ai
 //!   cargo run -p elph-ai --bin generate-models -- test-image
-//!   cargo run -p elph-ai --bin generate-models -- all --pi-dir /path/to/pi/packages/ai
+//!   cargo run -p elph-ai --bin generate-models -- all --catalog-dir /path/to/catalog/packages/ai
 
 mod chat;
 mod common;
@@ -25,7 +25,7 @@ use test_image::{TestImageOptions, generate_test_image};
 #[derive(Parser, Debug)]
 #[command(
     name = "generate-models",
-    about = "Regenerate elph-ai model catalogs from pi-ai scripts"
+    about = "Regenerate elph-ai model catalogs from catalog source scripts"
 )]
 struct Args {
     #[command(subcommand)]
@@ -34,31 +34,31 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    /// Regenerate chat model catalogs from pi-ai generate-models.ts
+    /// Regenerate chat model catalogs from catalog npm scripts
     Chat(ChatCmd),
-    /// Regenerate image model catalogs from pi-ai generate-image-models.ts
+    /// Regenerate image model catalogs from catalog npm scripts
     Image(ImageCmd),
-    /// Generate tests/data/red-circle.png (pi-ai generate-test-image.ts equivalent)
+    /// Generate tests/data/red-circle.png test fixture
     TestImage(TestImageCmd),
     /// Run chat, image, and test-image
     All(AllCmd),
 }
 
 #[derive(Parser, Debug)]
-struct PiCommon {
-    /// Path to pi-ai package root (packages/ai), e.g. ../pi/packages/ai
-    #[arg(long, env = "PI_AI_DIR")]
-    pi_dir: PathBuf,
+struct CatalogSource {
+    /// Path to catalog source package root (packages/ai)
+    #[arg(long, env = "ELPH_AI_CATALOG_DIR")]
+    catalog_dir: PathBuf,
 
-    /// Skip running pi-ai npm scripts and only convert existing generated files
+    /// Skip running catalog source npm scripts and only convert existing generated files
     #[arg(long)]
-    skip_pi: bool,
+    skip_scripts: bool,
 }
 
 #[derive(Parser, Debug)]
 struct ChatCmd {
     #[command(flatten)]
-    pi: PiCommon,
+    catalog: CatalogSource,
 
     /// Output directory for JSON catalogs (default: crates/elph-ai/models)
     #[arg(long)]
@@ -72,7 +72,7 @@ struct ChatCmd {
 #[derive(Parser, Debug)]
 struct ImageCmd {
     #[command(flatten)]
-    pi: PiCommon,
+    catalog: CatalogSource,
 
     /// Output directory for image JSON catalogs (default: crates/elph-ai/models/images)
     #[arg(long)]
@@ -93,7 +93,7 @@ struct TestImageCmd {
 #[derive(Parser, Debug)]
 struct AllCmd {
     #[command(flatten)]
-    pi: PiCommon,
+    catalog: CatalogSource,
 
     #[arg(long)]
     models_dir: Option<PathBuf>,
@@ -114,15 +114,15 @@ fn main() -> Result<()> {
 
     match args.command {
         Command::Chat(cmd) => generate_chat(ChatOptions {
-            pi_dir: cmd.pi.pi_dir,
-            skip_pi: cmd.pi.skip_pi,
+            catalog_dir: cmd.catalog.catalog_dir,
+            skip_scripts: cmd.catalog.skip_scripts,
             models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
             catalog_rs: crate_root.join("src/models/catalog.rs"),
             no_regenerate_catalog: cmd.no_regenerate_catalog,
         }),
         Command::Image(cmd) => generate_image(ImageOptions {
-            pi_dir: cmd.pi.pi_dir,
-            skip_pi: cmd.pi.skip_pi,
+            catalog_dir: cmd.catalog.catalog_dir,
+            skip_scripts: cmd.catalog.skip_scripts,
             images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
             models_rs: crate_root.join("src/images/models.rs"),
             no_regenerate_catalog: cmd.no_regenerate_catalog,
@@ -134,15 +134,15 @@ fn main() -> Result<()> {
         }),
         Command::All(cmd) => {
             generate_chat(ChatOptions {
-                pi_dir: cmd.pi.pi_dir.clone(),
-                skip_pi: cmd.pi.skip_pi,
+                catalog_dir: cmd.catalog.catalog_dir.clone(),
+                skip_scripts: cmd.catalog.skip_scripts,
                 models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
                 catalog_rs: crate_root.join("src/models/catalog.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
             })?;
             generate_image(ImageOptions {
-                pi_dir: cmd.pi.pi_dir,
-                skip_pi: cmd.pi.skip_pi,
+                catalog_dir: cmd.catalog.catalog_dir,
+                skip_scripts: cmd.catalog.skip_scripts,
                 images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
                 models_rs: crate_root.join("src/images/models.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,

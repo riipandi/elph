@@ -1,4 +1,4 @@
-//! Provider API implementation layer — ported from pi-ai `src/api/`.
+//! Provider API implementation layer — ported from elph-ai.
 
 pub mod anthropic_messages;
 pub mod azure_base_url;
@@ -41,7 +41,7 @@ pub use openrouter_images::OpenRouterImagesApi;
 
 use crate::types::ProviderStreams;
 
-/// Registry of built-in API implementations matching pi-ai `ProviderStreams`.
+/// Registry of built-in API implementations matching elph-ai `ProviderStreams`.
 pub fn builtin_apis() -> Vec<(&'static str, Box<dyn ProviderStreams>)> {
     vec![
         ("anthropic-messages", Box::new(AnthropicMessagesApi)),

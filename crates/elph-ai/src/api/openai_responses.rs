@@ -164,7 +164,7 @@ async fn run_openai_responses(
     Ok(())
 }
 
-/// Build OpenAI Responses request params (used by integration tests mirroring pi-ai).
+/// Build OpenAI Responses request params (used by integration tests mirroring elph-ai).
 pub fn build_openai_responses_params(
     model: &Model,
     context: &Context,

@@ -82,7 +82,7 @@ fn prepare_line(line: &str, width: u16) -> String {
     out
 }
 
-/// Paint `next_lines` to `terminal` using pi-tui differential strategies.
+/// Paint `next_lines` to `terminal`.
 pub fn do_render(terminal: &mut dyn Terminal, state: &mut RenderState, next_lines: &[Line]) {
     let width = terminal.columns();
     let height = terminal.rows();

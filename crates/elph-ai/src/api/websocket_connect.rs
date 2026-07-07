@@ -1,4 +1,4 @@
-//! WebSocket TCP/TLS connect with optional HTTP(S) proxy tunnel (mirroring pi-ai Codex).
+//! WebSocket TCP/TLS connect with optional HTTP(S) proxy tunnel (mirroring elph-ai Codex).
 
 use std::pin::Pin;
 use std::sync::{Arc, OnceLock};

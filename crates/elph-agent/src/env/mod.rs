@@ -1,4 +1,4 @@
-//! Execution environment — ported from pi-agent `harness/env/`.
+//! Execution environment — elph-agent module.
 
 mod local;
 

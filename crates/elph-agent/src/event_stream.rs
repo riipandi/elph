@@ -1,4 +1,4 @@
-//! Agent event stream — mirrors pi-ai `EventStream` for `AgentEvent`.
+//! Agent event stream — mirrors elph-ai for `AgentEvent`.
 
 use std::future::Future;
 use std::pin::Pin;

@@ -987,30 +987,30 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 Chat and image model catalogs are generated from [pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai) scripts:
 
 ```bash
-# From the repo root (requires pi-ai checkout and npm deps)
-make generate-models PI_AI_DIR=/path/to/pi/packages/ai
+# From the repo root (requires upstream catalog checkout and npm deps)
+make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai
 
 # Or directly:
-cargo run -p elph-ai --bin generate-models -- all --pi-dir /path/to/pi/packages/ai
+cargo run -p elph-ai --bin generate-models -- all --catalog-dir /path/to/catalog/packages/ai
 
-# Convert existing pi-ai output without re-running npm scripts:
-make generate-models PI_AI_DIR=/path/to/pi/packages/ai ARGS="--skip-pi"
+# Convert existing catalog output without re-running npm scripts:
+make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
 ```
 
 Subcommands:
 
-| Command      | pi-ai script               | Output                                          |
-| ------------ | -------------------------- | ----------------------------------------------- |
-| `chat`       | `generate-models.ts`       | `models/*.json` + `src/models/catalog.rs`       |
-| `image`      | `generate-image-models.ts` | `models/images/*.json` + `src/images/models.rs` |
-| `test-image` | `generate-test-image.ts`   | `tests/data/red-circle.png`                     |
+| Command      | Catalog npm script      | Output                                          |
+| ------------ | ----------------------- | ----------------------------------------------- |
+| `chat`       | `generate-models`       | `models/*.json` + `src/models/catalog.rs`       |
+| `image`      | `generate-image-models` | `models/images/*.json` + `src/images/models.rs` |
+| `test-image` | `generate-test-image`   | `tests/data/red-circle.png`                     |
 | `all`        | all of the above           | everything                                      |
 
 ### Adding a New Provider
 
 1. **Types** (`src/types/mod.rs`) — add API/provider identifiers and options if needed
 2. **API** (`src/api/<api-id>.rs`) — implement `stream` / `stream_simple` for new wire protocols
-3. **Catalog** — add fetch logic to pi-ai's `scripts/generate-models.ts`, then run `make generate-models`
+3. **Catalog** — add fetch logic to the upstream catalog `generate-models` script, then run `make generate-models`
 4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; register in `builtin_providers()`
 5. **Tests** (`tests/`) — streaming, tools, auth, cross-provider handoff as applicable
 
@@ -1031,7 +1031,7 @@ cargo nextest run -p elph-ai --test openrouter_cache_write_live -- --ignored
 cargo nextest run -p elph-ai --test tool_call_id_normalization_live -- --ignored
 ```
 
-Integration tests mirror pi-ai coverage: provider auth, SSE parsing and mid-stream abort, HTTP/WebSocket proxy routing, tool schemas, retry/overflow, OAuth, Bedrock endpoint resolution, Codex WebSocket transport, faux provider, and more under [`tests/`](tests/).
+Integration tests mirror upstream coverage: provider auth, SSE parsing and mid-stream abort, HTTP/WebSocket proxy routing, tool schemas, retry/overflow, OAuth, Bedrock endpoint resolution, Codex WebSocket transport, faux provider, and more under [`tests/`](tests/).
 
 ## License
 

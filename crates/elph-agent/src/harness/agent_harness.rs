@@ -1,4 +1,4 @@
-//! Stateful session-backed agent harness — ported from pi-agent `harness/agent-harness.ts`.
+//! Stateful session-backed agent harness — elph-agent module.
 
 use std::collections::HashMap;
 use std::future::Future;

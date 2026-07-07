@@ -13,7 +13,7 @@ fn streaming_buffer_throttles_and_accumulates() {
 }
 
 #[test]
-fn transcript_entries_cover_pi_roles() {
+fn transcript_entries_cover_elph_roles() {
     let entries = [
         TranscriptEntry::user("fix the bug"),
         TranscriptEntry::assistant_streaming("Looking at **main.rs**..."),

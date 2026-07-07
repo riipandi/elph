@@ -61,7 +61,7 @@ impl SettingsListTheme {
 pub type SettingsChangeCallback = Box<dyn FnMut(&str, &str)>;
 pub type SettingsCancelCallback = Box<dyn FnMut()>;
 
-/// Settings panel with value cycling (pi-tui `SettingsList`).
+/// Settings panel with value cycling.
 pub struct SettingsList {
     items: Vec<SettingItem>,
     selected_index: usize,

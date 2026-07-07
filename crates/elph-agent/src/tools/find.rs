@@ -1,4 +1,4 @@
-//! Find tool — ported from pi coding-agent `tools/find.ts`.
+//! Find tool — elph coding-agent tools.
 
 use std::sync::Arc;
 

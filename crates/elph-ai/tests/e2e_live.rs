@@ -1,4 +1,4 @@
-//! Live provider tests mirroring pi-ai `skipIf` suites.
+//! Live provider tests for elph-ai.
 //! Run with: `cargo test -p elph-ai --test e2e_live -- --ignored`
 
 mod common;

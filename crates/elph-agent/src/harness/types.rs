@@ -1,4 +1,4 @@
-//! Harness filesystem, execution, and agent-harness types — ported from pi-agent `harness/types.ts`.
+//! Harness filesystem, execution, and agent-harness types — elph-agent module.
 
 use std::collections::HashSet;
 use std::future::Future;

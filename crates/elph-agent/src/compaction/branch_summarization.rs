@@ -1,4 +1,4 @@
-//! Branch summarization helpers — ported from pi-agent `harness/compaction/branch-summarization.ts`.
+//! Branch summarization helpers — elph-agent module.
 
 use elph_ai::{Context, Message, Model, Models, SimpleStreamOptions, StopReason};
 use serde_json::Value;

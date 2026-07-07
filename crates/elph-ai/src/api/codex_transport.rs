@@ -656,7 +656,7 @@ async fn collect_websocket_events(socket: &Arc<tokio::sync::Mutex<WsStream>>, bo
     Ok(events)
 }
 
-/// Exposed for integration tests (pi-ai codex websocket cache parity).
+/// Exposed for integration tests (elph-ai codex websocket cache parity).
 #[doc(hidden)]
 pub fn get_codex_websocket_input_delta(
     body: &Value,

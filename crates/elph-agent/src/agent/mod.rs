@@ -1,4 +1,4 @@
-//! Stateful `Agent` wrapper — ported from pi-agent `agent.ts`.
+//! Stateful `Agent` wrapper — elph-agent module.
 
 mod queue;
 mod state;

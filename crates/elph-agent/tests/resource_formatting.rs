@@ -1,4 +1,4 @@
-//! Resource formatting tests — ported from pi-agent `harness/resource-formatting.test.ts`.
+//! Resource formatting tests.
 
 use elph_agent::{PromptTemplate, Skill, format_prompt_template_invocation, format_skill_invocation};
 
@@ -8,14 +8,14 @@ fn format_skill_invocation_includes_additional_instructions() {
         name: "inspect".to_string(),
         description: "Inspect things".to_string(),
         content: "Use inspection tools.".to_string(),
-        file_path: "/project/.pi/skills/inspect/SKILL.md".to_string(),
+        file_path: "/project/.elph/skills/inspect/SKILL.md".to_string(),
         disable_model_invocation: false,
     };
 
     assert_eq!(
         format_skill_invocation(&skill, Some("Check errors.")),
-        "<skill name=\"inspect\" location=\"/project/.pi/skills/inspect/SKILL.md\">\n\
-         References are relative to /project/.pi/skills/inspect.\n\n\
+        "<skill name=\"inspect\" location=\"/project/.elph/skills/inspect/SKILL.md\">\n\
+         References are relative to /project/.elph/skills/inspect.\n\n\
          Use inspection tools.\n\
          </skill>\n\n\
          Check errors."

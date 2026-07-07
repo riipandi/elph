@@ -1,4 +1,4 @@
-//! Tests for `LocalExecutionEnv` — ported from pi-agent `test/harness/nodejs-env.test.ts`.
+//! Tests for `LocalExecutionEnv`.
 
 use elph_agent::env::LocalExecutionEnv;
 use elph_agent::harness::types::{

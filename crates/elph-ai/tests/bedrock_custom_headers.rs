@@ -37,7 +37,7 @@ fn skips_reserved_headers_case_insensitively_while_applying_allowed_ones() {
 }
 
 #[test]
-fn reserved_header_detection_matches_pi_rules() {
+fn reserved_header_detection_matches_elph_rules() {
     assert!(is_reserved_bedrock_header("authorization"));
     assert!(is_reserved_bedrock_header("x-amz-security-token"));
     assert!(is_reserved_bedrock_header("Host"));
