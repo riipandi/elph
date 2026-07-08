@@ -1,28 +1,28 @@
 use std::path::{Path, PathBuf};
 
-use super::types::MemzConfig;
+use super::types::FloppyConfig;
 use super::{EmbedFn, MemoryStore};
 
-/// Default data directory name for a standalone memz store.
-pub const DEFAULT_DATA_DIR: &str = ".memz";
+/// Default data directory name for a standalone floppy store.
+pub const DEFAULT_DATA_DIR: &str = ".floppy";
 
 /// Database file name inside the data directory.
 pub const DB_FILE_NAME: &str = "memory.db";
 
-/// Resolved filesystem paths for a memz store.
+/// Resolved filesystem paths for a floppy store.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MemzPaths {
+pub struct FloppyPaths {
     pub data_dir: PathBuf,
 }
 
-impl MemzPaths {
+impl FloppyPaths {
     pub fn new(data_dir: impl AsRef<Path>) -> Self {
         Self {
             data_dir: data_dir.as_ref().to_path_buf(),
         }
     }
 
-    /// Project-local default: `./.memz`
+    /// Project-local default: `./.floppy`
     pub fn project_local() -> Self {
         Self::new(DEFAULT_DATA_DIR)
     }
@@ -43,9 +43,9 @@ impl MemzPaths {
         self.db_path().is_file()
     }
 
-    /// Build a [`MemzConfig`] for this location.
-    pub fn config(&self, session_id: impl Into<String>) -> MemzConfig {
-        MemzConfig::new(self.db_path_string(), session_id)
+    /// Build a [`FloppyConfig`] for this location.
+    pub fn config(&self, session_id: impl Into<String>) -> FloppyConfig {
+        FloppyConfig::new(self.db_path_string(), session_id)
     }
 
     /// Open a [`MemoryStore`] at this location with the given embedder.

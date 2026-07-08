@@ -1,10 +1,10 @@
 # Elph Memory
 
-Elph Memory (`memz`) is a project-local agent memory store. It keeps lessons, corrections,
+Elph Memory (`floppy`) is a project-local agent memory store. It keeps lessons, corrections,
 and insights across sessions, retrieves them by semantic similarity at task start, and
 adjusts per-memory weights from task outcomes.
 
-The implementation lives in `elph-core` as the `memz` module. It is ported from the
+The implementation lives in `elph-core` as the `floppy` module. It is ported from the
 [memelord](https://github.com/glommer/memelord) SDK (`packages/sdk`). The original code is
 licensed under the MIT License. Copyright (c) 2026 Glauber Costa.
 
@@ -48,26 +48,26 @@ Project memory is stored next to the repo:
 ```
 PROJECT_DIR/
 └── .elph/
-    ├── memory.db          # memz store (gitignored)
+    ├── memory.db          # floppy store (gitignored)
     └── .gitignore
 ```
 
 Path resolution: `Paths::memory_db_path()` → `PROJECT_DIR/.elph/memory.db`.
 
 Migrations run through Elph's datastore bootstrap (`elph::runtime::migrations::memory_migrations`),
-composed from `elph_core::memz::migrations::MIGRATIONS`. Host-specific migrations use
-`version > memz::migrations::LAST_VERSION` (currently `3`).
+composed from `elph_core::floppy::migrations::MIGRATIONS`. Host-specific migrations use
+`version > floppy::migrations::LAST_VERSION` (currently `3`).
 
 ### Standalone library use
 
-For non-Elph consumers, pass paths explicitly via [`MemzPaths`] or [`MemzBuilder`]:
+For non-Elph consumers, pass paths explicitly via [`FloppyPaths`] or [`FloppyBuilder`]:
 
 | Constant           | Value       |
 | ------------------ | ----------- |
-| `DEFAULT_DATA_DIR` | `.memz`     |
+| `DEFAULT_DATA_DIR` | `.floppy`   |
 | `DB_FILE_NAME`     | `memory.db` |
 
-Default: `MemzPaths::project_local()` → `./.memz/memory.db`. The memz module does not read
+Default: `FloppyPaths::project_local()` → `./.floppy/memory.db`. The floppy module does not read
 environment variables; hosts supply directories and options as arguments.
 
 ### Model cache (Elph)
@@ -184,13 +184,13 @@ Read-only commands (`status`, `list`, `tasks`, `log`, `purge`) use a no-op embed
 
 ### Opening a store
 
-Prefer [`MemzBuilder`] — all configuration is explicit (no environment variables):
+Prefer [`FloppyBuilder`] — all configuration is explicit (no environment variables):
 
 ```rust
-use elph_core::memz::{MemzBuilder, MemzPaths, FastEmbedOptions};
+use elph_core::floppy::{FloppyBuilder, FloppyPaths, FastEmbedOptions};
 
 // Standalone path + local embeddings (feature fastembed)
-let store = MemzPaths::project_local()
+let store = FloppyPaths::project_local()
     .builder("session-id")
     .fastembed(
         FastEmbedOptions::default()
@@ -202,18 +202,18 @@ let store = MemzPaths::project_local()
 store.init().await?;
 
 // Read-only inspection without a model
-let store = MemzBuilder::new("/path/to/memory.db", "session-id")
+let store = FloppyBuilder::new("/path/to/memory.db", "session-id")
     .dimensions(384)
     .noop_embed()
     .build()?;
 ```
 
-Lower-level: `create_memory_store(MemzConfig, EmbedFn)` remains available for custom wiring.
+Lower-level: `create_memory_store(FloppyConfig, EmbedFn)` remains available for custom wiring.
 
 ### Task lifecycle
 
 ```rust
-use elph_core::memz::{ReportCorrectionInput, TaskEndInput, SelfReportEntry};
+use elph_core::floppy::{ReportCorrectionInput, TaskEndInput, SelfReportEntry};
 
 // 1. Start — retrieve relevant memories
 let start = store.start_task("fix flaky integration tests").await?;
@@ -244,7 +244,7 @@ store.end_task(&start.task_id, TaskEndInput {
 ### Unified report API
 
 ```rust
-use elph_core::memz::{MemoryReportInput, MemoryReportType, UserInputSource};
+use elph_core::floppy::{MemoryReportInput, MemoryReportType, UserInputSource};
 
 store.report(MemoryReportInput {
     report_type: MemoryReportType::Insight,
@@ -304,7 +304,7 @@ Configure the embedder in `~/.elph/settings.json` (or `$ELPH_HOME/settings.json`
 | `embedQuantized` | `true`          | Prefer the `*Q` ONNX variant when one exists           |
 
 `elph memory` loads these values via `Settings::load()` and passes them to
-`create_fastembed` with `cache_dir` set to `Paths::models_dir()`. `MemzConfig::dimensions`
+`create_fastembed` with `cache_dir` set to `Paths::models_dir()`. `FloppyConfig::dimensions`
 is set from the resolved model so vector queries match the embedder output.
 
 ### Model names and aliases
@@ -325,7 +325,7 @@ is set from the resolved model so vector queries match the embedder output.
 | `nomic-ai/nomic-embed-text-v1`            | `NomicEmbedTextV1`  |
 | `nomic-ai/nomic-embed-text-v1.5`          | `NomicEmbedTextV15` |
 
-When `embedQuantized` / `FastEmbedOptions::quantized` is `true`, memz appends `Q` to the
+When `embedQuantized` / `FastEmbedOptions::quantized` is `true`, floppy appends `Q` to the
 canonical model name if a quantized variant exists (e.g. `AllMiniLML6V2` → `AllMiniLML6V2Q`).
 Names that already end in `Q` are left unchanged.
 
@@ -334,12 +334,12 @@ Embedding dimensions are read from fastembed model metadata via `embedding_dims(
 
 ### Configuration
 
-| Context      | Source                                                               |
-| ------------ | -------------------------------------------------------------------- |
-| memz library | [`MemzBuilder`] / [`FastEmbedOptions`] builder methods and arguments |
-| Elph CLI     | `settings.json` mapped into `MemzBuilder` by `elph::memory::store`   |
+| Context        | Source                                                                 |
+| -------------- | ---------------------------------------------------------------------- |
+| floppy library | [`FloppyBuilder`] / [`FastEmbedOptions`] builder methods and arguments |
+| Elph CLI       | `settings.json` mapped into `FloppyBuilder` by `elph::memory::store`   |
 
-memz itself does not read environment variables. Unset `FastEmbedOptions::model` falls back to
+floppy itself does not read environment variables. Unset `FastEmbedOptions::model` falls back to
 [`DEFAULT_EMBED_MODEL`] (`AllMiniLML6V2`).
 
 ### First-run download
@@ -373,7 +373,7 @@ elph-core = { version = "...", features = ["fastembed"] }
 Example with explicit options:
 
 ```rust
-use elph_core::memz::{create_fastembed, FastEmbedOptions, resolve_embedding_model, embedding_dims};
+use elph_core::floppy::{create_fastembed, FastEmbedOptions, resolve_embedding_model, embedding_dims};
 
 let model = resolve_embedding_model("AllMiniLML6V2", true)?;
 let dims = embedding_dims(&model);
@@ -390,13 +390,13 @@ let embed = create_fastembed(
 
 ## Migrations
 
-Memz ships versioned migrations in `elph_core::memz::migrations`:
+Floppy ships versioned migrations in `elph_core::floppy::migrations`:
 
-| Version | Name                            | Description                        |
-| ------- | ------------------------------- | ---------------------------------- |
-| 1       | `memz_create_schema`            | Core tables                        |
-| 2       | `memz_fix_truncated_embeddings` | Null out truncated embedding blobs |
-| 3       | `memz_query_indexes`            | Indexes for list/search/task joins |
+| Version | Name                              | Description                        |
+| ------- | --------------------------------- | ---------------------------------- |
+| 1       | `floppy_create_schema`            | Core tables                        |
+| 2       | `floppy_fix_truncated_embeddings` | Null out truncated embedding blobs |
+| 3       | `floppy_query_indexes`            | Indexes for list/search/task joins |
 
 Elph maps these into `memory_migrations()` and applies them during `ensure_datastore`.
 `MemoryStore::init()` also calls `migrations::apply()` (idempotent).
@@ -414,8 +414,8 @@ To extend the schema in Elph, append migrations with `version > LAST_VERSION` in
 | `elph::runtime::settings`  | `memory.embedModel` / `memory.embedQuantized` in `settings.json`         |
 | `elph::runtime::datastore` | Runs metadata + memory migrations                                        |
 | `elph::runtime::project`   | Creates `.elph/` and gitignore                                           |
-| `elph::memory::store`      | Opens `MemoryStore` via `MemzBuilder` (`apply_migrations(false)`)        |
-| `elph memory`              | CLI over `elph_core::memz::MemoryStore`                                  |
+| `elph::memory::store`      | Opens `MemoryStore` via `FloppyBuilder` (`apply_migrations(false)`)      |
+| `elph memory`              | CLI over `elph_core::floppy::MemoryStore`                                |
 
 The agent runtime can open the same store path and call the task lifecycle API during
 sessions. The CLI is for inspection and manual maintenance.
@@ -433,14 +433,14 @@ sessions. The CLI is for inspection and manual maintenance.
 
 ---
 
-[`MemzBuilder`]: ../crates/elph-core/src/memz/builder.rs
-[`MemzPaths`]: ../crates/elph-core/src/memz/paths.rs
-[`DEFAULT_EMBED_MODEL`]: ../crates/elph-core/src/memz/embed.rs
+[`FloppyBuilder`]: ../crates/elph-core/src/floppy/builder.rs
+[`FloppyPaths`]: ../crates/elph-core/src/floppy/paths.rs
+[`DEFAULT_EMBED_MODEL`]: ../crates/elph-core/src/floppy/embed.rs
 
 ---
 
 ## Further reading
 
 - [memelord](https://github.com/glommer/memelord) — original SDK design
-- `crates/elph-core/src/memz/` — implementation
+- `crates/elph-core/src/floppy/` — implementation
 - `elph/src/memory/` — CLI wiring and output formatting

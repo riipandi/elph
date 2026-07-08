@@ -132,7 +132,7 @@ else
     tar -C "$tmp" -czf "$artifact_path" "$bin"
 fi
 
-refresh_checksums "$binaries_dir" eclaw-* elph-*
+refresh_checksums "$binaries_dir" eclaw-* elph-* owly-*
 refresh_checksums "$archives_dir" '*.tar.gz' '*.zip'
 
 file_bytes() {

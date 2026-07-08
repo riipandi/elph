@@ -52,7 +52,7 @@ elif [[ "${CROSS_VERBOSE:-}" == "1" ]]; then
     build_args+=(--verbose)
 fi
 
-for pkg in eclaw elph; do
+for pkg in eclaw elph owly; do
     "$builder" "${build_args[@]}" "$pkg" --target "$target"
     "$stage" "$target" "$pkg"
 done

@@ -7,7 +7,7 @@ use crate::runtime::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 #[derive(Parser, Default)]
 #[command(
     name = "memory",
-    about = "Agent memory store (memz) — persistent lessons across sessions",
+    about = "Agent memory store (floppy) — persistent lessons across sessions",
     color = clap::ColorChoice::Auto
 )]
 pub struct MemoryArgs {

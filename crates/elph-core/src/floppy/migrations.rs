@@ -1,25 +1,25 @@
-//! Versioned schema migrations for the memz memory store.
+//! Versioned schema migrations for the floppy memory store.
 //!
 //! Schema derived from [memelord](https://github.com/glommer/memelord) (`packages/sdk`).
-//! Host applications can map [`MemzMigration`] entries into their own migration runner.
+//! Host applications can map [`FloppyMigration`] entries into their own migration runner.
 
 use anyhow::Result;
 use turso::Connection;
 
 use super::util::drain_rows;
 
-/// One versioned SQL migration for the memz store.
+/// One versioned SQL migration for the floppy store.
 ///
 /// Field layout matches common host migration runners so consumers can map entries
 /// without coupling this module to a specific application crate.
 #[derive(Debug, Clone, Copy)]
-pub struct MemzMigration {
+pub struct FloppyMigration {
     pub version: i64,
     pub name: &'static str,
     pub up: &'static str,
 }
 
-pub const V1_NAME: &str = "memz_create_schema";
+pub const V1_NAME: &str = "floppy_create_schema";
 pub const V1_UP: &str = r#"
 CREATE TABLE IF NOT EXISTS memories (
     id              TEXT PRIMARY KEY,
@@ -62,10 +62,10 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT NOT NULL
 )"#;
 
-pub const V2_NAME: &str = "memz_fix_truncated_embeddings";
+pub const V2_NAME: &str = "floppy_fix_truncated_embeddings";
 pub const V2_UP: &str = "UPDATE memories SET embedding = NULL WHERE embedding IS NOT NULL AND length(embedding) < 1536";
 
-pub const V3_NAME: &str = "memz_query_indexes";
+pub const V3_NAME: &str = "floppy_query_indexes";
 pub const V3_UP: &str = r#"
 CREATE INDEX IF NOT EXISTS idx_memories_category ON memories(category);
 CREATE INDEX IF NOT EXISTS idx_memories_source_task ON memories(source_task);
@@ -74,34 +74,34 @@ CREATE INDEX IF NOT EXISTS idx_memory_retrievals_task_id ON memory_retrievals(ta
 CREATE INDEX IF NOT EXISTS idx_tasks_started_at ON tasks(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_pending_embed ON memories(id) WHERE embedding IS NULL"#;
 
-/// Latest memz schema version. Hosts should start custom migrations above this.
+/// Latest floppy schema version. Hosts should start custom migrations above this.
 pub const LAST_VERSION: i64 = 3;
 
-/// Canonical memz migration set — inject or extend in the host migration registry.
-pub const MIGRATIONS: &[MemzMigration] = &[
-    MemzMigration {
+/// Canonical floppy migration set — inject or extend in the host migration registry.
+pub const MIGRATIONS: &[FloppyMigration] = &[
+    FloppyMigration {
         version: 1,
         name: V1_NAME,
         up: V1_UP,
     },
-    MemzMigration {
+    FloppyMigration {
         version: 2,
         name: V2_NAME,
         up: V2_UP,
     },
-    MemzMigration {
+    FloppyMigration {
         version: 3,
         name: V3_NAME,
         up: V3_UP,
     },
 ];
 
-/// Apply pending memz migrations using the shared `app_migrations` ledger.
+/// Apply pending floppy migrations using the shared `app_migrations` ledger.
 pub async fn apply(conn: &Connection) -> Result<()> {
     run(conn, MIGRATIONS).await
 }
 
-async fn run(conn: &Connection, migrations: &[MemzMigration]) -> Result<()> {
+async fn run(conn: &Connection, migrations: &[FloppyMigration]) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS app_migrations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,7 +158,7 @@ mod tests {
     use turso::Builder;
 
     #[tokio::test]
-    async fn apply_creates_memz_tables() {
+    async fn apply_creates_floppy_tables() {
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("memory.db");
         let db = Builder::new_local(db_path.to_string_lossy().as_ref())

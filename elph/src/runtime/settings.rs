@@ -56,7 +56,7 @@ pub struct DatabaseSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MemorySettings {
-    /// fastembed model name or Hugging Face alias (see `elph_core::memz::resolve_embedding_model`).
+    /// fastembed model name or Hugging Face alias (see `elph_core::floppy::resolve_embedding_model`).
     #[serde(default = "default_embed_model")]
     pub embed_model: String,
     /// Prefer quantized ONNX weights when a `*Q` variant exists (default: true).
@@ -114,7 +114,7 @@ impl Settings {
 }
 
 fn default_embed_model() -> String {
-    elph_core::memz::DEFAULT_EMBED_MODEL.to_string()
+    elph_core::floppy::DEFAULT_EMBED_MODEL.to_string()
 }
 
 fn default_embed_quantized() -> bool {

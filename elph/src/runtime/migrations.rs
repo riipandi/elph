@@ -1,5 +1,5 @@
 use elph_agent::Migration;
-use elph_core::memz::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
+use elph_core::floppy::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
@@ -94,7 +94,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
 
 /// Project-local memory store (`.elph/memory.db`).
 ///
-/// Composed from memz schema migrations (ported from
+/// Composed from floppy schema migrations (ported from
 /// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with
 /// `version > migrations::LAST_VERSION`.
 pub fn memory_migrations() -> &'static [Migration] {
@@ -121,10 +121,10 @@ pub fn memory_migrations() -> &'static [Migration] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_core::memz::migrations;
+    use elph_core::floppy::migrations;
 
     #[test]
-    fn memory_migrations_track_memz_versions() {
+    fn memory_migrations_track_floppy_versions() {
         assert_eq!(memory_migrations().len(), migrations::MIGRATIONS.len());
         assert_eq!(
             memory_migrations().last().map(|m| m.version),

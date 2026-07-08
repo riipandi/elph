@@ -32,7 +32,7 @@ pub enum UserInputSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct MemzConfig {
+pub struct FloppyConfig {
     /// Path to the Turso database file
     pub db_path: String,
     /// Session identifier — each agent session gets its own ID
@@ -47,12 +47,12 @@ pub struct MemzConfig {
     pub learning_rate: Option<f64>,
     /// Daily decay rate for unused memories (default: 0.995)
     pub decay_rate: Option<f64>,
-    /// Run memz migrations in [`MemoryStore::init`] (default: true). Set `false` when the host
-    /// already applied [`crate::memz::migrations::MIGRATIONS`].
+    /// Run floppy migrations in [`MemoryStore::init`] (default: true). Set `false` when the host
+    /// already applied [`crate::floppy::migrations::MIGRATIONS`].
     pub apply_migrations: Option<bool>,
 }
 
-impl MemzConfig {
+impl FloppyConfig {
     pub fn new(db_path: impl Into<String>, session_id: impl Into<String>) -> Self {
         Self {
             db_path: db_path.into(),

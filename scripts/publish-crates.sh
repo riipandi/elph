@@ -19,6 +19,7 @@ PACKAGES=(
     elph-tui
     elph
     eclaw
+    owly
 )
 
 pkg_manifest() {
@@ -26,9 +27,9 @@ pkg_manifest() {
     case "$pkg" in
     elph) echo "elph/Cargo.toml" ;;
     eclaw) echo "eclaw/Cargo.toml" ;;
+    owly) echo "owly/Cargo.toml" ;;
     *) echo "crates/${pkg}/Cargo.toml" ;;
     esac
-}
 
 pkg_version() {
     local pkg=$1

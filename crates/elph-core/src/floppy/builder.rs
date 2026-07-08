@@ -6,28 +6,28 @@ use super::embed::{FastEmbedOptions, create_fastembed};
 use super::embed::DEFAULT_EMBED_MODEL;
 #[cfg(feature = "fastembed")]
 use super::embed::{embedding_dims, resolve_embedding_model};
-use super::paths::MemzPaths;
+use super::paths::FloppyPaths;
 use super::store::{EmbedFn, MemoryStore, noop_embedder};
-use super::types::{MemzConfig, VectorType};
+use super::types::{FloppyConfig, VectorType};
 use super::util::DEFAULT_EMBEDDING_DIMS;
 
 /// Builder for a [`MemoryStore`] with explicit configuration (no environment variables).
-pub struct MemzBuilder {
-    config: MemzConfig,
+pub struct FloppyBuilder {
+    config: FloppyConfig,
     custom_embed: Option<EmbedFn>,
     fastembed_opts: Option<FastEmbedOptions>,
 }
 
-impl MemzBuilder {
+impl FloppyBuilder {
     pub fn new(db_path: impl Into<String>, session_id: impl Into<String>) -> Self {
         Self {
-            config: MemzConfig::new(db_path, session_id),
+            config: FloppyConfig::new(db_path, session_id),
             custom_embed: None,
             fastembed_opts: None,
         }
     }
 
-    pub fn from_paths(paths: &MemzPaths, session_id: impl Into<String>) -> Self {
+    pub fn from_paths(paths: &FloppyPaths, session_id: impl Into<String>) -> Self {
         Self::new(paths.db_path_string(), session_id)
     }
 
@@ -56,7 +56,7 @@ impl MemzBuilder {
         self
     }
 
-    /// Skip memz migrations in [`MemoryStore::init`] when the host already applied them.
+    /// Skip floppy migrations in [`MemoryStore::init`] when the host already applied them.
     pub fn apply_migrations(mut self, apply: bool) -> Self {
         self.config = self.config.apply_migrations(apply);
         self
@@ -77,7 +77,7 @@ impl MemzBuilder {
         self
     }
 
-    /// Local fastembed backend. Sets [`MemzConfig::dimensions`] from the resolved model.
+    /// Local fastembed backend. Sets [`FloppyConfig::dimensions`] from the resolved model.
     #[cfg(feature = "fastembed")]
     pub fn fastembed(mut self, options: FastEmbedOptions) -> Result<Self> {
         let model_name = options.model.as_deref().unwrap_or(DEFAULT_EMBED_MODEL);
@@ -108,10 +108,10 @@ impl MemzBuilder {
     }
 }
 
-impl MemzPaths {
-    /// Start a [`MemzBuilder`] rooted at this data directory.
-    pub fn builder(&self, session_id: impl Into<String>) -> MemzBuilder {
-        MemzBuilder::from_paths(self, session_id)
+impl FloppyPaths {
+    /// Start a [`FloppyBuilder`] rooted at this data directory.
+    pub fn builder(&self, session_id: impl Into<String>) -> FloppyBuilder {
+        FloppyBuilder::from_paths(self, session_id)
     }
 }
 
@@ -128,7 +128,7 @@ mod tests {
     fn builder_requires_embedder() {
         let dir = tempfile::tempdir().expect("tempdir");
         let db = dir.path().join("t.db").to_string_lossy().into_owned();
-        match MemzBuilder::new(db, "s").build() {
+        match FloppyBuilder::new(db, "s").build() {
             Err(e) => assert!(e.to_string().contains("embedder required")),
             Ok(_) => panic!("expected embedder required error"),
         }
@@ -138,7 +138,7 @@ mod tests {
     fn builder_with_custom_embed() {
         let dir = tempfile::tempdir().expect("tempdir");
         let db = dir.path().join("t.db").to_string_lossy().into_owned();
-        let store = MemzBuilder::new(db, "s")
+        let store = FloppyBuilder::new(db, "s")
             .dimensions(4)
             .embed(mock_embed())
             .build()
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn from_paths_sets_db_location() {
-        let paths = MemzPaths::project_local();
+        let paths = FloppyPaths::project_local();
         let store = paths.builder("sess").dimensions(4).noop_embed().build().expect("build");
         assert_eq!(store.dimensions(), 4);
     }

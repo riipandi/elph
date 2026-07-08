@@ -370,7 +370,9 @@ impl MemoryStore {
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    use crate::memz::types::{MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource};
+    use crate::floppy::types::{
+        MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource,
+    };
     use std::sync::Arc;
 
     fn mock_embed() -> EmbedFn {
@@ -401,7 +403,7 @@ mod tests {
         fn new() -> Self {
             let dir = tempfile::tempdir().expect("tempdir");
             let db_path = dir.path().join("memory.db").to_string_lossy().into_owned();
-            let store = create_memory_store(MemzConfig::new(db_path, "test").top_k(3).dimensions(4), mock_embed());
+            let store = create_memory_store(FloppyConfig::new(db_path, "test").top_k(3).dimensions(4), mock_embed());
             Self { _dir: dir, store }
         }
     }
@@ -410,7 +412,7 @@ mod tests {
     async fn get_status_includes_categories() {
         let ctx = TestCtx::new();
         ctx.store
-            .report_user_input(crate::memz::ReportUserInput {
+            .report_user_input(crate::floppy::ReportUserInput {
                 lesson: "use pnpm".into(),
                 source: UserInputSource::UserInput,
             })
@@ -431,7 +433,7 @@ mod tests {
             .await
             .expect("insight");
         ctx.store
-            .report_user_input(crate::memz::ReportUserInput {
+            .report_user_input(crate::floppy::ReportUserInput {
                 lesson: "user note".into(),
                 source: UserInputSource::UserInput,
             })
@@ -455,7 +457,7 @@ mod tests {
         let ctx = TestCtx::new();
         let mem_id = ctx
             .store
-            .report_user_input(crate::memz::ReportUserInput {
+            .report_user_input(crate::floppy::ReportUserInput {
                 lesson: "auth middleware path".into(),
                 source: UserInputSource::UserCorrection,
             })
@@ -522,9 +524,9 @@ mod tests {
     }
 
     #[test]
-    fn memz_paths_project_local() {
-        let paths = MemzPaths::project_local();
-        assert!(paths.db_path().ends_with(".memz/memory.db"));
+    fn floppy_paths_project_local() {
+        let paths = FloppyPaths::project_local();
+        assert!(paths.db_path().ends_with(".floppy/memory.db"));
         let cfg = paths.config("sess");
         assert_eq!(cfg.session_id, "sess");
     }

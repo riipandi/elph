@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use elph_core::memz::{
+use elph_core::floppy::{
     EmbeddingStatus, MemoryCategory, MemoryRecord, StoreStatus, TaskRecord, TaskStatus, TimelineEvent,
     TimelineEventKind, category_str,
 };
@@ -42,7 +42,7 @@ pub fn parse_category_filter(raw: &str) -> Option<MemoryCategory> {
 }
 
 pub fn print_status(status: &StoreStatus) {
-    println!("memz status:");
+    println!("floppy status:");
     println!("  Memories:  {}", status.total_memories);
     println!("  Tasks:     {}", status.completed_tasks);
     let avg = if status.avg_task_score.is_finite() && status.total_tasks > 0 {
@@ -160,7 +160,7 @@ pub fn print_timeline(events: &[TimelineEvent]) {
     }
 }
 
-pub fn print_search_results(query: &str, memories: &[elph_core::memz::Memory]) {
+pub fn print_search_results(query: &str, memories: &[elph_core::floppy::Memory]) {
     if memories.is_empty() {
         println!("No relevant memories found.");
         return;

@@ -39,14 +39,14 @@ fn memory_status_on_empty_store() {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("memz status"));
+    assert!(stdout.contains("floppy status"));
     assert!(stdout.contains("Memories:  0"));
 
     let memory_db = dir.path().join(".elph/memory.db");
-    assert!(memory_db.is_file(), "expected memz DB at {}", memory_db.display());
+    assert!(memory_db.is_file(), "expected floppy DB at {}", memory_db.display());
     assert!(
-        !dir.path().join(".elph/memz/memory.db").exists(),
-        "memz DB must not use legacy .elph/memz/ path"
+        !dir.path().join(".elph/floppy/memory.db").exists(),
+        "floppy DB must not use legacy .elph/floppy/ path"
     );
 }
 

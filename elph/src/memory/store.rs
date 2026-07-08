@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
-use elph_core::memz::{DEFAULT_EMBEDDING_DIMS, FastEmbedOptions, MemoryStore, MemzBuilder};
-use elph_core::memz::{embedding_dims, resolve_embedding_model};
+use elph_core::floppy::{DEFAULT_EMBEDDING_DIMS, FastEmbedOptions, FloppyBuilder, MemoryStore};
+use elph_core::floppy::{embedding_dims, resolve_embedding_model};
 use elph_core::utils::path::AppPaths;
 
 use crate::runtime::{Paths, Settings};
@@ -16,7 +16,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
-    let mut builder = MemzBuilder::new(paths.memory_db_path().to_string_lossy().into_owned(), "elph-cli")
+    let mut builder = FloppyBuilder::new(paths.memory_db_path().to_string_lossy().into_owned(), "elph-cli")
         .dimensions(dims)
         .apply_migrations(false);
 

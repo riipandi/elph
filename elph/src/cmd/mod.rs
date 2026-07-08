@@ -70,7 +70,7 @@ pub enum Commands {
     Import(ImportArgs),
     /// Manage MCP server configurations
     Mcp(McpArgs),
-    /// Inspect and manage agent memory (memz)
+    /// Inspect and manage agent memory (floppy)
     Memory(MemoryArgs),
     /// List available models and exit
     Models(ModelsArgs),

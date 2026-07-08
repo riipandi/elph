@@ -9,7 +9,7 @@
 //! Welford baseline scoring, EMA weight updates) with platform-specific
 //! adaptations for the Turso Rust driver.
 //!
-//! Configuration is explicit: use [`MemzBuilder`] or [`MemzConfig`] builder methods.
+//! Configuration is explicit: use [`FloppyBuilder`] or [`FloppyConfig`] builder methods.
 //! No environment variables are read inside this module.
 
 mod builder;
@@ -23,22 +23,22 @@ mod store;
 mod types;
 mod util;
 
-pub use builder::MemzBuilder;
+pub use builder::FloppyBuilder;
 pub use embed::{DEFAULT_EMBED_MODEL, FastEmbedOptions, create_fastembed};
 #[cfg(feature = "fastembed")]
 pub use embed::{embedding_dims, resolve_embedding_model};
-pub use migrations::{LAST_VERSION, MIGRATIONS, MemzMigration, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
-pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, MemzPaths};
+pub use migrations::{FloppyMigration, LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
+pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, FloppyPaths};
 pub use store::{EmbedFn, MemoryStore, noop_embedder};
 pub use types::{
-    CategoryCount, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult, Memory, MemoryCategory,
-    MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
-    SelfReportEntry, StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput, TaskRecord,
-    TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType,
+    CategoryCount, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult, FloppyConfig, Memory,
+    MemoryCategory, MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, ReportCorrectionInput,
+    ReportUserInput, SelfReportEntry, StartTaskResult, StoreStatus, TaskBaseline, TaskCreatedMemory, TaskEndInput,
+    TaskRecord, TaskRetrieval, TaskStatus, TimelineEvent, TimelineEventKind, TopMemory, UserInputSource, VectorType,
 };
 pub use util::{DEFAULT_EMBEDDING_DIMS, VALID_EMBEDDING_BYTES, category_str};
 
-pub fn create_memory_store(config: MemzConfig, embed: EmbedFn) -> MemoryStore {
+pub fn create_memory_store(config: FloppyConfig, embed: EmbedFn) -> MemoryStore {
     MemoryStore::new(config, embed)
 }
 
@@ -50,7 +50,7 @@ mod tests {
     fn factory_delegates_to_memory_store_new() {
         let dir = tempfile::tempdir().expect("tempdir");
         let db_path = dir.path().join("factory.db").to_string_lossy().into_owned();
-        let config = MemzConfig {
+        let config = FloppyConfig {
             db_path,
             session_id: "s".to_string(),
             vector_type: None,

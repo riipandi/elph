@@ -28,9 +28,8 @@ $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 .PHONY: build run watch test lint fmt clean check coverage help generate-models
-.PHONY: prepare cross cross-pull release
-.PHONY: build-linux build-macos build-windows
-.PHONY: bump bump-elph bump-eclaw bump-libs publish publish-dry-run
+.PHONY: prepare cross cross-pull release build-linux build-macos build-windows
+.PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -155,14 +154,17 @@ prepare: ## Install required toolchain
 # Independent version streams:
 #   bump-elph  — elph/Cargo.toml
 #   bump-eclaw — eclaw/Cargo.toml
+#   bump-owly  — owly/Cargo.toml
 #   bump-libs  — crates/elph-{core,agent,ai,tui,swarm} (+ workspace pins)
-#   bump       — bump-libs + bump-elph + bump-eclaw
+#   bump       — bump-libs + bump-elph + bump-eclaw + bump-owly
 #
 # Usage (level is required):
 #   make bump       patch|minor|major
 #   make bump-elph  patch|minor|major
 #   make bump-eclaw patch|minor|major
+#   make bump-owly  patch|minor|major
 #   make bump-libs  patch|minor|major
+
 
 ifeq ($(UNAME_S),Darwin)
   SED_INPLACE := sed -i ''

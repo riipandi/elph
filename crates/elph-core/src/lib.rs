@@ -1,6 +1,6 @@
+pub mod floppy;
 pub mod fs;
 pub mod logger;
-pub mod memz;
 pub mod scaffold;
 pub mod utils;
 

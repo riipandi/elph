@@ -14,7 +14,7 @@ use super::scoring::{
     compute_credit, compute_task_score, empty_baseline, initial_weight, update_baseline, update_weight,
 };
 use super::types::{
-    DecayResult, Memory, MemoryCategory, MemoryStats, MemzConfig, ReportCorrectionInput, ReportUserInput,
+    DecayResult, FloppyConfig, Memory, MemoryCategory, MemoryStats, ReportCorrectionInput, ReportUserInput,
     StartTaskResult, TaskBaseline, TaskEndInput, TopMemory, VectorType,
 };
 use super::util::{DEFAULT_EMBEDDING_DIMS, category_from_str, category_str, drain_rows, retrieval_sql, vec_buf};
@@ -121,7 +121,7 @@ pub struct MemoryStore {
 }
 
 impl MemoryStore {
-    pub fn new(config: MemzConfig, embed: EmbedFn) -> Self {
+    pub fn new(config: FloppyConfig, embed: EmbedFn) -> Self {
         Self {
             db_path: config.db_path,
             session_id: config.session_id,
@@ -773,9 +773,9 @@ fn is_lock_err(msg: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memz::create_memory_store;
-    use crate::memz::types::{
-        MemzConfig, ReportCorrectionInput, ReportUserInput, SelfReportEntry, TaskEndInput, UserInputSource,
+    use crate::floppy::create_memory_store;
+    use crate::floppy::types::{
+        FloppyConfig, ReportCorrectionInput, ReportUserInput, SelfReportEntry, TaskEndInput, UserInputSource,
     };
     use std::sync::Arc;
 
@@ -798,8 +798,8 @@ mod tests {
         })
     }
 
-    fn test_config(db_path: &str) -> MemzConfig {
-        MemzConfig {
+    fn test_config(db_path: &str) -> FloppyConfig {
+        FloppyConfig {
             db_path: db_path.to_string(),
             session_id: "test-session".to_string(),
             vector_type: None,
@@ -828,7 +828,7 @@ mod tests {
             create_memory_store(test_config(&self.db_path), mock_embed())
         }
 
-        fn store_with(&self, mut config: MemzConfig) -> MemoryStore {
+        fn store_with(&self, mut config: FloppyConfig) -> MemoryStore {
             config.db_path = self.db_path.clone();
             create_memory_store(config, mock_embed())
         }
