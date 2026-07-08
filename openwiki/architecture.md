@@ -1,6 +1,6 @@
 ---
 title: "Architecture"
-last_updated: 2026-07-08T10:57:29Z
+last_updated: 2026-07-08T14:14:00Z
 category: architecture
 tags:
     - architecture
@@ -51,11 +51,13 @@ Defines the `Cli` struct with clap derive macros. Supported flags:
 
 - `--init` / `--update` — select mode
 - `--model` — override provider/model
-- `--print` / `--verbose` — output control
+- `--print` / `--stream` / `--verbose` — output control (`--stream` shows text deltas, `--verbose` adds thinking in dimmed gray)
 - `--directory` — working directory
 - Trailing argument — chat message
 
-The `execute()` method resolves the command enum and calls `run_command()`.
+The `execute()` method resolves the command enum and calls `run_command()`, forwarding the `stream` flag.
+
+**Banner output** now uses ANSI color codes (cyan for logo, green for values, dimmed for labels).
 
 **Source:** [`owly/src/cli.rs`](../owly/src/cli.rs) — ported from OpenWiki `src/cli.tsx`.
 
@@ -84,20 +86,25 @@ Each command:
 
 The core integration with `elph-agent` and `elph-ai`. Key functions:
 
-- **`run_agent()`** — Sets up the agent with tools, subscribes to streaming events, sends prompts, waits for completion.
+- **`run_agent()`** — Accepts a `RunAgentOptions` struct (command name, system/user prompts, config, cwd, print/stream/verbose flags). Sets up the agent with tools, subscribes to streaming events, sends prompts, waits for completion.
 - **`prepare_init_command()`** — Creates system prompt + init user prompt.
 - **`prepare_update_command()`** — Creates system prompt + update user prompt (includes git summary).
 - **`prepare_chat_command()`** — Creates system prompt + chat user prompt.
+
+**`RunAgentOptions` struct** replaces the earlier positional-parameter approach. Fields: `command`, `system_prompt`, `user_prompt`, `config`, `cwd`, `print_mode`, `stream`, `verbose`.
 
 **Tool selection:**
 
 - Init/update mode: all tools (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`)
 - Chat mode: read-only tools (`read`, `grep`, `find`, `ls`)
 
+The tool names are appended to the system prompt after tool selection, forming a line like `Available tools for this session: read, bash, edit, write, grep, find, ls`.
+
 **Streaming:** The agent subscribes to `AgentEvent` variants to display progress:
 
-- `TextDelta` / `ThinkingDelta` — live text in verbose mode
-- `ToolExecutionStart` / `ToolExecutionEnd` — tool call logging
+- `TextDelta` — live text output (shown with `--stream` or `--verbose`)
+- `ThinkingDelta` — model reasoning (shown only with `--verbose`, in dimmed gray)
+- `ToolExecutionStart` / `ToolExecutionEnd` — tool call logging (in verbose mode)
 - `AgentEnd` — final stats
 
 **Source:** [`owly/src/agent.rs`](../owly/src/agent.rs) — ported from OpenWiki `src/agent/index.ts`.
@@ -184,10 +191,10 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
    - Init: repository context instructions
    - Update: last update metadata + git change summary
 7. Agent created with:
-   - System prompt
+   - System prompt (with available tool list appended)
    - Model (resolved via elph-ai)
    - Tools (all tools for init/update)
-8. Event subscriptions attached (streaming display)
+8. Event subscriptions attached (streaming display, controlled by `stream` and `verbose` flags)
 9. User prompt sent to agent
 10. Agent executes: thinks, calls tools (read files, write docs)
 11. On completion: update metadata saved to .last-update.json
@@ -208,7 +215,8 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
 ### Modifying agent behavior
 
 - **Prompts** are in [`prompts.rs`](../owly/src/prompts.rs) — system prompt, init/update/chat templates
-- **Tool selection** by mode happens in [`agent.rs`](../owly/src/agent.rs) (`create_all_tools` vs `create_read_only_tools`)
+- **Tool selection** by mode happens in [`agent.rs`](../owly/src/agent.rs) (`create_all_tools` vs `create_read_only_tools`); tool names are appended to the system prompt after selection
+- **Streaming vs verbose**: `--stream` shows `TextDelta` only; `--verbose` shows everything including `ThinkingDelta` and tool call logs; controlled by the `stream` and `verbose` fields in `RunAgentOptions`
 - **Event handling** for streaming display is in the `subscribe` closure in `run_agent()`
 
 ### Adding a new command

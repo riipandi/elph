@@ -1,6 +1,6 @@
 ---
 title: "Quickstart Guide"
-last_updated: 2026-07-08T10:57:29Z
+last_updated: 2026-07-08T14:14:00Z
 category: quickstart
 tags:
     - getting-started
@@ -53,6 +53,12 @@ owly "What does this project do?"
 
 # Print response and exit
 owly -p "Summarize the architecture"
+
+# Stream LLM response live (no thinking display)
+owly -s "What does this project do?"
+
+# Stream with thinking display
+owly -v "Explain the architecture"
 ```
 
 ### Required Setup
@@ -79,8 +85,9 @@ OPENCODE_API_KEY=your-api-key-here
 | `--init`            | Generate initial documentation under `openwiki/`       |
 | `--update`          | Refresh existing documentation based on source changes |
 | `--print`, `-p`     | Run once and print output (non-interactive)            |
+| `--stream`, `-s`    | Show streaming LLM response (without thinking)         |
 | `--model`           | Override model (e.g., `anthropic/claude-sonnet-5`)     |
-| `--verbose`, `-v`   | Show streaming response and thinking                   |
+| `--verbose`, `-v`   | Show streaming response and thinking from LLM          |
 | `--directory`, `-d` | Set working directory                                  |
 | `--help`            | Show help                                              |
 

@@ -1,6 +1,6 @@
 [package]
 name = "owly"
-version = "0.0.1"
+version = "0.0.2"
 license = "MIT"
 description = "Agent docs for codebases - Rust port of OpenWiki"
 keywords = ["ai", "documentation", "wiki", "agent", "cli"]
@@ -9,7 +9,7 @@ homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
-publish = false
+publish = true
 
 [[bin]]
 name = "owly"

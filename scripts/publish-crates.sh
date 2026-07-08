@@ -30,6 +30,7 @@ pkg_manifest() {
     owly) echo "owly/Cargo.toml" ;;
     *) echo "crates/${pkg}/Cargo.toml" ;;
     esac
+}
 
 pkg_version() {
     local pkg=$1

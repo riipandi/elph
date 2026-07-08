@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.22"
+version = "0.0.24"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 keywords = ["agent", "runtime", "ai", "coding", "elph"]
@@ -16,8 +16,10 @@ name = "elph_agent"
 path = "src/lib.rs"
 
 [features]
-default = ["obscura"]
-obscura = ["dep:obscura"]
+default = []
+obscura = []
+# ans: obscura is git-only (h4ckf0r0day/obscura), never published to crates.io.
+# The [patch.crates-io] in workspace Cargo.toml redirects resolution to git.
 
 [dependencies]
 anyhow.workspace = true
@@ -30,7 +32,7 @@ fff-search.workspace = true
 futures = "0.3"
 ignore = "0.4"
 indicatif.workspace = true
-obscura = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.1.7", optional = true }
+
 regex = "1"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
 serde.workspace = true

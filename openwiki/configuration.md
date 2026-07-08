@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-last_updated: 2026-07-08T10:57:29Z
+last_updated: 2026-07-08T14:14:00Z
 category: operations
 tags:
     - configuration
@@ -110,7 +110,7 @@ For persistent non-sensitive configuration:
 
 ## Provider Auto-Detection
 
-When no provider is explicitly configured, Owly auto-detects based on available API keys:
+When no provider is explicitly configured, Owly auto-detects based on available API keys (checks that the variable is **set and non-empty**):
 
 1. `OPENCODE_API_KEY` → `opencode`
 2. `ANTHROPIC_API_KEY` → `anthropic`
@@ -120,6 +120,8 @@ When no provider is explicitly configured, Owly auto-detects based on available 
 6. `DEEPSEEK_API_KEY` → `deepseek`
 7. `GROQ_API_KEY` → `groq`
 8. Falls back to `opencode` (default)
+
+Previously, auto-detection only checked if the variable was defined (`is_ok()`). Now it also verifies the value is not empty, preventing false matches from exported but unset variables.
 
 **Source:** [`owly/src/constants.rs`](../owly/src/constants.rs) — `resolve_configured_provider()`.
 
