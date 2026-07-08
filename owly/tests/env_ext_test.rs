@@ -89,14 +89,19 @@ fn test_resolve_configured_provider_with_openrouter_key() {
 #[test]
 fn test_resolve_configured_provider_with_anthropic_key() {
     // SAFETY: We're setting env vars in a single-threaded test context
+    // The function checks OPENCODE_API_KEY first, so we need to remove it
+    // to allow ANTHROPIC_API_KEY to win
     unsafe {
+        // Remove all provider env vars first
         std::env::remove_var("OPENCODE_API_KEY");
         std::env::remove_var("OPENROUTER_API_KEY");
         std::env::remove_var("OPENAI_API_KEY");
+        // Now set ANTHROPIC_API_KEY
         std::env::set_var("ANTHROPIC_API_KEY", "test-key");
     }
     let provider = resolve_configured_provider();
     assert_eq!(provider, "anthropic");
+    // Restore
     unsafe {
         std::env::remove_var("ANTHROPIC_API_KEY");
     }

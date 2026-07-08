@@ -1,7 +1,6 @@
 //! Tests for Owly config module.
 
 use owly::config::*;
-use std::path::Path;
 
 #[test]
 fn test_config_resolve_default() {

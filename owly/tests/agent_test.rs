@@ -1,7 +1,6 @@
 //! Tests for Owly agent module.
 
 use owly::agent::*;
-use std::path::Path;
 
 #[test]
 fn test_prepare_init_command() {
