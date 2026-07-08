@@ -726,6 +726,10 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             content: "first prompt".into(),
             file_path: "/skills/prompt".into(),
             disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
         }],
         ..Default::default()
     };
@@ -778,6 +782,10 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
                                 content: "second prompt".into(),
                                 file_path: "/skills/prompt".into(),
                                 disable_model_invocation: false,
+                                license: None,
+                                compatibility: None,
+                                metadata: None,
+                                allowed_tools: None,
                             }],
                             ..Default::default()
                         })
@@ -1140,6 +1148,10 @@ async fn harness_resources_update_events_clone_resources() {
             content: "Use inspection tools.".into(),
             file_path: "/skills/inspect/SKILL.md".into(),
             disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
         }],
         prompt_templates: vec![elph_agent::PromptTemplate {
             name: "review".into(),

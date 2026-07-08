@@ -1,14 +1,20 @@
 //! Skill discovery — elph-agent module.
 
+use std::collections::HashMap;
+
 use ignore::Match;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde::Deserialize;
+use serde_json::Value;
 
 use crate::env::{basename_env_path, dirname_env_path, join_env_path, relative_env_path};
-use crate::harness::types::{ExecutionEnv, FileErrorCode, FileInfo, FileKind, Result, Skill, err, ok};
+use crate::harness::types::{
+    ExecutionEnv, FileErrorCode, FileInfo, FileKind, Result, Skill, SkillLoadOptions, SkillValidationSettings, err, ok,
+};
 
 const MAX_NAME_LENGTH: usize = 64;
 const MAX_DESCRIPTION_LENGTH: usize = 1024;
+const MAX_COMPATIBILITY_LENGTH: usize = 500;
 const IGNORE_FILE_NAMES: [&str; 3] = [".gitignore", ".ignore", ".fdignore"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +65,11 @@ struct SkillFrontmatter {
     description: Option<String>,
     #[serde(rename = "disable-model-invocation")]
     disable_model_invocation: Option<bool>,
+    license: Option<String>,
+    compatibility: Option<String>,
+    metadata: Option<HashMap<String, Value>>,
+    #[serde(rename = "allowed-tools")]
+    allowed_tools: Option<String>,
 }
 
 struct IgnoreMatcher {
@@ -108,9 +119,23 @@ fn diagnostic(code: SkillDiagnosticCode, message: impl Into<String>, path: impl 
 }
 
 /// Load skills from one or more directories.
+/// Last-wins: later directories override earlier ones with the same skill name.
 pub async fn load_skills(env: &dyn ExecutionEnv, dirs: &[&str]) -> LoadSkillsResult {
-    let mut skills = Vec::new();
-    let mut diagnostics = Vec::new();
+    load_skills_with_options(env, dirs, None).await
+}
+
+/// Load skills from one or more directories with custom options.
+/// Last-wins: later directories override earlier ones with the same skill name.
+pub async fn load_skills_with_options(
+    env: &dyn ExecutionEnv,
+    dirs: &[&str],
+    options: Option<&SkillLoadOptions>,
+) -> LoadSkillsResult {
+    let default_options = SkillLoadOptions::default();
+    let options = options.unwrap_or(&default_options);
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut all_skills = Vec::new();
+    let mut all_diagnostics = Vec::new();
 
     for dir in dirs {
         let root_info_result = env.file_info(dir, None).await;
@@ -118,7 +143,7 @@ pub async fn load_skills(env: &dyn ExecutionEnv, dirs: &[&str]) -> LoadSkillsRes
             Result::Ok(info) => info,
             Result::Err(error) => {
                 if error.code != FileErrorCode::NotFound {
-                    diagnostics.push(diagnostic(
+                    all_diagnostics.push(diagnostic(
                         SkillDiagnosticCode::FileInfoFailed,
                         error.message,
                         dir.to_string(),
@@ -128,7 +153,7 @@ pub async fn load_skills(env: &dyn ExecutionEnv, dirs: &[&str]) -> LoadSkillsRes
             }
         };
 
-        if resolve_kind(env, &root_info, &mut diagnostics).await != Some(FileKind::Directory) {
+        if resolve_kind(env, &root_info, &mut all_diagnostics).await != Some(FileKind::Directory) {
             continue;
         }
 
@@ -138,13 +163,26 @@ pub async fn load_skills(env: &dyn ExecutionEnv, dirs: &[&str]) -> LoadSkillsRes
             true,
             &mut IgnoreMatcher::new(&root_info.path),
             &root_info.path,
+            &options.validation,
         )
         .await;
-        skills.extend(result.skills);
-        diagnostics.extend(result.diagnostics);
+
+        // Last-wins: override skills with same name from earlier directories
+        for skill in result.skills {
+            if seen.contains(&skill.name) {
+                // Remove the earlier skill with same name
+                all_skills.retain(|s: &Skill| s.name != skill.name);
+            }
+            seen.insert(skill.name.clone());
+            all_skills.push(skill);
+        }
+        all_diagnostics.extend(result.diagnostics);
     }
 
-    LoadSkillsResult { skills, diagnostics }
+    LoadSkillsResult {
+        skills: all_skills,
+        diagnostics: all_diagnostics,
+    }
 }
 
 /// Load skills from source-tagged directories.
@@ -155,11 +193,23 @@ pub async fn load_sourced_skills<TSource>(
 where
     TSource: Clone,
 {
+    load_sourced_skills_with_options(env, inputs, None).await
+}
+
+/// Load skills from source-tagged directories with custom options.
+pub async fn load_sourced_skills_with_options<TSource>(
+    env: &dyn ExecutionEnv,
+    inputs: &[(String, TSource)],
+    options: Option<&SkillLoadOptions>,
+) -> LoadSourcedSkillsResult<Skill, TSource>
+where
+    TSource: Clone,
+{
     let mut skills = Vec::new();
     let mut diagnostics = Vec::new();
 
     for (path, source) in inputs {
-        let result = load_skills(env, &[path.as_str()]).await;
+        let result = load_skills_with_options(env, &[path.as_str()], options).await;
         for skill in result.skills {
             skills.push(SourcedSkill {
                 skill,
@@ -185,6 +235,7 @@ async fn load_skills_from_dir_internal(
     include_root_files: bool,
     ignore_matcher: &mut IgnoreMatcher,
     root_dir: &str,
+    validation: &SkillValidationSettings,
 ) -> LoadSkillsResult {
     let mut skills = Vec::new();
     let mut diagnostics = Vec::new();
@@ -227,7 +278,7 @@ async fn load_skills_from_dir_internal(
         if ignore_matcher.ignores(&rel_path, false) {
             continue;
         }
-        let result = load_skill_from_file(env, &entry.path).await;
+        let result = load_skill_from_file(env, &entry.path, validation).await;
         if let Some(skill) = result.skill {
             skills.push(skill);
         }
@@ -264,6 +315,7 @@ async fn load_skills_from_dir_internal(
                 false,
                 ignore_matcher,
                 root_dir,
+                validation,
             ))
             .await;
             skills.extend(result.skills);
@@ -274,7 +326,7 @@ async fn load_skills_from_dir_internal(
         if kind != FileKind::File || !include_root_files || !entry.name.ends_with(".md") {
             continue;
         }
-        let result = load_skill_from_file(env, &entry.path).await;
+        let result = load_skill_from_file(env, &entry.path, validation).await;
         if let Some(skill) = result.skill {
             skills.push(skill);
         }
@@ -364,7 +416,11 @@ struct ParsedSkillFile {
     diagnostics: Vec<SkillDiagnostic>,
 }
 
-async fn load_skill_from_file(env: &dyn ExecutionEnv, file_path: &str) -> ParsedSkillFile {
+async fn load_skill_from_file(
+    env: &dyn ExecutionEnv,
+    file_path: &str,
+    validation: &SkillValidationSettings,
+) -> ParsedSkillFile {
     let mut diagnostics = Vec::new();
     let raw_content = env.read_text_file(file_path, None).await;
     let Result::Ok(raw_content) = raw_content else {
@@ -403,12 +459,30 @@ async fn load_skill_from_file(env: &dyn ExecutionEnv, file_path: &str) -> Parsed
         diagnostics.push(diagnostic(SkillDiagnosticCode::InvalidMetadata, error, file_path));
     }
 
+    // Validate compatibility length in strict mode
+    if validation.strict_mode
+        && let Some(ref compatibility) = parsed.frontmatter.compatibility
+    {
+        for error in validate_compatibility(compatibility) {
+            diagnostics.push(diagnostic(SkillDiagnosticCode::InvalidMetadata, error, file_path));
+        }
+    }
+
     if description.is_none_or(|value| value.trim().is_empty()) {
         return ParsedSkillFile {
             skill: None,
             diagnostics,
         };
     }
+
+    // Parse allowed-tools from space-separated string
+    let allowed_tools = parsed.frontmatter.allowed_tools.as_ref().map(|tools| {
+        tools
+            .split_whitespace()
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+    });
 
     ParsedSkillFile {
         skill: Some(Skill {
@@ -417,6 +491,10 @@ async fn load_skill_from_file(env: &dyn ExecutionEnv, file_path: &str) -> Parsed
             content: parsed.body,
             file_path: file_path.to_string(),
             disable_model_invocation: parsed.frontmatter.disable_model_invocation == Some(true),
+            license: parsed.frontmatter.license,
+            compatibility: parsed.frontmatter.compatibility,
+            metadata: parsed.frontmatter.metadata,
+            allowed_tools,
         }),
         diagnostics,
     }
@@ -457,6 +535,17 @@ fn validate_description(description: Option<&str>) -> Vec<String> {
             value.len()
         )),
         _ => {}
+    }
+    errors
+}
+
+fn validate_compatibility(compatibility: &str) -> Vec<String> {
+    let mut errors = Vec::new();
+    if compatibility.len() > MAX_COMPATIBILITY_LENGTH {
+        errors.push(format!(
+            "compatibility exceeds {MAX_COMPATIBILITY_LENGTH} characters ({})",
+            compatibility.len()
+        ));
     }
     errors
 }

@@ -89,7 +89,8 @@ pub use session::{
 };
 pub use skills::{
     LoadSkillsResult, LoadSourcedSkillsResult, SkillDiagnostic, SkillDiagnosticCode, SourcedSkill,
-    SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_sourced_skills,
+    SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
+    load_sourced_skills_with_options,
 };
 pub use tools::{WebSearchEngine, WebSearchResult};
 pub use tools::{

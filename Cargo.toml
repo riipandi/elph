@@ -28,10 +28,10 @@ clap = { version = "4.5", default-features = false, features = [
 ] }
 crokey = "1.4.0"
 crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "events"] }
-elph-agent = { path = "crates/elph-agent", version = "0.0.24" }
-elph-ai = { path = "crates/elph-ai", version = "0.0.23" }
-elph-core = { path = "crates/elph-core", version = "0.0.12" }
-elph-tui = { path = "crates/elph-tui", version = "0.0.23" }
+elph-agent = { path = "crates/elph-agent", version = "0.0.25" }
+elph-ai = { path = "crates/elph-ai", version = "0.0.24" }
+elph-core = { path = "crates/elph-core", version = "0.0.13" }
+elph-tui = { path = "crates/elph-tui", version = "0.0.24" }
 fff-search = "0.9.6"
 indicatif = { version = "0.18.6", default-features = false, features = ["unicode-width"] }
 iocraft = "0.8.3"

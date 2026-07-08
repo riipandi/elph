@@ -619,21 +619,64 @@ Load workspace skills and slash-command templates from disk:
 ```rust
 use elph_agent::{load_skills, load_prompt_templates};
 
-let skills = load_skills(&env, &search_paths).await?;
-let templates = load_prompt_templates(&env, &search_paths).await?;
+let skills = load_skills(&env, &search_paths).await;
+let templates = load_prompt_templates(&env, &search_paths).await;
+```
+
+#### Skills with Custom Options
+
+```rust
+use elph_agent::{
+    load_skills_with_options, SkillLoadOptions, SkillValidationSettings,
+    resolve_user_skills_dirs, resolve_project_skills_dirs,
+};
+
+// Resolve directories based on app name (elph-agent is agnostic)
+let user_dirs = resolve_user_skills_dirs("elph");
+let project_dirs = resolve_project_skills_dirs("/project", "elph");
+
+// Load with strict validation
+let options = SkillLoadOptions {
+    validation: SkillValidationSettings { strict_mode: true },
+};
+let result = load_skills_with_options(&env, &dirs, Some(&options)).await;
+```
+
+#### Skills with All Spec Fields
+
+SKILL.md supports all [agentskills.io](https://agentskills.io) fields:
+
+```markdown
+---
+name: skill-name
+description: A description of what this skill does.
+license: MIT
+compatibility: Requires git and rust-analyzer
+metadata:
+    author: your-org
+    version: "1.0"
+allowed-tools: read grep bash
+---
+
+# Skill Instructions
+
+Your skill content here...
 ```
 
 ## Examples
 
-| Example                     | Description                                 |
-| --------------------------- | ------------------------------------------- |
-| `basic_agent`               | Minimal `Agent` loop with the faux provider |
-| `opencode_big_pickle_agent` | OpenCode Zen `big-pickle` through `Agent`   |
+| Example                     | Description                                    |
+| --------------------------- | ---------------------------------------------- |
+| `basic_agent`               | Minimal `Agent` loop with the faux provider    |
+| `agent_skills`              | Comprehensive skills demo with all spec fields |
+| `agent_skill_math`          | Math expert skill with real AI model call      |
+| `opencode_big_pickle_agent` | OpenCode Zen `big-pickle` through `Agent`      |
 
 ```bash
 cargo run -p elph-agent --example basic_agent
+cargo run -p elph-agent --example agent_skills
+cargo run -p elph-agent --example agent_skill_math
 cargo run -p elph-agent --example opencode_big_pickle_agent -- --prompt "Hello!"
-```
 
 For provider-level OpenCode streaming (without the agent loop), see `elph-ai` example `opencode_big_pickle`.
 
@@ -642,6 +685,7 @@ For provider-level OpenCode streaming (without the agent loop), see `elph-ai` ex
 | Document                                        | Description                                    |
 | ----------------------------------------------- | ---------------------------------------------- |
 | [tools.md](./docs/tools.md)                     | Built-in tools, web search/fetch, `fff-search` |
+| [skills.md](./docs/skills.md)                   | Skills loading, validation, formatting        |
 | [agent-harness.md](./docs/agent-harness.md)     | Harness lifecycle, phases, save points         |
 | [hooks.md](./docs/hooks.md)                     | Hook design and mutation semantics             |
 | [models.md](./docs/models.md)                   | `elph_ai::Models` integration with harness     |
@@ -653,3 +697,4 @@ Full `elph-ai` provider architecture is documented in the [`elph-ai`](../elph-ai
 ## License
 
 Licensed under the [MIT License](https://www.tldrlegal.com/license/mit-license).
+```

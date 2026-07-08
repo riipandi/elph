@@ -123,6 +123,10 @@ async fn main() -> anyhow::Result<()> {
             content: "skill content here".into(),
             file_path: "skills/diagnose/SKILL.md".into(),
             disable_model_invocation: false,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
         },
         Skill {
             name: "internal-tool".into(),
@@ -130,6 +134,10 @@ async fn main() -> anyhow::Result<()> {
             content: "internal content".into(),
             file_path: "skills/internal/SKILL.md".into(),
             disable_model_invocation: true,
+            license: None,
+            compatibility: None,
+            metadata: None,
+            allowed_tools: None,
         },
     ];
 

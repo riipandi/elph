@@ -1,6 +1,6 @@
 [package]
 name = "owly"
-version = "0.0.3"
+version = "0.0.4"
 license = "MIT"
 description = "Agent docs for codebases - Rust port of OpenWiki"
 keywords = ["ai", "documentation", "wiki", "agent", "cli"]

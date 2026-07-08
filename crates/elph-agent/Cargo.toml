@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.24"
+version = "0.0.25"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 keywords = ["agent", "runtime", "ai", "coding", "elph"]
@@ -110,6 +110,14 @@ path = "examples/agent_compaction.rs"
 [[example]]
 name = "agent_coding_workflow"
 path = "examples/agent_coding_workflow.rs"
+
+[[example]]
+name = "agent_skills"
+path = "examples/agent_skills.rs"
+
+[[example]]
+name = "agent_skill_math"
+path = "examples/agent_skill_math.rs"
 
 [dev-dependencies]
 elph-ai = { workspace = true }

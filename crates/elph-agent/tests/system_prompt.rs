@@ -8,6 +8,10 @@ fn visible_skill() -> Skill {
         content: "visible content".to_string(),
         file_path: "/skills/visible/SKILL.md".to_string(),
         disable_model_invocation: false,
+        license: None,
+        compatibility: None,
+        metadata: None,
+        allowed_tools: None,
     }
 }
 
@@ -18,6 +22,10 @@ fn second_skill() -> Skill {
         content: "second content".to_string(),
         file_path: "/skills/second/SKILL.md".to_string(),
         disable_model_invocation: false,
+        license: None,
+        compatibility: None,
+        metadata: None,
+        allowed_tools: None,
     }
 }
 
@@ -28,6 +36,10 @@ fn disabled_skill() -> Skill {
         content: "hidden content".to_string(),
         file_path: "/skills/hidden/SKILL.md".to_string(),
         disable_model_invocation: true,
+        license: None,
+        compatibility: None,
+        metadata: None,
+        allowed_tools: None,
     }
 }
 
@@ -68,6 +80,10 @@ fn format_skills_for_system_prompt_escapes_xml_fields() {
         content: "content".to_string(),
         file_path: "/skills/<bad>&\"quote\"/SKILL.md".to_string(),
         disable_model_invocation: false,
+        license: None,
+        compatibility: None,
+        metadata: None,
+        allowed_tools: None,
     }]);
 
     assert!(formatted.contains(

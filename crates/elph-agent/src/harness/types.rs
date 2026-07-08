@@ -282,6 +282,14 @@ pub struct Skill {
     pub content: String,
     pub file_path: String,
     pub disable_model_invocation: bool,
+    /// License name or reference to a bundled license file.
+    pub license: Option<String>,
+    /// Environment requirements (intended product, system packages, etc.). Max 500 chars.
+    pub compatibility: Option<String>,
+    /// Arbitrary key-value mapping for additional metadata.
+    pub metadata: Option<std::collections::HashMap<String, Value>>,
+    /// Space-separated list of pre-approved tools the skill may use.
+    pub allowed_tools: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -624,6 +632,41 @@ pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
     reserve_tokens: 16384,
     keep_recent_tokens: 20000,
 };
+
+/// Validation settings for skill loading.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SkillValidationSettings {
+    /// Emit diagnostics for optional field violations (e.g. compatibility > 500 chars).
+    pub strict_mode: bool,
+}
+
+pub const DEFAULT_SKILL_VALIDATION_SETTINGS: SkillValidationSettings = SkillValidationSettings { strict_mode: false };
+
+/// Options for loading skills from directories.
+#[derive(Debug, Clone, Default)]
+pub struct SkillLoadOptions {
+    /// Validation settings for skill loading.
+    pub validation: SkillValidationSettings,
+}
+
+/// Resolve user-level skill directories based on app name.
+/// Returns: `["~/.agents/skills", "~/.{app_name}/skills", "~/.{app_name}/bundled/skills"]`
+pub fn resolve_user_skills_dirs(app_name: &str) -> Vec<String> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "~".to_string());
+    let mut dirs = vec![format!("{home}/.agents/skills"), format!("{home}/.{app_name}/skills")];
+    let bundled = format!("{home}/.{app_name}/bundled/skills");
+    dirs.push(bundled);
+    dirs
+}
+
+/// Resolve project-level skill directories based on app name.
+/// Returns: `["{project}/.agents/skills", "{project}/.{app_name}/skills"]`
+pub fn resolve_project_skills_dirs(project_dir: &str, app_name: &str) -> Vec<String> {
+    vec![
+        format!("{project_dir}/.agents/skills"),
+        format!("{project_dir}/.{app_name}/skills"),
+    ]
+}
 
 #[derive(Debug, Clone)]
 pub struct CompactionPreparation {
