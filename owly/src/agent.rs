@@ -9,16 +9,34 @@
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use elph_agent::{Agent, AgentEvent, AgentOptions, PartialAgentState};
-use elph_ai::{builtin_models, get_builtin_model};
+use elph_ai::{AssistantMessageEvent, builtin_models, get_builtin_model};
 
+use crate::cli::print_tool_call;
 use crate::config::Config;
 use crate::constants::provider_config;
 use crate::metadata::UpdateMetadata;
 use crate::prompts::{create_chat_prompt, create_init_prompt, create_update_prompt};
+
+/// Create a progress spinner
+fn progress_spinner(message: &str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+            .template("{spinner:.cyan} {msg}")
+            .unwrap(),
+    );
+    pb.set_message(message.to_string());
+    pb.enable_steady_tick(Duration::from_millis(80));
+    pb
+}
 
 /// Run the agent with the given command
 pub async fn run_agent(
@@ -28,7 +46,10 @@ pub async fn run_agent(
     config: &Config,
     _cwd: &Path,
     print_mode: bool,
+    verbose: bool,
 ) -> Result<String> {
+    let start_time = Instant::now();
+
     // Get the model - try direct lookup first, then provider/model format
     let model = get_builtin_model(&config.provider, &config.model_id)
         .or_else(|| {
@@ -49,20 +70,12 @@ pub async fn run_agent(
             config.provider, config.model_id
         ))?;
 
-    // Create progress bar
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-            .template("{spinner:.cyan} {msg}")
-            .unwrap(),
-    );
-    pb.set_message("Starting agent...");
-    pb.enable_steady_tick(std::time::Duration::from_millis(100));
-
     // Get models and auth
+    let setup = progress_spinner("Resolving auth...");
     let models = builtin_models(None);
     let auth = models.get_auth(&model).await?;
+    setup.finish_and_clear();
+
     if auth.is_none() {
         let provider_cfg =
             provider_config(&config.provider).context(format!("Unknown provider: {}", config.provider))?;
@@ -91,19 +104,55 @@ pub async fn run_agent(
         ..Default::default()
     });
 
-    // Subscribe to events for progress display
-    let pb_clone = pb.clone();
+    // Subscribe to events for streaming display
+    let verbose_clone = verbose;
+    let generating = progress_spinner("Thinking...");
+    let saw_any_delta = Arc::new(AtomicBool::new(false));
 
     agent
         .subscribe(Arc::new(move |event, _token| {
-            let pb = pb_clone.clone();
+            let generating = generating.clone();
+            let saw_any_delta = saw_any_delta.clone();
+            let verbose = verbose_clone;
             Box::pin(async move {
                 match event {
+                    AgentEvent::MessageUpdate {
+                        assistant_message_event,
+                        ..
+                    } => {
+                        match &*assistant_message_event {
+                            AssistantMessageEvent::TextDelta { delta, .. } => {
+                                // Clear spinner on first delta (text or thinking)
+                                if !saw_any_delta.swap(true, Ordering::SeqCst) {
+                                    generating.finish_and_clear();
+                                }
+                                if verbose {
+                                    // In verbose mode, print streaming text
+                                    print!("{delta}");
+                                    let _ = std::io::stdout().flush();
+                                }
+                            }
+                            AssistantMessageEvent::ThinkingDelta { delta, .. } => {
+                                // Clear spinner on first delta (text or thinking)
+                                if !saw_any_delta.swap(true, Ordering::SeqCst) {
+                                    generating.finish_and_clear();
+                                }
+                                if verbose {
+                                    // In verbose mode, show thinking in gray
+                                    eprint!("\x1b[90m{delta}\x1b[0m");
+                                    let _ = std::io::stderr().flush();
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     AgentEvent::ToolExecutionStart { tool_name, .. } => {
-                        pb.set_message(format!("Using tool: {}", tool_name));
+                        print_tool_call(&tool_name, verbose);
                     }
                     AgentEvent::AgentEnd { .. } => {
-                        pb.finish_and_clear();
+                        if !saw_any_delta.load(Ordering::SeqCst) {
+                            generating.finish_and_clear();
+                        }
                     }
                     _ => {}
                 }
@@ -111,13 +160,13 @@ pub async fn run_agent(
         }))
         .await;
 
-    pb.set_message("Agent running...");
-
     // Send the user prompt
     agent.prompt_text(user_prompt, None).await?;
 
     // Wait for completion
     agent.wait_for_idle().await;
+
+    let elapsed = start_time.elapsed();
 
     // Get the final state
     let state = agent.state().await;
@@ -125,21 +174,22 @@ pub async fn run_agent(
     if print_mode {
         // Extract the final assistant message
         if let Some(elph_ai::Message::Assistant(assistant)) = state.messages.last().and_then(|m| m.as_llm()) {
-            let mut text = String::new();
-            for block in &assistant.content {
-                if let elph_ai::AssistantContentBlock::Text(t) = block {
-                    text.push_str(&t.text);
+            // If not in verbose mode, print the final message
+            if !verbose {
+                for block in &assistant.content {
+                    if let elph_ai::AssistantContentBlock::Text(t) = block {
+                        print!("{}", t.text);
+                        let _ = std::io::stdout().flush();
+                    }
                 }
+                println!();
             }
-            Ok(text)
+            Ok(String::new())
         } else {
             Ok(String::new())
         }
     } else {
-        Ok(format!(
-            "Agent completed successfully.\nTranscript messages: {}",
-            state.messages.len()
-        ))
+        Ok(format!("\x1b[90mCompleted in {:.1}s\x1b[0m", elapsed.as_secs_f64()))
     }
 }
 

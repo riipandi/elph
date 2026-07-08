@@ -33,6 +33,10 @@ pub struct Cli {
     #[arg(long)]
     pub update: bool,
 
+    /// Show stream response and thinking from LLM
+    #[arg(short, long)]
+    pub verbose: bool,
+
     /// Message to send to the agent
     #[arg(trailing_var_arg = true)]
     pub message: Option<Vec<String>>,
@@ -69,16 +73,45 @@ impl Cli {
         };
 
         // Run the command
-        run_command(command, &cwd, self.model.as_deref(), self.print).await
+        run_command(command, &cwd, self.model.as_deref(), self.print, self.verbose).await
     }
 }
 
-/// Display the help banner
-pub fn print_banner(provider: &str, model: &str, directory: &std::path::Path) {
-    println!("  >_ Owly v0.0.1 agent docs for codebases");
-    println!("   Model: {provider}/{model}");
-    println!("   Directory: {}", directory.display());
+/// Display a compact header for command execution
+pub fn print_command_header(command: &str, provider: &str, model: &str) {
     println!();
-    println!("Tip: ask for a docs change, or use /exit when you are done.");
+    println!("\x1b[1m\x1b[36m>_\x1b[0m \x1b[1mOwly {command}\x1b[0m");
+    println!("\x1b[90m  Model: {provider}/{model}\x1b[0m");
+    println!();
+}
+
+/// Display agent status
+pub fn print_agent_status(message: &str) {
+    println!("\x1b[90m  {message}\x1b[0m");
+}
+
+/// Display tool call
+pub fn print_tool_call(name: &str, verbose: bool) {
+    if verbose {
+        println!("\x1b[36m  > {name}\x1b[0m");
+    }
+}
+
+/// Display tool result
+pub fn print_tool_result(name: &str, success: bool, verbose: bool) {
+    if verbose {
+        let icon = if success {
+            "\x1b[32m✓\x1b[0m"
+        } else {
+            "\x1b[31m✗\x1b[0m"
+        };
+        println!("  {icon} {name}");
+    }
+}
+
+/// Display completion status
+pub fn print_completion(message: &str) {
+    println!();
+    println!("\x1b[32m✓\x1b[0m {message}");
     println!();
 }
