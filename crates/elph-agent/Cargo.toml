@@ -58,12 +58,56 @@ uuid = { version = "1", features = ["v7"] }
 walkdir = "2.5"
 
 [[example]]
+name = "faux_agent"
+path = "examples/faux_agent.rs"
+
+[[example]]
 name = "basic_agent"
 path = "examples/basic_agent.rs"
 
 [[example]]
-name = "opencode_big_pickle_agent"
-path = "examples/opencode_big_pickle_agent.rs"
+name = "agent_tools"
+path = "examples/agent_tools.rs"
+
+[[example]]
+name = "agent_events"
+path = "examples/agent_events.rs"
+
+[[example]]
+name = "agent_session"
+path = "examples/agent_session.rs"
+
+[[example]]
+name = "agent_harness"
+path = "examples/agent_harness.rs"
+
+[[example]]
+name = "agent_coding_tools"
+path = "examples/agent_coding_tools.rs"
+
+[[example]]
+name = "agent_web_tools"
+path = "examples/agent_web_tools.rs"
+
+[[example]]
+name = "agent_multi_turn"
+path = "examples/agent_multi_turn.rs"
+
+[[example]]
+name = "agent_hooks"
+path = "examples/agent_hooks.rs"
+
+[[example]]
+name = "agent_steering"
+path = "examples/agent_steering.rs"
+
+[[example]]
+name = "agent_compaction"
+path = "examples/agent_compaction.rs"
+
+[[example]]
+name = "agent_coding_workflow"
+path = "examples/agent_coding_workflow.rs"
 
 [dev-dependencies]
 elph-ai = { workspace = true }
