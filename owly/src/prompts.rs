@@ -97,8 +97,7 @@ category: quickstart
 tags: [getting-started, overview]
 status: published
 ---
-```
-"#
+```"#
     )
 }
 
@@ -165,5 +164,23 @@ If the user asks to initialize or update the wiki, explain that they can run owl
 
 User message:
 {message}"#
+    )
+}
+
+/// Create the system prompt for interactive mode
+pub fn create_interactive_system_prompt() -> String {
+    let base = create_system_prompt();
+    format!(
+        r#"{base}
+
+- This is an interactive chat session.
+- You have access to ask_text, ask_select, and ask_confirm tools to ask the user questions.
+- Use ask_text for freeform text input.
+- Use ask_select for multiple-choice questions.
+- Use ask_confirm for yes/no questions.
+- Answer the user's questions directly.
+- Do not create or update Owly documentation unless the user explicitly asks you to.
+- When the user says /exit, /quit, or goodbye, say goodbye and signal you're done.
+"#
     )
 }

@@ -53,12 +53,8 @@ pub async fn run_command(
             if let Some(msg) = message {
                 run_chat(&config, cwd, &msg, print_mode, stream, verbose).await
             } else {
-                // Interactive mode - TODO: implement
-                println!("Interactive mode is not yet implemented.");
-                println!("Use --init, --update, or provide a message.");
-                println!("Example: owly --init");
-                println!("Example: owly \"What can you do?\"");
-                Ok(())
+                // Interactive mode: multi-turn chat with ask_user tools
+                agent::run_interactive(&config, cwd, stream, verbose).await
             }
         }
     }

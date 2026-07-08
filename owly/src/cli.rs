@@ -68,12 +68,9 @@ impl Cli {
             // --print without message is an error
             anyhow::bail!("--print requires a message argument");
         } else {
-            // Interactive mode - TODO: implement interactive CLI
-            eprintln!("Interactive mode is not yet implemented.");
-            eprintln!("Use --init, --update, or provide a message.");
-            eprintln!("Example: owly --init");
-            eprintln!("Example: owly \"What can you do?\"");
-            std::process::exit(1);
+            // TODO: improve TUI implementation for interactive mode
+            // Interactive mode: multi-turn chat with ask_user tools
+            Command::Chat { message: None }
         };
 
         // Run the command

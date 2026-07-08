@@ -16,6 +16,8 @@
 //! No hidden state is maintained outside the working directory.
 
 pub mod agent;
+pub mod ask_user;
+pub mod checkpoint;
 pub mod cli;
 pub mod commands;
 pub mod config;
