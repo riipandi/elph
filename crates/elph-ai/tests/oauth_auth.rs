@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 use elph_ai::auth::oauth::{
     OAuthProviderInterface, builtin_oauth_provider_ids, get_oauth_provider, get_oauth_providers,
@@ -110,7 +110,7 @@ async fn github_copilot_to_auth_falls_back_to_enterprise_then_individual() {
 
 #[test]
 fn oauth_registry_lists_builtin_providers() {
-    let _guard = OAUTH_REGISTRY_LOCK.lock().unwrap();
+    let _guard = OAUTH_REGISTRY_LOCK.lock();
     reset_oauth_providers();
     assert_eq!(get_oauth_providers().len(), 3);
     for id in builtin_oauth_provider_ids() {
@@ -120,7 +120,7 @@ fn oauth_registry_lists_builtin_providers() {
 
 #[test]
 fn oauth_registry_register_and_unregister_custom_provider() {
-    let _guard = OAUTH_REGISTRY_LOCK.lock().unwrap();
+    let _guard = OAUTH_REGISTRY_LOCK.lock();
     reset_oauth_providers();
     register_oauth_provider(OAuthProviderInterface {
         id: "custom-oauth".to_string(),

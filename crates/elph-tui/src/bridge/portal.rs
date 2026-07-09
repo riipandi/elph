@@ -1,7 +1,7 @@
 //! iocraft portal that embeds diff overlay components.
 
+use parking_lot::{Mutex, MutexGuard};
 use std::rc::Rc;
-use std::sync::Mutex;
 
 use iocraft::prelude::*;
 
@@ -22,8 +22,8 @@ impl OverlayStackHandle {
         Self::default()
     }
 
-    pub fn lock(&self) -> std::sync::MutexGuard<'_, OverlayStack> {
-        self.0.lock().expect("overlay stack mutex poisoned")
+    pub fn lock(&self) -> MutexGuard<'_, OverlayStack> {
+        self.0.lock()
     }
 }
 

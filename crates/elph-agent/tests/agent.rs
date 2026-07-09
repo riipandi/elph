@@ -3,7 +3,8 @@
 mod common;
 
 use std::sync::Arc;
-use std::sync::Mutex as StdMutex;
+
+use parking_lot::Mutex as ParkingMutex;
 
 use elph_agent::{
     Agent, AgentEvent, AgentMessage, AgentOptions, AgentThinkingLevel, AgentTool, AgentToolResult, PartialAgentState,
@@ -26,7 +27,7 @@ async fn agent_wires_on_payload_to_stream_options() {
     let faux = faux_provider(Default::default());
     let model = faux.provider.get_models()[0].clone();
 
-    let final_payload = Arc::new(StdMutex::new(None));
+    let final_payload = Arc::new(ParkingMutex::new(None));
     let final_payload_clone = final_payload.clone();
 
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
@@ -39,7 +40,7 @@ async fn agent_wires_on_payload_to_stream_options() {
             } else {
                 json!({ "source": "provider" })
             };
-            *final_payload_clone.lock().expect("final payload lock") = Some(payload);
+            *final_payload_clone.lock() = Some(payload);
             faux_assistant_message(vec![faux_text("ok")], None)
         },
     ))]);
@@ -65,7 +66,7 @@ async fn agent_wires_on_payload_to_stream_options() {
     agent.prompt_text("hello", None).await.expect("prompt");
 
     assert_eq!(
-        final_payload.lock().expect("final payload lock").clone(),
+        final_payload.lock().clone(),
         Some(json!({ "source": "provider", "mutated": true }))
     );
 }
@@ -430,14 +431,13 @@ async fn agent_continue_processes_follow_up_from_assistant_tail() {
 async fn agent_forwards_session_id_to_stream_fn() {
     let faux = faux_provider(Default::default());
     let model = faux.provider.get_models()[0].clone();
-    let captured = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let captured = Arc::new(ParkingMutex::new(Vec::new()));
     let captured_clone = captured.clone();
     let provider = faux.provider.clone();
 
     let stream_fn: elph_agent::StreamFn = Arc::new(move |m, ctx, opts| {
         captured_clone
             .lock()
-            .expect("capture lock")
             .push(opts.as_ref().and_then(|o| o.base.session_id.clone()));
         provider.stream_simple(m, ctx, opts)
     });
@@ -458,10 +458,7 @@ async fn agent_forwards_session_id_to_stream_fn() {
     });
 
     agent.prompt_text("hello", None).await.expect("prompt");
-    assert_eq!(
-        captured.lock().expect("capture lock").first().cloned().flatten(),
-        Some("session-abc".into())
-    );
+    assert_eq!(captured.lock().first().cloned().flatten(), Some("session-abc".into()));
 }
 
 #[tokio::test]
@@ -845,14 +842,13 @@ async fn agent_prepare_next_turn_runs_between_tool_and_followup_turn() {
 async fn agent_session_id_setter_updates_stream_fn() {
     let faux = faux_provider(Default::default());
     let model = faux.provider.get_models()[0].clone();
-    let captured = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let captured = Arc::new(ParkingMutex::new(Vec::new()));
     let captured_clone = captured.clone();
     let provider = faux.provider.clone();
 
     let stream_fn: elph_agent::StreamFn = Arc::new(move |m, ctx, opts| {
         captured_clone
             .lock()
-            .expect("capture lock")
             .push(opts.as_ref().and_then(|o| o.base.session_id.clone()));
         provider.stream_simple(m, ctx, opts)
     });
@@ -876,7 +872,7 @@ async fn agent_session_id_setter_updates_stream_fn() {
     agent.set_session_id(Some("session-def".into()));
     agent.prompt_text("hello again", None).await.expect("prompt");
 
-    let ids = captured.lock().expect("capture lock").clone();
+    let ids = captured.lock().clone();
     assert_eq!(ids.len(), 2);
     assert_eq!(ids[0], Some("session-abc".into()));
     assert_eq!(ids[1], Some("session-def".into()));

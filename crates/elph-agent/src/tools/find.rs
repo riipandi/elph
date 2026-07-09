@@ -6,7 +6,7 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::ExecutionEnv;
+use crate::env::LocalExecutionEnv;
 use crate::harness::utils::truncate::{DEFAULT_MAX_BYTES, TruncationOptions, truncate_head};
 use crate::tools::common::{check_aborted, resolve_path};
 use crate::tools::fff_picker::{build_find_glob_pattern, build_find_options, build_picker, run_with_abort_signal};
@@ -15,7 +15,7 @@ use crate::types::{AgentTool, AgentToolResult};
 
 const DEFAULT_LIMIT: usize = 1000;
 
-pub fn create_find_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
+pub fn create_find_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -40,7 +40,7 @@ pub fn create_find_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
 }
 
 async fn execute_find(
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
 ) -> anyhow::Result<AgentToolResult> {

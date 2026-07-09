@@ -23,7 +23,6 @@ obscura = []
 
 [dependencies]
 anyhow.workspace = true
-async-trait.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
@@ -32,6 +31,7 @@ fff-search.workspace = true
 futures.workspace = true
 ignore.workspace = true
 indicatif.workspace = true
+parking_lot.workspace = true
 regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true

@@ -18,6 +18,7 @@ path = "src/lib.rs"
 [dependencies]
 anyhow.workspace = true
 memchr.workspace = true
+parking_lot.workspace = true
 rayon.workspace = true
 base64.workspace = true
 crokey.workspace = true

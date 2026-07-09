@@ -3,7 +3,8 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use super::types::{
-    ApiKeyCredential, AuthContext, AuthModel, AuthResult, Credential, CredentialStore, OAuthCredential, ProviderAuth,
+    ApiKeyCredential, AuthContext, AuthModel, AuthResult, BoxFuture, Credential, CredentialStore, OAuthCredential,
+    ProviderAuth,
 };
 use crate::types::ProviderEnv;
 
@@ -122,14 +123,16 @@ struct OverlayAuthContext {
     env: ProviderEnv,
 }
 
-#[async_trait::async_trait]
 impl AuthContext for OverlayAuthContext {
-    async fn env(&self, name: &str) -> Option<String> {
-        self.env.get(name).cloned().or(self.base.env(name).await)
+    fn env<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Option<String>> {
+        let overlay = self.env.get(name).cloned();
+        let base = self.base.clone();
+        Box::pin(async move { overlay.or(base.env(name).await) })
     }
 
-    async fn file_exists(&self, path: &str) -> bool {
-        self.base.file_exists(path).await
+    fn file_exists<'a>(&'a self, path: &'a str) -> BoxFuture<'a, bool> {
+        let base = self.base.clone();
+        Box::pin(async move { base.file_exists(path).await })
     }
 }
 

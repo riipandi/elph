@@ -3,7 +3,8 @@ mod common;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::Mutex as StdMutex;
+
+use parking_lot::Mutex as ParkingMutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use elph_agent::{
@@ -960,7 +961,7 @@ async fn run_agent_loop_uses_prepare_next_turn_snapshot_before_continuing() {
     ]);
 
     let llm_calls = Arc::new(AtomicUsize::new(0));
-    let second_turn_prompt = Arc::new(StdMutex::new(String::new()));
+    let second_turn_prompt = Arc::new(ParkingMutex::new(String::new()));
     let prepared = Arc::new(AtomicBool::new(false));
 
     let tool = value_echo_tool(|_id, args| {
@@ -975,7 +976,7 @@ async fn run_agent_loop_uses_prepare_next_turn_snapshot_before_continuing() {
         Arc::new(move |model, context, options| {
             let call = llm_calls.fetch_add(1, Ordering::SeqCst);
             if call == 1 {
-                *second_turn_prompt.lock().expect("prompt lock") = context.system_prompt.clone().unwrap_or_default();
+                *second_turn_prompt.lock() = context.system_prompt.clone().unwrap_or_default();
             }
             faux.stream_simple(model, context, options)
         })
@@ -1014,7 +1015,7 @@ async fn run_agent_loop_uses_prepare_next_turn_snapshot_before_continuing() {
     .expect("agent loop");
 
     assert_eq!(llm_calls.load(Ordering::SeqCst), 2);
-    assert_eq!(*second_turn_prompt.lock().expect("prompt lock"), "second prompt");
+    assert_eq!(*second_turn_prompt.lock(), "second prompt");
 }
 
 #[tokio::test]

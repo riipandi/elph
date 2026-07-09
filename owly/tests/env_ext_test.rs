@@ -1,6 +1,8 @@
 //! Extended tests for Owly env module.
 
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
+
+use parking_lot::Mutex;
 
 use owly::constants::*;
 
@@ -76,7 +78,7 @@ fn test_all_providers_have_valid_config() {
 
 #[test]
 fn test_resolve_configured_provider_with_openrouter_key() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
+    let _guard = ENV_LOCK.lock();
     // SAFETY: env vars are isolated by ENV_LOCK across parallel tests.
     unsafe {
         std::env::remove_var("OWLY_PROVIDER");
@@ -94,7 +96,7 @@ fn test_resolve_configured_provider_with_openrouter_key() {
 
 #[test]
 fn test_resolve_configured_provider_with_anthropic_key() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
+    let _guard = ENV_LOCK.lock();
     // SAFETY: env vars are isolated by ENV_LOCK across parallel tests.
     unsafe {
         // Remove all provider env vars first
@@ -115,7 +117,7 @@ fn test_resolve_configured_provider_with_anthropic_key() {
 
 #[test]
 fn test_resolve_model_id_with_env_var() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
+    let _guard = ENV_LOCK.lock();
     // SAFETY: env vars are isolated by ENV_LOCK across parallel tests.
     unsafe {
         std::env::set_var("OWLY_MODEL_ID", "custom-model-123");
@@ -129,7 +131,7 @@ fn test_resolve_model_id_with_env_var() {
 
 #[test]
 fn test_resolve_model_id_override_takes_precedence() {
-    let _guard = ENV_LOCK.lock().expect("env lock");
+    let _guard = ENV_LOCK.lock();
     // SAFETY: env vars are isolated by ENV_LOCK across parallel tests.
     unsafe {
         std::env::set_var("OWLY_MODEL_ID", "env-model");

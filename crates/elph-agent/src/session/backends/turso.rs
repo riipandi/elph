@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use async_trait::async_trait;
 use turso::Builder;
 
 use crate::datastore::migrations::run as run_migrations;
@@ -184,7 +183,6 @@ fn map_storage_error(error: impl std::fmt::Display) -> SessionError {
     SessionError::new(SessionErrorCode::Storage, error.to_string())
 }
 
-#[async_trait]
 impl SessionStorage for TursoSessionStorage {
     type Metadata = TursoSessionMetadata;
 

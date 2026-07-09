@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use serde::Deserialize;
+use std::sync::LazyLock;
 
 use crate::types::{
     AnthropicMessagesCompat, Model, ModelCost, OpenAICompletionsCompat, OpenAIResponsesCompat, ThinkingLevelMap,
@@ -99,7 +99,7 @@ fn parse_compat(
 
 macro_rules! define_catalog {
     ($name:ident, $file:literal) => {
-        pub static $name: Lazy<Vec<Model>> = Lazy::new(|| {
+        pub static $name: LazyLock<Vec<Model>> = LazyLock::new(|| {
             parse_models(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/models/",

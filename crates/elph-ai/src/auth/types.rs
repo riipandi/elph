@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use crate::types::{ImagesModel, Model, ProviderEnv, ProviderHeaders};
 
+pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 #[derive(Debug, Clone)]
 pub struct ModelAuth {
     pub api_key: Option<String>,
@@ -54,21 +56,18 @@ pub enum Credential {
     OAuth(OAuthCredential),
 }
 
-#[async_trait::async_trait]
+pub type CredentialModifyFn =
+    Box<dyn FnOnce(Option<Credential>) -> Pin<Box<dyn Future<Output = Option<Credential>> + Send>> + Send>;
+
 pub trait CredentialStore: Send + Sync {
-    async fn read(&self, provider_id: &str) -> Option<Credential>;
-    async fn modify(
-        &self,
-        provider_id: &str,
-        f: Box<dyn FnOnce(Option<Credential>) -> Pin<Box<dyn Future<Output = Option<Credential>> + Send>> + Send>,
-    ) -> Option<Credential>;
-    async fn delete(&self, provider_id: &str);
+    fn read<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, Option<Credential>>;
+    fn modify<'a>(&'a self, provider_id: &'a str, f: CredentialModifyFn) -> BoxFuture<'a, Option<Credential>>;
+    fn delete<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, ()>;
 }
 
-#[async_trait::async_trait]
 pub trait AuthContext: Send + Sync {
-    async fn env(&self, name: &str) -> Option<String>;
-    async fn file_exists(&self, path: &str) -> bool;
+    fn env<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Option<String>>;
+    fn file_exists<'a>(&'a self, path: &'a str) -> BoxFuture<'a, bool>;
 }
 
 #[derive(Debug, Clone)]
@@ -122,9 +121,8 @@ pub enum AuthEvent {
     },
 }
 
-#[async_trait::async_trait]
 pub trait AuthLoginCallbacks: Send + Sync {
-    async fn prompt(&self, prompt: AuthPrompt) -> anyhow::Result<String>;
+    fn prompt<'a>(&'a self, prompt: AuthPrompt) -> BoxFuture<'a, anyhow::Result<String>>;
     fn notify(&self, event: AuthEvent);
 }
 

@@ -6,12 +6,13 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::{ExecutionEnv, Result as HarnessResult};
+use crate::env::LocalExecutionEnv;
+use crate::harness::types::{FileSystem, Result as HarnessResult};
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_edit_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
+pub fn create_edit_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -36,7 +37,7 @@ pub fn create_edit_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
 }
 
 async fn execute_edit(
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
 ) -> anyhow::Result<AgentToolResult> {
@@ -66,7 +67,7 @@ async fn execute_edit(
         ));
     }
     let updated = content.replacen(old_string, new_string, 1);
-    match env.write_file(&absolute, updated.as_bytes(), signal.as_ref()).await {
+    match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
         HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!("Edited {path}"))),
         HarnessResult::Err(error) => Err(file_error(error)),
     }

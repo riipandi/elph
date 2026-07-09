@@ -1,7 +1,7 @@
 //! Global OAuth provider registry for elph-ai.
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, openai_codex_oauth_loader};
@@ -72,14 +72,13 @@ fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential
         .collect()
 }
 
-static REGISTRY: once_cell::sync::Lazy<RwLock<HashMap<String, OAuthProviderInterface>>> =
-    once_cell::sync::Lazy::new(|| {
-        let mut map = HashMap::new();
-        for provider in built_in_providers() {
-            map.insert(provider.id.clone(), provider);
-        }
-        RwLock::new(map)
-    });
+static REGISTRY: LazyLock<RwLock<HashMap<String, OAuthProviderInterface>>> = LazyLock::new(|| {
+    let mut map = HashMap::new();
+    for provider in built_in_providers() {
+        map.insert(provider.id.clone(), provider);
+    }
+    RwLock::new(map)
+});
 
 pub fn get_oauth_provider(id: &str) -> Option<OAuthProviderInterface> {
     REGISTRY.read().ok()?.get(id).cloned()

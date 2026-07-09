@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use tokio::sync::Mutex;
 
 use crate::session::id::{generate_entry_id, generate_session_id};
@@ -39,7 +38,6 @@ pub struct InMemorySessionOptions {
     pub metadata: Option<SessionMetadata>,
 }
 
-#[async_trait]
 impl SessionStorage for InMemorySessionStorage {
     type Metadata = SessionMetadata;
 

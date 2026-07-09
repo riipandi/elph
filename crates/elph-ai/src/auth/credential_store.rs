@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use super::types::{Credential, CredentialStore};
+use super::types::{BoxFuture, Credential, CredentialModifyFn, CredentialStore};
 
 /// In-memory credential store with per-provider serialized writes.
 pub struct InMemoryCredentialStore {
@@ -36,37 +34,34 @@ impl InMemoryCredentialStore {
     }
 }
 
-#[async_trait::async_trait]
 impl CredentialStore for InMemoryCredentialStore {
-    async fn read(&self, provider_id: &str) -> Option<Credential> {
-        self.credentials.lock().await.get(provider_id).cloned()
+    fn read<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, Option<Credential>> {
+        Box::pin(async move { self.credentials.lock().await.get(provider_id).cloned() })
     }
 
-    async fn modify(
-        &self,
-        provider_id: &str,
-        f: Box<dyn FnOnce(Option<Credential>) -> Pin<Box<dyn Future<Output = Option<Credential>> + Send>> + Send>,
-    ) -> Option<Credential> {
-        let chain = self.lock_chain(provider_id).await;
-        let _guard = chain.lock().await;
-        let current = self.credentials.lock().await.get(provider_id).cloned();
-        let next = f(current).await;
-        if let Some(ref cred) = next {
-            self.credentials
-                .lock()
-                .await
-                .insert(provider_id.to_string(), cred.clone());
-        }
-        if next.is_some() {
-            next
-        } else {
-            self.credentials.lock().await.get(provider_id).cloned()
-        }
+    fn modify<'a>(&'a self, provider_id: &'a str, f: CredentialModifyFn) -> BoxFuture<'a, Option<Credential>> {
+        let provider_id = provider_id.to_string();
+        Box::pin(async move {
+            let chain = self.lock_chain(&provider_id).await;
+            let _guard = chain.lock().await;
+            let current = self.credentials.lock().await.get(&provider_id).cloned();
+            let next = f(current).await;
+            let mut credentials = self.credentials.lock().await;
+            if let Some(ref cred) = next {
+                credentials.insert(provider_id.clone(), cred.clone());
+                next
+            } else {
+                credentials.get(&provider_id).cloned()
+            }
+        })
     }
 
-    async fn delete(&self, provider_id: &str) {
-        let chain = self.lock_chain(provider_id).await;
-        let _guard = chain.lock().await;
-        self.credentials.lock().await.remove(provider_id);
+    fn delete<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, ()> {
+        let provider_id = provider_id.to_string();
+        Box::pin(async move {
+            let chain = self.lock_chain(&provider_id).await;
+            let _guard = chain.lock().await;
+            self.credentials.lock().await.remove(&provider_id);
+        })
     }
 }

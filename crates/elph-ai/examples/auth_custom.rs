@@ -11,23 +11,25 @@
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use elph_ai::{
-    AuthContext, Context, CreateModelsOptions, InMemoryCredentialStore, Message, UserContent, env_api_key_auth,
+    AuthContext, BoxFuture, Context, CreateModelsOptions, InMemoryCredentialStore, Message, UserContent,
+    env_api_key_auth,
 };
 
 // ── Custom auth context: try CUSTOM_<KEY> first, then fallback ──
 struct PrefixedEnv;
 
-#[async_trait]
 impl AuthContext for PrefixedEnv {
-    async fn env(&self, name: &str) -> Option<String> {
-        let prefixed = format!("CUSTOM_{name}");
-        std::env::var(&prefixed).ok().or_else(|| std::env::var(name).ok())
+    fn env<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Option<String>> {
+        let name = name.to_string();
+        Box::pin(async move {
+            let prefixed = format!("CUSTOM_{name}");
+            std::env::var(&prefixed).ok().or_else(|| std::env::var(&name).ok())
+        })
     }
 
-    async fn file_exists(&self, _path: &str) -> bool {
-        false
+    fn file_exists<'a>(&'a self, _path: &'a str) -> BoxFuture<'a, bool> {
+        Box::pin(async { false })
     }
 }
 

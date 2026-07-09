@@ -1,4 +1,4 @@
-## OpenWiki
+## OpenWiki Agent Instructions
 
 This repository has documentation located in the /openwiki directory.
 

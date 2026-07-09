@@ -21,6 +21,7 @@ fastembed = ["dep:fastembed"]
 anyhow.workspace = true
 chrono.workspace = true
 memchr.workspace = true
+parking_lot.workspace = true
 fastembed = { workspace = true, optional = true }
 rand.workspace = true
 serde.workspace = true

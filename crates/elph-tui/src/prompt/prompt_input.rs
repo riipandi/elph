@@ -433,19 +433,18 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             }
             KeyCode::Backspace => {
                 let paste_snapshot = collapsed_pastes.read().clone();
-                if let Some(range) = paste_block_range(&text, cursor.saturating_sub(1), &paste_snapshot) {
-                    if let Some(next) =
+                if let Some(range) = paste_block_range(&text, cursor.saturating_sub(1), &paste_snapshot)
+                    && let Some(next) =
                         remove_paste_block_and_adjust(&text, range.clone(), &mut collapsed_pastes.write())
-                    {
-                        commit_prompt_text(
-                            &mut value,
-                            &mut draft_text.write(),
-                            &mut burst_chars_since_sync.write(),
-                            next,
-                            value_probe_slot.read().as_ref(),
-                        );
-                        cursor_offset.set(range.start);
-                    }
+                {
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                        value_probe_slot.read().as_ref(),
+                    );
+                    cursor_offset.set(range.start);
                 } else if cursor > 0 {
                     let (next, new_cursor) = delete_char_backward(&text, cursor);
                     adjust_pastes_for_delete(&mut collapsed_pastes.write(), new_cursor..cursor);
@@ -461,19 +460,18 @@ pub fn PromptInput(mut hooks: Hooks, props: &mut PromptInputProps) -> impl Into<
             }
             KeyCode::Delete => {
                 let paste_snapshot = collapsed_pastes.read().clone();
-                if let Some(range) = paste_block_range(&text, cursor, &paste_snapshot) {
-                    if let Some(next) =
+                if let Some(range) = paste_block_range(&text, cursor, &paste_snapshot)
+                    && let Some(next) =
                         remove_paste_block_and_adjust(&text, range.clone(), &mut collapsed_pastes.write())
-                    {
-                        commit_prompt_text(
-                            &mut value,
-                            &mut draft_text.write(),
-                            &mut burst_chars_since_sync.write(),
-                            next,
-                            value_probe_slot.read().as_ref(),
-                        );
-                        cursor_offset.set(range.start);
-                    }
+                {
+                    commit_prompt_text(
+                        &mut value,
+                        &mut draft_text.write(),
+                        &mut burst_chars_since_sync.write(),
+                        next,
+                        value_probe_slot.read().as_ref(),
+                    );
+                    cursor_offset.set(range.start);
                 } else if cursor < text.len() {
                     let (next, new_cursor) = delete_char_forward(&text, cursor);
                     adjust_pastes_for_delete(&mut collapsed_pastes.write(), cursor..new_cursor);

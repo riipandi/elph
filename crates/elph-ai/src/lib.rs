@@ -23,7 +23,7 @@ pub use auth::oauth::{
     refresh_oauth_token, register_oauth_provider, reset_oauth_providers, unregister_oauth_provider,
 };
 pub use auth::{
-    ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, AuthResult, Credential, CredentialStore,
+    ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, AuthResult, BoxFuture, Credential, CredentialStore,
     DefaultAuthContext, InMemoryCredentialStore, ModelAuth, ModelsError, ModelsErrorCode, OAuthCredential,
     ProviderAuth, default_auth_context, env_api_key_auth, resolve_provider_auth,
 };

@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use parking_lot::Mutex as SyncMutex;
 
 use anyhow::{Result, anyhow};
 use futures_util::{SinkExt, StreamExt};
@@ -69,7 +71,7 @@ struct CachedWebSocketConnection {
     socket: Arc<tokio::sync::Mutex<WsStream>>,
     busy: Arc<AtomicBool>,
     created_at: u64,
-    continuation: Arc<Mutex<Option<CachedWebSocketContinuationState>>>,
+    continuation: Arc<SyncMutex<Option<CachedWebSocketContinuationState>>>,
     idle_task: Arc<tokio::sync::Mutex<Option<tokio::task::JoinHandle<()>>>>,
 }
 
@@ -81,12 +83,11 @@ struct WebSocketLease {
     ephemeral: bool,
 }
 
-static SSE_FALLBACK_SESSIONS: once_cell::sync::Lazy<Mutex<HashSet<String>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashSet::new()));
-static WEBSOCKET_SESSION_CACHE: once_cell::sync::Lazy<Mutex<HashMap<String, Arc<CachedWebSocketConnection>>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
-static WEBSOCKET_DEBUG_STATS: once_cell::sync::Lazy<Mutex<HashMap<String, CodexWebSocketDebugStats>>> =
-    once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));
+static SSE_FALLBACK_SESSIONS: LazyLock<SyncMutex<HashSet<String>>> = LazyLock::new(|| SyncMutex::new(HashSet::new()));
+static WEBSOCKET_SESSION_CACHE: LazyLock<SyncMutex<HashMap<String, Arc<CachedWebSocketConnection>>>> =
+    LazyLock::new(|| SyncMutex::new(HashMap::new()));
+static WEBSOCKET_DEBUG_STATS: LazyLock<SyncMutex<HashMap<String, CodexWebSocketDebugStats>>> =
+    LazyLock::new(|| SyncMutex::new(HashMap::new()));
 
 pub fn compress_request_body_zstd(body_json: &str) -> Option<Vec<u8>> {
     zstd::encode_all(body_json.as_bytes(), 3).ok()
@@ -106,17 +107,19 @@ pub fn resolve_codex_websocket_url(base_url: &str) -> String {
 
 pub fn is_websocket_sse_fallback_active(session_id: Option<&str>) -> bool {
     session_id
-        .map(|id| SSE_FALLBACK_SESSIONS.lock().unwrap().contains(id))
+        .map(|id| SSE_FALLBACK_SESSIONS.lock().contains(id))
         .unwrap_or(false)
 }
 
 fn mark_sse_fallback(session_id: Option<&str>) {
     if let Some(id) = session_id {
-        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
+        {
+            let mut sessions = SSE_FALLBACK_SESSIONS.lock();
             prune_sse_fallback_sessions(&mut sessions);
             sessions.insert(id.to_string());
         }
-        if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+        {
+            let mut stats = WEBSOCKET_DEBUG_STATS.lock();
             prune_websocket_debug_stats(&mut stats);
             let entry = stats.entry(id.to_string()).or_default();
             entry.sse_fallbacks += 1;
@@ -137,7 +140,8 @@ fn now_ms() -> u64 {
 }
 
 fn update_debug_stats(session_id: &str, update: impl FnOnce(&mut CodexWebSocketDebugStats)) {
-    if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
+    {
+        let mut stats = WEBSOCKET_DEBUG_STATS.lock();
         prune_websocket_debug_stats(&mut stats);
         let entry = stats.entry(session_id.to_string()).or_default();
         update(entry);
@@ -182,12 +186,8 @@ fn prune_websocket_session_cache(cache: &mut HashMap<String, Arc<CachedWebSocket
         if let Some(entry) = cache.remove(&id) {
             close_cache_entry_sync(&entry);
         }
-        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
-            sessions.remove(&id);
-        }
-        if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
-            stats.remove(&id);
-        }
+        SSE_FALLBACK_SESSIONS.lock().remove(&id);
+        WEBSOCKET_DEBUG_STATS.lock().remove(&id);
     }
 
     while cache.len() >= MAX_WEBSOCKET_SESSION_CACHE_ENTRIES {
@@ -201,30 +201,25 @@ fn prune_websocket_session_cache(cache: &mut HashMap<String, Arc<CachedWebSocket
         if let Some(entry) = cache.remove(&oldest_id) {
             close_cache_entry_sync(&entry);
         }
-        if let Ok(mut sessions) = SSE_FALLBACK_SESSIONS.lock() {
-            sessions.remove(&oldest_id);
-        }
-        if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
-            stats.remove(&oldest_id);
-        }
+        SSE_FALLBACK_SESSIONS.lock().remove(&oldest_id);
+        WEBSOCKET_DEBUG_STATS.lock().remove(&oldest_id);
     }
 }
 
 pub fn get_codex_websocket_debug_stats(session_id: &str) -> Option<CodexWebSocketDebugStats> {
-    WEBSOCKET_DEBUG_STATS.lock().ok()?.get(session_id).cloned()
+    WEBSOCKET_DEBUG_STATS.lock().get(session_id).cloned()
 }
 
 pub fn reset_codex_websocket_debug_stats(session_id: Option<&str>) {
-    if let Ok(mut stats) = WEBSOCKET_DEBUG_STATS.lock() {
-        match session_id {
-            Some(id) => {
-                stats.remove(id);
-                SSE_FALLBACK_SESSIONS.lock().unwrap().remove(id);
-            }
-            None => {
-                stats.clear();
-                SSE_FALLBACK_SESSIONS.lock().unwrap().clear();
-            }
+    let mut stats = WEBSOCKET_DEBUG_STATS.lock();
+    match session_id {
+        Some(id) => {
+            stats.remove(id);
+            SSE_FALLBACK_SESSIONS.lock().remove(id);
+        }
+        None => {
+            stats.clear();
+            SSE_FALLBACK_SESSIONS.lock().clear();
         }
     }
 }
@@ -241,21 +236,20 @@ pub fn close_codex_websocket_sessions(session_id: Option<&str>) {
         }
     };
 
-    if let Ok(mut cache) = WEBSOCKET_SESSION_CACHE.lock() {
-        match session_id {
-            Some(id) => {
-                if let Some(entry) = cache.remove(id) {
-                    close_entry(&entry);
-                }
-                SSE_FALLBACK_SESSIONS.lock().unwrap().remove(id);
+    let mut cache = WEBSOCKET_SESSION_CACHE.lock();
+    match session_id {
+        Some(id) => {
+            if let Some(entry) = cache.remove(id) {
+                close_entry(&entry);
             }
-            None => {
-                for entry in cache.values() {
-                    close_entry(entry);
-                }
-                cache.clear();
-                SSE_FALLBACK_SESSIONS.lock().unwrap().clear();
+            SSE_FALLBACK_SESSIONS.lock().remove(id);
+        }
+        None => {
+            for entry in cache.values() {
+                close_entry(entry);
             }
+            cache.clear();
+            SSE_FALLBACK_SESSIONS.lock().clear();
         }
     }
 }
@@ -279,9 +273,7 @@ fn schedule_idle_expiry(session_id: String, entry: Arc<CachedWebSocketConnection
             return;
         }
         close_socket_quietly(&socket).await;
-        if let Ok(mut cache) = WEBSOCKET_SESSION_CACHE.lock() {
-            cache.remove(&session_id);
-        }
+        WEBSOCKET_SESSION_CACHE.lock().remove(&session_id);
     });
     if let Ok(mut slot) = task_slot.try_lock()
         && let Some(old) = slot.replace(handle)
@@ -325,23 +317,28 @@ async fn acquire_websocket(
         Busy,
     }
 
-    let cache_action = WEBSOCKET_SESSION_CACHE.lock().ok().and_then(|mut cache| {
-        let entry = cache.get(session_id)?.clone();
-        if let Ok(mut task) = entry.idle_task.try_lock()
-            && let Some(handle) = task.take()
-        {
-            handle.abort();
+    let cache_action = {
+        let mut cache = WEBSOCKET_SESSION_CACHE.lock();
+        match cache.get(session_id).cloned() {
+            None => None,
+            Some(entry) => {
+                if let Ok(mut task) = entry.idle_task.try_lock()
+                    && let Some(handle) = task.take()
+                {
+                    handle.abort();
+                }
+                if entry.busy.load(Ordering::SeqCst) {
+                    Some(CacheAction::Busy)
+                } else if is_session_expired(&entry) {
+                    cache.remove(session_id);
+                    Some(CacheAction::Expired(entry))
+                } else {
+                    entry.busy.store(true, Ordering::SeqCst);
+                    Some(CacheAction::Reuse(entry))
+                }
+            }
         }
-        if entry.busy.load(Ordering::SeqCst) {
-            return Some(CacheAction::Busy);
-        }
-        if is_session_expired(&entry) {
-            cache.remove(session_id);
-            return Some(CacheAction::Expired(entry));
-        }
-        entry.busy.store(true, Ordering::SeqCst);
-        Some(CacheAction::Reuse(entry))
-    });
+    };
 
     if let Some(action) = cache_action {
         match action {
@@ -375,10 +372,11 @@ async fn acquire_websocket(
         socket: Arc::new(tokio::sync::Mutex::new(socket)),
         busy: Arc::new(AtomicBool::new(true)),
         created_at: now_ms(),
-        continuation: Arc::new(Mutex::new(None)),
+        continuation: Arc::new(SyncMutex::new(None)),
         idle_task: Arc::new(tokio::sync::Mutex::new(None)),
     });
-    if let Ok(mut cache) = WEBSOCKET_SESSION_CACHE.lock() {
+    {
+        let mut cache = WEBSOCKET_SESSION_CACHE.lock();
         prune_websocket_session_cache(&mut cache);
         cache.insert(session_id.to_string(), entry.clone());
     }
@@ -405,9 +403,7 @@ async fn release_websocket(lease: WebSocketLease, keep: bool) {
 
     if !keep {
         close_socket_quietly(&entry.socket).await;
-        if let Ok(mut cache) = WEBSOCKET_SESSION_CACHE.lock() {
-            cache.remove(&session_id);
-        }
+        WEBSOCKET_SESSION_CACHE.lock().remove(&session_id);
         return;
     }
 
@@ -474,23 +470,19 @@ fn get_cached_websocket_input_delta(body: &Value, continuation: &CachedWebSocket
 }
 
 fn build_cached_websocket_request_body(entry: &CachedWebSocketConnection, body: &Value) -> Value {
-    let continuation = entry.continuation.lock().ok().and_then(|g| g.clone());
+    let continuation = entry.continuation.lock().clone();
     let Some(continuation) = continuation else {
         return body.clone();
     };
 
     let delta = get_cached_websocket_input_delta(body, &continuation);
     let Some(delta) = delta else {
-        if let Ok(mut guard) = entry.continuation.lock() {
-            *guard = None;
-        }
+        *entry.continuation.lock() = None;
         return body.clone();
     };
 
     if continuation.last_response_id.is_empty() {
-        if let Ok(mut guard) = entry.continuation.lock() {
-            *guard = None;
-        }
+        *entry.continuation.lock() = None;
         return body.clone();
     }
 
@@ -511,27 +503,20 @@ pub fn update_codex_websocket_continuation(
     response_id: &str,
     response_items: Value,
 ) {
-    let Ok(cache) = WEBSOCKET_SESSION_CACHE.lock() else {
-        return;
-    };
+    let cache = WEBSOCKET_SESSION_CACHE.lock();
     let Some(entry) = cache.get(session_id) else {
         return;
     };
-    if let Ok(mut guard) = entry.continuation.lock() {
-        *guard = Some(CachedWebSocketContinuationState {
-            last_request_body: full_body.clone(),
-            last_response_id: response_id.to_string(),
-            last_response_items: response_items,
-        });
-    }
+    *entry.continuation.lock() = Some(CachedWebSocketContinuationState {
+        last_request_body: full_body.clone(),
+        last_response_id: response_id.to_string(),
+        last_response_items: response_items,
+    });
 }
 
 pub fn clear_codex_websocket_continuation(session_id: &str) {
-    if let Ok(cache) = WEBSOCKET_SESSION_CACHE.lock()
-        && let Some(entry) = cache.get(session_id)
-        && let Ok(mut guard) = entry.continuation.lock()
-    {
-        *guard = None;
+    if let Some(entry) = WEBSOCKET_SESSION_CACHE.lock().get(session_id) {
+        *entry.continuation.lock() = None;
     }
 }
 
@@ -666,11 +651,8 @@ async fn try_websocket_stream(
     let reused = lease.reused;
     let collect_result = collect_websocket_events(&lease.socket, &request_body).await;
     let keep = collect_result.is_ok();
-    if !keep
-        && let Some(entry) = &lease.entry
-        && let Ok(mut guard) = entry.continuation.lock()
-    {
-        *guard = None;
+    if !keep && let Some(entry) = &lease.entry {
+        *entry.continuation.lock() = None;
     }
     release_websocket(lease, keep).await;
     let events = collect_result?;

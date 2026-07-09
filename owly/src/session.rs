@@ -311,10 +311,13 @@ impl SessionStore {
 
     /// Resolve `/restore` argument: 1-based index from [`Self::list_checkpoint_history`] or id prefix.
     pub async fn resolve_checkpoint_id(&self, arg: &str) -> Result<String> {
-        if let Ok(index) = arg.parse::<usize>() {
-            if index == 0 {
-                anyhow::bail!("checkpoint index must be >= 1");
-            }
+        let parsed_index = arg.parse::<usize>();
+        if let Ok(index) = &parsed_index
+            && *index == 0
+        {
+            anyhow::bail!("checkpoint index must be >= 1");
+        }
+        if let Ok(index) = parsed_index {
             let list = self.list_checkpoint_history(100).await?;
             let item = list
                 .get(index - 1)

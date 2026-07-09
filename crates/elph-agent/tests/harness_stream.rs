@@ -3,7 +3,9 @@
 mod common;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex as StdMutex};
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use elph_agent::harness::types::AgentHarnessStreamOptionsPatch;
 use elph_agent::runtime::try_block_on;
@@ -63,11 +65,11 @@ async fn harness_snapshots_stream_options_before_provider_request() {
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let captured = Arc::new(StdMutex::new(None));
+    let captured = Arc::new(Mutex::new(None));
     let captured_clone = captured.clone();
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
         move |_context, options, _, _| {
-            *captured_clone.lock().expect("capture lock") = options.cloned();
+            *captured_clone.lock() = options.cloned();
             faux_assistant_message(vec![faux_text("ok")], None)
         },
     ))]);
@@ -100,7 +102,7 @@ async fn harness_snapshots_stream_options_before_provider_request() {
 
     harness.prompt("hello", None).await.expect("prompt");
 
-    let options = captured.lock().expect("capture lock").clone().expect("stream options");
+    let options = captured.lock().clone().expect("stream options");
     assert_eq!(options.timeout_ms, Some(1000));
     assert_eq!(options.max_retries, Some(2));
     assert_eq!(options.max_retry_delay_ms, Some(3000));
@@ -125,16 +127,13 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let captured = Arc::new(StdMutex::new(Vec::new()));
+    let captured = Arc::new(Mutex::new(Vec::new()));
     let captured_clone = captured.clone();
     faux.set_responses(vec![
         FauxResponseStep::Factory({
             let captured_clone = captured_clone.clone();
             Arc::new(move |_context, options, _, _| {
-                captured_clone
-                    .lock()
-                    .expect("capture lock")
-                    .push(options.and_then(|o| o.timeout_ms));
+                captured_clone.lock().push(options.and_then(|o| o.timeout_ms));
                 faux_assistant_message(
                     vec![faux_tool_call(
                         "calculate",
@@ -148,10 +147,7 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
         FauxResponseStep::Factory({
             let captured_clone = captured_clone.clone();
             Arc::new(move |_context, options, _, _| {
-                captured_clone
-                    .lock()
-                    .expect("capture lock")
-                    .push(options.and_then(|o| o.timeout_ms));
+                captured_clone.lock().push(options.and_then(|o| o.timeout_ms));
                 faux_assistant_message(vec![faux_text("done")], None)
             })
         }),
@@ -199,7 +195,7 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
 
     harness.prompt("hello", None).await.expect("prompt");
 
-    let timeouts = captured.lock().expect("capture lock").clone();
+    let timeouts = captured.lock().clone();
     assert_eq!(timeouts, vec![Some(1000), Some(2000)]);
 }
 
@@ -209,11 +205,11 @@ async fn harness_chains_provider_request_patches_with_deletion() {
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let captured = Arc::new(StdMutex::new(None));
+    let captured = Arc::new(Mutex::new(None));
     let captured_clone = captured.clone();
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
         move |_context, options, _, _| {
-            *captured_clone.lock().expect("capture lock") = options.cloned();
+            *captured_clone.lock() = options.cloned();
             faux_assistant_message(vec![faux_text("ok")], None)
         },
     ))]);
@@ -301,7 +297,7 @@ async fn harness_chains_provider_request_patches_with_deletion() {
 
     harness.prompt("hello", None).await.expect("prompt");
 
-    let options = captured.lock().expect("capture lock").clone().expect("stream options");
+    let options = captured.lock().clone().expect("stream options");
     assert_eq!(options.timeout_ms, None);
     assert_eq!(options.max_retries, Some(2));
     let headers = options.headers.as_ref().expect("headers");
@@ -317,8 +313,8 @@ async fn harness_chains_provider_payload_hooks() {
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let seen_payloads = Arc::new(StdMutex::new(Vec::new()));
-    let final_payload = Arc::new(StdMutex::new(None));
+    let seen_payloads = Arc::new(Mutex::new(Vec::new()));
+    let final_payload = Arc::new(Mutex::new(None));
     let seen_payloads_clone = seen_payloads.clone();
     let final_payload_clone = final_payload.clone();
 
@@ -332,7 +328,7 @@ async fn harness_chains_provider_payload_hooks() {
             } else {
                 json!({ "steps": ["provider"] })
             };
-            *final_payload_clone.lock().expect("final payload lock") = Some(payload);
+            *final_payload_clone.lock() = Some(payload);
             faux_assistant_message(vec![faux_text("ok")], None)
         },
     ))]);
@@ -359,7 +355,7 @@ async fn harness_chains_provider_payload_hooks() {
             let payload = event.payload.clone();
             let seen_payloads = seen_payloads_first.clone();
             async move {
-                seen_payloads.lock().expect("seen payloads lock").push(payload);
+                seen_payloads.lock().push(payload);
                 Some(elph_agent::BeforeProviderPayloadResult {
                     payload: json!({ "steps": ["provider", "first"] }),
                 })
@@ -373,7 +369,7 @@ async fn harness_chains_provider_payload_hooks() {
             let payload = event.payload.clone();
             let seen_payloads = seen_payloads_second.clone();
             async move {
-                seen_payloads.lock().expect("seen payloads lock").push(payload);
+                seen_payloads.lock().push(payload);
                 Some(elph_agent::BeforeProviderPayloadResult {
                     payload: json!({ "steps": ["provider", "first", "second"] }),
                 })
@@ -384,14 +380,14 @@ async fn harness_chains_provider_payload_hooks() {
     harness.prompt("hello", None).await.expect("prompt");
 
     assert_eq!(
-        seen_payloads.lock().expect("seen payloads lock").clone(),
+        seen_payloads.lock().clone(),
         vec![
             json!({ "steps": ["provider"] }),
             json!({ "steps": ["provider", "first"] })
         ]
     );
     assert_eq!(
-        final_payload.lock().expect("final payload lock").clone(),
+        final_payload.lock().clone(),
         Some(json!({ "steps": ["provider", "first", "second"] }))
     );
 }
@@ -402,8 +398,8 @@ async fn harness_on_chains_provider_payload_hooks() {
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let seen_payloads = Arc::new(StdMutex::new(Vec::new()));
-    let final_payload = Arc::new(StdMutex::new(None));
+    let seen_payloads = Arc::new(Mutex::new(Vec::new()));
+    let final_payload = Arc::new(Mutex::new(None));
     let seen_payloads_clone = seen_payloads.clone();
     let final_payload_clone = final_payload.clone();
 
@@ -417,7 +413,7 @@ async fn harness_on_chains_provider_payload_hooks() {
             } else {
                 json!({ "steps": ["provider"] })
             };
-            *final_payload_clone.lock().expect("final payload lock") = Some(payload);
+            *final_payload_clone.lock() = Some(payload);
             faux_assistant_message(vec![faux_text("ok")], None)
         },
     ))]);
@@ -446,10 +442,7 @@ async fn harness_on_chains_provider_payload_hooks() {
                 let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
                     return None;
                 };
-                seen_payloads
-                    .lock()
-                    .expect("seen payloads lock")
-                    .push(event.payload.clone());
+                seen_payloads.lock().push(event.payload.clone());
                 Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
                     elph_agent::BeforeProviderPayloadResult {
                         payload: json!({ "steps": ["provider", "first"] }),
@@ -468,10 +461,7 @@ async fn harness_on_chains_provider_payload_hooks() {
                 let elph_agent::AgentHarnessOwnEvent::BeforeProviderPayload(event) = event else {
                     return None;
                 };
-                seen_payloads
-                    .lock()
-                    .expect("seen payloads lock")
-                    .push(event.payload.clone());
+                seen_payloads.lock().push(event.payload.clone());
                 Some(elph_agent::HarnessHookResult::BeforeProviderPayload(
                     elph_agent::BeforeProviderPayloadResult {
                         payload: json!({ "steps": ["provider", "first", "second"] }),
@@ -485,14 +475,14 @@ async fn harness_on_chains_provider_payload_hooks() {
     harness.prompt("hello", None).await.expect("prompt");
 
     assert_eq!(
-        seen_payloads.lock().expect("seen payloads lock").clone(),
+        seen_payloads.lock().clone(),
         vec![
             json!({ "steps": ["provider"] }),
             json!({ "steps": ["provider", "first"] })
         ]
     );
     assert_eq!(
-        final_payload.lock().expect("final payload lock").clone(),
+        final_payload.lock().clone(),
         Some(json!({ "steps": ["provider", "first", "second"] }))
     );
 }
@@ -556,7 +546,7 @@ async fn harness_after_provider_response_captures_status_and_headers() {
     })
     .expect("harness");
 
-    let captured = Arc::new(StdMutex::new(None::<(u16, HashMap<String, String>)>));
+    let captured = Arc::new(Mutex::new(None::<(u16, HashMap<String, String>)>));
     let captured_clone = captured.clone();
     harness
         .on_after_provider_response(move |event| {
@@ -564,18 +554,14 @@ async fn harness_after_provider_response_captures_status_and_headers() {
             let status = event.status;
             let headers = event.headers.clone();
             async move {
-                *captured.lock().expect("capture lock") = Some((status, headers));
+                *captured.lock() = Some((status, headers));
             }
         })
         .await;
 
     harness.prompt("hello", None).await.expect("prompt");
 
-    let (status, headers) = captured
-        .lock()
-        .expect("capture lock")
-        .clone()
-        .expect("response metadata");
+    let (status, headers) = captured.lock().clone().expect("response metadata");
     assert_eq!(status, 200);
     assert_eq!(headers.get("x-faux-provider").map(String::as_str), Some("ok"));
     assert_eq!(

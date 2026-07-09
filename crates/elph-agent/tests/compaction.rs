@@ -1,6 +1,8 @@
 mod common;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use common::new_faux_with_options;
 use elph_agent::CompactionErrorCode;
@@ -44,7 +46,7 @@ impl ProviderStreamsDyn for CapturingFauxStreams {
         options: Option<SimpleStreamOptions>,
     ) -> elph_ai::utils::event_stream::AssistantMessageEventStream {
         if let Some(opts) = options.clone() {
-            self.captured.lock().expect("capture lock").push(opts);
+            self.captured.lock().push(opts);
         }
         self.inner.stream_simple(model, context, options)
     }
@@ -818,10 +820,7 @@ async fn generate_summary_passes_reasoning_for_reasoning_models() {
     )
     .await
     .expect("summary");
-    assert_eq!(
-        options_capture.lock().expect("capture lock")[0].reasoning,
-        Some(ThinkingLevel::Medium)
-    );
+    assert_eq!(options_capture.lock()[0].reasoning, Some(ThinkingLevel::Medium));
 
     let (faux_off, models_off, options_capture_off) = faux_models_with_capture(faux_model_options(true, 8192));
     let off_model = faux_off.provider.get_models()[0].clone();
@@ -832,7 +831,7 @@ async fn generate_summary_passes_reasoning_for_reasoning_models() {
     generate_summary(&messages, &models_off, &off_model, 2000, None, None, None, None)
         .await
         .expect("summary");
-    assert_eq!(options_capture_off.lock().expect("capture lock")[0].reasoning, None);
+    assert_eq!(options_capture_off.lock()[0].reasoning, None);
 
     let (faux_non_reasoning, models_non_reasoning, options_capture_non) =
         faux_models_with_capture(faux_model_options(false, 8192));
@@ -853,7 +852,7 @@ async fn generate_summary_passes_reasoning_for_reasoning_models() {
     )
     .await
     .expect("summary");
-    assert_eq!(options_capture_non.lock().expect("capture lock")[0].reasoning, None);
+    assert_eq!(options_capture_non.lock()[0].reasoning, None);
 }
 
 #[tokio::test]
@@ -870,7 +869,7 @@ async fn generate_summary_includes_previous_summary_and_instructions() {
             ..
         }) = context.messages.first()
         {
-            *prompt_capture.lock().expect("prompt lock") = text.clone();
+            *prompt_capture.lock() = text.clone();
         }
         faux_assistant_message(vec![faux_text("## Goal\nTest summary")], None)
     }))]);
@@ -888,7 +887,7 @@ async fn generate_summary_includes_previous_summary_and_instructions() {
     .await
     .expect("summary");
 
-    let prompt = prompt_text.lock().expect("prompt lock").clone();
+    let prompt = prompt_text.lock().clone();
     assert!(summary.contains("Test summary"));
     assert!(prompt.contains("<previous-summary>\nold summary\n</previous-summary>"));
     assert!(prompt.contains("Additional focus: focus"));
@@ -952,12 +951,7 @@ async fn compact_clamps_summary_max_tokens_to_model_cap() {
         .await
         .expect("compact");
 
-    let max_tokens: Vec<_> = captured
-        .lock()
-        .expect("capture lock")
-        .iter()
-        .map(|options| options.base.max_tokens)
-        .collect();
+    let max_tokens: Vec<_> = captured.lock().iter().map(|options| options.base.max_tokens).collect();
     assert_eq!(max_tokens, vec![Some(128_000), Some(128_000)]);
 }
 
@@ -1039,10 +1033,7 @@ async fn compact_passes_reasoning_for_turn_prefix_summaries() {
         .await
         .expect("compact");
 
-    assert_eq!(
-        captured.lock().expect("capture lock")[0].reasoning,
-        Some(ThinkingLevel::High)
-    );
+    assert_eq!(captured.lock()[0].reasoning, Some(ThinkingLevel::High));
 }
 
 #[tokio::test]

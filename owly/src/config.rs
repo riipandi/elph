@@ -28,18 +28,13 @@ impl Config {
     /// Create config from environment and CLI args
     pub fn resolve(model_override: Option<&str>, cwd: &Path) -> Result<Self> {
         // Check if model_override contains provider/model format
-        let (provider_override, model_override) = if let Some(model) = model_override {
-            if let Some((provider, model_id)) = model.split_once('/') {
-                // Validate provider exists
-                if provider_config(provider).is_some() {
-                    (Some(provider.to_string()), Some(model_id.to_string()))
-                } else {
-                    // Not a valid provider, treat as model only
-                    (None, Some(model.to_string()))
-                }
-            } else {
-                (None, Some(model.to_string()))
-            }
+        let (provider_override, model_override) = if let Some(model) = model_override
+            && let Some((provider, model_id)) = model.split_once('/')
+            && provider_config(provider).is_some()
+        {
+            (Some(provider.to_string()), Some(model_id.to_string()))
+        } else if let Some(model) = model_override {
+            (None, Some(model.to_string()))
         } else {
             (None, None)
         };

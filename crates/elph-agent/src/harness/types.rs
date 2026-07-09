@@ -5,8 +5,9 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use elph_ai::{ImageContent, Model, Models, Transport};
+
+use crate::env::LocalExecutionEnv;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
@@ -450,42 +451,86 @@ pub struct CreateTempFileOptions {
 }
 
 /// Filesystem capability used by the harness.
-#[async_trait]
 pub trait FileSystem: Send + Sync {
     fn cwd(&self) -> &str;
 
-    async fn absolute_path(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<String, FileError>;
-    async fn join_path(&self, parts: &[&str], abort_token: Option<&CancellationToken>) -> Result<String, FileError>;
-    async fn read_text_file(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<String, FileError>;
-    async fn read_text_lines(
-        &self,
-        path: &str,
+    fn absolute_path<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn join_path<'a>(
+        &'a self,
+        parts: &'a [&'a str],
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn read_text_file<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn read_text_lines<'a>(
+        &'a self,
+        path: &'a str,
         options: Option<ReadTextLinesOptions>,
-    ) -> Result<Vec<String>, FileError>;
-    async fn read_binary_file(&self, path: &str, abort_token: Option<&CancellationToken>)
-    -> Result<Vec<u8>, FileError>;
-    async fn write_file(
-        &self,
-        path: &str,
-        content: &[u8],
-        abort_token: Option<&CancellationToken>,
-    ) -> Result<(), FileError>;
-    async fn append_file(
-        &self,
-        path: &str,
-        content: &[u8],
-        abort_token: Option<&CancellationToken>,
-    ) -> Result<(), FileError>;
-    async fn file_info(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<FileInfo, FileError>;
-    async fn list_dir(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<Vec<FileInfo>, FileError>;
-    async fn canonical_path(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<String, FileError>;
-    async fn exists(&self, path: &str, abort_token: Option<&CancellationToken>) -> Result<bool, FileError>;
-    async fn create_dir(&self, path: &str, options: Option<CreateDirOptions>) -> Result<(), FileError>;
-    async fn remove(&self, path: &str, options: Option<RemoveOptions>) -> Result<(), FileError>;
-    async fn create_temp_dir(&self, prefix: &str, abort_token: Option<&CancellationToken>)
-    -> Result<String, FileError>;
-    async fn create_temp_file(&self, options: Option<CreateTempFileOptions>) -> Result<String, FileError>;
-    async fn cleanup(&self);
+    ) -> impl Future<Output = Result<Vec<String>, FileError>> + Send + use<'a, Self>;
+    fn read_binary_file<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<Vec<u8>, FileError>> + Send + use<'a, Self>;
+    fn write_file<'a>(
+        &'a self,
+        path: &'a str,
+        content: &'a [u8],
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<(), FileError>> + Send + use<'a, Self>;
+    fn append_file<'a>(
+        &'a self,
+        path: &'a str,
+        content: &'a [u8],
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<(), FileError>> + Send + use<'a, Self>;
+    fn file_info<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<FileInfo, FileError>> + Send + use<'a, Self>;
+    fn list_dir<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<Vec<FileInfo>, FileError>> + Send + use<'a, Self>;
+    fn canonical_path<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn exists<'a>(
+        &'a self,
+        path: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<bool, FileError>> + Send + use<'a, Self>;
+    fn create_dir<'a>(
+        &'a self,
+        path: &'a str,
+        options: Option<CreateDirOptions>,
+    ) -> impl Future<Output = Result<(), FileError>> + Send + use<'a, Self>;
+    fn remove<'a>(
+        &'a self,
+        path: &'a str,
+        options: Option<RemoveOptions>,
+    ) -> impl Future<Output = Result<(), FileError>> + Send + use<'a, Self>;
+    fn create_temp_dir<'a>(
+        &'a self,
+        prefix: &'a str,
+        abort_token: Option<&'a CancellationToken>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn create_temp_file<'a>(
+        &'a self,
+        options: Option<CreateTempFileOptions>,
+    ) -> impl Future<Output = Result<String, FileError>> + Send + use<'a, Self>;
+    fn cleanup<'a>(&'a self) -> impl Future<Output = ()> + Send + use<'a, Self>;
 }
 
 #[allow(clippy::type_complexity)]
@@ -507,14 +552,16 @@ pub struct ShellExecResult {
 }
 
 /// Shell execution capability used by the harness.
-#[async_trait]
 pub trait Shell: Send + Sync {
-    async fn exec(&self, command: &str, options: Option<ShellExecOptions>) -> Result<ShellExecResult, ExecutionError>;
-    async fn cleanup(&self);
+    fn exec<'a>(
+        &'a self,
+        command: &'a str,
+        options: Option<ShellExecOptions>,
+    ) -> impl Future<Output = Result<ShellExecResult, ExecutionError>> + Send + use<'a, Self>;
+    fn cleanup<'a>(&'a self) -> impl Future<Output = ()> + Send + use<'a, Self>;
 }
 
 /// Filesystem and process execution environment used by the harness.
-#[async_trait]
 pub trait ExecutionEnv: FileSystem + Shell {}
 
 // ---------------------------------------------------------------------------
@@ -1019,7 +1066,7 @@ pub struct AgentHarnessPromptOptions {
 // ---------------------------------------------------------------------------
 
 pub struct SystemPromptContext<S: crate::session::types::SessionStorage> {
-    pub env: Arc<dyn ExecutionEnv>,
+    pub env: Arc<LocalExecutionEnv>,
     pub session: Session<S>,
     pub model: Model,
     pub thinking_level: AgentThinkingLevel,
@@ -1040,7 +1087,7 @@ where
     S: crate::session::types::SessionStorage + Send + Sync + 'static,
     S::Metadata: crate::session::types::HasSessionId + Send + Sync,
 {
-    pub env: Arc<dyn ExecutionEnv>,
+    pub env: Arc<LocalExecutionEnv>,
     pub session: Session<S>,
     pub models: Arc<Models>,
     pub tools: Vec<AgentTool>,

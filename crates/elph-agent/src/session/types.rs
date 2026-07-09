@@ -1,8 +1,8 @@
 //! Session tree entry types and storage trait.
 
 use std::collections::HashMap;
+use std::future::Future;
 
-use async_trait::async_trait;
 use elph_ai::{ImageContent, TextContent};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -300,18 +300,29 @@ pub struct SessionIndex {
     pub leaf_id: Option<String>,
 }
 
-#[async_trait]
 pub trait SessionStorage: Send + Sync {
     type Metadata: Clone + Send + Sync;
 
-    async fn get_metadata(&self) -> Self::Metadata;
-    async fn get_leaf_id(&self) -> Result<Option<String>, SessionError>;
-    async fn set_leaf_id(&mut self, leaf_id: Option<String>) -> Result<(), SessionError>;
-    async fn create_entry_id(&self) -> String;
-    async fn append_entry(&mut self, entry: SessionTreeEntry) -> Result<(), SessionError>;
-    async fn get_entry(&self, id: &str) -> Option<SessionTreeEntry>;
-    async fn find_entries(&self, entry_type: &str) -> Vec<SessionTreeEntry>;
-    async fn get_label(&self, id: &str) -> Option<String>;
-    async fn get_path_to_root(&self, leaf_id: Option<&str>) -> Result<Vec<SessionTreeEntry>, SessionError>;
-    async fn get_entries(&self) -> Vec<SessionTreeEntry>;
+    fn get_metadata<'a>(&'a self) -> impl Future<Output = Self::Metadata> + Send + use<'a, Self>;
+    fn get_leaf_id<'a>(&'a self) -> impl Future<Output = Result<Option<String>, SessionError>> + Send + use<'a, Self>;
+    fn set_leaf_id<'a>(
+        &'a mut self,
+        leaf_id: Option<String>,
+    ) -> impl Future<Output = Result<(), SessionError>> + Send + use<'a, Self>;
+    fn create_entry_id<'a>(&'a self) -> impl Future<Output = String> + Send + use<'a, Self>;
+    fn append_entry<'a>(
+        &'a mut self,
+        entry: SessionTreeEntry,
+    ) -> impl Future<Output = Result<(), SessionError>> + Send + use<'a, Self>;
+    fn get_entry<'a>(&'a self, id: &'a str) -> impl Future<Output = Option<SessionTreeEntry>> + Send + use<'a, Self>;
+    fn find_entries<'a>(
+        &'a self,
+        entry_type: &'a str,
+    ) -> impl Future<Output = Vec<SessionTreeEntry>> + Send + use<'a, Self>;
+    fn get_label<'a>(&'a self, id: &'a str) -> impl Future<Output = Option<String>> + Send + use<'a, Self>;
+    fn get_path_to_root<'a>(
+        &'a self,
+        leaf_id: Option<&'a str>,
+    ) -> impl Future<Output = Result<Vec<SessionTreeEntry>, SessionError>> + Send + use<'a, Self>;
+    fn get_entries<'a>(&'a self) -> impl Future<Output = Vec<SessionTreeEntry>> + Send + use<'a, Self>;
 }

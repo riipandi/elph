@@ -18,14 +18,15 @@ use crate::compaction::{
     CompactionResult as CompactionModuleResult, DEFAULT_COMPACTION_SETTINGS, GenerateBranchSummaryOptions,
     collect_entries_for_branch_summary, compact, generate_branch_summary, prepare_compaction,
 };
+use crate::env::LocalExecutionEnv;
 use crate::harness::hooks::{AgentHarnessEvent, HookRegistry};
 use crate::harness::types::{
     AbortResult, AfterProviderResponseEvent, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessOptions,
     AgentHarnessOwnEvent, AgentHarnessPhase, AgentHarnessPromptOptions, AgentHarnessResources,
     AgentHarnessStreamOptions, BeforeAgentStartEvent, BeforeProviderPayloadEvent, BeforeProviderRequestEvent,
-    CompactResult, CompactionError, ContextEvent, ExecutionEnv, ModelUpdateSource, NavigateTreeResult,
-    PendingSessionWrite, QueueUpdateEvent, SessionBeforeCompactEvent, SessionBeforeTreeEvent, SystemPrompt,
-    ToolCallEvent, ToolResultEvent, clone_stream_options,
+    CompactResult, CompactionError, ContextEvent, ModelUpdateSource, NavigateTreeResult, PendingSessionWrite,
+    QueueUpdateEvent, SessionBeforeCompactEvent, SessionBeforeTreeEvent, SystemPrompt, ToolCallEvent, ToolResultEvent,
+    clone_stream_options,
 };
 use crate::messages::default_convert_to_llm_fn;
 use crate::prompt_templates::format_prompt_template_invocation;
@@ -64,7 +65,7 @@ where
     S: SessionStorage + Clone + Send + Sync + 'static,
     S::Metadata: HasSessionId + Send + Sync,
 {
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     session: Mutex<Session<S>>,
     models: Arc<Models>,
     phase: Mutex<AgentHarnessPhase>,
@@ -144,7 +145,7 @@ where
         })
     }
 
-    pub fn env(&self) -> Arc<dyn ExecutionEnv> {
+    pub fn env(&self) -> Arc<LocalExecutionEnv> {
         self.shared.env.clone()
     }
 

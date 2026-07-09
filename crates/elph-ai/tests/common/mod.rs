@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use elph_ai::auth::AuthContext;
+use elph_ai::auth::{AuthContext, BoxFuture};
 use elph_ai::types::{
     AnthropicMessagesCompat, AssistantMessage, CacheRetention, Context, Message, Model, ModelCost,
     OpenAICompletionsCompat, OpenAIResponsesCompat, StopReason, StreamOptions, Usage, UserContent,
@@ -23,14 +23,15 @@ impl FakeAuthContext {
     }
 }
 
-#[async_trait::async_trait]
 impl AuthContext for FakeAuthContext {
-    async fn env(&self, name: &str) -> Option<String> {
-        self.env.get(name).cloned()
+    fn env<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Option<String>> {
+        let value = self.env.get(name).cloned();
+        Box::pin(async move { value })
     }
 
-    async fn file_exists(&self, path: &str) -> bool {
-        self.files.contains(path)
+    fn file_exists<'a>(&'a self, path: &'a str) -> BoxFuture<'a, bool> {
+        let exists = self.files.contains(path);
+        Box::pin(async move { exists })
     }
 }
 

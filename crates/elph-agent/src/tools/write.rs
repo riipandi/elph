@@ -6,12 +6,13 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::{ExecutionEnv, Result as HarnessResult};
+use crate::env::LocalExecutionEnv;
+use crate::harness::types::{FileSystem, Result as HarnessResult};
 use crate::tools::common::{check_aborted, ensure_parent_dir, file_error, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_write_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
+pub fn create_write_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -35,7 +36,7 @@ pub fn create_write_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
 }
 
 async fn execute_write(
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
 ) -> anyhow::Result<AgentToolResult> {
@@ -51,7 +52,7 @@ async fn execute_write(
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     ensure_parent_dir(&env, &absolute, signal.as_ref()).await?;
-    match env.write_file(&absolute, content.as_bytes(), signal.as_ref()).await {
+    match FileSystem::write_file(env.as_ref(), &absolute, content.as_bytes(), signal.as_ref()).await {
         HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!(
             "Wrote {} bytes to {path}",
             content.len()

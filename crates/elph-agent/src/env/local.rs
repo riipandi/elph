@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use async_trait::async_trait;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -233,7 +232,6 @@ impl LocalExecutionEnv {
     }
 }
 
-#[async_trait]
 impl FileSystem for LocalExecutionEnv {
     fn cwd(&self) -> &str {
         self.cwd
@@ -541,7 +539,6 @@ impl FileSystem for LocalExecutionEnv {
     async fn cleanup(&self) {}
 }
 
-#[async_trait]
 impl Shell for LocalExecutionEnv {
     async fn exec(&self, command: &str, options: Option<ShellExecOptions>) -> Result<ShellExecResult, ExecutionError> {
         let options = options.unwrap_or(ShellExecOptions {
@@ -660,5 +657,4 @@ impl Shell for LocalExecutionEnv {
     async fn cleanup(&self) {}
 }
 
-#[async_trait]
 impl ExecutionEnv for LocalExecutionEnv {}

@@ -6,7 +6,7 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::ExecutionEnv;
+use crate::env::LocalExecutionEnv;
 use crate::harness::utils::truncate::{
     DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, TruncationOptions, format_size, truncate_head,
 };
@@ -14,7 +14,7 @@ use crate::tools::common::{check_aborted, is_probably_image, read_file_text, res
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_read_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
+pub fn create_read_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -42,7 +42,7 @@ pub fn create_read_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
 }
 
 async fn execute_read(
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
 ) -> anyhow::Result<AgentToolResult> {

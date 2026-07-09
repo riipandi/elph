@@ -552,16 +552,16 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
     };
 
     let completion_message = if print_mode && !stream {
-        if let Some(elph_ai::Message::Assistant(assistant)) = state.messages.last().and_then(|m| m.as_llm()) {
-            if !verbose {
-                for block in &assistant.content {
-                    if let elph_ai::AssistantContentBlock::Text(t) = block {
-                        print!("{}", t.text);
-                        let _ = std::io::stdout().flush();
-                    }
+        if let Some(elph_ai::Message::Assistant(assistant)) = state.messages.last().and_then(|m| m.as_llm())
+            && !verbose
+        {
+            for block in &assistant.content {
+                if let elph_ai::AssistantContentBlock::Text(t) = block {
+                    print!("{}", t.text);
+                    let _ = std::io::stdout().flush();
                 }
-                println!();
             }
+            println!();
             String::new()
         } else {
             String::new()

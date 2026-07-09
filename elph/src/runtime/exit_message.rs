@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use parking_lot::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const GOODBYES: &[&str] = &[
@@ -28,13 +28,11 @@ pub fn new_session_id() -> String {
 }
 
 pub fn record(snapshot: ExitSnapshot) {
-    if let Ok(mut pending) = PENDING.lock() {
-        *pending = Some(snapshot);
-    }
+    *PENDING.lock() = Some(snapshot);
 }
 
 pub fn print_and_clear() {
-    let snapshot = PENDING.lock().ok().and_then(|mut pending| pending.take());
+    let snapshot = PENDING.lock().take();
     let Some(snapshot) = snapshot else {
         return;
     };

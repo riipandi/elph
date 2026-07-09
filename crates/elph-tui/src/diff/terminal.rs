@@ -277,16 +277,16 @@ impl RecordingTerminal {
             }
             return;
         }
-        if let Some(rest) = seq.strip_prefix("\x1b[") {
-            if let Some(num) = rest.strip_suffix('A') {
-                if let Ok(n) = num.parse::<usize>() {
-                    self.cursor_row = self.cursor_row.saturating_sub(n);
-                }
-            } else if let Some(num) = rest.strip_suffix('B')
-                && let Ok(n) = num.parse::<usize>()
-            {
-                self.cursor_row = (self.cursor_row + n).min(self.viewport.len().saturating_sub(1));
-            }
+        if let Some(rest) = seq.strip_prefix("\x1b[")
+            && let Some(num) = rest.strip_suffix('A')
+            && let Ok(n) = num.parse::<usize>()
+        {
+            self.cursor_row = self.cursor_row.saturating_sub(n);
+        } else if let Some(rest) = seq.strip_prefix("\x1b[")
+            && let Some(num) = rest.strip_suffix('B')
+            && let Ok(n) = num.parse::<usize>()
+        {
+            self.cursor_row = (self.cursor_row + n).min(self.viewport.len().saturating_sub(1));
         }
     }
 }

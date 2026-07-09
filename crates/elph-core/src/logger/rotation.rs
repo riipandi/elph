@@ -1,7 +1,7 @@
+use parking_lot::Mutex;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::time::Instant;
 
 use crate::logger::LogRotation;
@@ -49,7 +49,7 @@ impl RollingWriter {
 
 impl Write for RollingWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut inner = self.inner.lock().expect("rolling log mutex poisoned");
+        let mut inner = self.inner.lock();
         if inner.last_period_check.elapsed() >= ROTATION_CHECK_INTERVAL {
             let now = OffsetDateTime::now_utc();
             let period = period_key(inner.rotation, now);
@@ -66,7 +66,7 @@ impl Write for RollingWriter {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.inner.lock().expect("rolling log mutex poisoned").file.flush()
+        self.inner.lock().file.flush()
     }
 }
 

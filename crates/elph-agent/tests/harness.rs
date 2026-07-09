@@ -2,8 +2,10 @@
 
 mod common;
 
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex as StdMutex};
+
+use parking_lot::Mutex;
 use std::time::Duration;
 
 use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
@@ -175,14 +177,13 @@ async fn harness_drains_steering_one_at_a_time() {
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());
     let models = faux_models(&faux);
-    let user_counts = Arc::new(StdMutex::new(Vec::new()));
+    let user_counts = Arc::new(Mutex::new(Vec::new()));
     faux.set_responses(vec![
         FauxResponseStep::Factory({
             let user_counts = user_counts.clone();
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("first")], None)
             })
@@ -192,7 +193,6 @@ async fn harness_drains_steering_one_at_a_time() {
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("second")], None)
             })
@@ -202,7 +202,6 @@ async fn harness_drains_steering_one_at_a_time() {
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("third")], None)
             })
@@ -252,7 +251,7 @@ async fn harness_drains_steering_one_at_a_time() {
 
     harness.prompt("hello", None).await.expect("prompt");
     let lengths = steer_lengths.lock().await.clone();
-    let counts = user_counts.lock().expect("user counts lock").clone();
+    let counts = user_counts.lock().clone();
     assert_eq!(counts, vec![1, 2, 3]);
     assert!(lengths.contains(&1));
     assert!(lengths.contains(&2));
@@ -263,13 +262,10 @@ async fn harness_before_agent_start_appends_messages() {
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());
     let models = faux_models(&faux);
-    let captured = Arc::new(StdMutex::new(Vec::new()));
+    let captured = Arc::new(Mutex::new(Vec::new()));
     let captured_clone = captured.clone();
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
-        captured_clone
-            .lock()
-            .expect("captured lock")
-            .extend(user_texts(&context.messages));
+        captured_clone.lock().extend(user_texts(&context.messages));
         faux_assistant_message(vec![faux_text("ok")], None)
     }))]);
 
@@ -304,7 +300,7 @@ async fn harness_before_agent_start_appends_messages() {
         .await;
 
     harness.prompt("hello", None).await.expect("prompt");
-    let request_text = captured.lock().expect("captured lock").clone();
+    let request_text = captured.lock().clone();
     assert_eq!(request_text, vec!["hello".to_string(), "hook".to_string()]);
 }
 
@@ -411,14 +407,13 @@ async fn harness_drains_follow_up_one_at_a_time() {
     let (_temp, env) = test_env();
     let faux = faux_provider(Default::default());
     let models = faux_models(&faux);
-    let user_counts = Arc::new(StdMutex::new(Vec::new()));
+    let user_counts = Arc::new(Mutex::new(Vec::new()));
     faux.set_responses(vec![
         FauxResponseStep::Factory({
             let user_counts = user_counts.clone();
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("first")], None)
             })
@@ -428,7 +423,6 @@ async fn harness_drains_follow_up_one_at_a_time() {
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("second")], None)
             })
@@ -438,7 +432,6 @@ async fn harness_drains_follow_up_one_at_a_time() {
             Arc::new(move |context, _, _, _| {
                 user_counts
                     .lock()
-                    .expect("user counts lock")
                     .push(context.messages.iter().filter(|m| m.role() == "user").count());
                 faux_assistant_message(vec![faux_text("third")], None)
             })
@@ -488,7 +481,7 @@ async fn harness_drains_follow_up_one_at_a_time() {
 
     harness.prompt("hello", None).await.expect("prompt");
     let lengths = follow_up_lengths.lock().await.clone();
-    let counts = user_counts.lock().expect("user counts lock").clone();
+    let counts = user_counts.lock().clone();
     assert_eq!(counts, vec![1, 2, 3]);
     assert!(lengths.contains(&1));
     assert!(lengths.contains(&2));
@@ -575,8 +568,8 @@ async fn harness_abort_clears_queues_preserves_next_turn() {
     let (_temp, env) = test_env();
     let (faux, models) = common::new_faux();
     let release = Arc::new(AtomicBool::new(false));
-    let aborted_signal = Arc::new(StdMutex::new(None::<bool>));
-    let second_request_text = Arc::new(StdMutex::new(Vec::new()));
+    let aborted_signal = Arc::new(Mutex::new(None::<bool>));
+    let second_request_text = Arc::new(Mutex::new(Vec::new()));
 
     faux.set_responses(vec![
         FauxResponseStep::Factory({
@@ -586,7 +579,7 @@ async fn harness_abort_clears_queues_preserves_next_turn() {
                 let signal = options.and_then(|o| o.signal.clone());
                 loop {
                     let cancelled = signal.as_ref().is_some_and(|token| token.is_cancelled());
-                    *aborted_signal.lock().expect("aborted lock") = Some(cancelled);
+                    *aborted_signal.lock() = Some(cancelled);
                     if cancelled || release.load(Ordering::SeqCst) {
                         return faux_assistant_message(vec![faux_text("aborted-ish")], None);
                     }
@@ -597,10 +590,7 @@ async fn harness_abort_clears_queues_preserves_next_turn() {
         FauxResponseStep::Factory({
             let second_request_text = second_request_text.clone();
             Arc::new(move |context, _, _, _| {
-                second_request_text
-                    .lock()
-                    .expect("second request lock")
-                    .extend(user_texts(&context.messages));
+                second_request_text.lock().extend(user_texts(&context.messages));
                 faux_assistant_message(vec![faux_text("second")], None)
             })
         }),
@@ -637,11 +627,11 @@ async fn harness_abort_clears_queues_preserves_next_turn() {
 
     assert_eq!(abort_result.cleared_steer.len(), 1);
     assert_eq!(abort_result.cleared_follow_up.len(), 1);
-    assert!(aborted_signal.lock().expect("aborted lock").unwrap_or(false));
+    assert!(aborted_signal.lock().unwrap_or(false));
     let updates = queue_updates.lock().await;
     assert!(updates.contains(&(0, 0, 1)));
     assert_eq!(
-        second_request_text.lock().expect("second request lock").clone(),
+        second_request_text.lock().clone(),
         vec!["first".to_string(), "next".to_string(), "second".to_string()]
     );
 }
@@ -678,12 +668,12 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
         .find(|model| model.id == "second")
         .expect("second model");
 
-    let captured = Arc::new(StdMutex::new(Vec::<CapturedRequest>::new()));
+    let captured = Arc::new(Mutex::new(Vec::<CapturedRequest>::new()));
     faux.set_responses(vec![
         FauxResponseStep::Factory({
             let captured = captured.clone();
             Arc::new(move |context, _, _, model| {
-                captured.lock().expect("capture lock").push(CapturedRequest {
+                captured.lock().push(CapturedRequest {
                     model_id: model.id.clone(),
                     system_prompt: context.system_prompt.clone().unwrap_or_default(),
                     tools: context
@@ -705,7 +695,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
         FauxResponseStep::Factory({
             let captured = captured.clone();
             Arc::new(move |context, _, _, model| {
-                captured.lock().expect("capture lock").push(CapturedRequest {
+                captured.lock().push(CapturedRequest {
                     model_id: model.id.clone(),
                     system_prompt: context.system_prompt.clone().unwrap_or_default(),
                     tools: context
@@ -805,7 +795,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
 
     harness.prompt("hello", None).await.expect("prompt");
 
-    let captured = captured.lock().expect("capture lock").clone();
+    let captured = captured.lock().clone();
     assert_eq!(captured.len(), 2);
     assert_eq!(captured[0].model_id, "first");
     assert_eq!(captured[0].system_prompt, "first prompt");
@@ -1194,7 +1184,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
     let (faux, models) = common::new_faux();
     let model = faux.provider.get_models()[0].clone();
 
-    let captured_prompt = Arc::new(StdMutex::new(String::new()));
+    let captured_prompt = Arc::new(Mutex::new(String::new()));
     let captured_prompt_clone = captured_prompt.clone();
     faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(move |context, _, _, _| {
         let prompt = context
@@ -1209,7 +1199,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
             })
             .collect::<Vec<_>>()
             .join("\n");
-        *captured_prompt_clone.lock().expect("capture lock") = prompt;
+        *captured_prompt_clone.lock() = prompt;
         faux_assistant_message(vec![faux_text("## Goal\nCompacted")], None)
     }))]);
 
@@ -1262,7 +1252,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
 
     harness.compact(Some("original")).await.expect("compact");
 
-    let prompt = captured_prompt.lock().expect("capture lock").clone();
+    let prompt = captured_prompt.lock().clone();
     assert!(
         prompt.contains("Additional focus: hook override"),
         "expected hook override in prompt, got: {prompt}"
@@ -1313,7 +1303,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
     })
     .expect("harness");
 
-    let hook_target = Arc::new(StdMutex::new(None::<String>));
+    let hook_target = Arc::new(Mutex::new(None::<String>));
     let hook_target_clone = hook_target.clone();
     let target_id = user1.clone();
     harness
@@ -1322,7 +1312,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
             let hook_target_id = event.preparation.target_id.clone();
             let user_wants_summary = event.preparation.user_wants_summary;
             async move {
-                *hook_target.lock().expect("hook target lock") = Some(hook_target_id);
+                *hook_target.lock() = Some(hook_target_id);
                 assert!(user_wants_summary);
                 Some(SessionBeforeTreeResult {
                     summary: Some(BranchSummarySummary {
@@ -1346,10 +1336,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         .await
         .expect("navigate tree");
 
-    assert_eq!(
-        hook_target.lock().expect("hook target lock").as_deref(),
-        Some(target_id.as_str())
-    );
+    assert_eq!(hook_target.lock().as_deref(), Some(target_id.as_str()));
     assert!(!result.cancelled);
     let summary_entry = result.summary_entry.expect("summary entry");
     match summary_entry {

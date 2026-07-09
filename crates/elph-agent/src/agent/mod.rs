@@ -12,6 +12,7 @@ use elph_ai::{
     ImageContent, Message, OnPayloadCallback, OnResponseCallback, SimpleStreamOptions, ThinkingBudgets, Transport,
     UserContent, builtin_models,
 };
+use parking_lot::Mutex as ParkingMutex;
 use tokio::sync::{Mutex, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -97,7 +98,7 @@ pub struct Agent {
     prepare_next_turn: Option<crate::types::PrepareNextTurnFn>,
     prepare_next_turn_legacy: Option<crate::types::PrepareNextTurnLegacyFn>,
     current_abort_token: Arc<Mutex<Option<CancellationToken>>>,
-    session_id: Arc<std::sync::Mutex<Option<String>>>,
+    session_id: Arc<ParkingMutex<Option<String>>>,
     thinking_budgets: Option<ThinkingBudgets>,
     transport: Transport,
     max_retry_delay_ms: Option<u64>,
@@ -129,7 +130,7 @@ impl Agent {
             prepare_next_turn: options.prepare_next_turn,
             prepare_next_turn_legacy: options.prepare_next_turn_legacy,
             current_abort_token: Arc::new(Mutex::new(None)),
-            session_id: Arc::new(std::sync::Mutex::new(options.session_id)),
+            session_id: Arc::new(ParkingMutex::new(options.session_id)),
             thinking_budgets: options.thinking_budgets,
             transport: options.transport.unwrap_or(Transport::Auto),
             max_retry_delay_ms: options.max_retry_delay_ms,
@@ -150,11 +151,11 @@ impl Agent {
     }
 
     pub fn session_id(&self) -> Option<String> {
-        self.session_id.lock().expect("session id lock").clone()
+        self.session_id.lock().clone()
     }
 
     pub fn set_session_id(&self, session_id: Option<String>) {
-        *self.session_id.lock().expect("session id lock") = session_id;
+        *self.session_id.lock() = session_id;
     }
 
     pub async fn signal(&self) -> Option<CancellationToken> {
@@ -392,7 +393,7 @@ impl Agent {
             reasoning: thinking_level.to_stream_reasoning(),
             thinking_budgets: self.thinking_budgets.clone(),
         };
-        stream_options.base.session_id = self.session_id.lock().expect("session id lock").clone();
+        stream_options.base.session_id = self.session_id.lock().clone();
         stream_options.base.transport = Some(self.transport);
         stream_options.base.max_retry_delay_ms = self.max_retry_delay_ms;
         stream_options.base.on_payload = self.on_payload.clone();

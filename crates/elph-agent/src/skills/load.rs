@@ -7,9 +7,9 @@ use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::env::{basename_env_path, dirname_env_path, join_env_path, relative_env_path};
+use crate::env::{LocalExecutionEnv, basename_env_path, dirname_env_path, join_env_path, relative_env_path};
 use crate::harness::types::{
-    ExecutionEnv, FileErrorCode, FileInfo, FileKind, Result, Skill, SkillLoadOptions, SkillValidationSettings, err, ok,
+    FileErrorCode, FileInfo, FileKind, FileSystem, Result, Skill, SkillLoadOptions, SkillValidationSettings, err, ok,
 };
 
 const MAX_NAME_LENGTH: usize = 64;
@@ -120,14 +120,14 @@ fn diagnostic(code: SkillDiagnosticCode, message: impl Into<String>, path: impl 
 
 /// Load skills from one or more directories.
 /// Last-wins: later directories override earlier ones with the same skill name.
-pub async fn load_skills(env: &dyn ExecutionEnv, dirs: &[&str]) -> LoadSkillsResult {
+pub async fn load_skills(env: &LocalExecutionEnv, dirs: &[&str]) -> LoadSkillsResult {
     load_skills_with_options(env, dirs, None).await
 }
 
 /// Load skills from one or more directories with custom options.
 /// Last-wins: later directories override earlier ones with the same skill name.
 pub async fn load_skills_with_options(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     dirs: &[&str],
     options: Option<&SkillLoadOptions>,
 ) -> LoadSkillsResult {
@@ -187,7 +187,7 @@ pub async fn load_skills_with_options(
 
 /// Load skills from source-tagged directories.
 pub async fn load_sourced_skills<TSource>(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     inputs: &[(String, TSource)],
 ) -> LoadSourcedSkillsResult<Skill, TSource>
 where
@@ -198,7 +198,7 @@ where
 
 /// Load skills from source-tagged directories with custom options.
 pub async fn load_sourced_skills_with_options<TSource>(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     inputs: &[(String, TSource)],
     options: Option<&SkillLoadOptions>,
 ) -> LoadSourcedSkillsResult<Skill, TSource>
@@ -230,7 +230,7 @@ where
 }
 
 async fn load_skills_from_dir_internal(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     dir: &str,
     include_root_files: bool,
     ignore_matcher: &mut IgnoreMatcher,
@@ -337,7 +337,7 @@ async fn load_skills_from_dir_internal(
 }
 
 async fn add_ignore_rules(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     ignore_matcher: &mut IgnoreMatcher,
     dir: &str,
     root_dir: &str,
@@ -417,7 +417,7 @@ struct ParsedSkillFile {
 }
 
 async fn load_skill_from_file(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     file_path: &str,
     validation: &SkillValidationSettings,
 ) -> ParsedSkillFile {
@@ -583,7 +583,7 @@ fn to_error(error: serde_yaml::Error) -> String {
 }
 
 async fn resolve_kind(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     info: &FileInfo,
     diagnostics: &mut Vec<SkillDiagnostic>,
 ) -> Option<FileKind> {

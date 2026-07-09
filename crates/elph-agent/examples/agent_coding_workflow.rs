@@ -13,6 +13,8 @@
 use std::io::{IsTerminal, Write, stderr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use parking_lot::Mutex;
 use std::time::Duration;
 
 use elph_agent::{Agent, AgentEvent, AgentOptions, LocalExecutionEnv, PartialAgentState, create_coding_tools};
@@ -110,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
     let generating = progress_spinner("Streaming from big-pickle...");
     let saw_delta = Arc::new(AtomicBool::new(false));
     let tool_calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let tool_log = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let tool_log = Arc::new(Mutex::new(Vec::<String>::new()));
 
     {
         let generating = generating.clone();
@@ -161,7 +163,7 @@ async fn main() -> anyhow::Result<()> {
                                 }
                                 _ => format!("[{count}] {tool_name}"),
                             };
-                            tool_log.lock().unwrap().push(log_entry.clone());
+                            tool_log.lock().push(log_entry.clone());
                             println!();
                             println!("🔧 {log_entry}");
                         }
@@ -194,7 +196,7 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Summary ──
     let state = agent.state().await;
-    let log = tool_log.lock().unwrap();
+    let log = tool_log.lock();
 
     println!();
     println!("╔══════════════════════════════════════════════════╗");

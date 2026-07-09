@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use serde::Deserialize;
+use std::sync::LazyLock;
 
 use crate::types::{ImagesModel, ModelCost};
 
@@ -56,7 +56,7 @@ fn convert_image_model(raw: RawImageModel) -> ImagesModel {
 
 macro_rules! define_image_catalog {
     ($name:ident, $file:literal) => {
-        pub static $name: Lazy<Vec<ImagesModel>> = Lazy::new(|| {
+        pub static $name: LazyLock<Vec<ImagesModel>> = LazyLock::new(|| {
             parse_image_models(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/models/images/",

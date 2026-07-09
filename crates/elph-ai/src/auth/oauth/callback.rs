@@ -5,8 +5,8 @@ use axum::Router;
 use axum::extract::Query;
 use axum::response::Html;
 use axum::routing::get;
+use parking_lot::Mutex;
 use serde::Deserialize;
-use std::sync::Mutex;
 
 use tokio::sync::oneshot;
 
@@ -96,7 +96,7 @@ pub async fn start_callback_server(
 impl CallbackServer {
     #[allow(dead_code)]
     pub fn cancel_wait(&self) {
-        if let Some(tx) = self.shutdown.lock().ok().and_then(|mut g| g.take()) {
+        if let Some(tx) = self.shutdown.lock().take() {
             let _ = tx.send(());
         }
     }
@@ -106,7 +106,7 @@ impl CallbackServer {
         tokio::select! {
             result = self.result_rx => result.ok().flatten(),
             _ = tokio::time::sleep(timeout) => {
-                if let Some(tx) = shutdown.lock().ok().and_then(|mut g| g.take()) {
+                if let Some(tx) = shutdown.lock().take() {
                     let _ = tx.send(());
                 }
                 None
@@ -116,7 +116,7 @@ impl CallbackServer {
 
     #[allow(dead_code)]
     pub fn close(self) {
-        if let Some(tx) = self.shutdown.lock().ok().and_then(|mut g| g.take()) {
+        if let Some(tx) = self.shutdown.lock().take() {
             let _ = tx.send(());
         }
     }

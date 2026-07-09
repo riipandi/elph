@@ -168,26 +168,26 @@ pub fn create_git_summary(cwd: &Path, last_update: Option<&UpdateMetadata>) -> S
     sections.push(format_git_section("git rev-parse HEAD", &head));
 
     // git log based on command type
-    if let Some(update) = last_update {
-        if let Some(ref last_head) = update.git_head {
-            // Update mode with previous HEAD
-            let log = run_git(
-                cwd,
-                &["log", &format!("{last_head}..HEAD"), "--name-status", "--oneline"],
-            );
-            sections.push(format_git_section(
-                &format!("git log {last_head}..HEAD --name-status --oneline"),
-                &log,
-            ));
-        } else {
-            // Update mode with timestamp
-            let timestamp = update.updated_at.to_rfc3339();
-            let log = run_git(cwd, &["log", "--since", &timestamp, "--name-status", "--oneline"]);
-            sections.push(format_git_section(
-                &format!("git log --since {timestamp} --name-status --oneline"),
-                &log,
-            ));
-        }
+    if let Some(update) = last_update
+        && let Some(ref last_head) = update.git_head
+    {
+        // Update mode with previous HEAD
+        let log = run_git(
+            cwd,
+            &["log", &format!("{last_head}..HEAD"), "--name-status", "--oneline"],
+        );
+        sections.push(format_git_section(
+            &format!("git log {last_head}..HEAD --name-status --oneline"),
+            &log,
+        ));
+    } else if let Some(update) = last_update {
+        // Update mode with timestamp
+        let timestamp = update.updated_at.to_rfc3339();
+        let log = run_git(cwd, &["log", "--since", &timestamp, "--name-status", "--oneline"]);
+        sections.push(format_git_section(
+            &format!("git log --since {timestamp} --name-status --oneline"),
+            &log,
+        ));
     } else {
         // Init mode - recent history
         let log = run_git(cwd, &["log", "--max-count=20", "--name-status", "--oneline"]);

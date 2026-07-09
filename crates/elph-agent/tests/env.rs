@@ -1,5 +1,7 @@
 //! Tests for `LocalExecutionEnv`.
 
+use parking_lot::Mutex;
+
 use elph_agent::env::LocalExecutionEnv;
 use elph_agent::harness::types::{
     CreateDirOptions, ExecutionErrorCode, FileErrorCode, FileKind, FileSystem, ReadTextLinesOptions, RemoveOptions,
@@ -335,8 +337,8 @@ async fn executes_commands_in_cwd_with_env_overrides() {
 #[tokio::test]
 async fn streams_stdout_and_stderr_chunks() {
     let (_temp, env) = env_in_temp();
-    let stdout = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
-    let stderr = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+    let stdout = std::sync::Arc::new(Mutex::new(String::new()));
+    let stderr = std::sync::Arc::new(Mutex::new(String::new()));
     let stdout_capture = stdout.clone();
     let stderr_capture = stderr.clone();
 
@@ -349,10 +351,10 @@ async fn streams_stdout_and_stderr_chunks() {
                 timeout: None,
                 abort_token: None,
                 on_stdout: Some(std::sync::Arc::new(move |chunk| {
-                    stdout_capture.lock().expect("lock").push_str(chunk);
+                    stdout_capture.lock().push_str(chunk);
                 })),
                 on_stderr: Some(std::sync::Arc::new(move |chunk| {
-                    stderr_capture.lock().expect("lock").push_str(chunk);
+                    stderr_capture.lock().push_str(chunk);
                 })),
             }),
         )
@@ -361,8 +363,8 @@ async fn streams_stdout_and_stderr_chunks() {
 
     assert!(result.stdout.contains("out"));
     assert!(result.stderr.contains("err"));
-    assert!(stdout.lock().expect("lock").contains("out"));
-    assert!(stderr.lock().expect("lock").contains("err"));
+    assert!(stdout.lock().contains("out"));
+    assert!(stderr.lock().contains("err"));
 }
 
 #[tokio::test]

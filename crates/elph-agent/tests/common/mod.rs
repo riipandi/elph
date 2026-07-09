@@ -5,6 +5,8 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use parking_lot::Mutex;
+
 use elph_ai::api::faux::RegisterFauxProviderOptions;
 use elph_ai::{FauxProviderHandle, Model, Models, SimpleStreamOptions, builtin_models, create_models, faux_provider};
 
@@ -79,17 +81,11 @@ pub fn test_context(system_prompt: &str) -> elph_agent::AgentContext {
     }
 }
 
-pub fn capture_stream_options() -> (
-    elph_agent::StreamFn,
-    Arc<std::sync::Mutex<Vec<Option<elph_ai::StreamOptions>>>>,
-) {
-    let captured = Arc::new(std::sync::Mutex::new(Vec::new()));
+pub fn capture_stream_options() -> (elph_agent::StreamFn, Arc<Mutex<Vec<Option<elph_ai::StreamOptions>>>>) {
+    let captured = Arc::new(Mutex::new(Vec::new()));
     let captured_clone = captured.clone();
     let stream_fn: elph_agent::StreamFn = Arc::new(move |model, context, options| {
-        captured_clone
-            .lock()
-            .expect("capture lock")
-            .push(options.as_ref().map(|o| o.base.clone()));
+        captured_clone.lock().push(options.as_ref().map(|o| o.base.clone()));
         let models = builtin_models(None);
         models.stream_simple(model, context, options)
     });

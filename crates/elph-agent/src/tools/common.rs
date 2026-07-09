@@ -5,7 +5,8 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::{ExecutionEnv, FileError, FileErrorCode, Result as HarnessResult};
+use crate::env::LocalExecutionEnv;
+use crate::harness::types::{CreateDirOptions, FileError, FileErrorCode, FileSystem, Result as HarnessResult};
 
 pub fn check_aborted(signal: Option<&CancellationToken>) -> Result<()> {
     if signal.is_some_and(|token| token.is_cancelled()) {
@@ -16,7 +17,7 @@ pub fn check_aborted(signal: Option<&CancellationToken>) -> Result<()> {
 }
 
 pub async fn resolve_path(
-    env: &Arc<dyn ExecutionEnv>,
+    env: &Arc<LocalExecutionEnv>,
     path: &str,
     signal: Option<&CancellationToken>,
 ) -> Result<String> {
@@ -32,7 +33,7 @@ pub fn file_error(error: FileError) -> anyhow::Error {
 }
 
 pub async fn ensure_parent_dir(
-    env: &Arc<dyn ExecutionEnv>,
+    env: &Arc<LocalExecutionEnv>,
     path: &str,
     signal: Option<&CancellationToken>,
 ) -> Result<()> {
@@ -42,15 +43,15 @@ pub async fn ensure_parent_dir(
     }
     match env.exists(parent, signal).await {
         HarnessResult::Ok(true) => Ok(()),
-        HarnessResult::Ok(false) => match env
-            .create_dir(
-                parent,
-                Some(crate::harness::types::CreateDirOptions {
-                    recursive: true,
-                    abort_token: signal.cloned(),
-                }),
-            )
-            .await
+        HarnessResult::Ok(false) => match FileSystem::create_dir(
+            env.as_ref(),
+            parent,
+            Some(CreateDirOptions {
+                recursive: true,
+                abort_token: signal.cloned(),
+            }),
+        )
+        .await
         {
             HarnessResult::Ok(()) => Ok(()),
             HarnessResult::Err(error) => Err(file_error(error)),
@@ -67,7 +68,7 @@ pub fn is_probably_image(path: &str) -> bool {
 }
 
 pub async fn read_file_text(
-    env: &Arc<dyn ExecutionEnv>,
+    env: &Arc<LocalExecutionEnv>,
     path: &str,
     signal: Option<&CancellationToken>,
 ) -> Result<String> {

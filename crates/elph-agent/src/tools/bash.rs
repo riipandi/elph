@@ -6,14 +6,15 @@ use elph_ai::Tool;
 use serde_json::{Value, json};
 use tokio_util::sync::CancellationToken;
 
-use crate::harness::types::{ExecutionEnv, ShellExecOptions};
+use crate::env::LocalExecutionEnv;
+use crate::harness::types::{FileSystem, Shell, ShellExecOptions};
 use crate::harness::utils::shell_output::finalize_shell_capture;
 use crate::harness::utils::truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES};
 use crate::tools::common::{check_aborted, resolve_path};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_bash_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
+pub fn create_bash_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
@@ -40,7 +41,7 @@ pub fn create_bash_tool(env: Arc<dyn ExecutionEnv>) -> AgentTool {
 }
 
 async fn execute_bash(
-    env: Arc<dyn ExecutionEnv>,
+    env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,
 ) -> anyhow::Result<AgentToolResult> {

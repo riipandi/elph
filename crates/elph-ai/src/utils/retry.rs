@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 use crate::types::AssistantMessage;
@@ -7,8 +9,8 @@ fn build_provider_error_pattern(patterns: &[&str]) -> Regex {
     Regex::new(&format!("(?i){joined}")).expect("valid retry regex")
 }
 
-lazy_static::lazy_static! {
-    static ref NON_RETRYABLE: Regex = build_provider_error_pattern(&[
+static NON_RETRYABLE: LazyLock<Regex> = LazyLock::new(|| {
+    build_provider_error_pattern(&[
         "GoUsageLimitError",
         "FreeUsageLimitError",
         "Monthly usage limit reached",
@@ -17,8 +19,10 @@ lazy_static::lazy_static! {
         "out of budget",
         "quota exceeded",
         "billing",
-    ]);
-    static ref RETRYABLE: Regex = build_provider_error_pattern(&[
+    ])
+});
+static RETRYABLE: LazyLock<Regex> = LazyLock::new(|| {
+    build_provider_error_pattern(&[
         "overloaded",
         "rate.?limit",
         "too many requests",
@@ -53,8 +57,8 @@ lazy_static::lazy_static! {
         "you can retry your request",
         "try your request again",
         "please retry your request",
-    ]);
-}
+    ])
+});
 
 /// Whether an assistant error message is likely retryable (elph-ai).
 pub fn is_retryable(message: &AssistantMessage) -> bool {

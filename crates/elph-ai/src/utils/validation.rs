@@ -1,13 +1,14 @@
-use jsonschema::Validator;
-use once_cell::sync::OnceCell;
-use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, OnceLock};
+
+use jsonschema::Validator;
+use parking_lot::Mutex;
+use serde_json::Value;
 
 use crate::types::{Tool, ToolCall};
 
-fn validator(schema: &Value) -> Option<Validator> {
-    static CACHE: OnceCell<Mutex<HashMap<u64, Validator>>> = OnceCell::new();
+fn validator(schema: &Value) -> Option<Arc<Validator>> {
+    static CACHE: OnceLock<Mutex<HashMap<u64, Arc<Validator>>>> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     let key = {
         use std::collections::hash_map::DefaultHasher;
@@ -16,12 +17,12 @@ fn validator(schema: &Value) -> Option<Validator> {
         schema.to_string().hash(&mut hasher);
         hasher.finish()
     };
-    let mut guard = cache.lock().ok()?;
+    let mut guard = cache.lock();
     if let std::collections::hash_map::Entry::Vacant(e) = guard.entry(key) {
-        let compiled = Validator::new(schema).ok()?;
+        let compiled = Arc::new(Validator::new(schema).ok()?);
         e.insert(compiled);
     }
-    guard.remove(&key)
+    guard.get(&key).cloned()
 }
 
 /// Validate tool call arguments against a tool's JSON Schema parameters.

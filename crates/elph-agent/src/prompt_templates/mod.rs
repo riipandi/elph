@@ -2,8 +2,9 @@
 
 use serde::Deserialize;
 
+use crate::env::LocalExecutionEnv;
 use crate::env::basename_env_path;
-use crate::harness::types::{ExecutionEnv, FileErrorCode, FileInfo, FileKind, PromptTemplate, Result, err, ok};
+use crate::harness::types::{FileErrorCode, FileInfo, FileKind, FileSystem, PromptTemplate, Result, err, ok};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PromptTemplateDiagnosticCode {
@@ -66,7 +67,7 @@ fn diagnostic(
 }
 
 /// Load prompt templates from one or more paths.
-pub async fn load_prompt_templates(env: &dyn ExecutionEnv, paths: &[&str]) -> LoadPromptTemplatesResult {
+pub async fn load_prompt_templates(env: &LocalExecutionEnv, paths: &[&str]) -> LoadPromptTemplatesResult {
     let mut prompt_templates = Vec::new();
     let mut diagnostics = Vec::new();
 
@@ -108,7 +109,7 @@ pub async fn load_prompt_templates(env: &dyn ExecutionEnv, paths: &[&str]) -> Lo
 
 /// Load prompt templates from source-tagged paths.
 pub async fn load_sourced_prompt_templates<TSource>(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     inputs: &[(String, TSource)],
 ) -> LoadSourcedPromptTemplatesResult<PromptTemplate, TSource>
 where
@@ -141,7 +142,7 @@ where
     }
 }
 
-async fn load_templates_from_dir(env: &dyn ExecutionEnv, dir: &str) -> LoadPromptTemplatesResult {
+async fn load_templates_from_dir(env: &LocalExecutionEnv, dir: &str) -> LoadPromptTemplatesResult {
     let mut prompt_templates = Vec::new();
     let mut diagnostics = Vec::new();
 
@@ -183,7 +184,7 @@ struct ParsedTemplateFile {
     diagnostics: Vec<PromptTemplateDiagnostic>,
 }
 
-async fn load_template_from_file(env: &dyn ExecutionEnv, file_path: &str) -> ParsedTemplateFile {
+async fn load_template_from_file(env: &LocalExecutionEnv, file_path: &str) -> ParsedTemplateFile {
     let mut diagnostics = Vec::new();
     let raw_content = env.read_text_file(file_path, None).await;
     let Result::Ok(raw_content) = raw_content else {
@@ -269,7 +270,7 @@ fn parse_frontmatter<T: for<'de> Deserialize<'de> + Default>(content: &str) -> R
 }
 
 async fn resolve_kind(
-    env: &dyn ExecutionEnv,
+    env: &LocalExecutionEnv,
     info: &FileInfo,
     diagnostics: &mut Vec<PromptTemplateDiagnostic>,
 ) -> Option<FileKind> {

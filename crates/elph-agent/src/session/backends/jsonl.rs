@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::fs::{self, OpenOptions};
 use tokio::io::AsyncWriteExt;
@@ -257,7 +256,6 @@ pub async fn load_jsonl_session_metadata(file_path: impl AsRef<Path>) -> Result<
     Ok(header_to_metadata(&header, file_path))
 }
 
-#[async_trait]
 impl SessionStorage for JsonlSessionStorage {
     type Metadata = JsonlSessionMetadata;
 

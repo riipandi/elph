@@ -18,7 +18,7 @@ use std::sync::Arc;
 use elph_ai::Tool;
 use serde_json::Value;
 
-use crate::harness::types::ExecutionEnv;
+use crate::env::LocalExecutionEnv;
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 
 pub use bash::create_bash_tool;
@@ -71,7 +71,7 @@ pub fn echo_tool() -> AgentTool {
 }
 
 /// Core coding tools: read, bash, edit, write.
-pub fn create_coding_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
+pub fn create_coding_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     vec![
         create_read_tool(env.clone()),
         create_bash_tool(env.clone()),
@@ -81,7 +81,7 @@ pub fn create_coding_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
 }
 
 /// Read-only exploration tools.
-pub fn create_read_only_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
+pub fn create_read_only_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     vec![
         create_read_tool(env.clone()),
         create_grep_tool(env.clone()),
@@ -91,7 +91,7 @@ pub fn create_read_only_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
 }
 
 /// All built-in tools.
-pub fn create_all_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
+pub fn create_all_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     vec![
         create_read_tool(env.clone()),
         create_bash_tool(env.clone()),
@@ -104,7 +104,7 @@ pub fn create_all_tools(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
 }
 
 /// All built-in tools including web tools.
-pub fn create_all_tools_with_web(env: Arc<dyn ExecutionEnv>) -> Vec<AgentTool> {
+pub fn create_all_tools_with_web(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     let mut tools = create_all_tools(env);
     tools.extend(create_web_tools());
     tools
