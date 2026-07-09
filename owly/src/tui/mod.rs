@@ -4,10 +4,12 @@ mod activity;
 mod app;
 mod banner;
 mod chat_stream;
+mod chrome;
 mod context;
 mod entries;
 mod launch;
 mod setup;
+mod spinner;
 mod transcript;
 
 use anyhow::Result;

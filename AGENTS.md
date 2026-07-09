@@ -10,7 +10,7 @@ OpenWiki includes repository overview, architecture notes, workflows, domain con
 
 When working in this repository, read the OpenWiki quickstart first, then follow its links to the relevant architecture, workflow, domain, operation, and testing notes.
 
-<!-- owly-context -->
+<!-- openwiki-context -->
 
 ## Owly documentation
 

@@ -78,7 +78,6 @@ impl OwlyEntry {
             inner: TranscriptEntry::tool(tool),
         }
     }
-
 }
 
 /// Build command result entry with success flag encoded for the renderer.

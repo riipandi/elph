@@ -1,6 +1,6 @@
 [package]
 name = "owly"
-version = "0.0.5"
+version = "0.0.6"
 license = "MIT"
 description = "AI agent CLI that writes and maintains documentation for your codebase"
 keywords = ["ai", "documentation", "wiki", "agent", "cli"]

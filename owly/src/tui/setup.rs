@@ -8,6 +8,8 @@ use crate::onboarding::{
     setup_base_url_required, setup_collects_base_url,
 };
 
+use super::chrome::subtle_border;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SetupStep {
     Provider,
@@ -279,7 +281,7 @@ fn render_setup_screen(width: u16, height: u16, theme: Theme, lines: Vec<String>
         ) {
             View(
                 border_style: BorderStyle::Round,
-                border_color: Color::Cyan,
+                border_color: subtle_border(theme),
                 padding: 2,
                 width: 72pct,
                 flex_direction: FlexDirection::Column,

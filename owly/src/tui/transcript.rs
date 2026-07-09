@@ -2,9 +2,7 @@
 
 use std::collections::HashMap;
 
-use elph_tui::{
-    DEFAULT_TRANSCRIPT_CAP, ToolExecutionState, ToolExecutionStatus, TranscriptRole, push_capped,
-};
+use elph_tui::{DEFAULT_TRANSCRIPT_CAP, ToolExecutionState, ToolExecutionStatus, TranscriptRole, push_capped};
 
 use crate::ui_events::AgentUiEvent;
 

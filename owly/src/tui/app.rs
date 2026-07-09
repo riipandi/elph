@@ -5,15 +5,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use elph_agent::try_block_on;
-use tokio::sync::Mutex;
-use tokio::time::sleep;
 use elph_tui::{
     AgentMode, DEFAULT_TRANSCRIPT_CAP, PromptInput, Theme, ToolExecutionState, disable_keyboard_enhancement,
     enable_keyboard_enhancement, is_force_quit_key, is_interrupt_key, is_quit_command, is_theme_toggle_key,
     push_capped,
 };
 use iocraft::prelude::*;
+use tokio::sync::Mutex;
 use tokio::sync::mpsc;
+use tokio::time::sleep;
 
 use crate::env;
 use crate::onboarding::{self, SetupCredentials};
@@ -21,6 +21,7 @@ use crate::onboarding::{self, SetupCredentials};
 use super::activity::ActivityBar;
 use super::banner::{OwlyBanner, directory_display};
 use super::chat_stream::OwlyChatStream;
+use super::chrome::{H_INSET, SECTION_PAD};
 use super::entries::OwlyEntry;
 use super::launch::LaunchState;
 use super::setup::SetupWizard;
@@ -155,11 +156,7 @@ pub fn OwlyRoot(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
 
                 let trimmed = input.trim();
                 if !trimmed.is_empty() {
-                    push_capped(
-                        &mut entries.write(),
-                        OwlyEntry::user(trimmed),
-                        DEFAULT_TRANSCRIPT_CAP,
-                    );
+                    push_capped(&mut entries.write(), OwlyEntry::user(trimmed), DEFAULT_TRANSCRIPT_CAP);
                 }
 
                 active_command.set(command_label_for_input(trimmed).map(|label| label.to_string()));
@@ -330,9 +327,10 @@ pub fn OwlyRoot(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                             height: 100pct,
                             width: 100pct,
                             overflow: Overflow::Hidden,
-                            padding_left: 1,
-                            padding_right: 0,
-                            padding_top: 0,
+                            padding_left: H_INSET,
+                            padding_right: H_INSET,
+                            padding_top: SECTION_PAD,
+                            padding_bottom: 0,
                         ) {
                             OwlyChatStream(
                                 entries_state: Some(entries),
@@ -355,8 +353,9 @@ pub fn OwlyRoot(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                         View(
                             flex_shrink: 0.0,
                             width: 100pct,
-                            padding_left: 0,
-                            padding_right: 0,
+                            padding_left: H_INSET,
+                            padding_right: H_INSET,
+                            padding_top: SECTION_PAD,
                             padding_bottom: 0,
                         ) {
                             PromptInput(

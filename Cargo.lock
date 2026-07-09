@@ -1751,7 +1751,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "eclaw"
-version = "0.0.25"
+version = "0.0.26"
 dependencies = [
  "anyhow",
  "axum",
@@ -1777,7 +1777,7 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "elph"
-version = "0.0.25"
+version = "0.0.26"
 dependencies = [
  "anyhow",
  "clap",
@@ -1797,7 +1797,7 @@ dependencies = [
 
 [[package]]
 name = "elph-agent"
-version = "0.0.26"
+version = "0.0.27"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1828,7 +1828,7 @@ dependencies = [
 
 [[package]]
 name = "elph-ai"
-version = "0.0.25"
+version = "0.0.26"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1871,7 +1871,7 @@ dependencies = [
 
 [[package]]
 name = "elph-core"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1892,7 +1892,7 @@ dependencies = [
 
 [[package]]
 name = "elph-swarm"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "memorable-ids",
@@ -1903,7 +1903,7 @@ dependencies = [
 
 [[package]]
 name = "elph-tui"
-version = "0.0.25"
+version = "0.0.26"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4093,7 +4093,7 @@ checksum = "1a80800c0488c3a21695ea981a54918fbb37abf04f4d0720c453632255e2ff0e"
 
 [[package]]
 name = "owly"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = [
  "anyhow",
  "chrono",

@@ -3,6 +3,9 @@
 use elph_tui::{Theme, ToolExecutionState, ToolExecutionStatus};
 use iocraft::prelude::*;
 
+use super::chrome::{H_INSET, SECTION_PAD};
+use super::spinner::LoadingSpinner;
+
 #[derive(Default, Props)]
 pub struct ActivityBarProps {
     pub command: Option<String>,
@@ -31,10 +34,10 @@ pub fn ActivityBar(props: &ActivityBarProps) -> impl Into<AnyElement<'static>> {
         })
         .unwrap_or(0);
 
-    let status = if running_count > 0 {
-        format!("⠋ {command} · {running_count} tool(s)")
+    let status_label = if running_count > 0 {
+        format!("{command} · {running_count} tool(s)")
     } else {
-        format!("⠋ {command} · working")
+        format!("{command} · working")
     };
 
     let chips: Vec<AnyElement<'static>> = props
@@ -47,9 +50,8 @@ pub fn ActivityBar(props: &ActivityBarProps) -> impl Into<AnyElement<'static>> {
                 .take(6)
                 .map(|tool| {
                     let label = tool_chip_label(tool);
-                    let color = tool_chip_color(tool.status);
                     element! {
-                        Text(color: Some(color), content: label)
+                        Text(color: Some(tool_chip_color(tool.status, palette)), content: label)
                     }
                     .into_any()
                 })
@@ -61,17 +63,16 @@ pub fn ActivityBar(props: &ActivityBarProps) -> impl Into<AnyElement<'static>> {
         View(
             flex_shrink: 0.0,
             width: 100pct,
-            padding_left: 1,
-            padding_right: 1,
-            padding_top: 0,
-            padding_bottom: 0,
-            border_style: BorderStyle::Single,
-            border_color: palette.frame_border,
+            padding_left: H_INSET,
+            padding_right: H_INSET,
+            padding_top: SECTION_PAD,
+            padding_bottom: SECTION_PAD,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
-            gap: Gap::Length(1),
+            gap: Gap::Length(2),
         ) {
-            Text(content: status, color: Color::Cyan)
+            LoadingSpinner(theme: palette)
+            Text(content: status_label, color: Some(palette.muted))
             #(if chips.is_empty() {
                 None
             } else {
@@ -79,9 +80,11 @@ pub fn ActivityBar(props: &ActivityBarProps) -> impl Into<AnyElement<'static>> {
                     View(
                         flex_direction: FlexDirection::Row,
                         flex_grow: 1.0,
-                        gap: Gap::Length(2),
+                        gap: Gap::Length(3),
                         align_items: AlignItems::Center,
+                        padding_left: 1,
                     ) {
+                        Text(content: "·", color: Some(palette.prompt_prefix))
                         #(chips)
                     }
                 }.into_any())
@@ -108,11 +111,11 @@ fn truncate_args(args: &str) -> String {
     }
 }
 
-fn tool_chip_color(status: ToolExecutionStatus) -> Color {
+fn tool_chip_color(status: ToolExecutionStatus, theme: Theme) -> Color {
     match status {
-        ToolExecutionStatus::Running | ToolExecutionStatus::Pending => Color::Cyan,
-        ToolExecutionStatus::Success => Color::Green,
+        ToolExecutionStatus::Running | ToolExecutionStatus::Pending => theme.muted,
+        ToolExecutionStatus::Success => theme.prompt_prefix,
         ToolExecutionStatus::Error => Color::Red,
-        ToolExecutionStatus::Cancelled => Color::Yellow,
+        ToolExecutionStatus::Cancelled => theme.muted,
     }
 }

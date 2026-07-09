@@ -1,6 +1,6 @@
 ---
 title: "Architecture"
-last_updated: 2026-07-09T18:00:00Z
+last_updated: 2026-07-10T08:00:00Z
 category: architecture
 tags:
     - architecture
@@ -215,20 +215,28 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
 
 ### 10. Supporting Modules
 
-| Module           | Responsibility                                                                             | Source                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
-| `ask_user.rs`    | Interactive tools: `ask_text`, `ask_select`, `ask_confirm` for multi-turn chat             | [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)       |
-| `checkpoint.rs`  | Turso-backed checkpoint persistence (`TursoCheckpointSaver`, port of langgraph-checkpoint) | [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)   |
-| `credentials.rs` | Loads `~/.owly/.env`, applies to process environment, secures directory permissions        | [`owly/src/credentials.rs`](../owly/src/credentials.rs) |
-| `ecosystem.rs`   | Repository ecosystem hooks — syncs Owly context to `AGENTS.md` / `CLAUDE.md`               | [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)     |
-| `env.rs`         | Environment validation, base URL checks, debug logging (`OWLY_DEBUG`)                      | [`owly/src/env.rs`](../owly/src/env.rs)                 |
-| `frontmatter.rs` | Parses/generates YAML frontmatter                                                          | [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs) |
-| `diagnostics.rs` | Redacts secrets from error output, detects provider 500s                                   | [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs) |
-| `onboarding.rs`  | First-run credential wizard (provider selection, API key, base URL, model)                 | [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)   |
-| `session.rs`     | Turso-backed session store with thread identity, message persistence                       | [`owly/src/session.rs`](../owly/src/session.rs)         |
-| `shell.rs`       | Interactive Owly shell — credential setup, initial command, REPL loop                      | [`owly/src/shell.rs`](../owly/src/shell.rs)             |
-| `startup.rs`     | Startup mode resolution (non-interactive vs. interactive), TTY validation                  | [`owly/src/startup.rs`](../owly/src/startup.rs)         |
-| `utils.rs`       | HTML tag stripping utility                                                                 | [`owly/src/utils.rs`](../owly/src/utils.rs)             |
+| Module               | Responsibility                                                                             | Source                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `ask_user.rs`        | Interactive tools: `ask_text`, `ask_select`, `ask_confirm` for multi-turn chat             | [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)               |
+| `checkpoint.rs`      | Turso-backed checkpoint persistence (`TursoCheckpointSaver`, port of langgraph-checkpoint) | [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)           |
+| `credentials.rs`     | Loads `~/.owly/.env`, applies to process environment, secures directory permissions        | [`owly/src/credentials.rs`](../owly/src/credentials.rs)         |
+| `ecosystem.rs`       | Repository ecosystem hooks — syncs Owly context to `AGENTS.md` / `CLAUDE.md`               | [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)             |
+| `env.rs`             | Environment validation, base URL checks, debug logging (`OWLY_DEBUG`)                      | [`owly/src/env.rs`](../owly/src/env.rs)                         |
+| `frontmatter.rs`     | Parses/generates YAML frontmatter                                                          | [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs)         |
+| `diagnostics.rs`     | Redacts secrets from error output, detects provider 500s                                   | [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs)         |
+| `onboarding.rs`      | First-run credential wizard (provider selection, API key, base URL, model)                 | [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)           |
+| `session.rs`         | Turso-backed session store with thread identity, message persistence                       | [`owly/src/session.rs`](../owly/src/session.rs)                 |
+| `shell.rs`           | Interactive Owly shell — credential setup, initial command, REPL loop                      | [`owly/src/shell.rs`](../owly/src/shell.rs)                     |
+| `startup.rs`         | Startup mode resolution (non-interactive vs. interactive), TTY validation                  | [`owly/src/startup.rs`](../owly/src/startup.rs)                 |
+| `ui_events.rs`       | Agent→TUI event bridge (`AgentUiEvent` enum for streaming progress)                        | [`owly/src/ui_events.rs`](../owly/src/ui_events.rs)             |
+| `tui/context.rs`     | Thread-safe `AppContext` for TUI and async dispatch                                        | [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)         |
+| `tui/entries.rs`     | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                                    | [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)         |
+| `tui/chat_stream.rs` | Scrollable transcript with keyboard navigation and typed entry rendering                   | [`owly/src/tui/chat_stream.rs`](../owly/src/tui/chat_stream.rs) |
+| `tui/transcript.rs`  | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates                        | [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)   |
+| `tui/activity.rs`    | Activity bar with live tool chips                                                          | [`owly/src/tui/activity.rs`](../owly/src/tui/activity.rs)       |
+| `tui/chrome.rs`      | Shared visual tokens (`subtle_border` for low-contrast frames)                             | [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)           |
+| `tui/spinner.rs`     | Animated braille loading indicator (`LoadingSpinner` component)                            | [`owly/src/tui/spinner.rs`](../owly/src/tui/spinner.rs)         |
+| `utils.rs`           | HTML tag stripping utility                                                                 | [`owly/src/utils.rs`](../owly/src/utils.rs)                     |
 
 ---
 

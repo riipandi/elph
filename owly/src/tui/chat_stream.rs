@@ -3,6 +3,7 @@
 use elph_tui::{AssistantMessage, DEFAULT_LINE_SCROLL_STEP, PAGE_SCROLL_VIEWPORT, Theme};
 use iocraft::prelude::*;
 
+use super::chrome::SECTION_PAD;
 use super::entries::{OwlyEntry, OwlyEntryKind};
 
 #[derive(Props)]
@@ -140,7 +141,13 @@ pub fn OwlyTranscriptView(props: &OwlyTranscriptViewProps) -> impl Into<AnyEleme
     }
 
     element! {
-        View(flex_direction: FlexDirection::Column, width: 100pct, gap: Gap::Length(0)) {
+        View(
+            flex_direction: FlexDirection::Column,
+            width: 100pct,
+            gap: Gap::Length(0),
+            padding_top: SECTION_PAD,
+            padding_bottom: SECTION_PAD,
+        ) {
             #(children)
         }
     }
@@ -261,9 +268,10 @@ fn section_gap(prev: Option<OwlyEntryKind>, current: OwlyEntryKind) -> u16 {
         (OwlyEntryKind::CommandHeader, OwlyEntryKind::Status) => 0,
         (OwlyEntryKind::Status, OwlyEntryKind::Assistant) => 1,
         (OwlyEntryKind::User, _) => 2,
-        (OwlyEntryKind::CommandHeader, _) => 1,
-        (OwlyEntryKind::CommandResult, _) => 1,
+        (OwlyEntryKind::CommandHeader, _) => 2,
+        (OwlyEntryKind::CommandResult, _) => 2,
         (OwlyEntryKind::Assistant, OwlyEntryKind::User) => 2,
+        (OwlyEntryKind::Hint, OwlyEntryKind::User) => 2,
         _ => 1,
     }
 }

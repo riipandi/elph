@@ -1,6 +1,6 @@
 [package]
 name = "elph-agent"
-version = "0.0.26"
+version = "0.0.27"
 license = "MIT"
 description = "Agent runtime for Elph coding assistant"
 keywords = ["agent", "runtime", "ai", "coding", "elph"]

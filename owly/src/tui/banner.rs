@@ -7,6 +7,8 @@ use iocraft::prelude::*;
 
 use crate::cli::truncate_path_for_display;
 
+use super::chrome::{H_INSET, SECTION_PAD, subtle_border};
+
 #[derive(Default, Props)]
 pub struct OwlyBannerProps {
     pub provider: String,
@@ -26,12 +28,13 @@ pub fn OwlyBanner(props: &OwlyBannerProps) -> impl Into<AnyElement<'static>> {
             flex_shrink: 0.0,
             width: 100pct,
             flex_direction: FlexDirection::Column,
-            padding_left: 1,
-            padding_right: 1,
-            padding_top: 1,
-            padding_bottom: 0,
+            padding_left: H_INSET,
+            padding_right: H_INSET,
+            padding_top: SECTION_PAD,
+            padding_bottom: SECTION_PAD,
+            gap: Gap::Length(1),
             border_style: BorderStyle::Single,
-            border_color: palette.frame_border,
+            border_color: subtle_border(palette),
         ) {
             Text(content: title, color: Color::Cyan, weight: Weight::Bold)
             Text(content: format!("provider: {}", props.provider), color: Color::Green)

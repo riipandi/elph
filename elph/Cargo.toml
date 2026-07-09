@@ -1,6 +1,6 @@
 [package]
 name = "elph"
-version = "0.0.25"
+version = "0.0.26"
 license = "MIT"
 description = "Minimalist AI agent companion for coding"
 keywords = ["ai", "agent", "cli", "coding", "llm"]
