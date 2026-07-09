@@ -145,7 +145,7 @@ fn openai_completions_omits_long_cache_when_compat_disables_it() {
 #[test]
 fn elph_cache_retention_env_maps_to_long_ttl() {
     let mut env = HashMap::new();
-    env.insert("PI_CACHE_RETENTION".to_string(), "long".to_string());
+    env.insert("ELPH_CACHE_RETENTION".to_string(), "long".to_string());
     let mut base = stream_options_with_cache(CacheRetention::Short, None);
     base.cache_retention = None;
     base.env = Some(env);

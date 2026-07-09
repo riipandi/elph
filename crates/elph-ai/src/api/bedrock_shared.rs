@@ -163,7 +163,7 @@ pub fn resolve_cache_retention(cache_retention: Option<CacheRetention>, env: Opt
     if let Some(retention) = cache_retention {
         return retention;
     }
-    if get_provider_env_value("PI_CACHE_RETENTION", env).as_deref() == Some("long") {
+    if get_provider_env_value("ELPH_CACHE_RETENTION", env).as_deref() == Some("long") {
         CacheRetention::Long
     } else {
         CacheRetention::Short

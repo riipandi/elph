@@ -373,38 +373,38 @@ API-key credentials can carry provider-scoped env/config values:
 
 Built-in providers resolve these environment variables:
 
-| Provider                               | Environment Variable(s)                                                                                                                                              |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenAI                                 | `OPENAI_API_KEY`                                                                                                                                                     |
-| Ant Ling                               | `ANT_LING_API_KEY`                                                                                                                                                   |
-| Azure OpenAI                           | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Optional: `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP`           |
-| Anthropic                              | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                                                                       |
-| DeepSeek                               | `DEEPSEEK_API_KEY`                                                                                                                                                   |
-| NVIDIA NIM                             | `NVIDIA_API_KEY`                                                                                                                                                     |
-| Google                                 | `GEMINI_API_KEY`                                                                                                                                                     |
-| Vertex AI                              | `GOOGLE_CLOUD_API_KEY` or `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) + `GOOGLE_CLOUD_LOCATION` + ADC                                                               |
-| Mistral                                | `MISTRAL_API_KEY`                                                                                                                                                    |
-| Groq                                   | `GROQ_API_KEY`                                                                                                                                                       |
-| Cerebras                               | `CEREBRAS_API_KEY`                                                                                                                                                   |
-| Cloudflare AI Gateway                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_GATEWAY_ID`                                                                                             |
-| Cloudflare Workers AI                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID`                                                                                                                       |
-| xAI                                    | `XAI_API_KEY`                                                                                                                                                        |
-| Fireworks                              | `FIREWORKS_API_KEY`                                                                                                                                                  |
-| Together AI                            | `TOGETHER_API_KEY`                                                                                                                                                   |
-| OpenRouter                             | `OPENROUTER_API_KEY`                                                                                                                                                 |
-| Vercel AI Gateway                      | `VERCEL_AI_GATEWAY_API_KEY`                                                                                                                                          |
-| ZAI Coding Plan (Global)               | `ZAI_API_KEY`                                                                                                                                                        |
-| ZAI Coding Plan (China)                | `ZAI_CODING_CN_API_KEY`                                                                                                                                              |
-| MiniMax (Global)                       | `MINIMAX_API_KEY`                                                                                                                                                    |
-| MiniMax (China)                        | `MINIMAX_CN_API_KEY`                                                                                                                                                 |
-| Moonshot AI / Moonshot AI (China)      | `MOONSHOT_API_KEY`                                                                                                                                                   |
-| Hugging Face                           | `HF_TOKEN`                                                                                                                                                           |
-| OpenCode Zen / OpenCode Go             | `OPENCODE_API_KEY`                                                                                                                                                   |
-| Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                                       |
-| Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                                     |
-| Xiaomi MiMo Token Plan (China/AMS/SGP) | `XIAOMI_API_KEY`                                                                                                                                                     |
-| GitHub Copilot                         | `COPILOT_GITHUB_TOKEN`                                                                                                                                               |
-| Amazon Bedrock                         | `AWS_REGION` or `AWS_DEFAULT_REGION`, `AWS_PROFILE`, `AWS_BEARER_TOKEN_BEDROCK` (bearer auth path). Optional: `AWS_BEDROCK_FORCE_CACHE=1`, `PI_CACHE_RETENTION=long` |
+| Provider                               | Environment Variable(s)                                                                                                                                                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI                                 | `OPENAI_API_KEY`                                                                                                                                                       |
+| Ant Ling                               | `ANT_LING_API_KEY`                                                                                                                                                     |
+| Azure OpenAI                           | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_BASE_URL` or `AZURE_OPENAI_RESOURCE_NAME`. Optional: `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME_MAP`             |
+| Anthropic                              | `ANTHROPIC_API_KEY` or `ANTHROPIC_OAUTH_TOKEN`                                                                                                                         |
+| DeepSeek                               | `DEEPSEEK_API_KEY`                                                                                                                                                     |
+| NVIDIA NIM                             | `NVIDIA_API_KEY`                                                                                                                                                       |
+| Google                                 | `GEMINI_API_KEY`                                                                                                                                                       |
+| Vertex AI                              | `GOOGLE_CLOUD_API_KEY` or `GOOGLE_CLOUD_PROJECT` (or `GCLOUD_PROJECT`) + `GOOGLE_CLOUD_LOCATION` + ADC                                                                 |
+| Mistral                                | `MISTRAL_API_KEY`                                                                                                                                                      |
+| Groq                                   | `GROQ_API_KEY`                                                                                                                                                         |
+| Cerebras                               | `CEREBRAS_API_KEY`                                                                                                                                                     |
+| Cloudflare AI Gateway                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_GATEWAY_ID`                                                                                               |
+| Cloudflare Workers AI                  | `CLOUDFLARE_API_KEY` + `CLOUDFLARE_ACCOUNT_ID`                                                                                                                         |
+| xAI                                    | `XAI_API_KEY`                                                                                                                                                          |
+| Fireworks                              | `FIREWORKS_API_KEY`                                                                                                                                                    |
+| Together AI                            | `TOGETHER_API_KEY`                                                                                                                                                     |
+| OpenRouter                             | `OPENROUTER_API_KEY`                                                                                                                                                   |
+| Vercel AI Gateway                      | `VERCEL_AI_GATEWAY_API_KEY`                                                                                                                                            |
+| ZAI Coding Plan (Global)               | `ZAI_API_KEY`                                                                                                                                                          |
+| ZAI Coding Plan (China)                | `ZAI_CODING_CN_API_KEY`                                                                                                                                                |
+| MiniMax (Global)                       | `MINIMAX_API_KEY`                                                                                                                                                      |
+| MiniMax (China)                        | `MINIMAX_CN_API_KEY`                                                                                                                                                   |
+| Moonshot AI / Moonshot AI (China)      | `MOONSHOT_API_KEY`                                                                                                                                                     |
+| Hugging Face                           | `HF_TOKEN`                                                                                                                                                             |
+| OpenCode Zen / OpenCode Go             | `OPENCODE_API_KEY`                                                                                                                                                     |
+| Kimi For Coding                        | `KIMI_API_KEY`                                                                                                                                                         |
+| Xiaomi MiMo (API billing)              | `XIAOMI_API_KEY`                                                                                                                                                       |
+| Xiaomi MiMo Token Plan (China/AMS/SGP) | `XIAOMI_API_KEY`                                                                                                                                                       |
+| GitHub Copilot                         | `COPILOT_GITHUB_TOKEN`                                                                                                                                                 |
+| Amazon Bedrock                         | `AWS_REGION` or `AWS_DEFAULT_REGION`, `AWS_PROFILE`, `AWS_BEARER_TOKEN_BEDROCK` (bearer auth path). Optional: `AWS_BEDROCK_FORCE_CACHE=1`, `ELPH_CACHE_RETENTION=long` |
 
 Amazon Bedrock also resolves ambient AWS credentials (access key pairs, ECS task roles, web identity tokens) when no bearer token is set. Vertex AI resolves either an explicit key or gcloud Application Default Credentials plus project/location.
 
@@ -412,7 +412,7 @@ Per-request `StreamOptions.env` and stored credential `env` maps override proces
 
 | Variable                                   | Effect                                                                                                                        |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `PI_CACHE_RETENTION=long`                  | Default prompt cache retention to `long` when `cache_retention` is unset (Anthropic, OpenAI Responses, Bedrock Claude models) |
+| `ELPH_CACHE_RETENTION=long`                | Default prompt cache retention to `long` when `cache_retention` is unset (Anthropic, OpenAI Responses, Bedrock Claude models) |
 | `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` | HTTP(S) proxy for outbound provider requests (see [HTTP and WebSocket Proxies](#http-and-websocket-proxies))                  |
 | `NO_PROXY`                                 | Hostnames/ports to bypass the proxy (`*`, comma-separated, optional `:port` suffix)                                           |
 
@@ -709,7 +709,7 @@ while let Some(event) = events.next().await {
 | `temperature`, `max_tokens`                  | Sampling controls (`max_tokens` is clamped to remaining context)                                                     |
 | `api_key`                                    | Explicit key; overrides provider auth resolution                                                                     |
 | `transport`                                  | Transport hint (`sse`, `websocket`, `websocket-cached`, `auto`) — used by OpenAI Codex when calling the API directly |
-| `cache_retention`                            | Prompt cache retention (`none`, `short`, `long`); defaults from `PI_CACHE_RETENTION`                                 |
+| `cache_retention`                            | Prompt cache retention (`none`, `short`, `long`); defaults from `ELPH_CACHE_RETENTION`                               |
 | `session_id`                                 | Stable session id (Codex WebSocket context reuse, request tracing headers)                                           |
 | `headers`                                    | Per-request header overrides (`None` removes a model default header)                                                 |
 | `timeout_ms`, `websocket_connect_timeout_ms` | HTTP and Codex WebSocket connect timeouts                                                                            |
@@ -1004,7 +1004,7 @@ Subcommands:
 | `chat`       | `generate-models`       | `models/*.json` + `src/models/catalog.rs`       |
 | `image`      | `generate-image-models` | `models/images/*.json` + `src/images/models.rs` |
 | `test-image` | `generate-test-image`   | `tests/data/red-circle.png`                     |
-| `all`        | all of the above           | everything                                      |
+| `all`        | all of the above        | everything                                      |
 
 ### Adding a New Provider
 
