@@ -13,6 +13,7 @@ pub mod init;
 pub mod mcp;
 pub mod messages;
 pub mod migration;
+pub mod mode;
 pub mod prompt_templates;
 pub mod proxy;
 pub mod runtime;
@@ -69,6 +70,11 @@ pub use messages::{
     now_iso_timestamp,
 };
 pub use migration::Migration;
+pub use mode::{
+    CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
+    implement_prompt, is_multi_agent_tool, is_mutating_tool, plan_mode_block_reason, plan_mode_blocks_tool,
+    plan_mode_system_prompt,
+};
 pub use prompt_templates::{
     LoadPromptTemplatesResult, LoadSourcedPromptTemplatesResult, PromptTemplateDiagnostic,
     PromptTemplateDiagnosticCode, SourcedPromptTemplate, SourcedPromptTemplateDiagnostic,
@@ -92,10 +98,12 @@ pub use skills::{
     SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
     load_sourced_skills_with_options,
 };
+pub use subagent::{AgentControl, AgentRegistry, SubagentInfo, SubagentLimits, SubagentSpawnConfig, SubagentStatus};
 pub use tools::{WebSearchEngine, WebSearchResult};
 pub use tools::{
     create_all_tools, create_all_tools_with_web, create_bash_tool, create_coding_tools, create_edit_tool,
-    create_find_tool, create_grep_tool, create_ls_tool, create_read_only_tools, create_read_tool,
-    create_web_fetch_tool, create_web_search_tool, create_web_tools, create_write_tool, echo_tool, simple_tool,
+    create_find_tool, create_grep_tool, create_ls_tool, create_multi_agent_tools, create_read_only_tools,
+    create_read_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools, create_write_tool, echo_tool,
+    simple_tool,
 };
 pub use types::*;

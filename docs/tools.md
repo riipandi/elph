@@ -35,12 +35,26 @@ Design for the agent tool catalog — permissions, provider exposure, and execut
 | WebSearch  | Auto-allow       | Multi-engine search with ranking and fallback |
 | CodeSearch | Auto-allow       | GitHub/GitLab code search                     |
 
-## Plan mode
+## Plan mode (collaboration mode)
 
-| Tool          | Description                              |
-| ------------- | ---------------------------------------- |
-| EnterPlanMode | Enter planning mode                      |
-| ExitPlanMode  | Exit and submit plan (user confirmation) |
+Plan mode is a **collaboration mode**, not a pair of tools. The host application switches the harness to `CollaborationMode::Plan` (for example via `/plan` in the Elph TUI). While active:
+
+- Only read-only exploration tools are exposed (`read`, `grep`, `find`, `ls`, web tools, ask tools).
+- Mutating tools (`write`, `edit`, `bash`) and multi-agent tools are blocked.
+- The model appends a planning system prompt and wraps the final plan in `<proposed_plan>...</proposed_plan>`.
+- The harness emits `PlanProposed` and `PlanConfirmationRequired` events; the host calls `resolve_plan_confirmation()` before implementation begins.
+
+## Multi-agent tools
+
+Registered automatically on `AgentHarness` when all tools are active (empty `active_tool_names`). Omitted when the host passes an explicit active-tool list.
+
+| Tool           | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `spawn_agent`  | Start a focused subagent in an isolated context  |
+| `send_message` | Queue a message on a subagent without a turn     |
+| `followup_task`| Send a message and run a subagent turn           |
+| `wait_agent`   | Block until a subagent reaches idle              |
+| `list_agents`  | List subagent id, task name, and status          |
 
 ## State management
 
@@ -83,7 +97,8 @@ Only a catalog subset is sent to the model. Exposure requires:
 | WebSearch, AskUser, TodoList, Skill | Auto     | Yes | Yes              |
 | Write, Edit, Bash                   | Requires | Yes | Yes (+ approval) |
 | Goal tools                          | Auto     | Yes | Yes              |
-| FetchURL, CodeSearch, Plan mode     | Auto     | TBD | TBD              |
+| FetchURL, CodeSearch                | Auto     | TBD | TBD              |
+| Multi-agent tools                   | Auto     | Yes | Yes (Default mode) |
 
 ## User approval
 

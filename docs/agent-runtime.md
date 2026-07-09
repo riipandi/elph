@@ -121,6 +121,22 @@ Modes: `build`, `plan`, `ask`, `brave`.
 | build / plan / ask | Same at first; diverge via prompts later |
 | brave              | Skip approval for risky tools            |
 
+### Plan collaboration mode (`elph-agent`)
+
+Distinct from the TUI `plan` agent mode above. `AgentHarness` supports Codex-style **Plan collaboration mode**:
+
+1. Host calls `enter_plan_mode()` → `CollaborationMode::Plan` persisted on the session tree.
+2. Active tools filter to read-only exploration; mutating and multi-agent tools are blocked at policy and `before_tool_call`.
+3. Plan-mode system prompt is appended on each turn snapshot.
+4. When the assistant wraps a plan in `<proposed_plan>...</proposed_plan>`, the harness emits `PlanProposed` then `PlanConfirmationRequired`.
+5. Host calls `resolve_plan_confirmation(choice)` — `StayInPlan`, `Implement`, or `ImplementFresh` — before the agent edits files or runs shell commands.
+
+Elph TUI wiring for plan confirmation is deferred; Owly is out of scope for this flow.
+
+### Subagents (`elph-agent`)
+
+Child `Agent` instances managed by `AgentControl` on the harness. Multi-agent tools (`spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`) are registered when the harness uses the default active-tool set. Subagents inherit the parent model, stream function, and non–multi-agent tool catalog.
+
 ## Thinking levels
 
 Levels: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.

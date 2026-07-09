@@ -32,6 +32,8 @@ fn event_type_name(event: &AgentEvent) -> &'static str {
         AgentEvent::ToolExecutionStart { .. } => "tool_execution_start",
         AgentEvent::ToolExecutionUpdate { .. } => "tool_execution_update",
         AgentEvent::ToolExecutionEnd { .. } => "tool_execution_end",
+        AgentEvent::PlanProposed { .. } => "plan_proposed",
+        AgentEvent::PlanConfirmationRequired { .. } => "plan_confirmation_required",
     }
 }
 

@@ -1,0 +1,106 @@
+//! Tool exposure policy per collaboration mode.
+
+use super::CollaborationMode;
+
+/// Built-in tools allowed while planning (read-only exploration).
+const PLAN_MODE_TOOLS: &[&str] = &[
+    "read",
+    "grep",
+    "find",
+    "ls",
+    "web_fetch",
+    "web_search",
+    "ask_text",
+    "ask_select",
+    "ask_confirm",
+];
+
+/// Tools that mutate workspace state or spawn work — blocked in Plan mode.
+const MUTATING_TOOLS: &[&str] = &[
+    "write",
+    "edit",
+    "bash",
+    "spawn_agent",
+    "send_message",
+    "followup_task",
+    "wait_agent",
+];
+
+/// Multi-agent tools — only in Default mode.
+const MULTI_AGENT_TOOLS: &[&str] = &[
+    "spawn_agent",
+    "send_message",
+    "followup_task",
+    "wait_agent",
+    "list_agents",
+];
+
+pub fn is_plan_mode_tool(name: &str) -> bool {
+    PLAN_MODE_TOOLS.contains(&name)
+}
+
+pub fn is_mutating_tool(name: &str) -> bool {
+    MUTATING_TOOLS.contains(&name)
+}
+
+pub fn is_multi_agent_tool(name: &str) -> bool {
+    MULTI_AGENT_TOOLS.contains(&name)
+}
+
+/// Filter active tool names for the given collaboration mode.
+pub fn filter_active_tools(mode: CollaborationMode, all_names: &[String]) -> Vec<String> {
+    match mode {
+        CollaborationMode::Default => all_names.to_vec(),
+        CollaborationMode::Plan => all_names
+            .iter()
+            .filter(|name| is_plan_mode_tool(name))
+            .cloned()
+            .collect(),
+    }
+}
+
+/// Whether a tool call should be blocked in Plan mode.
+pub fn plan_mode_blocks_tool(mode: CollaborationMode, tool_name: &str) -> bool {
+    mode == CollaborationMode::Plan && (is_mutating_tool(tool_name) || !is_plan_mode_tool(tool_name))
+}
+
+pub fn plan_mode_block_reason(tool_name: &str) -> String {
+    format!(
+        "Tool \"{tool_name}\" is not available in Plan mode. Use read-only tools to explore, \
+         then wrap your implementation plan in <proposed_plan>...</proposed_plan> for user confirmation."
+    )
+}
+
+/// System prompt appendix for Plan mode.
+pub fn plan_mode_system_prompt() -> &'static str {
+    "\n\n# Plan mode\n\
+     You are in **Plan mode**. Do not edit files, run shell commands, or apply patches.\n\
+     Allowed: reading files, search, listing, web fetch/search, and asking the user clarifying questions.\n\
+     Workflow:\n\
+     1. Ground yourself in the repository and environment.\n\
+     2. Ask clarifying questions when requirements are ambiguous.\n\
+     3. Produce a concrete implementation plan.\n\
+     When the plan is ready, wrap it in a single block:\n\
+     <proposed_plan>\n\
+     ...markdown plan...\n\
+     </proposed_plan>\n\
+     Do not begin implementation until the user confirms the plan."
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn plan_mode_filters_mutating_tools() {
+        let all = vec!["read".into(), "bash".into(), "write".into(), "grep".into()];
+        let filtered = filter_active_tools(CollaborationMode::Plan, &all);
+        assert_eq!(filtered, vec!["read".to_string(), "grep".to_string()]);
+    }
+
+    #[test]
+    fn blocks_bash_in_plan_mode() {
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "bash"));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "bash"));
+    }
+}

@@ -29,11 +29,18 @@ use crate::harness::types::{
     clone_stream_options,
 };
 use crate::messages::default_convert_to_llm_fn;
+use crate::mode::{
+    CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
+    implement_prompt, plan_mode_block_reason, plan_mode_blocks_tool, plan_mode_system_prompt,
+};
 use crate::prompt_templates::format_prompt_template_invocation;
 use crate::runtime::try_block_on;
+use crate::session::id::create_tsid;
 use crate::session::tree::{BranchSummaryOptions, Session};
 use crate::session::types::{CustomMessageEntryContent, HasSessionId, SessionError, SessionStorage, SessionTreeEntry};
 use crate::skills::format_skill_invocation;
+use crate::subagent::{AgentControl, SubagentLimits, SubagentSpawnConfig};
+use crate::tools::create_multi_agent_tools;
 use crate::types::{
     AfterToolCallResult, AgentContext, AgentEvent, AgentLoopConfig, AgentLoopTurnUpdate, AgentMessage,
     AgentThinkingLevel, AgentTool, BeforeToolCallResult, ConvertToLlmFn, GetQueuedMessagesFn, PrepareNextTurnFn,
@@ -58,6 +65,12 @@ struct ActiveRun {
     idle_tx: oneshot::Sender<()>,
     idle_rx: Mutex<Option<oneshot::Receiver<()>>>,
     abort_token: CancellationToken,
+}
+
+struct PendingPlanConfirmation {
+    #[allow(dead_code)]
+    plan_id: String,
+    plan_text: String,
 }
 
 struct HarnessShared<S>
@@ -85,6 +98,10 @@ where
     next_turn_queue: Mutex<Vec<AgentMessage>>,
     hooks: HookRegistry,
     convert_to_llm: ConvertToLlmFn,
+    collaboration_mode: Mutex<CollaborationMode>,
+    baseline_active_tool_names: Mutex<Vec<String>>,
+    pending_plan: Mutex<Option<PendingPlanConfirmation>>,
+    agent_control: Mutex<Arc<AgentControl>>,
 }
 
 /// Session-backed agent harness with hooks, queues, and pending session writes.
@@ -111,12 +128,52 @@ where
             tools_map.insert(tool.name().to_string(), tool);
         }
 
-        let active_tool_names = if options.active_tool_names.is_empty() {
+        let collaboration_mode = try_block_on(async {
+            let entries = options.session.entries().await;
+            let mut mode = CollaborationMode::Default;
+            for entry in &entries {
+                if let SessionTreeEntry::CollaborationModeChange { mode: m, .. } = entry {
+                    mode = *m;
+                }
+            }
+            mode
+        })
+        .unwrap_or(CollaborationMode::Default);
+
+        let metadata = try_block_on(async { options.session.metadata().await })
+            .map_err(|_| AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, "session metadata"))?;
+        let parent_session_id = metadata.session_id().to_string();
+        let models_for_stream = options.models.clone();
+        let stream_fn: StreamFn =
+            Arc::new(move |model, context, opts| models_for_stream.stream_simple(model, context, opts));
+        let child_tools: Vec<AgentTool> = tools_map
+            .values()
+            .filter(|tool| !crate::mode::is_multi_agent_tool(tool.name()))
+            .cloned()
+            .collect();
+        let agent_control = Arc::new(AgentControl::new(
+            SubagentSpawnConfig {
+                env: options.env.clone(),
+                model: options.model.clone(),
+                system_prompt: String::new(),
+                tools: child_tools,
+                stream_fn,
+                parent_session_id,
+            },
+            SubagentLimits::default(),
+            0,
+        ));
+        for tool in create_multi_agent_tools(agent_control.clone()) {
+            tools_map.insert(tool.name().to_string(), tool);
+        }
+
+        let baseline_active_tool_names: Vec<String> = if options.active_tool_names.is_empty() {
             tools_map.keys().cloned().collect()
         } else {
             options.active_tool_names
         };
-        validate_unique_names(active_tool_names.clone(), "Duplicate active tool name(s)")?;
+        validate_unique_names(baseline_active_tool_names.clone(), "Duplicate active tool name(s)")?;
+        let active_tool_names = filter_active_tools(collaboration_mode, &baseline_active_tool_names);
         validate_tool_names(&active_tool_names, &tools_map)?;
 
         Ok(Self {
@@ -134,6 +191,10 @@ where
                 resources: Mutex::new(options.resources),
                 tools: Mutex::new(tools_map),
                 active_tool_names: Mutex::new(active_tool_names),
+                collaboration_mode: Mutex::new(collaboration_mode),
+                baseline_active_tool_names: Mutex::new(baseline_active_tool_names),
+                pending_plan: Mutex::new(None),
+                agent_control: Mutex::new(agent_control),
                 steer_queue: Mutex::new(Vec::new()),
                 steering_queue_mode: Mutex::new(options.steering_mode),
                 follow_up_queue: Mutex::new(Vec::new()),
@@ -185,6 +246,72 @@ where
         let tools = self.shared.tools.lock().await;
         let names = self.shared.active_tool_names.lock().await;
         names.iter().filter_map(|name| tools.get(name).cloned()).collect()
+    }
+
+    pub async fn collaboration_mode(&self) -> CollaborationMode {
+        *self.shared.collaboration_mode.lock().await
+    }
+
+    pub async fn enter_plan_mode(&self) -> HarnessOpResult<()> {
+        self.set_collaboration_mode(CollaborationMode::Plan).await
+    }
+
+    pub async fn exit_plan_mode(&self) -> HarnessOpResult<()> {
+        self.set_collaboration_mode(CollaborationMode::Default).await
+    }
+
+    pub async fn set_collaboration_mode(&self, mode: CollaborationMode) -> HarnessOpResult<()> {
+        let previous = *self.shared.collaboration_mode.lock().await;
+        if previous == mode {
+            return Ok(());
+        }
+
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            self.shared
+                .session
+                .lock()
+                .await
+                .append_collaboration_mode_change(mode)
+                .await
+                .map_err(session_error)?;
+        }
+
+        *self.shared.collaboration_mode.lock().await = mode;
+        let baseline = self.shared.baseline_active_tool_names.lock().await.clone();
+        let filtered = filter_active_tools(mode, &baseline);
+        self.set_active_tools(filtered).await?;
+        Ok(())
+    }
+
+    pub async fn resolve_plan_confirmation(&self, choice: PlanConfirmationChoice) -> HarnessOpResult<()> {
+        let pending = self.shared.pending_plan.lock().await.take();
+        let Some(pending) = pending else {
+            return Err(AgentHarnessError::new(
+                AgentHarnessErrorCode::InvalidState,
+                "No plan awaiting confirmation",
+            ));
+        };
+
+        match choice {
+            PlanConfirmationChoice::StayInPlan => {}
+            PlanConfirmationChoice::Implement | PlanConfirmationChoice::ImplementFresh => {
+                self.set_collaboration_mode(CollaborationMode::Default).await?;
+                let prompt = if choice == PlanConfirmationChoice::ImplementFresh {
+                    format!(
+                        "{}\n\n(User requested a fresh implementation context.)",
+                        implement_prompt(&pending.plan_text)
+                    )
+                } else {
+                    implement_prompt(&pending.plan_text)
+                };
+                self.prompt(prompt, None).await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn agent_control(&self) -> Arc<AgentControl> {
+        self.shared.agent_control.lock().await.clone()
     }
 
     pub async fn get_resources(&self) -> AgentHarnessResources {
@@ -1082,6 +1209,23 @@ where
             }
         };
 
+        let mut system_prompt = system_prompt;
+        if *self.shared.collaboration_mode.lock().await == CollaborationMode::Plan {
+            system_prompt.push_str(plan_mode_system_prompt());
+        }
+
+        let child_tools: Vec<AgentTool> = active_tools
+            .iter()
+            .filter(|tool| !crate::mode::is_multi_agent_tool(tool.name()))
+            .cloned()
+            .collect();
+        self.shared
+            .agent_control
+            .lock()
+            .await
+            .refresh_config(system_prompt.clone(), model.clone(), child_tools)
+            .await;
+
         Ok(AgentHarnessTurnState {
             messages: context.messages,
             resources,
@@ -1240,15 +1384,26 @@ where
         }));
 
         let hooks = Arc::new(self.shared.hooks.clone_shallow());
+        let plan_shared = shared.clone();
         let before_tool_call: Option<crate::types::BeforeToolCallFn> =
             Some(Arc::new(move |ctx: crate::types::BeforeToolCallContext, _| {
                 let hooks = hooks.clone();
+                let plan_shared = plan_shared.clone();
+                let tool_name = ctx.tool_call.name.clone();
                 let event = ToolCallEvent {
                     tool_call_id: ctx.tool_call.id.clone(),
-                    tool_name: ctx.tool_call.name.clone(),
+                    tool_name: tool_name.clone(),
                     input: ctx.args.clone(),
                 };
                 Box::pin(async move {
+                    let mode = *plan_shared.collaboration_mode.lock().await;
+                    if plan_mode_blocks_tool(mode, &tool_name) {
+                        return Some(BeforeToolCallResult {
+                            block: true,
+                            reason: Some(plan_mode_block_reason(&tool_name)),
+                            args: None,
+                        });
+                    }
                     let result = hooks.emit_tool_call(&event).await.ok()??;
                     Some(BeforeToolCallResult {
                         block: result.block,
@@ -1551,7 +1706,8 @@ where
                     .await?;
                 return Ok(());
             }
-            AgentEvent::TurnEnd { .. } => {
+            AgentEvent::TurnEnd { message, .. } => {
+                self.maybe_request_plan_confirmation(message).await?;
                 let event_error = self
                     .shared
                     .hooks
@@ -1605,6 +1761,47 @@ where
             next_turn: self.shared.next_turn_queue.lock().await.clone(),
         }))
         .await
+    }
+
+    async fn maybe_request_plan_confirmation(&self, message: &AgentMessage) -> HarnessOpResult<()> {
+        if *self.shared.collaboration_mode.lock().await != CollaborationMode::Plan {
+            return Ok(());
+        }
+        if self.shared.pending_plan.lock().await.is_some() {
+            return Ok(());
+        }
+        let Some(Message::Assistant(assistant)) = message.as_llm() else {
+            return Ok(());
+        };
+        let text = assistant_message_text(&assistant.content);
+        let Some(plan_text) = extract_proposed_plan(&text) else {
+            return Ok(());
+        };
+
+        let plan_id = create_tsid();
+        *self.shared.pending_plan.lock().await = Some(PendingPlanConfirmation {
+            plan_id: plan_id.clone(),
+            plan_text: plan_text.clone(),
+        });
+
+        self.shared
+            .hooks
+            .emit_subscriber(
+                AgentHarnessEvent::Agent(AgentEvent::PlanProposed {
+                    plan_id: plan_id.clone(),
+                    plan_text: plan_text.clone(),
+                }),
+                None,
+            )
+            .await?;
+        self.shared
+            .hooks
+            .emit_subscriber(
+                AgentHarnessEvent::Agent(AgentEvent::PlanConfirmationRequired { plan_id, plan_text }),
+                None,
+            )
+            .await?;
+        Ok(())
     }
 }
 

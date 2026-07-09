@@ -366,6 +366,16 @@ pub enum AgentEvent {
         result: AgentToolResult,
         is_error: bool,
     },
+    /// Assistant produced a `<proposed_plan>` block while in Plan mode.
+    PlanProposed {
+        plan_id: String,
+        plan_text: String,
+    },
+    /// Host should prompt the user to confirm the plan.
+    PlanConfirmationRequired {
+        plan_id: String,
+        plan_text: String,
+    },
 }
 
 /// Public agent state snapshot.
