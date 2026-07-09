@@ -92,11 +92,7 @@ pub fn render_user_card(ui: &mut Context, content: &str, theme: Theme) {
 
 fn render_thought_block(ui: &mut Context, entry: &TranscriptEntry, expanded: bool, theme: Theme) {
     let duration = entry.timestamp.as_deref().map(|_| "0.2").unwrap_or("…");
-    let header = if expanded && !entry.content.trim().is_empty() {
-        format!("Thought for {duration}s")
-    } else {
-        format!("Thought for {duration}s")
-    };
+    let header = format!("Thought for {duration}s");
 
     inline_line(ui, |ui| {
         let _ = ui.text(DIAMOND).fg(theme.dim_text());

@@ -38,6 +38,10 @@ pub struct Settings {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionSettings {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
     #[serde(default = "default_agent_mode")]
     pub agent_mode: String,
     #[serde(default = "default_thinking_level")]
@@ -84,6 +88,8 @@ impl Settings {
             sticky_scroll: true,
             prefered_response_language: default_response_language(),
             session: SessionSettings {
+                provider_id: None,
+                model_id: None,
                 agent_mode: default_agent_mode(),
                 thinking_level: default_thinking_level(),
             },

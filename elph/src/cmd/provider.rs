@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
+use elph_ai::builtin_models;
 
 use super::help;
+use crate::coding_agent::{provider_api_key_env, provider_config};
 use crate::runtime::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Parser, Default)]
@@ -57,12 +59,30 @@ pub fn handle(args: &ProviderArgs) -> ExitCode {
     };
     match cmd {
         ProviderCommands::List { json } => {
-            help::unimplemented(&format!("Provider list — not yet implemented (json: {json})"));
+            if *json {
+                help::unimplemented("Provider list --json not yet implemented");
+                return EXIT_SUCCESS;
+            }
+            let models = builtin_models(None).into_arc();
+            for provider in models.get_providers() {
+                let id = &provider.id;
+                let label = provider_config(id).map(|c| c.label).unwrap_or(id);
+                let status = if let Some(model) = provider.get_models().first() {
+                    match elph_agent::block_on(models.get_auth(model)) {
+                        Ok(Some(_)) => "authenticated",
+                        _ => "missing",
+                    }
+                } else {
+                    "no-models"
+                };
+                let env = provider_api_key_env(id).unwrap_or("—");
+                println!("{id}  {label}  {status}  ({env})");
+            }
             EXIT_SUCCESS
         }
         ProviderCommands::Connect { provider } => {
             help::unimplemented(&format!(
-                "Provider connect — not yet implemented (provider: {})",
+                "Provider connect — use `elph` TUI /login (provider: {})",
                 provider.as_deref().unwrap_or("<interactive>")
             ));
             EXIT_SUCCESS

@@ -218,6 +218,16 @@ where
         self.shared.session.lock().await.entries().await
     }
 
+    pub async fn session_branch_entries(&self) -> HarnessOpResult<Vec<SessionTreeEntry>> {
+        self.shared
+            .session
+            .lock()
+            .await
+            .branch(None)
+            .await
+            .map_err(session_error)
+    }
+
     pub async fn phase(&self) -> AgentHarnessPhase {
         *self.shared.phase.lock().await
     }
@@ -294,19 +304,40 @@ where
 
         match choice {
             PlanConfirmationChoice::StayInPlan => {}
-            PlanConfirmationChoice::Implement | PlanConfirmationChoice::ImplementFresh => {
+            PlanConfirmationChoice::Implement => {
                 self.set_collaboration_mode(CollaborationMode::Default).await?;
-                let prompt = if choice == PlanConfirmationChoice::ImplementFresh {
-                    format!(
-                        "{}\n\n(User requested a fresh implementation context.)",
-                        implement_prompt(&pending.plan_text)
-                    )
-                } else {
-                    implement_prompt(&pending.plan_text)
-                };
-                self.prompt(prompt, None).await?;
+                self.prompt(implement_prompt(&pending.plan_text), None).await?;
+            }
+            PlanConfirmationChoice::ImplementFresh => {
+                self.set_collaboration_mode(CollaborationMode::Default).await?;
+                self.fork_fresh_plan_branch(&pending.plan_text).await?;
+                self.prompt(implement_prompt(&pending.plan_text), None).await?;
             }
         }
+        Ok(())
+    }
+
+    /// Fork a new branch with only a branch-summary entry so the next turn starts without prior messages.
+    async fn fork_fresh_plan_branch(&self, plan_text: &str) -> HarnessOpResult<()> {
+        if self.phase_async().await != AgentHarnessPhase::Idle {
+            return Err(AgentHarnessError::new(
+                AgentHarnessErrorCode::Busy,
+                "fork_fresh_plan_branch() requires idle harness",
+            ));
+        }
+        let mut session = self.shared.session.lock().await;
+        let current_leaf = session.leaf_id().await.map_err(session_error)?;
+        session
+            .move_to(
+                current_leaf.as_deref(),
+                Some(BranchSummaryOptions {
+                    summary: format!("Fresh implementation context. Approved plan:\n\n{plan_text}"),
+                    details: None,
+                    from_hook: Some(false),
+                }),
+            )
+            .await
+            .map_err(session_error)?;
         Ok(())
     }
 

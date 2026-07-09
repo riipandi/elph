@@ -24,6 +24,7 @@ struct SessionHeader {
     parent_session: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct JsonlSessionStorage {
     file_path: PathBuf,
     metadata: JsonlSessionMetadata,

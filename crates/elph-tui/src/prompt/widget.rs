@@ -23,7 +23,7 @@ pub fn prompt_visible_rows(textarea: &TextareaState) -> u32 {
 }
 
 /// Visual options for [`render_prompt`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PromptOpts {
     /// Agent turn in flight — caption shows queue / steering hints.
     pub running: bool,
@@ -31,16 +31,6 @@ pub struct PromptOpts {
     pub composer: bool,
     /// Pending messages queued while the agent is busy.
     pub queued_count: usize,
-}
-
-impl Default for PromptOpts {
-    fn default() -> Self {
-        Self {
-            running: false,
-            composer: false,
-            queued_count: 0,
-        }
-    }
 }
 
 /// Prompt field state backed by SLT [`TextareaState`].

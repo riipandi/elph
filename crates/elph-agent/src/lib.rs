@@ -14,6 +14,7 @@ pub mod mcp;
 pub mod messages;
 pub mod migration;
 pub mod mode;
+pub mod plugins;
 pub mod prompt_templates;
 pub mod proxy;
 pub mod runtime;
@@ -98,7 +99,10 @@ pub use skills::{
     SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
     load_sourced_skills_with_options,
 };
-pub use subagent::{AgentControl, AgentRegistry, SubagentInfo, SubagentLimits, SubagentSpawnConfig, SubagentStatus};
+pub use subagent::{
+    AgentControl, AgentRegistry, SubagentEventForwarder, SubagentInfo, SubagentLimits, SubagentSpawnConfig,
+    SubagentStatus,
+};
 pub use tools::{WebSearchEngine, WebSearchResult};
 pub use tools::{
     create_all_tools, create_all_tools_with_web, create_bash_tool, create_coding_tools, create_edit_tool,

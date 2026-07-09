@@ -1,7 +1,12 @@
+use std::env;
+use std::sync::Arc;
+
 use clap::{Parser, Subcommand};
+use elph_agent::LocalExecutionEnv;
 
 use super::help;
-use crate::runtime::{EXIT_SUCCESS, ExitCode};
+use crate::coding_agent::SessionManager;
+use crate::runtime::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 
 #[derive(Parser, Default)]
 #[command(
@@ -34,21 +39,53 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
     let Some(cmd) = &args.command else {
         return help::print_subcommand_help::<SessionArgs>();
     };
+
+    let paths = match Paths::resolve() {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::error!(error = %err, "resolve paths");
+            return EXIT_ERROR;
+        }
+    };
+    let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+    let env = Arc::new(LocalExecutionEnv::new(&cwd));
+    let manager = SessionManager::new(&paths, env, &cwd);
+
     match cmd {
-        SessionCommands::List => {
-            help::unimplemented("Session list — not yet implemented");
-            EXIT_SUCCESS
-        }
-        SessionCommands::Search { query } => {
-            help::unimplemented(&format!(
-                "Session search — not yet implemented (query: {})",
-                query.as_deref().unwrap_or("<all>")
-            ));
-            EXIT_SUCCESS
-        }
+        SessionCommands::List | SessionCommands::Search { .. } => match elph_agent::block_on(manager.list()) {
+            Ok(sessions) => {
+                if sessions.is_empty() {
+                    println!("No sessions found for {}", cwd.display());
+                } else {
+                    for meta in sessions {
+                        println!("{}  {}  {}", meta.id, meta.created_at, meta.path);
+                    }
+                }
+                EXIT_SUCCESS
+            }
+            Err(err) => {
+                tracing::error!(error = %err, "list sessions");
+                EXIT_ERROR
+            }
+        },
         SessionCommands::Delete { id } => {
-            help::unimplemented(&format!("Session delete — not yet implemented (id: {id})"));
-            EXIT_SUCCESS
+            match elph_agent::block_on(async {
+                let sessions = manager.list().await?;
+                let meta = sessions
+                    .into_iter()
+                    .find(|s| s.id == *id)
+                    .ok_or_else(|| anyhow::anyhow!("session not found: {id}"))?;
+                manager.delete(&meta).await
+            }) {
+                Ok(()) => {
+                    println!("Deleted session {id}");
+                    EXIT_SUCCESS
+                }
+                Err(err) => {
+                    tracing::error!(error = %err, "delete session");
+                    EXIT_ERROR
+                }
+            }
         }
     }
 }

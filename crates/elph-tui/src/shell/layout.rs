@@ -43,6 +43,7 @@ pub struct ShellChrome<'a> {
 }
 
 impl<'a> ShellChrome<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn full(
         banner: BannerInfo<'a>,
         banner_state: BannerState,
@@ -69,6 +70,7 @@ impl<'a> ShellChrome<'a> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn composer(
         status_bar: StatusBarInfo<'a>,
         footer: FooterInfo<'a>,
@@ -178,17 +180,14 @@ pub fn render_agent_shell(
         });
 
         let _ = ui.container().gap(input_gap).col(|ui| {
-            if show_activity {
-                if let Some(activity) = chrome.activity.as_ref() {
-                    render_activity(ui, activity, theme, &chrome.spinner);
-                }
+            if show_activity && let Some(activity) = chrome.activity.as_ref() {
+                render_activity(ui, activity, theme, &chrome.spinner);
             }
-            if show_slash {
-                if let (Some(input), Some(commands), Some(palette)) =
+            if show_slash
+                && let (Some(input), Some(commands), Some(palette)) =
                     (chrome.slash_input, chrome.slash_commands, chrome.slash_palette)
-                {
-                    render_slash_palette(ui, input, commands, palette, theme);
-                }
+            {
+                render_slash_palette(ui, input, commands, palette, theme);
             }
             render_region(ui, ShellRegion::Input);
         });

@@ -31,10 +31,10 @@ pub fn matches_ctrl_key(key: &KeyEvent, letter: char) -> bool {
         return true;
     }
 
-    if let KeyCode::Char(c) = &key.code {
-        if let Some(ctrl) = ctrl_char_for(letter) {
-            return *c == ctrl;
-        }
+    if let KeyCode::Char(c) = &key.code
+        && let Some(ctrl) = ctrl_char_for(letter)
+    {
+        return *c == ctrl;
     }
 
     false

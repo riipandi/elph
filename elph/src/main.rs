@@ -1,5 +1,6 @@
 mod app;
 mod cmd;
+mod coding_agent;
 mod command;
 mod config;
 mod memory;
@@ -7,6 +8,7 @@ mod plugins;
 mod prompt;
 mod runtime;
 mod skills;
+mod tui;
 mod widget;
 mod worktree;
 

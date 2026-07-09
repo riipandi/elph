@@ -1,6 +1,9 @@
+use std::env;
+
 use clap::Args;
 
-use crate::runtime::{EXIT_SUCCESS, ExitCode};
+use crate::coding_agent::{RunModeOptions, run_non_interactive};
+use crate::runtime::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 
 #[derive(Args, Default)]
 pub struct RunArgs {
@@ -39,16 +42,54 @@ pub struct RunArgs {
 
 pub fn handle(args: &RunArgs) -> ExitCode {
     let prompt = args.prompt.join(" ");
-    tracing::warn!(
-        prompt = if prompt.is_empty() { "<none>" } else { prompt.as_str() },
-        model = ?args.model,
-        format = %args.output_format,
-        continue_session = args.r#continue,
-        session = ?args.session,
-        fork = args.fork,
-        files = ?args.files,
-        brave = args.brave,
-        "Run — not yet implemented"
-    );
-    EXIT_SUCCESS
+    if prompt.trim().is_empty() {
+        tracing::error!("run requires a prompt");
+        return EXIT_ERROR;
+    }
+
+    let paths = match Paths::resolve() {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::error!(error = %err, "resolve paths");
+            return EXIT_ERROR;
+        }
+    };
+    let settings = match Settings::load(&paths) {
+        Ok(s) => s,
+        Err(err) => {
+            tracing::error!(error = %err, "load settings");
+            return EXIT_ERROR;
+        }
+    };
+    let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+
+    let resume_id = if args.r#continue { None } else { args.session.as_deref() };
+
+    if args.fork {
+        tracing::warn!("--fork is not yet implemented; continuing without fork");
+    }
+    if !args.files.is_empty() {
+        tracing::warn!(files = ?args.files, "file attachments not yet implemented");
+    }
+    if args.output_format != "text" {
+        tracing::warn!(format = %args.output_format, "only text output-format is supported");
+    }
+
+    let result = elph_agent::block_on(run_non_interactive(RunModeOptions {
+        paths: &paths,
+        settings: &settings,
+        cwd: &cwd,
+        prompt: &prompt,
+        model: args.model.as_deref(),
+        resume_id,
+        brave: args.brave,
+    }));
+
+    match result {
+        Ok(()) => EXIT_SUCCESS,
+        Err(err) => {
+            tracing::error!(error = %err, "run failed");
+            EXIT_ERROR
+        }
+    }
 }

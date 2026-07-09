@@ -10,6 +10,7 @@ use super::types::{SubagentInfo, SubagentLimits, SubagentStatus};
 use crate::agent::{Agent, AgentOptions, PartialAgentState};
 use crate::env::LocalExecutionEnv;
 use crate::session::id::create_tsid;
+use crate::types::AgentEvent;
 use crate::types::{AgentTool, StreamFn, llm_message_to_agent};
 
 #[derive(Clone)]
@@ -22,11 +23,14 @@ pub struct SubagentSpawnConfig {
     pub parent_session_id: String,
 }
 
+pub type SubagentEventForwarder = Arc<dyn Fn(AgentEvent) + Send + Sync>;
+
 pub struct AgentControl {
     registry: Arc<AgentRegistry>,
     config: Mutex<SubagentSpawnConfig>,
     limits: SubagentLimits,
     depth: u32,
+    event_forwarder: Mutex<Option<SubagentEventForwarder>>,
 }
 
 impl AgentControl {
@@ -36,7 +40,12 @@ impl AgentControl {
             config: Mutex::new(config),
             limits,
             depth,
+            event_forwarder: Mutex::new(None),
         }
+    }
+
+    pub async fn set_event_forwarder(&self, forwarder: Option<SubagentEventForwarder>) {
+        *self.event_forwarder.lock().await = forwarder;
     }
 
     pub async fn refresh_config(&self, system_prompt: String, model: Model, tools: Vec<AgentTool>) {
@@ -122,6 +131,18 @@ impl AgentControl {
         let agent = record.agent.clone();
         let id = agent_id.to_string();
         let registry = self.registry.clone();
+        let forwarder = self.event_forwarder.lock().await.clone();
+        if let Some(forwarder) = forwarder {
+            let forwarder = forwarder.clone();
+            agent
+                .subscribe(Arc::new(move |event, _| {
+                    let forwarder = forwarder.clone();
+                    Box::pin(async move {
+                        forwarder(event);
+                    })
+                }))
+                .await;
+        }
         tokio::spawn(async move {
             let result = agent.prompt_text(message, None).await;
             agent.wait_for_idle().await;

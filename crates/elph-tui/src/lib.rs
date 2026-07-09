@@ -15,12 +15,16 @@ pub mod utils;
 
 pub use agent::{
     AuthStatus, CollapseState, ModelSelectorAction, ModelSelectorState, OAuthSelectorAction, OAuthSelectorState,
-    SessionSelectorAction, SessionSelectorState, composer_demo_entries, handle_model_selector_input,
-    handle_oauth_selector_input, handle_session_selector_input, mock_oauth_providers, model_overlay_slot,
+    PlanConfirmationAction, PlanConfirmationChoice as TuiPlanConfirmationChoice, PlanConfirmationState,
+    SessionSelectorAction, SessionSelectorState, ToolApprovalAction, ToolApprovalState, TreeNavigatorAction,
+    TreeNavigatorState, TuiToolApprovalChoice, composer_demo_entries, handle_model_selector_input,
+    handle_oauth_selector_input, handle_plan_confirmation_input, handle_session_selector_input,
+    handle_tool_approval_input, handle_tree_navigator_input, mock_oauth_providers, model_overlay_slot,
     render_assistant_message, render_composer_transcript, render_detail_block, render_login_dialog,
-    render_model_selector, render_oauth_selector, render_pipe_message, render_session_selector, render_tool_block,
-    render_tool_execution_card, render_tool_execution_list, render_transcript_view, render_user_card,
-    session_overlay_slot,
+    render_model_selector, render_oauth_selector, render_pipe_message, render_plan_confirmation,
+    render_session_selector, render_tool_approval, render_tool_block, render_tool_execution_card,
+    render_tool_execution_list, render_transcript_view, render_tree_navigator, render_user_card, session_overlay_slot,
+    tree_overlay_slot,
 };
 pub use bridge::{OverlaySlot, OverlayStack, key_event_to_terminal_data, render_diff_overlay};
 pub use chrome::{

@@ -7,9 +7,12 @@ mod list_modal;
 mod login_dialog;
 mod model_selector;
 mod oauth_selector;
+mod plan_confirmation;
 mod session_selector;
+mod tool_approval;
 mod tool_execution;
 mod transcript_view;
+mod tree_navigator;
 
 pub use assistant_message::render_assistant_message;
 pub use composer_view::{composer_demo_entries, render_composer_transcript, render_tool_block, render_user_card};
@@ -23,9 +26,20 @@ pub use model_selector::{
 pub use oauth_selector::{
     OAuthSelectorAction, OAuthSelectorState, handle_oauth_selector_input, mock_oauth_providers, render_oauth_selector,
 };
+pub use plan_confirmation::{
+    PlanConfirmationAction, PlanConfirmationChoice, PlanConfirmationState, handle_plan_confirmation_input,
+    render_plan_confirmation,
+};
 pub use session_selector::{
     SessionSelectorAction, SessionSelectorState, handle_session_selector_input, render_session_selector,
     session_overlay_slot,
 };
+pub use tool_approval::{
+    ToolApprovalAction, ToolApprovalChoice as TuiToolApprovalChoice, ToolApprovalState, handle_tool_approval_input,
+    render_tool_approval,
+};
 pub use tool_execution::{render_tool_execution_card, render_tool_execution_list};
 pub use transcript_view::render_transcript_view;
+pub use tree_navigator::{
+    TreeNavigatorAction, TreeNavigatorState, handle_tree_navigator_input, render_tree_navigator, tree_overlay_slot,
+};

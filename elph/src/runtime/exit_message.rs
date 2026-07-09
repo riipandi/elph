@@ -23,7 +23,8 @@ pub struct ExitSnapshot {
 }
 
 /// Creates a TSID session identifier for resume hints.
-pub fn new_session_id() -> String {
+#[cfg(test)]
+fn new_session_id() -> String {
     tsid::create_tsid().to_string()
 }
 

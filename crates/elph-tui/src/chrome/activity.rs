@@ -5,7 +5,7 @@ use crate::theme::Theme;
 use slt::{Context, widgets::SpinnerState};
 
 /// Activity line shown between chat and input while the agent is busy.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ActivityState {
     pub label: String,
     pub started: Option<Instant>,
@@ -52,17 +52,6 @@ impl ActivityState {
 
     pub fn request_cancel(&mut self) {
         self.cancel_requested = true;
-    }
-}
-
-impl Default for ActivityState {
-    fn default() -> Self {
-        Self {
-            label: String::new(),
-            started: None,
-            visible: false,
-            cancel_requested: false,
-        }
     }
 }
 

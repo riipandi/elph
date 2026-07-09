@@ -43,10 +43,11 @@ pub fn render_streaming_markdown_lines(
     if is_gfm_table_row(tail) {
         let table_lines = vec![tail.to_string()];
         lines.extend(render_gfm_pipe_table(&table_lines, &theme));
-        if streaming && show_cursor {
-            if let Some(last) = lines.last_mut() {
-                last.push('▌');
-            }
+        if streaming
+            && show_cursor
+            && let Some(last) = lines.last_mut()
+        {
+            last.push('▌');
         }
         return lines;
     }
