@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use tokio::sync::mpsc;
 
 use crate::config::Config;
-use crate::session::SessionStore;
+use crate::session::{SessionRecovery, SessionStore};
 
 use super::context::AppContext;
 
@@ -46,6 +46,7 @@ pub struct LaunchOptions {
     pub pending_setup: bool,
     pub session: SessionStore,
     pub restored_count: usize,
+    pub recovery: SessionRecovery,
     pub db_path: PathBuf,
     pub initial: Option<crate::startup::InitialRun>,
 }
@@ -55,7 +56,7 @@ pub fn from_session(opts: LaunchOptions) -> LaunchState {
     let provider = opts.config.provider.clone();
     let model = opts.config.model_id.clone();
     let app_context = AppContext::new(opts.config, opts.cwd, opts.stream, opts.verbose, opts.session);
-    let startup_lines = crate::shell::startup_transcript_lines(opts.restored_count, &opts.db_path);
+    let startup_lines = crate::shell::startup_transcript_lines(opts.restored_count, &opts.recovery, &opts.db_path);
     let initial = opts.initial.map(crate::shell::initial_input);
     let (submit_tx, submit_rx) = mpsc::unbounded_channel();
 

@@ -1,6 +1,6 @@
 ---
 title: "Quickstart Guide"
-last_updated: 2026-07-10T08:00:00Z
+last_updated: 2026-07-10T20:00:00Z
 category: quickstart
 tags:
     - getting-started
@@ -154,6 +154,7 @@ Every Markdown file includes [YAML frontmatter](frontmatter.md) with title, last
 | [`owly/src/tui/activity.rs`](../owly/src/tui/activity.rs)       | Activity bar with live tool chips during agent execution                      |
 | [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)           | Shared visual tokens (`subtle_border` for low-contrast frames)                |
 | [`owly/src/tui/spinner.rs`](../owly/src/tui/spinner.rs)         | Animated braille loading indicator (`LoadingSpinner` component)               |
+| [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_header`, `tool_transcript_body`) |
 | [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)         | Thread-safe `AppContext` for TUI and async command dispatch                   |
 | [`owly/src/tui/launch.rs`](../owly/src/tui/launch.rs)           | One-shot launch payload for OwlyRoot component                                |
 | [`owly/src/tui/setup.rs`](../owly/src/tui/setup.rs)             | In-TUI first-run credential setup wizard                                      |
@@ -206,7 +207,8 @@ cargo clippy -p owly --all-targets -- -D warnings
 - **LLM integration**: Uses `elph-ai` for provider abstraction. Model lookup goes through `builtin_models()`.
 - **Tools**: Init/update mode uses all tools (read, bash, edit, write, grep, find, ls). Chat mode uses read-only tools plus `ask_text`, `ask_select`, `ask_confirm` for interactive use.
 - **Interactive mode**: Running `owly` with no arguments starts an interactive shell managed by [`shell.rs`](../owly/src/shell.rs) — a REPL that offers a first-run credential wizard (`onboarding.rs`), session persistence (`session.rs`), and supports follow-up commands after init/update/chat.
-- **Session persistence**: Each owly run creates a `SessionStore` backed by Turso checkpointing. Conversation messages are persisted across turns and restorable on subsequent runs in the same directory.
+- **Interactive slash commands**: `/init`, `/update`, `/history [n]`, `/restore <#|id>`, `/clear`, `/help`, `/exit`. `/history` lists recent checkpoints; `/restore` rewinds the session to an earlier checkpoint (the next turn forks from that point).
+- **Session persistence**: Each owly run creates a `SessionStore` backed by Turso checkpointing. Conversation messages are persisted across turns and restorable on subsequent runs in the same directory. Mid-turn assistant drafts and pending `ask_*` interrupts are recovered from checkpoint `writes` on restart.
 - **Ecosystem sync**: After a successful init/update that changes documentation, [`ecosystem.rs`](../owly/src/ecosystem.rs) appends Owly context instructions to `AGENTS.md` and `CLAUDE.md` (if they exist).
 - **No-op detection**: The update command checks git HEAD and status to skip if nothing changed since the last documented update.
 - **Runtime note**: A `create_runtime_note()` prompt is appended to all user prompts, telling the agent the repository root path and runtime conventions (relative paths only, no host absolute paths).

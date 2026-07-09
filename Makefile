@@ -15,6 +15,13 @@ BUILD_DIR    := ./target/release
 
 UNAME_S := $(shell uname -s)
 
+# ─── Compiler cache ───────────────────────────────────────────────────────────
+# Use sccache when installed; otherwise leave RUSTC_WRAPPER unset (normal rustc).
+SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
+ifneq ($(SCCACHE_BIN),)
+  export RUSTC_WRAPPER := sccache
+endif
+
 # Single-platform override: make cross CROSS_TARGET=aarch64-unknown-linux-musl
 
 # ─── Args ───────────────────────────────────────────────────────────────────
@@ -27,7 +34,7 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage help generate-models
+.PHONY: build run watch test lint fmt clean check coverage help stats generate-models
 .PHONY: prepare cross cross-pull release build-linux build-macos build-windows
 .PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
 
@@ -36,10 +43,9 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
 	@$(CARGO) bloat --release -n 50
-	@tokei .
 
 build: ## Build all application binaries (elph + eclaw + owly)
-	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION), owly v$(OWLY_VERSION) ($(BUILD_HASH))"
+	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION), owly v$(OWLY_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	$(CARGO) build --release 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
@@ -70,7 +76,6 @@ install: build ## Install elph-next, eclaw-next, and owly to $INSTALL_DIR
 
 run: ## Run elph coding agent
 	@$(CARGO) run --bin $(ELPH_BIN) $(or $(_RESIDUAL_),$(ARGS))
-
 
 run-owly: ## Run owly documentation agent
 	@$(CARGO) run --bin $(OWLY_BIN) $(or $(_RESIDUAL_),$(ARGS))
@@ -126,6 +131,14 @@ fmt: ## Format all code
 coverage: ## Run tests with coverage (requires tarpaulin)
 	@$(CARGO) tarpaulin --workspace 2>&1
 
+stats: ## Show sccache stats and code line count
+	@tokei .
+	@if [ -n "$(SCCACHE_BIN)" ]; then \
+	  echo ""; \
+	  printf '\033[33msccache stats:\033[0m\n'; \
+	  "$(SCCACHE_BIN)" --show-stats; \
+	fi
+
 clean: ## Clean build artifacts and caches
 	@find crates -type f -name '*_gen.rs' -delete
 	@$(CARGO) clean
@@ -139,6 +152,7 @@ prepare: ## Install required toolchain
 	@command -v cargo-tarpaulin >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-tarpaulin
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
+	@command -v sccache >/dev/null 2>&1 || $(CARGO) binstall --locked -y sccache
 	@command -v tokei >/dev/null 2>&1 || $(CARGO) binstall --locked -y tokei
 	@command -v cross >/dev/null 2>&1 || $(CARGO) install cross --locked
 	@while read -r t; do rustup target add "$$t" 2>/dev/null || true; done < ./scripts/cross-targets.sh

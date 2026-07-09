@@ -17,7 +17,7 @@ use crate::constants::OWLY_DIR;
 use crate::docs::{self, DocumentationSnapshot};
 use crate::ecosystem;
 use crate::metadata;
-use crate::session::SessionStore;
+use crate::session::{SessionRecovery, SessionStore};
 
 /// Result of handling one user input line.
 pub struct HandleInputResult {
@@ -404,13 +404,27 @@ fn finish_doc_run(
 }
 
 /// Startup hints shown in the TUI transcript before the first prompt.
-pub fn startup_transcript_lines(restored_count: usize, db_path: &std::path::Path) -> Vec<String> {
+pub fn startup_transcript_lines(
+    restored_count: usize,
+    recovery: &SessionRecovery,
+    db_path: &std::path::Path,
+) -> Vec<String> {
     let mut lines = Vec::new();
     if restored_count > 0 {
         lines.push(format!(
             "restored {restored_count} message(s) from {}",
             db_path.display()
         ));
+    }
+    if recovery.draft_restored {
+        lines.push("recovered partial assistant response from interrupted turn".to_string());
+    }
+    if let Some(interrupt) = &recovery.pending_interrupt {
+        lines.push(format!(
+            "agent was waiting for your input ({interrupt}) when the last session ended"
+        ));
+    }
+    if restored_count > 0 || recovery.draft_restored || recovery.pending_interrupt.is_some() {
         lines.push(String::new());
     }
     lines.push("Type /help for commands or /exit to quit.".to_string());

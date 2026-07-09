@@ -1,6 +1,6 @@
 ---
 title: "Architecture"
-last_updated: 2026-07-10T08:00:00Z
+last_updated: 2026-07-10T20:00:00Z
 category: architecture
 tags:
     - architecture
@@ -103,11 +103,13 @@ When `owly` is run with no arguments (or in a TTY), the startup mode resolves to
 1. Optionally runs a first-time credential wizard (`onboarding::run_wizard()`) if no API key is found
 2. Sets up environment and prints the welcome banner
 3. Opens a `SessionStore` (restoring previous session messages if available)
-4. Runs the initial command (init/update/chat) if provided
-5. Enters a REPL loop that accepts follow-up messages and slash commands (`/exit`, `/help`, `/reset`)
-6. Each turn preserves conversation history via the same session store
+4. Checks for crash recovery via `SessionRecovery`: restored partial assistant drafts and pending `ask_*` interrupts are reported as startup hints
+5. Runs the initial command (init/update/chat) if provided
+6. Enters a REPL loop that accepts follow-up messages and slash commands (`/exit`, `/help`, `/history [n]`, `/restore <#|id>`, `/clear`)
+7. Each turn preserves conversation history via the same session store
+8. On restart, the session is recovered: mid-turn assistant drafts are merged into the transcript and pending `ask_*` interrupts are reported so the user knows what the agent was waiting for
 
-**Source:** [`owly/src/shell.rs`](../owly/src/shell.rs) — interactive REPL, [`owly/src/startup.rs`](../owly/src/startup.rs) — mode resolution, [`owly/src/onboarding.rs`](../owly/src/onboarding.rs) — credential wizard, [`owly/src/session.rs`](../owly/src/session.rs) — checkpoint persistence.
+**Source:** [`owly/src/shell.rs`](../owly/src/shell.rs) — interactive REPL, [`owly/src/startup.rs`](../owly/src/startup.rs) — mode resolution, [`owly/src/onboarding.rs`](../owly/src/onboarding.rs) — credential wizard, [`owly/src/session.rs`](../owly/src/session.rs) — checkpoint persistence and recovery.
 
 **Source:** [`owly/src/commands.rs`](../owly/src/commands.rs) — ported from OpenWiki `src/commands.ts`.
 
@@ -121,6 +123,7 @@ The core integration with `elph-agent` and `elph-ai`. Key functions:
 - **`prepare_init_command()`** — Creates system prompt + init user prompt.
 - **`prepare_update_command()`** — Creates system prompt + update user prompt (includes git summary).
 - **`prepare_chat_command()`** — Creates system prompt + chat user prompt.
+- **`create_checkpoint_write_subscriber()`** — Factory that returns an `AgentListener` for persisting mid-turn state. Now takes a `quiet` flag for controlling warning output. Handles events including: `TextDelta` (assistant draft), `ToolExecutionStart` (records interrupt for ask tools), `ToolExecutionUpdate` (records streaming tool partial output), and `ToolExecutionEnd` (records resume/tool result). Uses `is_ask_tool()` from session.rs to detect interactive tools.
 
 **`RunAgentResult` struct** captures the outcome of a single agent invocation:
 
@@ -215,28 +218,29 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
 
 ### 10. Supporting Modules
 
-| Module               | Responsibility                                                                             | Source                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| `ask_user.rs`        | Interactive tools: `ask_text`, `ask_select`, `ask_confirm` for multi-turn chat             | [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)               |
-| `checkpoint.rs`      | Turso-backed checkpoint persistence (`TursoCheckpointSaver`, port of langgraph-checkpoint) | [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)           |
-| `credentials.rs`     | Loads `~/.owly/.env`, applies to process environment, secures directory permissions        | [`owly/src/credentials.rs`](../owly/src/credentials.rs)         |
-| `ecosystem.rs`       | Repository ecosystem hooks — syncs Owly context to `AGENTS.md` / `CLAUDE.md`               | [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)             |
-| `env.rs`             | Environment validation, base URL checks, debug logging (`OWLY_DEBUG`)                      | [`owly/src/env.rs`](../owly/src/env.rs)                         |
-| `frontmatter.rs`     | Parses/generates YAML frontmatter                                                          | [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs)         |
-| `diagnostics.rs`     | Redacts secrets from error output, detects provider 500s                                   | [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs)         |
-| `onboarding.rs`      | First-run credential wizard (provider selection, API key, base URL, model)                 | [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)           |
-| `session.rs`         | Turso-backed session store with thread identity, message persistence                       | [`owly/src/session.rs`](../owly/src/session.rs)                 |
-| `shell.rs`           | Interactive Owly shell — credential setup, initial command, REPL loop                      | [`owly/src/shell.rs`](../owly/src/shell.rs)                     |
-| `startup.rs`         | Startup mode resolution (non-interactive vs. interactive), TTY validation                  | [`owly/src/startup.rs`](../owly/src/startup.rs)                 |
-| `ui_events.rs`       | Agent→TUI event bridge (`AgentUiEvent` enum for streaming progress)                        | [`owly/src/ui_events.rs`](../owly/src/ui_events.rs)             |
-| `tui/context.rs`     | Thread-safe `AppContext` for TUI and async dispatch                                        | [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)         |
-| `tui/entries.rs`     | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                                    | [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)         |
-| `tui/chat_stream.rs` | Scrollable transcript with keyboard navigation and typed entry rendering                   | [`owly/src/tui/chat_stream.rs`](../owly/src/tui/chat_stream.rs) |
-| `tui/transcript.rs`  | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates                        | [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)   |
-| `tui/activity.rs`    | Activity bar with live tool chips                                                          | [`owly/src/tui/activity.rs`](../owly/src/tui/activity.rs)       |
-| `tui/chrome.rs`      | Shared visual tokens (`subtle_border` for low-contrast frames)                             | [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)           |
-| `tui/spinner.rs`     | Animated braille loading indicator (`LoadingSpinner` component)                            | [`owly/src/tui/spinner.rs`](../owly/src/tui/spinner.rs)         |
-| `utils.rs`           | HTML tag stripping utility                                                                 | [`owly/src/utils.rs`](../owly/src/utils.rs)                     |
+| Module                | Responsibility                                                                                                                                                                                                                                                                                                                                                                                               | Source                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `ask_user.rs`         | Interactive tools: `ask_text`, `ask_select`, `ask_confirm` for multi-turn chat                                                                                                                                                                                                                                                                                                                               | [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)                 |
+| `checkpoint.rs`       | Turso-backed checkpoint persistence (`TursoCheckpointSaver`, port of langgraph-checkpoint) — supports mid-turn draft (`ASSISTANT_DRAFT`), interrupt/resume tracking (`INTERRUPT`/`RESUME`), and streaming tool partial output (`TOOL_PARTIAL`)                                                                                                                                                               | [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)             |
+| `credentials.rs`      | Loads `~/.owly/.env`, applies to process environment, secures directory permissions                                                                                                                                                                                                                                                                                                                          | [`owly/src/credentials.rs`](../owly/src/credentials.rs)           |
+| `ecosystem.rs`        | Repository ecosystem hooks — syncs Owly context to `AGENTS.md` / `CLAUDE.md`                                                                                                                                                                                                                                                                                                                                 | [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)               |
+| `env.rs`              | Environment validation, base URL checks, debug logging (`OWLY_DEBUG`)                                                                                                                                                                                                                                                                                                                                        | [`owly/src/env.rs`](../owly/src/env.rs)                           |
+| `frontmatter.rs`      | Parses/generates YAML frontmatter                                                                                                                                                                                                                                                                                                                                                                            | [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs)           |
+| `diagnostics.rs`      | Redacts secrets from error output, detects provider 500s                                                                                                                                                                                                                                                                                                                                                     | [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs)           |
+| `onboarding.rs`       | First-run credential wizard (provider selection, API key, base URL, model)                                                                                                                                                                                                                                                                                                                                   | [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)             |
+| `session.rs`          | Turso-backed session store with thread identity, message persistence, and crash recovery. Provides `SessionStore` (load/conversation/save/reset), `TurnWriteContext` (with `record_interrupt`/`record_resume`/`record_tool_partial` for ask-tool persistence), `LoadedConversation`/`SessionRecovery` types, and `merge_recovery_messages()` for restoring mid-turn drafts and pending interrupts on restart | [`owly/src/session.rs`](../owly/src/session.rs)                   |
+| `shell.rs`            | Interactive Owly shell — credential setup, initial command, REPL loop                                                                                                                                                                                                                                                                                                                                        | [`owly/src/shell.rs`](../owly/src/shell.rs)                       |
+| `startup.rs`          | Startup mode resolution (non-interactive vs. interactive), TTY validation                                                                                                                                                                                                                                                                                                                                    | [`owly/src/startup.rs`](../owly/src/startup.rs)                   |
+| `ui_events.rs`        | Agent→TUI event bridge (`AgentUiEvent` enum for streaming progress)                                                                                                                                                                                                                                                                                                                                          | [`owly/src/ui_events.rs`](../owly/src/ui_events.rs)               |
+| `tui/context.rs`      | Thread-safe `AppContext` for TUI and async dispatch                                                                                                                                                                                                                                                                                                                                                          | [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)           |
+| `tui/entries.rs`      | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                                                                                                                                                                                                                                                                                                                                                      | [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)           |
+| `tui/chat_stream.rs`  | Scrollable transcript with keyboard navigation and typed entry rendering                                                                                                                                                                                                                                                                                                                                     | [`owly/src/tui/chat_stream.rs`](../owly/src/tui/chat_stream.rs)   |
+| `tui/transcript.rs`   | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates                                                                                                                                                                                                                                                                                                                                          | [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)     |
+| `tui/activity.rs`     | Activity bar with live tool chips                                                                                                                                                                                                                                                                                                                                                                            | [`owly/src/tui/activity.rs`](../owly/src/tui/activity.rs)         |
+| `tui/chrome.rs`       | Shared visual tokens (`subtle_border` for low-contrast frames)                                                                                                                                                                                                                                                                                                                                               | [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)             |
+| `tui/spinner.rs`      | Animated braille loading indicator (`LoadingSpinner` component)                                                                                                                                                                                                                                                                                                                                              | [`owly/src/tui/spinner.rs`](../owly/src/tui/spinner.rs)           |
+| `tui/tool_display.rs` | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_header`, `tool_transcript_body`, `truncate_chars`)                                                                                                                                                                                                                                                   | [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) |
+| `utils.rs`            | HTML tag stripping utility                                                                                                                                                                                                                                                                                                                                                                                   | [`owly/src/utils.rs`](../owly/src/utils.rs)                       |
 
 ---
 
@@ -287,7 +291,7 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
 - **Streaming vs verbose**: `--stream` shows `TextDelta` only; `--verbose` shows everything including `ThinkingDelta` and tool call logs; controlled by the `stream` and `verbose` fields in `RunAgentOptions`
 - **Event handling** for streaming display is in the `create_event_subscriber()` factory function, extracted from the inline closure in `run_agent()`
 - **Interactive mode** is managed by [`shell.rs`](../owly/src/shell.rs) (`ShellOptions` → `run()`), which orchestrates credential wizard, session setup, initial command execution, and the REPL loop
-- **Session persistence** is handled by [`session.rs`](../owly/src/session.rs) (`SessionStore`), backed by `TursoCheckpointSaver` in [`checkpoint.rs`](../owly/src/checkpoint.rs)
+- **Session persistence** is handled by [`session.rs`](../owly/src/session.rs) (`SessionStore`), backed by `TursoCheckpointSaver` in [`checkpoint.rs`](../owly/src/checkpoint.rs). The checkpoint subscriber in `create_checkpoint_write_subscriber()` persists mid-turn assistant drafts, streaming tool partial output (`TOOL_PARTIAL`), and interrupt/resume records for ask tools. On restart, `load_conversation()` calls `merge_recovery_messages()` to restore drafts and report pending interrupts.
 - **Debug logging** can be enabled via `OWLY_DEBUG=1` — uses `env::debug_log()` which outputs `[debug]` prefixed lines to stderr
 
 ### Adding a new provider
@@ -315,14 +319,14 @@ Tracks the last successful update in `openwiki/.last-update.json`. The no-op che
 
 When modifying any of these areas, run the corresponding tests:
 
-| Area                | Test File(s)                                                       |
-| ------------------- | ------------------------------------------------------------------ |
-| Agent commands      | [`agent_test.rs`](../owly/tests/agent_test.rs)                     |
-| Checkpoint saver    | [`checkpoint_test.rs`](../owly/tests/checkpoint_test.rs)           |
-| Config resolution   | [`config_test.rs`](../owly/tests/config_test.rs)                   |
-| Frontmatter         | [`frontmatter_ext_test.rs`](../owly/tests/frontmatter_ext_test.rs) |
-| Metadata/no-op      | [`metadata_ext_test.rs`](../owly/tests/metadata_ext_test.rs)       |
-| Prompts             | [`prompts_test.rs`](../owly/tests/prompts_test.rs)                 |
-| Secret redaction    | [`redaction_ext_test.rs`](../owly/tests/redaction_ext_test.rs)     |
-| Environment         | [`env_ext_test.rs`](../owly/tests/env_ext_test.rs)                 |
-| Documentation files | [`docs_test.rs`](../owly/tests/docs_test.rs)                       |
+| Area                 | Test File(s)                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Agent commands       | [`agent_test.rs`](../owly/tests/agent_test.rs)                                                                    |
+| Session / checkpoint | [`checkpoint_test.rs`](../owly/tests/checkpoint_test.rs), [`session_test.rs` (in-source)](../owly/src/session.rs) |
+| Config resolution    | [`config_test.rs`](../owly/tests/config_test.rs)                                                                  |
+| Frontmatter          | [`frontmatter_ext_test.rs`](../owly/tests/frontmatter_ext_test.rs)                                                |
+| Metadata/no-op       | [`metadata_ext_test.rs`](../owly/tests/metadata_ext_test.rs)                                                      |
+| Prompts              | [`prompts_test.rs`](../owly/tests/prompts_test.rs)                                                                |
+| Secret redaction     | [`redaction_ext_test.rs`](../owly/tests/redaction_ext_test.rs)                                                    |
+| Environment          | [`env_ext_test.rs`](../owly/tests/env_ext_test.rs)                                                                |
+| Documentation files  | [`docs_test.rs`](../owly/tests/docs_test.rs)                                                                      |

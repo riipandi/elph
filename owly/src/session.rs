@@ -15,15 +15,32 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::checkpoint::{
-    ASSISTANT_DRAFT, Checkpoint, CheckpointConfigurable, CheckpointListOptions, CheckpointMetadata, PendingWrite,
-    RunnableConfig, TursoCheckpointSaver,
+    ASSISTANT_DRAFT, Checkpoint, CheckpointConfigurable, CheckpointListOptions, CheckpointMetadata,
+    CheckpointPendingWrite, INTERRUPT, PendingWrite, RESUME, RunnableConfig, TOOL_PARTIAL, TursoCheckpointSaver,
 };
+
+/// Interactive tools that pause for human input (LangGraph interrupt/resume).
+pub const ASK_TOOL_NAMES: &[&str] = &["ask_text", "ask_select", "ask_confirm"];
 
 /// LangGraph messages channel name.
 pub const MESSAGES_CHANNEL: &str = "messages";
 
 /// Prefix for per-tool pending-write channels (`tool:bash`, `tool:read`, …).
 pub const TOOL_CHANNEL_PREFIX: &str = "tool:";
+
+/// Recovery metadata from pending writes on the active checkpoint.
+#[derive(Debug, Clone, Default)]
+pub struct SessionRecovery {
+    pub draft_restored: bool,
+    pub pending_interrupt: Option<String>,
+}
+
+/// Conversation loaded from checkpoint, including crash recovery merges.
+#[derive(Debug, Clone)]
+pub struct LoadedConversation {
+    pub messages: Vec<AgentMessage>,
+    pub recovery: SessionRecovery,
+}
 
 /// One row shown by `/history`.
 #[derive(Debug, Clone)]
@@ -73,9 +90,12 @@ impl TurnWriteContext {
         if delta.is_empty() || self.config.configurable.checkpoint_id.is_none() {
             return Ok(());
         }
-        let mut draft = self.assistant_draft.lock().await;
-        draft.push_str(delta);
-        let value = json!({ "text": draft.as_str() });
+        let draft_text = {
+            let mut draft = self.assistant_draft.lock().await;
+            draft.push_str(delta);
+            draft.clone()
+        };
+        let value = json!({ "text": draft_text });
         self.saver
             .put_writes(
                 &self.config,
@@ -85,6 +105,66 @@ impl TurnWriteContext {
             .await?;
         Ok(())
     }
+
+    /// Persist streaming/partial tool output (replaces prior partial for this turn).
+    pub async fn record_tool_partial(
+        &self,
+        tool_call_id: &str,
+        tool_name: &str,
+        args_summary: &str,
+        output: &str,
+    ) -> Result<()> {
+        if output.is_empty() || self.config.configurable.checkpoint_id.is_none() {
+            return Ok(());
+        }
+        let value = json!({
+            "id": tool_call_id,
+            "name": tool_name,
+            "args": args_summary,
+            "output": output,
+        });
+        self.saver
+            .put_writes(&self.config, &[(TOOL_PARTIAL.to_string(), value)], tool_call_id)
+            .await?;
+        Ok(())
+    }
+
+    /// Record a human-input interrupt before an ask_* tool blocks.
+    pub async fn record_interrupt(&self, tool_call_id: &str, tool_name: &str, args_summary: &str) -> Result<()> {
+        if self.config.configurable.checkpoint_id.is_none() {
+            return Ok(());
+        }
+        let value = json!({
+            "id": tool_call_id,
+            "tool": tool_name,
+            "args": args_summary,
+        });
+        self.saver
+            .put_writes(&self.config, &[(INTERRUPT.to_string(), value)], tool_call_id)
+            .await?;
+        Ok(())
+    }
+
+    /// Record resume after the user answers an ask_* tool.
+    pub async fn record_resume(&self, tool_call_id: &str, tool_name: &str, answer: &str, is_error: bool) -> Result<()> {
+        if self.config.configurable.checkpoint_id.is_none() {
+            return Ok(());
+        }
+        let value = json!({
+            "id": tool_call_id,
+            "tool": tool_name,
+            "answer": answer,
+            "is_error": is_error,
+        });
+        self.saver
+            .put_writes(&self.config, &[(RESUME.to_string(), value)], tool_call_id)
+            .await?;
+        Ok(())
+    }
+}
+
+pub fn is_ask_tool(tool_name: &str) -> bool {
+    ASK_TOOL_NAMES.contains(&tool_name)
 }
 
 /// Turso-backed session with checkpoint persistence.
@@ -138,14 +218,20 @@ impl SessionStore {
     }
 
     pub async fn load_messages(&self) -> Result<Vec<AgentMessage>> {
+        Ok(self.load_conversation().await?.messages)
+    }
+
+    /// Load messages and apply crash-recovery merges from pending writes.
+    pub async fn load_conversation(&self) -> Result<LoadedConversation> {
         if self.checkpoint_config.configurable.checkpoint_id.is_some()
             && let Some(tuple) = self.saver.get_tuple(&self.checkpoint_config).await?
         {
-            return Ok(messages_from_checkpoint(&tuple.checkpoint));
+            let base = messages_from_checkpoint(&tuple.checkpoint);
+            let (messages, recovery) = merge_recovery_messages(base, &tuple.pending_writes);
+            return Ok(LoadedConversation { messages, recovery });
         }
-        load_messages(self.saver.as_ref(), &self.thread_id)
-            .await
-            .map(|(_, messages)| messages)
+        let (_, messages, recovery) = load_messages_with_recovery(self.saver.as_ref(), &self.thread_id).await?;
+        Ok(LoadedConversation { messages, recovery })
     }
 
     /// Frozen checkpoint handle for the current turn (before [`Self::save_messages`]).
@@ -187,9 +273,11 @@ impl SessionStore {
 
     /// Start a fresh thread id and bootstrap a root checkpoint.
     pub async fn reset_thread(&mut self, cwd: &Path) -> Result<()> {
+        let old_thread = self.thread_id.clone();
         self.thread_id = create_session_thread_id(cwd, Some(uuidv7().as_str()));
         self.checkpoint_config = interactive_config(&self.thread_id);
         self.step = 0;
+        self.saver.delete_thread(&old_thread).await?;
         self.ensure_bootstrap_checkpoint().await
     }
 
@@ -313,7 +401,7 @@ async fn load_session_state(
     saver: &TursoCheckpointSaver,
     thread_id: &str,
 ) -> Result<(RunnableConfig, Vec<AgentMessage>, i64)> {
-    let (config, messages) = load_messages(saver, thread_id).await?;
+    let (config, messages, _) = load_messages_with_recovery(saver, thread_id).await?;
     let step = saver
         .get_tuple(&config)
         .await?
@@ -327,13 +415,99 @@ pub async fn load_messages(
     saver: &TursoCheckpointSaver,
     thread_id: &str,
 ) -> Result<(RunnableConfig, Vec<AgentMessage>)> {
+    let (config, messages, _) = load_messages_with_recovery(saver, thread_id).await?;
+    Ok((config, messages))
+}
+
+/// Load messages for a thread and merge recoverable pending writes.
+pub async fn load_messages_with_recovery(
+    saver: &TursoCheckpointSaver,
+    thread_id: &str,
+) -> Result<(RunnableConfig, Vec<AgentMessage>, SessionRecovery)> {
     let config = interactive_config(thread_id);
     let Some(tuple) = saver.get_tuple(&config).await? else {
-        return Ok((config, Vec::new()));
+        return Ok((config, Vec::new(), SessionRecovery::default()));
     };
 
-    let messages = messages_from_checkpoint(&tuple.checkpoint);
-    Ok((tuple.config, messages))
+    let base = messages_from_checkpoint(&tuple.checkpoint);
+    let (messages, recovery) = merge_recovery_messages(base, &tuple.pending_writes);
+    Ok((tuple.config, messages, recovery))
+}
+
+/// Apply assistant-draft and pending-interrupt recovery from checkpoint writes.
+pub fn merge_recovery_messages(
+    mut messages: Vec<AgentMessage>,
+    pending_writes: &[CheckpointPendingWrite],
+) -> (Vec<AgentMessage>, SessionRecovery) {
+    let mut recovery = SessionRecovery::default();
+
+    if let Some(text) = pending_writes
+        .iter()
+        .find(|(_, channel, _)| channel == ASSISTANT_DRAFT)
+        .and_then(|(_, _, value)| value.get("text"))
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+    {
+        let already_present = messages.iter().any(|message| {
+            message
+                .as_llm()
+                .and_then(|llm| llm.as_assistant())
+                .is_some_and(|assistant| {
+                    assistant.content.iter().any(|block| {
+                        matches!(
+                            block,
+                            elph_ai::AssistantContentBlock::Text(content) if content.text == text
+                        )
+                    })
+                })
+        });
+        if !already_present {
+            messages.push(recovered_assistant_message(text));
+            recovery.draft_restored = true;
+        }
+    }
+
+    let has_resume = pending_writes.iter().any(|(_, channel, _)| channel == RESUME);
+    if !has_resume
+        && let Some(interrupt) = pending_writes
+            .iter()
+            .find(|(_, channel, _)| channel == INTERRUPT)
+            .map(|(_, _, value)| value)
+    {
+        recovery.pending_interrupt = interrupt_summary(interrupt);
+    }
+
+    (messages, recovery)
+}
+
+fn interrupt_summary(value: &Value) -> Option<String> {
+    let tool = value.get("tool").and_then(|v| v.as_str()).unwrap_or("ask");
+    let question = value
+        .get("args")
+        .and_then(|v| v.as_str())
+        .filter(|text| !text.is_empty());
+    Some(match question {
+        Some(args) => format!("{tool} ({args})"),
+        None => tool.to_string(),
+    })
+}
+
+fn recovered_assistant_message(text: &str) -> AgentMessage {
+    use elph_ai::{AssistantContentBlock, AssistantMessage, Message, StopReason, TextContent, Usage};
+    elph_agent::llm_message_to_agent(Message::Assistant(AssistantMessage {
+        role: "assistant".to_string(),
+        content: vec![AssistantContentBlock::Text(TextContent::new(text))],
+        api: "recovery".to_string(),
+        provider: "recovery".to_string(),
+        model: "recovered".to_string(),
+        response_model: None,
+        response_id: None,
+        usage: Usage::default(),
+        stop_reason: StopReason::Stop,
+        error_message: None,
+        timestamp: chrono::Utc::now().timestamp_millis(),
+    }))
 }
 
 /// Persist the full conversation after a completed turn.
@@ -601,5 +775,174 @@ mod tests {
             store.checkpoint_config.configurable.checkpoint_id.as_deref(),
             Some(first_id.as_str())
         );
+    }
+
+    #[test]
+    fn merge_recovery_appends_draft_assistant() {
+        let (messages, recovery) = merge_recovery_messages(
+            Vec::new(),
+            &[(
+                "assistant_stream".to_string(),
+                ASSISTANT_DRAFT.to_string(),
+                json!({ "text": "partial answer" }),
+            )],
+        );
+        assert!(recovery.draft_restored);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].role(), "assistant");
+    }
+
+    #[test]
+    fn merge_recovery_reports_pending_interrupt() {
+        let (_, recovery) = merge_recovery_messages(
+            Vec::new(),
+            &[(
+                "ask-1".to_string(),
+                INTERRUPT.to_string(),
+                json!({ "tool": "ask_text", "args": "question=Continue?" }),
+            )],
+        );
+        assert!(!recovery.draft_restored);
+        assert_eq!(
+            recovery.pending_interrupt.as_deref(),
+            Some("ask_text (question=Continue?)")
+        );
+    }
+
+    #[tokio::test]
+    async fn load_messages_with_recovery_merges_draft() {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("recovery.sqlite");
+        let saver = Arc::new(TursoCheckpointSaver::open(Some(path)).await.expect("open"));
+        let thread_id = "thread-recovery";
+        let mut config = interactive_config(thread_id);
+        config = saver
+            .put(
+                &config,
+                &Checkpoint::default(),
+                &CheckpointMetadata {
+                    source: "bootstrap".to_string(),
+                    step: 0,
+                    parents: HashMap::new(),
+                },
+            )
+            .await
+            .expect("bootstrap");
+        saver
+            .put_writes(
+                &config,
+                &[(ASSISTANT_DRAFT.to_string(), json!({ "text": "draft text" }))],
+                "assistant_stream",
+            )
+            .await
+            .expect("draft write");
+
+        let (_, messages, recovery) = load_messages_with_recovery(saver.as_ref(), thread_id)
+            .await
+            .expect("load");
+        assert!(recovery.draft_restored);
+        assert_eq!(messages.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn turn_write_context_records_interrupt_and_resume() {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("interrupt.sqlite");
+        let saver = Arc::new(TursoCheckpointSaver::open(Some(path)).await.expect("open"));
+        let thread_id = "thread-interrupt";
+        let mut config = interactive_config(thread_id);
+        config = saver
+            .put(
+                &config,
+                &Checkpoint::default(),
+                &CheckpointMetadata {
+                    source: "bootstrap".to_string(),
+                    step: 0,
+                    parents: HashMap::new(),
+                },
+            )
+            .await
+            .expect("bootstrap");
+
+        let ctx = TurnWriteContext {
+            saver: Arc::clone(&saver),
+            config: config.clone(),
+            assistant_draft: Arc::new(Mutex::new(String::new())),
+        };
+        ctx.record_interrupt("ask-1", "ask_text", "question=Name?")
+            .await
+            .expect("interrupt");
+        ctx.record_resume("ask-1", "ask_text", "Alice", false)
+            .await
+            .expect("resume");
+
+        let tuple = saver.get_tuple(&config).await.expect("get").expect("tuple");
+        assert!(tuple.pending_writes.iter().any(|(_, ch, _)| ch == INTERRUPT));
+        assert!(tuple.pending_writes.iter().any(|(_, ch, _)| ch == RESUME));
+    }
+
+    #[tokio::test]
+    async fn turn_write_context_tool_partial_replaces_latest() {
+        let dir = TempDir::new().expect("tempdir");
+        let path = dir.path().join("partial.sqlite");
+        let saver = Arc::new(TursoCheckpointSaver::open(Some(path)).await.expect("open"));
+        let thread_id = "thread-partial";
+        let mut config = interactive_config(thread_id);
+        config = saver
+            .put(
+                &config,
+                &Checkpoint::default(),
+                &CheckpointMetadata {
+                    source: "bootstrap".to_string(),
+                    step: 0,
+                    parents: HashMap::new(),
+                },
+            )
+            .await
+            .expect("bootstrap");
+
+        let ctx = TurnWriteContext {
+            saver: Arc::clone(&saver),
+            config: config.clone(),
+            assistant_draft: Arc::new(Mutex::new(String::new())),
+        };
+        ctx.record_tool_partial("call-1", "bash", "{}", "line 1")
+            .await
+            .expect("partial1");
+        ctx.record_tool_partial("call-1", "bash", "{}", "line 1\nline 2")
+            .await
+            .expect("partial2");
+
+        let tuple = saver.get_tuple(&config).await.expect("get").expect("tuple");
+        assert_eq!(tuple.pending_writes.len(), 1);
+        assert_eq!(tuple.pending_writes[0].1, TOOL_PARTIAL);
+        assert_eq!(
+            tuple.pending_writes[0].2.get("output").and_then(|v| v.as_str()),
+            Some("line 1\nline 2")
+        );
+    }
+
+    #[tokio::test]
+    async fn reset_thread_deletes_previous_thread_data() {
+        let dir = TempDir::new().expect("tempdir");
+        let cwd = dir.path().join("repo");
+        std::fs::create_dir_all(&cwd).expect("cwd");
+        let mut store = test_session(&dir, &cwd).await;
+        let old_thread = store.thread_id().to_string();
+        let user = elph_agent::llm_message_to_agent(elph_ai::Message::User {
+            content: elph_ai::UserContent::Text("hello".into()),
+            timestamp: 0,
+        });
+        store
+            .save_messages(std::slice::from_ref(&user), "chat")
+            .await
+            .expect("save");
+
+        let db_path = store.db_path().to_path_buf();
+        store.reset_thread(&cwd).await.expect("reset");
+        assert!(store.get_checkpoint_tuple(None).await.expect("latest").is_some());
+        let old_saver = TursoCheckpointSaver::open(Some(db_path)).await.expect("reopen");
+        let old = interactive_config(&old_thread);
+        assert!(old_saver.get_tuple(&old).await.expect("old lookup").is_none());
     }
 }

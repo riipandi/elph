@@ -5,7 +5,7 @@ use iocraft::prelude::*;
 
 use super::chrome::SECTION_PAD;
 use super::entries::{OwlyEntry, OwlyEntryKind};
-use super::tool_display::{tool_output_preview, truncate_chars};
+use super::tool_display::{tool_transcript_body, tool_transcript_header};
 
 #[derive(Props)]
 pub struct OwlyChatStreamProps {
@@ -238,15 +238,15 @@ fn render_entry(
             .into_any(),
         )),
         OwlyEntryKind::ToolSummary => entry.inner.tool.as_ref().map(|tool| {
-            let header = format_tool_summary(tool);
-            let preview = tool_output_preview(&tool.output, 72);
+            let header = tool_transcript_header(tool);
+            let body = tool_transcript_body(tool);
             wrap_block(
                 gap_before,
-                if let Some(preview) = preview {
+                if let Some(body) = body {
                     element! {
                         View(flex_direction: FlexDirection::Column, width: 100pct, gap: Gap::Length(0)) {
                             Text(color: tool_summary_color(tool.status), content: header)
-                            Text(color: Some(theme.muted), content: format!("      {preview}"))
+                            Text(color: Some(theme.muted), content: body)
                         }
                     }
                     .into_any()
@@ -337,23 +337,6 @@ fn tool_summary_color(status: elph_tui::ToolExecutionStatus) -> Option<Color> {
     }
 }
 
-fn format_tool_summary(tool: &elph_tui::ToolExecutionState) -> String {
-    use elph_tui::ToolExecutionStatus;
-    let icon = match tool.status {
-        ToolExecutionStatus::Success => "✓",
-        ToolExecutionStatus::Error => "✗",
-        ToolExecutionStatus::Cancelled => "⊘",
-        ToolExecutionStatus::Running => "⠋",
-        ToolExecutionStatus::Pending => "○",
-    };
-    let args = tool.args_summary.trim();
-    if args.is_empty() {
-        format!("  {icon} {}", tool.name)
-    } else {
-        format!("  {icon} {}  {}", tool.name, truncate_chars(args, 48))
-    }
-}
-
 fn page_scroll_amount(handle: &Ref<ScrollViewHandle>, page_scroll_step: u16) -> i32 {
     if page_scroll_step == PAGE_SCROLL_VIEWPORT {
         handle.read().viewport_height().max(1) as i32
@@ -368,17 +351,12 @@ mod tests {
     use elph_tui::{ToolExecutionState, ToolExecutionStatus};
 
     #[test]
-    fn format_tool_summary_includes_name_and_args() {
+    fn tool_transcript_renders_full_args_in_body() {
         let tool = ToolExecutionState::new("1", "bash")
-            .with_args("ls -la")
+            .with_args("ls -la /very/long/path/that/would/previously/be/truncated")
             .with_status(ToolExecutionStatus::Success);
-        assert_eq!(format_tool_summary(&tool), "  ✓ bash  ls -la");
-    }
-
-    #[test]
-    fn tool_output_preview_skips_blank_lines() {
-        let preview = tool_output_preview(" \n Wrote 10 bytes\n", 40).expect("preview");
-        assert_eq!(preview, "Wrote 10 bytes");
+        let body = crate::tui::tool_display::tool_transcript_body(&tool).expect("body");
+        assert!(body.contains("ls -la /very/long/path/that/would/previously/be/truncated"));
     }
 
     #[test]

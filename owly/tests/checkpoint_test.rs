@@ -2,7 +2,7 @@
 
 use owly::checkpoint::{
     ASSISTANT_DRAFT, Checkpoint, CheckpointConfigurable, CheckpointListOptions, CheckpointMetadata, ERROR, INTERRUPT,
-    PendingWrite, RESUME, RunnableConfig, SCHEDULED, TASKS, TursoCheckpointSaver, writes_idx,
+    PendingWrite, RESUME, RunnableConfig, SCHEDULED, TASKS, TOOL_PARTIAL, TursoCheckpointSaver, writes_idx,
 };
 use owly::session::{MESSAGES_CHANNEL, create_interactive_thread_id, interactive_config, load_messages, save_messages};
 use serde_json::json;
@@ -32,6 +32,7 @@ fn writes_idx_matches_langgraph_contract() {
     assert_eq!(writes_idx(INTERRUPT), Some(-3));
     assert_eq!(writes_idx(RESUME), Some(-4));
     assert_eq!(writes_idx(ASSISTANT_DRAFT), Some(-5));
+    assert_eq!(writes_idx(TOOL_PARTIAL), Some(-6));
     assert_eq!(writes_idx("messages"), None);
 }
 

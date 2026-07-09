@@ -26,7 +26,7 @@ use crate::docs::{self, DocumentationSnapshot};
 use crate::env;
 use crate::metadata::UpdateMetadata;
 use crate::prompts::{create_chat_prompt, create_init_prompt, create_update_prompt};
-use crate::session::{SessionStore, TurnWriteContext};
+use crate::session::{SessionStore, TurnWriteContext, is_ask_tool};
 use crate::ui_events::AgentUiEvent;
 
 fn progress_spinner(message: &str) -> ProgressBar {
@@ -72,6 +72,18 @@ pub struct RunAgentOptions<'a> {
 fn emit_ui(ui: &Option<mpsc::UnboundedSender<AgentUiEvent>>, event: AgentUiEvent) {
     if let Some(tx) = ui {
         let _ = tx.send(event);
+    }
+}
+
+fn emit_checkpoint_warning(
+    ui_events: &Option<mpsc::UnboundedSender<AgentUiEvent>>,
+    quiet: bool,
+    message: impl Into<String>,
+) {
+    let message = message.into();
+    emit_ui(ui_events, AgentUiEvent::Status(message.clone()));
+    if ui_events.is_none() && !quiet {
+        eprintln!("{message}");
     }
 }
 
@@ -193,13 +205,7 @@ fn create_event_subscriber(
 }
 
 fn summarize_tool_args(args: &serde_json::Value) -> String {
-    let raw = args.to_string();
-    const MAX: usize = 96;
-    if raw.len() <= MAX {
-        raw
-    } else {
-        format!("{}...", &raw[..MAX.saturating_sub(3)])
-    }
+    args.to_string()
 }
 
 fn summarize_tool_result(result: &AgentToolResult) -> String {
@@ -244,6 +250,7 @@ fn summarize_tool_result(result: &AgentToolResult) -> String {
 fn create_checkpoint_write_subscriber(
     write_ctx: TurnWriteContext,
     ui_events: Option<mpsc::UnboundedSender<AgentUiEvent>>,
+    quiet: bool,
 ) -> elph_agent::AgentListener {
     let tool_args = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     Arc::new(move |event, _token| {
@@ -260,14 +267,56 @@ fn create_checkpoint_write_subscriber(
                         && let Err(err) = write_ctx.record_assistant_delta(delta).await
                     {
                         tracing::warn!(error = %err, "failed to persist assistant draft");
-                        emit_ui(
+                        emit_checkpoint_warning(
                             &ui_events,
-                            AgentUiEvent::Status(format!("Warning: checkpoint draft write failed: {err:#}")),
+                            quiet,
+                            format!("Warning: checkpoint draft write failed: {err:#}"),
                         );
                     }
                 }
-                AgentEvent::ToolExecutionStart { tool_call_id, args, .. } => {
-                    tool_args.lock().await.insert(tool_call_id, summarize_tool_args(&args));
+                AgentEvent::ToolExecutionStart {
+                    tool_call_id,
+                    tool_name,
+                    args,
+                    ..
+                } => {
+                    let args_summary = summarize_tool_args(&args);
+                    tool_args
+                        .lock()
+                        .await
+                        .insert(tool_call_id.clone(), args_summary.clone());
+                    if is_ask_tool(&tool_name)
+                        && let Err(err) = write_ctx
+                            .record_interrupt(&tool_call_id, &tool_name, &args_summary)
+                            .await
+                    {
+                        tracing::warn!(error = %err, tool = %tool_name, "failed to persist interrupt");
+                        emit_checkpoint_warning(
+                            &ui_events,
+                            quiet,
+                            format!("Warning: checkpoint interrupt write failed ({tool_name}): {err:#}"),
+                        );
+                    }
+                }
+                AgentEvent::ToolExecutionUpdate {
+                    tool_call_id,
+                    tool_name,
+                    partial_result,
+                    ..
+                } => {
+                    let args_summary = tool_args.lock().await.get(&tool_call_id).cloned().unwrap_or_default();
+                    let output = summarize_tool_result(&partial_result);
+                    if let Err(err) = write_ctx
+                        .record_tool_partial(&tool_call_id, &tool_name, &args_summary, &output)
+                        .await
+                    {
+                        tracing::warn!(error = %err, tool = %tool_name, "failed to persist tool partial");
+                        emit_checkpoint_warning(
+                            &ui_events,
+                            quiet,
+                            format!("Warning: checkpoint tool partial write failed ({tool_name}): {err:#}"),
+                        );
+                    }
                 }
                 AgentEvent::ToolExecutionEnd {
                     tool_call_id,
@@ -278,16 +327,27 @@ fn create_checkpoint_write_subscriber(
                 } => {
                     let args_summary = tool_args.lock().await.remove(&tool_call_id).unwrap_or_default();
                     let output = summarize_tool_result(&result);
+                    if is_ask_tool(&tool_name)
+                        && let Err(err) = write_ctx
+                            .record_resume(&tool_call_id, &tool_name, &output, is_error)
+                            .await
+                    {
+                        tracing::warn!(error = %err, tool = %tool_name, "failed to persist resume");
+                        emit_checkpoint_warning(
+                            &ui_events,
+                            quiet,
+                            format!("Warning: checkpoint resume write failed ({tool_name}): {err:#}"),
+                        );
+                    }
                     if let Err(err) = write_ctx
                         .record_tool_result(&tool_call_id, &tool_name, &args_summary, is_error, &output)
                         .await
                     {
                         tracing::warn!(error = %err, tool = %tool_name, "failed to persist tool write");
-                        emit_ui(
+                        emit_checkpoint_warning(
                             &ui_events,
-                            AgentUiEvent::Status(format!(
-                                "Warning: checkpoint tool write failed ({tool_name}): {err:#}"
-                            )),
+                            quiet,
+                            format!("Warning: checkpoint tool write failed ({tool_name}): {err:#}"),
                         );
                     }
                 }
@@ -455,7 +515,7 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
 
     if let Some(write_ctx) = turn_write_ctx {
         agent
-            .subscribe(create_checkpoint_write_subscriber(write_ctx, ui_events.clone()))
+            .subscribe(create_checkpoint_write_subscriber(write_ctx, ui_events.clone(), quiet))
             .await;
     }
 

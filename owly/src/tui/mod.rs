@@ -1,4 +1,4 @@
-//! iocraft-based interactive shell (Elph-parity phase 1).
+//! iocraft-based interactive shell for Owly.
 
 mod activity;
 mod app;
@@ -40,7 +40,9 @@ pub async fn run_interactive(
     }
 
     let session = SessionStore::open(cwd).await?;
-    let restored_count = session.load_messages().await?.len();
+    let loaded = session.load_conversation().await?;
+    let restored_count = loaded.messages.len();
+    let recovery = loaded.recovery;
     let db_path = session.db_path().to_path_buf();
 
     launch::from_session(launch::LaunchOptions {
@@ -51,6 +53,7 @@ pub async fn run_interactive(
         pending_setup,
         session,
         restored_count,
+        recovery,
         db_path,
         initial,
     })
