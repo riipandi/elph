@@ -33,7 +33,7 @@ jobs:
       cargo_version: ${{ steps.check.outputs.cargo_version }}
       latest_release: ${{ steps.check.outputs.latest_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Compare Cargo.toml with latest GitHub release
         id: check
