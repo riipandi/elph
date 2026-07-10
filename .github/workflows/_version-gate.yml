@@ -13,8 +13,11 @@ on:
       should_continue:
         description: Whether downstream jobs should run
         value: ${{ jobs.gate.outputs.should_continue }}
+      release_version:
+        description: Version from the release tag
+        value: ${{ jobs.gate.outputs.release_version }}
       cargo_version:
-        description: Version from Cargo.toml
+        description: Version from Cargo.toml on the tag commit
         value: ${{ jobs.gate.outputs.cargo_version }}
       latest_release:
         description: Latest stable GitHub release version, or none
@@ -30,14 +33,14 @@ jobs:
     timeout-minutes: 5
     outputs:
       should_continue: ${{ steps.check.outputs.should_continue }}
+      release_version: ${{ steps.check.outputs.release_version }}
       cargo_version: ${{ steps.check.outputs.cargo_version }}
       latest_release: ${{ steps.check.outputs.latest_release }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Compare Cargo.toml with latest GitHub release
+      - name: Compare release tag with latest GitHub release
         id: check
         env:
           APP: ${{ inputs.app }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./scripts/ci-check-app-version.sh
+        run: ./scripts/ci-check-release-version.sh

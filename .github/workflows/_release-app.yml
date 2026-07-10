@@ -16,9 +16,20 @@ permissions:
 env:
   CI: true
   BINSTALL_DISABLE_TELEMETRY: true
+  RELEASE_ALLOWED_ACTORS: ${{ vars.RELEASE_ALLOWED_ACTORS }}
 
 jobs:
+  release-auth:
+    name: Authorize release (${{ inputs.app }})
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check release actor
+        run: ./scripts/ci-check-release-actor.sh
+
   version-gate:
+    needs: release-auth
     uses: ./.github/workflows/_version-gate.yml
     with:
       app: ${{ inputs.app }}
@@ -40,6 +51,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
 
       - name: Setup Rust
         uses: ./.github/setup-rust
@@ -79,6 +95,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
 
       - name: Setup Rust
         uses: ./.github/setup-rust
@@ -111,6 +132,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
 
       - name: Setup Rust
         uses: ./.github/setup-rust
@@ -169,24 +195,11 @@ jobs:
           name: ${{ inputs.app }}-windows
           path: .
 
-      - name: Validate tag version
+      - name: Confirm release version
         shell: bash
         run: |
           set -euo pipefail
-          app="${{ inputs.app }}"
-          tag="${GITHUB_REF_NAME}"
-          prefix="${app}-v"
-          if [[ "$tag" != ${prefix}* ]]; then
-            echo "Tag $tag does not match expected prefix $prefix" >&2
-            exit 1
-          fi
-          expected="${tag#"${prefix}"}"
-          actual="$(grep '^version = ' "${app}/Cargo.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
-          if [[ "$expected" != "$actual" ]]; then
-            echo "Tag version $expected does not match ${app}/Cargo.toml version $actual" >&2
-            exit 1
-          fi
-          echo "Release version: $actual"
+          echo "Publishing ${{ inputs.app }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
 
       - name: Write checksums manifest
         shell: bash
@@ -211,3 +224,40 @@ jobs:
           files: |
             release/archives/${{ inputs.app }}-*
             release/archives/SHA256SUMS
+
+  sync-version:
+    name: Sync version on main (${{ inputs.app }})
+    needs: [version-gate, publish]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    concurrency:
+      group: sync-main-version
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync app version to released tag
+        env:
+          APP: ${{ inputs.app }}
+          RELEASED_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-sync-app-version-on-main.sh
+
+      - name: Commit and push to main
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${APP}/Cargo.toml" Cargo.lock
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(${APP}): sync version to ${GITHUB_REF_NAME} on main"
+          git pull --rebase origin main
+          git push origin main
