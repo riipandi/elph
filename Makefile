@@ -25,6 +25,7 @@ UNAME_S := $(shell uname -s)
 SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
 ifneq ($(SCCACHE_BIN),)
   export RUSTC_WRAPPER := sccache
+  export SCCACHE_DIRECT := true
 endif
 
 # Single-platform override: make cross CROSS_TARGET=aarch64-unknown-linux-musl

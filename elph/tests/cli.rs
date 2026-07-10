@@ -52,10 +52,10 @@ fn memory_status_on_empty_store() {
     assert!(stdout.contains("floppy status"));
     assert!(stdout.contains("Memories:  0"));
 
-    let memory_db = dir.path().join(".elph/memory.db");
+    let memory_db = dir.path().join(".elph/store.db");
     assert!(memory_db.is_file(), "expected floppy DB at {}", memory_db.display());
     assert!(
-        !dir.path().join(".elph/floppy/memory.db").exists(),
+        !dir.path().join(".elph/floppy/store.db").exists(),
         "floppy DB must not use legacy .elph/floppy/ path"
     );
 }

@@ -113,7 +113,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
     ]
 }
 
-/// Project-local memory store (`.elph/memory.db`).
+/// Project-local memory store (`.elph/store.db`).
 ///
 /// Composed from floppy schema migrations (ported from
 /// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with

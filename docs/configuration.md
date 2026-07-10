@@ -37,7 +37,7 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 <workDir>/.elph/             # Project-local (gitignored)
 ├── .gitignore
 ├── settings.json            # optional project overrides
-├── memory.db                # agent memory (floppy)
+├── store.db                # agent memory (floppy)
 ├── prompts/*.md
 ├── extensions/              # project-local WASM bundles (after trust)
 │   └── <name>/

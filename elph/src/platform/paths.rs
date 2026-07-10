@@ -46,7 +46,7 @@ impl Paths {
 
     /// Project-local floppy store (Turso DB).
     pub fn memory_db_path(&self) -> PathBuf {
-        self.project_elph_dir().join("memory.db")
+        self.project_elph_dir().join("store.db")
     }
 
     pub fn project_gitignore_path(&self) -> PathBuf {
@@ -143,7 +143,7 @@ mod tests {
         let paths = Paths::from_dirs(config.clone(), data.clone(), project.clone());
 
         assert_eq!(paths.metadata_db_path(), data.join("metadata.db"));
-        assert_eq!(paths.memory_db_path(), project.join(".elph/memory.db"));
+        assert_eq!(paths.memory_db_path(), project.join(".elph/store.db"));
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));
         assert_eq!(paths.bundled_manifest_path(), config.join("bundled/manifest.json"));
         assert_eq!(paths.models_dir(), data.join("models"));

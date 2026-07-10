@@ -8,7 +8,7 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 
 | Concern    | Approach                                                    |
 | ---------- | ----------------------------------------------------------- |
-| Storage    | Turso embedded SQLite (`memory.db`)                         |
+| Storage    | Turso embedded SQLite (`store.db`)                          |
 | Retrieval  | Vector similarity (`vector32`; dims match embed model)      |
 | Embeddings | Local ONNX (configurable model + cache)                     |
 | Scoring    | Welford baseline + z-score task scoring, EMA weight updates |
@@ -24,7 +24,7 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 
 ```
 ┌─────────────┐     start_task      ┌──────────────────┐
-│   Agent     │ ──────────────────► │  memory.db       │
+│   Agent     │ ──────────────────► │  store.db       │
 │   session   │ ◄── top-k memories  │  (Turso + vec)   │
 └─────────────┘     end_task        └──────────────────┘
        │              report              │
@@ -38,16 +38,16 @@ Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyri
 ```
 PROJECT_DIR/
 └── .elph/
-    ├── memory.db          # gitignored
+    ├── store.db          # gitignored
     └── .gitignore
 ```
 
 ### Standalone / library hosts
 
-| Constant         | Value       |
-| ---------------- | ----------- |
-| Default data dir | `.floppy`   |
-| Database file    | `memory.db` |
+| Constant         | Value      |
+| ---------------- | ---------- |
+| Default data dir | `.floppy`  |
+| Database file    | `store.db` |
 
 Hosts supply paths explicitly; the memory layer does not read environment variables directly.
 
@@ -175,12 +175,12 @@ Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with
 
 ## Environment (Elph host)
 
-| Variable           | Effect                           |
-| ------------------ | -------------------------------- |
-| `ELPH_HOME`        | Config dir (`settings.json`)     |
-| `ELPH_DATA_DIR`    | Data dir (`models/` cache)       |
-| `ELPH_PROJECT_DIR` | Project root (`.elph/memory.db`) |
-| `XDG_DATA_HOME`    | Base for data dir when unset     |
+| Variable           | Effect                          |
+| ------------------ | ------------------------------- |
+| `ELPH_HOME`        | Config dir (`settings.json`)    |
+| `ELPH_DATA_DIR`    | Data dir (`models/` cache)      |
+| `ELPH_PROJECT_DIR` | Project root (`.elph/store.db`) |
+| `XDG_DATA_HOME`    | Base for data dir when unset    |
 
 ## Migrations (design)
 

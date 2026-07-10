@@ -48,7 +48,7 @@ struct TestCtx {
 impl TestCtx {
     fn new() -> Self {
         let dir = tempfile::tempdir().expect("tempdir");
-        let db_path = dir.path().join("memory.db").to_string_lossy().into_owned();
+        let db_path = dir.path().join("store.db").to_string_lossy().into_owned();
         Self { _dir: dir, db_path }
     }
 

@@ -48,7 +48,7 @@ Print version and exit. Equivalent to `-V`.
 
 ### `memory`
 
-Inspect project-local memory at `<project>/.elph/memory.db`.
+Inspect project-local memory at `<project>/.elph/store.db`.
 
 | Subcommand       | Description                                             |
 | ---------------- | ------------------------------------------------------- |

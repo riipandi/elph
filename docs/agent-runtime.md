@@ -171,7 +171,7 @@ TypeID with prefix `sess` — shown in the footer.
 | Mode / thinking      | Merged home + project settings               |
 | Conversation history | In-memory + durable backend                  |
 | Platform metadata    | `metadata.db` in data dir                    |
-| Project memory       | `<project>/.elph/memory.db`                  |
+| Project memory       | `<project>/.elph/store.db`                   |
 | Todo snapshot        | Per-session metadata when TodoList is active |
 | Event / request logs | JSONL per session for diagnostics            |
 

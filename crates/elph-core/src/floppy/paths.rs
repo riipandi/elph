@@ -7,7 +7,7 @@ use super::{EmbedFn, MemoryStore};
 pub const DEFAULT_DATA_DIR: &str = ".floppy";
 
 /// Database file name inside the data directory.
-pub const DB_FILE_NAME: &str = "memory.db";
+pub const DB_FILE_NAME: &str = "store.db";
 
 /// Resolved filesystem paths for a floppy store.
 #[derive(Debug, Clone, PartialEq, Eq)]

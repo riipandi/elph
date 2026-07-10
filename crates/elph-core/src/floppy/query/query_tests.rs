@@ -29,7 +29,7 @@ struct TestCtx {
 impl TestCtx {
     fn new() -> Self {
         let dir = tempfile::tempdir().expect("tempdir");
-        let db_path = dir.path().join("memory.db").to_string_lossy().into_owned();
+        let db_path = dir.path().join("store.db").to_string_lossy().into_owned();
         let store = create_memory_store(FloppyConfig::new(db_path, "test").top_k(3).dimensions(4), mock_embed());
         Self { _dir: dir, store }
     }
@@ -153,7 +153,7 @@ async fn contradict_wrapper_returns_struct() {
 #[test]
 fn floppy_paths_project_local() {
     let paths = FloppyPaths::project_local();
-    assert!(paths.db_path().ends_with(".floppy/memory.db"));
+    assert!(paths.db_path().ends_with(".floppy/store.db"));
     let cfg = paths.config("sess");
     assert_eq!(cfg.session_id, "sess");
 }

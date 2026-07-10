@@ -13,7 +13,7 @@ reuse lessons from past work.
 ```rust
 use elph_core::floppy::{FloppyBuilder, FastEmbedOptions};
 
-let store = FloppyBuilder::new("/path/to/memory.db", "session-id")
+let store = FloppyBuilder::new("/path/to/store.db", "session-id")
     .fastembed(FastEmbedOptions::default())? // requires `fastembed`
     .build()?;
 
@@ -26,7 +26,7 @@ let result = store.start_task("implement auth middleware").await?;
 Without it, supply your own [`EmbedFn`](https://docs.rs/elph_core/latest/elph_core/floppy/type.EmbedFn.html).
 
 **Configuration:** explicit via [`FloppyBuilder`](src/floppy/builder.rs) — floppy does not read environment variables.
-**Paths:** Elph stores project memory at `PROJECT_DIR/.elph/memory.db`. Standalone default: `FloppyPaths::project_local()` → `./.floppy/memory.db`.
+**Paths:** Elph stores project memory at `PROJECT_DIR/.elph/store.db`. Standalone default: `FloppyPaths::project_local()` → `./.floppy/store.db`.
 
 Full documentation: [docs/memory.md](../../docs/memory.md).
 
