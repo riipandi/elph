@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Build and package eclaw + elph for one Rust target.
+# Build and package elph, eclaw, and/or owly for one Rust target.
+# Optional second argument or APP env limits the build to one application.
 set -euo pipefail
 
-target="${1:?usage: cross-build.sh <target-triple>}"
+target="${1:?usage: cross-build.sh <target-triple> [app]}"
+app_arg="${2:-${APP:-}}"
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/cross-host.sh
@@ -52,7 +54,19 @@ elif [[ "${CROSS_VERBOSE:-}" == "1" ]]; then
     build_args+=(--verbose)
 fi
 
-for pkg in eclaw elph owly; do
+if [[ -n "$app_arg" ]]; then
+    case "$app_arg" in
+    elph | eclaw | owly) apps=("$app_arg") ;;
+    *)
+        echo "unknown app: $app_arg (expected elph, eclaw, or owly)" >&2
+        exit 1
+        ;;
+    esac
+else
+    apps=(eclaw elph owly)
+fi
+
+for pkg in "${apps[@]}"; do
     "$builder" "${build_args[@]}" "$pkg" --target "$target"
     "$stage" "$target" "$pkg"
 done

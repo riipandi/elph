@@ -132,8 +132,8 @@ else
     tar -C "$tmp" -czf "$artifact_path" "$bin"
 fi
 
-refresh_checksums "$binaries_dir" eclaw-* elph-* owly-*
-refresh_checksums "$archives_dir" '*.tar.gz' '*.zip'
+refresh_checksums "$binaries_dir" "${bin}-*"
+refresh_checksums "$archives_dir" "${bin}-*".tar.gz "${bin}-*".zip
 
 file_bytes() {
     if stat -f%z "$1" >/dev/null 2>&1; then

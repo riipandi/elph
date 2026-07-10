@@ -47,8 +47,13 @@ cross_log_banner "Cross-release  ${label}"
 echo
 cross_print_plan "${targets[@]}"
 
+app="${APP:-}"
 for target in "${targets[@]}"; do
-    "${root}/scripts/cross-build.sh" "$target"
+    if [[ -n "$app" ]]; then
+        "${root}/scripts/cross-build.sh" "$target" "$app"
+    else
+        "${root}/scripts/cross-build.sh" "$target"
+    fi
     echo
 done
 

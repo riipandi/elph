@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: setup-rust
+description: Prepare Rust toolchain, caches, and CI tools
+
+inputs:
+  sharedKey:
+    description: Cache key prefix (e.g. ci-elph-ubuntu-24.04)
+    required: true
+  installCross:
+    description: Install cross and rustup targets for release builds
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: 1.96.1
+        components: clippy, rustfmt
+
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.9
+
+    - name: Setup Cargo cache
+      uses: swatinem/rust-cache@v2
+      with:
+        cache-on-failure: true
+        shared-key: ${{ inputs.sharedKey }}
+
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest@latest
+
+    - name: Install cross and targets
+      if: inputs.installCross == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cargo install cross --locked
+        while read -r target; do
+          rustup target add "$target"
+        done < ./scripts/cross-targets.sh
+
+    - name: Export Rust CI environment
+      shell: bash
+      run: |
+        {
+          echo "RUSTC_WRAPPER=sccache"
+          echo "SCCACHE_GHA_ENABLED=true"
+          echo "CARGO_INCREMENTAL=0"
+          echo "CARGO_TERM_COLOR=always"
+        } >> "$GITHUB_ENV"

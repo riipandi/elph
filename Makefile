@@ -12,6 +12,11 @@ BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS     := $(ELPH_BIN) $(ECLAW_BIN) $(OWLY_BIN)
 INSTALL_DIR  := $(HOME)/.local/bin
 BUILD_DIR    := ./target/release
+APP          ?=
+
+_ELPH_PKGS   := elph elph-core elph-agent elph-ai elph-tui
+_ECLAW_PKGS  := eclaw elph-core elph-agent elph-ai
+_OWLY_PKGS   := owly elph-agent elph-ai elph-tui
 
 UNAME_S := $(shell uname -s)
 
@@ -35,7 +40,8 @@ $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 .PHONY: build build-elph build-eclaw build-owly run watch test
-.PHONY: lint fmt clean check coverage help stats generate-models prepare
+.PHONY: test-elph test-eclaw test-owly check-elph check-eclaw check-owly
+.PHONY: lint lint-elph lint-eclaw lint-owly fmt clean check coverage help stats generate-models prepare
 .PHONY: cross cross-pull release release-linux release-macos release-windows
 .PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
 
@@ -98,6 +104,24 @@ watch: ## Run eclaw with hot reload (requires watchexec)
 test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
 
+test-elph: ## Run tests for elph and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui $(ARGS)
+
+test-eclaw: ## Run tests for eclaw and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p eclaw -p elph-core -p elph-agent -p elph-ai $(ARGS)
+
+test-owly: ## Run tests for owly and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p owly -p elph-agent -p elph-ai -p elph-tui $(ARGS)
+
+check-elph: ## Check elph and its workspace deps compile
+	@$(CARGO) check -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui 2>&1
+
+check-eclaw: ## Check eclaw and its workspace deps compile
+	@$(CARGO) check -p eclaw -p elph-core -p elph-agent -p elph-ai 2>&1
+
+check-owly: ## Check owly and its workspace deps compile
+	@$(CARGO) check -p owly -p elph-agent -p elph-ai -p elph-tui 2>&1
+
 generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_AI_CATALOG_DIR, ARGS=--skip-scripts)
 	@test -f "$(ELPH_AI_CATALOG_DIR)/scripts/generate-models.ts" || { \
 	  echo "catalog source not found at: $(ELPH_AI_CATALOG_DIR)" >&2; \
@@ -117,26 +141,35 @@ generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_
 cross-pull: ## Pull ghcr.io/cross-rs images into local Docker cache
 	@./scripts/cross-pull-images.sh
 
-cross: ## Build one platform (CROSS_TARGET=<triple>; CROSS_QUIET=1 / CROSS_VERBOSE=1)
+cross: ## Build one platform (CROSS_TARGET=<triple>; APP=elph|eclaw|owly; CROSS_QUIET=1 / CROSS_VERBOSE=1)
 	@test -n "$(CROSS_TARGET)" || { echo "Usage: make cross CROSS_TARGET=<triple>" >&2; exit 1; }
-	@./scripts/cross-build.sh $(CROSS_TARGET)
+	@APP="$(APP)" ./scripts/cross-build.sh $(CROSS_TARGET) $(APP)
 
 release: ## Build release (host-aware: cargo native, cross remote)
 	@./scripts/cross-release.sh
 
-release-linux: ## Build Linux release (glibc + musl, x86_64 + arm64)
-	@./scripts/cross-platform.sh linux
+release-linux: ## Build Linux release (glibc + musl, x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh linux
 
-release-macos: ## Build macOS release (x86_64 + arm64)
-	@./scripts/cross-platform.sh macos
+release-macos: ## Build macOS release (x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh macos
 
-release-windows: ## Build Windows release (x86_64 + arm64)
-	@./scripts/cross-platform.sh windows
+release-windows: ## Build Windows release (x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh windows
 
 # ─── Code Quality ───────────────────────────────────────────────────────────
 
 lint: ## Run clippy linter
 	@$(CARGO) clippy --workspace --all-targets -- -D warnings
+
+lint-elph: ## Run clippy for elph and its workspace deps
+	@$(CARGO) clippy -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui --all-targets -- -D warnings
+
+lint-eclaw: ## Run clippy for eclaw and its workspace deps
+	@$(CARGO) clippy -p eclaw -p elph-core -p elph-agent -p elph-ai --all-targets -- -D warnings
+
+lint-owly: ## Run clippy for owly and its workspace deps
+	@$(CARGO) clippy -p owly -p elph-agent -p elph-ai -p elph-tui --all-targets -- -D warnings
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024

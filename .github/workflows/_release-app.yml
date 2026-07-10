@@ -1,0 +1,188 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Release App
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Application to release (elph, eclaw, or owly)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+
+jobs:
+  quality-gate:
+    name: Quality gate (${{ inputs.app }})
+    uses: ./.github/workflows/_ci-app.yml
+    with:
+      app: ${{ inputs.app }}
+      sharedKeyPrefix: release
+
+  build-linux:
+    name: Build Linux (${{ inputs.app }})
+    needs: quality-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-${{ inputs.app }}-linux
+          installCross: "true"
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull cross-rs images
+        run: make cross-pull
+
+      - name: Build Linux release
+        run: make release-linux
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-linux
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (${{ inputs.app }})
+    needs: quality-gate
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-${{ inputs.app }}-macos
+
+      - name: Build macOS release
+        run: make release-macos
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-macos
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows (${{ inputs.app }})
+    needs: quality-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-${{ inputs.app }}-windows
+          installCross: "true"
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull cross-rs images
+        run: make cross-pull
+
+      - name: Build Windows release
+        run: make release-windows
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.app }}-windows
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  publish:
+    name: Publish (${{ inputs.app }})
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.app }}-linux
+          path: .
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.app }}-macos
+          path: .
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.app }}-windows
+          path: .
+
+      - name: Validate tag version
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ inputs.app }}"
+          tag="${GITHUB_REF_NAME}"
+          prefix="${app}-v"
+          if [[ "$tag" != ${prefix}* ]]; then
+            echo "Tag $tag does not match expected prefix $prefix" >&2
+            exit 1
+          fi
+          expected="${tag#"${prefix}"}"
+          actual="$(grep '^version = ' "${app}/Cargo.toml" | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
+          if [[ "$expected" != "$actual" ]]; then
+            echo "Tag version $expected does not match ${app}/Cargo.toml version $actual" >&2
+            exit 1
+          fi
+          echo "Release version: $actual"
+
+      - name: Write checksums manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ inputs.app }}"
+          mkdir -p "release/archives"
+          if command -v sha256sum >/dev/null 2>&1; then
+            (cd release/archives && sha256sum -- ${app}-* > SHA256SUMS)
+          else
+            (cd release/archives && shasum -a 256 -- ${app}-* > SHA256SUMS)
+          fi
+          cat "release/archives/SHA256SUMS"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/archives/${{ inputs.app }}-*
+            release/archives/SHA256SUMS
