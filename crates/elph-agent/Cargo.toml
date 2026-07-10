@@ -16,7 +16,8 @@ name = "elph_agent"
 path = "src/lib.rs"
 
 [features]
-default = ["mcp"]
+default = ["mcp", "extensions"]
+extensions = ["dep:wasmtime"]
 mcp = ["dep:rmcp"]
 obscura = ["dep:obscura"]
 # obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
@@ -53,7 +54,9 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tokio-util = { workspace = true, features = ["rt"] }
+toml.workspace = true
 tracing.workspace = true
+wasmtime = { workspace = true, optional = true }
 tsid.workspace = true
 turso.workspace = true
 url.workspace = true

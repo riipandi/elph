@@ -2,7 +2,13 @@
 
 Design for `/`-prefixed commands in the TUI input.
 
-Built-in commands always win over prompt templates with the same name. See [prompt-templates.md](./prompt-templates.md) for `/name` from Markdown files.
+Dispatch order:
+
+1. **Built-in commands** (this table)
+2. **Extension commands** from WASM bundles — see [extensions.md](./extensions.md)
+3. **Prompt templates** — `/name` from Markdown files ([prompt-templates.md](./prompt-templates.md))
+
+Built-in commands always win over extension and template names.
 
 ## Built-in commands
 
@@ -14,6 +20,7 @@ Built-in commands always win over prompt templates with the same name. See [prom
 | `/exit`                     | `/quit`, `/q` | Quit                                             |
 | `/commit`                   | —             | Generate commit message from staged changes      |
 | `/compact`                  | `/c`          | Compact history; optional percentage arg         |
+| `/reload`                   | —             | Reload extensions + resources; refresh palette   |
 | `/diagnostic:list-tools`    | —             | List tools in a detail box                       |
 | `/diagnostic:system-prompt` | —             | Show assembled system prompt (collapsed default) |
 | `/diagnostic:open-log`      | —             | Tail session or requests log                     |
@@ -35,6 +42,16 @@ Built-in commands always win over prompt templates with the same name. See [prom
 | `/goal <objective>`         | Create goal from argument text |
 
 Inspired by [Kimi Code CLI slash commands](https://moonshotai.github.io/kimi-code/en/reference/slash-commands.html#autonomous-goal).
+
+## Extension commands
+
+Extensions contribute slash commands dynamically (e.g. `/say-hello <name>` from the reference bundle). They appear in the autocomplete palette after `/reload` or session start.
+
+| Behavior        | Design                                              |
+| --------------- | --------------------------------------------------- |
+| Unknown `/foo`  | "not implemented" if no built-in or extension match |
+| Extension error | System line: `Extension error: …`                   |
+| Success         | System line with extension message                  |
 
 ## Owly subset (separate design)
 
@@ -106,6 +123,7 @@ Paths: `<workDir>/.elph/metadata/<sess_id>/` — see [configuration.md](./config
 
 ## Related
 
+- [extensions.md](./extensions.md)
 - [prompt-templates.md](./prompt-templates.md)
 - [tui.md](./tui.md)
 - [tools.md](./tools.md)

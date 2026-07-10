@@ -91,7 +91,16 @@ Subcommands: `list`, `add`, `remove`, `doctor`, `auth`, `logout`.
 
 ### `plugin`
 
-Subcommands: `list`, `install`, `remove`, `update`, `enable`, `disable`.
+Manage WASM extension bundles (wasmtime + Component Model). See [extensions.md](./extensions.md).
+
+| Subcommand       | Flags             | Design behavior                                   |
+| ---------------- | ----------------- | ------------------------------------------------- |
+| `list`           | —                 | Installed extensions, enabled state, `/commands`  |
+| `install <path>` | `--force`         | Copy local bundle to `~/.elph/extensions/<name>/` |
+| `remove <name>`  | —                 | Delete global bundle                              |
+| `enable <name>`  | —                 | Remove from `extensions.json` `disabled`          |
+| `disable <name>` | —                 | Add to `extensions.json` `disabled`               |
+| `update`         | `--all`, `[name]` | **Planned** — git/npm package updates             |
 
 ### `server`
 
@@ -130,7 +139,20 @@ First run scaffolds home config, data dirs, default settings, provider directory
 | `7`   | API server error (5xx) |
 | `130` | Interrupted (SIGINT)   |
 
+## Workspace builds
+
+Release builds via root `Makefile`. See [development.md](./development.md).
+
+| Target             | Output                          |
+| ------------------ | ------------------------------- |
+| `make build`       | All binaries: elph, eclaw, owly |
+| `make build-elph`  | `target/release/elph`           |
+| `make build-eclaw` | `target/release/eclaw`          |
+| `make build-owly`  | `target/release/owly`           |
+
 ## Related
 
 - [configuration.md](./configuration.md)
+- [development.md](./development.md)
+- [extensions.md](./extensions.md)
 - [README.md](./README.md)

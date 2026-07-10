@@ -15,6 +15,11 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 │   └── …                    # one file per provider id
 ├── prompts/
 │   └── *.md                 # global templates → /name
+├── extensions/              # global WASM extension bundles
+│   └── <name>/
+│       ├── extension.toml
+│       └── component.wasm
+├── extensions.json          # disabled list + extra discovery paths
 └── skills/
     └── <name>/SKILL.md      # global skills
 
@@ -34,6 +39,8 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 ├── settings.json            # optional project overrides
 ├── memory.db                # agent memory (floppy)
 ├── prompts/*.md
+├── extensions/              # project-local WASM bundles (after trust)
+│   └── <name>/
 ├── skills/<name>/SKILL.md
 └── metadata/
     └── <session_id>/
@@ -166,6 +173,7 @@ Immediate refresh: `elph provider update`.
 
 ## Related
 
-- [cli.md](./cli.md) — `provider`, `memory`
+- [cli.md](./cli.md) — `provider`, `memory`, `plugin`
+- [extensions.md](./extensions.md) — WASM extension paths
 - [memory.md](./memory.md) — floppy store
 - [agent-runtime.md](./agent-runtime.md) — session logging

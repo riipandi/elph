@@ -34,8 +34,9 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage help stats generate-models
-.PHONY: prepare cross cross-pull release build-linux build-macos build-windows
+.PHONY: build build-elph build-eclaw build-owly run watch test
+.PHONY: lint fmt clean check coverage help stats generate-models prepare
+.PHONY: cross cross-pull release release-linux release-macos release-windows
 .PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
 
 # ─── Build ──────────────────────────────────────────────────────────────────
@@ -66,6 +67,18 @@ build: ## Build all application binaries (elph + eclaw + owly)
 	  fi; \
 	done; \
 	printf "Build time: %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
+
+build-elph: ## Build elph binary
+	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(ELPH_BIN) 2>&1
+
+build-eclaw: ## Build eclaw binary
+	@echo "Building $(ECLAW_BIN) v$(ECLAW_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(ECLAW_BIN) 2>&1
+
+build-owly: ## Build owly binary
+	@echo "Building $(OWLY_BIN) v$(OWLY_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(OWLY_BIN) 2>&1
 
 install: build ## Install elph-next, eclaw-next, and owly to $INSTALL_DIR
 	@mkdir -p $(INSTALL_DIR) && echo
@@ -111,13 +124,13 @@ cross: ## Build one platform (CROSS_TARGET=<triple>; CROSS_QUIET=1 / CROSS_VERBO
 release: ## Build release (host-aware: cargo native, cross remote)
 	@./scripts/cross-release.sh
 
-build-linux: ## Build Linux release (glibc + musl, x86_64 + arm64)
+release-linux: ## Build Linux release (glibc + musl, x86_64 + arm64)
 	@./scripts/cross-platform.sh linux
 
-build-macos: ## Build macOS release (x86_64 + arm64)
+release-macos: ## Build macOS release (x86_64 + arm64)
 	@./scripts/cross-platform.sh macos
 
-build-windows: ## Build Windows release (x86_64 + arm64)
+release-windows: ## Build Windows release (x86_64 + arm64)
 	@./scripts/cross-platform.sh windows
 
 # ─── Code Quality ───────────────────────────────────────────────────────────

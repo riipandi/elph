@@ -11,6 +11,10 @@ rust-version.workspace = true
 edition.workspace = true
 publish = true
 
+[lib]
+name = "elph"
+path = "src/lib.rs"
+
 [[bin]]
 name = "elph"
 path = "src/main.rs"
@@ -36,4 +40,9 @@ futures-util.workspace = true
 libc.workspace = true
 
 [dev-dependencies]
+elph-agent.workspace = true
+elph-core.workspace = true
+elph-tui.workspace = true
+libc.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

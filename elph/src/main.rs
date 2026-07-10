@@ -1,28 +1,16 @@
-mod app;
-mod cmd;
-mod coding_agent;
-mod command;
-mod config;
-mod memory;
-mod plugins;
-mod prompt;
-mod runtime;
-mod skills;
-mod tui;
-mod widget;
-mod worktree;
-
 use anyhow::Result;
 use clap::Parser;
 
+use elph::cli;
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = cmd::Cli::parse();
+    let cli_args = cli::Cli::parse();
 
-    if cli.version {
-        std::process::exit(cmd::version::handle());
+    if cli_args.version {
+        std::process::exit(cli::version::handle());
     }
 
-    let code = cmd::run(&cli);
+    let code = cli::run(&cli_args);
     std::process::exit(code);
 }

@@ -135,7 +135,19 @@ Elph TUI wiring for plan confirmation is deferred; Owly is out of scope for this
 
 ### Subagents (`elph-agent`)
 
-Child `Agent` instances managed by `AgentControl` on the harness. Multi-agent tools (`spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`) are registered when the harness uses the default active-tool set. Subagents inherit the parent model, stream function, and non–multi-agent tool catalog.
+Child agents managed by `AgentControl` on the harness (Codex thread style). Design:
+
+- `spawn_agent` creates a **persistent child** (`SessionDirStorage` + mini `AgentHarness`).
+- Shared `AgentRegistry` across parent and children; `agent_path` for nested identity.
+- `max_depth = 3`; children may spawn further children when depth allows.
+- Multi-agent tools: `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`.
+- Graph edges persisted in `metadata.db` (`agent_spawn_edges`).
+
+TUI shows `agent_id` + `agent_path` in subagent status lines.
+
+### Extensions (WASM)
+
+Pi-compatible extension bundles discovered from `~/.elph/extensions/` and `<project>/.elph/extensions/`. Phase 1: slash commands via wasmtime Component Model. `/reload` refreshes registry. See [extensions.md](./extensions.md).
 
 ## Thinking levels
 
@@ -169,14 +181,30 @@ TypeID with prefix `sess` — shown in the footer.
 - Stored under data dir `attachments/`
 - Non-vision models: paths appended to text so the agent can use ReadMediaFile
 
-## Goals & todos (planned)
+## Goals & todos
 
-**Goal** — session objective with lifecycle `active` → `complete` / `blocked` / `paused`; tools CreateGoal, GetGoal, UpdateGoal, SetGoalBudget; slash `/goal`.
+### Goals (implemented)
 
-**TodoList** — Tasks panel above input; per-session snapshot persistence.
+Session objective with Codex-style lifecycle and budgets:
+
+| Status                      | Meaning                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `active`                    | Turn accounting runs; continuation steering when still active |
+| `complete` / `blocked`      | Terminal; set via `UpdateGoal` or `/goal`                     |
+| `paused` / `budget_limited` | Blocks turns until resume or budget extend                    |
+
+Tools: `CreateGoal`, `GetGoal`, `UpdateGoal`, `SetGoalBudget`. Slash: `/goal` (status, pause, resume, cancel, replace, create). `/goal next` — **planned** (queued goals).
+
+Turn hooks: harness `start_turn` / `finish_turn` with token/wall-clock accounting.
+
+### TodoList (planned)
+
+Tasks panel above input; per-session snapshot persistence.
 
 ## Related
 
+- [extensions.md](./extensions.md) — WASM extension design
+- [codebase-layout.md](./codebase-layout.md) — `elph` crate modules
 - [tools.md](./tools.md) — catalog and approval
 - [configuration.md](./configuration.md) — settings and paths
 - [tui.md](./tui.md) — layout and keybindings

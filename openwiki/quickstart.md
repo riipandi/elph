@@ -1,6 +1,6 @@
 ---
 title: "Quickstart Guide"
-last_updated: 2026-07-20T10:00:00Z
+last_updated: 2026-07-20T12:00:00Z
 category: quickstart
 tags:
     - getting-started
@@ -134,7 +134,7 @@ Every Markdown file includes [YAML frontmatter](frontmatter.md) with title, last
 | [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)             | First-run credential onboarding wizard                                                                                                   |
 | [`owly/src/prompts.rs`](../owly/src/prompts.rs)                   | System and user prompts for the agent                                                                                                    |
 | [`owly/src/session.rs`](../owly/src/session.rs)                   | Turso-backed session store with checkpoint persistence                                                                                   |
-| [`owly/src/shell.rs`](../owly/src/shell.rs)                       | Interactive Owly shell (REPL with credential wizard, follow-ups)                                                                         |
+| [`owly/src/shell/mod.rs`](../owly/src/shell/mod.rs)               | Interactive Owly shell — command dispatch, init/update/chat runs, REPL input handling                                                    |
 | [`owly/src/startup.rs`](../owly/src/startup.rs)                   | Startup command resolution, TTY validation                                                                                               |
 | [`owly/src/config.rs`](../owly/src/config.rs)                     | Provider/model resolution, config file loading                                                                                           |
 | [`owly/src/constants.rs`](../owly/src/constants.rs)               | Provider definitions, default values, env var keys                                                                                       |
@@ -152,7 +152,7 @@ Every Markdown file includes [YAML frontmatter](frontmatter.md) with title, last
 | [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)           | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                                                                                  |
 | [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)     | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates                                                                      |
 | [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)             | Shared visual tokens (`subtle_border` for low-contrast frames)                                                                           |
-| [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_header`, `tool_transcript_body`) |
+| [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_compact`, `tool_transcript_body`) |
 | [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)           | Thread-safe `AppContext` for TUI and async command dispatch                                                                              |
 | [`owly/src/tui/launch.rs`](../owly/src/tui/launch.rs)             | One-shot launch payload for the Owly interactive shell                                                                                   |
 | [`owly/src/tui/setup.rs`](../owly/src/tui/setup.rs)               | In-TUI first-run credential setup wizard                                                                                                 |
@@ -204,7 +204,7 @@ cargo clippy -p owly --all-targets -- -D warnings
 - **Agent runtime**: Uses `elph-agent` (not LangChain/LangGraph). Agent loop and tool execution are delegated to `elph-agent`.
 - **LLM integration**: Uses `elph-ai` for provider abstraction. Model lookup goes through `builtin_models()`.
 - **Tools**: Init/update mode uses all tools (read, bash, edit, write, grep, find, ls). Chat mode uses read-only tools plus `ask_text`, `ask_select`, `ask_confirm` for interactive use.
-- **Interactive mode**: Running `owly` with no arguments starts an interactive shell managed by [`shell.rs`](../owly/src/shell.rs) — a REPL that offers a first-run credential wizard (`onboarding.rs`), session persistence (`session.rs`), and supports follow-up commands after init/update/chat. The TUI prompt was redesigned with a compact help bar showing keybindings: `Enter` send, `Shift+Enter` newline, `Esc` clear, `Tab` cycle mode, `←/→` cursor, `Alt+←/→` word jump, `Alt+⌫` delete word, `Shift+↑/↓` scroll chat, `Shift+End` jump tail. Cursor navigation uses the custom [`editing.rs`](../crates/elph-tui/src/prompt/editing.rs) module for reliable arrow key handling. Scroll logic was extracted into the shared [`transcript_scroll.rs`](../crates/elph-tui/src/prompt/transcript_scroll.rs) module with `Shift+Up/Down`, `PageUp/Down`, and `Shift+End` keybindings plus auto-scroll follow-tail behavior.
+- **Interactive mode**: Running `owly` with no arguments starts an interactive shell managed by [`shell/mod.rs`](../owly/src/shell/mod.rs) — a REPL that offers a first-run credential wizard (`onboarding.rs`), session persistence (`session.rs`), and supports follow-up commands after init/update/chat. The TUI prompt was redesigned with a compact help bar showing keybindings: `Enter` send, `Shift+Enter` newline, `Esc` clear, `Tab` cycle mode, `←/→` cursor, `Alt+←/→` word jump, `Alt+⌫` delete word, `Shift+↑/↓` scroll chat, `Shift+End` jump tail. Cursor navigation uses the custom [`editing.rs`](../crates/elph-tui/src/prompt/editing.rs) module for reliable arrow key handling. Scroll logic was extracted into the shared [`transcript_scroll.rs`](../crates/elph-tui/src/prompt/transcript_scroll.rs) module with `Shift+Up/Down`, `PageUp/Down`, and `Shift+End` keybindings plus auto-scroll follow-tail behavior.
 - **Interactive slash commands**: `/init`, `/update`, `/history [n]`, `/restore <#|id>`, `/clear`, `/help`, `/exit`. `/history` lists recent checkpoints; `/restore` rewinds the session to an earlier checkpoint (the next turn forks from that point).
 - **Session persistence**: Each owly run creates a `SessionStore` backed by Turso checkpointing. Conversation messages are persisted across turns and restorable on subsequent runs in the same directory. Mid-turn assistant drafts and pending `ask_*` interrupts are recovered from checkpoint `writes` on restart.
 - **Ecosystem sync**: After a successful init/update that changes documentation, [`ecosystem.rs`](../owly/src/ecosystem.rs) appends Owly context instructions to `AGENTS.md` and `CLAUDE.md` (if they exist).

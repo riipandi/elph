@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::coding_agent::CodingAgentSession;
+use crate::agent::CodingAgentSession;
 
 pub struct TurnDispatcher;
 

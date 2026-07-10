@@ -6,7 +6,7 @@ use elph_tui::{
     DEFAULT_TRANSCRIPT_CAP, ToolExecutionState, ToolExecutionStatus, TranscriptEntry, TranscriptRole, push_capped,
 };
 
-use crate::coding_agent::AgentUiEvent;
+use crate::agent::AgentUiEvent;
 
 pub struct TranscriptApplier<'a> {
     entries: &'a mut Vec<TranscriptEntry>,

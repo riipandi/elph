@@ -15,6 +15,7 @@ pub mod mcp;
 pub mod messages;
 pub mod migration;
 pub mod mode;
+#[cfg(feature = "extensions")]
 pub mod plugins;
 pub mod prompt_templates;
 pub mod proxy;
@@ -82,6 +83,11 @@ pub use mode::{
     CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
     implement_prompt, is_multi_agent_tool, is_mutating_tool, plan_mode_block_reason, plan_mode_blocks_tool,
     plan_mode_system_prompt,
+};
+#[cfg(feature = "extensions")]
+pub use plugins::{
+    ExtensionCommand, ExtensionManifest, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings,
+    discover_manifests, extension_roots, global_extensions_dir, load_manifest, project_extensions_dir,
 };
 pub use prompt_templates::{
     LoadPromptTemplatesResult, LoadSourcedPromptTemplatesResult, PromptTemplateDiagnostic,

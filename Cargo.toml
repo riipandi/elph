@@ -81,7 +81,9 @@ tracing = "0.1.44"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["env-filter", "fmt", "json", "std"] }
 tsid = "0.3.4"
+toml = "0.8.19"
 turso = { version = "0.6.1", default-features = false }
+wasmtime = { version = "28.0.0", default-features = false, features = ["component-model", "async", "cranelift", "std"] }
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.2"
 url = "2.5.8"
