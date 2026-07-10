@@ -32,7 +32,7 @@ use crate::mode::{CollaborationMode, filter_active_tools};
 use crate::runtime::try_block_on;
 use crate::session::tree::Session;
 use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
-use crate::subagent::{AgentControl, AgentRegistry, SubagentLimits, SubagentSpawnConfig};
+use crate::subagent::{AgentControl, AgentRegistry, SubagentLimits, SubagentSpawnConfig, generate_agent_name};
 use crate::tools::create_multi_agent_tools;
 use crate::types::{AgentMessage, AgentThinkingLevel, AgentTool, ConvertToLlmFn, QueueMode, StreamFn};
 
@@ -157,22 +157,25 @@ where
         let agent_control = if let Some(control) = options.agent_control {
             control
         } else {
-            Arc::new(AgentControl::new(
-                SubagentSpawnConfig {
-                    env: options.env.clone(),
-                    model: options.model.clone(),
-                    system_prompt: String::new(),
-                    base_tools: base_tools.clone(),
-                    stream_fn,
-                    models: options.models.clone(),
-                    root_session_id: root_session_id.clone(),
-                    bootstrap: options.subagent_bootstrap.clone(),
-                },
-                limits.clone(),
-                0,
-                shared_registry.clone(),
-                "root",
-            ))
+            {
+                let parent_agent_path = generate_agent_name();
+                Arc::new(AgentControl::new(
+                    SubagentSpawnConfig {
+                        env: options.env.clone(),
+                        model: options.model.clone(),
+                        system_prompt: String::new(),
+                        base_tools: base_tools.clone(),
+                        stream_fn,
+                        models: options.models.clone(),
+                        root_session_id: root_session_id.clone(),
+                        bootstrap: options.subagent_bootstrap.clone(),
+                    },
+                    limits.clone(),
+                    0,
+                    shared_registry.clone(),
+                    parent_agent_path,
+                ))
+            }
         };
         if agent_control.depth() < limits.max_depth && !is_child_harness {
             for tool in create_multi_agent_tools(agent_control.clone()) {

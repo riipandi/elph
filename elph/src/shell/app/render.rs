@@ -18,18 +18,10 @@ pub fn render_app(ui: &mut Context, app: &mut ElphApp) {
     app.handle_global_keys(ui);
     app.theme.apply_to(ui);
 
-    if app.plan_modal.visible {
-        render_plan_confirmation(ui, &app.plan_modal, app.theme);
-        return;
-    }
-    if app.tool_modal.visible {
-        render_tool_approval(ui, &app.tool_modal, app.theme);
-        return;
-    }
-
     let overlay = app.active_overlay;
     let overlay_items = app.overlay_items.clone();
     let overlay_visible = app.overlay_visible();
+    let dialog_visible = app.plan_modal.visible || app.tool_modal.visible;
 
     let project_dir = app.project_dir.clone();
     let project_name = elph_tui::path_basename(&project_dir).to_string();
@@ -108,7 +100,7 @@ pub fn render_app(ui: &mut Context, app: &mut ElphApp) {
         }
         ShellRegion::Input => {
             app.handle_prompt(ui);
-            if !overlay_visible {
+            if !overlay_visible && !dialog_visible {
                 render_prompt(
                     ui,
                     &mut app.prompt,
@@ -124,7 +116,11 @@ pub fn render_app(ui: &mut Context, app: &mut ElphApp) {
         }
     });
 
-    if overlay_visible {
+    if app.plan_modal.visible {
+        render_plan_confirmation(ui, &app.plan_modal, app.theme);
+    } else if app.tool_modal.visible {
+        render_tool_approval(ui, &app.tool_modal, app.theme);
+    } else if overlay_visible {
         match overlay {
             ActiveOverlay::Model => {
                 let current = app.prompt.model_name.clone();

@@ -113,7 +113,7 @@ pub use skills::{
 };
 pub use subagent::{
     AgentControl, AgentGraphStore, AgentRegistry, SubagentBootstrap, SubagentEventForwarder, SubagentHarness,
-    SubagentInfo, SubagentLimits, SubagentSpawnConfig, SubagentStatus,
+    SubagentInfo, SubagentLimits, SubagentSpawnConfig, SubagentStatus, generate_agent_name,
 };
 pub use tools::{WebSearchEngine, WebSearchResult};
 pub use tools::{

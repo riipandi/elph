@@ -46,6 +46,7 @@ pub async fn spawn_subagent_harness(
     _stream_fn: crate::types::StreamFn,
     base_tools: Vec<AgentTool>,
     root_session_id: &str,
+    agent_id: &str,
     task_name: &str,
     agent_path: &str,
     depth: u32,
@@ -104,7 +105,7 @@ pub async fn spawn_subagent_harness(
     .map_err(|e: AgentHarnessError| e.to_string())?;
 
     let info = SubagentInfo {
-        id: format!("agent_{}", crate::session::id::create_tsid()),
+        id: agent_id.to_string(),
         session_id: child_session_id,
         task_name: task_name.to_string(),
         agent_path: agent_path.to_string(),

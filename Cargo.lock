@@ -2398,6 +2398,7 @@ dependencies = [
  "futures",
  "ignore",
  "indicatif",
+ "memorable-ids",
  "obscura",
  "parking_lot",
  "regex",

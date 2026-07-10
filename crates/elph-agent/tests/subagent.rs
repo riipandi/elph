@@ -54,6 +54,8 @@ async fn spawn_and_list_subagents_with_session_dir() {
         agent_graph: Some(Arc::new(AgentGraphStore::new(&graph_db))),
     };
 
+    let registry = Arc::new(elph_agent::AgentRegistry::new());
+    let parent_path = elph_agent::generate_agent_name();
     let control = AgentControl::new(
         SubagentSpawnConfig {
             env,
@@ -67,8 +69,8 @@ async fn spawn_and_list_subagents_with_session_dir() {
         },
         SubagentLimits::default(),
         0,
-        Arc::new(elph_agent::AgentRegistry::new()),
-        "root",
+        registry,
+        parent_path.clone(),
     );
 
     let id = control
@@ -81,7 +83,13 @@ async fn spawn_and_list_subagents_with_session_dir() {
     assert_eq!(agents.len(), 1);
     assert_eq!(agents[0].id, id);
     assert_eq!(agents[0].task_name, "review");
-    assert_eq!(agents[0].agent_path, "root/review");
+    assert_eq!(agents[0].agent_path, format!("{}/{}", parent_path, agents[0].id));
+    assert!(
+        agents[0].id.starts_with("agent_"),
+        "subagent id should use agent_ prefix, got {}",
+        agents[0].id
+    );
+    assert_ne!(agents[0].id, parent_path, "subagent id should differ from parent");
     assert_eq!(agents[0].depth, 1);
     assert!(!agents[0].session_id.is_empty());
     assert!(matches!(

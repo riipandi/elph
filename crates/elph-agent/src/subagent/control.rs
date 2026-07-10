@@ -6,6 +6,7 @@ use elph_ai::{Message, Model, UserContent};
 use tokio::sync::Mutex;
 
 use super::harness::spawn_subagent_harness;
+use super::id::{MAX_NAME_ATTEMPTS, generate_agent_name};
 use super::registry::{AgentRegistry, SubagentRecord};
 use super::types::{SubagentBootstrap, SubagentInfo, SubagentLimits, SubagentStatus};
 use crate::env::LocalExecutionEnv;
@@ -87,8 +88,18 @@ impl AgentControl {
         }
 
         let task_name = task_name.into();
-        let agent_path = format!("{}/{}", self.parent_agent_path, task_name);
-        self.registry.reserve_path(&agent_path).await?;
+        let (agent_id, agent_path) = {
+            let mut reserved = None;
+            for _ in 0..MAX_NAME_ATTEMPTS {
+                let candidate = generate_agent_name();
+                let candidate_path = format!("{}/{}", self.parent_agent_path, candidate);
+                if self.registry.reserve_path(&candidate_path).await.is_ok() {
+                    reserved = Some((candidate, candidate_path));
+                    break;
+                }
+            }
+            reserved.ok_or_else(|| "Failed to allocate a unique subagent name".to_string())?
+        };
 
         let config = self.config.lock().await.clone();
         let bootstrap = config
@@ -116,6 +127,7 @@ impl AgentControl {
             config.stream_fn.clone(),
             config.base_tools.clone(),
             &config.root_session_id,
+            &agent_id,
             &task_name,
             &agent_path,
             child_depth,
