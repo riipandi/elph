@@ -60,8 +60,10 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: release-${{ inputs.app }}-linux
+          sharedKey: release-linux
+          installNextest: "false"
           installCross: "true"
+          crossPlatform: linux
 
       - name: Setup Docker
         uses: docker/setup-buildx-action@v4
@@ -104,7 +106,8 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: release-${{ inputs.app }}-macos
+          sharedKey: release-macos
+          installNextest: "false"
 
       - name: Build macOS release
         run: make release-macos
@@ -141,8 +144,10 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: release-${{ inputs.app }}-windows
+          sharedKey: release-windows
+          installNextest: "false"
           installCross: "true"
+          crossPlatform: windows
 
       - name: Setup Docker
         uses: docker/setup-buildx-action@v4

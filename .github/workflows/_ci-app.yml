@@ -37,7 +37,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/setup-rust
         with:
-          sharedKey: ${{ inputs.sharedKeyPrefix }}-${{ inputs.app }}-${{ matrix.os }}
+          sharedKey: ${{ inputs.sharedKeyPrefix }}-${{ matrix.os }}
 
       - name: Check formatting
         run: cargo fmt --all --check
