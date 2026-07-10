@@ -19,7 +19,6 @@ pub use overlays::{list_model_select_items, list_session_select_items, list_tree
 pub use provider::{provider_api_key_env, provider_config};
 pub use run_mode::{RunModeOptions, run_non_interactive};
 pub use runtime::{CreateSessionOptions, create_coding_session_with_events};
-
 pub use session::CodingAgentSession;
 pub use session_manager::SessionManager;
 pub use slash_commands::{SlashDispatch, dispatch_slash_command, slash_commands_for_palette};
