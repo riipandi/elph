@@ -30,7 +30,6 @@ jobs:
     with:
       app: ${{ inputs.app }}
       sharedKeyPrefix: release
-      skipVersionGate: true
 
   build-linux:
     name: Build Linux (${{ inputs.app }})

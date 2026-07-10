@@ -14,15 +14,6 @@ on:
         required: false
         type: string
         default: ci
-      skipVersionGate:
-        description: Skip version gate (caller already checked)
-        required: false
-        type: boolean
-        default: false
-    outputs:
-      should_continue:
-        description: Whether the version gate allowed the pipeline to continue
-        value: ${{ inputs.skipVersionGate == true && 'true' || jobs.version-gate.outputs.should_continue }}
 
 permissions:
   contents: read
@@ -31,18 +22,8 @@ env:
   CI: true
 
 jobs:
-  version-gate:
-    if: ${{ !inputs.skipVersionGate }}
-    uses: ./.github/workflows/_version-gate.yml
-    with:
-      app: ${{ inputs.app }}
-
   quality:
     name: ${{ inputs.app }} (${{ matrix.os }})
-    needs: version-gate
-    if: |
-      inputs.skipVersionGate ||
-      needs.version-gate.outputs.should_continue == 'true'
     strategy:
       fail-fast: false
       matrix:
