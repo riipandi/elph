@@ -1,11 +1,19 @@
 use std::process::Command;
 
+fn elph_command() -> (tempfile::TempDir, Command) {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let home = dir.path().join("home");
+    std::fs::create_dir_all(&home).expect("home dir");
+    let mut command = Command::new(env!("CARGO_BIN_EXE_elph"));
+    command.env("ELPH_HOME", &home);
+    command.env("ELPH_DATA_DIR", dir.path().join("data"));
+    (dir, command)
+}
+
 #[test]
 fn help_exits_successfully() {
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
-        .arg("--help")
-        .output()
-        .expect("failed to run elph --help");
+    let (_dir, mut command) = elph_command();
+    let output = command.arg("--help").output().expect("failed to run elph --help");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("elph"));
@@ -14,7 +22,8 @@ fn help_exits_successfully() {
 
 #[test]
 fn memory_help_lists_subcommands() {
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+    let (_dir, mut command) = elph_command();
+    let output = command
         .args(["memory", "--help"])
         .output()
         .expect("failed to run elph memory --help");
@@ -28,7 +37,8 @@ fn memory_help_lists_subcommands() {
 #[test]
 fn memory_status_on_empty_store() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+    let (_home, mut command) = elph_command();
+    let output = command
         .env("ELPH_PROJECT_DIR", dir.path())
         .args(["memory", "status"])
         .output()
@@ -52,7 +62,8 @@ fn memory_status_on_empty_store() {
 
 #[test]
 fn completions_generates_bash_script() {
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+    let (_dir, mut command) = elph_command();
+    let output = command
         .args(["completions", "--shell", "bash"])
         .output()
         .expect("failed to run elph completions --shell bash");
@@ -71,7 +82,8 @@ fn completions_generates_bash_script() {
 fn completions_writes_to_output_file() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("elph.bash");
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+    let (_home, mut command) = elph_command();
+    let output = command
         .args([
             "completions",
             "--shell",
@@ -92,10 +104,8 @@ fn completions_writes_to_output_file() {
 
 #[test]
 fn version_flag_prints_something() {
-    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
-        .arg("--version")
-        .output()
-        .expect("failed to run elph --version");
+    let (_dir, mut command) = elph_command();
+    let output = command.arg("--version").output().expect("failed to run elph --version");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(!stdout.is_empty());

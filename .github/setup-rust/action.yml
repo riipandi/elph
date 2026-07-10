@@ -30,20 +30,22 @@ runs:
         cache-on-failure: true
         shared-key: ${{ inputs.sharedKey }}
 
-    - name: Install cargo-nextest
-      uses: taiki-e/install-action@v2.83.0
-      with:
-        tool: cargo-nextest@latest
-
-    - name: Install cross and targets
-      if: inputs.installCross == 'true'
+    - name: Install CI tools with cargo-binstall
       shell: bash
       run: |
         set -euo pipefail
-        cargo install cross --locked
-        while read -r target; do
-          rustup target add "$target"
-        done < ./scripts/cross-targets.sh
+        if ! command -v cargo-binstall >/dev/null 2>&1; then
+          cargo install cargo-binstall --locked
+        fi
+        cargo binstall --locked -y cargo-nextest
+        if [ "${{ inputs.installCross }}" = "true" ]; then
+          cargo binstall --locked -y cross
+          while read -r target; do
+            rustup target add "$target"
+          done < ./scripts/cross-targets.sh
+        fi
+      env:
+        BINSTALL_DISABLE_TELEMETRY: true
 
     - name: Export Rust CI environment
       shell: bash

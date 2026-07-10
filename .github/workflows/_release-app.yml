@@ -15,6 +15,7 @@ permissions:
 
 env:
   CI: true
+  BINSTALL_DISABLE_TELEMETRY: true
 
 jobs:
   version-gate:

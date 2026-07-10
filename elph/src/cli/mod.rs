@@ -126,6 +126,10 @@ fn command_needs_datastore(cmd: &Commands) -> bool {
 }
 
 pub fn run(cli: &Cli) -> ExitCode {
+    if let Some(Commands::Completions(args)) = &cli.command {
+        return completions::handle(args);
+    }
+
     let console_enabled = cli.command.is_some();
     let agent_builder = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
         .env_prefix("ELPH")
