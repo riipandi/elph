@@ -19,6 +19,10 @@ inputs:
     description: Limit rustup targets to a release platform (linux, macos, windows)
     required: false
     default: ""
+  saveCache:
+    description: "Whether to save the cargo cache (default: true)"
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -57,17 +61,17 @@ runs:
         fi
 
     - name: Setup sccache
-      uses: mozilla-actions/sccache-action@v0.0.10
+      uses: mozilla-actions/sccache-action@v0.0.11
       with:
         version: "v0.10.0"
 
     - name: Setup Cargo cache
-      uses: swatinem/rust-cache@v2.9.1
+      uses: swatinem/rust-cache@v2.10.0
       with:
         cache-on-failure: true
         shared-key: ${{ inputs.sharedKey }}
-        cache-bin: true
-        cache-all-crates: true
+        cache-bin: false
+        save-if: ${{ inputs.saveCache }}
 
     - name: Export Rust CI environment
       shell: bash
