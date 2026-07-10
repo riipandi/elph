@@ -43,7 +43,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 .PHONY: test-elph test-eclaw test-owly check-elph check-eclaw check-owly
 .PHONY: lint lint-elph lint-eclaw lint-owly fmt clean check coverage help stats generate-models prepare
 .PHONY: cross cross-pull release release-linux release-macos release-windows
-.PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
+.PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run check-version
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -211,6 +211,14 @@ prepare: ## Install required toolchain
 	fi
 
 # ─── Versioning ────────────────────────────────────────────────────────────────
+# check-version: compare Cargo.toml with latest GitHub releases
+#   make check-version
+#   make check-version APP=elph
+#   make check-version TAG=elph-v0.0.28
+
+check-version: ## Compare app versions with latest GitHub releases (APP=, TAG=)
+	@APP="$(APP)" TAG="$(TAG)" ./scripts/check-version.sh
+
 # Independent version streams:
 #   bump-elph  — elph/Cargo.toml
 #   bump-eclaw — eclaw/Cargo.toml
