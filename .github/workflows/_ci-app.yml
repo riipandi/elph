@@ -14,6 +14,11 @@ on:
         required: false
         type: string
         default: ci
+      mode:
+        description: Quality gate mode (full = all steps, check = fmt+check+lint only)
+        required: false
+        type: string
+        default: full
 
 permissions:
   contents: read
@@ -50,9 +55,11 @@ jobs:
         run: make lint-${{ inputs.app }}
 
       - name: Test
+        if: inputs.mode == 'full'
         run: make test-${{ inputs.app }}
 
       - name: Build release binary
+        if: inputs.mode == 'full'
         run: make build-${{ inputs.app }}
 
       - name: Show sccache statistics

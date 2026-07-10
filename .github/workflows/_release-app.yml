@@ -42,6 +42,7 @@ jobs:
     with:
       app: ${{ inputs.app }}
       sharedKeyPrefix: release
+      mode: check
 
   build-linux:
     name: Build Linux (${{ inputs.app }})
