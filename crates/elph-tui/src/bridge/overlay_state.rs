@@ -1,4 +1,4 @@
-//! Overlay stack for bridging diff components into iocraft.
+//! Overlay stack for bridging diff components into SLT.
 
 use crate::diff::{
     InputResult, Line, LineComponent, OverlayEntry, OverlayHandle, OverlayOptions, composite_overlays, resolve_layout,
@@ -135,7 +135,7 @@ impl OverlayStack {
         composite_overlays(base, &mut self.entries[..], width, height)
     }
 
-    /// Renders only the focused overlay lines (for compact iocraft embedding).
+    /// Renders only the focused overlay lines (for compact SLT embedding).
     pub fn render_focused(&mut self, term_width: u16, term_height: u16) -> Vec<Line> {
         let Some(idx) = self.focused_index() else {
             return Vec::new();

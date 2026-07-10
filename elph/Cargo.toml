@@ -1,7 +1,7 @@
 [package]
 name = "elph"
 version = "0.0.26"
-license = "MIT"
+license = "Apache-2.0"
 description = "Minimalist AI agent companion for coding"
 keywords = ["ai", "agent", "cli", "coding", "llm"]
 categories = ["command-line-utilities", "development-tools"]
@@ -11,6 +11,10 @@ rust-version.workspace = true
 edition.workspace = true
 publish = true
 
+[lib]
+name = "elph"
+path = "src/lib.rs"
+
 [[bin]]
 name = "elph"
 path = "src/main.rs"
@@ -18,20 +22,28 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+clap_complete.workspace = true
 elph-agent.workspace = true
 elph-ai.workspace = true
 elph-core = { workspace = true, features = ["fastembed"] }
 elph-tui.workspace = true
-iocraft.workspace = true
+superlighttui.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
 tracing.workspace = true
 tsid.workspace = true
+agent-client-protocol.workspace = true
+futures-util.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
 
 [dev-dependencies]
+elph-agent.workspace = true
+elph-core.workspace = true
+elph-tui.workspace = true
+libc.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

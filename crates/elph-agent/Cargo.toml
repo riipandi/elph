@@ -16,10 +16,11 @@ name = "elph_agent"
 path = "src/lib.rs"
 
 [features]
-default = []
-obscura = []
-# ans: obscura is git-only (h4ckf0r0day/obscura), never published to crates.io.
-# The [patch.crates-io] in workspace Cargo.toml redirects resolution to git.
+default = ["mcp", "extensions"]
+extensions = ["dep:wasmtime"]
+mcp = ["dep:rmcp"]
+obscura = ["dep:obscura"]
+# obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
 [dependencies]
 anyhow.workspace = true
@@ -31,9 +32,12 @@ fff-search.workspace = true
 futures.workspace = true
 ignore.workspace = true
 indicatif.workspace = true
+memorable-ids.workspace = true
+obscura = { workspace = true, optional = true }
 parking_lot.workspace = true
 regex.workspace = true
 reqwest.workspace = true
+rmcp = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -51,11 +55,13 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tokio-util = { workspace = true, features = ["rt"] }
+toml.workspace = true
 tracing.workspace = true
+wasmtime = { workspace = true, optional = true }
+tsid.workspace = true
 turso.workspace = true
 url.workspace = true
 urlencoding.workspace = true
-uuid.workspace = true
 walkdir.workspace = true
 
 [[example]]
@@ -122,4 +128,4 @@ path = "examples/agent_skill_math.rs"
 elph-ai = { workspace = true }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-uuid.workspace = true
+tsid.workspace = true

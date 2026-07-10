@@ -4,10 +4,10 @@ use elph_ai::{Context, Message, Model, Models, SimpleStreamOptions, StopReason};
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
-use crate::compaction::compaction::{SUMMARIZATION_SYSTEM_PROMPT, estimate_tokens};
 use crate::compaction::utils::{
     compute_file_lists, create_file_ops, extract_file_ops_from_message, format_file_operations, serialize_conversation,
 };
+use crate::compaction::{SUMMARIZATION_SYSTEM_PROMPT, estimate_tokens};
 use crate::harness::types::FileOperations;
 use crate::harness::types::{BranchSummaryError, BranchSummaryErrorCode, BranchSummaryResult};
 use crate::messages::{

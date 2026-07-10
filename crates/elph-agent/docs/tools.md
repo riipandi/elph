@@ -11,6 +11,7 @@
 | `create_all_tools`          | all seven filesystem tools above |
 | `create_web_tools`          | `web_search`, `web_fetch`        |
 | `create_all_tools_with_web` | filesystem tools + web tools     |
+| `create_multi_agent_tools`  | multi-agent tools (harness-only) |
 
 ```rust
 use elph_agent::{LocalExecutionEnv, create_all_tools, create_web_tools};
@@ -199,6 +200,20 @@ This domain is for use in illustrative examples in documents.
 
 Tool execution accepts an optional `CancellationToken`. `grep` and `find` bridge cancellation into `fff-search` via an abort signal polled during the blocking search. `ls` bridges cancellation into `walkdir` the same way.
 
+## Multi-agent tools
+
+`AgentHarness` registers these automatically via `create_multi_agent_tools` when the default active-tool set is used. They delegate to `AgentControl` and spawn child `Agent` instances with the parent model and non–multi-agent tool catalog.
+
+| Tool            | Description                               |
+| --------------- | ----------------------------------------- |
+| `spawn_agent`   | Start a subagent (`task_name`, `message`) |
+| `send_message`  | Queue a message without running a turn      |
+| `followup_task` | Send a message and run a subagent turn      |
+| `wait_agent`    | Block until the subagent is idle          |
+| `list_agents`   | List id, task name, and status              |
+
+Blocked in `CollaborationMode::Plan`. See [agent-harness.md](./agent-harness.md#collaboration-mode-and-plan-confirmation).
+
 ## Custom tools
 
 Use `simple_tool` for straightforward handlers or construct `AgentTool` directly when you need `prepare_arguments`, per-tool `execution_mode`, or streaming `on_update` callbacks.
@@ -222,6 +237,8 @@ Provider-level OpenCode streaming lives in `elph-ai` as `opencode_big_pickle` (n
 | -------------------------------------- | --------------------------------- |
 | `crates/elph-agent/tests/tools_fff.rs` | `grep`, `find`                    |
 | `crates/elph-agent/tests/web_tools.rs` | `web_search` ranking, `web_fetch` |
+| `crates/elph-agent/tests/plan_mode.rs` | Plan mode policy and harness events  |
+| `crates/elph-agent/tests/subagent.rs`  | Subagent spawn and list              |
 
 ```bash
 cargo test -p elph-agent --test tools_fff

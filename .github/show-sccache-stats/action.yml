@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: show-sccache-stats
+description: Print sccache hit/miss statistics after compilation
+
+runs:
+  using: composite
+  steps:
+    - name: Show sccache statistics
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v sccache >/dev/null 2>&1; then
+          echo "sccache not found on PATH; skipping statistics"
+          exit 0
+        fi
+        echo '::group::sccache statistics'
+        sccache --show-stats
+        echo '::endgroup::'

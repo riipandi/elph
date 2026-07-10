@@ -1,33 +1,41 @@
-use unicode_width::UnicodeWidthChar;
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
 
 /// Terminal tab width used for layout and rendering.
 pub const TAB_STOP: usize = 8;
 
+/// Display width of a grapheme cluster (tabs advance to the next stop at `col`).
+pub fn grapheme_display_width(g: &str, col: usize) -> usize {
+    if g == "\t" {
+        return TAB_STOP - (col % TAB_STOP);
+    }
+    if g == "\r" {
+        return 0;
+    }
+    UnicodeWidthStr::width(g)
+}
+
 /// Display width of a character at the given column (tabs advance to the next stop).
 pub fn char_display_width(ch: char, col: usize) -> usize {
-    match ch {
-        '\t' => TAB_STOP - (col % TAB_STOP),
-        '\r' => 0,
-        ch => ch.width().unwrap_or(0),
-    }
+    grapheme_display_width(&ch.to_string(), col)
 }
 
 /// Total display width of a string (ignores ANSI escape sequences).
 pub fn str_display_width(s: &str) -> usize {
     let mut col = 0usize;
     let mut in_escape = false;
-    for ch in s.chars() {
+    for g in s.graphemes(true) {
         if in_escape {
-            if ch.is_ascii_alphabetic() {
+            if g.chars().any(|ch| ch.is_ascii_alphabetic()) {
                 in_escape = false;
             }
             continue;
         }
-        if ch == '\x1b' {
+        if g == "\x1b" {
             in_escape = true;
             continue;
         }
-        col += char_display_width(ch, col);
+        col += grapheme_display_width(g, col);
     }
     col
 }
@@ -44,10 +52,10 @@ pub fn slice_display_columns(text: &str, start: usize, len: usize) -> String {
     let mut escape = String::new();
     let end = start.saturating_add(len);
 
-    for ch in text.chars() {
+    for (_, cluster) in text.grapheme_indices(true) {
         if in_escape {
-            escape.push(ch);
-            if ch.is_ascii_alphabetic() || ch == '\x07' {
+            escape.push_str(cluster);
+            if cluster.chars().any(|ch| ch.is_ascii_alphabetic() || ch == '\x07') {
                 in_escape = false;
                 if col >= start && col < end {
                     out.push_str(&escape);
@@ -57,15 +65,15 @@ pub fn slice_display_columns(text: &str, start: usize, len: usize) -> String {
             continue;
         }
 
-        if ch == '\x1b' {
+        if cluster == "\x1b" {
             in_escape = true;
-            escape.push(ch);
+            escape.push_str(cluster);
             continue;
         }
 
-        let w = char_display_width(ch, col);
+        let w = grapheme_display_width(cluster, col);
         if col + w > start && col < end {
-            out.push(ch);
+            out.push_str(cluster);
         }
         col += w;
         if col >= end {

@@ -7,6 +7,7 @@ mod fff_picker;
 mod find;
 mod grep;
 mod ls;
+mod multi_agent;
 mod read;
 pub mod web;
 mod write;
@@ -26,6 +27,7 @@ pub use edit::create_edit_tool;
 pub use find::create_find_tool;
 pub use grep::create_grep_tool;
 pub use ls::create_ls_tool;
+pub use multi_agent::create_multi_agent_tools;
 pub use read::create_read_tool;
 pub use web::{
     Engine as WebSearchEngine, SearchResult as WebSearchResult, create_web_fetch_tool, create_web_search_tool,

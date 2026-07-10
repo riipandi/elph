@@ -1,120 +1,70 @@
-use elph_tui::ChatStream;
-use futures::{StreamExt, stream};
-use iocraft::prelude::*;
+use elph_tui::{
+    ChatStreamState, Theme, TranscriptEntry, is_pinned_to_bottom, render_chat_stream, render_chat_stream_with_agent,
+};
+use slt::{Event, KeyCode, KeyModifiers, TestBackend};
 
-fn sample_messages(count: usize) -> Vec<String> {
-    (0..count).map(|i| format!("message {i}")).collect()
-}
+#[test]
+fn chat_stream_renders_messages() {
+    let mut backend = TestBackend::new(60, 12);
+    let mut state = ChatStreamState::with_messages(vec!["hello".to_string(), "world".to_string()]);
+    let theme = Theme::dark();
 
-#[component]
-fn Harness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
-    let mut system = hooks.use_context_mut::<SystemContext>();
-    let mut should_exit = hooks.use_state(|| false);
-    let messages = hooks.use_state(|| sample_messages(12));
-
-    hooks.use_terminal_events(move |event| {
-        let TerminalEvent::Key(KeyEvent {
-            code: KeyCode::Char('q'),
-            kind: KeyEventKind::Press,
-            ..
-        }) = event
-        else {
-            return;
-        };
-        should_exit.set(true);
+    backend.render(|ui| {
+        render_chat_stream(ui, &mut state, theme);
     });
 
-    if should_exit.get() {
-        system.exit();
-    }
-
-    element! {
-        View(width: 30, height: 6, padding: 1) {
-            ChatStream(
-                messages_state: Some(messages),
-                auto_scroll: false,
-                line_scroll_step: 1u16,
-                page_scroll_step: 0u16,
-                theme: elph_tui::Theme::dark(),
-            )
-        }
-    }
+    backend.assert_contains("hello");
+    backend.assert_contains("world");
 }
 
-#[tokio::test]
-async fn chat_stream_scrolls_with_keyboard() {
-    let events = stream::iter([
-        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Down)),
-        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Down)),
-        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('q'))),
-    ]);
+#[test]
+fn streaming_pins_to_tail() {
+    let mut backend = TestBackend::new(40, 8);
+    let mut state = ChatStreamState::new();
+    state.pin_to_tail();
+    state.entries = (0..40)
+        .map(|i| TranscriptEntry::user(format!("line {i}")))
+        .chain([TranscriptEntry::assistant_streaming("streaming tail")])
+        .collect();
 
-    let output = element!(Harness)
-        .mock_terminal_render_loop(MockTerminalConfig::with_events(events))
-        .map(|frame| frame.to_string())
-        .collect::<Vec<_>>()
-        .await;
+    let theme = Theme::dark();
+    for _ in 0..3 {
+        backend.render(|ui| {
+            render_chat_stream_with_agent(ui, &mut state, theme, true);
+        });
+    }
 
-    let last = output.last().expect("expected frames");
-    assert!(last.contains("message 2"), "expected scrolled content, got: {last}");
-    assert!(
-        !last.contains("message 0"),
-        "expected top message scrolled away, got: {last}"
-    );
+    assert!(state.auto_scroll);
+    assert!(is_pinned_to_bottom(&state.scroll));
 }
 
-#[component]
-fn FastScrollHarness(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
-    let mut system = hooks.use_context_mut::<SystemContext>();
-    let mut should_exit = hooks.use_state(|| false);
-    let messages = hooks.use_state(|| sample_messages(12));
+#[test]
+fn wide_table_scrolls_horizontally() {
+    let mut backend = TestBackend::new(24, 10);
+    let wide = "| Col A | Col B | Col C | Col D | Col E | Col F |".to_string();
+    let mut state = ChatStreamState::new();
+    state.entries = vec![TranscriptEntry::assistant(format!(
+        "{wide}\n|-------|-------|-------|-------|-------|-------|\n| one | two | three | four | five | six |"
+    ))];
 
-    hooks.use_terminal_events(move |event| {
-        let TerminalEvent::Key(KeyEvent {
-            code: KeyCode::Char('q'),
-            kind: KeyEventKind::Press,
-            ..
-        }) = event
-        else {
-            return;
-        };
-        should_exit.set(true);
+    let theme = Theme::dark();
+    backend.render(|ui| {
+        render_chat_stream(ui, &mut state, theme);
+    });
+    backend.render(|ui| {
+        render_chat_stream(ui, &mut state, theme);
+    });
+    backend.assert_contains("Col A");
+
+    backend.run_with_events(vec![Event::key_mod(KeyCode::Right, KeyModifiers::SHIFT)], |ui| {
+        render_chat_stream(ui, &mut state, theme);
+    });
+    backend.render(|ui| {
+        render_chat_stream(ui, &mut state, theme);
     });
 
-    if should_exit.get() {
-        system.exit();
-    }
-
-    element! {
-        View(width: 30, height: 6, padding: 1) {
-            ChatStream(
-                messages_state: Some(messages),
-                auto_scroll: false,
-                line_scroll_step: 3u16,
-                page_scroll_step: 0u16,
-                theme: elph_tui::Theme::dark(),
-            )
-        }
-    }
-}
-
-#[tokio::test]
-async fn chat_stream_respects_line_scroll_step() {
-    let events = stream::iter([
-        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Down)),
-        TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('q'))),
-    ]);
-
-    let output = element!(FastScrollHarness)
-        .mock_terminal_render_loop(MockTerminalConfig::with_events(events))
-        .map(|frame| frame.to_string())
-        .collect::<Vec<_>>()
-        .await;
-
-    let last = output.last().expect("expected frames");
-    assert!(last.contains("message 3"), "expected 3-line step scroll, got: {last}");
     assert!(
-        !last.contains("message 0"),
-        "expected faster scroll away from top, got: {last}"
+        state.scroll_h.offset_x > 0,
+        "shift+right should scroll wide content horizontally"
     );
 }

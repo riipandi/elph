@@ -1,96 +1,62 @@
+use super::list_modal::render_select_modal;
 use crate::bridge::OverlaySlot;
-use crate::diff::{LineComponent, OverlayAnchor, OverlayOptions, SelectItem, SelectList, SelectListTheme, SizeValue};
-use iocraft::prelude::*;
+use crate::diff::{OverlayAnchor, OverlayOptions, SelectItem, SelectList, SelectListTheme, SizeValue};
+use slt::{Color, Context, KeyCode};
 
-#[derive(Props)]
-pub struct SessionSelectorProps {
-    pub sessions: Vec<SelectItem>,
-    pub visible: bool,
-    pub on_select: HandlerMut<'static, SelectItem>,
-    pub on_cancel: HandlerMut<'static, ()>,
+/// Selection state for the session picker overlay.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct SessionSelectorState {
+    pub selected: usize,
 }
 
-#[component]
-pub fn SessionSelector(mut hooks: Hooks, props: &mut SessionSelectorProps) -> impl Into<AnyElement<'static>> {
-    let mut selected = hooks.use_state(|| 0usize);
-    let mut on_select = props.on_select.take();
-    let mut on_cancel = props.on_cancel.take();
-    let sessions = props.sessions.clone();
-    let sessions_for_input = sessions.clone();
-    let visible = props.visible;
-    let (term_width, _) = hooks.use_terminal_size();
+/// Outcome of keyboard input while the session selector is visible.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SessionSelectorAction {
+    None,
+    Selected(SelectItem),
+    Cancelled,
+}
 
-    hooks.use_terminal_events(move |event| {
-        if !visible || sessions_for_input.is_empty() {
-            return;
-        }
-        let TerminalEvent::Key(KeyEvent { code, kind, .. }) = event else {
-            return;
-        };
-        if kind == KeyEventKind::Release {
-            return;
-        }
-        match code {
-            KeyCode::Up => {
-                let next = if selected.get() == 0 {
-                    sessions_for_input.len() - 1
-                } else {
-                    selected.get() - 1
-                };
-                selected.set(next);
-            }
-            KeyCode::Down => {
-                let next = if selected.get() + 1 >= sessions_for_input.len() {
-                    0
-                } else {
-                    selected.get() + 1
-                };
-                selected.set(next);
-            }
-            KeyCode::Enter => {
-                if let Some(item) = sessions_for_input.get(selected.get()).cloned() {
-                    on_select(item);
-                }
-            }
-            KeyCode::Esc => on_cancel(()),
-            _ => {}
-        }
-    });
-
-    let lines = if visible && !sessions.is_empty() {
-        let mut list = SelectList::new(sessions, 8, SelectListTheme::dark());
-        list.set_selected_index(selected.get());
-        list.render(term_width.max(40))
-    } else {
-        Vec::new()
-    };
-
-    element! {
-        View(
-            width: 100pct,
-            flex_direction: FlexDirection::Column,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-        ) {
-            #(if visible && !lines.is_empty() {
-                Some(element! {
-                    View(
-                        border_style: BorderStyle::Round,
-                        border_color: Color::Blue,
-                        padding: 1,
-                        width: 80pct,
-                    ) {
-                        Text(content: lines.join("\n"))
-                    }
-                })
-            } else {
-                None
-            })
-        }
+/// Handles confirm/cancel keys for the session selector. Call before [`render_session_selector`].
+pub fn handle_session_selector_input(
+    ui: &Context,
+    state: &mut SessionSelectorState,
+    sessions: &[SelectItem],
+    visible: bool,
+) -> SessionSelectorAction {
+    if !visible || sessions.is_empty() {
+        return SessionSelectorAction::None;
     }
+
+    if ui.raw_key_code(KeyCode::Enter) {
+        return sessions
+            .get(state.selected)
+            .cloned()
+            .map(SessionSelectorAction::Selected)
+            .unwrap_or(SessionSelectorAction::None);
+    }
+    if ui.raw_key_code(KeyCode::Esc) {
+        return SessionSelectorAction::Cancelled;
+    }
+
+    SessionSelectorAction::None
 }
 
-/// Builds an overlay slot for session selection (for use with [`OverlayStackHandle`]).
+/// Renders the session selector as a centered modal list.
+pub fn render_session_selector(
+    ui: &mut Context,
+    sessions: &[SelectItem],
+    state: &mut SessionSelectorState,
+    visible: bool,
+) {
+    if !visible || sessions.is_empty() {
+        return;
+    }
+
+    state.selected = render_select_modal(ui, "Sessions", sessions, state.selected, Color::Blue, 80);
+}
+
+/// Builds an overlay slot for session selection (for use with [`OverlayStack`]).
 pub fn session_overlay_slot(sessions: Vec<SelectItem>) -> OverlaySlot {
     OverlaySlot::new(
         Box::new(SelectList::new(sessions, 8, SelectListTheme::dark())),

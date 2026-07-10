@@ -189,7 +189,14 @@ async fn run_faux(
         state.call_count += 1;
     }
 
-    let step = core.pending.lock().unwrap().drain(..1).next();
+    let step = {
+        let mut pending = core.pending.lock().unwrap();
+        if pending.is_empty() {
+            None
+        } else {
+            Some(pending.remove(0))
+        }
+    };
     let state = core.state.lock().unwrap().clone();
 
     let message = match step {

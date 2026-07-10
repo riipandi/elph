@@ -1,105 +1,51 @@
-use crate::diff::{MarkdownTheme, render_markdown_lines};
+use crate::components::text_optional_color;
 use crate::theme::Theme;
 use crate::transcript::{ToolExecutionState, ToolExecutionStatus};
-use iocraft::prelude::*;
+use crate::utils::strip_ansi;
+use slt::{Border, Context};
 
-#[derive(Props)]
-pub struct ToolExecutionCardProps {
-    pub tool: ToolExecutionState,
-    pub theme: Theme,
-    pub compact: bool,
-    pub on_approve: HandlerMut<'static, String>,
-    pub on_deny: HandlerMut<'static, String>,
-}
-
-impl Default for ToolExecutionCardProps {
-    fn default() -> Self {
-        Self {
-            tool: ToolExecutionState::new("tool", "tool"),
-            theme: Theme::default(),
-            compact: false,
-            on_approve: HandlerMut::default(),
-            on_deny: HandlerMut::default(),
-        }
-    }
-}
-
-#[component]
-pub fn ToolExecutionCard(props: &ToolExecutionCardProps) -> impl Into<AnyElement<'static>> {
-    let tool = &props.tool;
+/// Renders a single tool execution card.
+pub fn render_tool_execution_card(ui: &mut Context, tool: &ToolExecutionState, theme: Theme, compact: bool) {
     let status = status_label(tool.status);
-    let border = props.theme.frame_border;
-    let output = if tool.output.is_empty() || props.compact {
+    let output = if tool.output.is_empty() || compact {
         String::new()
     } else {
-        render_markdown_lines(&tool.output, 100, MarkdownTheme::dark()).join("\n")
+        strip_ansi(&tool.output)
     };
 
-    element! {
-        View(
-            flex_direction: FlexDirection::Column,
-            width: 100pct,
-            border_style: BorderStyle::Single,
-            border_color: border,
-            padding: 1,
-            margin_bottom: 1,
-        ) {
-            Text(content: format!("⚙ {}  [{status}]", tool.name))
-            #(if !tool.args_summary.is_empty() {
-                Some(element! {
-                    Text(color: Some(props.theme.muted), content: tool.args_summary.clone())
-                })
-            } else {
-                None
-            })
-            #(if tool.status == ToolExecutionStatus::Running {
-                Some(element! {
-                    Text(content: "⠋ Running... (Esc to cancel)".to_string())
-                })
-            } else {
-                None
-            })
-            #(if !output.is_empty() {
-                Some(element! {
-                    Text(content: output)
-                })
-            } else {
-                None
-            })
-            #(if tool.requires_approval && tool.status == ToolExecutionStatus::Pending {
-                Some(element! {
-                    View(flex_direction: FlexDirection::Row, gap: Gap::Length(2)) {
-                        Text(content: "[Approve]".to_string())
-                        Text(content: "[Deny]".to_string())
-                    }
-                })
-            } else {
-                None
-            })
-        }
-    }
+    let _ = ui
+        .bordered(Border::Single)
+        .border_fg(theme.frame_border)
+        .p(1)
+        .mb(1)
+        .grow(1)
+        .col(|ui| {
+            ui.text(format!("⚙ {}  [{status}]", tool.name));
+            if !tool.args_summary.is_empty() {
+                text_optional_color(ui, &tool.args_summary, Some(theme.muted));
+            }
+            if tool.status == ToolExecutionStatus::Running {
+                ui.text("⠋ Running... (Ctrl+C to cancel)");
+            }
+            if !output.is_empty() {
+                let _ = ui.markdown(&output);
+            }
+            if tool.requires_approval && tool.status == ToolExecutionStatus::Pending {
+                let _ = ui.container().gap(2).row(|ui| {
+                    ui.text("[Approve]");
+                    ui.text("[Deny]");
+                });
+            }
+        });
 }
 
-#[derive(Props)]
-pub struct ToolExecutionListProps {
-    pub tools: Vec<ToolExecutionState>,
-    pub theme: Theme,
-}
-
-#[component]
-pub fn ToolExecutionList(props: &ToolExecutionListProps) -> impl Into<AnyElement<'static>> {
-    let theme = props.theme;
-    let cards: Vec<AnyElement<'static>> = props
-        .tools
-        .iter()
-        .map(|tool| element!(ToolExecutionCard(tool: tool.clone(), theme: theme, compact: false)).into_any())
-        .collect();
-
-    element! {
-        View(flex_direction: FlexDirection::Column, width: 100pct) {
-            #(cards)
+/// Renders a vertical list of tool execution cards.
+pub fn render_tool_execution_list(ui: &mut Context, tools: &[ToolExecutionState], theme: Theme) {
+    let _ = ui.container().grow(1).col(|ui| {
+        for tool in tools {
+            render_tool_execution_card(ui, tool, theme, false);
         }
-    }
+    });
 }
 
 fn status_label(status: ToolExecutionStatus) -> &'static str {

@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "darkriszty.markdown-table-prettify",
+        "DrBlury.protobuf-vsc",
+        "EditorConfig.EditorConfig",
+        "foxundermoon.shell-format",
+        "ms-playwright.playwright",
+        "oxc.oxc-vscode",
+        "redhat.vscode-yaml"
+    ]
+}

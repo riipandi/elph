@@ -18,6 +18,16 @@ impl AgentMode {
         }
     }
 
+    /// Lowercase label for the footer status line.
+    pub fn footer_label(self) -> &'static str {
+        match self {
+            Self::Build => "build",
+            Self::Plan => "plan",
+            Self::Ask => "ask",
+            Self::Brave => "brave",
+        }
+    }
+
     pub fn next(self) -> Self {
         match self {
             Self::Build => Self::Plan,

@@ -60,6 +60,18 @@ pub fn ok_shell_capture(result: ShellCaptureResult) -> Result<ShellCaptureResult
     crate::harness::types::ok(result)
 }
 
+fn merge_shell_output(stdout: &str, stderr: &str) -> String {
+    let mut combined = sanitize_binary_output(stdout).replace('\r', "");
+    let stderr = sanitize_binary_output(stderr).replace('\r', "");
+    if !stderr.is_empty() {
+        if !combined.is_empty() && !combined.ends_with('\n') {
+            combined.push('\n');
+        }
+        combined.push_str(&stderr);
+    }
+    combined
+}
+
 /// Options for shell capture — mirrors elph-agent.
 #[derive(Debug, Clone, Default)]
 pub struct ShellCaptureOptions {
@@ -125,6 +137,10 @@ pub async fn execute_shell_with_capture<E: ExecutionEnv>(
     let tail_output = output_chunks.lock().expect("lock").join("");
     let truncation = truncate_tail(&tail_output, TruncationOptions::default());
     let total = *total_bytes.lock().expect("lock");
+    let spill_body = match &exec_result {
+        Result::Ok(result) => merge_shell_output(&result.stdout, &result.stderr),
+        Result::Err(_) => tail_output.clone(),
+    };
     let mut full_output_path = None;
 
     if truncation.truncated || total > DEFAULT_MAX_BYTES {
@@ -140,7 +156,7 @@ pub async fn execute_shell_with_capture<E: ExecutionEnv>(
             Result::Err(error) => return err(to_execution_error(error)),
         };
         match env
-            .append_file(&temp_file, tail_output.as_bytes(), options.abort_token.as_ref())
+            .append_file(&temp_file, spill_body.as_bytes(), options.abort_token.as_ref())
             .await
         {
             Result::Ok(()) => full_output_path = Some(temp_file),

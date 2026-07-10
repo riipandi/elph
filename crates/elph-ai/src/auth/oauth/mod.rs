@@ -4,6 +4,7 @@ mod anthropic;
 mod callback;
 mod device_code;
 mod github_copilot;
+mod hyper;
 mod openai_codex;
 mod pages;
 mod pkce;
@@ -13,6 +14,10 @@ pub use anthropic::{anthropic_oauth, anthropic_oauth_loader, login_anthropic, re
 pub use github_copilot::{
     get_github_copilot_base_url, github_copilot_oauth, github_copilot_oauth_loader, login_github_copilot,
     normalize_domain, refresh_github_copilot_token,
+};
+pub use hyper::{
+    hyper_api_base_url, hyper_base_url, hyper_oauth, hyper_oauth_loader, hyper_user_agent, login_hyper,
+    refresh_hyper_token,
 };
 pub use openai_codex::{
     OPENAI_CODEX_BROWSER_LOGIN_METHOD, OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD, login_openai_codex,

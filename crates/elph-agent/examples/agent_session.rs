@@ -1,6 +1,6 @@
 //! Session persistence — save and restore agent conversation history.
 //!
-//! Demonstrates: `InMemorySessionRepo`, `JsonlSessionRepo`, `Session`,
+//! Demonstrates: `InMemorySessionRepo`, `SessionDirRepo`, `Session`,
 //! `append_message`, `entries`, `build_context`.
 //!
 //! ```bash
@@ -10,8 +10,8 @@
 use std::sync::Arc;
 
 use elph_agent::{
-    InMemorySessionCreateOptions, InMemorySessionRepo, JsonlSessionRepo, JsonlSessionRepoCreateOptions,
-    LocalExecutionEnv, llm_message_to_agent,
+    InMemorySessionCreateOptions, InMemorySessionRepo, LocalExecutionEnv, SessionDirRepo, SessionDirRepoCreateOptions,
+    llm_message_to_agent,
 };
 
 fn now_ms() -> i64 {
@@ -69,31 +69,34 @@ async fn main() -> anyhow::Result<()> {
     println!("Context messages: {}", ctx.messages.len());
     println!("Thinking level: {}", ctx.thinking_level);
 
-    // ── JSONL session (file-based) ──
-    println!("\n=== JSONL Session ===");
+    // ── Session directory (file-based) ──
+    println!("\n=== Session Directory ===");
     let tmp = tempfile::tempdir()?;
     let sessions_root = tmp.path().to_str().unwrap().to_string();
 
     let env = Arc::new(LocalExecutionEnv::new(tmp.path()));
-    let jsonl_repo = JsonlSessionRepo::new(env, &sessions_root);
+    let project_key = "demo_example";
+    let dir_repo = SessionDirRepo::new(env, &sessions_root, project_key);
 
-    let mut jsonl_session = jsonl_repo
-        .create(JsonlSessionRepoCreateOptions {
+    let mut dir_session = dir_repo
+        .create(SessionDirRepoCreateOptions {
             cwd: tmp.path().to_str().unwrap().to_string(),
+            project_key: project_key.to_string(),
             id: None,
-            parent_session_path: None,
+            parent_session_id: None,
+            system_prompt: None,
         })
         .await?;
 
-    jsonl_session
+    dir_session
         .append_message(llm_message_to_agent(elph_ai::Message::User {
-            content: elph_ai::UserContent::Text("JSONL persistence".into()),
+            content: elph_ai::UserContent::Text("Directory persistence".into()),
             timestamp: now_ms(),
         }))
         .await?;
 
-    let jsonl_entries = jsonl_session.entries().await;
-    println!("JSONL entries: {}", jsonl_entries.len());
+    let dir_entries = dir_session.entries().await;
+    println!("Session dir entries: {}", dir_entries.len());
 
     println!("\nDone.");
     Ok(())

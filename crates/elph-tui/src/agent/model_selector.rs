@@ -1,96 +1,61 @@
+use super::list_modal::render_select_modal;
 use crate::bridge::OverlaySlot;
-use crate::diff::{LineComponent, OverlayAnchor, OverlayOptions, SelectItem, SelectList, SelectListTheme, SizeValue};
-use iocraft::prelude::*;
+use crate::diff::{OverlayAnchor, OverlayOptions, SelectItem, SelectList, SelectListTheme, SizeValue};
+use slt::{Color, Context, KeyCode};
 
-#[derive(Props)]
-pub struct ModelSelectorProps {
-    pub models: Vec<SelectItem>,
-    pub current_model: String,
-    pub visible: bool,
-    pub on_select: HandlerMut<'static, SelectItem>,
-    pub on_cancel: HandlerMut<'static, ()>,
+/// Selection state for the model picker overlay.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ModelSelectorState {
+    pub selected: usize,
 }
 
-#[component]
-pub fn ModelSelector(mut hooks: Hooks, props: &mut ModelSelectorProps) -> impl Into<AnyElement<'static>> {
-    let mut selected = hooks.use_state(|| 0usize);
-    let mut on_select = props.on_select.take();
-    let mut on_cancel = props.on_cancel.take();
-    let models = props.models.clone();
-    let models_for_input = models.clone();
-    let current_model = props.current_model.clone();
-    let visible = props.visible;
-    let (term_width, _) = hooks.use_terminal_size();
+/// Outcome of keyboard input while the model selector is visible.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ModelSelectorAction {
+    None,
+    Selected(SelectItem),
+    Cancelled,
+}
 
-    hooks.use_terminal_events(move |event| {
-        if !visible || models_for_input.is_empty() {
-            return;
-        }
-        let TerminalEvent::Key(KeyEvent { code, kind, .. }) = event else {
-            return;
-        };
-        if kind == KeyEventKind::Release {
-            return;
-        }
-        match code {
-            KeyCode::Up => {
-                let next = if selected.get() == 0 {
-                    models_for_input.len() - 1
-                } else {
-                    selected.get() - 1
-                };
-                selected.set(next);
-            }
-            KeyCode::Down => {
-                let next = if selected.get() + 1 >= models_for_input.len() {
-                    0
-                } else {
-                    selected.get() + 1
-                };
-                selected.set(next);
-            }
-            KeyCode::Enter => {
-                if let Some(item) = models_for_input.get(selected.get()).cloned() {
-                    on_select(item);
-                }
-            }
-            KeyCode::Esc => on_cancel(()),
-            _ => {}
-        }
-    });
-
-    let lines = if visible && !models.is_empty() {
-        let mut list = SelectList::new(models, 10, SelectListTheme::dark());
-        list.set_selected_index(selected.get());
-        let mut rendered = list.render(term_width.max(40));
-        rendered.insert(0, format!("Model: {current_model}"));
-        rendered
-    } else {
-        Vec::new()
-    };
-
-    element! {
-        View(
-            width: 100pct,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-        ) {
-            #(if visible && !lines.is_empty() {
-                Some(element! {
-                    View(
-                        border_style: BorderStyle::Round,
-                        border_color: Color::Cyan,
-                        padding: 1,
-                        width: 70pct,
-                    ) {
-                        Text(content: lines.join("\n"))
-                    }
-                })
-            } else {
-                None
-            })
-        }
+/// Handles confirm/cancel keys for the model selector. Call before [`render_model_selector`].
+pub fn handle_model_selector_input(
+    ui: &Context,
+    state: &mut ModelSelectorState,
+    models: &[SelectItem],
+    visible: bool,
+) -> ModelSelectorAction {
+    if !visible || models.is_empty() {
+        return ModelSelectorAction::None;
     }
+
+    if ui.raw_key_code(KeyCode::Enter) {
+        return models
+            .get(state.selected)
+            .cloned()
+            .map(ModelSelectorAction::Selected)
+            .unwrap_or(ModelSelectorAction::None);
+    }
+    if ui.raw_key_code(KeyCode::Esc) {
+        return ModelSelectorAction::Cancelled;
+    }
+
+    ModelSelectorAction::None
+}
+
+/// Renders the model selector as a centered modal list.
+pub fn render_model_selector(
+    ui: &mut Context,
+    models: &[SelectItem],
+    current_model: &str,
+    state: &mut ModelSelectorState,
+    visible: bool,
+) {
+    if !visible || models.is_empty() {
+        return;
+    }
+
+    let title = format!("Model: {current_model}");
+    state.selected = render_select_modal(ui, &title, models, state.selected, Color::Cyan, 70);
 }
 
 /// Builds an overlay slot for model selection.

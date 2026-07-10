@@ -5,6 +5,7 @@ use elph_ai::Message;
 use crate::messages::{
     CustomMessageContent, create_branch_summary_message, create_compaction_summary_message, create_custom_message,
 };
+use crate::mode::CollaborationMode;
 use crate::session::types::{SessionContext, SessionModelRef, SessionTreeEntry};
 use crate::types::AgentMessage;
 
@@ -61,6 +62,7 @@ pub fn build_session_context(path_entries: &[SessionTreeEntry]) -> SessionContex
     let mut thinking_level = "off".to_string();
     let mut model = None;
     let mut active_tool_names = None;
+    let mut collaboration_mode = CollaborationMode::Default;
     let mut compaction: Option<&SessionTreeEntry> = None;
 
     for entry in path_entries {
@@ -92,6 +94,9 @@ pub fn build_session_context(path_entries: &[SessionTreeEntry]) -> SessionContex
                 ..
             } => {
                 active_tool_names = Some(names.clone());
+            }
+            SessionTreeEntry::CollaborationModeChange { mode, .. } => {
+                collaboration_mode = *mode;
             }
             SessionTreeEntry::Compaction { .. } => compaction = Some(entry),
             _ => {}
@@ -137,5 +142,6 @@ pub fn build_session_context(path_entries: &[SessionTreeEntry]) -> SessionContex
         thinking_level,
         model,
         active_tool_names,
+        collaboration_mode,
     }
 }

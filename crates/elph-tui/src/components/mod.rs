@@ -1,20 +1,29 @@
+mod inline;
 mod label;
 
-pub use label::{Label, LabelProps};
+pub use inline::{inline_label_value, inline_line};
+pub use label::render_label;
 
-use iocraft::prelude::*;
+use slt::{Border, Color, Context};
 
-pub fn frame<'a>(theme: crate::theme::Theme, children: Vec<AnyElement<'a>>) -> Element<'a, View> {
-    element! {
-        View(
-            border_style: BorderStyle::Round,
-            border_color: theme.frame_border,
-            padding_top: 2,
-            padding_bottom: 2,
-            padding_left: 8,
-            padding_right: 8,
-        ) {
-            #(children.into_iter())
-        }
+/// Renders text with an optional foreground color.
+pub fn text_optional_color(ui: &mut Context, content: impl AsRef<str>, color: Option<Color>) {
+    let content = content.as_ref();
+    if let Some(c) = color.filter(|c| *c != Color::Reset) {
+        ui.text(content).fg(c);
+    } else {
+        ui.text(content);
     }
+}
+
+/// Renders a rounded frame around nested content.
+pub fn frame(ui: &mut Context, theme: crate::theme::Theme, f: impl FnOnce(&mut Context)) {
+    let _ = ui
+        .bordered(Border::Rounded)
+        .border_fg(theme.frame_border)
+        .pt(2)
+        .pb(2)
+        .pl(8)
+        .pr(8)
+        .col(f);
 }

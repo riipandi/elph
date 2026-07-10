@@ -8,6 +8,7 @@ use elph_agent::harness::types::{
     Result, Shell, ShellExecOptions, get_or_throw,
 };
 use elph_agent::harness::utils::execute_shell_with_capture;
+use elph_core::utils::lines::count_lines;
 use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
@@ -471,12 +472,13 @@ async fn returns_aborted_result_for_aborted_commands() {
 #[tokio::test]
 async fn captures_large_shell_output_to_full_output_file() {
     let (_temp, env) = env_in_temp();
-    let result = get_or_throw(execute_shell_with_capture(&env, "yes line | head -n 15000", None).await);
+    let command = "awk 'BEGIN { for (i = 1; i <= 15000; i++) print \"line\" }'";
+    let result = get_or_throw(execute_shell_with_capture(&env, command, None).await);
     assert!(result.truncated);
     let full_output_path = result
         .full_output_path
         .expect("full output path should be set for truncated capture");
     let full_output = get_or_throw(env.read_text_file(&full_output_path, None).await);
-    assert!(full_output.split('\n').count() > 10_000);
+    assert!(count_lines(&full_output) > 10_000);
     assert!(result.output.len() < full_output.len());
 }

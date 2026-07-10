@@ -1,13 +1,16 @@
-#[test]
-fn frame_renders() {
-    let _ = elph_tui::frame(elph_tui::Theme::dark(), vec![]);
-}
+use elph_tui::{Theme, render_label};
+use slt::TestBackend;
 
 #[test]
-fn label_props_constructible() {
-    use elph_tui::LabelProps;
-    let _props = LabelProps {
-        content: "hello".into(),
-        color: None,
-    };
+fn frame_and_label_render() {
+    let mut backend = TestBackend::new(40, 10);
+    let theme = Theme::dark();
+
+    backend.render(|ui| {
+        elph_tui::frame(ui, theme, |ui| {
+            render_label(ui, "hello", None);
+        });
+    });
+
+    backend.assert_contains("hello");
 }

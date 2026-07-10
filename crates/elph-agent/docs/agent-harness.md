@@ -41,6 +41,7 @@ Harness config is the latest runtime configuration set by the application or ext
 - thinking level
 - tools
 - active tool names
+- collaboration mode (`Default` or `Plan`)
 - resources
 - stream options
 - system prompt or system prompt provider
@@ -178,6 +179,37 @@ Summary:
 
 Agent-emitted messages are persisted on `message_end` to preserve transcript ordering. Pending extension/session writes flush after those messages at save points.
 
+## Collaboration mode and plan confirmation
+
+`AgentHarness` tracks `CollaborationMode`:
+
+- `Default` — full tool catalog (subject to `active_tool_names`)
+- `Plan` — read-only exploration; implementation blocked until the user confirms a proposed plan
+
+Public API:
+
+```rust
+harness.enter_plan_mode().await?;
+harness.exit_plan_mode().await?;
+harness.set_collaboration_mode(CollaborationMode::Plan).await?;
+harness.collaboration_mode().await;
+
+harness.resolve_plan_confirmation(PlanConfirmationChoice::Implement).await?;
+```
+
+Mode changes append `CollaborationModeChange` entries to the session tree and are restored on harness construction.
+
+When the assistant emits `<proposed_plan>...</proposed_plan>` at turn end, subscribers receive:
+
+- `AgentEvent::PlanProposed { plan_id, plan_text }`
+- `AgentEvent::PlanConfirmationRequired { plan_id, plan_text }`
+
+`resolve_plan_confirmation` clears the pending plan. `Implement` / `ImplementFresh` exit Plan mode and queue an implementation prompt derived from the plan text.
+
+Multi-agent tools are registered in the harness tool map and included in the default active-tool set. When `active_tool_names` is explicit, multi-agent tools remain registered but are not activated unless named. They are unavailable in Plan mode.
+
+`agent_control()` exposes the `AgentControl` registry for direct subagent management outside the tool surface.
+
 ## Abort
 
 Abort is allowed during a turn. It aborts the low-level run and clears steering/follow-up queues.
@@ -229,7 +261,7 @@ See [tools.md](./tools.md) for tool groups, parameters, engine ranking, and outp
 
 ## Test organization
 
-Harness tests live in `crates/elph-agent/tests/harness.rs` and cover:
+Harness tests live in `crates/elph-agent/tests/harness.rs`, `plan_mode.rs`, and `subagent.rs` and cover:
 
 - queue modes (`OneAtATime` / `All`)
 - steering and follow-up drain
@@ -261,6 +293,8 @@ cargo test -p elph-agent --test harness
 - Built-in coding and exploration tools (`read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`)
 - Web tools (`web_search`, `web_fetch`) with multi-engine ranking and Obscura fallback
 - `grep` / `find` backed by `fff-search`; filesystem tools use `ExecutionEnv` directly
+- Collaboration mode (`Default` / `Plan`) with plan proposal extraction and confirmation API
+- Subagent control plane (`AgentControl`) and multi-agent tools (`spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`)
 
 ### Planned
 

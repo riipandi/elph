@@ -1,22 +1,30 @@
 mod agent_mode;
 mod chat_stream;
-mod paste_guard;
-pub(crate) mod prompt_buffer;
-mod prompt_display;
-pub(crate) mod prompt_edit;
-mod prompt_input;
+mod editing;
 mod prompt_keys;
-pub(crate) mod prompt_paste;
-mod prompt_transcript;
+mod queue;
+mod slash_palette;
+mod thinking_level;
+mod transcript_scroll;
+mod widget;
 
 pub use agent_mode::AgentMode;
-pub use chat_stream::{ChatStream, ChatStreamProps, DEFAULT_LINE_SCROLL_STEP, PAGE_SCROLL_VIEWPORT};
-pub use prompt_display::{PromptSegmentKind, PromptStyledSegment, prompt_styled_segments};
-pub use prompt_input::{PromptInput, PromptInputProps};
-pub use prompt_keys::{
-    EditAction, MacEditAction, edit_action, is_clear_key, is_force_quit_key, is_interrupt_key, is_mode_cycle_key,
-    is_mode_cycle_override_key, is_newline_key, is_pasted_tab_key, is_prompt_newline_key, is_quit_command,
-    is_submit_key, is_theme_toggle_key, mac_edit_action, should_cycle_agent_mode, should_insert_tab_in_prompt,
+pub use chat_stream::{
+    ChatStreamState, DEFAULT_LINE_SCROLL_STEP, PAGE_SCROLL_VIEWPORT, TranscriptStyle, render_chat_stream,
+    render_chat_stream_with_agent,
 };
-pub use prompt_paste::{CollapsedPaste, reconcile_paste_offsets};
-pub use prompt_transcript::{PromptTranscript, PromptTranscriptProps};
+pub use prompt_keys::{EnterAction, consume_enter_action, is_quit_command, should_cycle_agent_mode};
+pub use queue::PromptQueue;
+pub use slash_palette::{
+    SlashPaletteAction, SlashPaletteState, elph_builtin_commands, handle_slash_palette_keys, owly_builtin_commands,
+    render_slash_palette, slash_palette_visible,
+};
+pub use thinking_level::ThinkingLevel;
+pub use transcript_scroll::{
+    ScrollSnapshot, apply_transcript_auto_scroll, handle_transcript_scroll_keys, is_pinned_to_bottom,
+    prepare_transcript_follow, scroll_to_bottom, unpin_auto_scroll_if_scrolled_up,
+};
+pub use widget::{
+    PromptAction, PromptOpts, PromptState, detect_prompt_prefix, handle_prompt_input, render_prompt,
+    strip_submit_trigger, text_with_theme,
+};

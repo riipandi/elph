@@ -1,6 +1,6 @@
 ---
 title: "Quickstart Guide"
-last_updated: 2026-07-10T20:00:00Z
+last_updated: 2026-07-20T12:00:00Z
 category: quickstart
 tags:
     - getting-started
@@ -122,44 +122,42 @@ Every Markdown file includes [YAML frontmatter](frontmatter.md) with title, last
 
 ## Key Source Files (owly crate)
 
-| File                                                            | Purpose                                                                       |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| [`owly/src/main.rs`](../owly/src/main.rs)                       | Entry point: initializes tracing, parses CLI, dispatches commands             |
-| [`owly/src/cli.rs`](../owly/src/cli.rs)                         | CLI argument definitions and `execute()` dispatch                             |
-| [`owly/src/commands.rs`](../owly/src/commands.rs)               | Command implementations: `init`, `update`, `chat`                             |
-| [`owly/src/agent.rs`](../owly/src/agent.rs)                     | Agent integration: tool setup, prompt preparation, run loop, interactive chat |
-| [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)               | Interactive tools: `ask_text`, `ask_select`, `ask_confirm`                    |
-| [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)           | Conversation checkpointing (`TursoCheckpointSaver`)                           |
-| [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)             | Repository ecosystem hooks (`AGENTS.md` / `CLAUDE.md` sync)                   |
-| [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)           | First-run credential onboarding wizard                                        |
-| [`owly/src/prompts.rs`](../owly/src/prompts.rs)                 | System and user prompts for the agent                                         |
-| [`owly/src/session.rs`](../owly/src/session.rs)                 | Turso-backed session store with checkpoint persistence                        |
-| [`owly/src/shell.rs`](../owly/src/shell.rs)                     | Interactive Owly shell (REPL with credential wizard, follow-ups)              |
-| [`owly/src/startup.rs`](../owly/src/startup.rs)                 | Startup command resolution, TTY validation                                    |
-| [`owly/src/config.rs`](../owly/src/config.rs)                   | Provider/model resolution, config file loading                                |
-| [`owly/src/constants.rs`](../owly/src/constants.rs)             | Provider definitions, default values, env var keys                            |
-| [`owly/src/credentials.rs`](../owly/src/credentials.rs)         | `~/.owly/.env` loading and API key management                                 |
-| [`owly/src/env.rs`](../owly/src/env.rs)                         | Environment validation and debug info                                         |
-| [`owly/src/docs.rs`](../owly/src/docs.rs)                       | Documentation file read/write, snapshots, git summaries                       |
-| [`owly/src/metadata.rs`](../owly/src/metadata.rs)               | Update metadata tracking, git HEAD detection, no-op checks                    |
-| [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs)         | YAML frontmatter parsing and generation                                       |
-| [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs)         | Error sanitization (secret redaction), provider error handling                |
-| [`owly/src/utils.rs`](../owly/src/utils.rs)                     | HTML tag stripping utility                                                    |
-| [`owly/src/ui_events.rs`](../owly/src/ui_events.rs)             | Agent→TUI event bridge (streaming text, tool status, command progress)        |
-| [`owly/src/tui/mod.rs`](../owly/src/tui/mod.rs)                 | iocraft-based interactive shell entrypoint (`run_interactive()`)              |
-| [`owly/src/tui/app.rs`](../owly/src/tui/app.rs)                 | Root `OwlyRoot` component with banner, chat stream, activity bar, prompt      |
-| [`owly/src/tui/chat_stream.rs`](../owly/src/tui/chat_stream.rs) | Scrollable transcript with keyboard navigation and typed entry rendering      |
-| [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)         | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                       |
-| [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)   | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates           |
-| [`owly/src/tui/activity.rs`](../owly/src/tui/activity.rs)       | Activity bar with live tool chips during agent execution                      |
-| [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)           | Shared visual tokens (`subtle_border` for low-contrast frames)                |
-| [`owly/src/tui/spinner.rs`](../owly/src/tui/spinner.rs)         | Animated braille loading indicator (`LoadingSpinner` component)               |
-| [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_header`, `tool_transcript_body`) |
-| [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)         | Thread-safe `AppContext` for TUI and async command dispatch                   |
-| [`owly/src/tui/launch.rs`](../owly/src/tui/launch.rs)           | One-shot launch payload for OwlyRoot component                                |
-| [`owly/src/tui/setup.rs`](../owly/src/tui/setup.rs)             | In-TUI first-run credential setup wizard                                      |
-| [`owly/src/tui/banner.rs`](../owly/src/tui/banner.rs)           | Startup banner rendered in iocraft layout                                     |
-| [`owly/src/lib.rs`](../owly/src/lib.rs)                         | Crate root — re-exports all public modules                                    |
+| File                                                              | Purpose                                                                                                                                  |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`owly/src/main.rs`](../owly/src/main.rs)                         | Entry point: initializes tracing, parses CLI, dispatches commands                                                                        |
+| [`owly/src/cli.rs`](../owly/src/cli.rs)                           | CLI argument definitions and `execute()` dispatch                                                                                        |
+| [`owly/src/commands.rs`](../owly/src/commands.rs)                 | Command implementations: `init`, `update`, `chat`                                                                                        |
+| [`owly/src/agent.rs`](../owly/src/agent.rs)                       | Agent integration: tool setup, prompt preparation, run loop, interactive chat                                                            |
+| [`owly/src/ask_user.rs`](../owly/src/ask_user.rs)                 | Interactive tools: `ask_text`, `ask_select`, `ask_confirm`                                                                               |
+| [`owly/src/checkpoint.rs`](../owly/src/checkpoint.rs)             | Conversation checkpointing (`TursoCheckpointSaver`)                                                                                      |
+| [`owly/src/ecosystem.rs`](../owly/src/ecosystem.rs)               | Repository ecosystem hooks (`AGENTS.md` / `CLAUDE.md` sync)                                                                              |
+| [`owly/src/onboarding.rs`](../owly/src/onboarding.rs)             | First-run credential onboarding wizard                                                                                                   |
+| [`owly/src/prompts.rs`](../owly/src/prompts.rs)                   | System and user prompts for the agent                                                                                                    |
+| [`owly/src/session.rs`](../owly/src/session.rs)                   | Turso-backed session store with checkpoint persistence                                                                                   |
+| [`owly/src/shell/mod.rs`](../owly/src/shell/mod.rs)               | Interactive Owly shell — command dispatch, init/update/chat runs, REPL input handling                                                    |
+| [`owly/src/startup.rs`](../owly/src/startup.rs)                   | Startup command resolution, TTY validation                                                                                               |
+| [`owly/src/config.rs`](../owly/src/config.rs)                     | Provider/model resolution, config file loading                                                                                           |
+| [`owly/src/constants.rs`](../owly/src/constants.rs)               | Provider definitions, default values, env var keys                                                                                       |
+| [`owly/src/credentials.rs`](../owly/src/credentials.rs)           | `~/.owly/.env` loading and API key management                                                                                            |
+| [`owly/src/env.rs`](../owly/src/env.rs)                           | Environment validation and debug info                                                                                                    |
+| [`owly/src/docs.rs`](../owly/src/docs.rs)                         | Documentation file read/write, snapshots, git summaries                                                                                  |
+| [`owly/src/metadata.rs`](../owly/src/metadata.rs)                 | Update metadata tracking, git HEAD detection, no-op checks                                                                               |
+| [`owly/src/frontmatter.rs`](../owly/src/frontmatter.rs)           | YAML frontmatter parsing and generation                                                                                                  |
+| [`owly/src/diagnostics.rs`](../owly/src/diagnostics.rs)           | Error sanitization (secret redaction), provider error handling                                                                           |
+| [`owly/src/utils.rs`](../owly/src/utils.rs)                       | HTML tag stripping utility                                                                                                               |
+| [`owly/src/ui_events.rs`](../owly/src/ui_events.rs)               | Agent→TUI event bridge (streaming text, tool status, command progress)                                                                   |
+| [`owly/src/tui/mod.rs`](../owly/src/tui/mod.rs)                   | SuperLightTUI interactive shell entrypoint (`run_interactive()`)                                                                         |
+| [`owly/src/tui/app.rs`](../owly/src/tui/app.rs)                   | Owly interactive shell application (`OwlyApp` with `run_shell()`)                                                                        |
+| [`owly/src/tui/chat_stream.rs`](../owly/src/tui/chat_stream.rs)   | Scrollable transcript with Shift-based keyboard navigation, auto-scroll follow-tail, and typed entry rendering                           |
+| [`owly/src/tui/entries.rs`](../owly/src/tui/entries.rs)           | Typed transcript entries (`OwlyEntry`, `OwlyEntryKind`)                                                                                  |
+| [`owly/src/tui/transcript.rs`](../owly/src/tui/transcript.rs)     | `TranscriptApplier`: maps `AgentUiEvent` → `OwlyEntry` list updates                                                                      |
+| [`owly/src/tui/chrome.rs`](../owly/src/tui/chrome.rs)             | Shared visual tokens (`subtle_border` for low-contrast frames)                                                                           |
+| [`owly/src/tui/tool_display.rs`](../owly/src/tui/tool_display.rs) | Shared formatting for tool execution output (`tool_output_preview`, `tool_chip_label`, `tool_transcript_compact`, `tool_transcript_body`) |
+| [`owly/src/tui/context.rs`](../owly/src/tui/context.rs)           | Thread-safe `AppContext` for TUI and async command dispatch                                                                              |
+| [`owly/src/tui/launch.rs`](../owly/src/tui/launch.rs)             | One-shot launch payload for the Owly interactive shell                                                                                   |
+| [`owly/src/tui/setup.rs`](../owly/src/tui/setup.rs)               | In-TUI first-run credential setup wizard                                                                                                 |
+| [`owly/src/tui/banner.rs`](../owly/src/tui/banner.rs)             | Session banner rendered inline inside the scrollable transcript via `BannerInfo` from `elph-tui` (`directory_display` helper)            |
+| [`owly/src/lib.rs`](../owly/src/lib.rs)                           | Crate root — re-exports all public modules                                                                                               |
 
 ### Tests
 
@@ -206,7 +204,7 @@ cargo clippy -p owly --all-targets -- -D warnings
 - **Agent runtime**: Uses `elph-agent` (not LangChain/LangGraph). Agent loop and tool execution are delegated to `elph-agent`.
 - **LLM integration**: Uses `elph-ai` for provider abstraction. Model lookup goes through `builtin_models()`.
 - **Tools**: Init/update mode uses all tools (read, bash, edit, write, grep, find, ls). Chat mode uses read-only tools plus `ask_text`, `ask_select`, `ask_confirm` for interactive use.
-- **Interactive mode**: Running `owly` with no arguments starts an interactive shell managed by [`shell.rs`](../owly/src/shell.rs) — a REPL that offers a first-run credential wizard (`onboarding.rs`), session persistence (`session.rs`), and supports follow-up commands after init/update/chat.
+- **Interactive mode**: Running `owly` with no arguments starts an interactive shell managed by [`shell/mod.rs`](../owly/src/shell/mod.rs) — a REPL that offers a first-run credential wizard (`onboarding.rs`), session persistence (`session.rs`), and supports follow-up commands after init/update/chat. The TUI prompt was redesigned with a compact help bar showing keybindings: `Enter` send, `Shift+Enter` newline, `Esc` clear, `Tab` cycle mode, `←/→` cursor, `Alt+←/→` word jump, `Alt+⌫` delete word, `Shift+↑/↓` scroll chat, `Shift+End` jump tail. Cursor navigation uses the custom [`editing.rs`](../crates/elph-tui/src/prompt/editing.rs) module for reliable arrow key handling. Scroll logic was extracted into the shared [`transcript_scroll.rs`](../crates/elph-tui/src/prompt/transcript_scroll.rs) module with `Shift+Up/Down`, `PageUp/Down`, and `Shift+End` keybindings plus auto-scroll follow-tail behavior.
 - **Interactive slash commands**: `/init`, `/update`, `/history [n]`, `/restore <#|id>`, `/clear`, `/help`, `/exit`. `/history` lists recent checkpoints; `/restore` rewinds the session to an earlier checkpoint (the next turn forks from that point).
 - **Session persistence**: Each owly run creates a `SessionStore` backed by Turso checkpointing. Conversation messages are persisted across turns and restorable on subsequent runs in the same directory. Mid-turn assistant drafts and pending `ask_*` interrupts are recovered from checkpoint `writes` on restart.
 - **Ecosystem sync**: After a successful init/update that changes documentation, [`ecosystem.rs`](../owly/src/ecosystem.rs) appends Owly context instructions to `AGENTS.md` and `CLAUDE.md` (if they exist).
@@ -220,4 +218,4 @@ cargo clippy -p owly --all-targets -- -D warnings
 
 - [Architecture](architecture.md) — Deep dive into module structure and agent execution flow
 - [Configuration](configuration.md) — Supported providers, model selection, environment setup
-- [Existing Elph docs](../docs/) — CLI usage, memory, TUI, and operational considerations
+- [Elph design docs](../docs/) — product specs (behavior, UX, architecture); implementation detail stays in openwiki

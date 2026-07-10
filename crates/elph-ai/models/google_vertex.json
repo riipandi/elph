@@ -1,231 +1,201 @@
 {
-  "gemini-2.5-flash": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.03,
-      "cacheWrite": 0,
-      "input": 0.3,
-      "output": 2.5
+    "gemini-2.5-flash": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0,
+            "input": 0.3,
+            "output": 2.5
+        },
+        "id": "gemini-2.5-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Flash",
+        "provider": "google-vertex",
+        "reasoning": true
     },
-    "id": "gemini-2.5-flash",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 2.5 Flash",
-    "provider": "google-vertex",
-    "reasoning": true
-  },
-  "gemini-2.5-flash-lite": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.01,
-      "cacheWrite": 0,
-      "input": 0.1,
-      "output": 0.4
+    "gemini-2.5-flash-lite": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.01,
+            "cacheWrite": 0,
+            "input": 0.1,
+            "output": 0.4
+        },
+        "id": "gemini-2.5-flash-lite",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Flash-Lite",
+        "provider": "google-vertex",
+        "reasoning": true
     },
-    "id": "gemini-2.5-flash-lite",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 2.5 Flash-Lite",
-    "provider": "google-vertex",
-    "reasoning": true
-  },
-  "gemini-2.5-pro": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
+    "gemini-2.5-pro": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gemini-2.5-pro",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Pro",
+        "provider": "google-vertex",
+        "reasoning": true
     },
-    "id": "gemini-2.5-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 2.5 Pro",
-    "provider": "google-vertex",
-    "reasoning": true
-  },
-  "gemini-3-flash-preview": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.05,
-      "cacheWrite": 0,
-      "input": 0.5,
-      "output": 3
+    "gemini-3-flash-preview": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 3
+        },
+        "id": "gemini-3-flash-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3 Flash Preview",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
     },
-    "id": "gemini-3-flash-preview",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 3 Flash Preview",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
+    "gemini-3.1-flash-lite": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "gemini-3.1-flash-lite",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Flash Lite",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gemini-3.1-pro-preview": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 12
+        },
+        "id": "gemini-3.1-pro-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Pro Preview",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "HIGH",
+            "low": "LOW",
+            "medium": null,
+            "minimal": null,
+            "off": null
+        }
+    },
+    "gemini-3.1-pro-preview-customtools": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 12
+        },
+        "id": "gemini-3.1-pro-preview-customtools",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Pro Preview Custom Tools",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "HIGH",
+            "low": "LOW",
+            "medium": null,
+            "minimal": null,
+            "off": null
+        }
+    },
+    "gemini-3.5-flash": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.5,
+            "output": 9
+        },
+        "id": "gemini-3.5-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.5 Flash",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gemini-flash-latest": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.5,
+            "output": 9
+        },
+        "id": "gemini-flash-latest",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini Flash Latest",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gemini-flash-lite-latest": {
+        "api": "google-vertex",
+        "baseUrl": "https://{location}-aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "gemini-flash-lite-latest",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini Flash-Lite Latest",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
     }
-  },
-  "gemini-3.1-flash-lite": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.025,
-      "cacheWrite": 0,
-      "input": 0.25,
-      "output": 1.5
-    },
-    "id": "gemini-3.1-flash-lite",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 3.1 Flash Lite",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gemini-3.1-pro-preview": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.2,
-      "cacheWrite": 0,
-      "input": 2,
-      "output": 12
-    },
-    "id": "gemini-3.1-pro-preview",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 3.1 Pro Preview",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "HIGH",
-      "low": "LOW",
-      "medium": null,
-      "minimal": null,
-      "off": null
-    }
-  },
-  "gemini-3.1-pro-preview-customtools": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.2,
-      "cacheWrite": 0,
-      "input": 2,
-      "output": 12
-    },
-    "id": "gemini-3.1-pro-preview-customtools",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 3.1 Pro Preview Custom Tools",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "high": "HIGH",
-      "low": "LOW",
-      "medium": null,
-      "minimal": null,
-      "off": null
-    }
-  },
-  "gemini-3.5-flash": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.15,
-      "cacheWrite": 0,
-      "input": 1.5,
-      "output": 9
-    },
-    "id": "gemini-3.5-flash",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini 3.5 Flash",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gemini-flash-latest": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.15,
-      "cacheWrite": 0,
-      "input": 1.5,
-      "output": 9
-    },
-    "id": "gemini-flash-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini Flash Latest",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gemini-flash-lite-latest": {
-    "api": "google-vertex",
-    "baseUrl": "https://{location}-aiplatform.googleapis.com",
-    "contextWindow": 1048576,
-    "cost": {
-      "cacheRead": 0.025,
-      "cacheWrite": 0,
-      "input": 0.25,
-      "output": 1.5
-    },
-    "id": "gemini-flash-lite-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 65536,
-    "name": "Gemini Flash-Lite Latest",
-    "provider": "google-vertex",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  }
 }

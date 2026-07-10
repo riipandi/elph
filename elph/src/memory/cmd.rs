@@ -5,8 +5,8 @@ use super::format::{
     parse_category_filter, print_memories, print_purge, print_search_results, print_status, print_tasks, print_timeline,
 };
 use super::store::open_store;
-use crate::cmd::MemoryCommands;
-use crate::runtime::Paths;
+use crate::cli::MemoryCommands;
+use crate::platform::Paths;
 
 pub fn run(paths: Paths, cmd: &MemoryCommands) -> Result<()> {
     match cmd {

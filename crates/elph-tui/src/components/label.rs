@@ -1,17 +1,6 @@
-use iocraft::prelude::*;
+use slt::{Color, Context};
 
-#[derive(Default, Props)]
-pub struct LabelProps {
-    pub content: String,
-    pub color: Option<Color>,
-}
-
-#[component]
-pub fn Label(props: &LabelProps) -> impl Into<AnyElement<'static>> {
-    element! {
-        Text(
-            color: props.color,
-            content: &props.content,
-        )
-    }
+/// Renders a single text label with an optional foreground color.
+pub fn render_label(ui: &mut Context, content: &str, color: Option<Color>) {
+    super::text_optional_color(ui, content, color);
 }

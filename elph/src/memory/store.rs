@@ -4,7 +4,7 @@ use elph_core::floppy::{DEFAULT_EMBEDDING_DIMS, FastEmbedOptions, FloppyBuilder,
 use elph_core::floppy::{embedding_dims, resolve_embedding_model};
 use elph_core::utils::path::AppPaths;
 
-use crate::runtime::{Paths, Settings};
+use crate::platform::{Paths, Settings};
 
 pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
     std::fs::create_dir_all(paths.project_elph_dir())

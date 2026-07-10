@@ -4,7 +4,7 @@ use owly::checkpoint::{
     ASSISTANT_DRAFT, Checkpoint, CheckpointConfigurable, CheckpointListOptions, CheckpointMetadata, ERROR, INTERRUPT,
     PendingWrite, RESUME, RunnableConfig, SCHEDULED, TASKS, TOOL_PARTIAL, TursoCheckpointSaver, writes_idx,
 };
-use owly::session::{MESSAGES_CHANNEL, create_interactive_thread_id, interactive_config, load_messages, save_messages};
+use owly::session::{MESSAGES_CHANNEL, create_session_thread_id, interactive_config, load_messages, save_messages};
 use serde_json::json;
 use tempfile::TempDir;
 
@@ -237,7 +237,7 @@ async fn delete_thread_removes_checkpoints_and_writes() {
 async fn session_helpers_persist_messages() {
     let (_dir, saver) = open_temp_saver().await;
     let cwd = std::env::current_dir().expect("cwd");
-    let thread_id = create_interactive_thread_id(&cwd);
+    let thread_id = create_session_thread_id(&cwd, None);
     let config = interactive_config(&thread_id);
 
     let (_, empty) = load_messages(&saver, &thread_id).await.expect("load");

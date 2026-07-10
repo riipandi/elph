@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: CI App
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Application to test (elph, eclaw, or owly)
+        required: true
+        type: string
+      sharedKeyPrefix:
+        description: Cache key prefix
+        required: false
+        type: string
+        default: ci
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  BINSTALL_DISABLE_TELEMETRY: true
+
+jobs:
+  quality:
+    name: ${{ inputs.app }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: ${{ inputs.sharedKeyPrefix }}-${{ inputs.app }}-${{ matrix.os }}
+          saveCache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Check compilation
+        run: make check-${{ inputs.app }}
+
+      - name: Lint
+        run: make lint-${{ inputs.app }}
+
+      - name: Test
+        run: make test-${{ inputs.app }}
+
+      - name: Build release binary
+        run: make build-${{ inputs.app }}
+
+      - name: Show sccache statistics
+        if: always()
+        uses: ./.github/show-sccache-stats

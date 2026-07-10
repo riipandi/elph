@@ -1,114 +1,81 @@
-use super::assistant_message::AssistantMessage;
-use super::tool_execution::ToolExecutionCard;
+use super::assistant_message::render_assistant_message;
+use super::detail_block::{CollapseState, render_detail_block, render_pipe_message};
+use crate::components::inline_line;
+use crate::shell::shell_chat_block_gap;
 use crate::theme::Theme;
 use crate::transcript::{TranscriptEntry, TranscriptRole};
-use iocraft::prelude::{HandlerMut, *};
+use slt::Context;
 
-#[derive(Props)]
-pub struct TranscriptViewProps {
-    /// Live transcript entries (preferred — avoids cloning the full vector each render).
-    pub entries_state: Option<State<Vec<TranscriptEntry>>>,
-    /// Static entries for tests and one-shot renders.
-    pub entries: Vec<TranscriptEntry>,
-    pub theme: Theme,
-    pub show_thinking: bool,
-}
-
-impl Default for TranscriptViewProps {
-    fn default() -> Self {
-        Self {
-            entries_state: None,
-            entries: Vec::new(),
-            theme: Theme::default(),
-            show_thinking: true,
+/// Renders a transcript column from the given entries.
+pub fn render_transcript_view(
+    ui: &mut Context,
+    entries: &[TranscriptEntry],
+    show_thinking: bool,
+    theme: Theme,
+    collapse: &CollapseState,
+    agent_running: bool,
+) {
+    let gap = shell_chat_block_gap(ui);
+    let _ = ui.container().gap(gap).col(|ui| {
+        for (index, entry) in entries.iter().enumerate() {
+            render_entry(ui, entry, index, theme, show_thinking, collapse, agent_running);
         }
-    }
+    });
 }
 
-#[component]
-pub fn TranscriptView(props: &TranscriptViewProps) -> impl Into<AnyElement<'static>> {
-    let theme = props.theme;
-    let show_thinking = props.show_thinking;
-    let mut children = Vec::new();
-    if let Some(state) = &props.entries_state {
-        let entries = state.read();
-        children.reserve(entries.len());
-        children.extend(
-            entries
-                .iter()
-                .filter_map(|entry| render_entry(entry, theme, show_thinking)),
-        );
-    } else {
-        children.reserve(props.entries.len());
-        children.extend(
-            props
-                .entries
-                .iter()
-                .filter_map(|entry| render_entry(entry, theme, show_thinking)),
-        );
-    }
-
-    element! {
-        View(flex_direction: FlexDirection::Column, width: 100pct) {
-            #(children)
-        }
-    }
-}
-
-fn render_entry(entry: &TranscriptEntry, theme: Theme, show_thinking: bool) -> Option<AnyElement<'static>> {
+fn render_entry(
+    ui: &mut Context,
+    entry: &TranscriptEntry,
+    index: usize,
+    theme: Theme,
+    show_thinking: bool,
+    collapse: &CollapseState,
+    agent_running: bool,
+) {
     match entry.role {
-        TranscriptRole::User => Some(
-            element! {
-                Text(color: theme.text_color(), content: format_user(&entry.content))
+        TranscriptRole::User => {
+            if let Some(ts) = &entry.timestamp {
+                inline_line(ui, |ui| {
+                    let _ = ui.text(ts).fg(theme.dim_text()).dim();
+                });
             }
-            .into_any(),
-        ),
-        TranscriptRole::Assistant => Some(
-            element!(AssistantMessage(
-                content: entry.content.clone(),
-                is_streaming: entry.is_streaming,
-                theme: theme,
-            ))
-            .into_any(),
-        ),
+            render_pipe_message(ui, &entry.content, theme.user_pipe_col(), "  ");
+        }
+        TranscriptRole::Assistant => {
+            if let Some(ts) = &entry.timestamp {
+                inline_line(ui, |ui| {
+                    let _ = ui.text(ts).fg(theme.dim_text()).dim();
+                });
+            }
+            inline_line(ui, |ui| {
+                let _ = ui.text("| ").fg(theme.ai_pipe_col());
+            });
+            render_assistant_message(ui, &entry.content, entry.is_streaming && agent_running, theme);
+        }
         TranscriptRole::Thinking if show_thinking => {
-            let label = if entry.thinking_expanded {
+            let expanded = collapse.is_expanded(index);
+            let label = if expanded {
                 format!("Thinking:\n{}", entry.content)
             } else {
-                "Thinking... (collapsed)".to_string()
+                "Thinking…".to_string()
             };
-            Some(
-                element! {
-                    Text(color: Some(theme.muted), content: label)
-                }
-                .into_any(),
-            )
+            inline_line(ui, |ui| {
+                let _ = ui.text("● ").fg(theme.dim_text());
+                let _ = ui.text(label).fg(theme.muted).wrap();
+            });
         }
-        TranscriptRole::Thinking => None,
-        TranscriptRole::Tool => entry.tool.as_ref().map(|tool| {
-            element!(ToolExecutionCard(
-                tool: tool.clone(),
-                theme: theme,
-                compact: true,
-                on_approve: HandlerMut::default(),
-                on_deny: HandlerMut::default(),
-            ))
-            .into_any()
-        }),
+        TranscriptRole::Thinking => {}
+        TranscriptRole::Tool => {
+            if let Some(tool) = entry.tool.as_ref() {
+                let expanded = collapse.is_expanded(index);
+                render_detail_block(ui, tool, expanded, theme, index);
+            }
+        }
+        TranscriptRole::System => {
+            inline_line(ui, |ui| {
+                let _ = ui.text("> ").fg(theme.highlight());
+                let _ = ui.text(&entry.content).fg(theme.dim_text()).wrap();
+            });
+        }
     }
-}
-
-fn format_user(message: &str) -> String {
-    let trimmed = message.trim_end();
-    let mut lines = trimmed.lines();
-    let Some(first) = lines.next() else {
-        return String::new();
-    };
-    let mut out = format!("> {first}");
-    for line in lines {
-        out.push('\n');
-        out.push_str("  ");
-        out.push_str(line);
-    }
-    out
 }

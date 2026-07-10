@@ -1,70 +1,62 @@
 {
-  "k2p7": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.kimi.com/coding",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 0,
-      "output": 0
+    "k2p7": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.kimi.com/coding",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "headers": {
+            "User-Agent": "KimiCLI/1.5"
+        },
+        "id": "k2p7",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Kimi K2.7 Code",
+        "provider": "kimi-coding",
+        "reasoning": true
     },
-    "headers": {
-      "User-Agent": "KimiCLI/1.5"
+    "kimi-for-coding": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.kimi.com/coding",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "headers": {
+            "User-Agent": "KimiCLI/1.5"
+        },
+        "id": "kimi-for-coding",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Kimi For Coding",
+        "provider": "kimi-coding",
+        "reasoning": true
     },
-    "id": "k2p7",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32768,
-    "name": "Kimi K2.7 Code",
-    "provider": "kimi-coding",
-    "reasoning": true
-  },
-  "kimi-for-coding": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.kimi.com/coding",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 0,
-      "output": 0
-    },
-    "headers": {
-      "User-Agent": "KimiCLI/1.5"
-    },
-    "id": "kimi-for-coding",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32768,
-    "name": "Kimi For Coding",
-    "provider": "kimi-coding",
-    "reasoning": true
-  },
-  "kimi-k2-thinking": {
-    "api": "anthropic-messages",
-    "baseUrl": "https://api.kimi.com/coding",
-    "contextWindow": 262144,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 0,
-      "output": 0
-    },
-    "headers": {
-      "User-Agent": "KimiCLI/1.5"
-    },
-    "id": "kimi-k2-thinking",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 32768,
-    "name": "Kimi K2 Thinking",
-    "provider": "kimi-coding",
-    "reasoning": true
-  }
+    "kimi-k2-thinking": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.kimi.com/coding",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "headers": {
+            "User-Agent": "KimiCLI/1.5"
+        },
+        "id": "kimi-k2-thinking",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Kimi K2 Thinking",
+        "provider": "kimi-coding",
+        "reasoning": true
+    }
 }

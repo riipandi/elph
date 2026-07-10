@@ -1,330 +1,158 @@
-# Elph CLI Documentation
+# CLI
 
-## Usage
+Design for the `elph` command-line interface.
+
+## Invocation
 
 ```
 elph [OPTIONS] [COMMAND]
 ```
 
-## Global Options
+## Global options
 
-| Flag              | Description               |
-|-------------------|---------------------------|
-| `-V`, `--version` | Print version information |
-| `-h`, `--help`    | Print help                |
+| Flag              | Description   |
+| ----------------- | ------------- |
+| `-V`, `--version` | Print version |
+| `-h`, `--help`    | Print help    |
 
 ## Subcommands
 
-| Command       | Description                                                          |
-|---------------|----------------------------------------------------------------------|
-| `acp`         | Run Elph as an Agent Client Protocol (ACP) server over stdio         |
-| `completions` | Generate shell completion scripts (bash, zsh, fish, powershell, etc) |
-| `doctor`      | Show the configuration Elph discovers for this directory             |
-| `export`      | Export a session transcript or archive                               |
-| `import`      | Import sessions into Elph                                            |
-| `mcp`         | Manage MCP server configurations                                     |
-| `models`      | List available models and exit                                       |
-| `plugin`      | Manage plugins and extensions                                        |
-| `provider`    | Manage AI providers and credentials                                  |
-| `run`         | Run a prompt non-interactively and exit                              |
-| `server`      | Run the local Elph server (REST + WebSocket + web UI)                |
-| `session`     | List, search, or restore sessions                                    |
-| `stats`       | Show token usage and cost statistics                                 |
-| `update`      | Check for updates or install a specific version                      |
-| `version`     | Print version information                                            |
-| `worktree`    | Manage git worktrees                                                 |
+| Command       | Description                                 |
+| ------------- | ------------------------------------------- |
+| `acp`         | Agent Client Protocol server over stdio     |
+| `codegraph`   | Structural knowledge graph for code reviews |
+| `completions` | Shell completion scripts                    |
+| `doctor`      | Show discovered configuration               |
+| `export`      | Export session transcript or archive        |
+| `import`      | Import sessions                             |
+| `mcp`         | MCP server configuration                    |
+| `memory`      | Inspect and manage agent memory             |
+| `models`      | List available models                       |
+| `plugin`      | Plugins and extensions                      |
+| `provider`    | AI providers and credentials                |
+| `run`         | Non-interactive prompt → stdout             |
+| `server`      | Local REST + WebSocket + web UI             |
+| `session`     | List, search, restore sessions              |
+| `stats`       | Token usage and cost                        |
+| `update`      | Check for updates                           |
+| `version`     | Print version                               |
+| `worktree`    | Git worktrees                               |
 
 ### Default (no subcommand)
 
-When no subcommand is given, Elph launches the interactive TUI.
+Launch the interactive TUI. Design: full agent experience; current gap documented in [openwiki](../openwiki/quickstart.md).
 
 ### `version`
 
-Prints the Elph version and exits.
+Print version and exit. Equivalent to `-V`.
 
-```
-elph version
-```
+### `memory`
 
-Equivalent to the `--version` global flag.
+Inspect project-local memory at `<project>/.elph/store.db`.
+
+| Subcommand       | Description                                             |
+| ---------------- | ------------------------------------------------------- |
+| `status`         | Counts, categories, top memories, task stats            |
+| `list`           | All memories; optional `--category`                     |
+| `tasks`          | Recent tasks (`--limit`, default 10)                    |
+| `log`            | Event timeline (`--limit`, default 20)                  |
+| `search <query>` | Semantic search (requires embedder)                     |
+| `purge`          | Delete low-weight memories (`--threshold`, default 0.5) |
+
+See [memory.md](./memory.md).
 
 ### `run`
 
-Run a prompt non-interactively and print the response to stdout.
-
-```
-elph run [OPTIONS] [PROMPT]...
-```
-
-| Argument / Flag            | Description                                                               |
-|----------------------------|---------------------------------------------------------------------------|
-| `[PROMPT]...`              | Prompt to process non-interactively                                       |
-| `-m`, `--model <MODEL>`    | Model to use (`provider/model`)                                           |
-| `--output-format <FORMAT>` | Output format (default: `text`)                                           |
-| `-c`, `--continue`         | Continue the most recent session for the current working directory        |
-| `-s`, `--session <ID>`     | Resume a specific session by ID                                           |
-| `--fork`                   | Fork the session before continuing (requires `--continue` or `--session`) |
-| `-f`, `--file <FILE>`      | File(s) to attach to the prompt (repeatable)                              |
-| `-b`, `--brave`            | Auto-approve tool executions                                              |
-
-### `completions`
-
-Generate shell completion scripts.
-
-```
-elph completions [OPTIONS]
-```
-
-| Flag                    | Description                  |
-|-------------------------|------------------------------|
-| `-s`, `--shell <SHELL>` | Shell type (default: `bash`) |
-
-### `doctor`
-
-Show the configuration Elph discovers for the current directory.
-
-```
-elph doctor [OPTIONS]
-```
-
-| Flag     | Description                       |
-|----------|-----------------------------------|
-| `--json` | Emit machine-readable JSON output |
-
-### `export`
-
-Export a session transcript or archive.
-
-```
-elph export [OPTIONS] [SESSION_ID]
-```
-
-| Argument / Flag         | Description                                                   |
-|-------------------------|---------------------------------------------------------------|
-| `[SESSION_ID]`          | Session ID to export (exports most recent if omitted)         |
-| `-o`, `--output <PATH>` | Output file path (default: stdout)                            |
-| `--format <FORMAT>`     | Output format: `json`, `markdown`, or `zip` (default: `json`) |
-| `-c`, `--clipboard`     | Copy to clipboard instead of writing to stdout                |
-| `--sanitize`            | Redact sensitive transcript and file data                     |
-
-### `import`
-
-Import sessions into Elph.
-
-```
-elph import [OPTIONS] [FILE]
-```
-
-| Argument / Flag | Description                                   |
-|-----------------|-----------------------------------------------|
-| `[FILE]`        | Path to session file, directory, or share URL |
-| `--list`        | List available sessions without importing     |
-| `--json`        | Emit NDJSON output to stdout                  |
-
-### `models`
-
-List available models and exit.
-
-```
-elph models [OPTIONS] [PROVIDER]
-```
-
-| Argument / Flag    | Description                         |
-|--------------------|-------------------------------------|
-| `[PROVIDER]`       | Filter models by provider name      |
-| `--search <QUERY>` | Fuzzy search filter for model names |
-
-### `stats`
-
-Show token usage and cost statistics.
-
-```
-elph stats [OPTIONS]
-```
-
-| Flag                     | Description                       |
-|--------------------------|-----------------------------------|
-| `--session <SESSION_ID>` | Filter statistics to one session  |
-| `--json`                 | Emit machine-readable JSON output |
-
-### `update`
-
-Check for updates or install a specific version.
-
-```
-elph update [OPTIONS]
-```
-
-| Flag                  | Description                                                          |
-|-----------------------|----------------------------------------------------------------------|
-| `--check`             | Check for updates without installing                                 |
-| `--json`              | Emit machine-readable JSON output (for `--check`)                    |
-| `--force-reinstall`   | Force re-download and install even if already up to date             |
-| `--version <VERSION>` | Install a specific version (e.g. `0.0.0` or `0.0.0-canary`)          |
-| `--canary`            | Switch to the canary release channel (faster updates, may have bugs) |
-| `--stable`            | Switch to the stable release channel (default, weekly releases)      |
+| Flag               | Description                    |
+| ------------------ | ------------------------------ |
+| `-m`, `--model`    | Model (`provider/model`)       |
+| `--output-format`  | Output format (default `text`) |
+| `-c`, `--continue` | Continue recent session        |
+| `-s`, `--session`  | Resume by session ID           |
+| `--fork`           | Fork before continue           |
+| `-f`, `--file`     | Attach files (repeatable)      |
+| `-b`, `--brave`    | Auto-approve tools             |
 
 ### `provider`
 
-Manage AI providers and credentials.
+Subcommands: `list`, `connect`, `disconnect`, `add`, `remove`, `catalog`, `update`.
 
-```
-elph provider <COMMAND>
-```
+Design: interactive credential setup, models.dev catalog sync, enable/disable providers.
 
-| Subcommand              | Description                                          |
-|-------------------------|------------------------------------------------------|
-| `list`                  | List configured providers and credentials            |
-| `connect [provider]`    | Connect to an AI provider (interactive login)        |
-| `disconnect [provider]` | Disconnect from a provider and clear credentials     |
-| `add <url>`             | Import providers from a custom registry (`api.json`) |
-| `remove <provider_id>`  | Remove a provider and its model aliases              |
-| `catalog`               | Discover and import providers from models.dev        |
-| `update [provider_id]`  | Update provider metadata and credentials             |
+### `codegraph`
 
-**`provider list` options**
+Subcommands: `build`, `update`, `watch`, `status`, `changes`, `eval`, `postprocess`, `repos`, `register`, `unregister`, `visualize`, `serve`, `wiki`.
 
-| Flag     | Description                       |
-|----------|-----------------------------------|
-| `--json` | Emit machine-readable JSON output |
-
-### `plugin`
-
-Manage plugins and extensions.
-
-```
-elph plugin <COMMAND>
-```
-
-| Subcommand         | Description                                   |
-|--------------------|-----------------------------------------------|
-| `list`             | List installed plugins                        |
-| `install <source>` | Install a plugin from a git URL or local path |
-| `remove <name>`    | Remove an installed plugin                    |
-| `update [name]`    | Update one or all installed plugins           |
-| `enable <name>`    | Enable a disabled plugin                      |
-| `disable <name>`   | Disable a plugin without uninstalling it      |
-
-**`plugin install` options**
-
-| Flag             | Description                                       |
-|------------------|---------------------------------------------------|
-| `--trust`        | Trust the plugin immediately (skip confirmation)  |
-| `-g`, `--global` | Install in global config instead of project-local |
-| `-f`, `--force`  | Replace existing plugin version                   |
-
-**`plugin remove` options**
-
-| Flag             | Description                                        |
-|------------------|----------------------------------------------------|
-| `-g`, `--global` | Remove from global config instead of project-local |
-
-**`plugin update` options**
-
-| Flag    | Description                  |
-|---------|------------------------------|
-| `--all` | Update all installed plugins |
+Structural graph for smarter code reviews and impact analysis.
 
 ### `mcp`
 
-Manage MCP server configurations.
+Subcommands: `list`, `add`, `remove`, `doctor`, `auth`, `logout`.
 
-```
-elph mcp <COMMAND>
-```
+### `plugin`
 
-| Subcommand            | Description                                        |
-|-----------------------|----------------------------------------------------|
-| `list`                | List configured MCP servers                        |
-| `add <name> [config]` | Add or update an MCP server configuration          |
-| `remove <name>`       | Remove an MCP server configuration                 |
-| `doctor`              | Diagnose MCP server configuration and connectivity |
-| `auth <name>`         | Authenticate with an OAuth-enabled MCP server      |
-| `logout <name>`       | Remove OAuth credentials for an MCP server         |
+Manage WASM extension bundles (wasmtime + Component Model). See [extensions.md](./extensions.md).
 
-### `session`
-
-List, search, or restore sessions.
-
-```
-elph session <COMMAND>
-```
-
-| Subcommand       | Description                                           |
-|------------------|-------------------------------------------------------|
-| `list`           | List recent sessions (same as `search` with no query) |
-| `search [query]` | Search sessions by keyword                            |
-| `delete <id>`    | Permanently delete a session from history             |
+| Subcommand       | Flags             | Design behavior                                   |
+| ---------------- | ----------------- | ------------------------------------------------- |
+| `list`           | —                 | Installed extensions, enabled state, `/commands`  |
+| `install <path>` | `--force`         | Copy local bundle to `~/.elph/extensions/<name>/` |
+| `remove <name>`  | —                 | Delete global bundle                              |
+| `enable <name>`  | —                 | Remove from `extensions.json` `disabled`          |
+| `disable <name>` | —                 | Add to `extensions.json` `disabled`               |
+| `update`         | `--all`, `[name]` | **Planned** — git/npm package updates             |
 
 ### `server`
 
-Run the local Elph server (REST + WebSocket + web UI).
+Subcommands: `run`, `ps`, `kill`, `rotate-token`. Flags: `--port`, `--host`, `--foreground`.
 
-```
-elph server [OPTIONS] [COMMAND]
-```
+### `session`
 
-| Flag                  | Description                                |
-|-----------------------|--------------------------------------------|
-| `-p`, `--port <PORT>` | Port to listen on (default: `8080`)        |
-| `--host <HOST>`       | Hostname to bind to (default: `127.0.0.1`) |
-
-| Subcommand     | Description                                          |
-|----------------|------------------------------------------------------|
-| `run`          | Start the Elph server (background daemon by default) |
-| `ps`           | List clients connected to the running server         |
-| `kill`         | Stop the running server                              |
-| `rotate-token` | Generate a new persistent server token               |
-
-**`server run` options**
-
-| Flag           | Description                                  |
-|----------------|----------------------------------------------|
-| `--foreground` | Run in the foreground instead of as a daemon |
+Subcommands: `list`, `search`, `delete`.
 
 ### `worktree`
 
-Manage git worktrees.
+Subcommands: `list`, `show`, `rm`, `gc`, `db`.
 
-```
-elph worktree <COMMAND>
-```
+### `export` / `import`
 
-| Subcommand          | Description                              |
-|---------------------|------------------------------------------|
-| `list`              | List tracked worktrees                   |
-| `show <id_or_path>` | Show details for a specific worktree     |
-| `rm <id_or_path>`   | Remove worktrees                         |
-| `gc`                | Garbage-collect orphaned/stale worktrees |
-| `db`                | Database maintenance                     |
+Export formats: `json`, `markdown`, `zip`. Flags: `--output`, `--clipboard`, `--sanitize`.
 
-**`worktree rm` options**
+## Owly (separate binary)
 
-| Flag            | Description                 |
-|-----------------|-----------------------------|
-| `-f`, `--force` | Remove without confirmation |
+Documentation agent with a working interactive CLI: `owly --init`, `owly --update`, interactive mode, print mode. See [openwiki/quickstart.md](../openwiki/quickstart.md).
 
-### `help`
+## Bootstrap
 
-Print the help message of a subcommand.
+First run scaffolds home config, data dirs, default settings, provider directory, project `.elph/` gitignore, and version metadata. Datastore (`metadata.db`) initializes for the default TUI and datastore-dependent subcommands.
 
-```
-elph help [SUBCOMMAND]
-```
+## Exit codes
 
-## Implementation status
+| Code  | Meaning                |
+| ----- | ---------------------- |
+| `0`   | Success                |
+| `1`   | General error          |
+| `3`   | Not authenticated      |
+| `4`   | Permission denied      |
+| `5`   | Rate limited           |
+| `6`   | Network failure        |
+| `7`   | API server error (5xx) |
+| `130` | Interrupted (SIGINT)   |
 
-All subcommands exist as placeholders — they print a "not yet implemented" message except for `version` and the default TUI.
+## Workspace builds
 
-## Exit Codes
+Release builds via root `Makefile`. See [development.md](./development.md).
 
-| Code  | Meaning                      | Constant                 |
-|-------|------------------------------|--------------------------|
-| `0`   | Success                      | `EXIT_SUCCESS`           |
-| `1`   | General error                | `EXIT_ERROR`             |
-| `3`   | Not authenticated            | `EXIT_AUTH_ERROR`        |
-| `4`   | Permission denied            | `EXIT_PERMISSION_DENIED` |
-| `5`   | Rate limit exceeded          | `EXIT_RATE_LIMITED`      |
-| `6`   | Network failure              | `EXIT_CONNECTION_ERROR`  |
-| `7`   | API server error (5xx)       | `EXIT_SERVER_ERROR`      |
-| `130` | Interrupted (SIGINT/SIGTERM) | `EXIT_INTERRUPTED`       |
+| Target             | Output                          |
+| ------------------ | ------------------------------- |
+| `make build`       | All binaries: elph, eclaw, owly |
+| `make build-elph`  | `target/release/elph`           |
+| `make build-eclaw` | `target/release/eclaw`          |
+| `make build-owly`  | `target/release/owly`           |
+
+## Related
+
+- [configuration.md](./configuration.md)
+- [development.md](./development.md)
+- [extensions.md](./extensions.md)
+- [README.md](./README.md)

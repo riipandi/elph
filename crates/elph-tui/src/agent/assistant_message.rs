@@ -1,57 +1,27 @@
-use crate::diff::{MarkdownTheme, render_markdown_lines};
+use crate::diff::partition_streaming_markdown;
 use crate::theme::Theme;
-use iocraft::prelude::*;
+use crate::utils::strip_ansi;
+use slt::Context;
 
-#[derive(Default, Props)]
-pub struct AssistantMessageProps {
-    pub content: String,
-    pub is_streaming: bool,
-    pub theme: Theme,
-}
-
-#[derive(Clone)]
-struct RenderCache {
-    content: String,
-    is_streaming: bool,
-    rendered: String,
-}
-
-#[component]
-pub fn AssistantMessage(mut hooks: Hooks, props: &AssistantMessageProps) -> impl Into<AnyElement<'static>> {
-    let mut cache = hooks.use_ref(|| None::<RenderCache>);
-    let palette = markdown_theme_from(props.theme);
-    let suffix = if props.is_streaming { " ▌" } else { "" };
-
-    let body = {
-        let mut guard = cache.write();
-        let needs_rebuild = guard
-            .as_ref()
-            .is_none_or(|c| c.content != props.content || c.is_streaming != props.is_streaming);
-        if needs_rebuild {
-            let rendered = render_markdown_lines(&props.content, 120, palette).join("\n");
-            *guard = Some(RenderCache {
-                content: props.content.clone(),
-                is_streaming: props.is_streaming,
-                rendered,
-            });
-        }
-        let rendered = guard.as_ref().expect("cache populated").rendered.clone();
-        drop(guard);
-        format!("{rendered}{suffix}")
-    };
-
-    element! {
-        View(
-            flex_direction: FlexDirection::Column,
-            width: 100pct,
-            padding_left: 1,
-        ) {
-            Text(content: body)
-        }
+/// Renders an assistant message with markdown formatting and an optional streaming cursor.
+pub fn render_assistant_message(ui: &mut Context, content: &str, show_streaming_cursor: bool, theme: Theme) {
+    let content = strip_ansi(content);
+    if content.trim().is_empty() && !show_streaming_cursor {
+        return;
     }
-}
 
-fn markdown_theme_from(theme: Theme) -> MarkdownTheme {
-    let _ = theme;
-    MarkdownTheme::dark()
+    let streaming = show_streaming_cursor;
+    let (stable, tail) = partition_streaming_markdown(&content, streaming);
+
+    if !stable.is_empty() {
+        let _ = ui.markdown(stable.trim_end());
+    }
+
+    if !tail.is_empty() {
+        let _ = ui.text(tail).wrap();
+    }
+
+    if show_streaming_cursor {
+        let _ = ui.text("▌").fg(theme.highlight());
+    }
 }

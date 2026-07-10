@@ -15,9 +15,13 @@ pub fn tool_status_icon(status: ToolExecutionStatus) -> &'static str {
     }
 }
 
-/// Header line: `  ✓ tool_name` (args/output rendered separately, untruncated).
-pub fn tool_transcript_header(tool: &ToolExecutionState) -> String {
-    format!("  {} {}", tool_status_icon(tool.status), tool.name)
+/// Single-line tool row for the default transcript (Codex / Claude CLI style).
+pub fn tool_transcript_compact(tool: &ToolExecutionState, args_max: usize, preview_max: usize) -> String {
+    format!(
+        "{} {}",
+        tool_status_icon(tool.status),
+        tool_chip_label(tool, args_max, preview_max)
+    )
 }
 
 /// Full args + output block for the chat transcript (no truncation).
@@ -98,11 +102,13 @@ mod tests {
     }
 
     #[test]
-    fn transcript_header_is_name_only() {
+    fn compact_line_includes_status_icon() {
         let tool = ToolExecutionState::new("1", "read")
             .with_args(r#"{"path":"src/lib.rs"}"#)
             .with_status(ToolExecutionStatus::Success);
-        assert_eq!(tool_transcript_header(&tool), "  ✓ read");
+        let line = tool_transcript_compact(&tool, 24, 32);
+        assert!(line.starts_with('✓'));
+        assert!(line.contains("read"));
     }
 
     #[test]

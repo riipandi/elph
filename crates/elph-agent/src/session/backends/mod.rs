@@ -1,9 +1,9 @@
 //! Session storage backends.
 
-pub mod jsonl;
 pub mod memory;
+pub mod session_dir;
 pub mod turso;
 
-pub use jsonl::{JsonlSessionCreateOptions, JsonlSessionStorage, load_jsonl_session_metadata};
 pub use memory::{InMemorySessionOptions, InMemorySessionStorage};
+pub use session_dir::{SessionDirCreateOptions, SessionDirStorage, load_session_metadata};
 pub use turso::TursoSessionStorage;

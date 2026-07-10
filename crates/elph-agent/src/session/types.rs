@@ -7,6 +7,7 @@ use elph_ai::{ImageContent, TextContent};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::mode::CollaborationMode;
 use crate::types::AgentMessage;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +71,14 @@ pub enum SessionTreeEntry {
         provider: String,
         #[serde(rename = "modelId")]
         model_id: String,
+    },
+    #[serde(rename = "collaboration_mode_change")]
+    CollaborationModeChange {
+        id: String,
+        #[serde(rename = "parentId", default, skip_serializing_if = "Option::is_none")]
+        parent_id: Option<String>,
+        timestamp: String,
+        mode: CollaborationMode,
     },
     #[serde(rename = "active_tools_change")]
     ActiveToolsChange {
@@ -185,6 +194,7 @@ impl SessionTreeEntry {
             Self::Message { id, .. }
             | Self::ThinkingLevelChange { id, .. }
             | Self::ModelChange { id, .. }
+            | Self::CollaborationModeChange { id, .. }
             | Self::ActiveToolsChange { id, .. }
             | Self::Compaction { id, .. }
             | Self::BranchSummary { id, .. }
@@ -201,6 +211,7 @@ impl SessionTreeEntry {
             Self::Message { parent_id, .. }
             | Self::ThinkingLevelChange { parent_id, .. }
             | Self::ModelChange { parent_id, .. }
+            | Self::CollaborationModeChange { parent_id, .. }
             | Self::ActiveToolsChange { parent_id, .. }
             | Self::Compaction { parent_id, .. }
             | Self::BranchSummary { parent_id, .. }
@@ -217,6 +228,7 @@ impl SessionTreeEntry {
             Self::Message { .. } => "message",
             Self::ThinkingLevelChange { .. } => "thinking_level_change",
             Self::ModelChange { .. } => "model_change",
+            Self::CollaborationModeChange { .. } => "collaboration_mode_change",
             Self::ActiveToolsChange { .. } => "active_tools_change",
             Self::Compaction { .. } => "compaction",
             Self::BranchSummary { .. } => "branch_summary",
@@ -247,18 +259,20 @@ impl HasSessionId for SessionMetadata {
     }
 }
 
+/// Metadata for a multi-file session directory.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonlSessionMetadata {
+pub struct SessionDirMetadata {
     pub id: String,
     #[serde(rename = "createdAt")]
     pub created_at: String,
     pub cwd: String,
-    pub path: String,
-    #[serde(rename = "parentSessionPath", skip_serializing_if = "Option::is_none")]
-    pub parent_session_path: Option<String>,
+    /// Absolute path to the session directory (`~/.elph/sessions/<key>/<id>/`).
+    pub dir: String,
+    #[serde(rename = "parentSessionId", skip_serializing_if = "Option::is_none")]
+    pub parent_session_id: Option<String>,
 }
 
-impl HasSessionId for JsonlSessionMetadata {
+impl HasSessionId for SessionDirMetadata {
     fn session_id(&self) -> &str {
         &self.id
     }
@@ -284,6 +298,7 @@ pub struct SessionContext {
     pub thinking_level: String,
     pub model: Option<SessionModelRef>,
     pub active_tool_names: Option<Vec<String>>,
+    pub collaboration_mode: CollaborationMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

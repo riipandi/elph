@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::session::SessionStore;
 use crate::ui_events::AgentUiEvent;
 
-/// Thread-safe shell state used by the iocraft app and command worker.
+/// Thread-safe shell state used by the Owly TUI and command worker.
 #[derive(Clone)]
 pub struct AppContext {
     inner: Arc<AppContextInner>,

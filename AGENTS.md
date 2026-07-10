@@ -1,20 +1,60 @@
-## OpenWiki Agent Instructions
+# Agent Instructions
 
-This repository has documentation located in the /openwiki directory.
+This repository uses documentation in the `/openwiki` directory as the primary source of truth.
 
-Start here:
+## Getting Started
 
-- [OpenWiki quickstart](openwiki/quickstart.md)
+- Read: [OpenWiki quickstart](openwiki/quickstart.md)
+- Follow links from the quickstart to relevant sections (architecture, workflows, domain, operations, testing).
+- Prefer OpenWiki over re-exploring the codebase when documentation already answers the question.
 
-OpenWiki includes repository overview, architecture notes, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+---
 
-When working in this repository, read the OpenWiki quickstart first, then follow its links to the relevant architecture, workflow, domain, operation, and testing notes.
+## Testing Conventions (Rust)
+
+Follow these rules strictly.
+
+### Unit Tests
+
+- Located **in the same file** as the implementation.
+- Use `#[cfg(test)]` modules.
+- Test internal logic directly.
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_example() {
+        assert_eq!(example_fn(), expected);
+    }
+}
+```
+
+### Integration Tests
+
+- Located in the root-level `tests/` directory.
+- Each file is a separate test crate.
+- Test only public APIs (no private/internal access).
+
+```
+tests/
+  user_flow.rs
+  api_contract.rs
+```
+
+### General Rules
+
+- Keep tests small and focused.
+- Cover edge cases and failure paths.
+- Avoid duplication between unit and integration tests.
+- Use clear, descriptive test names.
+
 
 <!-- openwiki-context -->
+## OpenWiki Documentation
 
-## OpenWiki documentation
-
-When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`.
-Prefer those docs over re-exploring the entire codebase when they already answer the question.
+When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`. Prefer those docs over re-exploring the entire codebase when they already answer the question.
 
 Entry point: `openwiki/quickstart.md`.

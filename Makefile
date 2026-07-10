@@ -12,6 +12,11 @@ BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS     := $(ELPH_BIN) $(ECLAW_BIN) $(OWLY_BIN)
 INSTALL_DIR  := $(HOME)/.local/bin
 BUILD_DIR    := ./target/release
+APP          ?=
+
+_ELPH_PKGS   := elph elph-core elph-agent elph-ai elph-tui
+_ECLAW_PKGS  := eclaw elph-core elph-agent elph-ai
+_OWLY_PKGS   := owly elph-agent elph-ai elph-tui
 
 UNAME_S := $(shell uname -s)
 
@@ -20,6 +25,7 @@ UNAME_S := $(shell uname -s)
 SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
 ifneq ($(SCCACHE_BIN),)
   export RUSTC_WRAPPER := sccache
+  export SCCACHE_DIRECT := true
 endif
 
 # Single-platform override: make cross CROSS_TARGET=aarch64-unknown-linux-musl
@@ -34,9 +40,11 @@ _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build run watch test lint fmt clean check coverage help stats generate-models
-.PHONY: prepare cross cross-pull release build-linux build-macos build-windows
-.PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run
+.PHONY: build build-elph build-eclaw build-owly run watch test
+.PHONY: test-elph test-eclaw test-owly check-elph check-eclaw check-owly
+.PHONY: lint lint-elph lint-eclaw lint-owly fmt clean check coverage help stats generate-models prepare
+.PHONY: cross cross-pull release release-linux release-macos release-windows
+.PHONY: bump bump-elph bump-eclaw bump-owly bump-libs publish publish-dry-run check-version
 
 # ─── Build ──────────────────────────────────────────────────────────────────
 
@@ -67,6 +75,18 @@ build: ## Build all application binaries (elph + eclaw + owly)
 	done; \
 	printf "Build time: %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
+build-elph: ## Build elph binary
+	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(ELPH_BIN) 2>&1
+
+build-eclaw: ## Build eclaw binary
+	@echo "Building $(ECLAW_BIN) v$(ECLAW_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(ECLAW_BIN) 2>&1
+
+build-owly: ## Build owly binary
+	@echo "Building $(OWLY_BIN) v$(OWLY_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+	@$(CARGO) build --release --bin $(OWLY_BIN) 2>&1
+
 install: build ## Install elph-next, eclaw-next, and owly to $INSTALL_DIR
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
@@ -84,6 +104,24 @@ watch: ## Run eclaw with hot reload (requires watchexec)
 
 test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
+
+test-elph: ## Run tests for elph and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui $(ARGS)
+
+test-eclaw: ## Run tests for eclaw and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p eclaw -p elph-core -p elph-agent -p elph-ai $(ARGS)
+
+test-owly: ## Run tests for owly and its workspace deps
+	@$(CARGO) nextest run --no-fail-fast -p owly -p elph-agent -p elph-ai -p elph-tui $(ARGS)
+
+check-elph: ## Check elph and its workspace deps compile
+	@$(CARGO) check -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui 2>&1
+
+check-eclaw: ## Check eclaw and its workspace deps compile
+	@$(CARGO) check -p eclaw -p elph-core -p elph-agent -p elph-ai 2>&1
+
+check-owly: ## Check owly and its workspace deps compile
+	@$(CARGO) check -p owly -p elph-agent -p elph-ai -p elph-tui 2>&1
 
 generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_AI_CATALOG_DIR, ARGS=--skip-scripts)
 	@test -f "$(ELPH_AI_CATALOG_DIR)/scripts/generate-models.ts" || { \
@@ -104,29 +142,38 @@ generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_
 cross-pull: ## Pull ghcr.io/cross-rs images into local Docker cache
 	@./scripts/cross-pull-images.sh
 
-cross: ## Build one platform (CROSS_TARGET=<triple>; CROSS_QUIET=1 / CROSS_VERBOSE=1)
+cross: ## Build one platform (CROSS_TARGET=<triple>; APP=elph|eclaw|owly; CROSS_QUIET=1 / CROSS_VERBOSE=1)
 	@test -n "$(CROSS_TARGET)" || { echo "Usage: make cross CROSS_TARGET=<triple>" >&2; exit 1; }
-	@./scripts/cross-build.sh $(CROSS_TARGET)
+	@APP="$(APP)" ./scripts/cross-build.sh $(CROSS_TARGET) $(APP)
 
 release: ## Build release (host-aware: cargo native, cross remote)
 	@./scripts/cross-release.sh
 
-build-linux: ## Build Linux release (glibc + musl, x86_64 + arm64)
-	@./scripts/cross-platform.sh linux
+release-linux: ## Build Linux release (glibc + musl, x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh linux
 
-build-macos: ## Build macOS release (x86_64 + arm64)
-	@./scripts/cross-platform.sh macos
+release-macos: ## Build macOS release (x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh macos
 
-build-windows: ## Build Windows release (x86_64 + arm64)
-	@./scripts/cross-platform.sh windows
+release-windows: ## Build Windows release (x86_64 + arm64; APP=elph|eclaw|owly)
+	@APP="$(APP)" ./scripts/cross-platform.sh windows
 
 # ─── Code Quality ───────────────────────────────────────────────────────────
 
 lint: ## Run clippy linter
 	@$(CARGO) clippy --workspace --all-targets -- -D warnings
 
+lint-elph: ## Run clippy for elph and its workspace deps
+	@$(CARGO) clippy -p elph -p elph-core -p elph-agent -p elph-ai -p elph-tui --all-targets -- -D warnings
+
+lint-eclaw: ## Run clippy for eclaw and its workspace deps
+	@$(CARGO) clippy -p eclaw -p elph-core -p elph-agent -p elph-ai --all-targets -- -D warnings
+
+lint-owly: ## Run clippy for owly and its workspace deps
+	@$(CARGO) clippy -p owly -p elph-agent -p elph-ai -p elph-tui --all-targets -- -D warnings
+
 fmt: ## Format all code
-	@$(CARGO) fmt --all -- --check
+	@$(CARGO) fmt --all -- --style-edition 2024
 
 coverage: ## Run tests with coverage (requires tarpaulin)
 	@$(CARGO) tarpaulin --workspace 2>&1
@@ -165,6 +212,14 @@ prepare: ## Install required toolchain
 	fi
 
 # ─── Versioning ────────────────────────────────────────────────────────────────
+# check-version: compare Cargo.toml with latest GitHub releases
+#   make check-version
+#   make check-version APP=elph
+#   make check-version TAG=elph-v0.0.28
+
+check-version: ## Compare app versions with latest GitHub releases (APP=, TAG=)
+	@APP="$(APP)" TAG="$(TAG)" ./scripts/check-version.sh
+
 # Independent version streams:
 #   bump-elph  — elph/Cargo.toml
 #   bump-eclaw — eclaw/Cargo.toml

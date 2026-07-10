@@ -29,6 +29,7 @@ pub enum TranscriptRole {
     Assistant,
     Tool,
     Thinking,
+    System,
 }
 
 /// Lifecycle state for a tool execution card.
@@ -88,26 +89,37 @@ pub struct TranscriptEntry {
     pub is_streaming: bool,
     pub tool: Option<ToolExecutionState>,
     pub thinking_expanded: bool,
+    pub timestamp: Option<String>,
 }
 
 impl TranscriptEntry {
     pub fn user(content: impl Into<String>) -> Self {
+        Self::user_with_timestamp(content, None)
+    }
+
+    pub fn user_with_timestamp(content: impl Into<String>, timestamp: Option<String>) -> Self {
         Self {
             role: TranscriptRole::User,
             content: content.into(),
             is_streaming: false,
             tool: None,
             thinking_expanded: false,
+            timestamp,
         }
     }
 
     pub fn assistant(content: impl Into<String>) -> Self {
+        Self::assistant_with_timestamp(content, None)
+    }
+
+    pub fn assistant_with_timestamp(content: impl Into<String>, timestamp: Option<String>) -> Self {
         Self {
             role: TranscriptRole::Assistant,
             content: content.into(),
             is_streaming: false,
             tool: None,
             thinking_expanded: false,
+            timestamp,
         }
     }
 
@@ -118,6 +130,7 @@ impl TranscriptEntry {
             is_streaming: true,
             tool: None,
             thinking_expanded: false,
+            timestamp: None,
         }
     }
 
@@ -128,6 +141,7 @@ impl TranscriptEntry {
             is_streaming: false,
             tool: None,
             thinking_expanded: expanded,
+            timestamp: None,
         }
     }
 
@@ -138,6 +152,18 @@ impl TranscriptEntry {
             is_streaming: false,
             tool: Some(state),
             thinking_expanded: false,
+            timestamp: None,
+        }
+    }
+
+    pub fn system(content: impl Into<String>) -> Self {
+        Self {
+            role: TranscriptRole::System,
+            content: content.into(),
+            is_streaming: false,
+            tool: None,
+            thinking_expanded: false,
+            timestamp: None,
         }
     }
 }

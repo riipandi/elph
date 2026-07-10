@@ -14,16 +14,19 @@ name = "elph_core"
 path = "src/lib.rs"
 
 [features]
-default = []
+default = ["git"]
 fastembed = ["dep:fastembed"]
+git = ["dep:git2"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+fastembed = { workspace = true, optional = true }
+git2 = { workspace = true, optional = true }
 memchr.workspace = true
 parking_lot.workspace = true
-fastembed = { workspace = true, optional = true }
 rand.workspace = true
+rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
@@ -31,8 +34,8 @@ tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "rt-mu
 tracing-appender.workspace = true
 tracing-subscriber.workspace = true
 tracing.workspace = true
+tsid.workspace = true
 turso.workspace = true
-uuid.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -1,0 +1,268 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Release App
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Application to release (elph, eclaw, or owly)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+  BINSTALL_DISABLE_TELEMETRY: true
+  RELEASE_ALLOWED_ACTORS: ${{ vars.RELEASE_ALLOWED_ACTORS }}
+
+jobs:
+  release-auth:
+    name: Authorize release (${{ inputs.app }})
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check release actor
+        run: ./scripts/ci-check-release-actor.sh
+
+  version-gate:
+    needs: release-auth
+    uses: ./.github/workflows/_version-gate.yml
+    with:
+      app: ${{ inputs.app }}
+
+  quality-gate:
+    name: Quality gate (${{ inputs.app }})
+    needs: version-gate
+    if: needs.version-gate.outputs.should_continue == 'true'
+    uses: ./.github/workflows/_ci-app.yml
+    with:
+      app: ${{ inputs.app }}
+      sharedKeyPrefix: release
+
+  build-linux:
+    name: Build Linux (${{ inputs.app }})
+    needs: [version-gate, quality-gate]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-linux
+          installNextest: "false"
+          installCross: "true"
+          crossPlatform: linux
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v4
+
+      - name: Pull cross-rs images
+        run: make cross-pull
+
+      - name: Build Linux release
+        run: make release-linux
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Show sccache statistics
+        if: always()
+        uses: ./.github/show-sccache-stats
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.app }}-linux
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (${{ inputs.app }})
+    needs: [version-gate, quality-gate]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-macos
+          installNextest: "false"
+
+      - name: Build macOS release
+        run: make release-macos
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Show sccache statistics
+        if: always()
+        uses: ./.github/show-sccache-stats
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.app }}-macos
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows (${{ inputs.app }})
+    needs: [version-gate, quality-gate]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Apply release version from tag
+        env:
+          APP: ${{ inputs.app }}
+          TARGET_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-set-app-version.sh
+
+      - name: Setup Rust
+        uses: ./.github/setup-rust
+        with:
+          sharedKey: release-windows
+          installNextest: "false"
+          installCross: "true"
+          crossPlatform: windows
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v4
+
+      - name: Pull cross-rs images
+        run: make cross-pull
+
+      - name: Build Windows release
+        run: make release-windows
+        env:
+          APP: ${{ inputs.app }}
+
+      - name: Show sccache statistics
+        if: always()
+        uses: ./.github/show-sccache-stats
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.app }}-windows
+          path: |
+            release/archives/${{ inputs.app }}-*
+            release/binaries/${{ inputs.app }}-*
+          if-no-files-found: error
+
+  publish:
+    name: Publish (${{ inputs.app }})
+    needs: [version-gate, build-linux, build-macos, build-windows]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app }}-linux
+          path: .
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app }}-macos
+          path: .
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.app }}-windows
+          path: .
+
+      - name: Confirm release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Publishing ${{ inputs.app }} v${{ needs.version-gate.outputs.release_version }} (${GITHUB_REF_NAME})"
+
+      - name: Write checksums manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ inputs.app }}"
+          mkdir -p "release/archives"
+          if command -v sha256sum >/dev/null 2>&1; then
+            (cd release/archives && sha256sum -- ${app}-* > SHA256SUMS)
+          else
+            (cd release/archives && shasum -a 256 -- ${app}-* > SHA256SUMS)
+          fi
+          cat "release/archives/SHA256SUMS"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          make_latest: false
+          generate_release_notes: true
+          files: |
+            release/archives/${{ inputs.app }}-*
+            release/archives/SHA256SUMS
+
+  sync-version:
+    name: Sync version on main (${{ inputs.app }})
+    needs: [version-gate, publish]
+    if: needs.version-gate.outputs.should_continue == 'true'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    concurrency:
+      group: sync-main-version
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync app version to released tag
+        env:
+          APP: ${{ inputs.app }}
+          RELEASED_VERSION: ${{ needs.version-gate.outputs.release_version }}
+        run: ./scripts/ci-sync-app-version-on-main.sh
+
+      - name: Commit and push to main
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${APP}/Cargo.toml" Cargo.lock
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(${APP}): sync version to ${GITHUB_REF_NAME} on main"
+          git pull --rebase origin main
+          git push origin main

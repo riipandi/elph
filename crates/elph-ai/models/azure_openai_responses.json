@@ -1,927 +1,803 @@
 {
-  "gpt-4": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 8192,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 30,
-      "output": 60
+    "gpt-4": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 8192,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 30,
+            "output": 60
+        },
+        "id": "gpt-4",
+        "input": ["text"],
+        "maxTokens": 8192,
+        "name": "GPT-4",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 8192,
-    "name": "GPT-4",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4-turbo": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 10,
-      "output": 30
+    "gpt-4-turbo": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 10,
+            "output": 30
+        },
+        "id": "gpt-4-turbo",
+        "input": ["text", "image"],
+        "maxTokens": 4096,
+        "name": "GPT-4 Turbo",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4-turbo",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 4096,
-    "name": "GPT-4 Turbo",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4.1": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1047576,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 0,
-      "input": 2,
-      "output": 8
+    "gpt-4.1": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 8
+        },
+        "id": "gpt-4.1",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "GPT-4.1",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4.1",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32768,
-    "name": "GPT-4.1",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4.1-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1047576,
-    "cost": {
-      "cacheRead": 0.1,
-      "cacheWrite": 0,
-      "input": 0.4,
-      "output": 1.6
+    "gpt-4.1-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0,
+            "input": 0.4,
+            "output": 1.6
+        },
+        "id": "gpt-4.1-mini",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "GPT-4.1 mini",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4.1-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32768,
-    "name": "GPT-4.1 mini",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4.1-nano": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1047576,
-    "cost": {
-      "cacheRead": 0.025,
-      "cacheWrite": 0,
-      "input": 0.1,
-      "output": 0.4
+    "gpt-4.1-nano": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.1,
+            "output": 0.4
+        },
+        "id": "gpt-4.1-nano",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "GPT-4.1 nano",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4.1-nano",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32768,
-    "name": "GPT-4.1 nano",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4o": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 1.25,
-      "cacheWrite": 0,
-      "input": 2.5,
-      "output": 10
+    "gpt-4o": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 1.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 10
+        },
+        "id": "gpt-4o",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-4o",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4o",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-4o",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4o-2024-05-13": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 5,
-      "output": 15
+    "gpt-4o-2024-05-13": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 5,
+            "output": 15
+        },
+        "id": "gpt-4o-2024-05-13",
+        "input": ["text", "image"],
+        "maxTokens": 4096,
+        "name": "GPT-4o (2024-05-13)",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4o-2024-05-13",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 4096,
-    "name": "GPT-4o (2024-05-13)",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4o-2024-08-06": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 1.25,
-      "cacheWrite": 0,
-      "input": 2.5,
-      "output": 10
+    "gpt-4o-2024-08-06": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 1.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 10
+        },
+        "id": "gpt-4o-2024-08-06",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-4o (2024-08-06)",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4o-2024-08-06",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-4o (2024-08-06)",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4o-2024-11-20": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 1.25,
-      "cacheWrite": 0,
-      "input": 2.5,
-      "output": 10
+    "gpt-4o-2024-11-20": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 1.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 10
+        },
+        "id": "gpt-4o-2024-11-20",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-4o (2024-11-20)",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4o-2024-11-20",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-4o (2024-11-20)",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-4o-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.075,
-      "cacheWrite": 0,
-      "input": 0.15,
-      "output": 0.6
+    "gpt-4o-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "id": "gpt-4o-mini",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-4o mini",
+        "provider": "azure-openai-responses",
+        "reasoning": false
     },
-    "id": "gpt-4o-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-4o mini",
-    "provider": "azure-openai-responses",
-    "reasoning": false
-  },
-  "gpt-5": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
+    "gpt-5": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
     },
-    "id": "gpt-5",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
+    "gpt-5-chat-latest": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5-chat-latest",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-5 Chat Latest",
+        "provider": "azure-openai-responses",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5-codex": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5-Codex",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 2
+        },
+        "id": "gpt-5-mini",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5 Mini",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5-nano": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.005,
+            "cacheWrite": 0,
+            "input": 0.05,
+            "output": 0.4
+        },
+        "id": "gpt-5-nano",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5 Nano",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 15,
+            "output": 120
+        },
+        "id": "gpt-5-pro",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5 Pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.1": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5.1",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.1-chat-latest": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5.1-chat-latest",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-5.1 Chat",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.1-codex": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5.1-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.1-codex-max": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gpt-5.1-codex-max",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex Max",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.1-codex-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 2
+        },
+        "id": "gpt-5.1-codex-mini",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.1 Codex mini",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gpt-5.2": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.2",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.2",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.2-chat-latest": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.2-chat-latest",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-5.2 Chat",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.2-codex": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.2-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.2 Codex",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.2-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 21,
+            "output": 168
+        },
+        "id": "gpt-5.2-pro",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.2 Pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.3-chat-latest": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.3-chat-latest",
+        "input": ["text", "image"],
+        "maxTokens": 16384,
+        "name": "GPT-5.3 Chat (latest)",
+        "provider": "azure-openai-responses",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.3-codex": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.3-codex",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.3 Codex",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.3-codex-spark": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.175,
+            "cacheWrite": 0,
+            "input": 1.75,
+            "output": 14
+        },
+        "id": "gpt-5.3-codex-spark",
+        "input": ["text", "image"],
+        "maxTokens": 32000,
+        "name": "GPT-5.3 Codex Spark",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 15
+        },
+        "id": "gpt-5.4",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0,
+            "input": 0.75,
+            "output": 4.5
+        },
+        "id": "gpt-5.4-mini",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 mini",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-nano": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0,
+            "input": 0.2,
+            "output": 1.25
+        },
+        "id": "gpt-5.4-nano",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 nano",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.4-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 30,
+            "output": 180
+        },
+        "id": "gpt-5.4-pro",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.4 Pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.5": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 5,
+            "output": 30
+        },
+        "id": "gpt-5.5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.5-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 30,
+            "output": 180
+        },
+        "id": "gpt-5.5-pro",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.5 Pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "low": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "o1": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 7.5,
+            "cacheWrite": 0,
+            "input": 15,
+            "output": 60
+        },
+        "id": "o1",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o1",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o1-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 150,
+            "output": 600
+        },
+        "id": "o1-pro",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o1-pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o3": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 8
+        },
+        "id": "o3",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o3",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o3-deep-research": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 2.5,
+            "cacheWrite": 0,
+            "input": 10,
+            "output": 40
+        },
+        "id": "o3-deep-research",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o3-deep-research",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o3-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.55,
+            "cacheWrite": 0,
+            "input": 1.1,
+            "output": 4.4
+        },
+        "id": "o3-mini",
+        "input": ["text"],
+        "maxTokens": 100000,
+        "name": "o3-mini",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o3-pro": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 20,
+            "output": 80
+        },
+        "id": "o3-pro",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o3-pro",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o4-mini": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.275,
+            "cacheWrite": 0,
+            "input": 1.1,
+            "output": 4.4
+        },
+        "id": "o4-mini",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o4-mini",
+        "provider": "azure-openai-responses",
+        "reasoning": true
+    },
+    "o4-mini-deep-research": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 8
+        },
+        "id": "o4-mini-deep-research",
+        "input": ["text", "image"],
+        "maxTokens": 100000,
+        "name": "o4-mini-deep-research",
+        "provider": "azure-openai-responses",
+        "reasoning": true
     }
-  },
-  "gpt-5-chat-latest": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5-chat-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-5 Chat Latest",
-    "provider": "azure-openai-responses",
-    "reasoning": false,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5-codex": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5-codex",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5-Codex",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.025,
-      "cacheWrite": 0,
-      "input": 0.25,
-      "output": 2
-    },
-    "id": "gpt-5-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5 Mini",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5-nano": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.005,
-      "cacheWrite": 0,
-      "input": 0.05,
-      "output": 0.4
-    },
-    "id": "gpt-5-nano",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5 Nano",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 15,
-      "output": 120
-    },
-    "id": "gpt-5-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5 Pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.1": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5.1",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.1",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.1-chat-latest": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5.1-chat-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-5.1 Chat",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.1-codex": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5.1-codex",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.1 Codex",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.1-codex-max": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.125,
-      "cacheWrite": 0,
-      "input": 1.25,
-      "output": 10
-    },
-    "id": "gpt-5.1-codex-max",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.1 Codex Max",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.1-codex-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.025,
-      "cacheWrite": 0,
-      "input": 0.25,
-      "output": 2
-    },
-    "id": "gpt-5.1-codex-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.1 Codex mini",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null
-    }
-  },
-  "gpt-5.2": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.2",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.2",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.2-chat-latest": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.2-chat-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-5.2 Chat",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.2-codex": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.2-codex",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.2 Codex",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.2-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 21,
-      "output": 168
-    },
-    "id": "gpt-5.2-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.2 Pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.3-chat-latest": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.3-chat-latest",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 16384,
-    "name": "GPT-5.3 Chat (latest)",
-    "provider": "azure-openai-responses",
-    "reasoning": false,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.3-codex": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.3-codex",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.3 Codex",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.3-codex-spark": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 128000,
-    "cost": {
-      "cacheRead": 0.175,
-      "cacheWrite": 0,
-      "input": 1.75,
-      "output": 14
-    },
-    "id": "gpt-5.3-codex-spark",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 32000,
-    "name": "GPT-5.3 Codex Spark",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.4": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1050000,
-    "cost": {
-      "cacheRead": 0.25,
-      "cacheWrite": 0,
-      "input": 2.5,
-      "output": 15
-    },
-    "id": "gpt-5.4",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.4",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.4-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.075,
-      "cacheWrite": 0,
-      "input": 0.75,
-      "output": 4.5
-    },
-    "id": "gpt-5.4-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.4 mini",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.4-nano": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 400000,
-    "cost": {
-      "cacheRead": 0.02,
-      "cacheWrite": 0,
-      "input": 0.2,
-      "output": 1.25
-    },
-    "id": "gpt-5.4-nano",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.4 nano",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.4-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1050000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 30,
-      "output": 180
-    },
-    "id": "gpt-5.4-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.4 Pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.5": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1050000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 0,
-      "input": 5,
-      "output": 30
-    },
-    "id": "gpt-5.5",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.5",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "gpt-5.5-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 1050000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 30,
-      "output": 180
-    },
-    "id": "gpt-5.5-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 128000,
-    "name": "GPT-5.5 Pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true,
-    "thinkingLevelMap": {
-      "low": null,
-      "minimal": null,
-      "off": null,
-      "xhigh": "xhigh"
-    }
-  },
-  "o1": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 7.5,
-      "cacheWrite": 0,
-      "input": 15,
-      "output": 60
-    },
-    "id": "o1",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o1",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o1-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 150,
-      "output": 600
-    },
-    "id": "o1-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o1-pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o3": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 0,
-      "input": 2,
-      "output": 8
-    },
-    "id": "o3",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o3",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o3-deep-research": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 2.5,
-      "cacheWrite": 0,
-      "input": 10,
-      "output": 40
-    },
-    "id": "o3-deep-research",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o3-deep-research",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o3-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.55,
-      "cacheWrite": 0,
-      "input": 1.1,
-      "output": 4.4
-    },
-    "id": "o3-mini",
-    "input": [
-      "text"
-    ],
-    "maxTokens": 100000,
-    "name": "o3-mini",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o3-pro": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0,
-      "cacheWrite": 0,
-      "input": 20,
-      "output": 80
-    },
-    "id": "o3-pro",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o3-pro",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o4-mini": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.275,
-      "cacheWrite": 0,
-      "input": 1.1,
-      "output": 4.4
-    },
-    "id": "o4-mini",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o4-mini",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  },
-  "o4-mini-deep-research": {
-    "api": "azure-openai-responses",
-    "baseUrl": "",
-    "contextWindow": 200000,
-    "cost": {
-      "cacheRead": 0.5,
-      "cacheWrite": 0,
-      "input": 2,
-      "output": 8
-    },
-    "id": "o4-mini-deep-research",
-    "input": [
-      "text",
-      "image"
-    ],
-    "maxTokens": 100000,
-    "name": "o4-mini-deep-research",
-    "provider": "azure-openai-responses",
-    "reasoning": true
-  }
 }

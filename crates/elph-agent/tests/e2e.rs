@@ -1,5 +1,4 @@
 //! End-to-end agent integration tests.
-
 mod common;
 
 use std::sync::Arc;
@@ -148,6 +147,10 @@ async fn harness_prompt_persists_session_messages() {
         active_tool_names: vec![],
         steering_mode: Default::default(),
         follow_up_mode: Default::default(),
+        goal_runtime: None,
+        subagent_bootstrap: None,
+        shared_registry: None,
+        agent_control: None,
     })
     .expect("harness");
 

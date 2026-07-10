@@ -20,4 +20,5 @@ cargo install --locked elph
 
 ## License
 
-Licensed under the [MIT License](https://www.tldrlegal.com/license/mit-license).
+Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+See [LICENSE-APACHE](../LICENSE-APACHE) and [NOTICE.md](../NOTICE.md).

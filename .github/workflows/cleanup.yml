@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: Cleanup
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
+
+permissions:
+  actions: write
+
+jobs:
+  clean-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const CACHE_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            let deleted = 0, skipped = 0;
+            let page = 1;
+
+            while (true) {
+              const caches = await github.rest.actions.getActionsCacheList({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page,
+              });
+
+              const entries = caches.data.actions_caches;
+              if (entries.length === 0) break;
+
+              for (const cache of entries) {
+                // delete caches unused for 14+ days, or created 14+ days ago
+                const lastUsed = new Date(cache.last_accessed_at || cache.created_at).getTime();
+                const age = now - lastUsed;
+                if (age > CACHE_MAX_AGE_MS) {
+                  console.log(`Deleting ${cache.id}: ${cache.key} (${Math.round(age / 86400000)}d stale)`);
+                  await github.rest.actions.deleteActionsCacheById({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    cache_id: cache.id,
+                  });
+                  deleted++;
+                } else {
+                  skipped++;
+                }
+              }
+              page++;
+            }
+
+            console.log(`Deleted ${deleted} caches (unused >14d), skipped ${skipped} recent entries`);

@@ -127,6 +127,19 @@ impl<S: SessionStorage> Session<S> {
         .await
     }
 
+    pub async fn append_collaboration_mode_change(
+        &mut self,
+        mode: crate::mode::CollaborationMode,
+    ) -> Result<String, SessionError> {
+        self.append_typed_entry(SessionTreeEntry::CollaborationModeChange {
+            id: self.storage.create_entry_id().await,
+            parent_id: self.storage.get_leaf_id().await?,
+            timestamp: now_iso_timestamp(),
+            mode,
+        })
+        .await
+    }
+
     pub async fn append_active_tools_change(&mut self, active_tool_names: Vec<String>) -> Result<String, SessionError> {
         self.append_typed_entry(SessionTreeEntry::ActiveToolsChange {
             id: self.storage.create_entry_id().await,

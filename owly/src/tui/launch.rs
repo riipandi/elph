@@ -1,6 +1,5 @@
-//! One-shot launch payload for the Owly iocraft root component.
+//! One-shot launch payload for the Owly interactive shell.
 
-use std::cell::RefCell;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 
@@ -9,32 +8,17 @@ use crate::session::{SessionRecovery, SessionStore};
 
 use super::context::AppContext;
 
-thread_local! {
-    static LAUNCH: RefCell<Option<LaunchState>> = const { RefCell::new(None) };
-}
-
 /// Data required to boot the interactive Owly application.
 pub struct LaunchState {
     pub app_context: AppContext,
     pub provider: String,
     pub model: String,
+    pub session_id: String,
     pub pending_setup: bool,
     pub startup_lines: Vec<String>,
     pub initial: Option<String>,
     pub submit_tx: mpsc::UnboundedSender<String>,
     pub submit_rx: Option<mpsc::UnboundedReceiver<String>>,
-}
-
-impl LaunchState {
-    pub fn install(self) {
-        LAUNCH.with(|slot| {
-            *slot.borrow_mut() = Some(self);
-        });
-    }
-
-    pub fn take() -> Self {
-        LAUNCH.with(|slot| slot.borrow_mut().take().expect("Owly TUI launch state not installed"))
-    }
 }
 
 /// Inputs for constructing [`LaunchState`].
@@ -55,6 +39,7 @@ pub struct LaunchOptions {
 pub fn from_session(opts: LaunchOptions) -> LaunchState {
     let provider = opts.config.provider.clone();
     let model = opts.config.model_id.clone();
+    let session_id = opts.session.thread_id().to_string();
     let app_context = AppContext::new(opts.config, opts.cwd, opts.stream, opts.verbose, opts.session);
     let startup_lines = crate::shell::startup_transcript_lines(opts.restored_count, &opts.recovery, &opts.db_path);
     let initial = opts.initial.map(crate::shell::initial_input);
@@ -64,6 +49,7 @@ pub fn from_session(opts: LaunchOptions) -> LaunchState {
         app_context,
         provider,
         model,
+        session_id,
         pending_setup: opts.pending_setup,
         startup_lines,
         initial,

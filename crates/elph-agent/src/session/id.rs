@@ -2,26 +2,30 @@
 
 use std::collections::HashMap;
 
-use uuid::Uuid;
+use tsid::TSID;
 
 use crate::session::types::SessionTreeEntry;
 
+/// Time-sortable ID string (13-char TSID).
+pub fn create_tsid() -> String {
+    tsid::create_tsid().to_string()
+}
+
 pub fn generate_entry_id(by_id: &HashMap<String, SessionTreeEntry>) -> String {
     for _ in 0..100 {
-        let id = Uuid::now_v7().to_string();
-        let short = id[id.len().saturating_sub(8)..].to_string();
-        if !by_id.contains_key(&short) {
-            return short;
+        let id = create_tsid();
+        if !by_id.contains_key(&id) {
+            return id;
         }
     }
-    Uuid::now_v7().to_string()
+    create_tsid()
 }
 
 pub fn generate_session_id() -> String {
-    Uuid::now_v7().to_string()
+    create_tsid()
 }
 
-/// UUID v7 string (upstream `uuidv7`).
-pub fn uuidv7() -> String {
-    Uuid::now_v7().to_string()
+/// Returns true when `id` is a valid TSID string.
+pub fn is_valid_tsid(id: &str) -> bool {
+    id.len() == 13 && TSID::try_from(id).is_ok()
 }

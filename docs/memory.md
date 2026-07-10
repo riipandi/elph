@@ -1,446 +1,200 @@
-# Elph Memory
+# Agent Memory
 
-Elph Memory (`floppy`) is a project-local agent memory store. It keeps lessons, corrections,
-and insights across sessions, retrieves them by semantic similarity at task start, and
-adjusts per-memory weights from task outcomes.
+Design for **floppy** — project-local agent memory that persists lessons, corrections, and insights across sessions.
 
-The implementation lives in `elph-core` as the `floppy` module. It is ported from the
-[memelord](https://github.com/glommer/memelord) SDK (`packages/sdk`). The original code is
-licensed under the MIT License. Copyright (c) 2026 Glauber Costa.
-
----
+Inspired by [memelord](https://github.com/glommer/memelord) (MIT License, Copyright © 2026 Glauber Costa).
 
 ## Overview
 
 | Concern    | Approach                                                    |
 | ---------- | ----------------------------------------------------------- |
-| Storage    | Turso embedded SQLite (`memory.db`)                         |
-| Retrieval  | Vector similarity (`vector32`; dims match the embed model)  |
-| Embeddings | Local ONNX via `fastembed` (configurable model + cache)     |
+| Storage    | Turso embedded SQLite (`store.db`)                          |
+| Retrieval  | Vector similarity (`vector32`; dims match embed model)      |
+| Embeddings | Local ONNX (configurable model + cache)                     |
 | Scoring    | Welford baseline + z-score task scoring, EMA weight updates |
-| IDs        | UUID v7                                                     |
+| IDs        | TSID (time-sortable, 13 characters)                         |
 | Migrations | Versioned SQL via shared `app_migrations` ledger            |
 
-At a high level:
+### Lifecycle
 
-1. **Start task** — embed the task description, retrieve top-k memories, record retrievals.
-2. **Work** — agent uses retrieved context; reports corrections, user input, or insights.
-3. **End task** — score the task vs a running baseline, update memory weights from credits.
-4. **Maintenance** — decay unused weights, purge low-weight memories.
+1. **Start task** — embed description, retrieve top-k memories, record retrievals.
+2. **Work** — agent uses context; reports corrections, user input, or insights.
+3. **End task** — score vs baseline, update memory weights from credits.
+4. **Maintenance** — decay unused weights, purge weak memories.
 
 ```
 ┌─────────────┐     start_task      ┌──────────────────┐
-│   Agent     │ ──────────────────► │  memory.db       │
+│   Agent     │ ──────────────────► │  store.db       │
 │   session   │ ◄── top-k memories  │  (Turso + vec)   │
 └─────────────┘     end_task        └──────────────────┘
        │              report              │
        └──────── corrections ─────────────┘
 ```
 
----
-
 ## Storage layout
 
 ### Elph (default)
 
-Project memory is stored next to the repo:
-
 ```
 PROJECT_DIR/
 └── .elph/
-    ├── memory.db          # floppy store (gitignored)
+    ├── store.db          # gitignored
     └── .gitignore
 ```
 
-Path resolution: `Paths::memory_db_path()` → `PROJECT_DIR/.elph/memory.db`.
+### Standalone / library hosts
 
-Migrations run through Elph's datastore bootstrap (`elph::runtime::migrations::memory_migrations`),
-composed from `elph_core::floppy::migrations::MIGRATIONS`. Host-specific migrations use
-`version > floppy::migrations::LAST_VERSION` (currently `3`).
+| Constant         | Value      |
+| ---------------- | ---------- |
+| Default data dir | `.floppy`  |
+| Database file    | `store.db` |
 
-### Standalone library use
+Hosts supply paths explicitly; the memory layer does not read environment variables directly.
 
-For non-Elph consumers, pass paths explicitly via [`FloppyPaths`] or [`FloppyBuilder`]:
+### Model cache
 
-| Constant           | Value       |
-| ------------------ | ----------- |
-| `DEFAULT_DATA_DIR` | `.floppy`   |
-| `DB_FILE_NAME`     | `memory.db` |
-
-Default: `FloppyPaths::project_local()` → `./.floppy/memory.db`. The floppy module does not read
-environment variables; hosts supply directories and options as arguments.
-
-### Model cache (Elph)
-
-ONNX weights and tokenizers downloaded by `fastembed` are cached under the Elph data
-directory (not inside the project):
+Embedding weights live in the user data directory (not in the project):
 
 ```
-~/.local/share/elph/          # or $ELPH_DATA_DIR / $XDG_DATA_HOME/elph
-└── models/                   # Paths::models_dir()
+~/.local/share/elph/     # or ELPH_DATA_DIR / XDG_DATA_HOME/elph
+└── models/
 ```
 
-The directory is created on first use (e.g. `elph memory search`). Downloads happen
-automatically from Hugging Face when the chosen model is not yet cached.
-
----
+First semantic search downloads from Hugging Face; later runs reuse the cache.
 
 ## Schema
 
-| Table               | Purpose                                                    |
-| ------------------- | ---------------------------------------------------------- |
-| `memories`          | Content, embedding blob, category, weight, retrieval stats |
-| `tasks`             | Task description, embedding, usage metrics, score          |
-| `memory_retrievals` | Per (memory, task): similarity, self-report, credit        |
-| `meta`              | Key-value store (e.g. Welford baseline JSON)               |
-| `app_migrations`    | Migration ledger (shared with Elph datastore)              |
+| Table               | Purpose                                               |
+| ------------------- | ----------------------------------------------------- |
+| `memories`          | Content, embedding, category, weight, retrieval stats |
+| `tasks`             | Description, embedding, usage metrics, score          |
+| `memory_retrievals` | Per (memory, task): similarity, self-report, credit   |
+| `meta`              | Key-value (e.g. Welford baseline JSON)                |
+| `app_migrations`    | Migration ledger                                      |
 
-### Memory categories
+### Categories
 
-| Category       | Typical source                             |
-| -------------- | ------------------------------------------ |
-| `correction`   | Agent mistake + lesson learned             |
-| `user`         | User denial, correction, or explicit input |
-| `insight`      | Agent-discovered pattern                   |
-| `discovery`    | Exploratory finding during a task          |
-| `consolidated` | Merged or summarized memories              |
+| Category       | Typical source                          |
+| -------------- | --------------------------------------- |
+| `correction`   | Agent mistake + lesson                  |
+| `user`         | User denial, correction, explicit input |
+| `insight`      | Agent-discovered pattern                |
+| `discovery`    | Exploratory finding                     |
+| `consolidated` | Merged or summarized memories           |
 
-### Default configuration
+### Defaults
 
 | Setting              | Default                                        |
 | -------------------- | ---------------------------------------------- |
 | Embed model          | `AllMiniLML6V2` (quantized → `AllMiniLML6V2Q`) |
-| Embedding dimensions | Model-dependent (384 for `AllMiniLML6V2`)      |
+| Embedding dimensions | Model-dependent (384 for AllMiniLML6V2)        |
 | Vector type          | `vector32`                                     |
 | Top-k retrieval      | 5                                              |
 | Learning rate (EMA)  | 0.1                                            |
 | Decay rate           | 0.995                                          |
 | Weight clamp         | [0.1, 5.0]                                     |
 
----
-
 ## Scoring model
 
-**Task baseline** — Welford online mean/variance over tokens, errors, and user corrections.
-Persisted in `meta` as JSON.
+**Task baseline** — Welford online mean/variance over tokens, errors, and user corrections (persisted in `meta`).
 
-**Task score** — Compared to baseline:
+**Task score** — vs baseline:
 
-- Cold start (&lt; 10 tasks): normalized deltas + completion signal.
-- Steady state: z-scores (lower tokens/errors/corrections = better) + completion signal.
+- Cold start (&lt; 10 tasks): normalized deltas + completion signal
+- Steady state: z-scores (lower tokens/errors/corrections = better) + completion
 
-**Credit** — Per retrieved memory:
+**Credit** per retrieved memory:
 
 ```
 credit = task_score × (self_report / 3) × (1 / num_retrieved)
 ```
 
-**Weight update** — EMA toward credit, clamped to [0.1, 5.0].
+**Weight update** — EMA toward credit, clamped [0.1, 5.0].
 
-**Initial weight** — Category-dependent; corrections scale with `tokens_wasted`.
+**Decay** — multiply weights by `decay_rate`; delete below 0.15 when `retrieval_count > 5`.
 
-**Decay** — Multiply all weights by `decay_rate`; delete memories below 0.15 with
-`retrieval_count > 5` during decay runs.
-
----
-
-## CLI
-
-```bash
-elph memory <subcommand>
-```
-
-| Subcommand       | Description                                                         |
-| ---------------- | ------------------------------------------------------------------- |
-| `status`         | Counts, categories, top memories, task stats                        |
-| `list`           | All memories; optional `--category <name>`                          |
-| `tasks`          | Recent tasks with retrievals and outcomes (`--limit`, default 10)   |
-| `log`            | Compact timeline of tasks and memory events (`--limit`, default 20) |
-| `search <query>` | Semantic search (creates a task record; needs embedder)             |
-| `purge`          | Delete memories below weight threshold (default 0.5)                |
-
-### Examples
-
-```bash
-# Overview of the project store
-elph memory status
-
-# Corrections only
-elph memory list --category correction
-
-# Semantic lookup (downloads embedding model on first run)
-elph memory search "how does session auth work"
-
-# Remove weak memories
-elph memory purge --threshold 0.3
-```
-
-Read-only commands (`status`, `list`, `tasks`, `log`, `purge`) use a no-op embedder.
-`search` requires the `fastembed` feature (enabled in the `elph` binary).
-
----
-
-## Library API
-
-### Opening a store
-
-Prefer [`FloppyBuilder`] — all configuration is explicit (no environment variables):
-
-```rust
-use elph_core::floppy::{FloppyBuilder, FloppyPaths, FastEmbedOptions};
-
-// Standalone path + local embeddings (feature fastembed)
-let store = FloppyPaths::project_local()
-    .builder("session-id")
-    .fastembed(
-        FastEmbedOptions::default()
-            .model("AllMiniLML6V2")
-            .quantized(true)
-            .cache_dir("/path/to/models"),
-    )?
-    .build()?;
-store.init().await?;
-
-// Read-only inspection without a model
-let store = FloppyBuilder::new("/path/to/memory.db", "session-id")
-    .dimensions(384)
-    .noop_embed()
-    .build()?;
-```
-
-Lower-level: `create_memory_store(FloppyConfig, EmbedFn)` remains available for custom wiring.
+## Agent integration API (design)
 
 ### Task lifecycle
 
-```rust
-use elph_core::floppy::{ReportCorrectionInput, TaskEndInput, SelfReportEntry};
+| Phase  | Action                                                  |
+| ------ | ------------------------------------------------------- |
+| Start  | `start_task(description)` → task id + top-k memories    |
+| During | `report_correction`, `report` (insight / user / …)      |
+| End    | `end_task` with usage metrics + self-reports per memory |
 
-// 1. Start — retrieve relevant memories
-let start = store.start_task("fix flaky integration tests").await?;
+### Query & maintenance
 
-// 2. Report during work
-store.report_correction(ReportCorrectionInput {
-    lesson: "Always await async fixture teardown".into(),
-    what_failed: "tests hung on CI".into(),
-    what_worked: String::new(),
-    tokens_wasted: Some(12_000),
-    tools_wasted: Some(8),
-}).await?;
+| Operation         | Description                                      |
+| ----------------- | ------------------------------------------------ |
+| `get_status`      | Store statistics                                 |
+| `list_memories`   | Optional category filter                         |
+| `list_tasks`      | Recent tasks with retrievals                     |
+| `get_timeline`    | Merged event timeline                            |
+| `search_memories` | Semantic search without creating a task          |
+| `search`          | Full lifecycle search (creates task record)      |
+| `decay`           | Apply decay + prune weak entries                 |
+| `purge`           | Delete below weight threshold                    |
+| `contradict`      | Remove wrong memory, optionally store correction |
+| `embed_pending`   | Backfill missing embeddings                      |
 
-// 3. End — update weights from outcome
-store.end_task(&start.task_id, TaskEndInput {
-    tokens_used: 4000,
-    tool_calls: 12,
-    errors: 0,
-    user_corrections: 0,
-    completed: true,
-    self_reports: vec![SelfReportEntry {
-        memory_id: start.memories[0].id.clone(),
-        score: 3.0,
-    }],
-}).await?;
-```
+## CLI
 
-### Unified report API
+| Subcommand       | Description                       |
+| ---------------- | --------------------------------- |
+| `status`         | Overview                          |
+| `list`           | All memories; `--category` filter |
+| `tasks`          | Recent tasks                      |
+| `log`            | Compact timeline                  |
+| `search <query>` | Semantic lookup (needs embedder)  |
+| `purge`          | Remove weak memories              |
 
-```rust
-use elph_core::floppy::{MemoryReportInput, MemoryReportType, UserInputSource};
+Read-only commands do not require a loaded embedding model. `search` downloads the model on first use.
 
-store.report(MemoryReportInput {
-    report_type: MemoryReportType::Insight,
-    lesson: "Auth middleware runs before route handlers".into(),
-    what_failed: None,
-    what_worked: None,
-    tokens_wasted: None,
-    tools_wasted: None,
-    source: None,
-}).await?;
-```
+## Settings
 
-### Query API (read-only)
+In `~/.elph/settings.json`:
 
-| Method                    | Description                               |
-| ------------------------- | ----------------------------------------- |
-| `get_status()`            | Extended store statistics                 |
-| `list_memories(category)` | All memories, optional category filter    |
-| `list_tasks(limit)`       | Recent tasks with retrievals              |
-| `get_timeline(limit)`     | Merged event timeline                     |
-| `search_memories(query)`  | Semantic search without creating a task   |
-| `search(query)`           | Full task lifecycle search (creates task) |
+| Field                   | Default         | Description                             |
+| ----------------------- | --------------- | --------------------------------------- |
+| `memory.embedModel`     | `AllMiniLML6V2` | Model name or Hugging Face alias        |
+| `memory.embedQuantized` | `true`          | Prefer `*Q` ONNX variant when available |
 
-### Maintenance
+### Model aliases (examples)
 
-| Method                       | Description                                      |
-| ---------------------------- | ------------------------------------------------ |
-| `decay()`                    | Apply decay rate, prune very weak memories       |
-| `purge(threshold)`           | Delete memories below threshold                  |
-| `contradict(id, correction)` | Remove wrong memory, optionally store correction |
-| `embed_pending()`            | Backfill NULL embeddings                         |
+| Alias                                    | Resolves to       |
+| ---------------------------------------- | ----------------- |
+| `sentence-transformers/all-MiniLM-L6-v2` | AllMiniLML6V2     |
+| `all-minilm-l6-v2`                       | AllMiniLML6V2     |
+| `BAAI/bge-small-en-v1.5`                 | BGESmallENV15     |
+| `nomic-ai/nomic-embed-text-v1.5`         | NomicEmbedTextV15 |
 
----
+### Changing models
 
-## Embeddings
+Embeddings are fixed-size blobs for `vector32` queries. Changing to a model with different dimensions requires re-embedding or a fresh store — dimension mismatches break retrieval.
 
-Local embeddings use [fastembed](https://github.com/Anush008/fastembed-rs) (ONNX). The
-default model is **AllMiniLML6V2** — with `embedQuantized: true` (the default), the
-quantized variant **AllMiniLML6V2Q** is selected automatically.
+## Environment (Elph host)
 
-### Elph settings
+| Variable           | Effect                          |
+| ------------------ | ------------------------------- |
+| `ELPH_HOME`        | Config dir (`settings.json`)    |
+| `ELPH_DATA_DIR`    | Data dir (`models/` cache)      |
+| `ELPH_PROJECT_DIR` | Project root (`.elph/store.db`) |
+| `XDG_DATA_HOME`    | Base for data dir when unset    |
 
-Configure the embedder in `~/.elph/settings.json` (or `$ELPH_HOME/settings.json`):
+## Migrations (design)
 
-```json
-{
-    "memory": {
-        "embedModel": "AllMiniLML6V2",
-        "embedQuantized": true
-    }
-}
-```
+| Version | Description                   |
+| ------- | ----------------------------- |
+| 1       | Core schema                   |
+| 2       | Fix truncated embedding blobs |
+| 3       | Query indexes                 |
 
-| Field            | Default         | Description                                            |
-| ---------------- | --------------- | ------------------------------------------------------ |
-| `embedModel`     | `AllMiniLML6V2` | fastembed model name or Hugging Face alias (see below) |
-| `embedQuantized` | `true`          | Prefer the `*Q` ONNX variant when one exists           |
+Host-specific migrations use version numbers above the floppy baseline.
 
-`elph memory` loads these values via `Settings::load()` and passes them to
-`create_fastembed` with `cache_dir` set to `Paths::models_dir()`. `FloppyConfig::dimensions`
-is set from the resolved model so vector queries match the embedder output.
+## Related
 
-### Model names and aliases
-
-`resolve_embedding_model(name, quantized)` accepts any name understood by fastembed's
-[`EmbeddingModel`](https://docs.rs/fastembed/latest/fastembed/enum.EmbeddingModel.html)
-(via `FromStr`), plus common Hugging Face aliases:
-
-| Alias                                     | Resolves to         |
-| ----------------------------------------- | ------------------- |
-| `sentence-transformers/all-MiniLM-L6-v2`  | `AllMiniLML6V2`     |
-| `all-minilm-l6-v2`                        | `AllMiniLML6V2`     |
-| `sentence-transformers/all-MiniLM-L12-v2` | `AllMiniLML12V2`    |
-| `sentence-transformers/all-mpnet-base-v2` | `AllMpnetBaseV2`    |
-| `BAAI/bge-small-en-v1.5`                  | `BGESmallENV15`     |
-| `BAAI/bge-base-en-v1.5`                   | `BGEBaseENV15`      |
-| `BAAI/bge-large-en-v1.5`                  | `BGELargeENV15`     |
-| `nomic-ai/nomic-embed-text-v1`            | `NomicEmbedTextV1`  |
-| `nomic-ai/nomic-embed-text-v1.5`          | `NomicEmbedTextV15` |
-
-When `embedQuantized` / `FastEmbedOptions::quantized` is `true`, floppy appends `Q` to the
-canonical model name if a quantized variant exists (e.g. `AllMiniLML6V2` → `AllMiniLML6V2Q`).
-Names that already end in `Q` are left unchanged.
-
-Embedding dimensions are read from fastembed model metadata via `embedding_dims()` (384 for
-`AllMiniLML6V2`; other models vary).
-
-### Configuration
-
-| Context        | Source                                                                 |
-| -------------- | ---------------------------------------------------------------------- |
-| floppy library | [`FloppyBuilder`] / [`FastEmbedOptions`] builder methods and arguments |
-| Elph CLI       | `settings.json` mapped into `FloppyBuilder` by `elph::memory::store`   |
-
-floppy itself does not read environment variables. Unset `FastEmbedOptions::model` falls back to
-[`DEFAULT_EMBED_MODEL`] (`AllMiniLML6V2`).
-
-### First-run download
-
-Commands that need embeddings (`elph memory search`, and agent/runtime task APIs) download
-the model on first use. Progress is shown by default. Subsequent runs reuse the cache under
-`{data_dir}/models/`.
-
-Read-only CLI commands (`status`, `list`, `tasks`, `log`, `purge`) use a no-op embedder and
-do not touch the model cache.
-
-### Changing models on an existing store
-
-Embeddings are stored as fixed-size BLOBs for Turso `vector32` distance queries. If you
-change `embedModel` to a model with different output dimensions, existing memories will not
-match new queries until they are re-embedded — and dimension mismatches can cause retrieval
-errors. Treat a model change on a populated database as requiring a fresh store or a manual
-re-embed migration (not shipped today).
-
-Memories inserted without embeddings are backfilled by `embed_pending()` (also called
-automatically during `start_task`).
-
-### Library feature flag
-
-Enable in `elph-core`:
-
-```toml
-elph-core = { version = "...", features = ["fastembed"] }
-```
-
-Example with explicit options:
-
-```rust
-use elph_core::floppy::{create_fastembed, FastEmbedOptions, resolve_embedding_model, embedding_dims};
-
-let model = resolve_embedding_model("AllMiniLML6V2", true)?;
-let dims = embedding_dims(&model);
-
-let embed = create_fastembed(
-    FastEmbedOptions::default()
-        .model("AllMiniLML6V2")
-        .quantized(true)
-        .cache_dir("/path/to/models"),
-)?;
-```
-
----
-
-## Migrations
-
-Floppy ships versioned migrations in `elph_core::floppy::migrations`:
-
-| Version | Name                              | Description                        |
-| ------- | --------------------------------- | ---------------------------------- |
-| 1       | `floppy_create_schema`            | Core tables                        |
-| 2       | `floppy_fix_truncated_embeddings` | Null out truncated embedding blobs |
-| 3       | `floppy_query_indexes`            | Indexes for list/search/task joins |
-
-Elph maps these into `memory_migrations()` and applies them during `ensure_datastore`.
-`MemoryStore::init()` also calls `migrations::apply()` (idempotent).
-
-To extend the schema in Elph, append migrations with `version > LAST_VERSION` in
-`elph/src/runtime/migrations.rs`.
-
----
-
-## Integration with Elph
-
-| Layer                      | Role                                                                     |
-| -------------------------- | ------------------------------------------------------------------------ |
-| `elph::runtime::paths`     | `memory_db_path()` → `.elph/memory.db`; `models_dir()` → `{data}/models` |
-| `elph::runtime::settings`  | `memory.embedModel` / `memory.embedQuantized` in `settings.json`         |
-| `elph::runtime::datastore` | Runs metadata + memory migrations                                        |
-| `elph::runtime::project`   | Creates `.elph/` and gitignore                                           |
-| `elph::memory::store`      | Opens `MemoryStore` via `FloppyBuilder` (`apply_migrations(false)`)      |
-| `elph memory`              | CLI over `elph_core::floppy::MemoryStore`                                |
-
-The agent runtime can open the same store path and call the task lifecycle API during
-sessions. The CLI is for inspection and manual maintenance.
-
----
-
-## Environment variables
-
-| Variable           | Scope | Description                                                     |
-| ------------------ | ----- | --------------------------------------------------------------- |
-| `ELPH_HOME`        | Elph  | Config directory (default `~/.elph`; holds `settings.json`)     |
-| `ELPH_DATA_DIR`    | Elph  | Data directory (default `~/.local/share/elph`; holds `models/`) |
-| `ELPH_PROJECT_DIR` | Elph  | Project root (determines `.elph/memory.db`)                     |
-| `XDG_DATA_HOME`    | Elph  | Base for data dir when `ELPH_DATA_DIR` is unset                 |
-
----
-
-[`FloppyBuilder`]: ../crates/elph-core/src/floppy/builder.rs
-[`FloppyPaths`]: ../crates/elph-core/src/floppy/paths.rs
-[`DEFAULT_EMBED_MODEL`]: ../crates/elph-core/src/floppy/embed.rs
-
----
-
-## Further reading
-
-- [memelord](https://github.com/glommer/memelord) — original SDK design
-- `crates/elph-core/src/floppy/` — implementation
-- `elph/src/memory/` — CLI wiring and output formatting
+- [configuration.md](./configuration.md) — paths and settings
+- [cli.md](./cli.md) — `elph memory`
+- [agent-runtime.md](./agent-runtime.md) — runtime integration
+- [openwiki](../openwiki/quickstart.md) — implementation details

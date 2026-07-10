@@ -2,25 +2,38 @@
 
 pub mod agent;
 pub mod bridge;
+pub mod chrome;
 pub mod components;
 pub mod diff;
+pub mod keys;
 pub mod prompt;
+pub mod shell;
 pub mod terminal;
 pub mod theme;
 pub mod transcript;
 pub mod utils;
 
 pub use agent::{
-    AssistantMessage, AssistantMessageProps, AuthStatus, LoginDialog, LoginDialogProps, ModelSelector,
-    ModelSelectorProps, OAuthSelector, OAuthSelectorProps, SessionSelector, SessionSelectorProps, ToolExecutionCard,
-    ToolExecutionCardProps, ToolExecutionList, ToolExecutionListProps, TranscriptView, TranscriptViewProps,
-    mock_oauth_providers, model_overlay_slot, session_overlay_slot,
+    AuthStatus, CollapseState, ModelSelectorAction, ModelSelectorState, OAuthSelectorAction, OAuthSelectorState,
+    PlanConfirmationAction, PlanConfirmationChoice as TuiPlanConfirmationChoice, PlanConfirmationState,
+    SessionSelectorAction, SessionSelectorState, ToolApprovalAction, ToolApprovalState, TreeNavigatorAction,
+    TreeNavigatorState, TuiToolApprovalChoice, composer_demo_entries, handle_model_selector_input,
+    handle_oauth_selector_input, handle_plan_confirmation_input, handle_session_selector_input,
+    handle_tool_approval_input, handle_tree_navigator_input, mock_oauth_providers, model_overlay_slot,
+    render_assistant_message, render_composer_transcript, render_detail_block, render_login_dialog,
+    render_model_selector, render_oauth_selector, render_pipe_message, render_plan_confirmation,
+    render_session_selector, render_tool_approval, render_tool_block, render_tool_execution_card,
+    render_tool_execution_list, render_transcript_view, render_tree_navigator, render_user_card, session_overlay_slot,
+    tree_overlay_slot,
 };
-pub use bridge::{
-    DiffOverlayPortal, DiffOverlayPortalProps, OverlaySlot, OverlayStack, OverlayStackHandle,
-    key_event_to_terminal_data,
+pub use bridge::{OverlaySlot, OverlayStack, key_event_to_terminal_data, render_diff_overlay};
+pub use chrome::{
+    ActivityState, BANNER_TIPS, BannerInfo, BannerMode, BannerState, FooterInfo, FooterMode, FooterTokenDisplay,
+    StatusBarInfo, TaskItem, TaskStatus, format_tasks_completed_notice, pick_tip, render_activity, render_banner,
+    render_banner_with_mode, render_footer, render_footer_with_mode, render_simple_banner, render_status_bar,
+    render_tasks_panel, simple_banner_lines,
 };
-pub use components::{Label, LabelProps, frame};
+pub use components::{frame, inline_label_value, inline_line, render_label, text_optional_color};
 pub use diff::{
     AutocompletePopup, AutocompleteProvider, CURSOR_MARKER, CancellableLoader, ChangeType,
     CombinedAutocompleteProvider, Container as DiffContainer, CrosstermTerminal, CursorPosition, DiffLine, DiffTui,
@@ -33,22 +46,29 @@ pub use diff::{
     first_changed_line, fuzzy_filter, fuzzy_match, hardware_cursor_enabled, hyperlink, match_editor_action,
     open_tui_writer, png_dimensions, render_markdown_lines, resolve_layout,
 };
+pub use keys::{consume_ctrl_char, consume_key_code_mod, ctrl_char_for, matches_ctrl_key, pressed_ctrl_char};
 pub use prompt::{
-    AgentMode, ChatStream, ChatStreamProps, CollapsedPaste, DEFAULT_LINE_SCROLL_STEP, EditAction, MacEditAction,
-    PAGE_SCROLL_VIEWPORT, PromptInput, PromptInputProps, PromptSegmentKind, PromptStyledSegment, PromptTranscript,
-    PromptTranscriptProps, edit_action, is_force_quit_key, is_interrupt_key, is_mode_cycle_key, is_newline_key,
-    is_prompt_newline_key, is_quit_command, is_submit_key, is_theme_toggle_key, mac_edit_action,
-    prompt_styled_segments, reconcile_paste_offsets,
+    AgentMode, ChatStreamState, DEFAULT_LINE_SCROLL_STEP, PAGE_SCROLL_VIEWPORT, PromptAction, PromptOpts, PromptQueue,
+    PromptState, ScrollSnapshot, SlashPaletteAction, SlashPaletteState, ThinkingLevel, TranscriptStyle,
+    apply_transcript_auto_scroll, elph_builtin_commands, handle_prompt_input, handle_slash_palette_keys,
+    handle_transcript_scroll_keys, is_pinned_to_bottom, is_quit_command, owly_builtin_commands,
+    prepare_transcript_follow, render_chat_stream, render_chat_stream_with_agent, render_prompt, render_slash_palette,
+    scroll_to_bottom, should_cycle_agent_mode, slash_palette_visible, text_with_theme,
+    unpin_auto_scroll_if_scrolled_up,
 };
-pub use terminal::{
-    SigintReceiver, disable_keyboard_enhancement, enable_keyboard_enhancement, key_combination, sigint_channel,
+pub use shell::{
+    OWLY_INLINE_HEIGHT, ShellChrome, ShellRegion, ShellTier, default_activity_spinner, default_run_config,
+    inline_static_run_config, layout_pad, render_agent_shell, render_inline_shell,
 };
+
+pub use terminal::{SigintReceiver, disable_keyboard_enhancement, enable_keyboard_enhancement, sigint_channel};
 pub use theme::{Theme, ThemeMode};
 pub use transcript::{
     DEFAULT_TRANSCRIPT_CAP, StreamingBuffer, ToolExecutionState, ToolExecutionStatus, TranscriptEntry, TranscriptRole,
     cap_entries, push_capped,
 };
 pub use utils::{
-    TAB_STOP, char_display_width, pad_lines, str_display_width, truncate_to_width, truncate_to_width_ellipsis,
-    wrap_ansi_line, wrap_ansi_text, wrap_text,
+    TAB_STOP, char_display_width, format_message_timestamp, now_timestamp, pad_lines, path_basename, read_git_branch,
+    read_git_diff_stats, str_display_width, strip_ansi, truncate_to_width, truncate_to_width_ellipsis, wrap_ansi_line,
+    wrap_ansi_text, wrap_text,
 };

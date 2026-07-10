@@ -8,11 +8,15 @@ pub mod compaction;
 pub mod datastore;
 pub mod env;
 pub mod event_stream;
+pub mod goals;
 pub mod harness;
 pub mod init;
 pub mod mcp;
 pub mod messages;
 pub mod migration;
+pub mod mode;
+#[cfg(feature = "extensions")]
+pub mod plugins;
 pub mod prompt_templates;
 pub mod proxy;
 pub mod runtime;
@@ -41,6 +45,7 @@ pub use elph_core::logger::{LogRotation, LoggingOptions};
 pub use elph_core::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use env::LocalExecutionEnv;
 pub use event_stream::{AgentEventSink, AgentEventStream};
+pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore, create_goal_tools};
 pub use harness::utils::TruncationResult;
 pub use harness::{
     AfterProviderResponseEvent, AgentHarness, AgentHarnessError, AgentHarnessErrorCode, AgentHarnessEvent,
@@ -63,12 +68,27 @@ pub use harness::{
     sanitize_binary_output, to_error, truncate_head, truncate_line, truncate_tail,
 };
 pub use init::InitProgress;
+#[cfg(feature = "mcp")]
+pub use mcp::{
+    McpConfig, McpProbeResult, McpServerConfig, McpStdioConfig, McpToolDescriptor, McpToolRegistry, PROBE_TIMEOUT,
+    list_tools, parse_stdio_config, probe_server, probe_stdio_server,
+};
 pub use messages::{
     CustomMessageContent, bash_execution_to_text, create_branch_summary_message, create_compaction_summary_message,
     create_custom_message, default_convert_to_llm, default_convert_to_llm as convert_to_llm, default_convert_to_llm_fn,
     now_iso_timestamp,
 };
 pub use migration::Migration;
+pub use mode::{
+    CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
+    implement_prompt, is_multi_agent_tool, is_mutating_tool, plan_mode_block_reason, plan_mode_blocks_tool,
+    plan_mode_system_prompt,
+};
+#[cfg(feature = "extensions")]
+pub use plugins::{
+    ExtensionCommand, ExtensionManifest, ExtensionRegistry, ExtensionSlashResult, ExtensionsSettings,
+    discover_manifests, extension_roots, global_extensions_dir, load_manifest, project_extensions_dir,
+};
 pub use prompt_templates::{
     LoadPromptTemplatesResult, LoadSourcedPromptTemplatesResult, PromptTemplateDiagnostic,
     PromptTemplateDiagnosticCode, SourcedPromptTemplate, SourcedPromptTemplateDiagnostic,
@@ -77,25 +97,29 @@ pub use prompt_templates::{
 };
 pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions, stream_proxy};
 pub use runtime::{block_on, try_block_on};
-pub use session::id::uuidv7;
+pub use session::id::create_tsid;
 pub use session::{
-    BranchSummaryOptions, CustomMessageEntryBlock, CustomMessageEntryContent, ForkEntriesOptions, ForkPosition,
-    InMemorySessionCreateOptions, InMemorySessionOptions, InMemorySessionRepo, InMemorySessionStorage,
-    JsonlSessionCreateOptions, JsonlSessionListOptions, JsonlSessionMetadata, JsonlSessionRepo,
-    JsonlSessionRepoCreateOptions, JsonlSessionStorage, SESSION_TREE_MIGRATIONS, Session, SessionContext, SessionError,
-    SessionErrorCode, SessionMetadata, SessionModelRef, SessionStorage, SessionTreeEntry, TursoSessionMetadata,
-    TursoSessionStorage, build_session_context, create_session_id, create_timestamp, get_entries_to_fork,
-    load_jsonl_session_metadata, to_session,
+    BranchSummaryOptions, CustomMessageEntryBlock, CustomMessageEntryContent, EVENTS_FILE, ForkEntriesOptions,
+    ForkPosition, InMemorySessionCreateOptions, InMemorySessionOptions, InMemorySessionRepo, InMemorySessionStorage,
+    SESSION_TREE_MIGRATIONS, SUMMARY_FILE, Session, SessionContext, SessionDirCreateOptions, SessionDirListOptions,
+    SessionDirMetadata, SessionDirRepo, SessionDirRepoCreateOptions, SessionDirStorage, SessionError, SessionErrorCode,
+    SessionMetadata, SessionModelRef, SessionStorage, SessionTreeEntry, TursoSessionMetadata, TursoSessionStorage,
+    build_session_context, create_session_id, create_timestamp, get_entries_to_fork, load_session_metadata, to_session,
 };
 pub use skills::{
     LoadSkillsResult, LoadSourcedSkillsResult, SkillDiagnostic, SkillDiagnosticCode, SourcedSkill,
     SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
     load_sourced_skills_with_options,
 };
+pub use subagent::{
+    AgentControl, AgentGraphStore, AgentRegistry, SubagentBootstrap, SubagentEventForwarder, SubagentHarness,
+    SubagentInfo, SubagentLimits, SubagentSpawnConfig, SubagentStatus, generate_agent_name,
+};
 pub use tools::{WebSearchEngine, WebSearchResult};
 pub use tools::{
     create_all_tools, create_all_tools_with_web, create_bash_tool, create_coding_tools, create_edit_tool,
-    create_find_tool, create_grep_tool, create_ls_tool, create_read_only_tools, create_read_tool,
-    create_web_fetch_tool, create_web_search_tool, create_web_tools, create_write_tool, echo_tool, simple_tool,
+    create_find_tool, create_grep_tool, create_ls_tool, create_multi_agent_tools, create_read_only_tools,
+    create_read_tool, create_web_fetch_tool, create_web_search_tool, create_web_tools, create_write_tool, echo_tool,
+    simple_tool,
 };
 pub use types::*;

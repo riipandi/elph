@@ -1,0 +1,29 @@
+package elph:extension@0.1.0;
+
+/// Shared types between host and guest extensions.
+interface types {
+    record command-desc {
+        name: string,
+        description: string,
+    }
+
+    record slash-result {
+        message: string,
+        is-error: bool,
+    }
+}
+
+/// Minimal Pi-compatible surface: slash commands (registerCommand).
+interface extension {
+    use types.{command-desc, slash-result};
+
+    /// Return all slash commands contributed by this component.
+    list-commands: func() -> list<command-desc>;
+
+    /// Execute a registered slash command. `name` is without leading `/`.
+    execute-command: func(name: string, args: string) -> result<slash-result, string>;
+}
+
+world guest {
+    export extension;
+}

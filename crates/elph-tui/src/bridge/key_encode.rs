@@ -1,21 +1,20 @@
-//! Converts iocraft key events into raw terminal sequences for diff components.
+//! Converts SLT key events into raw terminal sequences for diff components.
 
-use iocraft::prelude::{KeyCode, KeyEvent, KeyModifiers};
+use slt::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-/// Encodes an iocraft key event as raw terminal input understood by diff-TUI components.
+/// Encodes an SLT key event as raw terminal input understood by diff-TUI components.
 pub fn key_event_to_terminal_data(event: &KeyEvent) -> Option<String> {
-    if event.kind == iocraft::prelude::KeyEventKind::Release {
+    if event.kind == KeyEventKind::Release {
         return None;
     }
 
-    let code = event.code;
     let mods = event.modifiers;
 
-    if mods.contains(KeyModifiers::CONTROL) && code == KeyCode::Char('c') {
+    if mods.contains(KeyModifiers::CONTROL) && matches!(event.code, KeyCode::Char('c')) {
         return Some("\x03".to_string());
     }
 
-    match code {
+    match &event.code {
         KeyCode::Up => Some("\x1b[A".to_string()),
         KeyCode::Down => Some("\x1b[B".to_string()),
         KeyCode::Left => Some("\x1b[D".to_string()),
@@ -29,7 +28,7 @@ pub fn key_event_to_terminal_data(event: &KeyEvent) -> Option<String> {
         KeyCode::End => Some("\x1b[F".to_string()),
         KeyCode::Char(ch) => {
             if mods.contains(KeyModifiers::CONTROL) && ch.is_ascii_alphabetic() {
-                let byte = (ch as u8) & 0x1f;
+                let byte = (*ch as u8) & 0x1f;
                 return Some(String::from(char::from(byte)));
             }
             Some(ch.to_string())
@@ -41,11 +40,11 @@ pub fn key_event_to_terminal_data(event: &KeyEvent) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use iocraft::prelude::KeyEventKind;
 
     fn press(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        let mut event = KeyEvent::new(KeyEventKind::Press, code);
-        event.modifiers = modifiers;
+        let slt::Event::Key(event) = slt::Event::key_mod(code, modifiers) else {
+            panic!("expected key event");
+        };
         event
     }
 
@@ -63,7 +62,9 @@ mod tests {
 
     #[test]
     fn ignores_release_events() {
-        let mut ev = press(KeyCode::Enter, KeyModifiers::NONE);
+        let slt::Event::Key(mut ev) = slt::Event::key(KeyCode::Enter) else {
+            panic!("expected key event");
+        };
         ev.kind = KeyEventKind::Release;
         assert!(key_event_to_terminal_data(&ev).is_none());
     }

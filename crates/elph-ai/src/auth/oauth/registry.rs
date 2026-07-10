@@ -4,7 +4,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
-use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, openai_codex_oauth_loader};
+use crate::auth::oauth::{
+    anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader, openai_codex_oauth_loader,
+};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::models::catalog::GITHUB_COPILOT_MODELS;
 use crate::types::Model;
@@ -42,6 +44,16 @@ fn github_copilot_provider() -> OAuthProviderInterface {
     }
 }
 
+fn hyper_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "hyper".to_string(),
+        name: "Charm Hyper".to_string(),
+        auth: lazy_oauth("Charm Hyper", hyper_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
 fn openai_codex_provider() -> OAuthProviderInterface {
     OAuthProviderInterface {
         id: "openai-codex".to_string(),
@@ -53,7 +65,12 @@ fn openai_codex_provider() -> OAuthProviderInterface {
 }
 
 fn built_in_providers() -> Vec<OAuthProviderInterface> {
-    vec![anthropic_provider(), github_copilot_provider(), openai_codex_provider()]
+    vec![
+        anthropic_provider(),
+        github_copilot_provider(),
+        hyper_provider(),
+        openai_codex_provider(),
+    ]
 }
 
 fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {
@@ -173,7 +190,7 @@ pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, crede
 }
 
 pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
-    vec!["anthropic", "github-copilot", "openai-codex"]
+    vec!["anthropic", "github-copilot", "hyper", "openai-codex"]
 }
 
 pub fn github_copilot_catalog_models() -> Vec<Model> {

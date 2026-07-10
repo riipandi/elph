@@ -10,7 +10,6 @@ pub enum OwlyEntryKind {
     Assistant,
     Thinking,
     Status,
-    CommandHeader,
     CommandResult,
     ToolSummary,
 }
@@ -62,13 +61,6 @@ impl OwlyEntry {
         Self {
             kind: OwlyEntryKind::Status,
             inner: TranscriptEntry::assistant(content),
-        }
-    }
-
-    pub fn command_header(command: &str, provider: &str, model: &str) -> Self {
-        Self {
-            kind: OwlyEntryKind::CommandHeader,
-            inner: TranscriptEntry::assistant(format!("{command} · {provider} · {model}")),
         }
     }
 

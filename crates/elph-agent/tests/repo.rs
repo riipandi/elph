@@ -1,13 +1,12 @@
 //! Session repository tests.
-
 mod common;
 
 use std::sync::Arc;
 
 use common::{assistant_agent_message, user_agent_message};
 use elph_agent::{
-    ForkEntriesOptions, InMemorySessionCreateOptions, InMemorySessionRepo, JsonlSessionListOptions, JsonlSessionRepo,
-    JsonlSessionRepoCreateOptions, LocalExecutionEnv,
+    ForkEntriesOptions, InMemorySessionCreateOptions, InMemorySessionRepo, LocalExecutionEnv, SUMMARY_FILE,
+    SessionDirListOptions, SessionDirRepo, SessionDirRepoCreateOptions,
 };
 use tempfile::TempDir;
 
@@ -88,25 +87,30 @@ async fn in_memory_session_repo_opens_deletes_and_forks_by_metadata() {
 }
 
 #[tokio::test]
-async fn jsonl_session_repo_stores_sessions_below_encoded_cwd_directories_and_lists_by_cwd() {
+async fn session_dir_repo_stores_sessions_below_project_key_and_lists_by_cwd() {
     let (root, env) = temp_root();
     let cwd = "/tmp/my-project";
     let other_cwd = "/tmp/other-project";
-    let repo = JsonlSessionRepo::new(env, root.path().to_string_lossy().to_string());
+    let project_key = "deadbeef_my_project";
+    let repo = SessionDirRepo::new(env, root.path().to_string_lossy().to_string(), project_key);
 
     let session = repo
-        .create(JsonlSessionRepoCreateOptions {
+        .create(SessionDirRepoCreateOptions {
             cwd: cwd.to_string(),
+            project_key: project_key.to_string(),
             id: Some("019de8c2-de29-73e9-ae0c-e134db34c447".to_string()),
-            parent_session_path: None,
+            parent_session_id: None,
+            system_prompt: None,
         })
         .await
         .expect("create");
     let other_session = repo
-        .create(JsonlSessionRepoCreateOptions {
+        .create(SessionDirRepoCreateOptions {
             cwd: other_cwd.to_string(),
+            project_key: project_key.to_string(),
             id: Some("other-session".to_string()),
-            parent_session_path: None,
+            parent_session_id: None,
+            system_prompt: None,
         })
         .await
         .expect("create other");
@@ -114,13 +118,15 @@ async fn jsonl_session_repo_stores_sessions_below_encoded_cwd_directories_and_li
     let metadata = session.metadata().await;
     let metadata_id = metadata.id.clone();
     let other_metadata = other_session.metadata().await;
-    assert!(metadata.path.contains("--tmp-my-project--"));
-    assert!(other_metadata.path.contains("--tmp-other-project--"));
-    assert!(std::path::Path::new(&metadata.path).exists());
+    assert!(metadata.dir.contains(project_key));
+    assert!(std::path::Path::new(&metadata.dir).join(SUMMARY_FILE).exists());
+    assert!(other_metadata.dir.contains(project_key));
+    assert!(std::path::Path::new(&metadata.dir).is_dir());
 
     let cwd_list: Vec<_> = repo
-        .list(JsonlSessionListOptions {
+        .list(SessionDirListOptions {
             cwd: Some(cwd.to_string()),
+            project_key: Some(project_key.to_string()),
         })
         .await
         .expect("list cwd")
@@ -130,7 +136,7 @@ async fn jsonl_session_repo_stores_sessions_below_encoded_cwd_directories_and_li
     assert_eq!(cwd_list, vec![metadata_id.clone()]);
 
     let mut all_ids: Vec<_> = repo
-        .list(JsonlSessionListOptions::default())
+        .list(SessionDirListOptions::default())
         .await
         .expect("list all")
         .iter()
@@ -143,14 +149,17 @@ async fn jsonl_session_repo_stores_sessions_below_encoded_cwd_directories_and_li
 }
 
 #[tokio::test]
-async fn jsonl_session_repo_opens_deletes_and_forks_by_metadata() {
+async fn session_dir_repo_opens_deletes_and_forks_by_metadata() {
     let (root, env) = temp_root();
-    let repo = JsonlSessionRepo::new(env, root.path().to_string_lossy().to_string());
+    let project_key = "abc123_source";
+    let repo = SessionDirRepo::new(env, root.path().to_string_lossy().to_string(), project_key);
     let mut source = repo
-        .create(JsonlSessionRepoCreateOptions {
+        .create(SessionDirRepoCreateOptions {
             cwd: "/tmp/source".to_string(),
+            project_key: project_key.to_string(),
             id: Some("source-session".to_string()),
-            parent_session_path: None,
+            parent_session_id: None,
+            system_prompt: None,
         })
         .await
         .expect("create");
@@ -164,15 +173,17 @@ async fn jsonl_session_repo_opens_deletes_and_forks_by_metadata() {
 
     let opened_metadata = repo.open(&source_metadata).await.expect("open").metadata().await;
     assert_eq!(opened_metadata.id, source_metadata.id);
-    assert_eq!(opened_metadata.path, source_metadata.path);
+    assert_eq!(opened_metadata.dir, source_metadata.dir);
 
     let fork = repo
         .fork(
             &source_metadata,
-            JsonlSessionRepoCreateOptions {
+            SessionDirRepoCreateOptions {
                 cwd: "/tmp/target".to_string(),
+                project_key: project_key.to_string(),
                 id: Some("fork-session".to_string()),
-                parent_session_path: None,
+                parent_session_id: None,
+                system_prompt: None,
             },
             ForkEntriesOptions {
                 entry_id: Some(user2.clone()),
@@ -184,8 +195,8 @@ async fn jsonl_session_repo_opens_deletes_and_forks_by_metadata() {
     let fork_metadata = fork.metadata().await;
     assert_eq!(fork_metadata.cwd, "/tmp/target");
     assert_eq!(
-        fork_metadata.parent_session_path.as_deref(),
-        Some(source_metadata.path.as_str())
+        fork_metadata.parent_session_id.as_deref(),
+        Some(source_metadata.id.as_str())
     );
     let fork_ids: Vec<_> = fork
         .entries()
@@ -198,10 +209,12 @@ async fn jsonl_session_repo_opens_deletes_and_forks_by_metadata() {
     let full_fork = repo
         .fork(
             &source_metadata,
-            JsonlSessionRepoCreateOptions {
+            SessionDirRepoCreateOptions {
                 cwd: "/tmp/target".to_string(),
+                project_key: project_key.to_string(),
                 id: Some("full-fork-session".to_string()),
-                parent_session_path: None,
+                parent_session_id: None,
+                system_prompt: None,
             },
             ForkEntriesOptions::default(),
         )
@@ -216,7 +229,7 @@ async fn jsonl_session_repo_opens_deletes_and_forks_by_metadata() {
     assert_eq!(full_fork_ids, vec![user1, assistant1, user2]);
 
     repo.delete(&source_metadata).await.expect("delete");
-    assert!(!std::path::Path::new(&source_metadata.path).exists());
+    assert!(!std::path::Path::new(&source_metadata.dir).exists());
     let error = match repo.open(&source_metadata).await {
         Err(error) => error,
         Ok(_) => panic!("expected deleted session to be missing"),

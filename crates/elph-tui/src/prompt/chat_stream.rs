@@ -1,147 +1,176 @@
-use super::prompt_transcript::PromptTranscript;
-use crate::agent::TranscriptView;
+use crate::agent::{CollapseState, render_composer_transcript, render_transcript_view};
+use crate::shell::{shell_chat_pad_x, shell_chat_pad_y};
 use crate::theme::Theme;
 use crate::transcript::TranscriptEntry;
-use iocraft::prelude::*;
+use slt::{Context, Justify, ScrollState};
+
+use super::transcript_scroll::{
+    ScrollSnapshot, apply_transcript_auto_scroll, handle_transcript_scroll_keys, prepare_transcript_follow,
+    unpin_auto_scroll_if_scrolled_up,
+};
 
 /// Default lines scrolled per Up/Down key press.
 pub const DEFAULT_LINE_SCROLL_STEP: u16 = 3;
 
-/// Use viewport height for Page Up/Down when [`ChatStreamProps::page_scroll_step`] is zero.
+/// Use viewport height for Page Up/Down when zero.
 pub const PAGE_SCROLL_VIEWPORT: u16 = 0;
 
-#[derive(Props)]
-pub struct ChatStreamProps {
-    /// Live message list (preferred — parent avoids cloning on every render).
-    pub messages_state: Option<State<Vec<String>>>,
-    /// Static messages for tests and one-shot renders.
-    pub messages: Vec<String>,
-    /// When false, keyboard scroll keys are ignored (e.g. while the prompt has focus).
-    pub scroll_enabled: bool,
-    /// Pin to bottom while the user has not scrolled up.
-    pub auto_scroll: bool,
-    /// Lines to scroll per Up/Down key press.
-    pub line_scroll_step: u16,
-    /// Lines to scroll per Page Up/Down. [`PAGE_SCROLL_VIEWPORT`] uses the visible height.
-    pub page_scroll_step: u16,
-    /// Active color palette.
-    pub theme: Theme,
-    /// Live rich transcript entries (preferred over [`Self::entries`]).
-    pub entries_state: Option<State<Vec<TranscriptEntry>>>,
-    /// Static rich transcript entries. When set, renders [`TranscriptView`] instead of plain messages.
-    pub entries: Option<Vec<TranscriptEntry>>,
-    /// Whether thinking blocks are shown in rich transcript mode.
-    pub show_thinking: bool,
+/// Transcript presentation style.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TranscriptStyle {
+    /// Pipe-column layout from `docs/tui.md`.
+    #[default]
+    Classic,
+    /// Cursor Composer-style cards and blocks.
+    Composer,
 }
 
-impl Default for ChatStreamProps {
-    fn default() -> Self {
+/// Scrollable chat transcript backed by SLT [`ScrollState`].
+pub struct ChatStreamState {
+    /// Vertical transcript scroll (lines).
+    pub scroll: ScrollState,
+    /// Horizontal scroll for wide tables and code blocks.
+    pub scroll_h: ScrollState,
+    pub messages: Vec<String>,
+    pub entries: Vec<TranscriptEntry>,
+    pub scroll_enabled: bool,
+    pub auto_scroll: bool,
+    pub line_scroll_step: u16,
+    pub page_scroll_step: u16,
+    pub show_thinking: bool,
+    pub collapse: CollapseState,
+    pub style: TranscriptStyle,
+}
+
+impl ChatStreamState {
+    pub fn new() -> Self {
         Self {
-            messages_state: None,
+            scroll: ScrollState::new(),
+            scroll_h: ScrollState::new(),
             messages: Vec::new(),
+            entries: Vec::new(),
             scroll_enabled: true,
             auto_scroll: true,
             line_scroll_step: DEFAULT_LINE_SCROLL_STEP,
             page_scroll_step: PAGE_SCROLL_VIEWPORT,
-            theme: Theme::default(),
-            entries_state: None,
-            entries: None,
             show_thinking: true,
+            collapse: CollapseState::default(),
+            style: TranscriptStyle::default(),
         }
+    }
+
+    pub fn with_messages(messages: Vec<String>) -> Self {
+        Self {
+            messages,
+            ..Self::new()
+        }
+    }
+
+    /// Re-pin the viewport to the tail (e.g. when the user submits a prompt).
+    pub fn pin_to_tail(&mut self) {
+        self.auto_scroll = true;
     }
 }
 
-/// Scrollable chat transcript area with configurable keyboard scroll speed.
-#[component]
-pub fn ChatStream(mut hooks: Hooks, props: &mut ChatStreamProps) -> impl Into<AnyElement<'static>> {
-    let handle = hooks.use_ref_default::<ScrollViewHandle>();
-    let line_scroll_step = props.line_scroll_step.max(1) as i32;
-    let page_scroll_step = props.page_scroll_step;
-    let auto_scroll = props.auto_scroll;
-    let scroll_enabled = props.scroll_enabled;
-    let show_thinking = props.show_thinking;
-    let theme = props.theme;
-    let messages_state = props.messages_state;
-    let messages = props.messages.clone();
-    let entries_state = props.entries_state;
-    let entries = props.entries.clone();
+impl Default for ChatStreamState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-    hooks.use_terminal_events({
-        let mut handle = handle;
-        move |event| {
-            if !scroll_enabled {
-                return;
-            }
+fn page_scroll_amount(state: &ChatStreamState) -> usize {
+    if state.page_scroll_step == PAGE_SCROLL_VIEWPORT {
+        state.scroll.viewport_height().max(1) as usize
+    } else {
+        state.page_scroll_step as usize
+    }
+}
 
-            let TerminalEvent::Key(KeyEvent { code, kind, .. }) = event else {
-                return;
-            };
+fn entries_follow_tail(entries: &[TranscriptEntry], agent_running: bool) -> bool {
+    agent_running || entries.iter().any(|entry| entry.is_streaming)
+}
 
-            if kind == KeyEventKind::Release {
-                return;
-            }
+/// Render scrollable chat content (plain messages or rich transcript entries).
+pub fn render_chat_stream(ui: &mut Context, state: &mut ChatStreamState, theme: Theme) {
+    render_chat_stream_with_agent(ui, state, theme, false);
+}
 
-            match code {
-                KeyCode::Up => handle.write().scroll_by(-line_scroll_step),
-                KeyCode::Down => handle.write().scroll_by(line_scroll_step),
-                KeyCode::PageUp => {
-                    let step = page_scroll_amount(&handle, page_scroll_step);
-                    handle.write().scroll_by(-step);
-                }
-                KeyCode::PageDown => {
-                    let step = page_scroll_amount(&handle, page_scroll_step);
-                    handle.write().scroll_by(step);
-                }
-                KeyCode::Home => handle.write().scroll_to_top(),
-                KeyCode::End => {
-                    if auto_scroll {
-                        handle.write().scroll_to_bottom();
+/// Like [`render_chat_stream`] but also follows the tail while `agent_running`.
+pub fn render_chat_stream_with_agent(ui: &mut Context, state: &mut ChatStreamState, theme: Theme, agent_running: bool) {
+    let snapshot = ScrollSnapshot::capture(&state.scroll);
+    let page_step = page_scroll_amount(state);
+    let line_step = state.line_scroll_step.max(1) as usize;
+
+    if state.scroll_enabled {
+        handle_transcript_scroll_keys(
+            ui,
+            &mut state.scroll,
+            &mut state.scroll_h,
+            &mut state.auto_scroll,
+            line_step,
+            page_step,
+        );
+    }
+
+    let follow_tail = entries_follow_tail(&state.entries, agent_running);
+
+    if state.scroll_enabled {
+        prepare_transcript_follow(&mut state.scroll, state.auto_scroll, follow_tail, snapshot);
+    }
+
+    let viewport_h = state.scroll.viewport_height().max(1);
+    let pad_x = shell_chat_pad_x(ui);
+    let pad_y = shell_chat_pad_y(ui);
+    // Nest scroll_row inside scroll_col so wide tables/code lines scroll horizontally
+    // while the transcript still scrolls vertically (SLT #247 pattern).
+    let _ = ui.scroll_col(&mut state.scroll, |ui| {
+        let _ = ui.scroll_row(&mut state.scroll_h, |ui| {
+            let _ = ui
+                .container()
+                .px(pad_x)
+                .py(pad_y)
+                .min_h(viewport_h)
+                .justify(Justify::End)
+                .col(|ui| {
+                    if !state.entries.is_empty() {
+                        match state.style {
+                            TranscriptStyle::Composer => {
+                                render_composer_transcript(
+                                    ui,
+                                    &state.entries,
+                                    state.show_thinking,
+                                    theme,
+                                    &state.collapse,
+                                    agent_running,
+                                );
+                            }
+                            TranscriptStyle::Classic => {
+                                render_transcript_view(
+                                    ui,
+                                    &state.entries,
+                                    state.show_thinking,
+                                    theme,
+                                    &state.collapse,
+                                    agent_running,
+                                );
+                            }
+                        }
                     } else {
-                        let max = handle
-                            .read()
-                            .content_height()
-                            .saturating_sub(handle.read().viewport_height());
-                        handle.write().scroll_to(max as i32);
+                        for message in &state.messages {
+                            let color = theme.text_color();
+                            if let Some(c) = color {
+                                let _ = ui.text(message).fg(c).wrap();
+                            } else {
+                                let _ = ui.text(message).wrap();
+                            }
+                        }
                     }
-                }
-                _ => {}
-            }
-        }
+                });
+        });
     });
 
-    element! {
-        View(width: 100pct, height: 100pct) {
-            ScrollView(
-                auto_scroll: auto_scroll,
-                keyboard_scroll: false,
-                scroll_step: Some(props.line_scroll_step.max(1)),
-                scrollbar_thumb_color: Some(theme.scrollbar_thumb),
-                scrollbar_track_color: Some(theme.scrollbar_track),
-                handle: Some(handle),
-            ) {
-                #(if entries_state.is_some() || entries.is_some() {
-                    element!(TranscriptView(
-                        entries_state: entries_state,
-                        entries: entries.unwrap_or_default(),
-                        theme: theme,
-                        show_thinking: show_thinking,
-                    )).into_any()
-                } else {
-                    element!(PromptTranscript(
-                        messages_state: messages_state,
-                        messages: messages,
-                        theme: theme,
-                    )).into_any()
-                })
-            }
-        }
-    }
-}
-
-fn page_scroll_amount(handle: &Ref<ScrollViewHandle>, page_scroll_step: u16) -> i32 {
-    if page_scroll_step == PAGE_SCROLL_VIEWPORT {
-        handle.read().viewport_height().max(1) as i32
-    } else {
-        page_scroll_step.max(1) as i32
+    if state.scroll_enabled {
+        unpin_auto_scroll_if_scrolled_up(&state.scroll, &mut state.auto_scroll, snapshot);
+        apply_transcript_auto_scroll(&mut state.scroll, &mut state.auto_scroll, snapshot, follow_tail);
     }
 }

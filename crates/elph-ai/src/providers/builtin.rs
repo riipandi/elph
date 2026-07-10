@@ -3,7 +3,9 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, openai_codex_oauth};
+use crate::auth::oauth::{
+    anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent, openai_codex_oauth,
+};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth, env_api_key_auth};
 use crate::models::catalog::*;
 use crate::models::{
@@ -242,6 +244,24 @@ pub fn github_copilot_provider() -> Provider {
     })
 }
 
+pub fn hyper_provider() -> Provider {
+    let mut headers = HashMap::new();
+    headers.insert("User-Agent".to_string(), Some(hyper_user_agent()));
+    create_provider(CreateProviderOptions {
+        id: "hyper".to_string(),
+        name: Some("Charm Hyper".to_string()),
+        base_url: Some(hyper_api_base_url()),
+        headers: Some(headers),
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Hyper API key", vec!["HYPER_API_KEY"])),
+            oauth: Some(hyper_oauth()),
+        },
+        models: HYPER_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn cloudflare_ai_gateway_provider() -> Provider {
     create_provider(CreateProviderOptions {
         id: "cloudflare-ai-gateway".to_string(),
@@ -367,6 +387,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["HF_TOKEN"], "Hugging Face token")
         ),
+        hyper_provider(),
         kimi_coding_provider(),
         simple_provider!(
             "minimax",

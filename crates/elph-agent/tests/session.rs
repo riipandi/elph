@@ -1,10 +1,8 @@
-mod common;
-
 use std::fs;
 
 use elph_agent::{
-    AgentMessage, BranchSummaryOptions, InMemorySessionStorage, JsonlSessionCreateOptions, JsonlSessionStorage,
-    Session, SessionStorage, SessionTreeEntry, TursoSessionStorage,
+    AgentMessage, BranchSummaryOptions, EVENTS_FILE, InMemorySessionStorage, SUMMARY_FILE, Session,
+    SessionDirCreateOptions, SessionDirStorage, SessionStorage, SessionTreeEntry, TursoSessionStorage,
 };
 use elph_ai::{Message, UserContent, faux_assistant_message, faux_text};
 use serde_json::json;
@@ -186,17 +184,18 @@ async fn session_with_in_memory_storage() {
 }
 
 #[tokio::test]
-async fn session_with_jsonl_storage() {
+async fn session_with_session_dir_storage() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("session.jsonl");
+    let session_dir = dir.path().join("session-1");
     let cwd = dir.path().to_string_lossy().to_string();
     run_session_suite(|| async {
-        JsonlSessionStorage::create(
-            &path,
-            JsonlSessionCreateOptions {
+        SessionDirStorage::create(
+            &session_dir,
+            SessionDirCreateOptions {
                 cwd: cwd.clone(),
                 session_id: "session-1".to_string(),
-                parent_session_path: None,
+                parent_session_id: None,
+                system_prompt: None,
             },
         )
         .await
@@ -206,16 +205,17 @@ async fn session_with_jsonl_storage() {
 }
 
 #[tokio::test]
-async fn jsonl_file_format_matches_elph_v3() {
+async fn session_dir_file_layout_matches_multi_file_format() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("session.jsonl");
+    let session_dir = dir.path().join("session-1");
     let mut session = Session::new(
-        JsonlSessionStorage::create(
-            &path,
-            JsonlSessionCreateOptions {
+        SessionDirStorage::create(
+            &session_dir,
+            SessionDirCreateOptions {
                 cwd: dir.path().to_string_lossy().to_string(),
                 session_id: "session-1".to_string(),
-                parent_session_path: None,
+                parent_session_id: None,
+                system_prompt: None,
             },
         )
         .await
@@ -230,19 +230,25 @@ async fn jsonl_file_format_matches_elph_v3() {
         .await
         .expect("branch");
 
-    let content = fs::read_to_string(&path).expect("read jsonl");
-    let lines: Vec<_> = content.trim().lines().collect();
-    assert!(lines.len() > 1);
-    let header: serde_json::Value = serde_json::from_str(lines[0]).expect("header");
-    assert_eq!(header.get("type"), Some(&json!("session")));
-    assert_eq!(header.get("version"), Some(&json!(3)));
-    let entries: Vec<serde_json::Value> = lines[1..]
-        .iter()
+    assert!(session_dir.join(SUMMARY_FILE).exists());
+    assert!(session_dir.join("chat_history.jsonl").exists());
+    assert!(session_dir.join(EVENTS_FILE).exists());
+
+    let summary: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(session_dir.join(SUMMARY_FILE)).expect("summary")).expect("summary");
+    assert_eq!(
+        summary.get("info").and_then(|info| info.get("id")),
+        Some(&json!("session-1"))
+    );
+
+    let events: Vec<serde_json::Value> = fs::read_to_string(session_dir.join(EVENTS_FILE))
+        .expect("events")
+        .lines()
+        .filter(|line| !line.trim().is_empty())
         .map(|line| serde_json::from_str(line).expect("entry"))
         .collect();
-    assert!(entries.iter().any(|entry| entry.get("type") == Some(&json!("leaf"))));
-    for entry in entries {
-        assert_ne!(entry.get("type"), Some(&json!("entry")));
+    assert!(events.iter().any(|entry| entry.get("type") == Some(&json!("leaf"))));
+    for entry in events {
         assert!(entry.get("id").and_then(serde_json::Value::as_str).is_some());
     }
 }

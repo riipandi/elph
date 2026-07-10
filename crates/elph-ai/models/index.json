@@ -1,177 +1,182 @@
 [
-  {
-    "providerId": "amazon-bedrock",
-    "rustMod": "amazon_bedrock",
-    "count": 105
-  },
-  {
-    "providerId": "ant-ling",
-    "rustMod": "ant_ling",
-    "count": 3
-  },
-  {
-    "providerId": "anthropic",
-    "rustMod": "anthropic",
-    "count": 24
-  },
-  {
-    "providerId": "azure-openai-responses",
-    "rustMod": "azure_openai_responses",
-    "count": 42
-  },
-  {
-    "providerId": "cerebras",
-    "rustMod": "cerebras",
-    "count": 3
-  },
-  {
-    "providerId": "cloudflare-ai-gateway",
-    "rustMod": "cloudflare_ai_gateway",
-    "count": 38
-  },
-  {
-    "providerId": "cloudflare-workers-ai",
-    "rustMod": "cloudflare_workers_ai",
-    "count": 13
-  },
-  {
-    "providerId": "deepseek",
-    "rustMod": "deepseek",
-    "count": 2
-  },
-  {
-    "providerId": "fireworks",
-    "rustMod": "fireworks",
-    "count": 16
-  },
-  {
-    "providerId": "github-copilot",
-    "rustMod": "github_copilot",
-    "count": 25
-  },
-  {
-    "providerId": "google",
-    "rustMod": "google",
-    "count": 16
-  },
-  {
-    "providerId": "google-vertex",
-    "rustMod": "google_vertex",
-    "count": 10
-  },
-  {
-    "providerId": "groq",
-    "rustMod": "groq",
-    "count": 7
-  },
+    {
+        "providerId": "amazon-bedrock",
+        "rustMod": "amazon_bedrock",
+        "count": 105
+    },
+    {
+        "providerId": "ant-ling",
+        "rustMod": "ant_ling",
+        "count": 3
+    },
+    {
+        "providerId": "anthropic",
+        "rustMod": "anthropic",
+        "count": 24
+    },
+    {
+        "providerId": "azure-openai-responses",
+        "rustMod": "azure_openai_responses",
+        "count": 42
+    },
+    {
+        "providerId": "cerebras",
+        "rustMod": "cerebras",
+        "count": 3
+    },
+    {
+        "providerId": "cloudflare-ai-gateway",
+        "rustMod": "cloudflare_ai_gateway",
+        "count": 38
+    },
+    {
+        "providerId": "cloudflare-workers-ai",
+        "rustMod": "cloudflare_workers_ai",
+        "count": 13
+    },
+    {
+        "providerId": "deepseek",
+        "rustMod": "deepseek",
+        "count": 2
+    },
+    {
+        "providerId": "fireworks",
+        "rustMod": "fireworks",
+        "count": 16
+    },
+    {
+        "providerId": "github-copilot",
+        "rustMod": "github_copilot",
+        "count": 25
+    },
+    {
+        "providerId": "google",
+        "rustMod": "google",
+        "count": 16
+    },
+    {
+        "providerId": "google-vertex",
+        "rustMod": "google_vertex",
+        "count": 10
+    },
+    {
+        "providerId": "groq",
+        "rustMod": "groq",
+        "count": 7
+    },
   {
     "providerId": "huggingface",
     "rustMod": "huggingface",
     "count": 48
   },
   {
-    "providerId": "kimi-coding",
-    "rustMod": "kimi_coding",
-    "count": 3
-  },
-  {
-    "providerId": "minimax",
-    "rustMod": "minimax",
-    "count": 3
-  },
-  {
-    "providerId": "minimax-cn",
-    "rustMod": "minimax_cn",
-    "count": 3
-  },
-  {
-    "providerId": "mistral",
-    "rustMod": "mistral",
-    "count": 30
-  },
-  {
-    "providerId": "moonshotai",
-    "rustMod": "moonshotai",
-    "count": 9
-  },
-  {
-    "providerId": "moonshotai-cn",
-    "rustMod": "moonshotai_cn",
-    "count": 9
-  },
-  {
-    "providerId": "nvidia",
-    "rustMod": "nvidia",
+    "providerId": "hyper",
+    "rustMod": "hyper",
     "count": 20
   },
-  {
-    "providerId": "openai",
-    "rustMod": "openai",
-    "count": 42
-  },
-  {
-    "providerId": "openai-codex",
-    "rustMod": "openai_codex",
-    "count": 4
-  },
-  {
-    "providerId": "opencode",
-    "rustMod": "opencode",
-    "count": 49
-  },
-  {
-    "providerId": "opencode-go",
-    "rustMod": "opencode_go",
-    "count": 13
-  },
-  {
-    "providerId": "openrouter",
-    "rustMod": "openrouter",
-    "count": 258
-  },
-  {
-    "providerId": "together",
-    "rustMod": "together",
-    "count": 20
-  },
-  {
-    "providerId": "vercel-ai-gateway",
-    "rustMod": "vercel_ai_gateway",
-    "count": 187
-  },
-  {
-    "providerId": "xai",
-    "rustMod": "xai",
-    "count": 7
-  },
-  {
-    "providerId": "xiaomi",
-    "rustMod": "xiaomi",
-    "count": 6
-  },
-  {
-    "providerId": "xiaomi-token-plan-ams",
-    "rustMod": "xiaomi_token_plan_ams",
-    "count": 5
-  },
-  {
-    "providerId": "xiaomi-token-plan-cn",
-    "rustMod": "xiaomi_token_plan_cn",
-    "count": 5
-  },
-  {
-    "providerId": "xiaomi-token-plan-sgp",
-    "rustMod": "xiaomi_token_plan_sgp",
-    "count": 5
-  },
-  {
-    "providerId": "zai",
-    "rustMod": "zai",
-    "count": 6
-  },
-  {
-    "providerId": "zai-coding-cn",
-    "rustMod": "zai_coding_cn",
-    "count": 6
-  }
+    {
+        "providerId": "kimi-coding",
+        "rustMod": "kimi_coding",
+        "count": 3
+    },
+    {
+        "providerId": "minimax",
+        "rustMod": "minimax",
+        "count": 3
+    },
+    {
+        "providerId": "minimax-cn",
+        "rustMod": "minimax_cn",
+        "count": 3
+    },
+    {
+        "providerId": "mistral",
+        "rustMod": "mistral",
+        "count": 30
+    },
+    {
+        "providerId": "moonshotai",
+        "rustMod": "moonshotai",
+        "count": 9
+    },
+    {
+        "providerId": "moonshotai-cn",
+        "rustMod": "moonshotai_cn",
+        "count": 9
+    },
+    {
+        "providerId": "nvidia",
+        "rustMod": "nvidia",
+        "count": 20
+    },
+    {
+        "providerId": "openai",
+        "rustMod": "openai",
+        "count": 42
+    },
+    {
+        "providerId": "openai-codex",
+        "rustMod": "openai_codex",
+        "count": 4
+    },
+    {
+        "providerId": "opencode",
+        "rustMod": "opencode",
+        "count": 49
+    },
+    {
+        "providerId": "opencode-go",
+        "rustMod": "opencode_go",
+        "count": 13
+    },
+    {
+        "providerId": "openrouter",
+        "rustMod": "openrouter",
+        "count": 258
+    },
+    {
+        "providerId": "together",
+        "rustMod": "together",
+        "count": 20
+    },
+    {
+        "providerId": "vercel-ai-gateway",
+        "rustMod": "vercel_ai_gateway",
+        "count": 187
+    },
+    {
+        "providerId": "xai",
+        "rustMod": "xai",
+        "count": 7
+    },
+    {
+        "providerId": "xiaomi",
+        "rustMod": "xiaomi",
+        "count": 6
+    },
+    {
+        "providerId": "xiaomi-token-plan-ams",
+        "rustMod": "xiaomi_token_plan_ams",
+        "count": 5
+    },
+    {
+        "providerId": "xiaomi-token-plan-cn",
+        "rustMod": "xiaomi_token_plan_cn",
+        "count": 5
+    },
+    {
+        "providerId": "xiaomi-token-plan-sgp",
+        "rustMod": "xiaomi_token_plan_sgp",
+        "count": 5
+    },
+    {
+        "providerId": "zai",
+        "rustMod": "zai",
+        "count": 6
+    },
+    {
+        "providerId": "zai-coding-cn",
+        "rustMod": "zai_coding_cn",
+        "count": 6
+    }
 ]

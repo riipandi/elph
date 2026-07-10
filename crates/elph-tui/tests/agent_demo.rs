@@ -51,6 +51,16 @@ fn markdown_renders_assistant_style_output() {
 }
 
 #[test]
+fn markdown_renders_gfm_table_in_assistant_output() {
+    let md = "| Tool | Status |\n|------|--------|\n| cargo test | ok |";
+    let lines = render_markdown_lines(md, 60, MarkdownTheme::dark());
+    let joined = lines.join("\n");
+    assert!(joined.contains("Tool"));
+    assert!(joined.contains("cargo test"));
+    assert!(joined.contains('┌'));
+}
+
+#[test]
 fn mock_selectors_use_select_items() {
     let sessions = [SelectItem::new("s1", "Session 1"), SelectItem::new("s2", "Session 2")];
     assert_eq!(sessions.len(), 2);

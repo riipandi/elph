@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+
+name: setup-rust
+description: Prepare Rust toolchain, caches, and CI tools
+
+inputs:
+  sharedKey:
+    description: Cache key prefix (e.g. ci-ubuntu-24.04)
+    required: true
+  installNextest:
+    description: Install cargo-nextest for running tests
+    required: false
+    default: "true"
+  installCross:
+    description: Install cross and rustup targets for release builds
+    required: false
+    default: "false"
+  crossPlatform:
+    description: Limit rustup targets to a release platform (linux, macos, windows)
+    required: false
+    default: ""
+  saveCache:
+    description: "Whether to save the cargo cache (default: true)"
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
+      with:
+        toolchain: 1.96.1
+        components: clippy, rustfmt
+
+    - name: Install CI tools with cargo-binstall
+      if: inputs.installNextest == 'true' || inputs.installCross == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        export BINSTALL_DISABLE_TELEMETRY=true
+        if ! command -v cargo-binstall >/dev/null 2>&1; then
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        fi
+        if [ "${{ inputs.installNextest }}" = "true" ] && ! command -v cargo-nextest >/dev/null 2>&1; then
+          cargo binstall --locked -y cargo-nextest
+        fi
+        if [ "${{ inputs.installCross }}" = "true" ]; then
+          if ! command -v cross >/dev/null 2>&1; then
+            cargo binstall --locked -y cross
+          fi
+          platform="${{ inputs.crossPlatform }}"
+          if [ -n "$platform" ]; then
+            ./scripts/cross-targets.sh "$platform"
+          else
+            ./scripts/cross-targets.sh
+          fi | while read -r target; do
+            rustup target add "$target" 2>/dev/null || true
+          done
+        fi
+
+    - name: Setup sccache
+      uses: mozilla-actions/sccache-action@v0.0.10
+      with:
+        version: "v0.10.0"
+
+    - name: Setup Cargo cache
+      uses: swatinem/rust-cache@v2.9.1
+      with:
+        cache-on-failure: true
+        shared-key: ${{ inputs.sharedKey }}
+        cache-bin: false
+        save-if: ${{ inputs.saveCache }}
+
+    - name: Export Rust CI environment
+      shell: bash
+      run: |
+        {
+          echo "RUSTC_WRAPPER=sccache"
+          echo "SCCACHE_GHA_ENABLED=true"
+          echo "CARGO_TERM_COLOR=always"
+          echo "CARGO_INCREMENTAL=0"
+        } >> "$GITHUB_ENV"

@@ -162,3 +162,21 @@ async fn consumes_queued_responses_in_order() {
     }
     assert_eq!(faux.pending_count(), 0);
 }
+
+#[tokio::test]
+async fn empty_queue_returns_error_without_panicking() {
+    let faux = faux_provider(Default::default());
+    let model = faux.provider.get_models()[0].clone();
+    let ctx = Context {
+        system_prompt: None,
+        messages: vec![Message::User {
+            content: UserContent::Text("hi".to_string()),
+            timestamp: 0,
+        }],
+        tools: None,
+    };
+
+    let response = faux.provider.stream_simple(&model, &ctx, None).result().await;
+    assert_eq!(response.stop_reason, StopReason::Error);
+    assert_eq!(response.error_message.as_deref(), Some("No more faux responses queued"));
+}

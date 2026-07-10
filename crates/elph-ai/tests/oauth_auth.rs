@@ -112,7 +112,7 @@ async fn github_copilot_to_auth_falls_back_to_enterprise_then_individual() {
 fn oauth_registry_lists_builtin_providers() {
     let _guard = OAUTH_REGISTRY_LOCK.lock();
     reset_oauth_providers();
-    assert_eq!(get_oauth_providers().len(), 3);
+    assert_eq!(get_oauth_providers().len(), 4);
     for id in builtin_oauth_provider_ids() {
         assert!(get_oauth_provider(id).is_some(), "missing provider {id}");
     }
