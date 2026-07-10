@@ -146,7 +146,7 @@ jobs:
     name: Publish (${{ inputs.app }})
     needs: [version-gate, build-linux, build-macos, build-windows]
     if: needs.version-gate.outputs.should_continue == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7

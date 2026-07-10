@@ -13,7 +13,8 @@ permissions:
 
 jobs:
   clean-cache:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
     steps:
       - uses: actions/github-script@v9
         with:

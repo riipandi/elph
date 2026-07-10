@@ -26,7 +26,7 @@ permissions:
 jobs:
   gate:
     name: Version gate (${{ inputs.app }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     timeout-minutes: 5
     outputs:
       should_continue: ${{ steps.check.outputs.should_continue }}
