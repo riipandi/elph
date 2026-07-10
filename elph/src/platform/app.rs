@@ -44,9 +44,9 @@ impl Drop for KeyboardEnhancementGuard {
     }
 }
 
-pub fn run() {
+pub fn run(options: shell::TuiOptions) {
     let _guard = KeyboardEnhancementGuard;
-    let result = shell::run_tui();
+    let result = shell::run_tui(options.resume_id);
     exit_message::print_and_clear();
     if let Err(e) = result {
         tracing::error!(error = %e, "app error");

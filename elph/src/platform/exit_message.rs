@@ -1,31 +1,32 @@
-use parking_lot::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::{IsTerminal, stdout};
 
-const GOODBYES: &[&str] = &[
-    "Goodbye — come back anytime.",
-    "See you next time.",
-    "Until next time. Happy coding!",
-    "Take care!",
-    "Bye for now.",
-    "Catch you later.",
-    "All done here. See you soon.",
-    "Signing off. Have a great day!",
-    "Later! The codebase will be here when you return.",
-    "Peace out.",
-];
+use elph_agent::session::types::SessionTreeEntry;
+use elph_agent::types::AgentMessage;
+use elph_ai::{Message, StopReason, Usage};
+use parking_lot::Mutex;
+
+const DIM: &str = "\x1b[2m";
+const RESET: &str = "\x1b[0m";
 
 static PENDING: Mutex<Option<ExitSnapshot>> = Mutex::new(None);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ExitSnapshot {
     pub session_id: String,
-    pub has_history: bool,
+    pub cost_usd: f64,
+    pub api_duration_secs: f64,
+    pub wall_duration_secs: f64,
+    pub lines_added: u32,
+    pub lines_removed: u32,
+    pub usage: UsageTotals,
 }
 
-/// Creates a TSID session identifier for resume hints.
-#[cfg(test)]
-fn new_session_id() -> String {
-    tsid::create_tsid().to_string()
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct UsageTotals {
+    pub input: u64,
+    pub output: u64,
+    pub cache_read: u64,
+    pub cache_write: u64,
 }
 
 pub fn record(snapshot: ExitSnapshot) {
@@ -37,24 +38,93 @@ pub fn print_and_clear() {
     let Some(snapshot) = snapshot else {
         return;
     };
+    print_exit_summary(&snapshot);
+}
 
-    if snapshot.has_history {
-        println!("To resume this session: elph --resume {}", snapshot.session_id);
+pub fn print_exit_summary(snapshot: &ExitSnapshot) {
+    println!("Resume this session with: elph --resume {}", snapshot.session_id);
+    println!();
+    println_dim(format!("Estimated cost:        ${:.2}", snapshot.cost_usd));
+    println_dim(format!(
+        "Total duration (API):  {}",
+        format_duration_secs(snapshot.api_duration_secs)
+    ));
+    println_dim(format!(
+        "Total duration (wall): {}",
+        format_duration_secs(snapshot.wall_duration_secs)
+    ));
+    println_dim(format!(
+        "Total code changes:    {} lines added, {} lines removed",
+        snapshot.lines_added, snapshot.lines_removed
+    ));
+    println_dim(format!(
+        "Usage stats:           {} input, {} output, {} cache read, {} cache write",
+        snapshot.usage.input, snapshot.usage.output, snapshot.usage.cache_read, snapshot.usage.cache_write
+    ));
+}
+
+fn println_dim(line: impl AsRef<str>) {
+    println!("{}", dim(line.as_ref()));
+}
+
+fn dim(text: &str) -> String {
+    if supports_ansi_color() {
+        format!("{DIM}{text}{RESET}")
     } else {
-        println!("{}", random_goodbye());
+        text.to_string()
     }
 }
 
-pub fn random_goodbye() -> &'static str {
-    let seed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos() as u64)
-        .unwrap_or(0);
-    goodbye_message(seed)
+fn supports_ansi_color() -> bool {
+    std::env::var("NO_COLOR").as_deref() != Ok("true") && stdout().is_terminal()
 }
 
-pub fn goodbye_message(seed: u64) -> &'static str {
-    GOODBYES[seed as usize % GOODBYES.len()]
+pub fn aggregate_usage_from_entries(entries: &[SessionTreeEntry]) -> (UsageTotals, f64) {
+    let mut totals = UsageTotals::default();
+    let mut cost_usd = 0.0;
+    for entry in entries {
+        let SessionTreeEntry::Message { message, .. } = entry else {
+            continue;
+        };
+        let Some(usage) = assistant_usage(message) else {
+            continue;
+        };
+        totals.input += usage.input;
+        totals.output += usage.output;
+        totals.cache_read += usage.cache_read;
+        totals.cache_write += usage.cache_write;
+        cost_usd += usage.cost.total;
+    }
+    (totals, cost_usd)
+}
+
+fn assistant_usage(message: &AgentMessage) -> Option<&Usage> {
+    let AgentMessage::Llm(llm) = message else {
+        return None;
+    };
+    let Message::Assistant(assistant) = llm.as_ref() else {
+        return None;
+    };
+    if matches!(assistant.stop_reason, StopReason::Aborted | StopReason::Error) {
+        return None;
+    }
+    if assistant.usage.input == 0
+        && assistant.usage.output == 0
+        && assistant.usage.cache_read == 0
+        && assistant.usage.cache_write == 0
+        && assistant.usage.cost.total == 0.0
+    {
+        return None;
+    }
+    Some(&assistant.usage)
+}
+
+pub fn format_duration_secs(secs: f64) -> String {
+    if !secs.is_finite() || secs < 0.5 {
+        "0s".to_string()
+    } else {
+        format!("{}s", secs.round() as u64)
+    }
 }
 
 #[cfg(test)]
@@ -62,26 +132,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn session_id_is_tsid() {
-        let id = new_session_id();
-        assert_eq!(id.len(), 13);
-        assert!(tsid::TSID::try_from(id.as_str()).is_ok());
+    fn format_duration_rounds_to_seconds() {
+        assert_eq!(format_duration_secs(0.0), "0s");
+        assert_eq!(format_duration_secs(0.4), "0s");
+        assert_eq!(format_duration_secs(51.2), "51s");
     }
 
     #[test]
-    fn goodbye_rotates_with_seed() {
-        assert_ne!(goodbye_message(0), goodbye_message(1));
-        assert_eq!(goodbye_message(42), goodbye_message(42 + GOODBYES.len() as u64));
-    }
-
-    #[test]
-    fn prints_resume_hint_when_history_exists() {
-        record(ExitSnapshot {
-            session_id: "abc123".to_string(),
-            has_history: true,
-        });
-        print_and_clear();
-        // Printed to stdout; ensure buffer clears without panic on second call.
-        print_and_clear();
+    fn prints_codex_style_exit_block() {
+        let snapshot = ExitSnapshot {
+            session_id: "abc123xyz4567".to_string(),
+            cost_usd: 0.0,
+            api_duration_secs: 0.0,
+            wall_duration_secs: 51.0,
+            lines_added: 0,
+            lines_removed: 0,
+            usage: UsageTotals::default(),
+        };
+        print_exit_summary(&snapshot);
     }
 }

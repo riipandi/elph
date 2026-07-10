@@ -1,5 +1,4 @@
 //! Agent integration tests.
-
 mod common;
 
 use std::sync::Arc;

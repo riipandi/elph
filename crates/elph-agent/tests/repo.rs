@@ -1,5 +1,4 @@
 //! Session repository tests.
-
 mod common;
 
 use std::sync::Arc;

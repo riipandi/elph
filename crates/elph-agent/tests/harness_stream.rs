@@ -1,5 +1,4 @@
 //! AgentHarness stream configuration tests.
-
 mod common;
 
 use std::collections::HashMap;

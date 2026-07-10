@@ -1,5 +1,4 @@
 //! Subagent control plane tests.
-
 mod common;
 
 use std::sync::Arc;

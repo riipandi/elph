@@ -1,7 +1,7 @@
 [package]
 name = "owly"
 version = "0.0.6"
-license = "MIT"
+license = "Apache-2.0"
 description = "AI agent CLI that writes and maintains documentation for your codebase"
 keywords = ["ai", "documentation", "wiki", "agent", "cli"]
 categories = ["development-tools", "command-line-utilities"]
@@ -10,6 +10,10 @@ repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 publish = true
+
+[lib]
+name = "owly"
+path = "src/lib.rs"
 
 [[bin]]
 name = "owly"

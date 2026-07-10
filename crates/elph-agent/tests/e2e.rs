@@ -1,5 +1,4 @@
 //! End-to-end agent integration tests.
-
 mod common;
 
 use std::sync::Arc;

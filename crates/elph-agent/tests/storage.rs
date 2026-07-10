@@ -1,5 +1,4 @@
 //! Session storage tests.
-
 mod common;
 
 use std::fs;

@@ -9,6 +9,7 @@ mod turn;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Instant;
 
 use elph_tui::{
     ActivityState, PromptQueue, PromptState, SelectItem, SessionSelectorState, SlashPaletteState, Theme, ThinkingLevel,
@@ -61,6 +62,8 @@ pub struct ElphApp {
     pub(super) pending_tool_approval_tx: Option<tokio::sync::oneshot::Sender<ToolApprovalChoice>>,
     pub(super) show_thinking: bool,
     pub(super) last_turn_elapsed_secs: f64,
+    pub(super) total_api_secs: f64,
+    pub(super) started_at: Instant,
     pub(super) settings: Settings,
     pub(super) paths: Paths,
     pub(super) cwd: PathBuf,
@@ -73,7 +76,7 @@ pub struct ElphApp {
 }
 
 impl ElphApp {
-    pub async fn bootstrap(settings: Settings) -> anyhow::Result<Self> {
+    pub async fn bootstrap(settings: Settings, resume_id: Option<&str>) -> anyhow::Result<Self> {
         let paths = crate::platform::Paths::resolve()?;
         let cwd: PathBuf = std::env::current_dir().unwrap_or_else(|_| ".".into());
         let project_dir = cwd.display().to_string();
@@ -88,7 +91,7 @@ impl ElphApp {
             paths: &paths,
             settings: &settings,
             cwd: &cwd,
-            resume_id: None,
+            resume_id,
             provider_override: None,
             model_override: None,
         })
@@ -135,6 +138,8 @@ impl ElphApp {
             pending_tool_approval_tx: None,
             show_thinking: settings.show_thinking,
             last_turn_elapsed_secs: 0.0,
+            total_api_secs: 0.0,
+            started_at: Instant::now(),
             settings,
             paths,
             cwd,
@@ -149,5 +154,36 @@ impl ElphApp {
 
     pub(super) fn overlay_visible(&self) -> bool {
         self.active_overlay != ActiveOverlay::None
+    }
+
+    /// Builds an exit snapshot without holding unrelated locks across `block_on`.
+    pub(super) fn exit_snapshot_from(
+        session_id: &str,
+        total_api_secs: f64,
+        started_at: Instant,
+        project_dir: &str,
+        session: &Arc<CodingAgentSession>,
+    ) -> crate::platform::exit_message::ExitSnapshot {
+        use std::path::Path;
+
+        use elph_tui::read_git_diff_stats;
+
+        let wall_duration_secs = started_at.elapsed().as_secs_f64();
+        let (lines_added, lines_removed) = read_git_diff_stats(Path::new(project_dir));
+
+        let (usage, cost_usd) = match elph_agent::block_on(async { session.branch_entries().await }) {
+            Ok(entries) => crate::platform::exit_message::aggregate_usage_from_entries(&entries),
+            Err(_) => (crate::platform::exit_message::UsageTotals::default(), 0.0),
+        };
+
+        crate::platform::exit_message::ExitSnapshot {
+            session_id: session_id.to_string(),
+            cost_usd,
+            api_duration_secs: total_api_secs,
+            wall_duration_secs,
+            lines_added,
+            lines_removed,
+            usage,
+        }
     }
 }

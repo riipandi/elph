@@ -25,6 +25,7 @@ impl ElphApp {
                     applier.apply(AgentUiEvent::RunCompleted { elapsed_secs });
                     self.agent_running = false;
                     self.last_turn_elapsed_secs = elapsed_secs;
+                    self.total_api_secs += elapsed_secs;
                     self.activity.clear();
                     self.drain_prompt_queue();
                 }

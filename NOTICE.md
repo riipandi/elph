@@ -1,4 +1,21 @@
-# Attribution
+# Attribution and Licensing
+
+## Elph workspace licenses
+
+This repository uses a mixed license model:
+
+| Component        | Crates                                                         | License                                |
+| ---------------- | -------------------------------------------------------------- | -------------------------------------- |
+| **Applications** | `elph`, `eclaw`, `owly`                                        | [Apache License 2.0](./LICENSE-APACHE) |
+| **Libraries**    | `elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm` | [MIT License](./LICENSE-MIT)           |
+
+When distributing binaries built from `elph`, `eclaw`, or `owly`, include the Apache 2.0
+license and this notice file. When using or redistributing the library crates, include the
+MIT license and retain upstream attributions below.
+
+---
+
+## Third-party attributions
 
 Elph is a Rust workspace for building AI agent applications. It was originally inspired by
 [pi](https://github.com/earendil-works/pi) by [Mario Zechner](https://github.com/badlogicgames),
@@ -24,6 +41,10 @@ Elph re-implements these concepts in Rust with the following key differences:
 The architectural design — tool system, provider abstraction, streaming event model,
 session tree structure, and overall API shape — is derived from the original pi project.
 All original pi code is Copyright (c) 2025 Mario Zechner, used under the MIT License.
+
+Portions of the agent workflow (exit summary, goals, subagent orchestration, tool transcript layout)
+are inspired by [OpenAI Codex CLI](https://github.com/openai/codex).
+The original Codex CLI is Copyright (c) 2025 OpenAI, licensed under the Apache License 2.0.
 
 The `floppy` memory module in `elph-core` is a Rust port of the [memelord SDK](https://github.com/glommer/memelord/tree/main/packages/sdk).
 The original memelord code is Copyright (c) 2026 Glauber Costa, used under the MIT License.

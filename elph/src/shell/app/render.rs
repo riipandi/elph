@@ -10,7 +10,6 @@ use elph_tui::{
 use slt::Context;
 
 use super::{ActiveOverlay, ElphApp};
-use crate::platform::exit_message::ExitSnapshot;
 use crate::platform::{exit_message, handle_prompt_interrupt};
 use crate::tui::TurnDispatcher;
 
@@ -155,7 +154,7 @@ pub async fn run_sigint_watcher(app: Arc<Mutex<ElphApp>>) {
     }
 }
 
-pub fn run_tui() -> std::io::Result<()> {
+pub fn run_tui(resume_id: Option<String>) -> std::io::Result<()> {
     let _ = enable_keyboard_enhancement();
     struct KeyboardGuard;
     impl Drop for KeyboardGuard {
@@ -169,7 +168,8 @@ pub fn run_tui() -> std::io::Result<()> {
         .and_then(|paths| crate::platform::Settings::load(&paths))
         .map_err(std::io::Error::other)?;
 
-    let app = elph_agent::block_on(ElphApp::bootstrap(settings)).map_err(std::io::Error::other)?;
+    let app =
+        elph_agent::block_on(ElphApp::bootstrap(settings, resume_id.as_deref())).map_err(std::io::Error::other)?;
     let app = Arc::new(Mutex::new(app));
     let watcher_app = Arc::clone(&app);
 
@@ -181,11 +181,18 @@ pub fn run_tui() -> std::io::Result<()> {
     slt::run_with(config, move |ui: &mut Context| {
         let mut guard = app.lock().expect("elph app lock");
         if guard.should_exit {
-            exit_message::record(ExitSnapshot {
-                session_id: guard.session_id.clone(),
-                has_history: !guard.chat.entries.is_empty(),
-            });
+            let snapshot = {
+                let session_id = guard.session_id.clone();
+                let total_api_secs = guard.total_api_secs;
+                let started_at = guard.started_at;
+                let project_dir = guard.project_dir.clone();
+                let session = Arc::clone(&guard.session);
+                drop(guard);
+                ElphApp::exit_snapshot_from(&session_id, total_api_secs, started_at, &project_dir, &session)
+            };
+            exit_message::record(snapshot);
             ui.quit();
+            return;
         }
         render_app(ui, &mut guard);
     })

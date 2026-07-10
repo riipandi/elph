@@ -1,5 +1,4 @@
 //! Plan mode policy and harness integration.
-
 mod common;
 
 use std::sync::Arc;

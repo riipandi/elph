@@ -10,22 +10,20 @@ Implementation detail lives in [openwiki](../openwiki/quickstart.md); this docum
 2. **Thin binary** — `main.rs` only parses CLI and exits; library crate holds modules for tests.
 3. **Platform vs product** — `platform/` is paths, settings, bootstrap, datastore; no agent logic.
 4. **Shell vs agent** — `shell/` is the interactive TUI app; `agent/` is the coding session runtime.
-5. **Tests** — unit tests colocated with the code they cover; integration tests only under `elph/tests/`.
-6. **File size** — prefer modules under ~400 lines; split by concern (not by arbitrary line count). Free functions and wiring logic extract to sibling files; keep a single `impl` block per type when methods call each other privately.
+5. **Tests** — unit tests colocated with the code they cover; integration tests in each crate's `tests/` directory.
+6. **File size** — prefer modules under ~400 lines; split by concern (not by arbitrary line count). Free functions and wiring logic extract to sibling files; use `pub(super)` when splitting `impl` blocks across files in the same module.
 
 ## Workspace crates
 
-| Crate / binary | Layout intent |
-| -------------- | ------------- |
-| `elph`         | Product shell: `agent/`, `shell/`, `cli/`, `platform/`, `extensions/` |
-| `elph-agent`   | Runtime engine: `harness/`, `agent_loop/`, `session/`, `goals/`, `subagent/`, `plugins/` |
-| `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/` |
-| `elph-core`    | Shared primitives: `floppy/`, `logger/`, `scaffold/`, `utils/` |
-| `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/` |
-| `owly`         | Docs agent binary (own `src/` tree; tests in `owly/tests/`) |
-| `eclaw`        | Release tooling (minimal `src/main.rs`) |
-
-Crate-level integration tests stay in `crates/<crate>/tests/`; only the `elph` **application** integration tests live in `elph/tests/`.
+| Crate / binary | Layout intent                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `elph-agent`   | Runtime engine: `agent_loop/`, `harness/`, `session/`, `goals/`, `subagent/`, `plugins/` |
+| `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`                       |
+| `elph-core`    | Shared primitives: `floppy/` (`query/`, `store/`), `logger/`, `scaffold/`, `utils/`      |
+| `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/`                                |
+| `eclaw`        | Personal assistant binary: `cmd/`, `runtime/`, `server/`                                 |
+| `elph`         | Product shell: `agent/`, `shell/`, `cli/`, `platform/`, `extensions/`                    |
+| `owly`         | Docs agent: `session/`, `agent/`, `checkpoint/`, `shell/`, `tui/`                        |
 
 ## `elph` module map
 
@@ -58,48 +56,63 @@ elph/
 │   │       └── render.rs    # Frame render, run_tui, SIGINT
 │   │
 │   ├── cli/                 # Subcommands (was `cmd/`)
-│   │   ├── mod.rs           # Cli struct, dispatch
-│   │   ├── run.rs, plugin.rs, memory.rs, …
-│   │   └── default.rs       # No subcommand → platform::run → shell
-│   │
 │   ├── platform/            # Host environment (was `runtime/`)
-│   │   ├── paths.rs         # ~/.elph, project .elph/
-│   │   ├── settings.rs
-│   │   ├── bootstrap.rs
-│   │   ├── datastore/
-│   │   ├── migrations.rs
-│   │   └── app.rs           # Exit codes, run() wrapper
-│   │
 │   ├── extensions/          # Extension host wiring (CLI side)
-│   │   └── mod.rs           # ExtensionHost: load, reload, slash dispatch
-│   │
-│   ├── tui/                 # Transcript bridge (elph-tui adapters)
-│   ├── memory/              # Floppy memory CLI backing
-│   ├── skills/, prompt/, widget/, worktree/, config/, command/
-│   │
+│   ├── tui/, memory/, skills/, prompt/, widget/, worktree/
 │   └── (no business logic in root)
 │
-└── tests/                   # Integration tests only
+└── tests/                   # elph application integration tests only
     ├── cli.rs
     ├── bootstrap.rs
-    ├── sigint.rs
-    └── …
+    └── sigint.rs
 ```
 
-## `elph-agent` harness layout
+## `elph-agent` module layout
+
+Top-level `agent_loop/` is the low-level turn runner (stream → tool execution → repeat). The harness wraps it with session persistence, hooks, and compaction.
 
 ```
-crates/elph-agent/src/harness/
+crates/elph-agent/src/
+├── agent_loop/              # Core agent turn loop (tools.rs + private run_loop)
+├── harness/
+│   ├── mod.rs
+│   ├── types/               # Error, event, option types (split submodules)
+│   ├── hooks.rs
+│   ├── agent_harness/
+│   │   ├── mod.rs           # AgentHarness struct + core impl
+│   │   ├── helpers.rs       # Message builders, validation
+│   │   ├── plan_mode.rs
+│   │   ├── prompt_ops.rs
+│   │   ├── compaction_ops.rs
+│   │   ├── tree_nav.rs
+│   │   └── run_loop/        # Harness turn loop (split by concern)
+│   │       ├── mod.rs       # abort, run entrypoints
+│   │       ├── turn_execution.rs
+│   │       ├── event_handling.rs
+│   │       └── session_writes.rs
+│   └── utils/
+└── session/, goals/, subagent/, plugins/, …
+
+crates/elph-agent/tests/     # integration tests; shared helpers in tests/common/
+```
+
+Extension WASM loading is in `elph-agent/src/plugins/`; `elph/extensions/` wires registry into slash dispatch and `elph plugin`.
+
+## `elph-core` floppy layout
+
+```
+crates/elph-core/src/floppy/
 ├── mod.rs
-├── types.rs              # Harness error/event/option types (split when >1k lines)
-├── hooks.rs
-├── agent_harness/
-│   ├── mod.rs            # AgentHarness struct + impl (session loop)
-│   └── helpers.rs        # Message builders, validation, NavigateTreeOptions
-└── utils/
+├── query.rs                 # Task start, memory search, retrieval SQL
+├── store/                   # Turso-backed MemoryStore (split submodules)
+│   ├── mod.rs
+│   ├── read.rs
+│   ├── write.rs
+│   ├── embed.rs
+│   └── tasks.rs
+├── scoring.rs, migrations.rs, builder.rs, …
+└── (unit tests colocated in src/; no integration tests/ yet)
 ```
-
-Extension WASM loading is implemented in `elph-agent/src/plugins/`; `elph/extensions/` only wires registry into slash dispatch and `elph plugin`.
 
 ## Crate boundaries
 
@@ -112,22 +125,25 @@ Extension WASM loading is implemented in `elph-agent/src/plugins/`; `elph/extens
 
 ## Test placement rules
 
-| Kind              | Location                    | Examples                                     |
-| ----------------- | --------------------------- | -------------------------------------------- |
-| Unit              | `#[cfg(test)]` in same file | `paths.rs` path helpers, `settings` merge    |
-| Integration       | `elph/tests/*.rs`           | CLI `--help`, bootstrap dirs, SIGINT channel |
-| Crate integration | `crates/*/tests/`           | `elph-agent` harness, goals, plugins         |
+| Kind                | Location                    | Examples                                                                              |
+| ------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
+| Unit                | `#[cfg(test)]` in same file | `paths.rs` path helpers, `settings` merge                                             |
+| Integration         | `<crate>/tests/*.rs`        | `elph-agent` harness, `elph-tui` keys, owly docs                                      |
+| App integration     | `elph/tests/*.rs`           | CLI `--help`, bootstrap dirs, SIGINT channel                                          |
+| Shared test helpers | `<crate>/tests/common/`     | `elph-agent/tests/common/`, `elph-ai/tests/common/` (`mod common;` in each test file) |
 
-Integration tests may use `elph` as a library (`elph::platform::…`) or subprocess (`CARGO_BIN_EXE_elph`).
+Each crate's integration tests exercise that crate's public API. `elph/tests/` covers only the `elph` binary and library glue (`cli.rs`, `bootstrap.rs`, `sigint.rs`).
+
+`elph-core` and `elph-swarm` currently have no `tests/` directory; coverage lives in `#[cfg(test)]` modules next to the code under `src/`.
 
 ## Naming conventions
 
-| Old name        | New name       | Rationale                                       |
-| --------------- | -------------- | ----------------------------------------------- |
-| `coding_agent/` | `agent/`       | Shorter; matches Pi "coding agent" product term |
-| `cmd/`          | `cli/`         | Matches Rust ecosystem (`clap`, subcommands)    |
-| `runtime/`      | `platform/`    | Avoid confusion with `elph-agent` runtime       |
-| `app.rs` (root) | `shell/app/`   | TUI shell split into focused submodules         |
+| Old name        | New name     | Rationale                                       |
+| --------------- | ------------ | ----------------------------------------------- |
+| `coding_agent/` | `agent/`     | Shorter; matches Pi "coding agent" product term |
+| `cmd/`          | `cli/`       | Matches Rust ecosystem (`clap`, subcommands)    |
+| `runtime/`      | `platform/`  | Avoid confusion with `elph-agent` runtime       |
+| `app.rs` (root) | `shell/app/` | TUI shell split into focused submodules         |
 
 ## Related
 

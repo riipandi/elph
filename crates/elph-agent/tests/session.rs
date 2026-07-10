@@ -1,5 +1,3 @@
-mod common;
-
 use std::fs;
 
 use elph_agent::{

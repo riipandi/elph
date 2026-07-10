@@ -50,6 +50,10 @@ pub struct Cli {
     #[arg(short = 'V', long = "version", help = "Print version information")]
     pub version: bool,
 
+    /// Resume a specific session by ID (interactive TUI)
+    #[arg(long = "resume", value_name = "SESSION_ID")]
+    pub resume: Option<String>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
@@ -148,7 +152,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
-        return default::handle();
+        return default::handle(cli.resume.clone());
     };
 
     if command_needs_datastore(cmd)

@@ -205,4 +205,5 @@ cargo clippy -p owly --all-targets -- -D warnings
 
 ## License
 
-MIT License - see [LICENSE](../LICENSE) for details.
+Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+See [LICENSE-APACHE](../LICENSE-APACHE) and [NOTICE.md](../NOTICE.md).

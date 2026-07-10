@@ -60,6 +60,7 @@ cargo publish -p elph-swarm
 cargo publish -p elph-tui
 cargo publish -p eclaw
 cargo publish -p elph
+cargo publish -p owly
 ```
 
 **Note:** crates.io is immutable — once published, a version cannot be overwritten or deleted.
@@ -73,6 +74,7 @@ Documentation lives in [`docs/`](./docs/). Start with [docs/README.md](./docs/RE
 Elph re-implements concepts from several open-source projects in Rust:
 
 - **[pi](https://pi.dev)** by Mario Zechner — architectural design, provider abstraction, tool system, streaming events, session tree (MIT).
+- **[OpenAI Codex CLI](https://github.com/openai/codex)** — Agent workflow inspiration: exit summary, goals, subagent orchestration (Apache 2.0).
 - **[memelord](https://github.com/glommer/memelord)** by Glauber Costa — `floppy` memory module port (MIT).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** by Tirth Kanani — `elph codegraph` integration (MIT).
 - **[OpenWiki](https://github.com/langchain-ai/openwiki)** by LangChain — `owly` crate port (MIT).
@@ -81,7 +83,12 @@ See [NOTICE.md](./NOTICE.md) for details and license texts.
 
 ## License
 
-This project licensed under the [MIT license][license-mit]. See the [LICENSE](./LICENSE) file for more information.
+This workspace uses a mixed license model:
+
+- **Applications** (`elph`, `eclaw`, `owly`) — [Apache License 2.0][license-apache] ([LICENSE-APACHE](./LICENSE-APACHE))
+- **Libraries** (`elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — [MIT License][license-mit] ([LICENSE-MIT](./LICENSE-MIT))
+
+Third-party attributions and upstream license requirements are listed in [NOTICE.md](./NOTICE.md).
 
 ---
 
@@ -92,4 +99,5 @@ This project licensed under the [MIT license][license-mit]. See the [LICENSE](./
 <!-- References -->
 
 [rust]: https://rust-lang.org/tools/install/
+[license-apache]: https://www.tldrlegal.com/license/apache-license-2-0-apache-2-0
 [license-mit]: https://www.tldrlegal.com/license/mit-license
