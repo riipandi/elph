@@ -17,18 +17,14 @@ pub fn handle() -> ExitCode {
         }
     };
 
-    let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
-        Ok(rt) => rt,
+    match elph_agent::try_block_on(crate::platform::acp::run_agent_stdio(paths, settings)) {
+        Ok(Ok(())) => EXIT_SUCCESS,
+        Ok(Err(error)) => {
+            eprintln!("ACP server error: {error}");
+            EXIT_ERROR
+        }
         Err(error) => {
             eprintln!("failed to start runtime: {error}");
-            return EXIT_ERROR;
-        }
-    };
-
-    match rt.block_on(crate::platform::acp::run_agent_stdio(paths, settings)) {
-        Ok(()) => EXIT_SUCCESS,
-        Err(error) => {
-            eprintln!("ACP server error: {error}");
             EXIT_ERROR
         }
     }
