@@ -6,8 +6,10 @@ mod render;
 mod run;
 mod setup;
 
+use elph_tui::AgentMode;
 use elph_tui::{
-    ActivityState, PromptQueue, PromptState, Theme, ToolExecutionState, default_activity_spinner, pick_tip,
+    ActivityState, PromptQueue, PromptState, SlashPaletteState, Theme, ToolExecutionState, default_activity_spinner,
+    owly_builtin_commands, pick_tip,
 };
 use slt::widgets::SpinnerState;
 use tokio::sync::mpsc;
@@ -18,6 +20,7 @@ use super::chat_stream::OwlyChatState;
 use super::context::AppContext;
 use super::entries::OwlyEntry;
 use super::launch::LaunchState;
+use super::static_flush::TranscriptFlushState;
 
 pub use run::run_shell;
 
@@ -43,6 +46,10 @@ pub struct OwlyApp {
     pub activity: ActivityState,
     pub spinner: SpinnerState,
     pub prompt_queue: PromptQueue,
+    pub slash_commands: Vec<elph_tui::SlashCommand>,
+    pub slash_palette: SlashPaletteState,
+    pub(super) transcript_flush: TranscriptFlushState,
+    pub(super) banner_emitted: bool,
 }
 
 impl OwlyApp {
@@ -56,8 +63,13 @@ impl OwlyApp {
             context: launch.app_context,
             entries: startup_entries,
             live_tools: Vec::new(),
-            prompt: PromptState::new(launch.model.clone()),
-            chat: OwlyChatState::default(),
+            prompt: {
+                let mut prompt = PromptState::new(launch.model.clone());
+                prompt.mode = AgentMode::Ask;
+                prompt.enable_mode_cycle = false;
+                prompt
+            },
+            chat: OwlyChatState,
             theme: Theme::detect(),
             running: false,
             setup_complete: !launch.pending_setup,
@@ -74,6 +86,10 @@ impl OwlyApp {
             activity: ActivityState::default(),
             spinner: default_activity_spinner(),
             prompt_queue: PromptQueue::default(),
+            slash_commands: owly_builtin_commands(),
+            slash_palette: SlashPaletteState::default(),
+            transcript_flush: TranscriptFlushState::default(),
+            banner_emitted: false,
         }
     }
 

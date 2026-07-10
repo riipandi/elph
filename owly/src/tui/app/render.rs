@@ -1,10 +1,10 @@
-use elph_tui::{ActivityState, BannerInfo, FooterInfo, ShellChrome, ShellRegion, render_agent_shell};
+use elph_tui::{BannerInfo, FooterInfo, render_inline_shell, simple_banner_lines};
 use slt::Context;
 
 use super::OwlyApp;
 use crate::tui::banner::directory_display;
-use crate::tui::chat_stream::render_owly_chat_stream;
 use crate::tui::setup::render_setup_wizard;
+use crate::tui::static_flush::{emit_banner, sync_transcript};
 
 pub fn render_owly_app(ui: &mut Context, app: &mut OwlyApp) {
     if !app.setup_complete {
@@ -18,15 +18,15 @@ pub fn render_owly_app(ui: &mut Context, app: &mut OwlyApp) {
         return;
     }
 
+    sync_static_transcript(ui, app);
+
     app.handle_global_keys(ui);
     app.theme.apply_to(ui);
 
     let directory = directory_display(app.context.cwd());
-    let version = env!("CARGO_PKG_VERSION");
     let model_name = app.model.clone();
     let provider_name = app.provider.clone();
     let session_id = app.session_id.clone();
-    let tip = app.tip;
     let model = if model_name.is_empty() {
         None
     } else {
@@ -38,22 +38,6 @@ pub fn render_owly_app(ui: &mut Context, app: &mut OwlyApp) {
         Some(provider_name.as_str())
     };
 
-    let banner = BannerInfo {
-        app_name: "Owly",
-        version,
-        update_available: false,
-        directory: &directory,
-        model,
-        provider,
-        extensions: 0,
-        commands: 0,
-        skills: 0,
-        tools: 0,
-        mcp_connected: 0,
-        mcp_total: 0,
-        mcp_tools: 0,
-        tip,
-    };
     let footer = FooterInfo {
         model_name: model,
         provider,
@@ -73,40 +57,71 @@ pub fn render_owly_app(ui: &mut Context, app: &mut OwlyApp) {
         git_deletions: 0,
     };
 
-    if app.running && !app.activity.visible {
-        app.activity = ActivityState::working();
-    }
-
     let theme = app.theme;
     let running = app.running;
-    let show_thinking = app.show_thinking;
+    let activity = if running && app.activity.visible {
+        Some(app.activity.clone())
+    } else {
+        None
+    };
+    let spinner = app.spinner.clone();
 
-    let chrome = ShellChrome::simple(
-        banner,
+    let slash_input = app.prompt.value();
+    let slash_commands = app.slash_commands.clone();
+    let slash_palette = app.slash_palette.clone();
+
+    render_inline_shell(
+        ui,
+        theme,
         footer,
         running,
-        if running && app.activity.visible {
-            Some(app.activity.clone())
-        } else {
-            None
-        },
-        app.spinner.clone(),
-    );
-
-    render_agent_shell(ui, theme, chrome, |ui, region| match region {
-        ShellRegion::Chat => {
-            render_owly_chat_stream(
-                ui,
-                &mut app.chat,
-                &app.entries,
-                &app.live_tools,
-                theme,
-                show_thinking,
-                running,
-            );
-        }
-        ShellRegion::Input => {
+        activity,
+        spinner,
+        Some(slash_input.as_str()),
+        Some(slash_commands.as_slice()),
+        Some(&slash_palette),
+        |ui| {
             app.render_input(ui);
-        }
-    });
+        },
+    );
+}
+
+fn sync_static_transcript(ui: &mut Context, app: &mut OwlyApp) {
+    if !app.banner_emitted {
+        let directory = directory_display(app.context.cwd());
+        let banner = BannerInfo {
+            app_name: "Owly",
+            version: env!("CARGO_PKG_VERSION"),
+            update_available: false,
+            directory: &directory,
+            model: if app.model.is_empty() {
+                None
+            } else {
+                Some(app.model.as_str())
+            },
+            provider: if app.provider.is_empty() {
+                None
+            } else {
+                Some(app.provider.as_str())
+            },
+            extensions: 0,
+            commands: 0,
+            skills: 0,
+            tools: 0,
+            mcp_connected: 0,
+            mcp_total: 0,
+            mcp_tools: 0,
+            tip: app.tip,
+        };
+        emit_banner(ui, &simple_banner_lines(banner));
+        app.banner_emitted = true;
+    }
+
+    sync_transcript(
+        ui,
+        &mut app.transcript_flush,
+        &app.entries,
+        app.show_thinking,
+        app.running,
+    );
 }

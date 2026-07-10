@@ -8,6 +8,8 @@ mod context;
 mod entries;
 mod launch;
 mod setup;
+mod slash;
+mod static_flush;
 mod tool_display;
 mod transcript;
 

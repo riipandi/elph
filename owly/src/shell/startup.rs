@@ -25,7 +25,7 @@ pub fn startup_transcript_lines(
     if restored_count > 0 || recovery.draft_restored || recovery.pending_interrupt.is_some() {
         lines.push(String::new());
     }
-    lines.push("Type /help for commands or /exit to quit.".to_string());
+    lines.push("Type / for commands · /init · /update · /help · ? for shortcuts".to_string());
     lines.push(String::new());
     lines
 }

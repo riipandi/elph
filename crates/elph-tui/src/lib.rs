@@ -31,7 +31,7 @@ pub use chrome::{
     ActivityState, BANNER_TIPS, BannerInfo, BannerMode, BannerState, FooterInfo, FooterMode, FooterTokenDisplay,
     StatusBarInfo, TaskItem, TaskStatus, format_tasks_completed_notice, pick_tip, render_activity, render_banner,
     render_banner_with_mode, render_footer, render_footer_with_mode, render_simple_banner, render_status_bar,
-    render_tasks_panel,
+    render_tasks_panel, simple_banner_lines,
 };
 pub use components::{frame, inline_label_value, inline_line, render_label, text_optional_color};
 pub use diff::{
@@ -57,7 +57,8 @@ pub use prompt::{
     unpin_auto_scroll_if_scrolled_up,
 };
 pub use shell::{
-    ShellChrome, ShellRegion, ShellTier, default_activity_spinner, default_run_config, layout_pad, render_agent_shell,
+    OWLY_INLINE_HEIGHT, ShellChrome, ShellRegion, ShellTier, default_activity_spinner, default_run_config,
+    inline_static_run_config, layout_pad, render_agent_shell, render_inline_shell,
 };
 
 pub use terminal::{SigintReceiver, disable_keyboard_enhancement, enable_keyboard_enhancement, sigint_channel};

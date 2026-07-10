@@ -1,29 +1,14 @@
-//! Owly-specific chat stream with structured transcript layout.
+//! Owly chat stream state (transcript scrollback is flushed via `static_flush`).
 
-mod render;
-
-use slt::ScrollState;
-
-pub use render::render_owly_chat_stream;
-
-pub struct OwlyChatState {
-    pub scroll: ScrollState,
-    pub scroll_enabled: bool,
-    pub auto_scroll: bool,
-}
+/// Minimal chat state retained for dispatch-side hooks.
+pub struct OwlyChatState;
 
 impl Default for OwlyChatState {
     fn default() -> Self {
-        Self {
-            scroll: ScrollState::new(),
-            scroll_enabled: true,
-            auto_scroll: true,
-        }
+        Self
     }
 }
 
 impl OwlyChatState {
-    pub fn pin_to_tail(&mut self) {
-        self.auto_scroll = true;
-    }
+    pub fn pin_to_tail(&mut self) {}
 }

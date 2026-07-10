@@ -1,13 +1,12 @@
 use super::assistant_message::render_assistant_message;
 use super::detail_block::CollapseState;
 use crate::components::inline_line;
-use crate::shell::shell_panel_pad;
+use crate::shell::{shell_chat_block_gap, shell_chat_card_pad};
 use crate::theme::Theme;
 use crate::transcript::{ToolExecutionState, ToolExecutionStatus, TranscriptEntry, TranscriptRole};
 use crate::utils::strip_ansi;
 use slt::{Border, Color, Context};
 
-const BLOCK_GAP_LINES: u32 = 1;
 const USER_PREFIX: &str = "› ";
 const DIAMOND: &str = "♦ ";
 
@@ -20,23 +19,12 @@ pub fn render_composer_transcript(
     collapse: &CollapseState,
     agent_running: bool,
 ) {
-    let gap = ui.spacing().xs();
+    let gap = shell_chat_block_gap(ui);
     let _ = ui.container().gap(gap).col(|ui| {
-        let mut prev_role: Option<TranscriptRole> = None;
         for (index, entry) in entries.iter().enumerate() {
-            if prev_role.is_some() && needs_gap(prev_role, entry.role) {
-                for _ in 0..BLOCK_GAP_LINES {
-                    let _ = ui.text("");
-                }
-            }
             render_entry(ui, entry, index, theme, show_thinking, collapse, agent_running);
-            prev_role = Some(entry.role);
         }
     });
-}
-
-fn needs_gap(prev: Option<TranscriptRole>, current: TranscriptRole) -> bool {
-    prev.is_some_and(|p| p != current || matches!(current, TranscriptRole::User))
 }
 
 fn render_entry(
@@ -65,7 +53,7 @@ fn render_entry(
         TranscriptRole::System => {
             inline_line(ui, |ui| {
                 let _ = ui.text(DIAMOND).fg(theme.dim_text());
-                let _ = ui.text(&entry.content).dim();
+                let _ = ui.text(&entry.content).dim().wrap();
             });
         }
     }
@@ -73,7 +61,7 @@ fn render_entry(
 
 /// Bordered user turn — `› message`.
 pub fn render_user_card(ui: &mut Context, content: &str, theme: Theme) {
-    let pad = shell_panel_pad(ui);
+    let pad = shell_chat_card_pad(ui);
     let text = content.trim();
     if text.is_empty() {
         return;
@@ -86,7 +74,7 @@ pub fn render_user_card(ui: &mut Context, content: &str, theme: Theme) {
             for line in text.lines() {
                 inline_line(ui, |ui| {
                     let _ = ui.text(USER_PREFIX).fg(theme.highlight());
-                    let _ = ui.text(line);
+                    let _ = ui.text(line).wrap();
                 });
             }
         });
@@ -101,10 +89,11 @@ fn render_thought_block(ui: &mut Context, entry: &TranscriptEntry, expanded: boo
         let _ = ui.text(header).fg(theme.dim_text()).italic();
     });
 
+    let indent = shell_chat_card_pad(ui);
     if expanded && !entry.content.trim().is_empty() {
-        let _ = ui.container().pl(2).col(|ui| {
+        let _ = ui.container().pl(indent).col(|ui| {
             for line in entry.content.lines() {
-                let _ = ui.text(line).dim();
+                let _ = ui.text(line).dim().wrap();
             }
         });
     }
@@ -137,15 +126,15 @@ pub fn render_tool_block(ui: &mut Context, tool: &ToolExecutionState, expanded: 
     if expanded {
         let body = tool_body(tool);
         if !body.is_empty() {
-            let pad = shell_panel_pad(ui);
-            let _ = ui.container().pl(2).pt(1).col(|ui| {
+            let pad = shell_chat_card_pad(ui);
+            let _ = ui.container().pl(pad).pt(1).col(|ui| {
                 let _ = ui
                     .bordered(Border::Single)
                     .border_fg(theme.dim_text())
                     .p(pad)
                     .col(|ui| {
                         for line in body.lines() {
-                            let _ = ui.text(line);
+                            let _ = ui.text(line).wrap();
                         }
                     });
             });

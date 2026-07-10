@@ -1,7 +1,7 @@
 use super::agent_mode::AgentMode;
 use super::editing::consume_prompt_textarea_keys;
 use super::prompt_keys::{EnterAction, consume_enter_action, consume_mode_cycle_key, consume_prompt_clear};
-use crate::shell::shell_prompt_pad;
+use crate::shell::{shell_prompt_pad_x, shell_prompt_pad_y};
 use crate::theme::Theme;
 use crate::utils::str_display_width;
 use slt::{Border, BorderSides, Color, Context, KeyCode, TextareaState};
@@ -23,7 +23,7 @@ pub fn prompt_visible_rows(textarea: &TextareaState) -> u32 {
 }
 
 /// Visual options for [`render_prompt`].
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PromptOpts {
     /// Agent turn in flight — caption shows queue / steering hints.
     pub running: bool,
@@ -31,6 +31,19 @@ pub struct PromptOpts {
     pub composer: bool,
     /// Pending messages queued while the agent is busy.
     pub queued_count: usize,
+    /// Show agent mode in the prompt bottom border (disabled for simple shells).
+    pub show_mode: bool,
+}
+
+impl Default for PromptOpts {
+    fn default() -> Self {
+        Self {
+            running: false,
+            composer: false,
+            queued_count: 0,
+            show_mode: true,
+        }
+    }
 }
 
 /// Prompt field state backed by SLT [`TextareaState`].
@@ -40,6 +53,8 @@ pub struct PromptState {
     pub mode: AgentMode,
     pub model_name: String,
     pub show_help: bool,
+    /// Allow Tab / Ctrl+Tab to cycle agent mode (disabled for simple shells).
+    pub enable_mode_cycle: bool,
 }
 
 impl PromptState {
@@ -49,6 +64,7 @@ impl PromptState {
             mode: AgentMode::default(),
             model_name: model_name.into(),
             show_help: false,
+            enable_mode_cycle: true,
         }
     }
 
@@ -120,7 +136,7 @@ pub fn handle_prompt_input(ui: &mut Context, state: &mut PromptState, running: b
 
     let text = state.value();
 
-    if !running && consume_mode_cycle_key(ui, &text) {
+    if state.enable_mode_cycle && !running && consume_mode_cycle_key(ui, &text) {
         state.cycle_mode();
         return PromptAction::CycleMode;
     }
@@ -162,11 +178,14 @@ pub fn handle_prompt_input(ui: &mut Context, state: &mut PromptState, running: b
     }
 }
 
-/// Bottom border line with agent mode on the right (`╰─── build ──╯`).
-fn render_prompt_bottom_border(ui: &mut Context, mode: AgentMode, border_color: Color) {
+/// Bottom border line with optional agent mode on the right (`╰─── build ──╯`).
+fn render_prompt_bottom_border(ui: &mut Context, mode: AgentMode, border_color: Color, show_mode: bool) {
     let width = ui.width().max(3) as usize;
-    let mode_label = mode.footer_label();
-    let right = format!("── {mode_label} ──╯");
+    let right = if show_mode {
+        format!("── {} ──╯", mode.footer_label())
+    } else {
+        "╯".to_string()
+    };
     let right_w = str_display_width(&right);
     let dash_count = width.saturating_sub(1 + right_w);
     let mut line = String::with_capacity(width + 8);
@@ -181,7 +200,8 @@ fn render_prompt_bottom_border(ui: &mut Context, mode: AgentMode, border_color: 
 /// Renders the bordered multiline input prompt.
 #[allow(unused_variables)]
 pub fn render_prompt(ui: &mut Context, state: &mut PromptState, theme: Theme, opts: PromptOpts) {
-    let pad = shell_prompt_pad(ui);
+    let pad_x = shell_prompt_pad_x(ui);
+    let pad_y = shell_prompt_pad_y(ui);
     let border = theme.mode_border_color(state.mode);
     let visible_rows = prompt_visible_rows(&state.textarea);
     let prefix = detect_prompt_prefix(&state.value());
@@ -197,7 +217,10 @@ pub fn render_prompt(ui: &mut Context, state: &mut PromptState, theme: Theme, op
             .bordered(Border::Rounded)
             .border_fg(border)
             .border_sides(no_bottom)
-            .p(pad)
+            .pl(pad_x)
+            .pr(pad_x)
+            .pt(pad_y)
+            .pb(pad_y)
             .gap(0)
             .col(|ui| {
                 let _ = ui.row(|ui| {
@@ -211,7 +234,7 @@ pub fn render_prompt(ui: &mut Context, state: &mut PromptState, theme: Theme, op
                     });
                 });
             });
-        render_prompt_bottom_border(ui, state.mode, border);
+        render_prompt_bottom_border(ui, state.mode, border, opts.show_mode);
     });
 
     if state.show_help {

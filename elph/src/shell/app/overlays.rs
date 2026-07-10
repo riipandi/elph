@@ -95,6 +95,7 @@ impl ElphApp {
         }
     }
 
+    #[expect(dead_code)] // Invoked from /model slash handler when implemented.
     pub(super) fn open_model_selector(&mut self) {
         self.overlay_items = list_model_select_items();
         if self.overlay_items.is_empty() {
@@ -109,6 +110,7 @@ impl ElphApp {
         self.active_overlay = ActiveOverlay::Model;
     }
 
+    #[expect(dead_code)] // Invoked from /resume slash handler when implemented.
     pub(super) fn open_session_selector(&mut self) {
         let session = Arc::clone(&self.session);
         match elph_agent::block_on(async move { list_session_select_items(session.session_manager()).await }) {
@@ -134,6 +136,7 @@ impl ElphApp {
         }
     }
 
+    #[expect(dead_code)] // Invoked from /tree and /fork slash handlers when implemented.
     pub(super) fn open_tree_navigator(&mut self) {
         if self.agent_running {
             push_capped(

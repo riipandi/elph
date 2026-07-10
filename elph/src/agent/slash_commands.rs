@@ -64,12 +64,8 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
             description: "Save project trust decision",
         },
         BuiltinSlashCommand {
-            name: "login",
-            description: "Configure provider auth",
-        },
-        BuiltinSlashCommand {
-            name: "logout",
-            description: "Remove provider auth",
+            name: "provider",
+            description: "Manage providers (connect, disconnect)",
         },
         BuiltinSlashCommand {
             name: "new",
@@ -118,60 +114,64 @@ pub fn slash_commands_for_palette(extensions: Option<&ExtensionRegistry>) -> Vec
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashDispatch {
-    Quit,
-    Compact,
-    NewSession,
-    ShowSession,
-    OpenModelSelector,
-    OpenSessionSelector,
-    OpenSettings,
-    OpenTree,
-    OpenLogin,
-    Reload,
-    Message(String),
-    Goal(String),
-    Extension { name: String, args: String },
-    NotImplemented(String),
+    Stub(String),
 }
 
-pub fn dispatch_slash_command(input: &str, extensions: Option<&ExtensionRegistry>) -> Option<SlashDispatch> {
+pub fn slash_stub_message(command: &str) -> String {
+    format!("{command} not yet implemented!")
+}
+
+fn split_slash_body(body: &str) -> (String, String) {
+    let (name, args) = body.split_once(' ').map_or((body, ""), |(n, a)| (n, a));
+    (name.to_ascii_lowercase(), args.trim().to_string())
+}
+
+pub fn dispatch_slash_command(input: &str, _extensions: Option<&ExtensionRegistry>) -> Option<SlashDispatch> {
     let trimmed = input.trim();
     if !trimmed.starts_with('/') {
         return None;
     }
     let body = trimmed.trim_start_matches('/').trim();
-    let (name, args) = body.split_once(' ').map_or((body, ""), |(n, a)| (n, a));
-    let name = name.to_ascii_lowercase();
-    Some(match name.as_str() {
-        "goal" | "goals" => SlashDispatch::Goal(args.trim().to_string()),
-        "quit" | "exit" => SlashDispatch::Quit,
-        "compact" | "c" => SlashDispatch::Compact,
-        "new" => SlashDispatch::NewSession,
-        "session" => SlashDispatch::ShowSession,
-        "model" => SlashDispatch::OpenModelSelector,
-        "resume" => SlashDispatch::OpenSessionSelector,
-        "settings" => SlashDispatch::OpenSettings,
-        "tree" | "fork" => SlashDispatch::OpenTree,
-        "login" => SlashDispatch::OpenLogin,
-        "reload" => SlashDispatch::Reload,
-        "help" => SlashDispatch::Message("Type / to see commands.".into()),
-        "changelog" | "hotkeys" | "copy" | "name" | "export" | "import" | "clone" | "trust" | "logout" | "share" => {
-            SlashDispatch::NotImplemented(format!("/{name}"))
-        }
-        _ => {
-            if extensions.is_some_and(|registry| {
-                registry
-                    .commands()
-                    .iter()
-                    .any(|cmd| cmd.name.eq_ignore_ascii_case(&name))
-            }) {
-                SlashDispatch::Extension {
-                    name,
-                    args: args.trim().to_string(),
-                }
-            } else {
-                SlashDispatch::NotImplemented(format!("/{name}"))
-            }
-        }
-    })
+    let (name, _args) = split_slash_body(body);
+    Some(SlashDispatch::Stub(format!("/{name}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn provider_uses_command_with_action_args() {
+        let (name, args) = split_slash_body("provider connect anthropic");
+        assert_eq!(name, "provider");
+        assert_eq!(args, "connect anthropic");
+
+        assert_eq!(
+            dispatch_slash_command("/provider connect", None),
+            Some(SlashDispatch::Stub("/provider".into()))
+        );
+        assert_eq!(
+            dispatch_slash_command("/provider connect anthropic", None),
+            Some(SlashDispatch::Stub("/provider".into()))
+        );
+        assert_eq!(
+            dispatch_slash_command("/provider disconnect openai", None),
+            Some(SlashDispatch::Stub("/provider".into()))
+        );
+    }
+
+    #[test]
+    fn stub_message_format() {
+        assert_eq!(slash_stub_message("/model"), "/model not yet implemented!");
+    }
+
+    #[test]
+    fn palette_lists_provider_commands() {
+        let names: Vec<_> = builtin_slash_commands().into_iter().map(|cmd| cmd.name).collect();
+        assert!(names.contains(&"provider"));
+        assert!(!names.contains(&"provider connect"));
+        assert!(!names.contains(&"provider disconnect"));
+        assert!(!names.contains(&"login"));
+        assert!(!names.contains(&"logout"));
+    }
 }

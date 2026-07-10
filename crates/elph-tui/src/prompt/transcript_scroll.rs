@@ -56,6 +56,7 @@ pub fn prepare_transcript_follow(
 pub fn handle_transcript_scroll_keys(
     ui: &mut Context,
     scroll: &mut ScrollState,
+    scroll_h: &mut ScrollState,
     auto_scroll: &mut bool,
     line_step: usize,
     page_step: usize,
@@ -85,6 +86,15 @@ pub fn handle_transcript_scroll_keys(
     if key_code_with_modifiers(ui, KeyCode::End, shift) {
         scroll_to_bottom(scroll);
         *auto_scroll = true;
+    }
+
+    // Horizontal transcript scroll (wide tables, code blocks, CJK lines).
+    let h_step = line_step.max(4);
+    if key_code_with_modifiers(ui, KeyCode::Left, shift) {
+        scroll_h.scroll_left(h_step);
+    }
+    if key_code_with_modifiers(ui, KeyCode::Right, shift) {
+        scroll_h.scroll_right(h_step);
     }
 }
 

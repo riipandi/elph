@@ -82,14 +82,14 @@ pub fn handle(args: &ProviderArgs) -> ExitCode {
         }
         ProviderCommands::Connect { provider } => {
             help::unimplemented(&format!(
-                "Provider connect — use `elph` TUI /login (provider: {})",
+                "Provider connect — use `elph` TUI /provider connect (provider: {})",
                 provider.as_deref().unwrap_or("<interactive>")
             ));
             EXIT_SUCCESS
         }
         ProviderCommands::Disconnect { provider } => {
             help::unimplemented(&format!(
-                "Provider disconnect — not yet implemented (provider: {})",
+                "Provider disconnect — use `elph` TUI /provider disconnect (provider: {})",
                 provider.as_deref().unwrap_or("<all>")
             ));
             EXIT_SUCCESS

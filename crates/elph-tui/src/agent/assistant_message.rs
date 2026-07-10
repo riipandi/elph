@@ -18,7 +18,7 @@ pub fn render_assistant_message(ui: &mut Context, content: &str, show_streaming_
     }
 
     if !tail.is_empty() {
-        let _ = ui.text(tail);
+        let _ = ui.text(tail).wrap();
     }
 
     if show_streaming_cursor {

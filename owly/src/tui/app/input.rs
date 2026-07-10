@@ -1,11 +1,19 @@
-use elph_tui::{PromptAction, PromptOpts, consume_ctrl_char, handle_prompt_input, is_quit_command, render_prompt};
+use elph_tui::{
+    PromptAction, PromptOpts, SlashPaletteAction, consume_ctrl_char, handle_prompt_input, handle_slash_palette_keys,
+    is_quit_command, render_prompt, slash_palette_visible,
+};
 use slt::Context;
 
 use super::OwlyApp;
+use crate::tui::slash::normalize_dispatch_text;
 
 impl OwlyApp {
     pub(super) fn dispatch_prompt(&mut self, text: String) {
-        let _ = self.submit_tx.send(text);
+        let normalized = normalize_dispatch_text(&text);
+        if normalized.is_empty() {
+            return;
+        }
+        let _ = self.submit_tx.send(normalized);
     }
 
     pub(super) fn drain_prompt_queue(&mut self) {
@@ -37,24 +45,41 @@ impl OwlyApp {
     }
 
     pub(super) fn handle_prompt(&mut self, ui: &mut Context) {
+        let input = self.prompt.value();
+        if slash_palette_visible(&input) {
+            match handle_slash_palette_keys(ui, &mut self.slash_palette, &input, &self.slash_commands) {
+                SlashPaletteAction::Complete(cmd) => {
+                    self.prompt.textarea.set_value(&cmd);
+                    return;
+                }
+                SlashPaletteAction::Run(cmd) => {
+                    self.prompt.clear();
+                    self.dispatch_prompt(cmd);
+                    return;
+                }
+                SlashPaletteAction::MoveUp | SlashPaletteAction::MoveDown => return,
+                SlashPaletteAction::None => {}
+            }
+        }
+
         match handle_prompt_input(ui, &mut self.prompt, self.running) {
             PromptAction::Submit(text) => {
                 if is_quit_command(&text) {
-                    self.dispatch_prompt("/exit".to_string());
-                } else {
-                    self.dispatch_prompt(text);
+                    self.should_exit = true;
+                    return;
                 }
+                self.dispatch_prompt(text);
             }
             PromptAction::Queue(text) => {
                 if is_quit_command(&text) {
-                    self.dispatch_prompt("/exit".to_string());
-                } else {
-                    self.prompt_queue.push_back(text);
+                    self.should_exit = true;
+                    return;
                 }
+                self.prompt_queue.push_back(text);
             }
             PromptAction::Steer(text) => {
                 if is_quit_command(&text) {
-                    self.dispatch_prompt("/exit".to_string());
+                    self.should_exit = true;
                     return;
                 }
                 self.activity.request_cancel();
@@ -80,8 +105,29 @@ impl OwlyApp {
             PromptOpts {
                 running: self.running,
                 queued_count: self.prompt_queue.len(),
+                show_mode: false,
                 ..Default::default()
             },
         );
+        if self.prompt.show_help {
+            self.render_prompt_help(ui);
+        }
+    }
+
+    fn render_prompt_help(&self, ui: &mut Context) {
+        let _ = ui.help(&[
+            ("Enter", "send message or slash command"),
+            ("Ctrl+Enter", "steer / interrupt agent"),
+            ("Shift+Enter", "newline"),
+            ("Ctrl+J", "newline"),
+            ("/", "open slash command palette"),
+            ("Tab", "complete slash command"),
+            ("↑/↓", "navigate slash palette"),
+            ("Esc", "clear prompt"),
+            ("Ctrl+C", "cancel agent / clear prompt"),
+            ("Ctrl+Q", "quit"),
+            ("Ctrl+T", "toggle theme"),
+            ("?", "toggle this help"),
+        ]);
     }
 }

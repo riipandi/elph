@@ -99,6 +99,17 @@ pub fn render_banner_with_mode(
     }
 }
 
+/// Plain-text lines for printing the simple banner into terminal scrollback.
+pub fn simple_banner_lines(info: BannerInfo<'_>) -> Vec<String> {
+    let model = info.model.unwrap_or("—");
+    let provider = info.provider.unwrap_or("—");
+    vec![
+        format!("{} v{}", info.app_name, info.version),
+        format!("{model} · {provider} · {}", info.directory),
+        String::new(),
+    ]
+}
+
 /// One-line status for simple shells (Owly).
 pub fn render_simple_banner(ui: &mut Context, info: BannerInfo<'_>, theme: Theme) {
     let model = info.model.unwrap_or("—");

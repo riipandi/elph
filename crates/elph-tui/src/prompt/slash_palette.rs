@@ -24,10 +24,11 @@ pub fn owly_builtin_commands() -> Vec<SlashCommand> {
         SlashCommand::new("help", "List commands"),
         SlashCommand::new("init", "Initialize openwiki"),
         SlashCommand::new("update", "Refresh documentation"),
-        SlashCommand::new("history", "List checkpoints"),
-        SlashCommand::new("restore", "Restore checkpoint"),
+        SlashCommand::new("history", "List recent checkpoints"),
+        SlashCommand::new("restore", "Restore checkpoint (# or id)"),
         SlashCommand::new("clear", "Reset thread"),
         SlashCommand::new("exit", "Quit"),
+        SlashCommand::new("quit", "Quit"),
     ]
 }
 
@@ -35,6 +36,7 @@ pub fn owly_builtin_commands() -> Vec<SlashCommand> {
 #[derive(Debug, Clone, Default)]
 pub struct SlashPaletteState {
     pub selected: usize,
+    filter_key: String,
 }
 
 /// Outcome of slash palette keyboard handling.
@@ -70,7 +72,14 @@ pub fn handle_slash_palette_keys(
 ) -> SlashPaletteAction {
     if !slash_palette_visible(input) {
         state.selected = 0;
+        state.filter_key.clear();
         return SlashPaletteAction::None;
+    }
+
+    let query = input.trim_start_matches('/').trim_start();
+    if state.filter_key != query {
+        state.filter_key = query.to_string();
+        state.selected = 0;
     }
 
     let filtered = filtered_commands(commands, input);

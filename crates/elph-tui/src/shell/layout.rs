@@ -153,6 +153,41 @@ fn footer_mode(tier: ShellTier) -> FooterMode {
     }
 }
 
+/// Renders activity → slash palette → input → footer for inline/static shells.
+#[allow(clippy::too_many_arguments)]
+pub fn render_inline_shell(
+    ui: &mut Context,
+    theme: Theme,
+    footer: FooterInfo<'_>,
+    _running: bool,
+    activity: Option<ActivityState>,
+    spinner: SpinnerState,
+    slash_input: Option<&str>,
+    slash_commands: Option<&[SlashCommand]>,
+    slash_palette: Option<&SlashPaletteState>,
+    mut render_input: impl FnMut(&mut Context),
+) {
+    let pad = shell_section_gap(ui);
+    let input_gap = shell_input_gap(ui, false);
+    let show_activity = activity.as_ref().is_some_and(|a| a.visible);
+    let show_slash = slash_input.is_some_and(slash_palette_visible);
+
+    let _ = ui.container().gap(pad).col(|ui| {
+        let _ = ui.container().gap(input_gap).col(|ui| {
+            if show_activity && let Some(activity) = activity.as_ref() {
+                render_activity(ui, activity, theme, &spinner);
+            }
+            if show_slash
+                && let (Some(input), Some(commands), Some(palette)) = (slash_input, slash_commands, slash_palette)
+            {
+                render_slash_palette(ui, input, commands, palette, theme);
+            }
+            render_input(ui);
+        });
+        render_footer_with_mode(ui, footer, theme, FooterMode::Simple);
+    });
+}
+
 /// Renders banner → chat → input chrome → footer with proportional gaps.
 pub fn render_agent_shell(
     ui: &mut Context,

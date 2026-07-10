@@ -86,7 +86,7 @@ pub fn render_detail_block(ui: &mut Context, tool: &ToolExecutionState, expanded
     if expanded && !tool.output.is_empty() {
         let output = strip_ansi(&tool.output);
         let _ = ui.container().pt(1).pb(1).pl(2).pr(2).col(|ui| {
-            let _ = ui.text(&output).dim();
+            let _ = ui.text(&output).dim().wrap();
         });
     }
 }
@@ -100,12 +100,12 @@ pub fn render_pipe_message(ui: &mut Context, content: &str, pipe_color: Color, c
     };
     inline_line(ui, |ui| {
         let _ = ui.text("| ").fg(pipe_color);
-        let _ = ui.text(first);
+        let _ = ui.text(first).wrap();
     });
     for line in lines {
         inline_line(ui, |ui| {
             let _ = ui.text(continuation_indent);
-            let _ = ui.text(line);
+            let _ = ui.text(line).wrap();
         });
     }
 }

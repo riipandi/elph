@@ -41,14 +41,14 @@ pub async fn handle_user_input(
     };
 
     let lower = trimmed.to_ascii_lowercase();
-    if matches!(lower.as_str(), "/exit" | "/quit" | "exit" | "quit" | ":q") {
+    if matches!(lower.as_str(), "/exit" | "/quit" | "exit" | "quit" | ":q" | ":q!") {
         writer.line("Goodbye!");
         return Ok(HandleInputResult {
             should_exit: true,
             lines,
         });
     }
-    if lower == "/help" || lower == "help" {
+    if matches!(lower.as_str(), "/help" | "help" | "/commands" | "commands") {
         write_help(&mut writer);
         return Ok(HandleInputResult {
             should_exit: false,
@@ -77,16 +77,16 @@ pub async fn handle_user_input(
             lines,
         });
     }
-    if lower == "/init" || lower.starts_with("/init ") {
-        let msg = slash_message(trimmed, "/init");
+    if matches!(lower.as_str(), "/init" | "init") || lower.starts_with("/init ") || lower.starts_with("init ") {
+        let msg = slash_message(trimmed, "/init").or_else(|| slash_message(trimmed, "init"));
         run_init_command(config, cwd, stream, verbose, session, msg, &mut writer).await?;
         return Ok(HandleInputResult {
             should_exit: false,
             lines,
         });
     }
-    if lower == "/update" || lower.starts_with("/update ") {
-        let msg = slash_message(trimmed, "/update");
+    if matches!(lower.as_str(), "/update" | "update") || lower.starts_with("/update ") || lower.starts_with("update ") {
+        let msg = slash_message(trimmed, "/update").or_else(|| slash_message(trimmed, "update"));
         run_update_command(config, cwd, stream, verbose, session, msg, &mut writer).await?;
         return Ok(HandleInputResult {
             should_exit: false,

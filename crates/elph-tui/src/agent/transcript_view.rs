@@ -1,6 +1,7 @@
 use super::assistant_message::render_assistant_message;
 use super::detail_block::{CollapseState, render_detail_block, render_pipe_message};
 use crate::components::inline_line;
+use crate::shell::shell_chat_block_gap;
 use crate::theme::Theme;
 use crate::transcript::{TranscriptEntry, TranscriptRole};
 use slt::Context;
@@ -14,7 +15,8 @@ pub fn render_transcript_view(
     collapse: &CollapseState,
     agent_running: bool,
 ) {
-    let _ = ui.container().col(|ui| {
+    let gap = shell_chat_block_gap(ui);
+    let _ = ui.container().gap(gap).col(|ui| {
         for (index, entry) in entries.iter().enumerate() {
             render_entry(ui, entry, index, theme, show_thinking, collapse, agent_running);
         }
@@ -59,7 +61,7 @@ fn render_entry(
             };
             inline_line(ui, |ui| {
                 let _ = ui.text("● ").fg(theme.dim_text());
-                let _ = ui.text(label).fg(theme.muted);
+                let _ = ui.text(label).fg(theme.muted).wrap();
             });
         }
         TranscriptRole::Thinking => {}
@@ -72,7 +74,7 @@ fn render_entry(
         TranscriptRole::System => {
             inline_line(ui, |ui| {
                 let _ = ui.text("> ").fg(theme.highlight());
-                let _ = ui.text(&entry.content).fg(theme.dim_text());
+                let _ = ui.text(&entry.content).fg(theme.dim_text()).wrap();
             });
         }
     }

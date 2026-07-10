@@ -72,7 +72,6 @@ pub struct ElphApp {
     pub(super) session_selector: SessionSelectorState,
     pub(super) tree_navigator: TreeNavigatorState,
     pub(super) overlay_items: Vec<SelectItem>,
-    pub(super) extensions: ExtensionHost,
 }
 
 impl ElphApp {
@@ -148,7 +147,6 @@ impl ElphApp {
             session_selector: SessionSelectorState::default(),
             tree_navigator: TreeNavigatorState::default(),
             overlay_items: Vec::new(),
-            extensions,
         })
     }
 

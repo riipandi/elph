@@ -117,6 +117,7 @@ pub fn render_app(ui: &mut Context, app: &mut ElphApp) {
                         running: agent_running,
                         composer: true,
                         queued_count: app.prompt_queue.len(),
+                        ..Default::default()
                     },
                 );
             }

@@ -42,8 +42,7 @@ pub fn print_and_clear() {
 }
 
 pub fn print_exit_summary(snapshot: &ExitSnapshot) {
-    println!("Resume this session with: elph --resume {}", snapshot.session_id);
-    println!();
+    println!("Resume this session: elph --resume {}", snapshot.session_id);
     println_dim(format!("Estimated cost:        ${:.2}", snapshot.cost_usd));
     println_dim(format!(
         "Total duration (API):  {}",

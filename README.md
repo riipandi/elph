@@ -73,7 +73,7 @@ Documentation lives in [`docs/`](./docs/). Start with [docs/README.md](./docs/RE
 
 Elph re-implements concepts from several open-source projects in Rust:
 
-- **[pi](https://pi.dev)** by Mario Zechner — architectural design, provider abstraction, tool system, streaming events, session tree (MIT).
+- **[pi](https://pi.dev)** by Mario Zechner — architectural design, provider abstraction, tool system (MIT).
 - **[OpenAI Codex CLI](https://github.com/openai/codex)** — Agent workflow inspiration: exit summary, goals, subagent orchestration (Apache 2.0).
 - **[memelord](https://github.com/glommer/memelord)** by Glauber Costa — `floppy` memory module port (MIT).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** by Tirth Kanani — `elph codegraph` integration (MIT).
