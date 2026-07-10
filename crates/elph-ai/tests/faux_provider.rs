@@ -178,8 +178,5 @@ async fn empty_queue_returns_error_without_panicking() {
 
     let response = faux.provider.stream_simple(&model, &ctx, None).result().await;
     assert_eq!(response.stop_reason, StopReason::Error);
-    assert_eq!(
-        response.error_message.as_deref(),
-        Some("No more faux responses queued")
-    );
+    assert_eq!(response.error_message.as_deref(), Some("No more faux responses queued"));
 }

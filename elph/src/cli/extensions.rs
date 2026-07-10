@@ -8,17 +8,17 @@ use crate::platform::{AppPaths, EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 
 #[derive(Parser, Default)]
 #[command(
-    name = "plugin",
+    name = "extensions",
     about = "Manage WASM extensions (wasmtime + Component Model)",
     color = clap::ColorChoice::Auto
 )]
-pub struct PluginArgs {
+pub struct ExtensionsArgs {
     #[command(subcommand)]
-    pub command: Option<PluginCommands>,
+    pub command: Option<ExtensionsCommands>,
 }
 
 #[derive(Subcommand)]
-pub enum PluginCommands {
+pub enum ExtensionsCommands {
     /// List installed extensions
     List,
     /// Install an extension bundle from a local directory (contains extension.toml + component wasm)
@@ -46,9 +46,9 @@ pub enum PluginCommands {
     },
 }
 
-pub fn handle(args: &PluginArgs) -> ExitCode {
+pub fn handle(args: &ExtensionsArgs) -> ExitCode {
     let Some(cmd) = &args.command else {
-        return help::print_subcommand_help::<PluginArgs>();
+        return help::print_subcommand_help::<ExtensionsArgs>();
     };
 
     let paths = match Paths::resolve() {
@@ -70,11 +70,11 @@ pub fn handle(args: &PluginArgs) -> ExitCode {
     }
 
     match cmd {
-        PluginCommands::List => list_extensions(&host),
-        PluginCommands::Install { source, force } => install_extension(&host, &paths, source, *force),
-        PluginCommands::Remove { name } => remove_extension(&paths, name),
-        PluginCommands::Enable { name } => set_enabled(&paths, name, true),
-        PluginCommands::Disable { name } => set_enabled(&paths, name, false),
+        ExtensionsCommands::List => list_extensions(&host),
+        ExtensionsCommands::Install { source, force } => install_extension(&host, &paths, source, *force),
+        ExtensionsCommands::Remove { name } => remove_extension(&paths, name),
+        ExtensionsCommands::Enable { name } => set_enabled(&paths, name, true),
+        ExtensionsCommands::Disable { name } => set_enabled(&paths, name, false),
     }
 }
 

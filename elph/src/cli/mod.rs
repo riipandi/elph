@@ -4,12 +4,12 @@ mod completions;
 mod default;
 mod doctor;
 mod export;
+mod extensions;
 mod help;
 mod import;
 mod mcp;
 mod memory;
 mod models;
-mod plugin;
 mod provider;
 mod run;
 mod server;
@@ -29,11 +29,11 @@ pub use codegraph::CodegraphArgs;
 pub use completions::CompletionsArgs;
 pub use doctor::DoctorArgs;
 pub use export::ExportArgs;
+pub use extensions::ExtensionsArgs;
 pub use import::ImportArgs;
 pub use mcp::McpArgs;
 pub use memory::{MemoryArgs, MemoryCommands};
 pub use models::ModelsArgs;
-pub use plugin::PluginArgs;
 pub use provider::ProviderArgs;
 pub use run::RunArgs;
 pub use server::ServerArgs;
@@ -78,8 +78,9 @@ pub enum Commands {
     Memory(MemoryArgs),
     /// List available models and exit
     Models(ModelsArgs),
-    /// Manage plugins and extensions
-    Plugin(PluginArgs),
+    /// Manage Elph extensions
+    #[command(visible_alias = "ext")]
+    Extensions(ExtensionsArgs),
     /// Manage AI providers and credentials
     Provider(ProviderArgs),
     /// Run a prompt non-interactively and exit
@@ -167,11 +168,11 @@ pub fn run(cli: &Cli) -> ExitCode {
         Commands::Completions(args) => completions::handle(args),
         Commands::Doctor(args) => doctor::handle(args),
         Commands::Export(args) => export::handle(args),
+        Commands::Extensions(args) => extensions::handle(args),
         Commands::Import(args) => import::handle(args),
         Commands::Mcp(args) => mcp::handle(args),
         Commands::Memory(args) => memory::handle(args),
         Commands::Models(args) => models::handle(args),
-        Commands::Plugin(args) => plugin::handle(args),
         Commands::Provider(args) => provider::handle(args),
         Commands::Run(args) => run::handle(args),
         Commands::Server(args) => server::handle(args),

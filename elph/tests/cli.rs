@@ -51,6 +51,46 @@ fn memory_status_on_empty_store() {
 }
 
 #[test]
+fn completions_generates_bash_script() {
+    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+        .args(["completions", "--shell", "bash"])
+        .output()
+        .expect("failed to run elph completions --shell bash");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("elph"), "missing bin name in:\n{stdout}");
+    assert!(stdout.contains("extensions"), "missing extensions in:\n{stdout}");
+    assert!(stdout.contains("ext"), "missing ext alias in:\n{stdout}");
+}
+
+#[test]
+fn completions_writes_to_output_file() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("elph.bash");
+    let output = Command::new(env!("CARGO_BIN_EXE_elph"))
+        .args([
+            "completions",
+            "--shell",
+            "zsh",
+            "--output",
+            path.to_str().expect("utf8 path"),
+        ])
+        .output()
+        .expect("failed to run elph completions --output");
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let script = std::fs::read_to_string(&path).expect("read completion file");
+    assert!(script.contains("#compdef elph"), "expected zsh compdef in:\n{script}");
+}
+
+#[test]
 fn version_flag_prints_something() {
     let output = Command::new(env!("CARGO_BIN_EXE_elph"))
         .arg("--version")
