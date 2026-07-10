@@ -1,7 +1,7 @@
 use elph_tui::{TranscriptEntry, push_capped};
 
-use super::ElphApp;
 use crate::agent::{SlashDispatch, dispatch_slash_command, slash_stub_message};
+use crate::shell::ElphApp;
 
 impl ElphApp {
     pub(super) fn handle_slash(&mut self, input: &str) {

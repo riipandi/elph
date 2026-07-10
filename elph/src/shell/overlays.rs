@@ -5,11 +5,11 @@ use elph_tui::{
     TreeNavigatorAction, TreeNavigatorState, push_capped,
 };
 
-use super::{ActiveOverlay, ElphApp};
 use crate::agent::{
     CreateSessionOptions, create_coding_session_with_events, list_model_select_items, list_session_select_items,
     list_tree_select_items,
 };
+use crate::shell::{ActiveOverlay, ElphApp};
 use crate::tui::transcript_from_branch;
 
 impl ElphApp {

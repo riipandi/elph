@@ -12,5 +12,4 @@ pub mod prompt;
 pub mod shell;
 pub mod skills;
 pub mod tui;
-pub mod widget;
 pub mod worktree;

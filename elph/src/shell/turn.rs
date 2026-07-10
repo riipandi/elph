@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use elph_tui::{ActivityState, TranscriptEntry, push_capped};
 
-use super::ElphApp;
+use crate::shell::ElphApp;
 use crate::tui::TurnDispatcher;
 
 impl ElphApp {

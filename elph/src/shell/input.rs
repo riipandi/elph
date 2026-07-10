@@ -8,8 +8,8 @@ use elph_tui::{
 };
 use slt::Context;
 
-use super::ElphApp;
 use crate::agent::{AgentUiEvent, ToolApprovalChoice};
+use crate::shell::ElphApp;
 use crate::tui::{TranscriptApplier, TurnDispatcher};
 
 impl ElphApp {

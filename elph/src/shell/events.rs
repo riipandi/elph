@@ -3,9 +3,9 @@ use std::sync::Arc;
 use elph_tui::{PlanConfirmationState, ToolApprovalState, consume_ctrl_char, consume_key_code_mod};
 use slt::{Context, KeyCode, KeyModifiers};
 
-use super::ElphApp;
 use crate::agent::AgentUiEvent;
 use crate::platform::{WAS_INTERRUPTED, handle_prompt_interrupt};
+use crate::shell::ElphApp;
 use crate::tui::{TranscriptApplier, TurnDispatcher};
 
 impl ElphApp {

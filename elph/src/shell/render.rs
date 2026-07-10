@@ -9,8 +9,8 @@ use elph_tui::{
 };
 use slt::Context;
 
-use super::{ActiveOverlay, ElphApp};
 use crate::platform::{exit_message, handle_prompt_interrupt};
+use crate::shell::{ActiveOverlay, ElphApp};
 use crate::tui::TurnDispatcher;
 
 pub fn render_app(ui: &mut Context, app: &mut ElphApp) {

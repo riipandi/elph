@@ -3,6 +3,7 @@
 mod bridge;
 mod dispatch;
 mod transcript_loader;
+mod widget;
 
 pub use bridge::TranscriptApplier;
 pub use dispatch::TurnDispatcher;
