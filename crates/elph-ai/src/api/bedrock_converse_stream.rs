@@ -146,9 +146,11 @@ async fn run_bedrock(
         crate::api::common::finish_stream_error(stream, output, crate::api::common::request_aborted_error(), true);
         return Ok(());
     }
+    // Prefer explicit Bedrock bearer, then generic stream apiKey, then env token.
     let bearer = options
         .bearer_token
         .clone()
+        .or_else(|| options.base.api_key.clone())
         .or_else(|| get_provider_env_value("AWS_BEARER_TOKEN_BEDROCK", options.base.env.as_ref()));
 
     let ambient_profile = std::env::var("AWS_PROFILE").ok();

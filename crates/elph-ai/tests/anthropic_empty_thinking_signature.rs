@@ -22,6 +22,8 @@ fn xiaomi_ams_model(compat: Option<AnthropicMessagesCompat>) -> Model {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 1_048_576,
         max_tokens: 1024,
@@ -51,6 +53,7 @@ fn context_with_thinking(signature: &str) -> Context {
                 api: "anthropic-messages".to_string(),
                 provider: "xiaomi-token-plan-ams".to_string(),
                 model: "mimo-v2.5-pro".to_string(),
+                diagnostics: None,
                 usage: Usage::default(),
                 stop_reason: StopReason::Stop,
                 timestamp: 1,

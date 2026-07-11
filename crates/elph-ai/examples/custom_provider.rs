@@ -36,6 +36,8 @@ async fn main() -> anyhow::Result<()> {
             output: 0.60,
             cache_read: 0.075,
             cache_write: 0.15,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 16_384,

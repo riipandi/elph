@@ -24,9 +24,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "deepseek-v4-pro": {
@@ -54,9 +54,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     }
 }

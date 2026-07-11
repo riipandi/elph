@@ -472,6 +472,7 @@ pub fn get_supported_thinking_levels(model: &Model) -> Vec<crate::types::Thinkin
         crate::types::ThinkingLevel::Medium,
         crate::types::ThinkingLevel::High,
         crate::types::ThinkingLevel::Xhigh,
+        crate::types::ThinkingLevel::Max,
     ];
     levels
         .into_iter()
@@ -481,9 +482,18 @@ pub fn get_supported_thinking_levels(model: &Model) -> Vec<crate::types::Thinkin
                 if map.get(key) == Some(&None) {
                     return false;
                 }
-                if matches!(level, crate::types::ThinkingLevel::Xhigh) {
+                // xhigh/max are opt-in via thinkingLevelMap; other levels default on.
+                if matches!(
+                    level,
+                    crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max
+                ) {
                     return map.contains_key(key);
                 }
+            } else if matches!(
+                level,
+                crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max
+            ) {
+                return false;
             }
             true
         })
@@ -501,6 +511,7 @@ pub fn clamp_thinking_level(model: &Model, level: crate::types::ThinkingLevel) -
         crate::types::ThinkingLevel::Medium,
         crate::types::ThinkingLevel::High,
         crate::types::ThinkingLevel::Xhigh,
+        crate::types::ThinkingLevel::Max,
     ];
     let idx = all.iter().position(|l| *l == level).unwrap_or(0);
     for &candidate in &all[idx..] {

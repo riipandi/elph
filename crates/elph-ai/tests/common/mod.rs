@@ -48,6 +48,7 @@ pub fn error_assistant_message(error_message: impl Into<String>) -> AssistantMes
         model: "test-model".to_string(),
         response_model: None,
         response_id: None,
+        diagnostics: None,
         usage: Usage::default(),
         stop_reason: StopReason::Error,
         error_message: Some(error_message.into()),
@@ -81,6 +82,8 @@ pub fn completions_proxy_model(compat: Option<OpenAICompletionsCompat>) -> Model
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 4096,
@@ -106,6 +109,8 @@ pub fn responses_model(base_url: &str, compat: Option<OpenAIResponsesCompat>) ->
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 16_384,
@@ -131,6 +136,8 @@ pub fn anthropic_model(base_url: &str, compat: Option<AnthropicMessagesCompat>) 
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 200_000,
         max_tokens: 8192,

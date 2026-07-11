@@ -16,8 +16,14 @@ fn builtin_models_registers_every_builtin_provider() {
     assert_eq!(providers.len(), builtin_providers().len());
     assert!(providers.iter().any(|p| p.id == "anthropic"));
 
-    let anthropic = get_builtin_model("anthropic", "claude-3-5-sonnet-20241022").expect("model exists");
+    let anthropic = get_builtin_model("anthropic", "claude-sonnet-5").expect("model exists");
     assert_eq!(anthropic.api, "anthropic-messages");
+    assert!(
+        anthropic
+            .thinking_level_map
+            .as_ref()
+            .is_some_and(|m| m.contains_key("max"))
+    );
 
     let all = models.get_models(None);
     assert!(all.len() > 500);

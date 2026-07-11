@@ -739,6 +739,26 @@
         "provider": "huggingface",
         "reasoning": true
     },
+    "openai/gpt-oss-20b": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "compat": {
+            "supportsDeveloperRole": false
+        },
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0.1,
+            "output": 0.5
+        },
+        "id": "openai/gpt-oss-20b",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT OSS 20B",
+        "provider": "huggingface",
+        "reasoning": true
+    },
     "stepfun-ai/Step-3.5-Flash": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",

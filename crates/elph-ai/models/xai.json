@@ -109,6 +109,28 @@
         "provider": "xai",
         "reasoning": true
     },
+    "grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false
+        },
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 6
+        },
+        "id": "grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
+        "provider": "xai",
+        "reasoning": true
+    },
     "grok-build-0.1": {
         "api": "openai-completions",
         "baseUrl": "https://api.x.ai/v1",

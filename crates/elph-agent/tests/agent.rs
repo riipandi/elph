@@ -670,12 +670,14 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
                     cb(AgentToolResult {
                         content: vec![ToolResultContent::Text(elph_ai::TextContent::new("running"))],
                         details: json!({ "status": "running" }),
+                        added_tool_names: None,
                         terminate: None,
                     });
                 }
                 Ok(AgentToolResult {
                     content: vec![ToolResultContent::Text(elph_ai::TextContent::new("ok"))],
                     details: json!({ "status": "done" }),
+                    added_tool_names: None,
                     terminate: Some(true),
                 })
             })
@@ -719,6 +721,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
         cb(AgentToolResult {
             content: vec![ToolResultContent::Text(elph_ai::TextContent::new("late"))],
             details: json!({ "status": "late" }),
+            added_tool_names: None,
             terminate: None,
         });
     }
@@ -905,6 +908,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                 Ok(AgentToolResult {
                     content: vec![ToolResultContent::Text(elph_ai::TextContent::new("done"))],
                     details: json!({ "status": "done" }),
+                    added_tool_names: None,
                     terminate: Some(true),
                 })
             })
@@ -933,6 +937,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                 Ok(AgentToolResult {
                     content: vec![ToolResultContent::Text(elph_ai::TextContent::new("done"))],
                     details: json!({ "status": "done" }),
+                    added_tool_names: None,
                     terminate: Some(true),
                 })
             })
@@ -997,6 +1002,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
         cb(AgentToolResult {
             content: vec![ToolResultContent::Text(elph_ai::TextContent::new("late"))],
             details: json!({ "status": "late" }),
+            added_tool_names: None,
             terminate: None,
         });
     }

@@ -196,7 +196,22 @@ fn build_params(
     deployment: &str,
     providers: &HashSet<String>,
 ) -> Result<Value> {
-    let messages = convert_responses_messages(model, context, providers, None);
+    let supports_tool_search = model
+        .openai_responses_compat
+        .as_ref()
+        .and_then(|c| c.supports_tool_search)
+        .unwrap_or(false);
+    let (immediate_tools, deferred_map) =
+        crate::utils::deferred_tools::split_deferred_tools(context, supports_tool_search, None);
+    let messages = convert_responses_messages(
+        model,
+        context,
+        providers,
+        Some(crate::api::openai_responses_shared::ConvertResponsesMessagesOptions {
+            include_system_prompt: true,
+            deferred_tools: Some(deferred_map),
+        }),
+    );
     let mut params = json!({
         "model": deployment,
         "input": messages,
@@ -210,10 +225,8 @@ fn build_params(
     if let Some(temp) = options.base.temperature {
         params["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools
-        && !tools.is_empty()
-    {
-        params["tools"] = json!(convert_responses_tools(tools, None));
+    if !immediate_tools.is_empty() {
+        params["tools"] = json!(convert_responses_tools(&immediate_tools, None));
     }
     if model.reasoning
         && let Some(effort) = &options.reasoning_effort

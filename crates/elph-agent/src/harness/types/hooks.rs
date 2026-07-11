@@ -39,6 +39,7 @@ pub struct ToolResultPatch {
     pub content: Option<Vec<ToolResultContent>>,
     pub details: Option<Value>,
     pub is_error: Option<bool>,
+    pub added_tool_names: Option<Vec<String>>,
     pub terminate: Option<bool>,
 }
 

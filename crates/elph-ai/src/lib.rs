@@ -9,6 +9,7 @@ pub mod auth;
 pub mod images;
 pub mod models;
 pub mod providers;
+pub mod session_resources;
 pub mod types;
 pub mod utils;
 
@@ -37,6 +38,11 @@ pub use providers::faux::{
     faux_provider, faux_text, faux_thinking, faux_tool_call,
 };
 pub use providers::{builtin_models, get_builtin_model, get_builtin_models, get_builtin_providers};
+pub use session_resources::{
+    SessionResourceCleanupRegistration, cleanup_session_resources, register_session_resource_cleanup,
+};
 pub use types::*;
+pub use utils::deferred_tools::split_deferred_tools;
+pub use utils::diagnostics::{append_assistant_message_diagnostic, create_assistant_message_diagnostic};
 pub use utils::event_stream::EventStreamIterator;
 pub use utils::{overflow, retry, validation};

@@ -355,7 +355,9 @@ pub fn get_google_budget(model: &Model, effort: crate::types::ThinkingLevel) -> 
         crate::types::ThinkingLevel::Minimal => "minimal",
         crate::types::ThinkingLevel::Low => "low",
         crate::types::ThinkingLevel::Medium => "medium",
-        crate::types::ThinkingLevel::High | crate::types::ThinkingLevel::Xhigh => "high",
+        crate::types::ThinkingLevel::High | crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max => {
+            "high"
+        }
     };
     if model.id.contains("2.5-pro") {
         return match level {

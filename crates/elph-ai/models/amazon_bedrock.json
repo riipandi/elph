@@ -84,6 +84,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -156,7 +157,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "anthropic.claude-opus-4-7": {
@@ -176,6 +177,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -196,6 +198,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -231,7 +234,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -248,7 +254,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "au.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -284,7 +294,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "au.anthropic.claude-opus-4-8": {
@@ -304,6 +314,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -339,7 +350,10 @@
         "maxTokens": 128000,
         "name": "AU Anthropic Claude Sonnet 4.6",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "au.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -356,7 +370,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (AU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "deepseek.r1-v1:0": {
         "api": "bedrock-converse-stream",
@@ -426,6 +444,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -481,7 +500,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "eu.anthropic.claude-opus-4-7": {
@@ -501,6 +520,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -521,6 +541,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -556,7 +577,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "eu.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -573,7 +597,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "global.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -592,6 +620,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -647,7 +676,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "global.anthropic.claude-opus-4-7": {
@@ -667,6 +696,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -687,6 +717,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -722,7 +753,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "global.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -739,7 +773,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "google.gemma-3-27b-it": {
         "api": "bedrock-converse-stream",
@@ -775,6 +813,23 @@
         "provider": "amazon-bedrock",
         "reasoning": false
     },
+    "jp.anthropic.claude-haiku-4-5-20251001-v1:0": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1,
+            "output": 5
+        },
+        "id": "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "input": ["text", "image"],
+        "maxTokens": 64000,
+        "name": "Claude Haiku 4.5 (JP)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
+    },
     "jp.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
@@ -792,6 +847,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -812,6 +868,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -847,7 +904,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (JP)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "jp.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -864,7 +924,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (JP)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "meta.llama3-1-70b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1535,6 +1599,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -1607,7 +1672,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "us.anthropic.claude-opus-4-7": {
@@ -1627,6 +1692,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -1647,6 +1713,7 @@
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -1682,7 +1749,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "us.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
@@ -1699,7 +1769,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "us.deepseek.r1-v1:0": {
         "api": "bedrock-converse-stream",

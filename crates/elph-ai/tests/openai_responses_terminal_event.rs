@@ -18,6 +18,8 @@ fn responses_model() -> Model {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 400_000,
         max_tokens: 128_000,
@@ -35,6 +37,7 @@ fn empty_output(model: &Model) -> AssistantMessage {
         api: model.api.clone(),
         provider: model.provider.clone(),
         model: model.id.clone(),
+        diagnostics: None,
         usage: Usage::default(),
         stop_reason: StopReason::Stop,
         timestamp: 0,

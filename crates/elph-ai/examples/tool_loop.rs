@@ -75,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
             text: "32°C, high humidity (78%)".into(),
         }],
         details: None,
+        added_tool_names: None,
         is_error: false,
         timestamp: timestamp(),
     });

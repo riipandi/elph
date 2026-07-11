@@ -99,6 +99,7 @@ async fn execute_find(
             "resultLimitReached": limit_reached,
             "truncated": truncation.truncated
         }),
+        added_tool_names: None,
         terminate: None,
     })
 }

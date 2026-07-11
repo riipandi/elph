@@ -25,7 +25,12 @@
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "github-copilot",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "claude-haiku-4.5": {
         "api": "anthropic-messages",
@@ -102,7 +107,7 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "claude-opus-4.7": {
@@ -112,7 +117,7 @@
             "forceAdaptiveThinking": true,
             "supportsTemperature": false
         },
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -132,6 +137,7 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "minimal": "low",
             "xhigh": "xhigh"
         }
@@ -143,7 +149,7 @@
             "forceAdaptiveThinking": true,
             "supportsTemperature": false
         },
-        "contextWindow": 200000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
@@ -163,6 +169,7 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "minimal": "low",
             "xhigh": "xhigh"
         }
@@ -245,8 +252,8 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
-            "minimal": "low",
-            "xhigh": "max"
+            "max": "max",
+            "minimal": "low"
         }
     },
     "claude-sonnet-5": {
@@ -273,7 +280,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "github-copilot",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "gemini-2.5-pro": {
         "api": "openai-completions",
@@ -501,7 +512,7 @@
     "gpt-5.3-codex": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
-        "contextWindow": 400000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.175,
             "cacheWrite": 0,
@@ -529,7 +540,7 @@
     "gpt-5.4": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
-        "contextWindow": 400000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0,
@@ -613,7 +624,7 @@
     "gpt-5.5": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
-        "contextWindow": 400000,
+        "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 0,

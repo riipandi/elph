@@ -217,12 +217,20 @@ fn build_request_body(
     options: &OpenAICodexResponsesOptions,
     providers: &HashSet<String>,
 ) -> Result<Value> {
+    let supports_tool_search = model
+        .openai_responses_compat
+        .as_ref()
+        .and_then(|c| c.supports_tool_search)
+        .unwrap_or(false);
+    let (immediate_tools, deferred_map) =
+        crate::utils::deferred_tools::split_deferred_tools(context, supports_tool_search, None);
     let messages = convert_responses_messages(
         model,
         context,
         providers,
         Some(ConvertResponsesMessagesOptions {
             include_system_prompt: false,
+            deferred_tools: Some(deferred_map),
         }),
     );
     let mut body = json!({
@@ -237,10 +245,8 @@ fn build_request_body(
         "tool_choice": "auto",
         "parallel_tool_calls": true
     });
-    if let Some(tools) = &context.tools
-        && !tools.is_empty()
-    {
-        body["tools"] = json!(convert_responses_tools(tools, Some(false)));
+    if !immediate_tools.is_empty() {
+        body["tools"] = json!(convert_responses_tools(&immediate_tools, Some(false)));
     }
     if let Some(effort) = &options.reasoning_effort {
         body["reasoning"] = json!({
@@ -296,6 +302,7 @@ fn response_items_from_output(model: &Model, output: &AssistantMessage, provider
         providers,
         Some(ConvertResponsesMessagesOptions {
             include_system_prompt: false,
+            deferred_tools: None,
         }),
     )
     .into_iter()

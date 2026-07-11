@@ -49,6 +49,8 @@ fn convert_image_model(raw: RawImageModel) -> ImagesModel {
             output: raw.cost.output,
             cache_read: raw.cost.cache_read,
             cache_write: raw.cost.cache_write,
+
+            tiers: None,
         },
         headers: None,
     }

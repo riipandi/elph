@@ -60,6 +60,8 @@ fn text_and_image_model(base_url: &str) -> ImagesModel {
             output: 0.03,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         headers: Some([("HTTP-Referer".to_string(), "https://example.com".to_string())].into()),
     }
@@ -79,6 +81,8 @@ fn image_only_model(base_url: &str) -> ImagesModel {
             output: 0.03,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         headers: None,
     }

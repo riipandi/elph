@@ -120,9 +120,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": "high",
+            "max": "max",
             "medium": "high",
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "glm-5v-turbo": {

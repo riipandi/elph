@@ -41,6 +41,7 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -116,7 +117,7 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "claude-opus-4-7": {
@@ -140,6 +141,7 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -164,6 +166,7 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -219,7 +222,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -239,7 +245,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -267,9 +277,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "deepseek-v4-flash-free": {
@@ -297,9 +307,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "deepseek-v4-pro": {
@@ -328,9 +338,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "gemini-3-flash": {
@@ -794,6 +804,28 @@
             "xhigh": "xhigh"
         }
     },
+    "grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 6
+        },
+        "id": "grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
+        "provider": "opencode",
+        "reasoning": true
+    },
     "grok-build-0.1": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -822,6 +854,28 @@
             "minimal": null,
             "off": null
         }
+    },
+    "hy3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "hy3-free",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy3 Free",
+        "provider": "opencode",
+        "reasoning": true
     },
     "kimi-k2.5": {
         "api": "openai-completions",

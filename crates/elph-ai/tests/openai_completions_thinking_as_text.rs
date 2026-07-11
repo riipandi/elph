@@ -39,6 +39,8 @@ fn model() -> Model {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 4096,
@@ -72,6 +74,7 @@ fn converts_thinking_blocks_to_plain_text_content() {
                 api: "openai-completions".to_string(),
                 provider: "repro".to_string(),
                 model: "repro-model".to_string(),
+                diagnostics: None,
                 usage: Default::default(),
                 stop_reason: elph_ai::StopReason::Stop,
                 timestamp: 2,

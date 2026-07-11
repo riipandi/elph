@@ -529,6 +529,7 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -621,7 +622,7 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "anthropic/claude-opus-4.7": {
@@ -645,6 +646,7 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -669,6 +671,7 @@
         "provider": "vercel-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -724,7 +727,10 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 4.6",
         "provider": "vercel-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "anthropic/claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -744,7 +750,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "vercel-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "arcee-ai/trinity-large-preview": {
         "api": "anthropic-messages",
@@ -955,7 +965,7 @@
         "baseUrl": "https://ai-gateway.vercel.sh",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0.028,
             "cacheWrite": 0,
             "input": 0.14,
             "output": 0.28
@@ -1408,6 +1418,23 @@
         "name": "Llama 4 Scout 17B Instruct",
         "provider": "vercel-ai-gateway",
         "reasoning": false
+    },
+    "meta/muse-spark-1.1": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://ai-gateway.vercel.sh",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 4.25
+        },
+        "id": "meta/muse-spark-1.1",
+        "input": ["text", "image"],
+        "maxTokens": 1048576,
+        "name": "Muse Spark 1.1",
+        "provider": "vercel-ai-gateway",
+        "reasoning": true
     },
     "minimax/minimax-m2": {
         "api": "anthropic-messages",
@@ -2553,6 +2580,66 @@
             "xhigh": "xhigh"
         }
     },
+    "openai/gpt-5.6-luna": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://ai-gateway.vercel.sh",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1,
+            "output": 6
+        },
+        "id": "openai/gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT 5.6 Luna",
+        "provider": "vercel-ai-gateway",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
+    "openai/gpt-5.6-sol": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://ai-gateway.vercel.sh",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 30
+        },
+        "id": "openai/gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT 5.6 Sol",
+        "provider": "vercel-ai-gateway",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
+    "openai/gpt-5.6-terra": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://ai-gateway.vercel.sh",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15
+        },
+        "id": "openai/gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT 5.6 Terra",
+        "provider": "vercel-ai-gateway",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
     "openai/gpt-oss-120b": {
         "api": "anthropic-messages",
         "baseUrl": "https://ai-gateway.vercel.sh",
@@ -2907,6 +2994,23 @@
         "input": ["text", "image"],
         "maxTokens": 1000000,
         "name": "Grok 4.3",
+        "provider": "vercel-ai-gateway",
+        "reasoning": true
+    },
+    "xai/grok-4.5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://ai-gateway.vercel.sh",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 6
+        },
+        "id": "xai/grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
         "provider": "vercel-ai-gateway",
         "reasoning": true
     },

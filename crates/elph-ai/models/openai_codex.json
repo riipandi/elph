@@ -23,12 +23,24 @@
     "gpt-5.4": {
         "api": "openai-codex-responses",
         "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0,
             "input": 2.5,
-            "output": 15
+            "output": 15,
+            "tiers": [
+                {
+                    "cacheRead": 0.5,
+                    "cacheWrite": 0,
+                    "input": 5,
+                    "inputTokensAbove": 272000,
+                    "output": 22.5
+                }
+            ]
         },
         "id": "gpt-5.4",
         "input": ["text", "image"],
@@ -44,6 +56,9 @@
     "gpt-5.4-mini": {
         "api": "openai-codex-responses",
         "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.075,
@@ -65,12 +80,24 @@
     "gpt-5.5": {
         "api": "openai-codex-responses",
         "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 0,
             "input": 5,
-            "output": 30
+            "output": 30,
+            "tiers": [
+                {
+                    "cacheRead": 1,
+                    "cacheWrite": 0,
+                    "input": 10,
+                    "inputTokensAbove": 272000,
+                    "output": 45
+                }
+            ]
         },
         "id": "gpt-5.5",
         "input": ["text", "image"],
@@ -79,6 +106,108 @@
         "provider": "openai-codex",
         "reasoning": true,
         "thinkingLevelMap": {
+            "minimal": "low",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-luna": {
+        "api": "openai-codex-responses",
+        "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
+        "contextWindow": 372000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1,
+            "output": 6,
+            "tiers": [
+                {
+                    "cacheRead": 0.2,
+                    "cacheWrite": 2.5,
+                    "input": 2,
+                    "inputTokensAbove": 272000,
+                    "output": 9
+                }
+            ]
+        },
+        "id": "gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Luna",
+        "provider": "openai-codex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "minimal": "low",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-sol": {
+        "api": "openai-codex-responses",
+        "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
+        "contextWindow": 372000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 30,
+            "tiers": [
+                {
+                    "cacheRead": 1,
+                    "cacheWrite": 12.5,
+                    "input": 10,
+                    "inputTokensAbove": 272000,
+                    "output": 45
+                }
+            ]
+        },
+        "id": "gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol",
+        "provider": "openai-codex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "minimal": "low",
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-terra": {
+        "api": "openai-codex-responses",
+        "baseUrl": "https://chatgpt.com/backend-api",
+        "compat": {
+            "supportsToolSearch": true
+        },
+        "contextWindow": 372000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15,
+            "tiers": [
+                {
+                    "cacheRead": 0.5,
+                    "cacheWrite": 6.25,
+                    "input": 5,
+                    "inputTokensAbove": 272000,
+                    "output": 22.5
+                }
+            ]
+        },
+        "id": "gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "openai-codex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
             "minimal": "low",
             "xhigh": "xhigh"
         }

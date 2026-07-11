@@ -116,6 +116,7 @@ fn recovered_assistant_message(text: &str) -> AgentMessage {
         model: "recovered".to_string(),
         response_model: None,
         response_id: None,
+        diagnostics: None,
         usage: Usage::default(),
         stop_reason: StopReason::Stop,
         error_message: None,

@@ -28,6 +28,7 @@ pub enum ThinkingLevel {
     Medium,
     High,
     Xhigh,
+    Max,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -243,6 +244,10 @@ pub enum Message {
         content: Vec<ContentBlock>,
         #[serde(skip_serializing_if = "Option::is_none")]
         details: Option<Value>,
+        /// Names from `Context.tools` that became available after this result.
+        /// Providers with native deferred tool loading use this as the load point.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        added_tool_names: Option<Vec<String>>,
         is_error: bool,
         timestamp: i64,
     },
@@ -268,6 +273,16 @@ fn assistant_role_default() -> String {
     "assistant".to_string()
 }
 
+/// Redacted provider/runtime diagnostic attached to an assistant message.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantMessageDiagnostic {
+    pub kind: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub details: Option<Value>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssistantMessage {
     #[serde(skip_serializing, default = "assistant_role_default")]
@@ -280,6 +295,9 @@ pub struct AssistantMessage {
     pub response_model: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_id: Option<String>,
+    /// Redacted provider/runtime diagnostics for failures and recoveries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<Vec<AssistantMessageDiagnostic>>,
     pub usage: Usage,
     pub stop_reason: StopReason,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -305,6 +323,7 @@ impl AssistantMessage {
             model: model.id.clone(),
             response_model: None,
             response_id: None,
+            diagnostics: None,
             usage: Usage::default(),
             stop_reason: StopReason::Stop,
             error_message: None,
@@ -419,6 +438,8 @@ pub struct OpenAIResponsesCompat {
     pub supports_developer_role: Option<bool>,
     pub send_session_id_header: Option<bool>,
     pub supports_long_cache_retention: Option<bool>,
+    /// Whether the model supports client-executed tool search for deferred tools.
+    pub supports_tool_search: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -431,6 +452,8 @@ pub struct AnthropicMessagesCompat {
     pub supports_temperature: Option<bool>,
     pub force_adaptive_thinking: Option<bool>,
     pub allow_empty_signature: Option<bool>,
+    /// Whether the provider supports deferred tools loaded by `tool_reference`.
+    pub supports_tool_references: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -452,12 +475,65 @@ pub struct Model {
     pub anthropic_compat: Option<AnthropicMessagesCompat>,
 }
 
-#[derive(Debug, Clone, Copy)]
+/// Base token rates in USD per million tokens.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelCostRates {
+    pub input: f64,
+    pub output: f64,
+    pub cache_read: f64,
+    pub cache_write: f64,
+}
+
+/// Request-wide pricing tier. Applies when total input usage exceeds the threshold.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelCostTier {
+    /// Use this tier for requests whose total input usage exceeds this token count.
+    pub input_tokens_above: u64,
+    pub input: f64,
+    pub output: f64,
+    pub cache_read: f64,
+    pub cache_write: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelCost {
     pub input: f64,
     pub output: f64,
     pub cache_read: f64,
     pub cache_write: f64,
+    /// Request-wide pricing tiers. The highest matching input threshold applies to the full request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tiers: Option<Vec<ModelCostTier>>,
+}
+
+impl ModelCost {
+    pub fn flat(input: f64, output: f64, cache_read: f64, cache_write: f64) -> Self {
+        Self {
+            input,
+            output,
+            cache_read,
+            cache_write,
+            tiers: None,
+        }
+    }
+
+    pub fn rates(&self) -> ModelCostRates {
+        ModelCostRates {
+            input: self.input,
+            output: self.output,
+            cache_read: self.cache_read,
+            cache_write: self.cache_write,
+        }
+    }
+}
+
+impl Default for ModelCost {
+    fn default() -> Self {
+        Self::flat(0.0, 0.0, 0.0, 0.0)
+    }
 }
 
 #[derive(Debug, Clone)]

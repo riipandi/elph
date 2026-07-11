@@ -664,6 +664,72 @@
             "xhigh": "xhigh"
         }
     },
+    "gpt-5.6-luna": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1,
+            "output": 6
+        },
+        "id": "gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Luna",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-sol": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 30
+        },
+        "id": "gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "gpt-5.6-terra": {
+        "api": "azure-openai-responses",
+        "baseUrl": "",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15
+        },
+        "id": "gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "azure-openai-responses",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
     "o1": {
         "api": "azure-openai-responses",
         "baseUrl": "",

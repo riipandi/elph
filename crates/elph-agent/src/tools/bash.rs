@@ -94,6 +94,7 @@ async fn execute_bash(
     Ok(AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(text))],
         details: json!({ "exitCode": result.exit_code, "truncated": capture.truncated }),
+        added_tool_names: None,
         terminate: None,
     })
 }

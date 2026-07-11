@@ -202,6 +202,7 @@ fn map_thinking_level_to_effort(model: &Model, level: ThinkingLevel) -> String {
             ThinkingLevel::Medium => "medium",
             ThinkingLevel::High => "high",
             ThinkingLevel::Xhigh => "xhigh",
+            ThinkingLevel::Max => "max",
         };
         if let Some(Some(mapped)) = map.get(key) {
             return mapped.clone();
@@ -210,7 +211,9 @@ fn map_thinking_level_to_effort(model: &Model, level: ThinkingLevel) -> String {
     match level {
         ThinkingLevel::Minimal | ThinkingLevel::Low => "low".to_string(),
         ThinkingLevel::Medium => "medium".to_string(),
-        ThinkingLevel::High | ThinkingLevel::Xhigh => "high".to_string(),
+        ThinkingLevel::High => "high".to_string(),
+        ThinkingLevel::Xhigh => "xhigh".to_string(),
+        ThinkingLevel::Max => "max".to_string(),
     }
 }
 
@@ -239,7 +242,7 @@ pub fn build_additional_model_request_fields(model: &Model, options: &BedrockThi
             "output_config": { "effort": map_thinking_level_to_effort(model, reasoning) },
         })
     } else {
-        let level = if reasoning == ThinkingLevel::Xhigh {
+        let level = if matches!(reasoning, ThinkingLevel::Xhigh | ThinkingLevel::Max) {
             ThinkingLevel::High
         } else {
             reasoning
@@ -256,7 +259,7 @@ pub fn build_additional_model_request_fields(model: &Model, options: &BedrockThi
                 ThinkingLevel::Minimal => budgets.minimal,
                 ThinkingLevel::Low => budgets.low,
                 ThinkingLevel::Medium => budgets.medium,
-                ThinkingLevel::High | ThinkingLevel::Xhigh => budgets.high,
+                ThinkingLevel::High | ThinkingLevel::Xhigh | ThinkingLevel::Max => budgets.high,
             })
             .unwrap_or_else(|| {
                 default_budgets

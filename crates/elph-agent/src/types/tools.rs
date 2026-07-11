@@ -15,6 +15,9 @@ pub type AgentToolCall = ToolCall;
 pub struct AgentToolResult {
     pub content: Vec<ToolResultContent>,
     pub details: Value,
+    /// Names of tools introduced by this result and available from this transcript point onward.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub added_tool_names: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminate: Option<bool>,
 }
@@ -31,6 +34,7 @@ impl AgentToolResult {
         Self {
             content: vec![ToolResultContent::Text(TextContent::new(message))],
             details: Value::Object(Default::default()),
+            added_tool_names: None,
             terminate: None,
         }
     }

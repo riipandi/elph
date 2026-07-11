@@ -48,7 +48,7 @@ pub fn build_base_options(
 
 pub fn clamp_reasoning(effort: Option<ThinkingLevel>) -> Option<ThinkingLevel> {
     match effort {
-        Some(ThinkingLevel::Xhigh) => Some(ThinkingLevel::High),
+        Some(ThinkingLevel::Xhigh | ThinkingLevel::Max) => Some(ThinkingLevel::High),
         other => other,
     }
 }
@@ -71,13 +71,13 @@ pub fn adjust_max_tokens_for_thinking(
             ThinkingLevel::Minimal => b.minimal,
             ThinkingLevel::Low => b.low,
             ThinkingLevel::Medium => b.medium,
-            ThinkingLevel::High | ThinkingLevel::Xhigh => b.high,
+            ThinkingLevel::High | ThinkingLevel::Xhigh | ThinkingLevel::Max => b.high,
         })
         .or(match level {
             ThinkingLevel::Minimal => default_budgets.minimal,
             ThinkingLevel::Low => default_budgets.low,
             ThinkingLevel::Medium => default_budgets.medium,
-            ThinkingLevel::High | ThinkingLevel::Xhigh => default_budgets.high,
+            ThinkingLevel::High | ThinkingLevel::Xhigh | ThinkingLevel::Max => default_budgets.high,
         })
         .unwrap_or(1024);
 

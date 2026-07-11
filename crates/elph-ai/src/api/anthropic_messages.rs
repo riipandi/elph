@@ -484,10 +484,21 @@ fn apply_anthropic_payload_cache_control(params: &mut Value, model: &Model, rete
 }
 
 fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) -> Result<Value> {
-    let messages = convert_messages(context, model);
+    let tool_refs_enabled = supports_tool_references(model);
+    let (immediate_tools, deferred_map) =
+        crate::utils::deferred_tools::split_deferred_tools(context, tool_refs_enabled, None);
+    let mut immediate_tools = immediate_tools;
+    let mut deferred_map = deferred_map;
+    // Never send only deferred tools — promote them to immediate.
+    if immediate_tools.is_empty() && !deferred_map.is_empty() {
+        immediate_tools = deferred_map.into_values().collect();
+        deferred_map = std::collections::HashMap::new();
+    }
+    let deferred_names: std::collections::HashSet<String> = deferred_map.keys().cloned().collect();
+
     let mut params = json!({
         "model": model.id,
-        "messages": messages,
+        "messages": convert_messages(context, model, &deferred_names),
         "max_tokens": options.base.max_tokens.unwrap_or(model.max_tokens),
         "stream": true
     });
@@ -501,21 +512,12 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
     {
         params["temperature"] = json!(temp);
     }
-    if let Some(tools) = &context.tools
-        && !tools.is_empty()
-    {
-        let eager = compat.supports_eager_tool_input_streaming;
-        params["tools"] = json!(tools.iter().map(|t| {
-                let mut tool = json!({
-                    "name": t.name,
-                    "description": t.description,
-                    "input_schema": { "type": "object", "properties": t.parameters.get("properties").cloned().unwrap_or(json!({})), "required": t.parameters.get("required").cloned().unwrap_or(json!([])) }
-                });
-                if eager {
-                    tool["eager_input_streaming"] = json!(true);
-                }
-                tool
-            }).collect::<Vec<_>>());
+    let eager = compat.supports_eager_tool_input_streaming;
+    let deferred_list: Vec<_> = deferred_map.into_values().collect();
+    let mut converted_tools = convert_anthropic_tools(&immediate_tools, eager, false);
+    converted_tools.extend(convert_anthropic_tools(&deferred_list, eager, true));
+    if !converted_tools.is_empty() {
+        params["tools"] = json!(converted_tools);
     }
     if options.thinking_enabled == Some(true) {
         if model.anthropic_compat.as_ref().and_then(|c| c.force_adaptive_thinking) == Some(true) {
@@ -534,7 +536,35 @@ fn build_params(model: &Model, context: &Context, options: &AnthropicOptions) ->
     Ok(params)
 }
 
-fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
+fn convert_anthropic_tools(tools: &[crate::types::Tool], eager: bool, defer_loading: bool) -> Vec<Value> {
+    tools
+        .iter()
+        .map(|t| {
+            let mut tool = json!({
+                "name": t.name,
+                "description": t.description,
+                "input_schema": {
+                    "type": "object",
+                    "properties": t.parameters.get("properties").cloned().unwrap_or(json!({})),
+                    "required": t.parameters.get("required").cloned().unwrap_or(json!([]))
+                }
+            });
+            if eager {
+                tool["eager_input_streaming"] = json!(true);
+            }
+            if defer_loading {
+                tool["defer_loading"] = json!(true);
+            }
+            tool
+        })
+        .collect()
+}
+
+fn convert_messages(
+    context: &Context,
+    model: &Model,
+    deferred_tool_names: &std::collections::HashSet<String>,
+) -> Vec<Value> {
     let transformed = transform_messages(context.messages.clone(), model, |id, _, _| {
         id.chars()
             .map(|c| {
@@ -547,6 +577,7 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
             .take(64)
             .collect()
     });
+    let mut loaded_tool_names: std::collections::HashSet<String> = std::collections::HashSet::new();
     transformed
         .into_iter()
         .filter_map(|msg| match msg {
@@ -561,40 +592,145 @@ fn convert_messages(context: &Context, model: &Model) -> Vec<Value> {
                 Some(json!({ "role": "user", "content": content }))
             }
             Message::Assistant(a) => {
-                let blocks: Vec<Value> = a.content.iter().filter_map(|b| match b {
-                    AssistantContentBlock::Text(t) if !t.text.trim().is_empty() => Some(json!({ "type": "text", "text": sanitize_surrogates(&t.text) })),
-                    AssistantContentBlock::Thinking(t) if !t.thinking.trim().is_empty() => {
-                        if t.redacted == Some(true) {
-                            Some(json!({ "type": "redacted_thinking", "data": t.thinking_signature.clone().unwrap_or_default() }))
-                        } else {
+                let allow_empty = model
+                    .anthropic_compat
+                    .as_ref()
+                    .and_then(|c| c.allow_empty_signature)
+                    .unwrap_or(false);
+                let blocks: Vec<Value> = a
+                    .content
+                    .iter()
+                    .filter_map(|b| match b {
+                        AssistantContentBlock::Text(t) if !t.text.trim().is_empty() => {
+                            Some(json!({ "type": "text", "text": sanitize_surrogates(&t.text) }))
+                        }
+                        AssistantContentBlock::Thinking(t) => {
                             let signature = t.thinking_signature.as_deref().unwrap_or("");
-                            let allow_empty = model
-                                .anthropic_compat
-                                .as_ref()
-                                .and_then(|c| c.allow_empty_signature)
-                                .unwrap_or(false);
-                            if signature.trim().is_empty() {
+                            let has_signature = !signature.trim().is_empty();
+                            // Preserve thinking blocks that have empty text but a valid signature
+                            // (Claude newer models) — do not drop them.
+                            if t.thinking.trim().is_empty() && !has_signature {
+                                return None;
+                            }
+                            if t.redacted == Some(true) {
+                                return Some(json!({
+                                    "type": "redacted_thinking",
+                                    "data": t.thinking_signature.clone().unwrap_or_default()
+                                }));
+                            }
+                            if !has_signature {
                                 if allow_empty {
-                                    Some(json!({ "type": "thinking", "thinking": sanitize_surrogates(&t.thinking), "signature": "" }))
+                                    Some(json!({
+                                        "type": "thinking",
+                                        "thinking": sanitize_surrogates(&t.thinking),
+                                        "signature": ""
+                                    }))
                                 } else {
-                                    Some(json!({ "type": "text", "text": sanitize_surrogates(&t.thinking) }))
+                                    Some(json!({
+                                        "type": "text",
+                                        "text": sanitize_surrogates(&t.thinking)
+                                    }))
                                 }
                             } else {
-                                Some(json!({ "type": "thinking", "thinking": sanitize_surrogates(&t.thinking), "signature": signature }))
+                                Some(json!({
+                                    "type": "thinking",
+                                    "thinking": sanitize_surrogates(&t.thinking),
+                                    "signature": signature
+                                }))
                             }
                         }
-                    }
-                    AssistantContentBlock::ToolCall(tc) => Some(json!({ "type": "tool_use", "id": tc.id, "name": tc.name, "input": tc.arguments })),
-                    _ => None,
-                }).collect();
-                if blocks.is_empty() { None } else { Some(json!({ "role": "assistant", "content": blocks })) }
+                        AssistantContentBlock::ToolCall(tc) => {
+                            Some(json!({ "type": "tool_use", "id": tc.id, "name": tc.name, "input": tc.arguments }))
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                if blocks.is_empty() {
+                    None
+                } else {
+                    Some(json!({ "role": "assistant", "content": blocks }))
+                }
             }
-            Message::ToolResult { tool_call_id, content, is_error, .. } => Some(json!({
-                "role": "user",
-                "content": [{ "type": "tool_result", "tool_use_id": tool_call_id, "content": sanitize_surrogates(&content.iter().filter_map(|b| match b { ContentBlock::Text { text } => Some(text.as_str()), _ => None }).collect::<Vec<_>>().join("\n")), "is_error": is_error }]
-            })),
+            Message::ToolResult {
+                tool_call_id,
+                content,
+                is_error,
+                added_tool_names,
+                ..
+            } => {
+                let text = sanitize_surrogates(
+                    &content
+                        .iter()
+                        .filter_map(|b| match b {
+                            ContentBlock::Text { text } => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                );
+                let mut references: Vec<Value> = Vec::new();
+                if let Some(names) = &added_tool_names {
+                    for name in names {
+                        if !deferred_tool_names.contains(name) || loaded_tool_names.contains(name) {
+                            continue;
+                        }
+                        loaded_tool_names.insert(name.clone());
+                        references.push(json!({ "type": "tool_reference", "tool_name": name }));
+                    }
+                }
+                // Anthropic rejects tool references mixed with ordinary tool-result content.
+                let tool_result_content = if references.is_empty() {
+                    json!(text)
+                } else {
+                    json!(references)
+                };
+                let mut user_content = vec![json!({
+                    "type": "tool_result",
+                    "tool_use_id": tool_call_id,
+                    "content": tool_result_content,
+                    "is_error": is_error
+                })];
+                // Displaced ordinary content becomes sibling blocks after the tool_result.
+                if !references.is_empty() && !text.is_empty() {
+                    user_content.push(json!({ "type": "text", "text": text }));
+                }
+                Some(json!({
+                    "role": "user",
+                    "content": user_content
+                }))
+            }
         })
         .collect()
+}
+
+fn supports_tool_references(model: &Model) -> bool {
+    if let Some(explicit) = model.anthropic_compat.as_ref().and_then(|c| c.supports_tool_references) {
+        return explicit;
+    }
+    default_supports_tool_references(model)
+}
+
+/// First-party Anthropic models except Haiku and pre-tool-search Claude 3/early 4.
+fn default_supports_tool_references(model: &Model) -> bool {
+    if model.provider != "anthropic" || model.id.contains("haiku") {
+        return false;
+    }
+    // claude-(opus|sonnet|fable)-N(-M)?
+    let re = regex::Regex::new(r"^claude-(?:opus|sonnet|fable)-(\d+)(?:-(\d+))?(?:-|$)").ok();
+    let Some(re) = re else {
+        return false;
+    };
+    let Some(caps) = re.captures(&model.id) else {
+        return false;
+    };
+    let major: u32 = caps.get(1).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
+    let minor: u32 = caps
+        .get(2)
+        .map(|m| m.as_str())
+        .filter(|s| s.len() < 8)
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    major > 4 || (major == 4 && minor >= 5)
 }
 
 struct AnthropicStopReasonResult {
@@ -642,7 +778,9 @@ fn map_thinking_level_to_effort(model: &Model, level: ThinkingLevel) -> String {
     match level {
         ThinkingLevel::Minimal | ThinkingLevel::Low => "low".to_string(),
         ThinkingLevel::Medium => "medium".to_string(),
-        ThinkingLevel::High | ThinkingLevel::Xhigh => "high".to_string(),
+        ThinkingLevel::High => "high".to_string(),
+        ThinkingLevel::Xhigh => "xhigh".to_string(),
+        ThinkingLevel::Max => "max".to_string(),
     }
 }
 

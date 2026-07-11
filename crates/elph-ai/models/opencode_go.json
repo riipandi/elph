@@ -25,9 +25,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "deepseek-v4-pro": {
@@ -56,9 +56,9 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
-            "minimal": null,
-            "xhigh": "max"
+            "minimal": null
         }
     },
     "glm-5.1": {
@@ -107,10 +107,10 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null,
-            "xhigh": "max"
+            "off": null
         }
     },
     "kimi-k2.6": {

@@ -327,17 +327,17 @@
         "baseUrl": "https://api.mistral.ai",
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.04,
+            "cacheRead": 0.15,
             "cacheWrite": 0,
-            "input": 0.4,
-            "output": 2
+            "input": 1.5,
+            "output": 7.5
         },
         "id": "mistral-medium-latest",
         "input": ["text", "image"],
         "maxTokens": 262144,
         "name": "Mistral Medium (latest)",
         "provider": "mistral",
-        "reasoning": false
+        "reasoning": true
     },
     "mistral-nemo": {
         "api": "mistral-conversations",

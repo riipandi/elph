@@ -43,8 +43,16 @@ pub struct OpenAIResponsesStreamOptions {
     pub apply_service_tier_pricing: Option<ServiceTierPricingApplier>,
 }
 
+#[derive(Default)]
 pub struct ConvertResponsesMessagesOptions {
     pub include_system_prompt: bool,
+    /// Deferred tools keyed by name, loaded via client tool_search when `added_tool_names` appears.
+    pub deferred_tools: Option<HashMap<String, crate::types::Tool>>,
+}
+
+pub struct ConvertResponsesToolsOptions {
+    pub strict: Option<bool>,
+    pub defer_loading: bool,
 }
 
 pub fn convert_responses_messages(
@@ -53,7 +61,13 @@ pub fn convert_responses_messages(
     allowed_tool_call_providers: &HashSet<String>,
     options: Option<ConvertResponsesMessagesOptions>,
 ) -> Vec<Value> {
-    let include_system = options.map(|o| o.include_system_prompt).unwrap_or(true);
+    let opts = options.unwrap_or(ConvertResponsesMessagesOptions {
+        include_system_prompt: true,
+        deferred_tools: None,
+    });
+    let include_system = opts.include_system_prompt;
+    let deferred_tools = opts.deferred_tools.unwrap_or_default();
+    let mut loaded_tool_names: HashSet<String> = HashSet::new();
     let mut messages = Vec::new();
 
     let normalize_id_part = |part: &str| -> String {
@@ -193,7 +207,10 @@ pub fn convert_responses_messages(
                 }
             }
             Message::ToolResult {
-                tool_call_id, content, ..
+                tool_call_id,
+                content,
+                added_tool_names,
+                ..
             } => {
                 let text_result: String = content
                     .iter()
@@ -235,6 +252,46 @@ pub fn convert_responses_messages(
                     "call_id": call_id,
                     "output": output_val
                 }));
+
+                // Client tool-search load point for deferred tools.
+                if let Some(names) = &added_tool_names {
+                    let mut to_load = Vec::new();
+                    for name in names {
+                        if loaded_tool_names.contains(name) {
+                            continue;
+                        }
+                        if let Some(tool) = deferred_tools.get(name) {
+                            loaded_tool_names.insert(name.clone());
+                            to_load.push(tool.clone());
+                        }
+                    }
+                    if !to_load.is_empty() {
+                        let names_joined = to_load.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(",");
+                        let search_call_id =
+                            format!("pi_tool_load_{}", short_hash(&format!("{tool_call_id}:{names_joined}")));
+                        let query = to_load.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(" ");
+                        messages.push(json!({
+                            "type": "tool_search_call",
+                            "call_id": search_call_id,
+                            "execution": "client",
+                            "status": "completed",
+                            "arguments": { "query": query, "limit": to_load.len() }
+                        }));
+                        messages.push(json!({
+                            "type": "tool_search_output",
+                            "call_id": search_call_id,
+                            "execution": "client",
+                            "status": "completed",
+                            "tools": convert_responses_tools_with_options(
+                                &to_load,
+                                ConvertResponsesToolsOptions {
+                                    strict: Some(false),
+                                    defer_loading: true,
+                                },
+                            )
+                        }));
+                    }
+                }
             }
         }
     }
@@ -242,17 +299,34 @@ pub fn convert_responses_messages(
 }
 
 pub fn convert_responses_tools(tools: &[crate::types::Tool], strict: Option<bool>) -> Vec<Value> {
-    let strict = strict.unwrap_or(false);
+    convert_responses_tools_with_options(
+        tools,
+        ConvertResponsesToolsOptions {
+            strict,
+            defer_loading: false,
+        },
+    )
+}
+
+pub fn convert_responses_tools_with_options(
+    tools: &[crate::types::Tool],
+    options: ConvertResponsesToolsOptions,
+) -> Vec<Value> {
+    let strict = options.strict.unwrap_or(false);
     tools
         .iter()
         .map(|tool| {
-            json!({
+            let mut value = json!({
                 "type": "function",
                 "name": tool.name,
                 "description": tool.description,
                 "parameters": tool.parameters,
                 "strict": strict
-            })
+            });
+            if options.defer_loading {
+                value["defer_loading"] = json!(true);
+            }
+            value
         })
         .collect()
 }

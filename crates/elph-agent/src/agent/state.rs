@@ -21,6 +21,8 @@ pub fn default_model() -> Model {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 0,
         max_tokens: 0,

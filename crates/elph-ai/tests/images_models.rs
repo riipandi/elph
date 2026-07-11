@@ -33,6 +33,8 @@ fn test_image_model(provider: &str, id: &str) -> ImagesModel {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         headers: None,
     }

@@ -59,13 +59,41 @@ pub struct ContextUsageEstimate {
     pub last_usage_index: Option<usize>,
 }
 
-fn get_last_assistant_usage_info(messages: &[AgentMessage]) -> Option<(Usage, usize)> {
-    for (index, message) in messages.iter().enumerate().rev() {
-        if let Some(usage) = get_assistant_usage(message) {
-            return Some((usage.clone(), index));
-        }
+fn message_timestamp(message: &AgentMessage) -> i64 {
+    match message {
+        AgentMessage::Llm(llm) => match llm.as_ref() {
+            Message::User { timestamp, .. }
+            | Message::ToolResult { timestamp, .. }
+            | Message::Assistant(elph_ai::AssistantMessage { timestamp, .. }) => *timestamp,
+        },
+        AgentMessage::Custom(custom) => match custom {
+            CustomAgentMessage::BashExecution { timestamp, .. }
+            | CustomAgentMessage::BranchSummary { timestamp, .. }
+            | CustomAgentMessage::CompactionSummary { timestamp, .. }
+            | CustomAgentMessage::Custom { timestamp, .. } => *timestamp,
+        },
     }
-    None
+}
+
+/// Prefer the last valid assistant usage that still describes the current prefix.
+///
+/// A newer prefix message (e.g. compaction summary) with a later timestamp
+/// invalidates earlier assistant usage (#6464).
+fn get_last_assistant_usage_info(messages: &[AgentMessage]) -> Option<(Usage, usize)> {
+    let mut latest_prefix_timestamp = i64::MIN;
+    let mut usage_info: Option<(Usage, usize)> = None;
+
+    for (index, message) in messages.iter().enumerate() {
+        if let Some(usage) = get_assistant_usage(message) {
+            let ts = message_timestamp(message);
+            if ts >= latest_prefix_timestamp {
+                usage_info = Some((usage.clone(), index));
+            }
+        }
+        latest_prefix_timestamp = latest_prefix_timestamp.max(message_timestamp(message));
+    }
+
+    usage_info
 }
 
 /// Estimate context tokens for messages using provider usage when available.

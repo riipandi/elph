@@ -129,6 +129,7 @@ where
                         content: result.content,
                         details: result.details,
                         is_error: result.is_error,
+                        added_tool_names: result.added_tool_names,
                         terminate: result.terminate,
                     })
                 })

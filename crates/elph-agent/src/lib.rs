@@ -99,12 +99,14 @@ pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions, stream_proxy};
 pub use runtime::{block_on, try_block_on};
 pub use session::id::create_tsid;
 pub use session::{
-    BranchSummaryOptions, CustomMessageEntryBlock, CustomMessageEntryContent, EVENTS_FILE, ForkEntriesOptions,
-    ForkPosition, InMemorySessionCreateOptions, InMemorySessionOptions, InMemorySessionRepo, InMemorySessionStorage,
-    SESSION_TREE_MIGRATIONS, SUMMARY_FILE, Session, SessionContext, SessionDirCreateOptions, SessionDirListOptions,
+    BranchSummaryOptions, ContextEntryTransform, CustomEntryContextMessageProjector, CustomMessageEntryBlock,
+    CustomMessageEntryContent, EVENTS_FILE, ForkEntriesOptions, ForkPosition, InMemorySessionCreateOptions,
+    InMemorySessionOptions, InMemorySessionRepo, InMemorySessionStorage, SESSION_TREE_MIGRATIONS, SUMMARY_FILE,
+    Session, SessionContext, SessionContextBuildOptions, SessionDirCreateOptions, SessionDirListOptions,
     SessionDirMetadata, SessionDirRepo, SessionDirRepoCreateOptions, SessionDirStorage, SessionError, SessionErrorCode,
     SessionMetadata, SessionModelRef, SessionStorage, SessionTreeEntry, TursoSessionMetadata, TursoSessionStorage,
-    build_session_context, create_session_id, create_timestamp, get_entries_to_fork, load_session_metadata, to_session,
+    build_context_entries, build_session_context, build_session_context_with_options, create_session_id,
+    create_timestamp, default_context_entry_transform, get_entries_to_fork, load_session_metadata, to_session,
 };
 pub use skills::{
     LoadSkillsResult, LoadSourcedSkillsResult, SkillDiagnostic, SkillDiagnosticCode, SourcedSkill,

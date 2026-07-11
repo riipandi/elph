@@ -49,6 +49,7 @@ async fn main() -> anyhow::Result<()> {
                 model: "faux-1".into(),
                 response_model: None,
                 response_id: None,
+                diagnostics: None,
                 usage: elph_ai::Usage::default(),
                 stop_reason: elph_ai::StopReason::Stop,
                 error_message: None,

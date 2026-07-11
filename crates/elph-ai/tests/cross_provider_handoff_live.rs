@@ -110,6 +110,7 @@ async fn generate_fixture(pair: &ProviderPair) -> Option<Vec<Message>> {
         tool_name: tool_call.name.clone(),
         content: vec![elph_ai::types::ContentBlock::Text { text: "42".to_string() }],
         details: None,
+        added_tool_names: None,
         is_error: false,
         timestamp: 1,
     };

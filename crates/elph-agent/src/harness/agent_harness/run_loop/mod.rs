@@ -57,12 +57,13 @@ where
     }
 
     pub async fn wait_for_idle(&self) -> HarnessOpResult<()> {
+        // Do not `.await` another mutex while holding `active_run` — that stalls
+        // `finish_run` (same lock). `try_lock` is enough: only waiters touch idle_rx.
         let rx = {
             let guard = self.shared.active_run.lock().await;
-            if let Some(run) = guard.as_ref() {
-                run.idle_rx.lock().await.take()
-            } else {
-                None
+            match guard.as_ref() {
+                Some(run) => run.idle_rx.try_lock().ok().and_then(|mut slot| slot.take()),
+                None => None,
             }
         };
         if let Some(rx) = rx {

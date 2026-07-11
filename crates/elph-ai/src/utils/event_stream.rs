@@ -65,6 +65,8 @@ impl AssistantMessageEventStream {
                 output: 0.0,
                 cache_read: 0.0,
                 cache_write: 0.0,
+
+                tiers: None,
             },
             context_window: 0,
             max_tokens: 0,
@@ -164,6 +166,8 @@ impl AssistantMessageEventStream {
                     output: 0.0,
                     cache_read: 0.0,
                     cache_write: 0.0,
+
+                    tiers: None,
                 },
                 context_window: 0,
                 max_tokens: 0,
@@ -292,6 +296,8 @@ mod tests {
                 output: 0.0,
                 cache_read: 0.0,
                 cache_write: 0.0,
+
+                tiers: None,
             },
             context_window: 128_000,
             max_tokens: 16_384,

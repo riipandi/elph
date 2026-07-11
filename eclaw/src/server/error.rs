@@ -42,6 +42,10 @@ pub enum AppError {
     Internal(String),
 }
 
+// AppError variants/helpers are reserved for handler Result<T, AppError> wiring;
+// the type is currently unused so rustc treats private methods as dead even when
+// referenced from IntoResponse.
+#[allow(dead_code, reason = "reserved AppError API until handlers return AppError")]
 impl AppError {
     fn status(&self) -> StatusCode {
         match self {
@@ -60,7 +64,8 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        ErrorResponse::new(self.status(), self.message()).into_response(self.status())
+        let status = self.status();
+        ErrorResponse::new(status, self.message()).into_response(status)
     }
 }
 

@@ -23,6 +23,7 @@ fn empty_output(model: &elph_ai::types::Model) -> AssistantMessage {
         api: model.api.clone(),
         provider: model.provider.clone(),
         model: model.id.clone(),
+        diagnostics: None,
         usage: Usage::default(),
         stop_reason: StopReason::Stop,
         timestamp: 0,

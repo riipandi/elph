@@ -123,6 +123,9 @@ fn apply_after_tool_call(executed: &mut ExecutedToolCallOutcome, after: AfterToo
     if let Some(is_error) = after.is_error {
         executed.is_error = is_error;
     }
+    if let Some(names) = after.added_tool_names {
+        executed.result.added_tool_names = Some(names);
+    }
     if let Some(terminate) = after.terminate {
         executed.result.terminate = Some(terminate);
     }

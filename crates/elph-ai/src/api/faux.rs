@@ -99,6 +99,8 @@ impl FauxCore {
                     output: 0.0,
                     cache_read: 0.0,
                     cache_write: 0.0,
+
+                    tiers: None,
                 },
                 context_window: d.context_window.unwrap_or(128_000),
                 max_tokens: d.max_tokens.unwrap_or(16_384),
@@ -270,6 +272,8 @@ pub fn faux_assistant_message(
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 16_384,

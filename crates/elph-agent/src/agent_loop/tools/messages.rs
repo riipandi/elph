@@ -36,6 +36,7 @@ pub(super) fn create_tool_result_message(finalized: &FinalizedToolCall) -> Messa
         tool_name: finalized.tool_call.name.clone(),
         content,
         details: Some(finalized.result.details.clone()),
+        added_tool_names: finalized.result.added_tool_names.clone(),
         is_error: finalized.is_error,
         timestamp: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

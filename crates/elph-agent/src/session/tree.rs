@@ -62,6 +62,17 @@ impl<S: SessionStorage> Session<S> {
         Ok(build_session_context(&self.branch(None).await?))
     }
 
+    /// Build context with pluggable entry transforms / custom-entry projectors.
+    pub async fn build_context_with_options(
+        &self,
+        options: &crate::session::context::SessionContextBuildOptions,
+    ) -> Result<SessionContext, SessionError> {
+        Ok(crate::session::context::build_session_context_with_options(
+            &self.branch(None).await?,
+            options,
+        ))
+    }
+
     pub async fn label(&self, id: &str) -> Option<String> {
         self.storage.get_label(id).await
     }

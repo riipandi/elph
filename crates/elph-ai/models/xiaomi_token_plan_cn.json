@@ -1,25 +1,4 @@
 {
-    "mimo-v2-omni": {
-        "api": "openai-completions",
-        "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
-        "compat": {
-            "requiresReasoningContentOnAssistantMessages": true,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0.0028,
-            "cacheWrite": 0,
-            "input": 0.14,
-            "output": 0.28
-        },
-        "id": "mimo-v2-omni",
-        "input": ["text", "image"],
-        "maxTokens": 131072,
-        "name": "MiMo-V2-Omni",
-        "provider": "xiaomi-token-plan-cn",
-        "reasoning": true
-    },
     "mimo-v2-pro": {
         "api": "openai-completions",
         "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
@@ -29,10 +8,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0036,
+            "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0,
+            "output": 0
         },
         "id": "mimo-v2-pro",
         "input": ["text"],
@@ -50,10 +29,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0028,
+            "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.14,
-            "output": 0.28
+            "input": 0,
+            "output": 0
         },
         "id": "mimo-v2.5",
         "input": ["text", "image"],
@@ -71,36 +50,15 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0036,
+            "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.435,
-            "output": 0.87
+            "input": 0,
+            "output": 0
         },
         "id": "mimo-v2.5-pro",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5-Pro",
-        "provider": "xiaomi-token-plan-cn",
-        "reasoning": true
-    },
-    "mimo-v2.5-pro-ultraspeed": {
-        "api": "openai-completions",
-        "baseUrl": "https://token-plan-cn.xiaomimimo.com/v1",
-        "compat": {
-            "requiresReasoningContentOnAssistantMessages": true,
-            "thinkingFormat": "deepseek"
-        },
-        "contextWindow": 1048576,
-        "cost": {
-            "cacheRead": 0.0108,
-            "cacheWrite": 0,
-            "input": 1.305,
-            "output": 2.61
-        },
-        "id": "mimo-v2.5-pro-ultraspeed",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "MiMo-V2.5-Pro-UltraSpeed",
         "provider": "xiaomi-token-plan-cn",
         "reasoning": true
     }

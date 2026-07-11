@@ -1,3 +1,5 @@
+pub mod deferred_tools;
+pub mod diagnostics;
 pub mod error_body;
 pub mod estimate;
 pub mod event_stream;

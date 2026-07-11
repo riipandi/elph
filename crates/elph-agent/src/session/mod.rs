@@ -15,7 +15,10 @@ pub use backends::{
     InMemorySessionOptions, InMemorySessionStorage, SessionDirCreateOptions, SessionDirStorage, TursoSessionStorage,
     load_session_metadata,
 };
-pub use context::build_session_context;
+pub use context::{
+    ContextEntryTransform, CustomEntryContextMessageProjector, SessionContextBuildOptions, build_context_entries,
+    build_session_context, build_session_context_with_options, default_context_entry_transform,
+};
 pub use migrations::SESSION_TREE_MIGRATIONS;
 pub use repo::{
     InMemorySessionCreateOptions, InMemorySessionRepo, SessionDirListOptions, SessionDirRepo,

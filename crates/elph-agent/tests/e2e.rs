@@ -611,6 +611,7 @@ async fn agent_continue_from_tool_result_processes_results() {
                         text: "5 + 3 = 8".into(),
                     }],
                     details: None,
+                    added_tool_names: None,
                     is_error: false,
                     timestamp: 0,
                 }),

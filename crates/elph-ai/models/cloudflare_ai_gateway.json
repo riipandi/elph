@@ -140,6 +140,7 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "off": null,
             "xhigh": "xhigh"
         }
@@ -245,7 +246,7 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "xhigh": "max"
+            "max": "max"
         }
     },
     "claude-opus-4-7": {
@@ -270,6 +271,7 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -295,6 +297,7 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "max": "max",
             "xhigh": "xhigh"
         }
     },
@@ -357,7 +360,10 @@
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max"
+        }
     },
     "claude-sonnet-5": {
         "api": "anthropic-messages",
@@ -378,7 +384,11 @@
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "gpt-4": {
         "api": "openai-responses",

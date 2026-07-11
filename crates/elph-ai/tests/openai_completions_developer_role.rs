@@ -33,6 +33,7 @@ fn reasoning_content_on_assistant_messages_when_required() {
             api: model.api.clone(),
             provider: model.provider.clone(),
             model: model.id.clone(),
+            diagnostics: None,
             usage: Default::default(),
             stop_reason: StopReason::Stop,
             timestamp: 0,

@@ -79,6 +79,7 @@ async fn execute_grep(
                 "linesTruncated": false,
                 "truncated": false
             }),
+            added_tool_names: None,
             terminate: None,
         });
     }
@@ -124,6 +125,7 @@ async fn execute_grep(
             "linesTruncated": lines_truncated,
             "truncated": truncation.truncated
         }),
+        added_tool_names: None,
         terminate: None,
     })
 }

@@ -364,6 +364,7 @@ fn find_cut_point_and_turn_start_edge_cases() {
                 text: "tool output".to_string(),
             }],
             details: None,
+            added_tool_names: None,
             is_error: false,
             timestamp: 0,
         })),
@@ -424,6 +425,7 @@ fn estimate_tokens_across_supported_message_roles() {
             },
         ],
         details: None,
+        added_tool_names: None,
         is_error: false,
         timestamp: 0,
     }));
@@ -729,6 +731,7 @@ fn serialize_conversation_formats_roles() {
                 text: "done".to_string(),
             }],
             details: None,
+            added_tool_names: None,
             is_error: false,
             timestamp: 0,
         },
@@ -747,6 +750,7 @@ fn serialize_conversation_truncates_long_tool_results() {
         tool_name: "read".to_string(),
         content: vec![ContentBlock::Text { text: long_content }],
         details: None,
+        added_tool_names: None,
         is_error: false,
         timestamp: 0,
     }];

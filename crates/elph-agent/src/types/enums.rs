@@ -31,6 +31,7 @@ pub enum AgentThinkingLevel {
     Medium,
     High,
     Xhigh,
+    Max,
 }
 
 impl AgentThinkingLevel {
@@ -42,6 +43,7 @@ impl AgentThinkingLevel {
             Self::Medium => Some(ThinkingLevel::Medium),
             Self::High => Some(ThinkingLevel::High),
             Self::Xhigh => Some(ThinkingLevel::Xhigh),
+            Self::Max => Some(ThinkingLevel::Max),
         }
     }
 }

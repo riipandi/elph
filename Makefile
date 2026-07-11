@@ -1,18 +1,20 @@
 .DEFAULT_GOAL := help
 
-ELPH_BIN     := elph
-ECLAW_BIN    := eclaw
-OWLY_BIN     := owly
-CARGO        := $$(which cargo)
-CROSS        := $$(which cross)
+ELPH_BIN   := elph
+ECLAW_BIN  := eclaw
+OWLY_BIN   := owly
+CARGO      := $$(which cargo)
+CROSS      := $$(which cross)
+PNPM       := $$(which pnpm)
+
 ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 ECLAW_VERSION := $(shell grep '^version' eclaw/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 OWLY_VERSION  := $(shell grep '^version' owly/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
-BUILD_HASH   := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
-APP_BINS     := $(ELPH_BIN) $(ECLAW_BIN) $(OWLY_BIN)
-INSTALL_DIR  := $(HOME)/.local/bin
-BUILD_DIR    := ./target/release
-APP          ?=
+BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
+APP_BINS      := $(ELPH_BIN) $(ECLAW_BIN) $(OWLY_BIN)
+INSTALL_DIR   := $(HOME)/.local/bin
+BUILD_DIR     := ./target/release
+APP           ?=
 
 _ELPH_PKGS   := elph elph-core elph-agent elph-ai elph-tui
 _ECLAW_PKGS  := eclaw elph-core elph-agent elph-ai
@@ -50,7 +52,7 @@ $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
 check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
-	@$(CARGO) bloat --release -n 50
+	# @$(CARGO) bloat --release -n 50
 
 build: ## Build all application binaries (elph + eclaw + owly)
 	@echo "Building elph v$(ELPH_VERSION), eclaw v$(ECLAW_VERSION), owly v$(OWLY_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
@@ -174,9 +176,10 @@ lint-owly: ## Run clippy for owly and its workspace deps
 
 fmt: ## Format all code
 	@$(CARGO) fmt --all -- --style-edition 2024
+	@$(PNPM) dlx --silent oxfmt crates/elph-ai/models
 
-coverage: ## Run tests with coverage (requires tarpaulin)
-	@$(CARGO) tarpaulin --workspace 2>&1
+coverage: ## Run tests with coverage (requires cargo-llvm-cov)
+	@$(CARGO) llvm-cov nextest --no-cfg-coverage 2>&1
 
 stats: ## Show sccache stats and code line count
 	@tokei .
@@ -196,7 +199,7 @@ prepare: ## Install required toolchain
 	@command -v cargo-binstall >/dev/null 2>&1 || $(CARGO) install cargo-binstall --locked
 	@command -v cargo-bloat >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-bloat
 	@command -v cargo-nextest >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-nextest
-	@command -v cargo-tarpaulin >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-tarpaulin
+	@command -v cargo-llvm-cov >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-llvm-cov
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
 	@command -v sccache >/dev/null 2>&1 || $(CARGO) binstall --locked -y sccache

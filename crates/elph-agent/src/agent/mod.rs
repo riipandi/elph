@@ -238,12 +238,12 @@ impl Agent {
     }
 
     pub async fn wait_for_idle(&self) {
+        // Avoid nested mutex await while holding `active_run` (can stall finish_run).
         let rx = {
             let guard = self.active_run.lock().await;
-            if let Some(run) = guard.as_ref() {
-                run.idle_rx.lock().await.take()
-            } else {
-                None
+            match guard.as_ref() {
+                Some(run) => run.idle_rx.try_lock().ok().and_then(|mut slot| slot.take()),
+                None => None,
             }
         };
         if let Some(rx) = rx {

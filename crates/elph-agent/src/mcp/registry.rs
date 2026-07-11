@@ -190,6 +190,7 @@ fn mcp_result_to_agent(result: CallToolResult) -> AgentToolResult {
             "structured_content": result.structured_content,
             "is_error": is_error,
         }),
+        added_tool_names: None,
         terminate: None,
     };
     if is_error {

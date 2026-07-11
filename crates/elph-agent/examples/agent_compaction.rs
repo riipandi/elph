@@ -46,6 +46,7 @@ fn create_long_conversation(turns: usize) -> Vec<AgentMessage> {
                 model: "faux-1".into(),
                 response_model: None,
                 response_id: None,
+                diagnostics: None,
                 usage: elph_ai::Usage {
                     input: 100 + i as u64 * 50,
                     output: 200 + i as u64 * 100,

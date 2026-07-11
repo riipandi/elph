@@ -12,10 +12,9 @@ use elph_ai::api::faux::{FauxModelDefinition, RegisterFauxProviderOptions};
 use elph_agent::session::types::SessionTreeEntry;
 use elph_agent::{
     AgentHarness, AgentHarnessErrorCode, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessOwnEvent,
-    AgentHarnessPhase, AgentHarnessResources, AgentThinkingLevel, AgentTool, BranchSummarySummary,
-    CustomMessageContent, InMemorySessionStorage, LocalExecutionEnv, NavigateTreeOptions, QueueMode, Session,
-    SessionBeforeTreeResult, Skill, SystemPrompt, ToolResultPatch, create_custom_message, llm_message_to_agent,
-    simple_tool,
+    AgentHarnessResources, AgentThinkingLevel, AgentTool, BranchSummarySummary, CustomMessageContent,
+    InMemorySessionStorage, LocalExecutionEnv, NavigateTreeOptions, QueueMode, Session, SessionBeforeTreeResult, Skill,
+    SystemPrompt, ToolResultPatch, create_custom_message, llm_message_to_agent, simple_tool,
 };
 use elph_ai::{
     ContentBlock, FauxResponseStep, Message, Models, StopReason, Tool, UserContent, builtin_models,
@@ -378,6 +377,7 @@ async fn harness_tool_result_hook_patches_output() {
                     ))]),
                     details: Some(json!({ "patched": true })),
                     is_error: None,
+                    added_tool_names: None,
                     terminate: Some(true),
                 })
             }
@@ -894,24 +894,30 @@ async fn harness_wait_for_idle_waits_for_async_subscribers() {
     ))]);
 
     let harness = Arc::new(make_harness(&faux, models, env, HarnessOptions::default()));
-    let barrier = Arc::new(tokio::sync::Mutex::new(None::<tokio::sync::oneshot::Receiver<()>>));
+    // Use a channel (not a mutex-guarded option) so the listener does not hold
+    // locks across the barrier await (edition 2024 temporary scopes).
     let (barrier_tx, barrier_rx) = tokio::sync::oneshot::channel::<()>();
-    *barrier.lock().await = Some(barrier_rx);
+    let barrier_rx = Arc::new(tokio::sync::Mutex::new(Some(barrier_rx)));
     let listener_waiting = Arc::new(AtomicBool::new(false));
     let listener_finished = Arc::new(AtomicBool::new(false));
 
-    let barrier_clone = barrier.clone();
+    let barrier_rx_clone = barrier_rx.clone();
     let listener_waiting_clone = listener_waiting.clone();
     let listener_finished_clone = listener_finished.clone();
     harness
         .subscribe(move |event, _| {
-            let barrier = barrier_clone.clone();
+            let barrier_rx = barrier_rx_clone.clone();
             let listener_waiting = listener_waiting_clone.clone();
             let listener_finished = listener_finished_clone.clone();
             async move {
-                if matches!(event, AgentHarnessEvent::Agent(elph_agent::AgentEvent::AgentEnd { .. }))
-                    && let Some(rx) = barrier.lock().await.take()
-                {
+                if !matches!(event, AgentHarnessEvent::Agent(elph_agent::AgentEvent::AgentEnd { .. })) {
+                    return;
+                }
+                let rx = {
+                    // Drop the mutex guard before awaiting the barrier.
+                    barrier_rx.lock().await.take()
+                };
+                if let Some(rx) = rx {
                     listener_waiting.store(true, Ordering::SeqCst);
                     let _ = rx.await;
                     listener_finished.store(true, Ordering::SeqCst);
@@ -923,9 +929,16 @@ async fn harness_wait_for_idle_waits_for_async_subscribers() {
     let harness_for_prompt = harness.clone();
     let prompt_task = tokio::spawn(async move { harness_for_prompt.prompt("hello", None).await });
 
-    while harness.phase().await == AgentHarnessPhase::Idle {
-        tokio::task::yield_now().await;
-    }
+    // AgentEnd sets phase=Idle *before* async subscribers finish. Do not spin on
+    // phase != Idle — that races and deadlocks when the run completes quickly.
+    // Wait until the AgentEnd subscriber is blocked on the barrier instead.
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !listener_waiting.load(Ordering::SeqCst) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("AgentEnd subscriber should block on barrier");
 
     let idle_resolved = Arc::new(AtomicBool::new(false));
     let idle_resolved_for_task = idle_resolved.clone();
@@ -935,10 +948,12 @@ async fn harness_wait_for_idle_waits_for_async_subscribers() {
         idle_resolved_for_task.store(true, Ordering::SeqCst);
     });
 
-    while !listener_waiting.load(Ordering::SeqCst) {
-        tokio::task::yield_now().await;
-    }
-    assert!(!idle_resolved.load(Ordering::SeqCst));
+    // Give wait_for_idle a chance to attach to the idle oneshot while the run is still open.
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    assert!(
+        !idle_resolved.load(Ordering::SeqCst),
+        "wait_for_idle must not resolve while AgentEnd subscribers are still running"
+    );
     assert!(!listener_finished.load(Ordering::SeqCst));
 
     barrier_tx.send(()).expect("release barrier");

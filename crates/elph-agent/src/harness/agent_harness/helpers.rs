@@ -33,6 +33,7 @@ pub(super) fn create_failure_message(model: &Model, error: &str, aborted: bool) 
         model: model.id.clone(),
         response_model: None,
         response_id: None,
+        diagnostics: None,
         usage: elph_ai::Usage::default(),
         stop_reason: if aborted {
             StopReason::Aborted
@@ -139,6 +140,7 @@ pub(super) fn thinking_level_to_session_string(level: AgentThinkingLevel) -> Str
         AgentThinkingLevel::Medium => "medium".to_string(),
         AgentThinkingLevel::High => "high".to_string(),
         AgentThinkingLevel::Xhigh => "xhigh".to_string(),
+        AgentThinkingLevel::Max => "max".to_string(),
     }
 }
 

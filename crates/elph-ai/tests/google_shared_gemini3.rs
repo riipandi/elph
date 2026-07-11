@@ -20,6 +20,8 @@ fn gemini_model(api: &str, provider: &str, id: &str) -> Model {
             output: 0.0,
             cache_read: 0.0,
             cache_write: 0.0,
+
+            tiers: None,
         },
         context_window: 128_000,
         max_tokens: 8192,
@@ -51,6 +53,7 @@ fn context_with_tool_calls(model: &Model, thought_signature: Option<&str>) -> Co
                 api: model.api.clone(),
                 provider: model.provider.clone(),
                 model: model.id.clone(),
+                diagnostics: None,
                 usage: Usage::default(),
                 stop_reason: StopReason::ToolUse,
                 timestamp: 1,
