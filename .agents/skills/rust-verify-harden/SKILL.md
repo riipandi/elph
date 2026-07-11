@@ -10,6 +10,10 @@ description: >-
 
 # Rust Verify & Harden
 
+## Language
+
+Write skill reports, summaries, and any documentation edits in **English**.
+
 ## Purpose
 
 Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper concurrency/memory safety + perf pass on the affected Rust code, applying contemporary idioms and patterns verified against live documentation.

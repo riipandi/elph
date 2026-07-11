@@ -2,6 +2,16 @@
 
 This repository uses documentation in the `/openwiki` directory as the primary source of truth.
 
+## Language
+
+Write **documentation**, **skills** (`.agents/skills`, OpenWiki, `docs/`), commit/PR prose when drafting, and agent reports in **English** (e.g. _behavior_, _serialize_, _catalog_).
+Keep code identifiers, paths, and upstream names literal. Match the user only if they explicitly request another language for the reply.
+
+## Readable docs and reports
+
+Prefer short prose, headings, and tagged bullets over wide markdown tables—especially for status, audits, gap lists, and porting notes under `docs/porting/`.
+Use a table only when a compact multi-axis comparison is clearly clearer than bullets.
+
 ## Getting Started
 
 - Read: [OpenWiki quickstart](openwiki/quickstart.md)
@@ -51,10 +61,11 @@ tests/
 - Avoid duplication between unit and integration tests.
 - Use clear, descriptive test names.
 
-
 <!-- openwiki-context -->
+
 ## OpenWiki Documentation
 
-When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`. Prefer those docs over re-exploring the entire codebase when they already answer the question.
+When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`.
+Prefer those docs over re-exploring the entire codebase when they already answer the question.
 
 Entry point: `openwiki/quickstart.md`.
