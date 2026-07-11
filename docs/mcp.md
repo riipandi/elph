@@ -15,6 +15,7 @@ Runtime loads **home**, then merges **project** on top (same server name → pro
 Policy maps are merged the same way as per-server policy overlays.
 
 Tool results are truncated (~32k chars per text block) before they enter the agent context.
+Optional [TOON prompt encoding](../crates/elph-agent/docs/prompt-encoding.md) can further compress large `structured_content` payloads (e.g. DeepWiki) in model-visible tool results when `ELPH_PROMPT_ENCODING=toon` or `auto`.
 OAuth tokens live in encrypted `auth.json` (`enc:…`); CLI never prints secrets.
 SSE remotes can use OAuth the same way as Streamable HTTP.
 

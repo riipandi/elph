@@ -62,8 +62,21 @@ Assembly order:
 3. Interactive tools: block until the user answers.
 4. Risky tools: approval dialog (unless brave / allow-for-session).
 5. Execute; stream shell output to the TUI when applicable.
-6. Append assistant + tool result messages to history.
-7. Repeat until no tool calls remain.
+6. Optionally rewrite structured tool output as [TOON](https://github.com/toon-format/toon) before the model sees it (`ELPH_PROMPT_ENCODING` or harness config; default `off`).
+7. Append assistant + tool result messages to history.
+8. Repeat until no tool calls remain.
+
+### TOON prompt encoding (optional)
+
+When enabled, the agent runtime may compress large JSON tool results (and MCP `structured_content`) into TOON fenced blocks in model-visible `content`. This reduces input tokens on tabular payloads; wire/API JSON is unchanged.
+
+| Mode   | Behavior                                              |
+| ------ | ----------------------------------------------------- |
+| `off`  | Default — tool results pass through unchanged         |
+| `toon` | Encode eligible JSON ≥ size threshold                 |
+| `auto` | Encode only uniform tabular JSON arrays               |
+
+Implementation and examples: [`elph-agent` prompt-encoding.md](../crates/elph-agent/docs/prompt-encoding.md).
 
 ### Exposure layers
 

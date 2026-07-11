@@ -24,7 +24,7 @@ status: published
 | [`eclaw`](../eclaw/README.md) | Cross-compilation and release tooling.                                                                                                                                                |
 | `elph-core`                   | Core library for agent data models and runtime primitives.                                                                                                                            |
 | `elph-ai`                     | LLM provider integration layer.                                                                                                                                                       |
-| `elph-agent`                  | Agent runtime and tool execution engine.                                                                                                                                              |
+| `elph-agent`                  | Agent runtime and tool execution engine (optional [TOON](prompt-encoding.md) prompt encoding for tool results).                                                                       |
 | `elph-swarm`                  | Multi-agent swarm coordination.                                                                                                                                                       |
 | `elph-tui`                    | Terminal UI components.                                                                                                                                                               |
 
@@ -210,7 +210,7 @@ cargo clippy -p owly --all-targets -- -D warnings
 
 ### Key Development Notes
 
-- **Agent runtime**: Uses `elph-agent` (not LangChain/LangGraph). Agent loop and tool execution are delegated to `elph-agent`.
+- **Agent runtime**: Uses `elph-agent` (not LangChain/LangGraph). Agent loop and tool execution are delegated to `elph-agent`. Optional TOON encoding for structured tool results via `ELPH_PROMPT_ENCODING` — see [prompt-encoding.md](prompt-encoding.md).
 - **LLM integration**: Uses `elph-ai` for provider abstraction. Model lookup goes through `builtin_models()`.
 - **Tools**: Init/update mode uses all tools (read, bash, edit, write, grep, find, ls). Chat mode uses read-only tools plus `ask_text`, `ask_select`, `ask_confirm` for interactive use.
 - **Interactive mode**: Running `owly` with no arguments starts a [tuie](https://crates.io/crates/tuie)-based shell via [`tui/mod.rs`](../owly/src/tui/mod.rs) — session persistence ([`session/mod.rs`](../owly/src/session/mod.rs)), first-run setup (`setup_tuie.rs`), and follow-up commands after init/update/chat. Keybindings: `Enter` send / queue, `Ctrl+Enter` steer while busy, `Esc` clear prompt, `Tab` cycle mode, `Shift+↑/↓` scroll transcript, `Shift+End` jump tail, `Ctrl+K` command palette, `Ctrl+S` toggle sidebar (wide terminals), `Ctrl+C` cancel. Shared widgets and chords live in [`elph-tui`](../crates/elph-tui/).
@@ -228,4 +228,5 @@ cargo clippy -p owly --all-targets -- -D warnings
 
 - [Architecture](architecture.md) — Deep dive into module structure and agent execution flow
 - [Configuration](configuration.md) — Supported providers, model selection, environment setup
+- [TOON prompt encoding](prompt-encoding.md) — Optional compression for structured tool results (`ELPH_PROMPT_ENCODING`)
 - [Elph design docs](../docs/) — product specs (behavior, UX, architecture); implementation detail stays in openwiki

@@ -63,13 +63,14 @@ tokio = { workspace = true, features = [
 ] }
 tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
+toon-format.workspace = true
 tracing.workspace = true
-wasmtime = { workspace = true, optional = true }
 tsid.workspace = true
 turso.workspace = true
 url.workspace = true
 urlencoding.workspace = true
 walkdir.workspace = true
+wasmtime = { workspace = true, optional = true }
 
 [[example]]
 name = "faux_agent"
@@ -130,6 +131,32 @@ path = "examples/agent_skills.rs"
 [[example]]
 name = "agent_skill_math"
 path = "examples/agent_skill_math.rs"
+
+[[example]]
+name = "toon_no_tools"
+path = "examples/toon_no_tools.rs"
+
+[[example]]
+name = "toon_tool_call"
+path = "examples/toon_tool_call.rs"
+
+[[example]]
+name = "toon_mcp_deepwiki"
+path = "examples/toon_mcp_deepwiki.rs"
+required-features = ["mcp"]
+
+[[example]]
+name = "default_no_tools"
+path = "examples/default_no_tools.rs"
+
+[[example]]
+name = "default_tool_call"
+path = "examples/default_tool_call.rs"
+
+[[example]]
+name = "default_mcp_deepwiki"
+path = "examples/default_mcp_deepwiki.rs"
+required-features = ["mcp"]
 
 [[example]]
 name = "mcp_deepwiki"

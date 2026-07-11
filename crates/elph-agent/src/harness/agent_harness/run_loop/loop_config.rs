@@ -9,6 +9,7 @@ use crate::harness::types::{
     ToolResultEvent, clone_stream_options,
 };
 use crate::mode::{plan_mode_block_reason, plan_mode_blocks_tool};
+use crate::runtime::prompt_encoding::PromptEncodingConfig;
 use crate::runtime::try_block_on;
 use crate::types::{
     AfterToolCallResult, AgentContext, AgentLoopConfig, AgentLoopTurnUpdate, AgentMessage, BeforeToolCallResult,
@@ -172,6 +173,7 @@ where
             before_tool_call,
             after_tool_call,
             stream_fn: Some(self.create_stream_fn(turn_state)),
+            prompt_encoding: PromptEncodingConfig::from_env(),
         }
     }
 

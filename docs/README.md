@@ -22,6 +22,7 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 | `elph` crate layout     | [codebase-layout.md](./codebase-layout.md)   |
 | Tool catalog            | [tools.md](./tools.md)                       |
 | Configuration & paths   | [configuration.md](./configuration.md)       |
+| TOON prompt encoding    | [agent-runtime.md](./agent-runtime.md#toon-prompt-encoding-optional) |
 | TUI & interaction       | [tui.md](./tui.md)                           |
 | Slash commands          | [slash-commands.md](./slash-commands.md)     |
 | Prompt templates        | [prompt-templates.md](./prompt-templates.md) |

@@ -62,6 +62,7 @@ pub fn base_loop_config(model: Model, stream_fn: elph_agent::StreamFn) -> elph_a
         before_tool_call: None,
         after_tool_call: None,
         stream_fn: Some(stream_fn),
+        prompt_encoding: Default::default(),
     }
 }
 

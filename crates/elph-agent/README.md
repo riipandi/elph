@@ -171,7 +171,7 @@ In parallel mode, tool completion events follow tool completion order, but persi
 
 The mode can be set globally via `tool_execution` in `AgentOptions`, or per-tool via `execution_mode` on `AgentTool`. If any tool call in a batch targets a tool with `execution_mode: Sequential`, the entire batch executes sequentially regardless of the global setting.
 
-The `before_tool_call` hook runs after `tool_execution_start` and validated argument parsing. It can block execution. The `after_tool_call` hook runs after tool execution finishes and before `tool_execution_end` and final tool result message events are emitted.
+The `before_tool_call` hook runs after `tool_execution_start` and validated argument parsing. It can block execution. The `after_tool_call` hook runs after tool execution finishes and before TOON prompt encoding (when enabled), `tool_execution_end`, and final tool result message events are emitted.
 
 Tools can also return `terminate: true` to hint that the automatic follow-up LLM call should be skipped. The loop only stops early when every finalized tool result in that batch sets `terminate: true`. Mixed batches continue normally.
 
@@ -265,6 +265,13 @@ let agent = Agent::new(AgentOptions {
     // Tool execution mode
     tool_execution: ToolExecutionMode::Parallel,
 
+    // Optional TOON encoding for tool results (default: Off, or ELPH_PROMPT_ENCODING)
+    prompt_encoding: Some(PromptEncodingConfig {
+        mode: PromptEncodingMode::Toon,
+        min_bytes: 2048,
+        ..PromptEncodingConfig::default()
+    }),
+
     // Preflight each tool call after args are validated
     before_tool_call: Some(before_tool_call_fn),
     after_tool_call: Some(after_tool_call_fn),
@@ -275,6 +282,24 @@ let agent = Agent::new(AgentOptions {
     ..Default::default()
 });
 ```
+
+## TOON prompt encoding
+
+Optional [TOON](https://github.com/toon-format/toon) encoding compresses structured JSON in **model-visible** tool results (and can be used manually in user prompts via `encode_value`). Enabled through `AgentOptions.prompt_encoding` or `ELPH_PROMPT_ENCODING` (`off` | `toon` | `auto`).
+
+```rust
+use elph_agent::{PromptEncodingConfig, PromptEncodingMode};
+
+let agent = Agent::new(AgentOptions {
+    prompt_encoding: Some(PromptEncodingConfig {
+        mode: PromptEncodingMode::Auto,
+        ..PromptEncodingConfig::default()
+    }),
+    ..Default::default()
+});
+```
+
+Encoding runs after `after_tool_call`, before tool results are sent to the LLM. MCP `structured_content` is supported. Details: [docs/prompt-encoding.md](./docs/prompt-encoding.md).
 
 ## Agent State
 
@@ -713,33 +738,45 @@ Your skill content here...
 
 ## Examples
 
-| Example                     | Description                                    |
-| --------------------------- | ---------------------------------------------- |
-| `basic_agent`               | Minimal `Agent` loop with the faux provider    |
-| `agent_skills`              | Comprehensive skills demo with all spec fields |
-| `agent_skill_math`          | Math expert skill with real AI model call      |
-| `opencode_big_pickle_agent` | OpenCode Zen `big-pickle` through `Agent`      |
+| Example | Description |
+| ------- | ----------- |
+| `basic_agent` | OpenCode Zen `big-pickle` through `Agent` |
+| `agent_skills` | Comprehensive skills demo with all spec fields |
+| `agent_skill_math` | Math expert skill with real AI model call |
+| `toon_no_tools` | TOON in user prompt (no tool calling) |
+| `toon_tool_call` | TOON on custom tool JSON results |
+| `toon_mcp_deepwiki` | TOON on DeepWiki MCP tool results |
+| `default_no_tools` | Baseline (encoding off) — pair with `toon_no_tools` |
+| `default_tool_call` | Baseline (encoding off) — pair with `toon_tool_call` |
+| `default_mcp_deepwiki` | Baseline (encoding off) — pair with `toon_mcp_deepwiki` |
 
 ```bash
+export OPENCODE_API_KEY="your-key"
+
 cargo run -p elph-agent --example basic_agent
-cargo run -p elph-agent --example agent_skills
-cargo run -p elph-agent --example agent_skill_math
-cargo run -p elph-agent --example opencode_big_pickle_agent -- --prompt "Hello!"
+cargo run -p elph-agent --example toon_tool_call
+cargo run -p elph-agent --example default_tool_call   # same prompt, compare tokens
+
+cargo run -p elph-agent --features mcp --example toon_mcp_deepwiki
 ```
+
+TOON comparison examples print a **Comparison summary** (tokens in/out, prompt bytes). Use identical flags on paired `toon_*` and `default_*` runs. See [docs/prompt-encoding.md](./docs/prompt-encoding.md).
 
 For provider-level OpenCode streaming (without the agent loop), see `elph-ai` example `opencode_big_pickle`.
 
 ## Documentation
 
-| Document                                        | Description                                    |
-| ----------------------------------------------- | ---------------------------------------------- |
-| [tools.md](./docs/tools.md)                     | Built-in tools, web search/fetch, `fff-search` |
-| [skills.md](./docs/skills.md)                   | Skills loading, validation, formatting         |
-| [agent-harness.md](./docs/agent-harness.md)     | Harness lifecycle, phases, save points         |
-| [hooks.md](./docs/hooks.md)                     | Hook design and mutation semantics             |
-| [models.md](./docs/models.md)                   | `elph_ai::Models` integration with harness     |
-| [durable-harness.md](./docs/durable-harness.md) | Semi-durable harness design (planned)          |
-| [observability.md](./docs/observability.md)     | Observability design notes (planned)           |
+| Document                                              | Description                                    |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| [tools.md](./docs/tools.md)                             | Built-in tools, web search/fetch, `fff-search` |
+| [prompt-encoding.md](./docs/prompt-encoding.md)         | TOON encoding for tool results and prompts     |
+| [skills.md](./docs/skills.md)                         | Skills loading, validation, formatting         |
+| [mcp.md](./docs/mcp.md)                               | MCP client, tool naming, DeepWiki              |
+| [agent-harness.md](./docs/agent-harness.md)           | Harness lifecycle, phases, save points         |
+| [hooks.md](./docs/hooks.md)                           | Hook design and mutation semantics             |
+| [models.md](./docs/models.md)                         | `elph_ai::Models` integration with harness     |
+| [durable-harness.md](./docs/durable-harness.md)       | Semi-durable harness design (planned)          |
+| [observability.md](./docs/observability.md)           | Observability design notes (planned)           |
 
 Full `elph-ai` provider architecture is documented in the [`elph-ai`](../elph-ai) crate.
 

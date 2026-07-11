@@ -15,6 +15,7 @@ use tokio::sync::{Mutex, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use crate::messages::default_convert_to_llm_fn;
+use crate::runtime::prompt_encoding::PromptEncodingConfig;
 use crate::types::{
     AgentEvent, AgentMessage, AgentState, AgentThinkingLevel, ConvertToLlmFn, QueueMode, StreamFn, ToolExecutionMode,
 };
@@ -70,6 +71,7 @@ pub struct AgentOptions {
     pub transport: Option<Transport>,
     pub max_retry_delay_ms: Option<u64>,
     pub tool_execution: ToolExecutionMode,
+    pub prompt_encoding: Option<PromptEncodingConfig>,
 }
 
 struct ActiveRun {
@@ -99,6 +101,7 @@ pub struct Agent {
     transport: Transport,
     max_retry_delay_ms: Option<u64>,
     tool_execution: ToolExecutionMode,
+    prompt_encoding: PromptEncodingConfig,
     active_run: Mutex<Option<ActiveRun>>,
     skip_initial_steering: Arc<std::sync::atomic::AtomicBool>,
 }
@@ -129,6 +132,7 @@ impl Agent {
             transport: options.transport.unwrap_or(Transport::Auto),
             max_retry_delay_ms: options.max_retry_delay_ms,
             tool_execution: options.tool_execution,
+            prompt_encoding: options.prompt_encoding.unwrap_or_else(PromptEncodingConfig::from_env),
             active_run: Mutex::new(None),
             skip_initial_steering: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }

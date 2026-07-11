@@ -13,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 use super::enums::{AgentThinkingLevel, ToolExecutionMode};
 use super::messages::AgentMessage;
 use super::tools::{AgentTool, AgentToolResult, ToolResultContent};
+use crate::runtime::prompt_encoding::PromptEncodingConfig;
 
 pub type StreamFn =
     Arc<dyn Fn(&Model, &elph_ai::Context, Option<SimpleStreamOptions>) -> AssistantMessageEventStream + Send + Sync>;
@@ -139,6 +140,7 @@ pub struct AgentLoopConfig {
     pub before_tool_call: Option<BeforeToolCallFn>,
     pub after_tool_call: Option<AfterToolCallFn>,
     pub stream_fn: Option<StreamFn>,
+    pub prompt_encoding: PromptEncodingConfig,
 }
 
 #[derive(Debug, Clone)]

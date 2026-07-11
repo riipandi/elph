@@ -5,6 +5,7 @@ use std::sync::Arc;
 use elph_ai::AssistantMessage;
 use tokio_util::sync::CancellationToken;
 
+use crate::runtime::prompt_encoding::{PromptEncodingConfig, apply_to_tool_result};
 use crate::types::{AfterToolCallContext, AfterToolCallResult, AgentContext, AgentLoopConfig, AgentToolResult};
 
 use super::{ExecutedToolCallOutcome, FinalizedToolCall, PreparedToolCall};
@@ -69,6 +70,7 @@ pub(super) async fn finalize_executed_tool_call(
         prepared,
         executed,
         config.after_tool_call.clone(),
+        config.prompt_encoding.clone(),
         signal,
     )
     .await
@@ -80,6 +82,7 @@ pub(super) async fn finalize_executed_tool_call_with_hook(
     prepared: &PreparedToolCall,
     mut executed: ExecutedToolCallOutcome,
     after_hook: Option<crate::types::AfterToolCallFn>,
+    prompt_encoding: PromptEncodingConfig,
     signal: Option<CancellationToken>,
 ) -> FinalizedToolCall {
     if let Some(after) = after_hook
@@ -92,11 +95,15 @@ pub(super) async fn finalize_executed_tool_call_with_hook(
                 is_error: executed.is_error,
                 context: current_context.clone(),
             },
-            signal,
+            signal.clone(),
         )
         .await
     {
         apply_after_tool_call(&mut executed, after_result);
+    }
+
+    if prompt_encoding.is_enabled() {
+        apply_to_tool_result(&mut executed.result, &prompt_encoding);
     }
 
     FinalizedToolCall {

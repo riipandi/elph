@@ -59,9 +59,10 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 | `ELPH_PROVIDERS_DIR` | Override `providers/`      |
 | `ELPH_PROMPTS_DIR`   | Override global `prompts/` |
 | `ELPH_SKILLS_DIR`    | Override global `skills/`  |
-| `ELPH_PROVIDER`      | Force provider id          |
-| `ELPH_MODEL`         | Force model id             |
-| `ELPH_QUIET`         | Suppress bootstrap output  |
+| `ELPH_PROVIDER`          | Force provider id                                      |
+| `ELPH_MODEL`             | Force model id                                         |
+| `ELPH_PROMPT_ENCODING`   | Tool-result prompt encoding: `off`, `toon`, or `auto`  |
+| `ELPH_QUIET`             | Suppress bootstrap output                              |
 
 Provider JSON may reference API keys via `env.VAR`, `$VAR`, `${VAR}`, `!shell-command`, or literals.
 

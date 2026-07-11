@@ -113,6 +113,7 @@ pub(super) async fn execute_tool_calls_parallel(
                 let current_context = current_context.clone();
                 let assistant_message = assistant_message.clone();
                 let config_hooks = config.after_tool_call.clone();
+                let prompt_encoding = config.prompt_encoding.clone();
                 entries.push(Entry::Deferred(Box::pin(async move {
                     let executed = execute_prepared_tool_call(prepared.as_ref(), signal.clone(), &emit).await;
                     finalize_executed_tool_call_with_hook(
@@ -121,6 +122,7 @@ pub(super) async fn execute_tool_calls_parallel(
                         prepared.as_ref(),
                         executed,
                         config_hooks,
+                        prompt_encoding,
                         signal,
                     )
                     .await

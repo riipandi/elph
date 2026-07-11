@@ -161,7 +161,7 @@ The core integration with `elph-agent` and `elph-ai`. Key functions live across 
 
 - **`resolve_model_and_auth()`** — Extracted helper that resolves the model from config, obtains authentication, and returns the model handle, models arc, and stream function.
 - **`create_event_subscriber()`** — Extracted factory that returns an `AgentListener` closure for streaming display. Controls spinner, text deltas, thinking deltas, and tool call logging based on `stream` and `verbose` flags.
-- **`run_agent()`** — Accepts a `RunAgentOptions` struct. Sets up the agent with tools, subscribes to streaming events, sends prompts, waits for completion, saves session messages, detects docs changes, and returns a `RunAgentResult`.
+- **`run_agent()`** — Accepts a `RunAgentOptions` struct. Sets up the agent with tools, subscribes to streaming events, sends prompts, waits for completion, saves session messages, detects docs changes, and returns a `RunAgentResult`. Tool results pass through `elph-agent` prompt encoding when `ELPH_PROMPT_ENCODING` is set (default `off`).
 - **`prepare_init_command()`** — Creates system prompt + init user prompt.
 - **`prepare_update_command()`** — Creates system prompt + update user prompt (includes git summary).
 - **`prepare_chat_command()`** — Creates system prompt + chat user prompt.
@@ -193,6 +193,18 @@ The tool names are appended to the system prompt after tool selection, forming a
 - `AgentEnd` — final stats (tool call count)
 
 **Source:** [`owly/src/agent/mod.rs`](../owly/src/agent/mod.rs), [`run.rs`](../owly/src/agent/run.rs) (execution loop), [`listeners.rs`](../owly/src/agent/listeners.rs) (event subscriptions), [`tools.rs`](../owly/src/agent/tools.rs) (tool setup), [`commands.rs`](../owly/src/agent/commands.rs) (prompt helpers), [`model.rs`](../owly/src/agent/model.rs) (model resolution) — ported from OpenWiki `src/agent/index.ts`.
+
+#### TOON prompt encoding (optional)
+
+After a tool finishes, `elph-agent` may rewrite large JSON tool output as [TOON](https://github.com/toon-format/toon) before the model sees it. Encoding runs **after** `after_tool_call` and **before** `ToolExecutionEnd` is emitted. Owly does not set this in code — enable with `ELPH_PROMPT_ENCODING=toon` or `auto` in the environment or `~/.owly/.env`.
+
+| Mode | Effect |
+| ---- | ------ |
+| `off` | Default — unchanged tool results |
+| `toon` | Encode eligible JSON ≥ size threshold |
+| `auto` | Tabular JSON arrays only |
+
+Full reference: [prompt-encoding.md](prompt-encoding.md), implementation in [`crates/elph-agent/src/runtime/prompt_encoding/`](../crates/elph-agent/src/runtime/prompt_encoding/).
 
 ### 5. Prompt Generation — [`prompts.rs`](../owly/src/prompts.rs)
 

@@ -191,6 +191,7 @@ impl Agent {
             before_tool_call: self.before_tool_call.clone(),
             after_tool_call: self.after_tool_call.clone(),
             stream_fn: Some(self.stream_fn.clone()),
+            prompt_encoding: self.prompt_encoding.clone(),
         }
     }
 

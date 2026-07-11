@@ -1,3 +1,9 @@
+pub mod prompt_encoding;
+
+pub use prompt_encoding::{
+    PromptEncodingConfig, PromptEncodingMode, PromptEncodingTargets, apply_to_tool_result, encode_value,
+};
+
 use std::future::Future;
 
 use anyhow::Result;

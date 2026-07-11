@@ -112,6 +112,9 @@ pub use prompt::{
     substitute_args,
 };
 pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions, stream_proxy};
+pub use runtime::prompt_encoding::{
+    PromptEncodingConfig, PromptEncodingMode, PromptEncodingTargets, apply_to_tool_result, encode_value,
+};
 pub use runtime::{block_on, try_block_on};
 pub use session::id::create_tsid;
 pub use session::{
