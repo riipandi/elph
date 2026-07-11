@@ -2,10 +2,11 @@
 
 Tracking documents for how far the Rust crates lag (or lead) the TypeScript upstream [earendil-works/pi](https://github.com/earendil-works/pi).
 
-| Document                     | Upstream package                                   | Elph crate          |
-| ---------------------------- | -------------------------------------------------- | ------------------- |
-| [pi-ai.md](./pi-ai.md)       | `@earendil-works/pi-ai` (`packages/ai`)            | `crates/elph-ai`    |
-| [pi-agent.md](./pi-agent.md) | `@earendil-works/pi-agent-core` (`packages/agent`) | `crates/elph-agent` |
+| Document                                   | Upstream package                                            | Elph crate                  |
+| ------------------------------------------ | ----------------------------------------------------------- | --------------------------- |
+| [pi-ai.md](./pi-ai.md)                     | `@earendil-works/pi-ai` (`packages/ai`)                     | `crates/elph-ai`            |
+| [pi-agent.md](./pi-agent.md)               | `@earendil-works/pi-agent-core` (`packages/agent`)          | `crates/elph-agent`         |
+| [pi-coding-agent.md](./pi-coding-agent.md) | `@earendil-works/pi-coding-agent` (`packages/coding-agent`) | `elph/` (product CLI + TUI) |
 
 ## Why these docs exist
 
@@ -17,16 +18,17 @@ Mainstream pi moves quickly (model catalogs, provider fixes, agent-loop behavior
 
 ## Baseline snapshot
 
-| Field                        | Value                                                      |
-| ---------------------------- | ---------------------------------------------------------- |
-| **Documented at**            | 2026-07-11T11:23:28Z                                       |
-| **Local timezone note**      | 2026-07-11 18:23 WIB                                       |
-| **Upstream repo**            | https://github.com/earendil-works/pi                       |
-| **Local clone (analysis)**   | `/Users/ariss/Developer/github.com/earendil-works/pi`      |
-| **Upstream commit**          | `4c18610` (`docs: audit unreleased changelogs`)            |
-| **Upstream package version** | `0.80.6` (released 2026-07-09) + **Unreleased** on `main`  |
-| **Mapping**                  | `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent` |
-| **Last implementation pass** | 2026-07-11 — Sprints 1–4 landed                            |
+| Field                        | Value                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| **Documented at**            | 2026-07-11T11:23:28Z                                                                          |
+| **Local timezone note**      | 2026-07-11 18:23 WIB                                                                          |
+| **Upstream repo**            | https://github.com/earendil-works/pi                                                          |
+| **Local clone (analysis)**   | `/Users/ariss/Developer/github.com/earendil-works/pi`                                         |
+| **Upstream commit**          | `4c18610` (`docs: audit unreleased changelogs`)                                               |
+| **Upstream package version** | `0.80.6` (released 2026-07-09) + **Unreleased** on `main`                                     |
+| **Mapping**                  | `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/` |
+| **Last implementation pass** | 2026-07-11 — library Sprints 1–4 landed (`elph-ai` / `elph-agent`)                            |
+| **Last product gap audit**   | 2026-07-11T12:14:13Z — `pi-coding-agent` vs `elph/` (docs only)                               |
 
 ## Status legend
 

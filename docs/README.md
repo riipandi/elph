@@ -15,32 +15,33 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 
 ## Design map
 
-| Topic                 | File                                         |
-| --------------------- | -------------------------------------------- |
-| Agent flow & sessions | [agent-runtime.md](./agent-runtime.md)       |
-| WASM extensions       | [extensions.md](./extensions.md)             |
-| `elph` crate layout   | [codebase-layout.md](./codebase-layout.md)   |
-| Tool catalog          | [tools.md](./tools.md)                       |
-| Configuration & paths | [configuration.md](./configuration.md)       |
-| TUI & interaction     | [tui.md](./tui.md)                           |
-| Slash commands        | [slash-commands.md](./slash-commands.md)     |
-| Prompt templates      | [prompt-templates.md](./prompt-templates.md) |
-| CLI surface           | [cli.md](./cli.md)                           |
-| Local development     | [development.md](./development.md)           |
-| Agent memory          | [memory.md](./memory.md)                     |
-| Dependency evaluation | [consideration.md](./consideration.md)       |
-| Platform limits       | [limitation.md](./limitation.md)             |
-| Pi → Elph port tracking | [porting/README.md](./porting/README.md)   |
+| Topic                   | File                                         |
+| ----------------------- | -------------------------------------------- |
+| Agent flow & sessions   | [agent-runtime.md](./agent-runtime.md)       |
+| WASM extensions         | [extensions.md](./extensions.md)             |
+| `elph` crate layout     | [codebase-layout.md](./codebase-layout.md)   |
+| Tool catalog            | [tools.md](./tools.md)                       |
+| Configuration & paths   | [configuration.md](./configuration.md)       |
+| TUI & interaction       | [tui.md](./tui.md)                           |
+| Slash commands          | [slash-commands.md](./slash-commands.md)     |
+| Prompt templates        | [prompt-templates.md](./prompt-templates.md) |
+| CLI surface             | [cli.md](./cli.md)                           |
+| Local development       | [development.md](./development.md)           |
+| Agent memory            | [memory.md](./memory.md)                     |
+| Dependency evaluation   | [consideration.md](./consideration.md)       |
+| Platform limits         | [limitation.md](./limitation.md)             |
+| Pi → Elph port tracking | [porting/README.md](./porting/README.md)     |
 
 ## Upstream port tracking
 
 Living **gap logs** for the TypeScript → Rust port (timestamps, pi vs elph matrices). Not product design specs — operational tracking for mainstream sync.
 
-| Upstream | Elph crate | Doc |
-| -------- | ---------- | --- |
-| `@earendil-works/pi-ai` | `elph-ai` | [porting/pi-ai.md](./porting/pi-ai.md) |
-| `@earendil-works/pi-agent-core` | `elph-agent` | [porting/pi-agent.md](./porting/pi-agent.md) |
-| Index + audit workflow | — | [porting/README.md](./porting/README.md) |
+| Upstream                          | Elph crate   | Doc                                                        |
+| --------------------------------- | ------------ | ---------------------------------------------------------- |
+| `@earendil-works/pi-ai`           | `elph-ai`    | [porting/pi-ai.md](./porting/pi-ai.md)                     |
+| `@earendil-works/pi-agent-core`   | `elph-agent` | [porting/pi-agent.md](./porting/pi-agent.md)               |
+| `@earendil-works/pi-coding-agent` | `elph/`      | [porting/pi-coding-agent.md](./porting/pi-coding-agent.md) |
+| Index + audit workflow            | —            | [porting/README.md](./porting/README.md)                   |
 
 ## Design principles
 
