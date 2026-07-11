@@ -30,6 +30,17 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 | Agent memory          | [memory.md](./memory.md)                     |
 | Dependency evaluation | [consideration.md](./consideration.md)       |
 | Platform limits       | [limitation.md](./limitation.md)             |
+| Pi → Elph port tracking | [porting/README.md](./porting/README.md)   |
+
+## Upstream port tracking
+
+Living **gap logs** for the TypeScript → Rust port (timestamps, pi vs elph matrices). Not product design specs — operational tracking for mainstream sync.
+
+| Upstream | Elph crate | Doc |
+| -------- | ---------- | --- |
+| `@earendil-works/pi-ai` | `elph-ai` | [porting/pi-ai.md](./porting/pi-ai.md) |
+| `@earendil-works/pi-agent-core` | `elph-agent` | [porting/pi-agent.md](./porting/pi-agent.md) |
+| Index + audit workflow | — | [porting/README.md](./porting/README.md) |
 
 ## Design principles
 
