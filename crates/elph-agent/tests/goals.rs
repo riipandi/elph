@@ -119,7 +119,7 @@ async fn goal_tools_round_trip() {
     let session_id = "sess_tools".to_string();
     let tools = create_goal_tools(store, session_id);
 
-    let create = tools.iter().find(|t| t.name() == "CreateGoal").expect("CreateGoal");
+    let create = tools.iter().find(|t| t.name() == "create_goal").expect("create_goal");
     let create_result = (create.execute)(
         "tc1".into(),
         json!({
@@ -134,7 +134,7 @@ async fn goal_tools_round_trip() {
     let create_text = tool_text(create_result);
     assert!(create_text.contains("Refactor module"));
 
-    let update = tools.iter().find(|t| t.name() == "UpdateGoal").expect("UpdateGoal");
+    let update = tools.iter().find(|t| t.name() == "update_goal").expect("update_goal");
     let update_result = (update.execute)("tc4".into(), json!({ "status": "blocked" }), None, None)
         .await
         .expect("update goal");

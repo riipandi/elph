@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 
 use elph_agent::{Agent, AgentOptions, LocalExecutionEnv, PartialAgentState, create_all_tools, create_read_only_tools};
 
-use crate::ask_user::{create_ask_confirm_tool, create_ask_select_tool, create_ask_text_tool};
+use crate::ask_user::{AskUserBridge, create_ask_tools};
 use crate::config::Config;
 use crate::docs::{self, DocumentationSnapshot};
 use crate::env;
@@ -81,9 +81,8 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
     };
 
     if command == "chat" {
-        agent_tools.push(create_ask_text_tool());
-        agent_tools.push(create_ask_select_tool());
-        agent_tools.push(create_ask_confirm_tool());
+        let ask_bridge = AskUserBridge::new(ui_events.clone());
+        agent_tools.extend(create_ask_tools(ask_bridge));
     }
 
     let tool_names_str = if command == "chat" {

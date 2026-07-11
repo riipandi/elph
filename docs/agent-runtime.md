@@ -190,10 +190,10 @@ Session objective with Codex-style lifecycle and budgets:
 | Status                      | Meaning                                                       |
 | --------------------------- | ------------------------------------------------------------- |
 | `active`                    | Turn accounting runs; continuation steering when still active |
-| `complete` / `blocked`      | Terminal; set via `UpdateGoal` or `/goal`                     |
+| `complete` / `blocked`      | Terminal; set via `update_goal` or `/goal`                    |
 | `paused` / `budget_limited` | Blocks turns until resume or budget extend                    |
 
-Tools: `CreateGoal`, `GetGoal`, `UpdateGoal`, `SetGoalBudget`. Slash: `/goal` (status, pause, resume, cancel, replace, create). `/goal next` — **planned** (queued goals).
+Tools: `create_goal`, `get_goal`, `update_goal`, `set_goal_budget`. Slash: `/goal` (status, pause, resume, cancel, replace, create). `/goal next` — **planned** (queued goals).
 
 Turn hooks: harness `start_turn` / `finish_turn` with token/wall-clock accounting.
 

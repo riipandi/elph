@@ -11,7 +11,7 @@ pub fn continuation_prompt(goal: &Goal) -> String {
          Tokens used: {} / {}\n\
          Wall clock ms: {} / {}\n\n\
          Make measurable progress toward completion. \
-         Call UpdateGoal with status \"complete\" when done, or \"blocked\" if stuck.",
+         Call update_goal with status \"complete\" when done, or \"blocked\" if stuck.",
         goal.objective,
         goal.status.as_str(),
         goal.turns_used,
@@ -30,8 +30,8 @@ pub fn budget_limit_prompt(goal: &Goal) -> String {
          Tokens used: {} / {}\n\
          Turns used: {} / {}\n\
          Wall clock ms: {} / {}\n\n\
-         Pause and ask the user to extend the budget via /goal or SetGoalBudget, \
-         or mark the goal complete/blocked with UpdateGoal.",
+         Pause and ask the user to extend the budget via /goal or set_goal_budget, \
+         or mark the goal complete/blocked with update_goal.",
         goal.objective,
         goal.tokens_used,
         display_budget(goal.token_budget),

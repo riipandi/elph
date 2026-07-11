@@ -16,11 +16,13 @@ use tokio::sync::mpsc;
 
 use crate::tui::setup::SetupWizardState;
 
+use super::ask::PendingAsk;
 use super::chat_stream::OwlyChatState;
 use super::context::AppContext;
 use super::entries::OwlyEntry;
 use super::launch::LaunchState;
 use super::static_flush::TranscriptFlushState;
+use crate::ui_events::AgentUiEvent;
 
 pub use run::run_shell;
 
@@ -50,6 +52,7 @@ pub struct OwlyApp {
     pub slash_palette: SlashPaletteState,
     pub(super) transcript_flush: TranscriptFlushState,
     pub(super) banner_emitted: bool,
+    pub(super) pending_ask: Option<PendingAsk>,
 }
 
 impl OwlyApp {
@@ -90,12 +93,64 @@ impl OwlyApp {
             slash_palette: SlashPaletteState::default(),
             transcript_flush: TranscriptFlushState::default(),
             banner_emitted: false,
+            pending_ask: None,
         }
+    }
+
+    pub(super) fn open_ask_prompt(
+        &mut self,
+        tool_call_id: String,
+        tool_name: String,
+        question: String,
+        kind: crate::ui_events::AskUserKind,
+        response_tx: tokio::sync::oneshot::Sender<crate::ui_events::AskUserResponse>,
+    ) {
+        let default_index = match &kind {
+            crate::ui_events::AskUserKind::Select { default_index, .. } => *default_index,
+            crate::ui_events::AskUserKind::Confirm { default } => {
+                if *default {
+                    0
+                } else {
+                    1
+                }
+            }
+            crate::ui_events::AskUserKind::Text { .. } => 0,
+        };
+        let pending = PendingAsk {
+            _tool_call_id: tool_call_id,
+            tool_name,
+            question,
+            kind,
+            response_tx,
+            selected: default_index,
+        };
+        pending.push_transcript_notice(&mut self.entries);
+        if let crate::ui_events::AskUserKind::Text { default: Some(default) } = &pending.kind
+            && !default.is_empty()
+        {
+            self.prompt.textarea.set_value(default);
+        }
+        self.pending_ask = Some(pending);
+    }
+
+    pub(super) fn clear_pending_ask(&mut self) {
+        self.pending_ask = None;
     }
 
     pub(super) fn handle_message(&mut self, message: events::AppMessage) {
         match message {
             events::AppMessage::UiEvent(event) => {
+                if let AgentUiEvent::AskUserRequired {
+                    tool_call_id,
+                    tool_name,
+                    question,
+                    kind,
+                    response_tx,
+                } = event
+                {
+                    self.open_ask_prompt(tool_call_id, tool_name, question, kind, response_tx);
+                    return;
+                }
                 let mut applier = super::transcript::TranscriptApplier::new(
                     &mut self.entries,
                     &mut self.live_tools,
@@ -107,6 +162,7 @@ impl OwlyApp {
                 self.running = false;
                 self.activity.clear();
                 self.live_tools.clear();
+                self.clear_pending_ask();
                 super::transcript::append_shell_lines(&mut self.entries, &lines);
                 if should_exit {
                     self.should_exit = true;
@@ -118,6 +174,7 @@ impl OwlyApp {
                 self.running = false;
                 self.activity.clear();
                 self.live_tools.clear();
+                self.clear_pending_ask();
                 elph_tui::push_capped(
                     &mut self.entries,
                     OwlyEntry::assistant(format!("Error: {err}")),

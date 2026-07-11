@@ -48,13 +48,13 @@ Plan mode is a **collaboration mode**, not a pair of tools. The host application
 
 Registered automatically on `AgentHarness` when all tools are active (empty `active_tool_names`). Omitted when the host passes an explicit active-tool list.
 
-| Tool           | Description                                      |
-| -------------- | ------------------------------------------------ |
-| `spawn_agent`  | Start a focused subagent in an isolated context  |
-| `send_message` | Queue a message on a subagent without a turn     |
-| `followup_task`| Send a message and run a subagent turn           |
-| `wait_agent`   | Block until a subagent reaches idle              |
-| `list_agents`  | List subagent id, task name, and status          |
+| Tool            | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `spawn_agent`   | Start a focused subagent in an isolated context |
+| `send_message`  | Queue a message on a subagent without a turn    |
+| `followup_task` | Send a message and run a subagent turn          |
+| `wait_agent`    | Block until a subagent reaches idle             |
+| `list_agents`   | List subagent id, task name, and status         |
 
 ## State management
 
@@ -66,12 +66,12 @@ Item statuses: `pending` / `in_progress` / `done`. All `done` → hide panel + s
 
 ## Goal tools
 
-| Tool          | Description                               |
-| ------------- | ----------------------------------------- |
-| CreateGoal    | Objective + optional completion criterion |
-| GetGoal       | Status, turns, tokens, budgets            |
-| UpdateGoal    | Lifecycle transitions                     |
-| SetGoalBudget | Token, turn, or time budget               |
+| Tool            | Description                               |
+| --------------- | ----------------------------------------- |
+| create_goal     | Objective + optional completion criterion |
+| get_goal        | Status, turns, tokens, budgets            |
+| update_goal     | Lifecycle transitions                     |
+| set_goal_budget | Token, turn, or time budget               |
 
 ## Collaboration
 
@@ -91,13 +91,13 @@ Only a catalog subset is sent to the model. Exposure requires:
 
 ### Exposure matrix (design)
 
-| Tool                                | Approval | API | Runtime          |
-| ----------------------------------- | -------- | --- | ---------------- |
-| Read, Grep, Glob, ReadMediaFile     | Auto     | Yes | Yes              |
-| WebSearch, AskUser, TodoList, Skill | Auto     | Yes | Yes              |
-| Write, Edit, Bash                   | Requires | Yes | Yes (+ approval) |
-| Goal tools                          | Auto     | Yes | Yes              |
-| FetchURL, CodeSearch                | Auto     | TBD | TBD              |
+| Tool                                | Approval | API | Runtime            |
+| ----------------------------------- | -------- | --- | ------------------ |
+| Read, Grep, Glob, ReadMediaFile     | Auto     | Yes | Yes                |
+| WebSearch, AskUser, TodoList, Skill | Auto     | Yes | Yes                |
+| Write, Edit, Bash                   | Requires | Yes | Yes (+ approval)   |
+| Goal tools                          | Auto     | Yes | Yes                |
+| FetchURL, CodeSearch                | Auto     | TBD | TBD                |
 | Multi-agent tools                   | Auto     | Yes | Yes (Default mode) |
 
 ## User approval

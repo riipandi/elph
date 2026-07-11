@@ -1,7 +1,11 @@
 use elph_agent::{AgentToolResult, ToolResultContent};
 
-pub(super) fn summarize_tool_args(args: &serde_json::Value) -> String {
-    args.to_string()
+pub(super) fn summarize_tool_args(tool_name: &str, args: &serde_json::Value) -> String {
+    if crate::ask_user::ASK_TOOL_NAMES.contains(&tool_name) {
+        crate::ask_user::format_args_summary(tool_name, args)
+    } else {
+        args.to_string()
+    }
 }
 
 pub(super) fn summarize_tool_result(result: &AgentToolResult) -> String {

@@ -18,7 +18,7 @@ pub use thread::{create_session_thread_id, interactive_config, is_ask_tool, tool
 pub use types::{CheckpointSummary, LoadedConversation, SessionRecovery, TurnWriteContext};
 
 /// Interactive tools that pause for human input (LangGraph interrupt/resume).
-pub const ASK_TOOL_NAMES: &[&str] = &["ask_text", "ask_select", "ask_confirm"];
+pub use crate::ask_user::ASK_TOOL_NAMES;
 
 /// LangGraph messages channel name.
 pub const MESSAGES_CHANNEL: &str = "messages";

@@ -40,7 +40,7 @@ pub fn is_mcp_tool(name: &str) -> bool {
 }
 
 pub fn is_goal_tool(name: &str) -> bool {
-    matches!(name, "CreateGoal" | "GetGoal" | "UpdateGoal" | "SetGoalBudget")
+    matches!(name, "create_goal" | "get_goal" | "update_goal" | "set_goal_budget")
 }
 
 pub fn is_plan_mode_tool(name: &str) -> bool {

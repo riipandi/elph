@@ -134,7 +134,7 @@ pub(super) fn create_checkpoint_write_subscriber(
                     args,
                     ..
                 } => {
-                    let args_summary = summarize_tool_args(&args);
+                    let args_summary = summarize_tool_args(&tool_name, &args);
                     tool_args
                         .lock()
                         .await
@@ -240,7 +240,7 @@ pub(super) fn create_tui_event_subscriber(
                 } => Some(AgentUiEvent::ToolStart {
                     id: tool_call_id.clone(),
                     name: tool_name.clone(),
-                    args_summary: summarize_tool_args(&args),
+                    args_summary: summarize_tool_args(&tool_name, &args),
                 }),
                 AgentEvent::ToolExecutionUpdate {
                     tool_call_id,

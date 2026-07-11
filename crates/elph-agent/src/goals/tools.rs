@@ -24,7 +24,7 @@ pub fn create_goal_tools(store: Arc<GoalStore>, session_id: String) -> Vec<Agent
 fn create_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
-            name: "CreateGoal".into(),
+            name: "create_goal".into(),
             description: "Create a session goal with an objective and optional budgets.".into(),
             parameters: json!({
                 "type": "object",
@@ -61,7 +61,7 @@ fn create_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
 fn get_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
-            name: "GetGoal".into(),
+            name: "get_goal".into(),
             description: "Get the current session goal status and remaining budgets.".into(),
             parameters: json!({
                 "type": "object",
@@ -76,7 +76,7 @@ fn get_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
 fn update_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
-            name: "UpdateGoal".into(),
+            name: "update_goal".into(),
             description: "Update the active goal status to complete or blocked.".into(),
             parameters: json!({
                 "type": "object",
@@ -98,7 +98,7 @@ fn update_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
 fn set_goal_budget_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
-            name: "SetGoalBudget".into(),
+            name: "set_goal_budget".into(),
             description: "Set token, turn, or wall-clock budget on the active goal.".into(),
             parameters: json!({
                 "type": "object",

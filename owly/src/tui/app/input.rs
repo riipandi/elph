@@ -5,6 +5,7 @@ use elph_tui::{
 use slt::Context;
 
 use super::OwlyApp;
+use crate::tui::ask::{AskModalAction, handle_ask_modal_keys, resolve_text_answer};
 use crate::tui::slash::normalize_dispatch_text;
 
 impl OwlyApp {
@@ -26,6 +27,27 @@ impl OwlyApp {
     }
 
     pub(super) fn handle_global_keys(&mut self, ui: &mut Context) {
+        if let Some(pending) = self.pending_ask.as_mut() {
+            if ui.raw_key_code(slt::KeyCode::Esc) {
+                if let Some(pending) = self.pending_ask.take() {
+                    pending.finish_cancelled();
+                    self.prompt.clear();
+                }
+                return;
+            }
+            if !pending.is_text() {
+                match handle_ask_modal_keys(ui, pending) {
+                    AskModalAction::Answered(answer) => {
+                        if let Some(pending) = self.pending_ask.take() {
+                            pending.finish_with_answer(answer);
+                        }
+                        return;
+                    }
+                    AskModalAction::None => return,
+                }
+            }
+        }
+
         if self.running {
             if consume_ctrl_char(ui, 'c') {
                 self.activity.request_cancel();
@@ -62,8 +84,20 @@ impl OwlyApp {
             }
         }
 
-        match handle_prompt_input(ui, &mut self.prompt, self.running) {
+        let awaiting_text_ask = self.pending_ask.as_ref().is_some_and(|pending| pending.is_text());
+
+        match handle_prompt_input(ui, &mut self.prompt, self.running || awaiting_text_ask) {
             PromptAction::Submit(text) => {
+                if let Some(pending) = self.pending_ask.take() {
+                    if pending.is_text() {
+                        let answer = resolve_text_answer(text, &pending.kind);
+                        pending.finish_with_answer(answer);
+                        self.prompt.clear();
+                        return;
+                    }
+                    // Non-text prompts use the modal; restore state if we got here unexpectedly.
+                    self.pending_ask = Some(pending);
+                }
                 if is_quit_command(&text) {
                     self.should_exit = true;
                     return;
@@ -97,6 +131,11 @@ impl OwlyApp {
     }
 
     pub(super) fn render_input(&mut self, ui: &mut Context) {
+        if let Some(pending) = self.pending_ask.as_ref()
+            && !pending.is_text()
+        {
+            crate::tui::ask::render_ask_modal(ui, pending, self.theme);
+        }
         self.handle_prompt(ui);
         render_prompt(
             ui,
