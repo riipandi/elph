@@ -737,10 +737,7 @@ mod tests {
 
     #[test]
     fn auth_store_path_helper() {
-        assert_eq!(
-            auth_store_path(Path::new("/tmp/cfg")),
-            PathBuf::from("/tmp/cfg/auth.json")
-        );
+        assert_eq!(auth_store_path(Path::new("/tmp/cfg")), PathBuf::from("/tmp/cfg/auth.json"));
     }
 
     #[tokio::test]
@@ -800,12 +797,7 @@ mod tests {
         }
 
         let file = AuthStoreFile::load_from_path(&path).await.unwrap();
-        assert_eq!(
-            file.mcp.len(),
-            12,
-            "lost entries under concurrent save: {:?}",
-            file.mcp.keys()
-        );
+        assert_eq!(file.mcp.len(), 12, "lost entries under concurrent save: {:?}", file.mcp.keys());
         for i in 0..12 {
             let store = FileCredentialStore::with_key(&path, format!("server-{i}"), key.clone());
             let loaded = store.load().await.unwrap().expect("entry present");

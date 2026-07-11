@@ -83,10 +83,7 @@ async fn github_copilot_to_auth_falls_back_to_enterprise_then_individual() {
     )
     .await
     .expect("auth");
-    assert_eq!(
-        enterprise.base_url.as_deref(),
-        Some("https://copilot-api.company.ghe.com")
-    );
+    assert_eq!(enterprise.base_url.as_deref(), Some("https://copilot-api.company.ghe.com"));
 
     let individual = oauth_provider_to_auth(
         "github-copilot",
@@ -102,10 +99,7 @@ async fn github_copilot_to_auth_falls_back_to_enterprise_then_individual() {
     )
     .await
     .expect("auth");
-    assert_eq!(
-        individual.base_url.as_deref(),
-        Some("https://api.individual.githubcopilot.com")
-    );
+    assert_eq!(individual.base_url.as_deref(), Some("https://api.individual.githubcopilot.com"));
 }
 
 #[test]

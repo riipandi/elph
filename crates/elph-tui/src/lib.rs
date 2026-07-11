@@ -30,7 +30,7 @@ pub use diff::{
     Text, TextBlock, apply_hardware_cursor, composite_line_at, compute_side_by_side, count_added_removed,
     detect_image_protocol, do_render, encode_inline_image, extract_and_strip_cursor, find_hunk_starts,
     first_changed_line, fuzzy_filter, fuzzy_match, hardware_cursor_enabled, hyperlink, match_editor_action,
-    open_tui_writer, png_dimensions, render_markdown_lines, resolve_layout,
+    open_tui_writer, png_dimensions, render_markdown_lines, render_streaming_markdown_lines, resolve_layout,
 };
 pub use keymap::{
     GlobalChordHandler, PromptSubmitMode, SIDEBAR_MIN_TOTAL_WIDTH, SIDEBAR_WIDTH, ShellAction, ShellActionSink,
@@ -42,8 +42,8 @@ pub use prompt::{
 pub use runtime::{configure_runtime, start_shell};
 pub use shell::{AgentShell, ShellChromeData, ShellHost};
 pub use widgets::{
-    CommandPaletteState, PromptPane, SidebarPlaceholder, TranscriptPane, build_activity_widget, build_footer_widget,
-    build_palette_widget, close_palette_popup, open_palette_popup, palette_visible,
+    CommandPaletteState, PromptPane, SidebarPlaceholder, StreamingText, TranscriptPane, build_activity_widget,
+    build_footer_widget, build_palette_widget, close_palette_popup, open_palette_popup, palette_visible,
 };
 
 pub use terminal::{SigintReceiver, disable_keyboard_enhancement, enable_keyboard_enhancement, sigint_channel};

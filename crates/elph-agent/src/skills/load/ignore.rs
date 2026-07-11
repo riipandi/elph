@@ -77,11 +77,7 @@ pub(super) async fn add_ignore_rules(
             if let Result::Err(error) = info
                 && error.code != FileErrorCode::NotFound
             {
-                diagnostics.push(diagnostic(
-                    SkillDiagnosticCode::FileInfoFailed,
-                    error.message,
-                    ignore_path,
-                ));
+                diagnostics.push(diagnostic(SkillDiagnosticCode::FileInfoFailed, error.message, ignore_path));
             }
             continue;
         };

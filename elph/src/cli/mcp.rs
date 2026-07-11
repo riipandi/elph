@@ -437,10 +437,7 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
             .map(|r| format!(" auth={}", r.status_label()))
             .unwrap_or_default();
         // Never print tokens/headers — only transport + status.
-        println!(
-            "{name}: {status} [{}] [{source}]{auth} — {}",
-            result.transport, result.message
-        );
+        println!("{name}: {status} [{}] [{source}]{auth} — {}", result.transport, result.message);
         if !result.ok {
             ok = false;
         }

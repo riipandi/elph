@@ -66,10 +66,7 @@ pub fn format_file_operations(read_files: &[String], modified_files: &[String]) 
         sections.push(format!("<read-files>\n{}\n</read-files>", read_files.join("\n")));
     }
     if !modified_files.is_empty() {
-        sections.push(format!(
-            "<modified-files>\n{}\n</modified-files>",
-            modified_files.join("\n")
-        ));
+        sections.push(format!("<modified-files>\n{}\n</modified-files>", modified_files.join("\n")));
     }
     if sections.is_empty() {
         String::new()

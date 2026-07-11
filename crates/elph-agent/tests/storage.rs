@@ -111,13 +111,7 @@ async fn in_memory_storage_maintains_label_lookup() {
     assert_eq!(storage.get_label("entry-1").await.as_deref(), Some("checkpoint"));
 
     storage
-        .append_entry(label_entry(
-            "label-2",
-            "label-1",
-            "entry-1",
-            None,
-            "2026-01-01T00:00:02.000Z",
-        ))
+        .append_entry(label_entry("label-2", "label-1", "entry-1", None, "2026-01-01T00:00:02.000Z"))
         .await
         .expect("clear label");
     assert!(storage.get_label("entry-1").await.is_none());

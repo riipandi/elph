@@ -94,7 +94,7 @@ impl ShellHost for OwlyShellHost {
     }
 
     fn transcript_lines(&self) -> Vec<String> {
-        self.with_app(|app| entries_to_lines(&app.entries, app.show_thinking, app.running))
+        self.with_app(|app| entries_to_lines(&app.entries, app.show_thinking, app.running, &app.live_tools))
     }
 
     fn on_shell_action(&mut self, action: ShellAction) {

@@ -103,10 +103,7 @@ async fn cmd_demo() -> anyhow::Result<()> {
         } else {
             enc.clone()
         };
-        println!(
-            "[{i}] plaintext  {:?}",
-            if plain.is_empty() { "(empty)" } else { plain }
-        );
+        println!("[{i}] plaintext  {:?}", if plain.is_empty() { "(empty)" } else { plain });
         println!("    ciphertext {preview}");
         println!("    prefix ok  {}", is_encrypted_value(&enc));
         println!("    roundtrip  ok");
@@ -140,9 +137,7 @@ fn parse_key_and_flag(args: &[String], value_flag: &str) -> anyhow::Result<(Path
         match args[i].as_str() {
             "--key" => {
                 i += 1;
-                key_path = Some(PathBuf::from(
-                    args.get(i).ok_or_else(|| anyhow::anyhow!("--key needs a path"))?,
-                ));
+                key_path = Some(PathBuf::from(args.get(i).ok_or_else(|| anyhow::anyhow!("--key needs a path"))?));
             }
             f if f == value_flag => {
                 i += 1;

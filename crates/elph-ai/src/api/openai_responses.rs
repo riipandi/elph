@@ -137,14 +137,7 @@ async fn run_openai_responses(
     };
     let mut responses_state = ResponsesStreamState::default();
     for_each_sse_json_event(response, &options.base.signal, |event| {
-        process_responses_stream_event(
-            &event,
-            &mut responses_state,
-            output,
-            stream,
-            model,
-            Some(&stream_options),
-        )
+        process_responses_stream_event(&event, &mut responses_state, output, stream, model, Some(&stream_options))
     })
     .await?;
 

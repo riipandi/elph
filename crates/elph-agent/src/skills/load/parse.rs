@@ -11,9 +11,7 @@ const MAX_COMPATIBILITY_LENGTH: usize = 500;
 pub(super) fn validate_name(name: &str, parent_dir_name: &str) -> Vec<String> {
     let mut errors = Vec::new();
     if name != parent_dir_name {
-        errors.push(format!(
-            "name \"{name}\" does not match parent directory \"{parent_dir_name}\""
-        ));
+        errors.push(format!("name \"{name}\" does not match parent directory \"{parent_dir_name}\""));
     }
     if name.len() > MAX_NAME_LENGTH {
         errors.push(format!("name exceeds {MAX_NAME_LENGTH} characters ({})", name.len()));

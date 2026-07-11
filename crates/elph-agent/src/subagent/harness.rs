@@ -55,11 +55,7 @@ pub async fn spawn_subagent_harness(
     agent_control: Arc<AgentControl>,
     system_prompt: String,
 ) -> Result<Arc<SubagentHarness>, String> {
-    let repo = SessionDirRepo::new(
-        env.clone(),
-        bootstrap.sessions_root.clone(),
-        bootstrap.project_key.clone(),
-    );
+    let repo = SessionDirRepo::new(env.clone(), bootstrap.sessions_root.clone(), bootstrap.project_key.clone());
     let child_session_id = crate::session::id::generate_session_id();
     let session = repo
         .create(SessionDirRepoCreateOptions {

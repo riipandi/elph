@@ -41,11 +41,7 @@ pub async fn run_shell(mut launch: LaunchState) -> anyhow::Result<()> {
                     } else {
                         guard.activity.clear();
                     }
-                    push_capped(
-                        &mut guard.entries,
-                        OwlyEntry::user(trimmed),
-                        elph_tui::DEFAULT_TRANSCRIPT_CAP,
-                    );
+                    push_capped(&mut guard.entries, OwlyEntry::user(trimmed), elph_tui::DEFAULT_TRANSCRIPT_CAP);
                     guard.chat.pin_to_tail();
                     guard.live_tools.clear();
                     guard.running = true;

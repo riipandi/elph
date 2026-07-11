@@ -90,10 +90,7 @@ async fn main() -> anyhow::Result<()> {
             max_bytes: None,
         },
     );
-    println!(
-        "Truncated head ({} lines):\n{}",
-        truncated.output_lines, truncated.content
-    );
+    println!("Truncated head ({} lines):\n{}", truncated.output_lines, truncated.content);
     println!("Truncated by: {:?}", truncated.truncated_by);
 
     let tail = truncate_tail(

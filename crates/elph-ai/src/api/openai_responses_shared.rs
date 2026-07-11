@@ -110,9 +110,8 @@ pub fn convert_responses_messages(
         format!("{call_id}|{normalized_item_id}")
     };
 
-    let transformed = transform_messages(context.messages.clone(), model, |id, _m, src| {
-        normalize_tool_call_id(id, src)
-    });
+    let transformed =
+        transform_messages(context.messages.clone(), model, |id, _m, src| normalize_tool_call_id(id, src));
 
     if include_system && let Some(sp) = &context.system_prompt {
         let role = if model.reasoning { "developer" } else { "system" };
@@ -620,9 +619,7 @@ pub async fn process_responses_stream(
         process_responses_stream_event(&event, &mut state, output, stream, model, options.as_ref())?;
     }
     if !state.saw_terminal {
-        return Err(anyhow!(
-            "OpenAI Responses stream ended before a terminal response event"
-        ));
+        return Err(anyhow!("OpenAI Responses stream ended before a terminal response event"));
     }
     Ok(())
 }

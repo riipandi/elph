@@ -53,10 +53,7 @@ async fn execute_write(
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     ensure_parent_dir(&env, &absolute, signal.as_ref()).await?;
     match FileSystem::write_file(env.as_ref(), &absolute, content.as_bytes(), signal.as_ref()).await {
-        HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!(
-            "Wrote {} bytes to {path}",
-            content.len()
-        ))),
+        HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!("Wrote {} bytes to {path}", content.len()))),
         HarnessResult::Err(error) => Err(file_error(error)),
     }
 }

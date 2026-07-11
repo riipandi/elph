@@ -11,7 +11,7 @@ use elph_tui::{
 use crate::agent::AgentUiEvent;
 use crate::platform::{WAS_INTERRUPTED, handle_prompt_interrupt_prompt};
 use crate::shell::ElphApp;
-use crate::shell::transcript_render::entries_to_lines;
+use crate::shell::transcript_render::{TranscriptRenderOptions, entries_to_lines};
 use crate::tui::{TranscriptApplier, TurnDispatcher};
 
 /// Tuie shell host backed by the Elph application mutex.
@@ -97,7 +97,18 @@ impl ShellHost for ElphShellHost {
     }
 
     fn transcript_lines(&self) -> Vec<String> {
-        self.with_app(|app| entries_to_lines(&app.chat.entries, app.show_thinking, app.agent_running, &app.collapse))
+        self.with_app(|app| {
+            let width = tuie::get_runtime_info().size.x.saturating_sub(4).max(20) as u16;
+            let opts = TranscriptRenderOptions::new(
+                app.show_thinking,
+                app.agent_running,
+                &app.collapse,
+                &app.live_tools,
+                width,
+                app.theme,
+            );
+            entries_to_lines(&app.chat.entries, &opts)
+        })
     }
 
     fn on_shell_action(&mut self, action: ShellAction) {

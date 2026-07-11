@@ -15,9 +15,7 @@ fn format_token_segment(chrome: &ShellChromeData) -> String {
     format!("{used} | {:.1}% ({limit})", chrome.context_pct)
 }
 
-/// Builds the two-line status footer for the tuie shell.
-pub fn build_footer_widget(chrome: &ShellChromeData, theme: Theme) -> Box<Pane> {
-    let model_color = theme.thinking_color(&chrome.thinking_level);
+fn footer_lines(chrome: &ShellChromeData) -> (String, String, String) {
     let cost_seg = format!("${:.2}", chrome.cost_usd);
     let token_seg = format_token_segment(chrome);
 
@@ -53,36 +51,195 @@ pub fn build_footer_widget(chrome: &ShellChromeData, theme: Theme) -> Box<Pane> 
         chrome.branch.clone()
     };
     let project = path_basename(&chrome.project_dir);
-    let line2 = format!(
-        "{project} [{}]    turn: {} | {branch} {git}",
-        chrome.session_id, chrome.turn
-    );
-
-    Pane::new().vertical().gap(0).children([
-        Text::new().content(line1).style(Style::new().fg(model_color)) as Box<dyn Widget>,
-        Text::new()
-            .content(line2)
-            .style(Style::new().fg(theme.foreground).bold()) as Box<dyn Widget>,
-        Text::new()
-            .content(format!("{cost_seg} | {token_seg}"))
-            .style(Style::new().fg(theme.context_usage_color(chrome.context_pct))) as Box<dyn Widget>,
-    ])
+    let line2 = format!("{project} [{}]    turn: {} | {branch} {git}", chrome.session_id, chrome.turn);
+    let line3 = format!("{cost_seg} | {token_seg}");
+    (line1, line2, line3)
 }
 
-/// Builds the activity line shown between transcript and prompt while busy.
-pub fn build_activity_widget(chrome: &ShellChromeData, theme: Theme) -> Box<dyn Widget> {
-    if !chrome.activity_visible {
-        return Pane::new();
-    }
-
+fn activity_line(chrome: &ShellChromeData) -> String {
     let mut line = chrome.activity_label.clone();
     if chrome.activity_cancel_requested {
         line.push_str(" (cancelling)");
     } else {
         line.push_str("  Enter queue · Ctrl+Enter follow-up · Ctrl+C cancel");
     }
+    line
+}
 
-    Text::new().content(line).style(Style::new().fg(theme.muted)) as Box<dyn Widget>
+/// Stable handles for shell-side activity sync.
+#[derive(Clone)]
+#[cfg_attr(test, allow(dead_code))]
+pub(crate) struct ActivityHandles {
+    pub text_id: WidgetId<Text>,
+}
+
+/// Live-updating activity strip between transcript and prompt.
+pub struct ActivityPane {
+    root: Box<Pane>,
+    text_id: WidgetId<Text>,
+    cached: String,
+}
+
+impl ActivityPane {
+    pub fn new(theme: Theme) -> Box<Self> {
+        let mut text_id = WidgetId::EMPTY;
+        let root = Pane::new().child(
+            Text::new()
+                .content("")
+                .style(Style::new().fg(theme.muted))
+                .id(&mut text_id) as Box<dyn Widget>,
+        );
+        Box::new(Self {
+            root,
+            text_id,
+            cached: String::new(),
+        })
+    }
+
+    pub fn sync(&mut self, chrome: &ShellChromeData, theme: Theme) {
+        let visible = chrome.activity_visible;
+        let next = if visible { activity_line(chrome) } else { String::new() };
+        if next == self.cached {
+            return;
+        }
+        self.cached = next;
+        if let Some(text) = self.root.get_widget_mut(self.text_id) {
+            text.set_content(self.cached.clone());
+            text.set_style(Style::new().fg(theme.muted));
+        }
+        self.root.dirty_layout();
+    }
+
+    pub(crate) fn handles(&self) -> ActivityHandles {
+        ActivityHandles { text_id: self.text_id }
+    }
+
+    #[cfg(not(test))]
+    pub(crate) fn sync_in(root: &mut dyn Widget, handles: &ActivityHandles, chrome: &ShellChromeData, theme: Theme) {
+        let visible = chrome.activity_visible;
+        let next = if visible { activity_line(chrome) } else { String::new() };
+        if let Some(text) = root.get_widget_mut(handles.text_id) {
+            text.set_content(next);
+            text.set_style(Style::new().fg(theme.muted));
+        }
+    }
+}
+
+impl DelegateWidget for ActivityPane {
+    tuie::delegate_widget!(root);
+}
+
+/// Stable handles for shell-side footer sync.
+#[derive(Clone)]
+#[cfg_attr(test, allow(dead_code))]
+pub(crate) struct FooterHandles {
+    pub line1_id: WidgetId<Text>,
+    pub line2_id: WidgetId<Text>,
+    pub line3_id: WidgetId<Text>,
+}
+
+/// Live-updating status footer (model, session, tokens).
+pub struct FooterPane {
+    root: Box<Pane>,
+    line1_id: WidgetId<Text>,
+    line2_id: WidgetId<Text>,
+    line3_id: WidgetId<Text>,
+    cached: (String, String, String),
+}
+
+impl FooterPane {
+    pub fn new(theme: Theme) -> Box<Self> {
+        let mut line1_id = WidgetId::EMPTY;
+        let mut line2_id = WidgetId::EMPTY;
+        let mut line3_id = WidgetId::EMPTY;
+        let root = Pane::new().vertical().gap(0).children([
+            Text::new()
+                .content("")
+                .style(Style::new().fg(theme.foreground))
+                .id(&mut line1_id) as Box<dyn Widget>,
+            Text::new()
+                .content("")
+                .style(Style::new().fg(theme.foreground).bold())
+                .id(&mut line2_id) as Box<dyn Widget>,
+            Text::new()
+                .content("")
+                .style(Style::new().fg(theme.foreground))
+                .id(&mut line3_id) as Box<dyn Widget>,
+        ]);
+        Box::new(Self {
+            root,
+            line1_id,
+            line2_id,
+            line3_id,
+            cached: (String::new(), String::new(), String::new()),
+        })
+    }
+
+    pub fn sync(&mut self, chrome: &ShellChromeData, theme: Theme) {
+        let next = footer_lines(chrome);
+        if next == self.cached {
+            return;
+        }
+        self.cached = next.clone();
+        let model_color = theme.thinking_color(&chrome.thinking_level);
+        if let Some(text) = self.root.get_widget_mut(self.line1_id) {
+            text.set_content(next.0.clone());
+            text.set_style(Style::new().fg(model_color));
+        }
+        if let Some(text) = self.root.get_widget_mut(self.line2_id) {
+            text.set_content(next.1.clone());
+            text.set_style(Style::new().fg(theme.foreground).bold());
+        }
+        if let Some(text) = self.root.get_widget_mut(self.line3_id) {
+            text.set_content(next.2.clone());
+            text.set_style(Style::new().fg(theme.context_usage_color(chrome.context_pct)));
+        }
+        self.root.dirty_layout();
+    }
+
+    pub(crate) fn handles(&self) -> FooterHandles {
+        FooterHandles {
+            line1_id: self.line1_id,
+            line2_id: self.line2_id,
+            line3_id: self.line3_id,
+        }
+    }
+
+    #[cfg(not(test))]
+    pub(crate) fn sync_in(root: &mut dyn Widget, handles: &FooterHandles, chrome: &ShellChromeData, theme: Theme) {
+        let next = footer_lines(chrome);
+        let model_color = theme.thinking_color(&chrome.thinking_level);
+        if let Some(text) = root.get_widget_mut(handles.line1_id) {
+            text.set_content(next.0.clone());
+            text.set_style(Style::new().fg(model_color));
+        }
+        if let Some(text) = root.get_widget_mut(handles.line2_id) {
+            text.set_content(next.1.clone());
+            text.set_style(Style::new().fg(theme.foreground).bold());
+        }
+        if let Some(text) = root.get_widget_mut(handles.line3_id) {
+            text.set_content(next.2.clone());
+            text.set_style(Style::new().fg(theme.context_usage_color(chrome.context_pct)));
+        }
+    }
+}
+
+impl DelegateWidget for FooterPane {
+    tuie::delegate_widget!(root);
+}
+
+/// Builds the two-line status footer for the tuie shell.
+pub fn build_footer_widget(chrome: &ShellChromeData, theme: Theme) -> Box<Pane> {
+    let mut pane = FooterPane::new(theme);
+    pane.sync(chrome, theme);
+    pane.root
+}
+
+/// Builds the activity line shown between transcript and prompt while busy.
+pub fn build_activity_widget(chrome: &ShellChromeData, theme: Theme) -> Box<dyn Widget> {
+    let mut pane = ActivityPane::new(theme);
+    pane.sync(chrome, theme);
+    pane.root as Box<dyn Widget>
 }
 
 #[cfg(test)]
@@ -153,5 +310,27 @@ mod tests {
         let mut activity = build_activity_widget(&chrome, theme);
         let term = Emulator::new(&mut *activity, Vec2::new(50, 2));
         assert!(term.get_snapshot_text().contains("cancelling"));
+    }
+
+    #[test]
+    fn activity_sync_skips_unchanged_label() {
+        let theme = Theme::dark();
+        let chrome = sample_chrome();
+        let mut pane = ActivityPane::new(theme);
+        pane.sync(&chrome, theme);
+        let cached = pane.cached.clone();
+        pane.sync(&chrome, theme);
+        assert_eq!(pane.cached, cached);
+    }
+
+    #[test]
+    fn footer_sync_updates_on_turn_change() {
+        let theme = Theme::dark();
+        let mut chrome = sample_chrome();
+        let mut pane = FooterPane::new(theme);
+        pane.sync(&chrome, theme);
+        chrome.turn = 8;
+        pane.sync(&chrome, theme);
+        assert!(pane.cached.1.contains("turn: 8"));
     }
 }

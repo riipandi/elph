@@ -57,11 +57,8 @@ pub(super) async fn touch_retrieved_memories(conn: &Connection, memory_ids: &[St
 
 pub(super) async fn batch_set_weights(conn: &Connection, updates: &[WeightUpdate]) -> Result<()> {
     for (id, weight) in updates {
-        conn.execute(
-            "UPDATE memories SET weight = ? WHERE id = ?",
-            params![weight, id.as_str()],
-        )
-        .await?;
+        conn.execute("UPDATE memories SET weight = ? WHERE id = ?", params![weight, id.as_str()])
+            .await?;
     }
     Ok(())
 }

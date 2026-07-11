@@ -98,11 +98,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         )),
         "mistral" => Some(provider_defaults("Mistral", "MISTRAL_API_KEY", "mistral-large-latest")),
-        "nvidia" => Some(provider_defaults(
-            "NVIDIA",
-            "NVIDIA_API_KEY",
-            "meta/llama-3.3-70b-instruct",
-        )),
+        "nvidia" => Some(provider_defaults("NVIDIA", "NVIDIA_API_KEY", "meta/llama-3.3-70b-instruct")),
         "cerebras" => Some(provider_defaults("Cerebras", "CEREBRAS_API_KEY", "llama-3.3-70b")),
         "amazon-bedrock" => Some(provider_defaults(
             "Amazon Bedrock",

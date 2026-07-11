@@ -261,10 +261,7 @@ impl FileSystem for LocalExecutionEnv {
             if options.force {
                 return ok(());
             }
-            return err(Self::to_file_error(
-                metadata.expect_err("checked error"),
-                Some(&normalized),
-            ));
+            return err(Self::to_file_error(metadata.expect_err("checked error"), Some(&normalized)));
         }
 
         let metadata = metadata.expect("metadata exists");

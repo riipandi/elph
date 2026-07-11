@@ -97,10 +97,7 @@ impl MemoryStore {
         let avg_tokens = self
             .with_db(|conn| async move {
                 let mut rows = conn
-                    .query(
-                        "SELECT AVG(tokens_used) as avg FROM tasks WHERE tokens_used IS NOT NULL",
-                        (),
-                    )
+                    .query("SELECT AVG(tokens_used) as avg FROM tasks WHERE tokens_used IS NOT NULL", ())
                     .await?;
                 let avg = match rows.next().await? {
                     Some(row) => row.get::<Option<f64>>(0)?.unwrap_or(10_000.0),

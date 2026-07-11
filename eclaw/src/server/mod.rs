@@ -126,10 +126,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        assert_eq!(
-            response.headers().get(header::CONTENT_TYPE).unwrap(),
-            "application/json"
-        );
+        assert_eq!(response.headers().get(header::CONTENT_TYPE).unwrap(), "application/json");
         let body = body_string(response).await;
         assert!(body.contains("\"status\":404"));
         assert!(body.contains("not found"));
@@ -150,10 +147,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(
-            response.headers().get(header::CONTENT_TYPE).unwrap(),
-            "application/json"
-        );
+        assert_eq!(response.headers().get(header::CONTENT_TYPE).unwrap(), "application/json");
         let body = body_string(response).await;
         assert!(body.contains("\"status\":405"));
     }

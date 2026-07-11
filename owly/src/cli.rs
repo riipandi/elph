@@ -72,15 +72,7 @@ impl Cli {
         };
 
         // Run the command
-        run_command(
-            command,
-            &cwd,
-            self.model.as_deref(),
-            self.print,
-            self.stream,
-            self.verbose,
-        )
-        .await
+        run_command(command, &cwd, self.model.as_deref(), self.print, self.stream, self.verbose).await
     }
 }
 

@@ -47,9 +47,7 @@ pub fn handle(args: &WorktreeArgs) -> ExitCode {
             EXIT_SUCCESS
         }
         WorktreeCommands::Show { id_or_path } => {
-            help::unimplemented(&format!(
-                "Worktree show — not yet implemented (id_or_path: {id_or_path})"
-            ));
+            help::unimplemented(&format!("Worktree show — not yet implemented (id_or_path: {id_or_path})"));
             EXIT_SUCCESS
         }
         WorktreeCommands::Rm { id_or_path, force } => {

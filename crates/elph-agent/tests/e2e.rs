@@ -406,10 +406,7 @@ async fn agent_emits_lifecycle_updates_while_streaming() {
 async fn agent_maintains_context_across_multiple_turns() {
     let (faux, _models) = new_faux();
     faux.set_responses(vec![
-        FauxResponseStep::Static(faux_assistant_message(
-            vec![faux_text("Nice to meet you, Alice.")],
-            None,
-        )),
+        FauxResponseStep::Static(faux_assistant_message(vec![faux_text("Nice to meet you, Alice.")], None)),
         FauxResponseStep::Factory(Arc::new(|context, _, _, _| {
             let has_alice = context.messages.iter().any(|message| match message {
                 Message::User { content, .. } => match content {

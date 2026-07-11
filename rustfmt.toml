@@ -1,5 +1,6 @@
 # https://doc.rust-lang.org/beta/style-guide/index.html
 edition = "2024"
+fn_call_width = 80
 force_explicit_abi = true
 hard_tabs = false
 max_width = 120

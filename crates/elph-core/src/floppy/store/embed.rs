@@ -69,11 +69,8 @@ impl MemoryStore {
         let n = rows.len();
         self.with_db(move |conn| async move {
             for (id, emb) in embedded {
-                conn.execute(
-                    "UPDATE memories SET embedding = ? WHERE id = ?",
-                    params![emb.as_slice(), id],
-                )
-                .await?;
+                conn.execute("UPDATE memories SET embedding = ? WHERE id = ?", params![emb.as_slice(), id])
+                    .await?;
             }
             Ok(())
         })
@@ -91,11 +88,8 @@ impl MemoryStore {
                 let changes = conn
                     .execute("DELETE FROM memories WHERE id = ?", params![mid.clone()])
                     .await?;
-                conn.execute(
-                    "DELETE FROM memory_retrievals WHERE memory_id = ?",
-                    params![mid.clone()],
-                )
-                .await?;
+                conn.execute("DELETE FROM memory_retrievals WHERE memory_id = ?", params![mid.clone()])
+                    .await?;
                 Ok(changes > 0)
             })
             .await?;

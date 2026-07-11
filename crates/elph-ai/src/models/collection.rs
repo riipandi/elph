@@ -67,11 +67,7 @@ impl Provider {
             return Ok(());
         };
         refresh().await.map_err(|e| {
-            ModelsError::with_cause(
-                ModelsErrorCode::ModelSource,
-                format!("Model refresh failed for {}", self.id),
-                e,
-            )
+            ModelsError::with_cause(ModelsErrorCode::ModelSource, format!("Model refresh failed for {}", self.id), e)
         })?;
         Ok(())
     }
@@ -192,10 +188,7 @@ impl Models {
 
     pub async fn get_auth(&self, model: &Model) -> Result<Option<AuthResult>, ModelsError> {
         let provider = self.providers.get(&model.provider).ok_or_else(|| {
-            ModelsError::new(
-                ModelsErrorCode::Provider,
-                format!("Unknown provider: {}", model.provider),
-            )
+            ModelsError::new(ModelsErrorCode::Provider, format!("Unknown provider: {}", model.provider))
         })?;
         resolve_provider_auth(
             &ProviderAuthHolder {
@@ -264,12 +257,9 @@ impl Models {
     }
 
     fn require_provider(&self, model: &Model) -> Result<&Provider, ModelsError> {
-        self.providers.get(&model.provider).ok_or_else(|| {
-            ModelsError::new(
-                ModelsErrorCode::Provider,
-                format!("Unknown provider: {}", model.provider),
-            )
-        })
+        self.providers
+            .get(&model.provider)
+            .ok_or_else(|| ModelsError::new(ModelsErrorCode::Provider, format!("Unknown provider: {}", model.provider)))
     }
 
     async fn apply_auth(
@@ -483,16 +473,10 @@ pub fn get_supported_thinking_levels(model: &Model) -> Vec<crate::types::Thinkin
                     return false;
                 }
                 // xhigh/max are opt-in via thinkingLevelMap; other levels default on.
-                if matches!(
-                    level,
-                    crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max
-                ) {
+                if matches!(level, crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max) {
                     return map.contains_key(key);
                 }
-            } else if matches!(
-                level,
-                crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max
-            ) {
+            } else if matches!(level, crate::types::ThinkingLevel::Xhigh | crate::types::ThinkingLevel::Max) {
                 return false;
             }
             true

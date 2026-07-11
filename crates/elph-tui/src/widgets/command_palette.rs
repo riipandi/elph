@@ -35,7 +35,7 @@ fn filtered_commands(commands: &[SlashCommand], input: &str, forced: bool) -> Ve
 #[derive(Debug, Clone, Default)]
 pub struct CommandPaletteState {
     pub selected: usize,
-    filter_key: String,
+    pub filter_key: String,
     /// When true (Ctrl+K), palette lists all commands without requiring a `/` prefix.
     pub forced: bool,
 }
@@ -75,6 +75,31 @@ impl CommandPaletteState {
     }
 }
 
+fn render_palette_row(ctx: &mut PaletteRenderCtx, idx: usize) -> Option<Box<dyn Widget>> {
+    let cmd = ctx.items.get(idx)?;
+    let marker = if idx == ctx.selected { "› " } else { "  " };
+    let row = format!("{marker}/{}  {}", cmd.name, cmd.description);
+    let style = if idx == ctx.selected {
+        Style::new().fg(ctx.theme.highlight())
+    } else {
+        Style::new().fg(ctx.theme.foreground)
+    };
+    Some(Text::new().content(row).style(style) as Box<dyn Widget>)
+}
+
+fn palette_render_ctx(filtered: Vec<SlashCommand>, selected: usize, theme: Theme) -> PaletteRenderCtx {
+    PaletteRenderCtx {
+        items: filtered,
+        selected,
+        theme,
+    }
+}
+
+/// Returns the number of commands visible for the current filter.
+pub fn filtered_command_count(commands: &[SlashCommand], input: &str, forced: bool) -> usize {
+    filtered_commands(commands, input, forced).len()
+}
+
 /// Builds a bordered list popup for the active filter.
 pub fn build_palette_widget(
     commands: &[SlashCommand],
@@ -86,27 +111,31 @@ pub fn build_palette_widget(
     let selected = state.selected.min(filtered.len().saturating_sub(1));
 
     let mut list = List::new();
-    list.set_renderer(
-        PaletteRenderCtx {
-            items: filtered.clone(),
-            selected,
-            theme,
-        },
-        |ctx: &mut PaletteRenderCtx, idx: usize| -> Option<Box<dyn Widget>> {
-            let cmd = ctx.items.get(idx)?;
-            let marker = if idx == ctx.selected { "› " } else { "  " };
-            let row = format!("{marker}/{}  {}", cmd.name, cmd.description);
-            let style = if idx == ctx.selected {
-                Style::new().fg(ctx.theme.highlight())
-            } else {
-                Style::new().fg(ctx.theme.foreground)
-            };
-            Some(Text::new().content(row).style(style) as Box<dyn Widget>)
-        },
-    );
-    list.set_item_count(filtered.len());
-    list.border(Border::SINGLE)
-        .border_style(Style::new().fg(theme.blue_col()))
+    list.set_renderer(palette_render_ctx(filtered, selected, theme), render_palette_row);
+    list.set_item_count(filtered_command_count(commands, input, state.forced));
+    list.bordered().border_style(Style::new().fg(theme.blue_col()))
+}
+
+/// Refreshes an open palette list without reopening the popup.
+pub fn refresh_palette_list(
+    list: &mut List,
+    commands: &[SlashCommand],
+    input: &str,
+    state: &CommandPaletteState,
+    theme: Theme,
+) {
+    let filtered = filtered_commands(commands, input, state.forced);
+    let selected = state.selected.min(filtered.len().saturating_sub(1));
+    let count = filtered.len();
+    list.set_renderer(palette_render_ctx(filtered, selected, theme), render_palette_row);
+    list.set_item_count(count);
+    list.set_border_style(Style::new().fg(theme.blue_col()));
+    list.dirty_layout();
+}
+
+/// Text inserted into the prompt when a palette row is accepted.
+pub fn palette_selection_text(cmd: &SlashCommand) -> String {
+    format!("/{}", cmd.name)
 }
 
 /// Opens the palette popup anchored above the prompt and returns its widget id.

@@ -55,10 +55,7 @@ async fn main() -> anyhow::Result<()> {
     setup.finish_and_clear();
 
     if let Some(auth) = &auth {
-        println!(
-            "Auth:     configured via {}",
-            auth.source.as_deref().unwrap_or("unknown")
-        );
+        println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
     } else {
         anyhow::bail!("OpenCode Zen is not configured (missing OPENCODE_API_KEY?)");
     }

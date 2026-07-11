@@ -53,12 +53,10 @@ impl InMemorySessionRepo {
     }
 
     pub async fn open(&self, metadata: &SessionMetadata) -> Result<Session<InMemorySessionStorage>, SessionError> {
-        self.sessions.get(&metadata.id).cloned().ok_or_else(|| {
-            SessionError::new(
-                SessionErrorCode::NotFound,
-                format!("Session not found: {}", metadata.id),
-            )
-        })
+        self.sessions
+            .get(&metadata.id)
+            .cloned()
+            .ok_or_else(|| SessionError::new(SessionErrorCode::NotFound, format!("Session not found: {}", metadata.id)))
     }
 
     pub async fn list(&self) -> Vec<SessionMetadata> {
@@ -137,16 +135,12 @@ impl SessionDirRepo {
 
     async fn project_sessions_dir(&self, project_key: &str) -> Result<String, SessionError> {
         let root = self.sessions_root().await?;
-        Ok(get_or_throw(
-            self.fs.join_path(&[root.as_str(), project_key], None).await,
-        ))
+        Ok(get_or_throw(self.fs.join_path(&[root.as_str(), project_key], None).await))
     }
 
     async fn session_dir(&self, project_key: &str, session_id: &str) -> Result<String, SessionError> {
         let project_dir = self.project_sessions_dir(project_key).await?;
-        Ok(get_or_throw(
-            self.fs.join_path(&[project_dir.as_str(), session_id], None).await,
-        ))
+        Ok(get_or_throw(self.fs.join_path(&[project_dir.as_str(), session_id], None).await))
     }
 
     pub async fn create(

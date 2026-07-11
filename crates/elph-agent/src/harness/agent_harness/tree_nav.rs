@@ -59,10 +59,7 @@ where
         }
 
         let target_entry = self.shared.session.lock().await.entry(target_id).await.ok_or_else(|| {
-            AgentHarnessError::new(
-                AgentHarnessErrorCode::InvalidArgument,
-                format!("Entry {target_id} not found"),
-            )
+            AgentHarnessError::new(AgentHarnessErrorCode::InvalidArgument, format!("Entry {target_id} not found"))
         })?;
 
         let collected = {
@@ -169,14 +166,12 @@ where
             .leaf_id()
             .await
             .map_err(session_error)?;
-        self.emit_own(AgentHarnessOwnEvent::SessionTree(
-            crate::harness::types::SessionTreeEvent {
-                new_leaf_id: new_leaf,
-                old_leaf_id,
-                summary_entry: summary_entry.clone(),
-                from_hook: Some(hook_result.as_ref().and_then(|r| r.summary.as_ref()).is_some()),
-            },
-        ))
+        self.emit_own(AgentHarnessOwnEvent::SessionTree(crate::harness::types::SessionTreeEvent {
+            new_leaf_id: new_leaf,
+            old_leaf_id,
+            summary_entry: summary_entry.clone(),
+            from_hook: Some(hook_result.as_ref().and_then(|r| r.summary.as_ref()).is_some()),
+        }))
         .await?;
 
         Ok(NavigateTreeResult {

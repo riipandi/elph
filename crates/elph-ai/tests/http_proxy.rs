@@ -19,10 +19,7 @@ fn maps_websocket_urls_for_proxy_lookup() {
         websocket_proxy_lookup_url("wss://chatgpt.com/backend-api/codex/responses"),
         "https://chatgpt.com/backend-api/codex/responses"
     );
-    assert_eq!(
-        websocket_proxy_lookup_url("ws://localhost:9001/ws"),
-        "http://localhost:9001/ws"
-    );
+    assert_eq!(websocket_proxy_lookup_url("ws://localhost:9001/ws"), "http://localhost:9001/ws");
 }
 
 #[test]

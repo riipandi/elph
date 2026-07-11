@@ -32,10 +32,7 @@ pub fn generate_image(options: ImageOptions) -> Result<()> {
 
     let generated = options.catalog_dir.join(CATALOG_IMAGE_GENERATED);
     if !generated.is_file() {
-        bail!(
-            "missing {} — run catalog generate-image-models first",
-            generated.display()
-        );
+        bail!("missing {} — run catalog generate-image-models first", generated.display());
     }
 
     let catalog_source = fs::read_to_string(&generated).context("read generated image catalog")?;
@@ -226,9 +223,7 @@ fn render_image_catalog_rs(provider_ids: &[String]) -> String {
 
     for provider_id in provider_ids {
         let const_name = catalog_const_name(provider_id);
-        out.push_str(&format!(
-            "define_image_catalog!({const_name}, \"{provider_id}.json\");\n"
-        ));
+        out.push_str(&format!("define_image_catalog!({const_name}, \"{provider_id}.json\");\n"));
     }
 
     out.push_str(

@@ -61,10 +61,7 @@ async fn main() -> anyhow::Result<()> {
             AssistantContentBlock::Thinking(t) => eprintln!("  Think: {}", t.thinking),
         }
     }
-    println!(
-        "  Stop: {:?}  Tokens: {}",
-        message.stop_reason, message.usage.total_tokens
-    );
+    println!("  Stop: {:?}  Tokens: {}", message.stop_reason, message.usage.total_tokens);
     println!();
 
     // ── Inject tool result ──

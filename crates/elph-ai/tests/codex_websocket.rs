@@ -20,12 +20,9 @@ fn cached_input_delta_extracts_only_new_messages() {
             { "role": "user", "content": "world" }
         ]
     });
-    let delta = get_codex_websocket_input_delta(
-        &body,
-        &continuation_body,
-        &json!([{ "role": "assistant", "content": "hi" }]),
-    )
-    .expect("delta");
+    let delta =
+        get_codex_websocket_input_delta(&body, &continuation_body, &json!([{ "role": "assistant", "content": "hi" }]))
+            .expect("delta");
     assert_eq!(delta, json!([{ "role": "user", "content": "world" }]));
 }
 

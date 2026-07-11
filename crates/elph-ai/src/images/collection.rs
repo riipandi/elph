@@ -87,10 +87,7 @@ impl ImagesModels {
 
     pub async fn get_auth(&self, model: &ImagesModel) -> Result<Option<AuthResult>, ModelsError> {
         let provider = self.providers.get(&model.provider).ok_or_else(|| {
-            ModelsError::new(
-                ModelsErrorCode::Provider,
-                format!("Unknown provider: {}", model.provider),
-            )
+            ModelsError::new(ModelsErrorCode::Provider, format!("Unknown provider: {}", model.provider))
         })?;
         resolve_provider_auth(
             &ProviderAuthHolder {

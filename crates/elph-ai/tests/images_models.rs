@@ -126,10 +126,7 @@ fn registers_providers_and_reads_models_synchronously() {
     all_model_ids.sort_unstable();
     assert_eq!(all_model_ids, vec!["m1", "m2", "m3"]);
     let p1_models = models.get_models(Some("p1"));
-    assert_eq!(
-        p1_models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
-        vec!["m1", "m2"]
-    );
+    assert_eq!(p1_models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), vec!["m1", "m2"]);
     assert_eq!(models.get_model("p2", "m3").expect("model").id, "m3");
     assert!(models.get_model("p2", "missing").is_none());
 }

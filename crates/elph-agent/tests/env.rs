@@ -29,10 +29,7 @@ async fn reads_writes_lists_and_removes_files() {
     get_or_throw(env.create_dir("nested/child", true).await);
     get_or_throw(env.write_file("nested/child/file.txt", "hel").await);
     get_or_throw(FileSystem::append_file(&env, "nested/child/file.txt", b"lo", None).await);
-    assert_eq!(
-        get_or_throw(env.read_text_file("nested/child/file.txt", None).await),
-        "hello"
-    );
+    assert_eq!(get_or_throw(env.read_text_file("nested/child/file.txt", None).await), "hello");
     assert_eq!(
         get_or_throw(
             env.read_text_lines(
@@ -109,10 +106,7 @@ async fn appends_to_new_files_and_creates_parent_directories() {
     let (_temp, env) = env_in_temp();
     get_or_throw(FileSystem::append_file(&env, "new/nested/file.txt", b"a", None).await);
     get_or_throw(FileSystem::append_file(&env, "new/nested/file.txt", b"b", None).await);
-    assert_eq!(
-        get_or_throw(env.read_text_file("new/nested/file.txt", None).await),
-        "ab"
-    );
+    assert_eq!(get_or_throw(env.read_text_file("new/nested/file.txt", None).await), "ab");
 }
 
 #[tokio::test]

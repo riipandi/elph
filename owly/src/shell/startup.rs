@@ -9,10 +9,7 @@ pub fn startup_transcript_lines(
 ) -> Vec<String> {
     let mut lines = Vec::new();
     if restored_count > 0 {
-        lines.push(format!(
-            "restored {restored_count} message(s) from {}",
-            db_path.display()
-        ));
+        lines.push(format!("restored {restored_count} message(s) from {}", db_path.display()));
     }
     if recovery.draft_restored {
         lines.push("recovered partial assistant response from interrupted turn".to_string());

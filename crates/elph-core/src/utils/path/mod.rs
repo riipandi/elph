@@ -56,10 +56,7 @@ mod tests {
         };
 
         assert_eq!(paths.metadata_db_path(), PathBuf::from("/data/metadata.db"));
-        assert_eq!(
-            paths.bundled_manifest_path(),
-            PathBuf::from("/cfg/bundled/manifest.json")
-        );
+        assert_eq!(paths.bundled_manifest_path(), PathBuf::from("/cfg/bundled/manifest.json"));
         assert_eq!(paths.standard_required_dirs().len(), 15);
     }
 }

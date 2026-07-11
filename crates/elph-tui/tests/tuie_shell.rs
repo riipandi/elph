@@ -2,8 +2,8 @@
 
 use elph_tui::{
     AgentMode, CommandPaletteState, GlobalChordHandler, PromptPane, ShellAction, ShellActionSink, ShellChromeData,
-    SidebarPlaceholder, Theme, TranscriptPane, build_activity_widget, build_footer_widget, owly_builtin_commands,
-    palette_visible,
+    SidebarPlaceholder, Theme, TranscriptPane, apply_tuie_theme, build_activity_widget, build_footer_widget,
+    owly_builtin_commands, palette_visible,
 };
 use tuie::emulator::Emulator;
 use tuie::prelude::*;
@@ -66,6 +66,19 @@ fn activity_shows_label_when_busy() {
 }
 
 #[test]
+fn sidebar_uses_rounded_border() {
+    let theme = Theme::dark();
+    let _ = apply_tuie_theme(theme);
+    let mut sidebar = SidebarPlaceholder::new(theme);
+    let term = Emulator::new(&mut *sidebar, Vec2::new(28, 8));
+    let snap = term.get_snapshot_text();
+    assert!(
+        snap.contains('╭') || snap.contains('╮') || snap.contains('╰') || snap.contains('╯'),
+        "expected rounded border glyphs in:\n{snap}"
+    );
+}
+
+#[test]
 fn sidebar_placeholder_renders_title() {
     let theme = Theme::dark();
     let mut sidebar = SidebarPlaceholder::new(theme);
@@ -97,8 +110,10 @@ fn transcript_and_prompt_compose_minimal_shell() {
 #[test]
 fn palette_lists_all_commands_in_forced_mode() {
     let commands = owly_builtin_commands();
-    let mut state = CommandPaletteState::default();
-    state.forced = true;
+    let state = CommandPaletteState {
+        forced: true,
+        ..Default::default()
+    };
     assert!(palette_visible("/help"));
     assert!(!palette_visible("help"));
     let first = state.selected_command(&commands, "").unwrap();

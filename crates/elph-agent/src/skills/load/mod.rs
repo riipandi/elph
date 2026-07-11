@@ -367,11 +367,7 @@ async fn resolve_kind(
         if let Result::Err(error) = canonical_path
             && error.code != FileErrorCode::NotFound
         {
-            diagnostics.push(diagnostic(
-                SkillDiagnosticCode::FileInfoFailed,
-                error.message,
-                &info.path,
-            ));
+            diagnostics.push(diagnostic(SkillDiagnosticCode::FileInfoFailed, error.message, &info.path));
         }
         return None;
     };
@@ -380,11 +376,7 @@ async fn resolve_kind(
         if let Result::Err(error) = target
             && error.code != FileErrorCode::NotFound
         {
-            diagnostics.push(diagnostic(
-                SkillDiagnosticCode::FileInfoFailed,
-                error.message,
-                &info.path,
-            ));
+            diagnostics.push(diagnostic(SkillDiagnosticCode::FileInfoFailed, error.message, &info.path));
         }
         return None;
     };

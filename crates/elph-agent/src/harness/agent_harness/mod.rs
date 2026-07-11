@@ -134,10 +134,7 @@ where
         .unwrap_or(CollaborationMode::Default);
 
         let metadata = try_block_on(async { options.session.metadata().await }).map_err(|_| {
-            AgentHarnessError::new(
-                crate::harness::types::AgentHarnessErrorCode::InvalidState,
-                "session metadata",
-            )
+            AgentHarnessError::new(crate::harness::types::AgentHarnessErrorCode::InvalidState, "session metadata")
         })?;
         let root_session_id = metadata.session_id().to_string();
         let models_for_stream = options.models.clone();

@@ -156,10 +156,7 @@ pub fn parse_env_value(value: &str) -> String {
 
 /// Format environment value for storage
 pub fn format_env_value(value: &str) -> String {
-    format!(
-        "\"{}\"",
-        value.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n")
-    )
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n"))
 }
 
 fn env_dir_internal() -> PathBuf {

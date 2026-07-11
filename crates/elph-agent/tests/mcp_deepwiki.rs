@@ -26,10 +26,7 @@ const DEEPWIKI_URL: &str = "https://mcp.deepwiki.com/mcp";
 const TEST_REPO: &str = "modelcontextprotocol/rust-sdk";
 
 fn live_enabled() -> bool {
-    matches!(
-        std::env::var("ELPH_MCP_LIVE").as_deref(),
-        Ok("1") | Ok("true") | Ok("yes")
-    )
+    matches!(std::env::var("ELPH_MCP_LIVE").as_deref(), Ok("1") | Ok("true") | Ok("yes"))
 }
 
 fn deepwiki_config() -> McpConfig {
@@ -83,10 +80,7 @@ async fn deepwiki_discover_and_list_tools() {
         .map(|d| d.tool_name.clone())
         .collect();
     for expected in ["read_wiki_structure", "read_wiki_contents", "ask_question"] {
-        assert!(
-            names.iter().any(|n| n == expected),
-            "missing tool {expected}; have {names:?}"
-        );
+        assert!(names.iter().any(|n| n == expected), "missing tool {expected}; have {names:?}");
     }
 
     // Exposed naming: mcp_deepwiki__read_wiki_structure

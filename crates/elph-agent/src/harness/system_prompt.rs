@@ -20,10 +20,7 @@ pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
     for skill in visible_skills {
         lines.push("  <skill>".to_string());
         lines.push(format!("    <name>{}</name>", escape_xml(&skill.name)));
-        lines.push(format!(
-            "    <description>{}</description>",
-            escape_xml(&skill.description)
-        ));
+        lines.push(format!("    <description>{}</description>", escape_xml(&skill.description)));
         lines.push(format!("    <location>{}</location>", escape_xml(&skill.file_path)));
         lines.push("  </skill>".to_string());
     }

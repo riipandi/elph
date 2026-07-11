@@ -33,9 +33,6 @@ fn serializes_nested_tool_parameters_as_plain_json() {
     let parameters = &payload["tools"][0]["function"]["parameters"];
     assert_eq!(parameters["type"], "object");
     assert_eq!(parameters["properties"]["nested"]["type"], "object");
-    assert_eq!(
-        parameters["properties"]["nested"]["properties"]["value"]["type"],
-        "string"
-    );
+    assert_eq!(parameters["properties"]["nested"]["properties"]["value"]["type"], "string");
     assert!(parameters.as_object().unwrap().keys().all(|k| !k.starts_with('$')));
 }

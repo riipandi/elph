@@ -9,10 +9,7 @@ fn detects_thinking_parts_by_thought_flag() {
 
 #[test]
 fn retain_thought_signature_prefers_incoming_non_empty_value() {
-    assert_eq!(
-        retain_thought_signature(Some("old"), Some("new")),
-        Some("new".to_string())
-    );
+    assert_eq!(retain_thought_signature(Some("old"), Some("new")), Some("new".to_string()));
     assert_eq!(retain_thought_signature(Some("old"), Some("")), Some("old".to_string()));
     assert_eq!(retain_thought_signature(None, Some("new")), Some("new".to_string()));
 }

@@ -38,24 +38,22 @@ async fn main() -> anyhow::Result<()> {
 
     // Append assistant message
     session
-        .append_message(llm_message_to_agent(elph_ai::Message::Assistant(
-            elph_ai::AssistantMessage {
-                role: "assistant".into(),
-                content: vec![elph_ai::AssistantContentBlock::Text(elph_ai::TextContent::new(
-                    "Session response",
-                ))],
-                api: "faux".into(),
-                provider: "faux".into(),
-                model: "faux-1".into(),
-                response_model: None,
-                response_id: None,
-                diagnostics: None,
-                usage: elph_ai::Usage::default(),
-                stop_reason: elph_ai::StopReason::Stop,
-                error_message: None,
-                timestamp: now_ms(),
-            },
-        )))
+        .append_message(llm_message_to_agent(elph_ai::Message::Assistant(elph_ai::AssistantMessage {
+            role: "assistant".into(),
+            content: vec![elph_ai::AssistantContentBlock::Text(elph_ai::TextContent::new(
+                "Session response",
+            ))],
+            api: "faux".into(),
+            provider: "faux".into(),
+            model: "faux-1".into(),
+            response_model: None,
+            response_id: None,
+            diagnostics: None,
+            usage: elph_ai::Usage::default(),
+            stop_reason: elph_ai::StopReason::Stop,
+            error_message: None,
+            timestamp: now_ms(),
+        })))
         .await?;
 
     // Read back entries

@@ -40,11 +40,7 @@ pub(super) async fn load_template_from_file(env: &LocalExecutionEnv, file_path: 
     let raw_content = env.read_text_file(file_path, None).await;
     let Result::Ok(raw_content) = raw_content else {
         if let Result::Err(error) = raw_content {
-            diagnostics.push(diagnostic(
-                PromptTemplateDiagnosticCode::ReadFailed,
-                error.message,
-                file_path,
-            ));
+            diagnostics.push(diagnostic(PromptTemplateDiagnosticCode::ReadFailed, error.message, file_path));
         }
         return ParsedTemplateFile {
             prompt_template: None,

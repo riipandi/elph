@@ -66,12 +66,7 @@ impl SessionDirStorage {
         );
         write_summary(&session_dir, &summary).await?;
 
-        write_text_file(
-            &session_dir,
-            SYSTEM_PROMPT_FILE,
-            options.system_prompt.as_deref().unwrap_or(""),
-        )
-        .await?;
+        write_text_file(&session_dir, SYSTEM_PROMPT_FILE, options.system_prompt.as_deref().unwrap_or("")).await?;
         write_json_file(
             &session_dir,
             PROMPT_CONTEXT_FILE,
@@ -208,13 +203,8 @@ fn parse_event_line(line: &str, session_dir: &Path, line_number: usize) -> Resul
         }
     }
     let _ = (id, timestamp);
-    serde_json::from_value(parsed).map_err(|error| {
-        invalid_entry(
-            session_dir,
-            line_number,
-            format!("is not a valid session entry: {error}"),
-        )
-    })
+    serde_json::from_value(parsed)
+        .map_err(|error| invalid_entry(session_dir, line_number, format!("is not a valid session entry: {error}")))
 }
 
 async fn append_jsonl_line(session_dir: &Path, file: &str, entry: &SessionTreeEntry) -> Result<(), SessionError> {

@@ -121,19 +121,11 @@ async fn generate_fixture(pair: &ProviderPair) -> Option<Vec<Message>> {
     };
     let final_response = models.complete_simple(&model, &final_context, options).await;
     if final_response.stop_reason == StopReason::Error {
-        eprintln!(
-            "[{}] final request failed: {:?}",
-            pair.label, final_response.error_message
-        );
+        eprintln!("[{}] final request failed: {:?}", pair.label, final_response.error_message);
         return None;
     }
 
-    Some(vec![
-        user,
-        assistant_message,
-        tool_result,
-        Message::Assistant(final_response),
-    ])
+    Some(vec![user, assistant_message, tool_result, Message::Assistant(final_response)])
 }
 
 fn fixtures() -> Arc<HashMap<String, Vec<Message>>> {

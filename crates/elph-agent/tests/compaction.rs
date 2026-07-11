@@ -301,10 +301,7 @@ fn find_cut_point_uses_token_differences() {
     }
 
     let cut = find_cut_point(&entries, 0, entries.len(), 2500);
-    assert!(matches!(
-        entries[cut.first_kept_entry_index],
-        SessionTreeEntry::Message { .. }
-    ));
+    assert!(matches!(entries[cut.first_kept_entry_index], SessionTreeEntry::Message { .. }));
 }
 
 #[test]
@@ -489,10 +486,7 @@ fn estimate_tokens_across_supported_message_roles() {
         Some(20)
     );
 
-    assert_eq!(
-        estimate_context_tokens(&[user_message("no usage")]).last_usage_index,
-        None
-    );
+    assert_eq!(estimate_context_tokens(&[user_message("no usage")]).last_usage_index, None);
     let estimate = estimate_context_tokens(&[assistant, user_message("tail")]);
     assert_eq!(estimate.usage_tokens, 20);
     assert_eq!(estimate.last_usage_index, Some(0));
@@ -541,11 +535,7 @@ fn build_session_context_tracks_model_and_thinking_level() {
     let entries = vec![
         message_entry("u1", None, user_message("1")),
         model_change_entry("model", Some("u1"), "openai", "gpt-4"),
-        message_entry(
-            "a1",
-            Some("model"),
-            AgentMessage::Llm(Box::new(Message::Assistant(assistant))),
-        ),
+        message_entry("a1", Some("model"), AgentMessage::Llm(Box::new(Message::Assistant(assistant)))),
         thinking_level_entry("thinking", Some("a1"), "high"),
     ];
     let loaded = build_session_context(&entries);
@@ -779,11 +769,7 @@ fn get_last_assistant_usage_skips_aborted_messages() {
     aborted.usage.total_tokens = 99;
     let entries = vec![
         message_entry("u1", None, user_message("hi")),
-        message_entry(
-            "a1",
-            Some("u1"),
-            AgentMessage::Llm(Box::new(Message::Assistant(aborted))),
-        ),
+        message_entry("a1", Some("u1"), AgentMessage::Llm(Box::new(Message::Assistant(aborted)))),
         message_entry(
             "a2",
             Some("a1"),
@@ -796,10 +782,7 @@ fn get_last_assistant_usage_skips_aborted_messages() {
             ),
         ),
     ];
-    assert_eq!(
-        get_last_assistant_usage(&entries).map(|usage| usage.total_tokens),
-        Some(12)
-    );
+    assert_eq!(get_last_assistant_usage(&entries).map(|usage| usage.total_tokens), Some(12));
 }
 
 #[tokio::test]
@@ -878,18 +861,9 @@ async fn generate_summary_includes_previous_summary_and_instructions() {
         faux_assistant_message(vec![faux_text("## Goal\nTest summary")], None)
     }))]);
 
-    let summary = generate_summary(
-        &messages,
-        &models,
-        &model,
-        2000,
-        None,
-        Some("focus"),
-        Some("old summary"),
-        None,
-    )
-    .await
-    .expect("summary");
+    let summary = generate_summary(&messages, &models, &model, 2000, None, Some("focus"), Some("old summary"), None)
+        .await
+        .expect("summary");
 
     let prompt = prompt_text.lock().clone();
     assert!(summary.contains("Test summary"));

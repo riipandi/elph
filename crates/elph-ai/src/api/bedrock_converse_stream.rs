@@ -514,9 +514,7 @@ fn process_bedrock_sse_event(
             let block_idx = output.content.len();
             output
                 .content
-                .push(AssistantContentBlock::Thinking(crate::types::ThinkingContent::new(
-                    text,
-                )));
+                .push(AssistantContentBlock::Thinking(crate::types::ThinkingContent::new(text)));
             stream.push(AssistantMessageEvent::ThinkingStart {
                 content_index: block_idx,
                 partial: output.clone(),
@@ -682,9 +680,7 @@ fn json_to_bedrock_message(value: &Value) -> Option<BedrockMessage> {
                 return Some(BedrockContentBlock::ToolResult(
                     aws_sdk_bedrockruntime::types::ToolResultBlock::builder()
                         .tool_use_id(id)
-                        .content(aws_sdk_bedrockruntime::types::ToolResultContentBlock::Text(
-                            text.to_string(),
-                        ))
+                        .content(aws_sdk_bedrockruntime::types::ToolResultContentBlock::Text(text.to_string()))
                         .build()
                         .ok()?,
                 ));

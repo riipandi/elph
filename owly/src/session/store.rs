@@ -109,14 +109,8 @@ impl SessionStore {
 
     pub async fn save_messages(&mut self, messages: &[AgentMessage], source: &str) -> Result<()> {
         self.step += 1;
-        self.checkpoint_config = save_messages(
-            self.saver.as_ref(),
-            &self.checkpoint_config,
-            messages,
-            self.step,
-            source,
-        )
-        .await?;
+        self.checkpoint_config =
+            save_messages(self.saver.as_ref(), &self.checkpoint_config, messages, self.step, source).await?;
         Ok(())
     }
 

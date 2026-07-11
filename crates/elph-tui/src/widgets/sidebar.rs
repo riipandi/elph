@@ -11,7 +11,7 @@ impl SidebarPlaceholder {
     /// Builds the bordered placeholder panel.
     pub fn new(theme: crate::theme::Theme) -> Box<Self> {
         let root = Pane::new()
-            .border(Border::SINGLE)
+            .bordered()
             .border_style(Style::new().fg(theme.frame_border))
             .padding(Spacing::balanced(1))
             .vertical()

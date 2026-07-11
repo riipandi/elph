@@ -4,10 +4,8 @@ use elph_ai::api::bedrock_shared::{is_reserved_bedrock_header, merge_bedrock_cus
 
 #[test]
 fn injects_allowed_custom_headers() {
-    let merged = merge_bedrock_custom_headers(
-        &HashMap::new(),
-        &HashMap::from([("x-custom".to_string(), "v".to_string())]),
-    );
+    let merged =
+        merge_bedrock_custom_headers(&HashMap::new(), &HashMap::from([("x-custom".to_string(), "v".to_string())]));
     assert_eq!(merged.get("x-custom").map(String::as_str), Some("v"));
 }
 

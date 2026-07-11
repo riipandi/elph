@@ -138,9 +138,7 @@ async fn run_azure(
     if is_request_aborted(&options.base.signal) {
         output.stop_reason = StopReason::Aborted;
     } else if !responses_state.saw_terminal {
-        return Err(anyhow!(
-            "OpenAI Responses stream ended before a terminal response event"
-        ));
+        return Err(anyhow!("OpenAI Responses stream ended before a terminal response event"));
     }
 
     stream.push(AssistantMessageEvent::Done {

@@ -37,14 +37,7 @@ pub(super) async fn execute_prepared_tool_call(
         }) as crate::types::ToolUpdateCallback
     };
 
-    match (prepared.tool.execute)(
-        prepared.tool_call.id.clone(),
-        prepared.args.clone(),
-        signal,
-        Some(on_update),
-    )
-    .await
-    {
+    match (prepared.tool.execute)(prepared.tool_call.id.clone(), prepared.args.clone(), signal, Some(on_update)).await {
         Ok(result) => {
             *update_tx.lock().await = false;
             ExecutedToolCallOutcome {

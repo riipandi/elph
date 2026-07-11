@@ -81,10 +81,7 @@ impl AgentControl {
             return Err(format!("Subagent depth limit ({}) reached", self.limits.max_depth));
         }
         if self.registry.count_active().await >= self.limits.max_concurrent {
-            return Err(format!(
-                "Concurrent subagent limit ({}) reached",
-                self.limits.max_concurrent
-            ));
+            return Err(format!("Concurrent subagent limit ({}) reached", self.limits.max_concurrent));
         }
 
         let task_name = task_name.into();

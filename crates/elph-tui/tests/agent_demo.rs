@@ -29,11 +29,8 @@ fn transcript_entries_cover_elph_roles() {
 
 #[test]
 fn settings_list_and_cancellable_loader_work_together() {
-    let mut settings = SettingsList::new(
-        vec![SettingItem::new("model", "Model", "gpt-4")],
-        3,
-        SettingsListTheme::dark(),
-    );
+    let mut settings =
+        SettingsList::new(vec![SettingItem::new("model", "Model", "gpt-4")], 3, SettingsListTheme::dark());
     settings.set_focused(true);
     let lines = settings.render(40);
     assert!(!lines.is_empty());

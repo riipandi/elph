@@ -160,10 +160,7 @@ mod tests {
             )],
         );
         assert!(!recovery.draft_restored);
-        assert_eq!(
-            recovery.pending_interrupt.as_deref(),
-            Some("ask_text (question=Continue?)")
-        );
+        assert_eq!(recovery.pending_interrupt.as_deref(), Some("ask_text (question=Continue?)"));
     }
 
     #[tokio::test]

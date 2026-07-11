@@ -58,10 +58,7 @@ async fn main() -> anyhow::Result<()> {
     setup.finish_and_clear();
 
     if let Some(auth) = &auth {
-        println!(
-            "Auth:     configured via {}",
-            auth.source.as_deref().unwrap_or("unknown")
-        );
+        println!("Auth:     configured via {}", auth.source.as_deref().unwrap_or("unknown"));
     } else {
         anyhow::bail!("{provider} is not configured (missing {api_key_var})");
     }
@@ -143,10 +140,7 @@ async fn run_streaming(
             AssistantMessageEvent::Error { error, .. } => {
                 progress.finish_and_clear();
                 println!();
-                anyhow::bail!(
-                    "stream error: {}",
-                    error.error_message.unwrap_or_else(|| "unknown".into())
-                );
+                anyhow::bail!("stream error: {}", error.error_message.unwrap_or_else(|| "unknown".into()));
             }
             _ => {}
         }
@@ -171,10 +165,7 @@ async fn run_buffered(events: &mut elph_ai::EventStreamIterator, progress: &Prog
             }
             AssistantMessageEvent::Error { error, .. } => {
                 progress.finish_and_clear();
-                anyhow::bail!(
-                    "stream error: {}",
-                    error.error_message.unwrap_or_else(|| "unknown".into())
-                );
+                anyhow::bail!("stream error: {}", error.error_message.unwrap_or_else(|| "unknown".into()));
             }
             _ => {}
         }

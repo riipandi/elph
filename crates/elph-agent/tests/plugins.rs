@@ -27,11 +27,7 @@ fn discovers_manifests_under_extension_roots() {
     let root = tempfile::tempdir().expect("tempdir");
     let ext_dir = root.path().join("demo");
     std::fs::create_dir_all(&ext_dir).expect("mkdir");
-    std::fs::write(
-        ext_dir.join("extension.toml"),
-        "name = \"demo\"\ncomponent = \"c.wasm\"\n",
-    )
-    .expect("write");
+    std::fs::write(ext_dir.join("extension.toml"), "name = \"demo\"\ncomponent = \"c.wasm\"\n").expect("write");
     let found = discover_manifests(&[PathBuf::from(root.path())]).expect("discover");
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].1.name, "demo");

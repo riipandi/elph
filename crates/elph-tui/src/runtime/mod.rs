@@ -9,6 +9,7 @@ use crate::terminal::{disable_keyboard_enhancement, enable_keyboard_enhancement}
 
 /// Registers the async spawner used by tuie background tasks.
 pub fn configure_runtime() {
+    tuie::config::update(|cfg| cfg.hover_events = false);
     tuie::set_spawner(|fut| {
         std::thread::spawn(move || {
             futures::executor::block_on(fut);

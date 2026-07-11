@@ -241,9 +241,6 @@ mod tests {
     fn project_path_is_under_elph() {
         let tmp = tempdir().unwrap();
         let paths = test_paths(&tmp);
-        assert_eq!(
-            paths.project_mcp_config_path(),
-            paths.project_dir().join(".elph/mcp.json")
-        );
+        assert_eq!(paths.project_mcp_config_path(), paths.project_dir().join(".elph/mcp.json"));
     }
 }

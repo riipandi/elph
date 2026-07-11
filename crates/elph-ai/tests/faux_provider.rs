@@ -35,10 +35,7 @@ async fn registers_custom_provider_and_estimates_usage() {
     }
     assert!(response.usage.input > 0);
     assert!(response.usage.output > 0);
-    assert_eq!(
-        response.usage.total_tokens,
-        response.usage.input + response.usage.output
-    );
+    assert_eq!(response.usage.total_tokens, response.usage.input + response.usage.output);
     assert_eq!(faux.core.state.lock().unwrap().call_count, 1);
 }
 

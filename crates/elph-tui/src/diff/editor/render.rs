@@ -86,10 +86,7 @@ impl Editor {
 
         let remaining = rows.len().saturating_sub(end);
         if remaining > 0 {
-            lines.push(styled(
-                &ansi::fg(self.theme.border),
-                &format!("─── ↓ {remaining} more ───"),
-            ));
+            lines.push(styled(&ansi::fg(self.theme.border), &format!("─── ↓ {remaining} more ───")));
         }
 
         pad_lines(&lines, self.padding_x as usize, 0)

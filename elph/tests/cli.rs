@@ -43,11 +43,7 @@ fn memory_status_on_empty_store() {
         .args(["memory", "status"])
         .output()
         .expect("failed to run elph memory status");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("floppy status"));
     assert!(stdout.contains("Memories:  0"));
@@ -67,11 +63,7 @@ fn completions_generates_bash_script() {
         .args(["completions", "--shell", "bash"])
         .output()
         .expect("failed to run elph completions --shell bash");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("elph"), "missing bin name in:\n{stdout}");
     assert!(stdout.contains("extensions"), "missing extensions in:\n{stdout}");
@@ -93,11 +85,7 @@ fn completions_writes_to_output_file() {
         ])
         .output()
         .expect("failed to run elph completions --output");
-    assert!(
-        output.status.success(),
-        "stderr: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let script = std::fs::read_to_string(&path).expect("read completion file");
     assert!(script.contains("#compdef elph"), "expected zsh compdef in:\n{script}");
 }

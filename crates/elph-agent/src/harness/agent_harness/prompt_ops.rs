@@ -23,10 +23,7 @@ where
         options: Option<AgentHarnessPromptOptions>,
     ) -> HarnessOpResult<AssistantMessage> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
-            return Err(AgentHarnessError::new(
-                AgentHarnessErrorCode::Busy,
-                "AgentHarness is busy",
-            ));
+            return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
@@ -44,10 +41,7 @@ where
 
     pub async fn skill(&self, name: &str, additional_instructions: Option<&str>) -> HarnessOpResult<AssistantMessage> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
-            return Err(AgentHarnessError::new(
-                AgentHarnessErrorCode::Busy,
-                "AgentHarness is busy",
-            ));
+            return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
@@ -74,10 +68,7 @@ where
 
     pub async fn prompt_from_template(&self, name: &str, args: &[String]) -> HarnessOpResult<AssistantMessage> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
-            return Err(AgentHarnessError::new(
-                AgentHarnessErrorCode::Busy,
-                "AgentHarness is busy",
-            ));
+            return Err(AgentHarnessError::new(AgentHarnessErrorCode::Busy, "AgentHarness is busy"));
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;

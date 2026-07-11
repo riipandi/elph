@@ -77,11 +77,7 @@ impl LocalExecutionEnv {
 
     fn abort_file_error<T>(token: Option<&CancellationToken>, path: Option<&str>) -> Option<Result<T, FileError>> {
         if token.is_some_and(|t| t.is_cancelled()) {
-            Some(err(FileError::new(
-                FileErrorCode::Aborted,
-                "aborted",
-                path.map(str::to_string),
-            )))
+            Some(err(FileError::new(FileErrorCode::Aborted, "aborted", path.map(str::to_string))))
         } else {
             None
         }

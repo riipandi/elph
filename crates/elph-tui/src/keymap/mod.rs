@@ -42,6 +42,28 @@ impl GlobalChordHandler {
     pub fn sink(&self) -> ShellActionSink {
         self.sink.clone()
     }
+
+    #[cfg(test)]
+    pub(crate) fn prime_focus(
+        &mut self,
+        term: &mut tuie::emulator::Emulator,
+        input_id: WidgetId<tuie::prelude::Input>,
+    ) {
+        crate::shell::tuie_shell::focus_prompt_input(input_id);
+        term.update(
+            self.inner.as_mut(),
+            &[tuie::prelude::RuntimeEvent::Resize(tuie::get_runtime_info().size)],
+        );
+    }
+
+    #[cfg(test)]
+    pub(crate) fn flush_agent_effects(&mut self) {
+        if let Some(agent) =
+            (self.inner.as_mut() as &mut dyn std::any::Any).downcast_mut::<crate::shell::tuie_shell::AgentShell>()
+        {
+            agent.flush_input_side_effects();
+        }
+    }
 }
 
 fn chord_action(chord: &Chord) -> Option<ShellAction> {
@@ -50,7 +72,6 @@ fn chord_action(chord: &Chord) -> Option<ShellAction> {
         (chord!(Ctrl + k), ShellAction::OpenPalette),
         (chord!(Ctrl + t), ShellAction::ToggleTheme),
         (chord!(Ctrl + q), ShellAction::Quit),
-        (chord!(Ctrl + c), ShellAction::Cancel),
         (chord!(Shift + Up), ShellAction::TranscriptScrollUp),
         (chord!(Shift + Down), ShellAction::TranscriptScrollDown),
         (chord!(Shift + End), ShellAction::TranscriptJumpTail),
@@ -64,9 +85,11 @@ impl DelegateWidget for GlobalChordHandler {
     tuie::delegate_widget!(inner);
 
     fn override_on_input(&mut self, queue: &mut InputQueue) -> InputResult {
-        if let Some(event) = queue.peek()
-            && let Some(action) = chord_action(&event.chord)
-        {
+        let Some(event) = queue.peek() else {
+            return InputResult::Rejected;
+        };
+
+        if let Some(action) = chord_action(&event.chord) {
             self.sink.0.borrow_mut().push(action);
             queue.next();
             if action == ShellAction::Quit {
@@ -74,7 +97,46 @@ impl DelegateWidget for GlobalChordHandler {
             }
             return InputResult::Handled;
         }
-        self.inner.on_input(queue)
+
+        if matches!(&event.chord, chord!(Ctrl + c)) {
+            let result = self.inner.on_input(queue);
+            if result == InputResult::Handled {
+                return result;
+            }
+            self.sink.0.borrow_mut().push(ShellAction::Cancel);
+            queue.next();
+            return InputResult::Handled;
+        }
+
+        let result = self.inner.on_input(queue);
+        if let Some(agent) =
+            (self.inner.as_mut() as &mut dyn std::any::Any).downcast_mut::<crate::shell::tuie_shell::AgentShell>()
+        {
+            agent.flush_input_side_effects();
+        }
+
+        if let Some(event) = queue.peek() {
+            match &event.chord {
+                chord!(Ctrl + z) => {
+                    queue.next();
+                    tuie::suspend();
+                    return InputResult::Handled;
+                }
+                chord!(Tab) if queue.is_unhandled() => {
+                    queue.next();
+                    tuie::focus_next_tab_order(Sign::Positive);
+                    return InputResult::Handled;
+                }
+                chord!(Shift + Tab) if queue.is_unhandled() => {
+                    queue.next();
+                    tuie::focus_next_tab_order(Sign::Negative);
+                    return InputResult::Handled;
+                }
+                _ => {}
+            }
+        }
+
+        result
     }
 }
 

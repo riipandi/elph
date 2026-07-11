@@ -39,10 +39,7 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
 
     let providers_dir = options.catalog_dir.join("src/providers");
     if !providers_dir.is_dir() {
-        bail!(
-            "missing catalog source providers directory at {}",
-            providers_dir.display()
-        );
+        bail!("missing catalog source providers directory at {}", providers_dir.display());
     }
 
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
@@ -238,19 +235,13 @@ fn render_chat_catalog_rs(index: &[CatalogIndexEntry]) -> String {
 
     for entry in index {
         let const_name = chat_catalog_const_name(&entry.provider_id);
-        out.push_str(&format!(
-            "define_catalog!({const_name}, \"{}.json\");\n",
-            entry.rust_mod
-        ));
+        out.push_str(&format!("define_catalog!({const_name}, \"{}.json\");\n", entry.rust_mod));
     }
 
     out.push_str("\npub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {\n    HashMap::from([\n");
     for entry in index {
         let const_name = chat_catalog_const_name(&entry.provider_id);
-        out.push_str(&format!(
-            "        (\"{}\", {}.as_slice()),\n",
-            entry.provider_id, const_name
-        ));
+        out.push_str(&format!("        (\"{}\", {}.as_slice()),\n", entry.provider_id, const_name));
     }
     out.push_str(
         "    ])\n}\n\n\

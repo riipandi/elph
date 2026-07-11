@@ -49,12 +49,8 @@ async fn main() -> anyhow::Result<()> {
             ..Default::default()
         }),
         stream_fn: Some(stream_fn),
-        before_tool_call: Some(Arc::new(|ctx, _signal| {
-            Box::pin(async move { before_tool_hook(ctx).await })
-        })),
-        after_tool_call: Some(Arc::new(|ctx, _signal| {
-            Box::pin(async move { after_tool_hook(ctx).await })
-        })),
+        before_tool_call: Some(Arc::new(|ctx, _signal| Box::pin(async move { before_tool_hook(ctx).await }))),
+        after_tool_call: Some(Arc::new(|ctx, _signal| Box::pin(async move { after_tool_hook(ctx).await }))),
         ..Default::default()
     });
 
@@ -142,9 +138,7 @@ fn create_read_file_tool() -> elph_agent::AgentTool {
                         "[package]\nname = \"elph\"\nversion = \"0.0.22\"",
                     ))
                 } else {
-                    Ok(elph_agent::AgentToolResult::text(format!(
-                        "Contents of {path} (simulated)"
-                    )))
+                    Ok(elph_agent::AgentToolResult::text(format!("Contents of {path} (simulated)")))
                 }
             })
         },

@@ -11,12 +11,8 @@ where
 {
     pub(super) async fn drain_queued_messages(&self, steering: bool) -> Vec<AgentMessage> {
         if steering {
-            self.drain_queue(
-                &self.shared.steer_queue,
-                *self.shared.steering_queue_mode.lock().await,
-                true,
-            )
-            .await
+            self.drain_queue(&self.shared.steer_queue, *self.shared.steering_queue_mode.lock().await, true)
+                .await
         } else {
             self.drain_queue(
                 &self.shared.follow_up_queue,

@@ -74,10 +74,7 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
     let env = Arc::new(LocalExecutionEnv::new(cwd));
 
     let (mut agent_tools, base_tool_str) = if command == "chat" {
-        (
-            create_read_only_tools(env.clone()),
-            "read, grep, find, ls (read-only mode)",
-        )
+        (create_read_only_tools(env.clone()), "read, grep, find, ls (read-only mode)")
     } else {
         (create_all_tools(env.clone()), "read, bash, edit, write, grep, find, ls")
     };

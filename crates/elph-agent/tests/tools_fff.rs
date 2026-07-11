@@ -48,14 +48,9 @@ async fn grep_tool_finds_literal_pattern_in_directory() {
     get_or_throw(env.write_file("beta.txt", "goodbye world\n").await);
 
     let tool = create_grep_tool(env.clone());
-    let result = (tool.execute)(
-        "grep-1".into(),
-        json!({ "pattern": "hello", "literal": true }),
-        None,
-        None,
-    )
-    .await
-    .expect("grep tool");
+    let result = (tool.execute)("grep-1".into(), json!({ "pattern": "hello", "literal": true }), None, None)
+        .await
+        .expect("grep tool");
 
     let text = tool_text(result);
     assert!(text.contains("alpha.txt:1:hello world"), "unexpected output:\n{text}");

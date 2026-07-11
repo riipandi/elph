@@ -172,10 +172,7 @@ pub fn run_wizard(config: &mut Config) -> Result<()> {
     config.model_id = next.model_id;
 
     println!();
-    println!(
-        "\x1b[32m✓\x1b[0m Credentials saved to {}",
-        credentials::env_path().display()
-    );
+    println!("\x1b[32m✓\x1b[0m Credentials saved to {}", credentials::env_path().display());
     println!();
 
     Ok(())

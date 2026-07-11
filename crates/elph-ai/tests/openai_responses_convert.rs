@@ -64,10 +64,7 @@ fn hashes_foreign_copilot_tool_item_ids_to_fc_prefix() {
         .find(|item| item.get("type").and_then(|v| v.as_str()) == Some("function_call"))
         .expect("function_call");
     let expected_item_id = format!("fc_{}", short_hash(COPILOT_ITEM_ID));
-    assert_eq!(
-        tool_call.get("id").and_then(|v| v.as_str()),
-        Some(expected_item_id.as_str())
-    );
+    assert_eq!(tool_call.get("id").and_then(|v| v.as_str()), Some(expected_item_id.as_str()));
     assert!(expected_item_id.len() <= 64);
 }
 

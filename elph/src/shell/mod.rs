@@ -26,6 +26,8 @@ use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
 
 pub use render::{run_sigint_watcher, run_tui};
+pub use shell_host::ElphShellHost;
+pub use transcript_render::{TranscriptRenderOptions, entries_to_lines, entries_to_lines_simple};
 
 /// Launch options for the interactive TUI.
 #[derive(Debug, Clone, Default)]
@@ -188,5 +190,96 @@ impl ElphApp {
             lines_removed,
             usage,
         }
+    }
+}
+
+#[cfg(test)]
+mod prompt_dispatch_tests {
+    use std::sync::{Arc, Mutex};
+
+    use super::*;
+    use elph_tui::{PromptAction, ShellHost};
+
+    use super::ElphShellHost;
+    use crate::platform::{self, Paths};
+
+    async fn bootstrap_test_app(tmp: &tempfile::TempDir) -> ElphApp {
+        let home = tmp.path().join("home");
+        let data = tmp.path().join("data");
+        let project = tmp.path().join("project");
+        std::fs::create_dir_all(&home).expect("home dir");
+        std::fs::create_dir_all(&project).expect("project dir");
+
+        // SAFETY: single-threaded test runtime; vars scoped to this test process.
+        unsafe {
+            std::env::set_var("ELPH_HOME", &home);
+            std::env::set_var("ELPH_DATA_DIR", &data);
+            std::env::set_var("ELPH_PROJECT_DIR", &project);
+        }
+
+        let paths = Paths::from_dirs(home, data, project);
+        platform::bootstrap::ensure_with_paths(&paths, "test")
+            .await
+            .expect("bootstrap home");
+        let settings = platform::Settings::load(&paths).expect("load settings");
+        ElphApp::bootstrap(settings, None).await.expect("bootstrap app")
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn clear_empties_prompt_draft() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut app = bootstrap_test_app(&tmp).await;
+        app.prompt.set_value("draft text");
+        app.dispatch_prompt_action(PromptAction::Clear);
+        assert!(app.prompt.value().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn queue_stores_follow_up_while_busy() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut app = bootstrap_test_app(&tmp).await;
+        app.agent_running = true;
+        app.dispatch_prompt_action(PromptAction::Queue("follow up".into()));
+        assert_eq!(app.prompt_queue.len(), 1);
+        assert_eq!(app.prompt_queue.pop_front().as_deref(), Some("follow up"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn quit_command_sets_should_exit() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut app = bootstrap_test_app(&tmp).await;
+        app.dispatch_prompt_action(PromptAction::Submit(":q".into()));
+        assert!(app.should_exit);
+        assert!(app.prompt.value().is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn slash_submit_appends_stub_and_clears_prompt() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let mut app = bootstrap_test_app(&tmp).await;
+        app.dispatch_prompt_action(PromptAction::Submit("/help".into()));
+        assert!(app.prompt.value().is_empty());
+        let system = app
+            .chat
+            .entries
+            .iter()
+            .find(|entry| entry.role == elph_tui::TranscriptRole::System)
+            .expect("slash stub system line");
+        assert!(system.content.contains("help"));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn overlay_blocks_clear_via_host() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let app = Arc::new(Mutex::new(bootstrap_test_app(&tmp).await));
+        {
+            let mut guard = app.lock().expect("lock");
+            guard.prompt.set_value("blocked");
+            guard.active_overlay = ActiveOverlay::Model;
+        }
+
+        let mut host = ElphShellHost::new(app);
+        host.on_prompt_action(PromptAction::Clear);
+        assert_eq!(host.prompt_text(), "blocked");
     }
 }

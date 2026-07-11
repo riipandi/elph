@@ -62,9 +62,7 @@ async fn execute_ls(
 
     let signal_for_blocking = signal.clone();
     let names = tokio::task::spawn_blocking(move || {
-        run_with_abort_signal(signal_for_blocking.as_ref(), |abort| {
-            list_directory(&absolute, limit, &abort)
-        })
+        run_with_abort_signal(signal_for_blocking.as_ref(), |abort| list_directory(&absolute, limit, &abort))
     })
     .await??;
 

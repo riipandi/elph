@@ -181,10 +181,7 @@ where
         Arc::new(move |model, context, options| {
             let (mut snapshot, session_id) = {
                 let turn_state = turn_state.lock().expect("turn state lock");
-                (
-                    clone_stream_options(&turn_state.stream_options),
-                    turn_state.session_id.clone(),
-                )
+                (clone_stream_options(&turn_state.stream_options), turn_state.session_id.clone())
             };
 
             if let Ok(Ok(merged)) = try_block_on(hooks.emit_before_provider_request(&BeforeProviderRequestEvent {

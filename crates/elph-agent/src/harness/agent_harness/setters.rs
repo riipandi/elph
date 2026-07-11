@@ -47,13 +47,11 @@ where
                 });
         }
         *self.shared.model.lock().await = model.clone();
-        self.emit_own(AgentHarnessOwnEvent::ModelUpdate(
-            crate::harness::types::ModelUpdateEvent {
-                model,
-                previous_model: Some(previous_model),
-                source: ModelUpdateSource::Set,
-            },
-        ))
+        self.emit_own(AgentHarnessOwnEvent::ModelUpdate(crate::harness::types::ModelUpdateEvent {
+            model,
+            previous_model: Some(previous_model),
+            source: ModelUpdateSource::Set,
+        }))
         .await
     }
 
@@ -89,10 +87,7 @@ where
         tools: Vec<AgentTool>,
         active_tool_names: Option<Vec<String>>,
     ) -> HarnessOpResult<()> {
-        validate_unique_names(
-            tools.iter().map(|t| t.name().to_string()).collect(),
-            "Duplicate tool name(s)",
-        )?;
+        validate_unique_names(tools.iter().map(|t| t.name().to_string()).collect(), "Duplicate tool name(s)")?;
         let next_tools: HashMap<_, _> = tools.iter().map(|t| (t.name().to_string(), t.clone())).collect();
         let next_active = match active_tool_names {
             Some(names) => names,
@@ -123,15 +118,13 @@ where
 
         *self.shared.tools.lock().await = next_tools;
         *self.shared.active_tool_names.lock().await = next_active.clone();
-        self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(
-            crate::harness::types::ToolsUpdateEvent {
-                tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
-                previous_tool_names,
-                active_tool_names: next_active,
-                previous_active_tool_names,
-                source: ModelUpdateSource::Set,
-            },
-        ))
+        self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(crate::harness::types::ToolsUpdateEvent {
+            tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
+            previous_tool_names,
+            active_tool_names: next_active,
+            previous_active_tool_names,
+            source: ModelUpdateSource::Set,
+        }))
         .await
     }
 
@@ -161,15 +154,13 @@ where
         }
 
         *self.shared.active_tool_names.lock().await = tool_names.clone();
-        self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(
-            crate::harness::types::ToolsUpdateEvent {
-                tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
-                previous_tool_names,
-                active_tool_names: tool_names,
-                previous_active_tool_names,
-                source: ModelUpdateSource::Set,
-            },
-        ))
+        self.emit_own(AgentHarnessOwnEvent::ToolsUpdate(crate::harness::types::ToolsUpdateEvent {
+            tool_names: self.shared.tools.lock().await.keys().cloned().collect(),
+            previous_tool_names,
+            active_tool_names: tool_names,
+            previous_active_tool_names,
+            source: ModelUpdateSource::Set,
+        }))
         .await
     }
 

@@ -172,10 +172,7 @@ pub fn create_git_summary(cwd: &Path, last_update: Option<&UpdateMetadata>) -> S
         && let Some(ref last_head) = update.git_head
     {
         // Update mode with previous HEAD
-        let log = run_git(
-            cwd,
-            &["log", &format!("{last_head}..HEAD"), "--name-status", "--oneline"],
-        );
+        let log = run_git(cwd, &["log", &format!("{last_head}..HEAD"), "--name-status", "--oneline"]);
         sections.push(format_git_section(
             &format!("git log {last_head}..HEAD --name-status --oneline"),
             &log,
@@ -191,10 +188,7 @@ pub fn create_git_summary(cwd: &Path, last_update: Option<&UpdateMetadata>) -> S
     } else {
         // Init mode - recent history
         let log = run_git(cwd, &["log", "--max-count=20", "--name-status", "--oneline"]);
-        sections.push(format_git_section(
-            "git log --max-count=20 --name-status --oneline",
-            &log,
-        ));
+        sections.push(format_git_section("git log --max-count=20 --name-status --oneline", &log));
     }
 
     // git diff

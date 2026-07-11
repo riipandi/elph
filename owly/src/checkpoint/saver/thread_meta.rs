@@ -74,12 +74,9 @@ impl TursoCheckpointSaver {
     pub async fn delete_thread_metadata(&self, thread_id: &str) -> anyhow::Result<()> {
         self.ensure_thread_metadata_table().await?;
         let conn = self.connection().await?;
-        conn.execute(
-            "DELETE FROM thread_metadata WHERE thread_id = ?",
-            turso::params![thread_id],
-        )
-        .await
-        .map_err(|error| anyhow::anyhow!("thread_metadata delete: {error}"))?;
+        conn.execute("DELETE FROM thread_metadata WHERE thread_id = ?", turso::params![thread_id])
+            .await
+            .map_err(|error| anyhow::anyhow!("thread_metadata delete: {error}"))?;
         Ok(())
     }
 }

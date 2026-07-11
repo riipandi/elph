@@ -204,10 +204,7 @@ fn maps_zai_glm_5_2_thinking_levels_to_reasoning_effort() {
             ..Default::default()
         };
         let params = build_openai_completions_params(&model, &context, &options).expect("params");
-        assert_eq!(
-            params["thinking"],
-            json!({ "type": "enabled", "clear_thinking": false })
-        );
+        assert_eq!(params["thinking"], json!({ "type": "enabled", "clear_thinking": false }));
         assert_eq!(params["reasoning_effort"], json!(expected_effort));
     }
 }

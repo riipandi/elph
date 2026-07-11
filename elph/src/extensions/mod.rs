@@ -52,12 +52,9 @@ impl ExtensionHost {
     pub fn reload(&self, paths: &Paths, include_project: bool) -> Result<()> {
         let settings = Self::load_settings(paths);
         *self.settings.write() = settings.clone();
-        self.registry.read().load(
-            paths.config_dir(),
-            &paths.project_elph_dir(),
-            &settings,
-            include_project,
-        )
+        self.registry
+            .read()
+            .load(paths.config_dir(), &paths.project_elph_dir(), &settings, include_project)
     }
 
     pub fn commands(&self) -> Vec<ExtensionCommand> {

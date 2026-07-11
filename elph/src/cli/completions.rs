@@ -72,10 +72,7 @@ mod tests {
 
         let script = String::from_utf8(script).expect("utf8");
         assert!(script.contains("elph"), "expected bin name in script:\n{script}");
-        assert!(
-            script.contains("extensions"),
-            "expected extensions subcommand:\n{script}"
-        );
+        assert!(script.contains("extensions"), "expected extensions subcommand:\n{script}");
         assert!(script.contains("ext"), "expected ext alias:\n{script}");
         assert!(script.contains("memory"), "expected memory subcommand:\n{script}");
     }

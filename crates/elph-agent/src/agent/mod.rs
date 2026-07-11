@@ -109,9 +109,7 @@ impl Agent {
         let default_stream: StreamFn = Arc::new(move |model, context, opts| models.stream_simple(model, context, opts));
 
         Self {
-            state: Arc::new(Mutex::new(state::MutableAgentState::from_partial(
-                options.initial_state,
-            ))),
+            state: Arc::new(Mutex::new(state::MutableAgentState::from_partial(options.initial_state))),
             listeners: Arc::new(Mutex::new(Vec::new())),
             steering_queue: PendingMessageQueue::new(options.steering_mode),
             follow_up_queue: PendingMessageQueue::new(options.follow_up_mode),

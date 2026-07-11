@@ -118,20 +118,15 @@ where
                     return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, message));
                 }
                 Err(error) => {
-                    return Err(AgentHarnessError::new(
-                        AgentHarnessErrorCode::InvalidState,
-                        error.to_string(),
-                    ));
+                    return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, error.to_string()));
                 }
             }
         }
 
         let turn_state = Arc::new(StdMutex::new(turn_state));
         let system_prompt_override = before_result.and_then(|r| r.system_prompt);
-        let context = self.create_context(
-            &turn_state.lock().expect("turn state lock"),
-            system_prompt_override.as_deref(),
-        );
+        let context =
+            self.create_context(&turn_state.lock().expect("turn state lock"), system_prompt_override.as_deref());
         let config = self.create_loop_config(turn_state.clone());
         let shared = self.shared.clone();
 
@@ -189,10 +184,7 @@ where
                         }
                         Ok(GoalTurnFinish::None) => {}
                         Err(error) => {
-                            return Err(AgentHarnessError::new(
-                                AgentHarnessErrorCode::InvalidState,
-                                error.to_string(),
-                            ));
+                            return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, error.to_string()));
                         }
                     }
                 }

@@ -62,9 +62,7 @@ async fn execute_edit(
         return Err(anyhow::anyhow!("old_string not found in {path}"));
     }
     if count > 1 {
-        return Err(anyhow::anyhow!(
-            "old_string found {count} times in {path}; must be unique"
-        ));
+        return Err(anyhow::anyhow!("old_string found {count} times in {path}; must be unique"));
     }
     let updated = content.replacen(old_string, new_string, 1);
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {

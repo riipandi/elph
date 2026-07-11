@@ -97,15 +97,9 @@ async fn run_agent_loop_completes_text_response() {
     let prompts = vec![user_agent_message("hi")];
     let context = test_context("test");
 
-    let new_messages = run_agent_loop(
-        prompts,
-        context,
-        base_loop_config(model, faux_stream_fn(&faux)),
-        emit,
-        None,
-    )
-    .await
-    .expect("agent loop");
+    let new_messages = run_agent_loop(prompts, context, base_loop_config(model, faux_stream_fn(&faux)), emit, None)
+        .await
+        .expect("agent loop");
 
     assert_eq!(new_messages.len(), 2);
     assert_eq!(new_messages[0].role(), "user");
@@ -169,15 +163,9 @@ async fn run_agent_loop_handles_custom_message_types_via_convert_to_llm() {
     let mut context = empty_context();
     context.messages = vec![notification];
 
-    let _ = run_agent_loop(
-        vec![user_agent_message("Hello")],
-        context,
-        config,
-        capture_events().0,
-        None,
-    )
-    .await
-    .expect("agent loop");
+    let _ = run_agent_loop(vec![user_agent_message("Hello")], context, config, capture_events().0, None)
+        .await
+        .expect("agent loop");
 
     let converted = converted.lock().await;
     assert_eq!(converted.len(), 1);
@@ -332,15 +320,9 @@ async fn fails_truncated_tool_calls_on_length_stop() {
     context.messages = vec![user_agent_message("go")];
     context.tools = vec![tool];
 
-    let new_messages = run_agent_loop(
-        Vec::new(),
-        context,
-        base_loop_config(model, faux_stream_fn(&faux)),
-        emit,
-        None,
-    )
-    .await
-    .expect("agent loop");
+    let new_messages = run_agent_loop(Vec::new(), context, base_loop_config(model, faux_stream_fn(&faux)), emit, None)
+        .await
+        .expect("agent loop");
 
     assert!(executed.lock().await.is_empty());
 
@@ -1119,10 +1101,7 @@ async fn run_agent_loop_stops_after_turn_when_should_stop_after_turn_returns_tru
     assert_eq!(steering_polls.load(Ordering::SeqCst), 1);
     assert_eq!(follow_up_polls.load(Ordering::SeqCst), 0);
     assert_eq!(*callback_tool_result_ids.lock().await, vec!["tool-1"]);
-    assert_eq!(
-        *callback_context_roles.lock().await,
-        vec!["user", "assistant", "toolResult"]
-    );
+    assert_eq!(*callback_context_roles.lock().await, vec!["user", "assistant", "toolResult"]);
     assert_eq!(
         new_messages.iter().map(|message| message.role()).collect::<Vec<_>>(),
         vec!["user", "assistant", "toolResult"]
@@ -1237,15 +1216,9 @@ async fn run_agent_loop_continues_after_parallel_tools_when_not_all_terminate() 
     let mut context = empty_context();
     context.tools = vec![tool];
 
-    let new_messages = run_agent_loop(
-        vec![user_agent_message("echo both")],
-        context,
-        config,
-        capture_events().0,
-        None,
-    )
-    .await
-    .expect("agent loop");
+    let new_messages = run_agent_loop(vec![user_agent_message("echo both")], context, config, capture_events().0, None)
+        .await
+        .expect("agent loop");
 
     assert_eq!(
         new_messages.iter().map(|message| message.role()).collect::<Vec<_>>(),

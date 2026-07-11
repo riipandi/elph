@@ -44,11 +44,7 @@ impl TurnWriteContext {
         };
         let value = json!({ "text": draft_text });
         self.saver
-            .put_writes(
-                &self.config,
-                &[(ASSISTANT_DRAFT.to_string(), value)],
-                "assistant_stream",
-            )
+            .put_writes(&self.config, &[(ASSISTANT_DRAFT.to_string(), value)], "assistant_stream")
             .await?;
         Ok(())
     }

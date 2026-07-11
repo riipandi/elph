@@ -25,10 +25,7 @@ async fn slow_sse_handler() -> Response {
         }
         let payload = json!({ "index": index });
         sleep(Duration::from_millis(50)).await;
-        Some((
-            Ok::<_, std::convert::Infallible>(format!("data: {payload}\n\n")),
-            index + 1,
-        ))
+        Some((Ok::<_, std::convert::Infallible>(format!("data: {payload}\n\n")), index + 1))
     }));
 
     Response::builder()

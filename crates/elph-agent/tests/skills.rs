@@ -122,10 +122,7 @@ async fn load_sourced_skills_attaches_source_to_diagnostics() {
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].code, SkillDiagnosticCode::InvalidMetadata);
     assert_eq!(result.diagnostics[0].message, "description is required");
-    assert_eq!(
-        result.diagnostics[0].path,
-        join_path(&root, &["user", "broken", "SKILL.md"])
-    );
+    assert_eq!(result.diagnostics[0].path, join_path(&root, &["user", "broken", "SKILL.md"]));
     assert_eq!(result.diagnostics[0].source, Source { kind: "user" });
 }
 
@@ -139,12 +136,9 @@ async fn load_skills_loads_direct_markdown_children_only_from_root() {
     env.write_file("skills/root.md", "---\ndescription: Root skill\n---\nRoot content")
         .await
         .expect("write root");
-    env.write_file(
-        "skills/nested/ignored.md",
-        "---\ndescription: Ignored\n---\nIgnored content",
-    )
-    .await
-    .expect("write nested");
+    env.write_file("skills/nested/ignored.md", "---\ndescription: Ignored\n---\nIgnored content")
+        .await
+        .expect("write nested");
 
     let result = load_skills(&env, &["skills"]).await;
 

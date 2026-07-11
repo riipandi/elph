@@ -775,13 +775,7 @@ async fn discover_one(
             }
         }
 
-        Ok::<_, anyhow::Error>((
-            tools,
-            resource_descriptors,
-            prompt_descriptors,
-            resources_ok,
-            prompts_ok,
-        ))
+        Ok::<_, anyhow::Error>((tools, resource_descriptors, prompt_descriptors, resources_ok, prompts_ok))
     };
 
     let result = if let Some(t) = override_timeout {

@@ -51,10 +51,7 @@ async fn put_and_get_tuple_roundtrip() {
     };
 
     let saved = saver.put(&config, &checkpoint, &metadata).await.expect("put");
-    assert_eq!(
-        saved.configurable.checkpoint_id.as_deref(),
-        Some(checkpoint.id.as_str())
-    );
+    assert_eq!(saved.configurable.checkpoint_id.as_deref(), Some(checkpoint.id.as_str()));
 
     let tuple = saver.get_tuple(&saved).await.expect("get").expect("tuple");
     assert_eq!(tuple.checkpoint.id, checkpoint.id);

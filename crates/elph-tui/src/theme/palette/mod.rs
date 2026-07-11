@@ -128,10 +128,7 @@ mod tests {
             theme.git_status_color(1, 0),
             theme.mode_border_color(AgentMode::Ask),
         ] {
-            assert!(
-                !matches!(color, Color::Rgb(_, _, _)),
-                "expected terminal color, got {color:?}"
-            );
+            assert!(!matches!(color, Color::Rgb(_, _, _)), "expected terminal color, got {color:?}");
         }
     }
 

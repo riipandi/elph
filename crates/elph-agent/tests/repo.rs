@@ -194,10 +194,7 @@ async fn session_dir_repo_opens_deletes_and_forks_by_metadata() {
         .expect("fork");
     let fork_metadata = fork.metadata().await;
     assert_eq!(fork_metadata.cwd, "/tmp/target");
-    assert_eq!(
-        fork_metadata.parent_session_id.as_deref(),
-        Some(source_metadata.id.as_str())
-    );
+    assert_eq!(fork_metadata.parent_session_id.as_deref(), Some(source_metadata.id.as_str()));
     let fork_ids: Vec<_> = fork
         .entries()
         .await

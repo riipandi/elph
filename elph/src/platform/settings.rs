@@ -180,11 +180,7 @@ mod tests {
     #[test]
     fn load_merges_missing_memory_section() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let paths = Paths::from_dirs(
-            tmp.path().to_path_buf(),
-            tmp.path().join("data"),
-            tmp.path().join("repo"),
-        );
+        let paths = Paths::from_dirs(tmp.path().to_path_buf(), tmp.path().join("data"), tmp.path().join("repo"));
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
         assert_eq!(loaded.memory.embed_model, "AllMiniLML6V2");
@@ -193,11 +189,7 @@ mod tests {
     #[test]
     fn ensure_writes_only_when_missing() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let paths = Paths::from_dirs(
-            tmp.path().to_path_buf(),
-            tmp.path().join("data"),
-            tmp.path().join("repo"),
-        );
+        let paths = Paths::from_dirs(tmp.path().to_path_buf(), tmp.path().join("data"), tmp.path().join("repo"));
 
         Settings::ensure(&paths).expect("first ensure");
         assert!(paths.settings_path().exists());

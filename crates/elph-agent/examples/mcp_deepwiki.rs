@@ -132,10 +132,7 @@ async fn main() -> anyhow::Result<()> {
         }
         "read_wiki_contents" | "read_wiki_structure" => json!({ "repoName": args.repo }),
         other => {
-            println!(
-                "Note: unknown tool \"{other}\"; sending {{\"repoName\": \"{}\"}}",
-                args.repo
-            );
+            println!("Note: unknown tool \"{other}\"; sending {{\"repoName\": \"{}\"}}", args.repo);
             json!({ "repoName": args.repo })
         }
     };

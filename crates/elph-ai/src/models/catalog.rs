@@ -123,13 +123,8 @@ fn parse_compat(
 
 macro_rules! define_catalog {
     ($name:ident, $file:literal) => {
-        pub static $name: LazyLock<Vec<Model>> = LazyLock::new(|| {
-            parse_models(include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/models/",
-                $file
-            )))
-        });
+        pub static $name: LazyLock<Vec<Model>> =
+            LazyLock::new(|| parse_models(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/models/", $file))));
     };
 }
 

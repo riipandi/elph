@@ -84,11 +84,7 @@ impl Paths {
     /// Per-project runtime directories (mcps, terminals, agent-tools).
     pub fn project_layout_dirs(&self) -> Result<Vec<PathBuf>> {
         let base = self.project_data_dir()?;
-        Ok(vec![
-            base.join("mcps"),
-            base.join("terminals"),
-            base.join("agent-tools"),
-        ])
+        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
     }
 
     /// Resolve layout dirs for an arbitrary project path (e.g. session resume).
@@ -111,11 +107,7 @@ impl Paths {
     pub fn project_layout_dirs_for(&self, project_path: &Path) -> Result<Vec<PathBuf>> {
         let key = project_key::from_path(project_path)?;
         let base = self.projects_dir().join(key);
-        Ok(vec![
-            base.join("mcps"),
-            base.join("terminals"),
-            base.join("agent-tools"),
-        ])
+        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
     }
 
     /// Session storage root for a project path.

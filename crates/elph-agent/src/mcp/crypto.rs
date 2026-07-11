@@ -203,11 +203,7 @@ fn load_or_create_key_sync(path: &Path) -> Result<Aes256Key> {
 fn load_key_sync(path: &Path) -> Result<Aes256Key> {
     let bytes = std::fs::read(path).with_context(|| format!("read key {}", path.display()))?;
     if bytes.len() != KEY_LEN {
-        bail!(
-            "auth key at {} must be {KEY_LEN} bytes, got {}",
-            path.display(),
-            bytes.len()
-        );
+        bail!("auth key at {} must be {KEY_LEN} bytes, got {}", path.display(), bytes.len());
     }
     let mut arr = [0u8; KEY_LEN];
     arr.copy_from_slice(&bytes);

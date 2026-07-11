@@ -65,9 +65,9 @@ async fn fetch_url(raw_url: &str) -> anyhow::Result<FetchResult> {
             {
                 match fetch_obscura(parsed.as_str()).await {
                     Ok(result) => Ok(result),
-                    Err(obscura_error) => Err(anyhow::anyhow!(
-                        "fetch failed (http: {http_error}; obscura: {obscura_error})"
-                    )),
+                    Err(obscura_error) => {
+                        Err(anyhow::anyhow!("fetch failed (http: {http_error}; obscura: {obscura_error})"))
+                    }
                 }
             }
             #[cfg(not(feature = "obscura"))]

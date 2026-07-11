@@ -99,9 +99,7 @@ pub fn handle(args: &ProviderArgs) -> ExitCode {
             EXIT_SUCCESS
         }
         ProviderCommands::Remove { provider_id } => {
-            help::unimplemented(&format!(
-                "Provider remove — not yet implemented (provider_id: {provider_id})"
-            ));
+            help::unimplemented(&format!("Provider remove — not yet implemented (provider_id: {provider_id})"));
             EXIT_SUCCESS
         }
         ProviderCommands::Catalog => {

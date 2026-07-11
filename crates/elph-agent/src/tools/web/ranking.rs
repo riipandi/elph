@@ -201,9 +201,6 @@ mod tests {
     fn ranking_order() {
         let mut engines = vec![Engine::Exa, Engine::DuckDuckGo, Engine::Brave, Engine::Tavily];
         engines.sort_by_key(|e| e.rank());
-        assert_eq!(
-            engines,
-            vec![Engine::DuckDuckGo, Engine::Brave, Engine::Tavily, Engine::Exa]
-        );
+        assert_eq!(engines, vec![Engine::DuckDuckGo, Engine::Brave, Engine::Tavily, Engine::Exa]);
     }
 }

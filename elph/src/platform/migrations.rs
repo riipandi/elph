@@ -147,9 +147,6 @@ mod tests {
     #[test]
     fn memory_migrations_track_floppy_versions() {
         assert_eq!(memory_migrations().len(), migrations::MIGRATIONS.len());
-        assert_eq!(
-            memory_migrations().last().map(|m| m.version),
-            Some(migrations::LAST_VERSION)
-        );
+        assert_eq!(memory_migrations().last().map(|m| m.version), Some(migrations::LAST_VERSION));
     }
 }
