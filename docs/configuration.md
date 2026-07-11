@@ -51,18 +51,18 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 
 ## Environment variables
 
-| Variable             | Effect                     |
-| -------------------- | -------------------------- |
-| `ELPH_HOME`          | Override `~/.elph`         |
-| `ELPH_DATA_DIR`      | Override data directory    |
-| `ELPH_PROJECT_DIR`   | Project root for `.elph/`  |
-| `ELPH_PROVIDERS_DIR` | Override `providers/`      |
-| `ELPH_PROMPTS_DIR`   | Override global `prompts/` |
-| `ELPH_SKILLS_DIR`    | Override global `skills/`  |
-| `ELPH_PROVIDER`          | Force provider id                                      |
-| `ELPH_MODEL`             | Force model id                                         |
-| `ELPH_PROMPT_ENCODING`   | Tool-result prompt encoding: `off`, `toon`, or `auto`  |
-| `ELPH_QUIET`             | Suppress bootstrap output                              |
+| Variable               | Effect                                                |
+| ---------------------- | ----------------------------------------------------- |
+| `ELPH_HOME`            | Override `~/.elph`                                    |
+| `ELPH_DATA_DIR`        | Override data directory                               |
+| `ELPH_PROJECT_DIR`     | Project root for `.elph/`                             |
+| `ELPH_PROVIDERS_DIR`   | Override `providers/`                                 |
+| `ELPH_PROMPTS_DIR`     | Override global `prompts/`                            |
+| `ELPH_SKILLS_DIR`      | Override global `skills/`                             |
+| `ELPH_PROVIDER`        | Force provider id                                     |
+| `ELPH_MODEL`           | Force model id                                        |
+| `ELPH_PROMPT_ENCODING` | Tool-result prompt encoding: `off`, `toon`, or `auto` |
+| `ELPH_QUIET`           | Suppress bootstrap output                             |
 
 Provider JSON may reference API keys via `env.VAR`, `$VAR`, `${VAR}`, `!shell-command`, or literals.
 

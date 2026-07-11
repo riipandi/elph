@@ -43,9 +43,9 @@ The configuration resolution order (from highest to lowest priority):
 
 ### Agent runtime (`elph-agent`)
 
-| Variable                 | Description                                              | Default |
-| ------------------------ | -------------------------------------------------------- | ------- |
-| `ELPH_PROMPT_ENCODING`   | TOON encoding for tool results: `off`, `toon`, or `auto` | `off`   |
+| Variable               | Description                                              | Default |
+| ---------------------- | -------------------------------------------------------- | ------- |
+| `ELPH_PROMPT_ENCODING` | TOON encoding for tool results: `off`, `toon`, or `auto` | `off`   |
 
 Owly inherits this via `elph-agent` (`PromptEncodingConfig::from_env()`). Add to `~/.owly/.env` or export before running. Details: [prompt-encoding.md](prompt-encoding.md).
 

@@ -70,11 +70,11 @@ Assembly order:
 
 When enabled, the agent runtime may compress large JSON tool results (and MCP `structured_content`) into TOON fenced blocks in model-visible `content`. This reduces input tokens on tabular payloads; wire/API JSON is unchanged.
 
-| Mode   | Behavior                                              |
-| ------ | ----------------------------------------------------- |
-| `off`  | Default — tool results pass through unchanged         |
-| `toon` | Encode eligible JSON ≥ size threshold                 |
-| `auto` | Encode only uniform tabular JSON arrays               |
+| Mode   | Behavior                                      |
+| ------ | --------------------------------------------- |
+| `off`  | Default — tool results pass through unchanged |
+| `toon` | Encode eligible JSON ≥ size threshold         |
+| `auto` | Encode only uniform tabular JSON arrays       |
 
 Implementation and examples: [`elph-agent` prompt-encoding.md](../crates/elph-agent/docs/prompt-encoding.md).
 

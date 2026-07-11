@@ -15,23 +15,23 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 
 ## Design map
 
-| Topic                   | File                                         |
-| ----------------------- | -------------------------------------------- |
-| Agent flow & sessions   | [agent-runtime.md](./agent-runtime.md)       |
-| WASM extensions         | [extensions.md](./extensions.md)             |
-| `elph` crate layout     | [codebase-layout.md](./codebase-layout.md)   |
-| Tool catalog            | [tools.md](./tools.md)                       |
-| Configuration & paths   | [configuration.md](./configuration.md)       |
+| Topic                   | File                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| Agent flow & sessions   | [agent-runtime.md](./agent-runtime.md)                               |
+| WASM extensions         | [extensions.md](./extensions.md)                                     |
+| `elph` crate layout     | [codebase-layout.md](./codebase-layout.md)                           |
+| Tool catalog            | [tools.md](./tools.md)                                               |
+| Configuration & paths   | [configuration.md](./configuration.md)                               |
 | TOON prompt encoding    | [agent-runtime.md](./agent-runtime.md#toon-prompt-encoding-optional) |
-| TUI & interaction       | [tui.md](./tui.md)                           |
-| Slash commands          | [slash-commands.md](./slash-commands.md)     |
-| Prompt templates        | [prompt-templates.md](./prompt-templates.md) |
-| CLI surface             | [cli.md](./cli.md)                           |
-| Local development       | [development.md](./development.md)           |
-| Agent memory            | [memory.md](./memory.md)                     |
-| Dependency evaluation   | [consideration.md](./consideration.md)       |
-| Platform limits         | [limitation.md](./limitation.md)             |
-| Pi → Elph port tracking | [porting/README.md](./porting/README.md)     |
+| TUI & interaction       | [tui.md](./tui.md)                                                   |
+| Slash commands          | [slash-commands.md](./slash-commands.md)                             |
+| Prompt templates        | [prompt-templates.md](./prompt-templates.md)                         |
+| CLI surface             | [cli.md](./cli.md)                                                   |
+| Local development       | [development.md](./development.md)                                   |
+| Agent memory            | [memory.md](./memory.md)                                             |
+| Dependency evaluation   | [consideration.md](./consideration.md)                               |
+| Platform limits         | [limitation.md](./limitation.md)                                     |
+| Pi → Elph port tracking | [porting/README.md](./porting/README.md)                             |
 
 ## Upstream port tracking
 

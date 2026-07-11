@@ -34,9 +34,9 @@ Module: `elph_agent::runtime::prompt_encoding` (re-exported at crate root).
 
 Surfaces rewritten when eligible:
 
-| Surface | Source |
-| ------- | ------ |
-| Tool result text | `AgentToolResult.content` blocks that parse as JSON |
+| Surface                | Source                                                            |
+| ---------------------- | ----------------------------------------------------------------- |
+| Tool result text       | `AgentToolResult.content` blocks that parse as JSON               |
 | MCP structured payload | `AgentToolResult.details.structured_content` → primary text block |
 
 Plain text, non-JSON output, and payloads below `min_bytes` are left as-is.
@@ -47,9 +47,9 @@ Plain text, non-JSON output, and payloads below `min_bytes` are left as-is.
 
 ### Environment variable
 
-| Variable | Values | Default |
-| -------- | ------ | ------- |
-| `ELPH_PROMPT_ENCODING` | `off`, `toon`, `auto` | `off` |
+| Variable               | Values                | Default |
+| ---------------------- | --------------------- | ------- |
+| `ELPH_PROMPT_ENCODING` | `off`, `toon`, `auto` | `off`   |
 
 ```sh
 export ELPH_PROMPT_ENCODING=toon   # encode eligible JSON tool results
@@ -62,10 +62,10 @@ Owly does not expose a CLI flag today — set `ELPH_PROMPT_ENCODING` in the shel
 
 ### Modes
 
-| Mode | Behavior |
-| ---- | -------- |
-| `off` | Default — no transformation |
-| `toon` | Encode all eligible JSON ≥ `min_bytes` (default 2048) |
+| Mode   | Behavior                                                                      |
+| ------ | ----------------------------------------------------------------------------- |
+| `off`  | Default — no transformation                                                   |
+| `toon` | Encode all eligible JSON ≥ `min_bytes` (default 2048)                         |
 | `auto` | Encode only uniform tabular JSON arrays (≥ 2 rows, identical keys per object) |
 
 ### Programmatic (`AgentOptions`)
@@ -105,11 +105,11 @@ Already-fenced TOON is not double-encoded.
 
 Runnable examples use **OpenCode Zen `big-pickle`** (`OPENCODE_API_KEY` required). Pair `toon_*` with `default_*` using **identical flags** and compare the **Comparison summary** (tokens in/out, prompt bytes).
 
-| TOON enabled | Baseline (`off`) | Scenario |
-| ------------ | ---------------- | -------- |
-| `toon_no_tools` | `default_no_tools` | TOON embedded in user prompt (no tools) |
-| `toon_tool_call` | `default_tool_call` | Custom `list_inventory` tool → TOON on result |
-| `toon_mcp_deepwiki` | `default_mcp_deepwiki` | DeepWiki MCP → TOON on `structured_content` |
+| TOON enabled        | Baseline (`off`)       | Scenario                                      |
+| ------------------- | ---------------------- | --------------------------------------------- |
+| `toon_no_tools`     | `default_no_tools`     | TOON embedded in user prompt (no tools)       |
+| `toon_tool_call`    | `default_tool_call`    | Custom `list_inventory` tool → TOON on result |
+| `toon_mcp_deepwiki` | `default_mcp_deepwiki` | DeepWiki MCP → TOON on `structured_content`   |
 
 ```sh
 export OPENCODE_API_KEY="your-key"
@@ -137,10 +137,10 @@ See also: [Elph MCP design](../docs/mcp.md), example `mcp_deepwiki` (raw MCP cal
 
 ## API helpers
 
-| Function | Role |
-| -------- | ---- |
-| `encode_value(&Value, &PromptEncodingConfig)` | Encode JSON when config/heuristics allow; returns fenced block |
-| `apply_to_tool_result(&mut AgentToolResult, &PromptEncodingConfig)` | Same logic the agent loop uses on tool results |
+| Function                                                            | Role                                                           |
+| ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `encode_value(&Value, &PromptEncodingConfig)`                       | Encode JSON when config/heuristics allow; returns fenced block |
+| `apply_to_tool_result(&mut AgentToolResult, &PromptEncodingConfig)` | Same logic the agent loop uses on tool results                 |
 
 Use `encode_value` to embed TOON directly in user prompts without tool calling.
 

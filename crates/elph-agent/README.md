@@ -738,16 +738,16 @@ Your skill content here...
 
 ## Examples
 
-| Example | Description |
-| ------- | ----------- |
-| `basic_agent` | OpenCode Zen `big-pickle` through `Agent` |
-| `agent_skills` | Comprehensive skills demo with all spec fields |
-| `agent_skill_math` | Math expert skill with real AI model call |
-| `toon_no_tools` | TOON in user prompt (no tool calling) |
-| `toon_tool_call` | TOON on custom tool JSON results |
-| `toon_mcp_deepwiki` | TOON on DeepWiki MCP tool results |
-| `default_no_tools` | Baseline (encoding off) — pair with `toon_no_tools` |
-| `default_tool_call` | Baseline (encoding off) — pair with `toon_tool_call` |
+| Example                | Description                                             |
+| ---------------------- | ------------------------------------------------------- |
+| `basic_agent`          | OpenCode Zen `big-pickle` through `Agent`               |
+| `agent_skills`         | Comprehensive skills demo with all spec fields          |
+| `agent_skill_math`     | Math expert skill with real AI model call               |
+| `toon_no_tools`        | TOON in user prompt (no tool calling)                   |
+| `toon_tool_call`       | TOON on custom tool JSON results                        |
+| `toon_mcp_deepwiki`    | TOON on DeepWiki MCP tool results                       |
+| `default_no_tools`     | Baseline (encoding off) — pair with `toon_no_tools`     |
+| `default_tool_call`    | Baseline (encoding off) — pair with `toon_tool_call`    |
 | `default_mcp_deepwiki` | Baseline (encoding off) — pair with `toon_mcp_deepwiki` |
 
 ```bash
@@ -766,17 +766,17 @@ For provider-level OpenCode streaming (without the agent loop), see `elph-ai` ex
 
 ## Documentation
 
-| Document                                              | Description                                    |
-| ----------------------------------------------------- | ---------------------------------------------- |
-| [tools.md](./docs/tools.md)                             | Built-in tools, web search/fetch, `fff-search` |
-| [prompt-encoding.md](./docs/prompt-encoding.md)         | TOON encoding for tool results and prompts     |
-| [skills.md](./docs/skills.md)                         | Skills loading, validation, formatting         |
-| [mcp.md](./docs/mcp.md)                               | MCP client, tool naming, DeepWiki              |
-| [agent-harness.md](./docs/agent-harness.md)           | Harness lifecycle, phases, save points         |
-| [hooks.md](./docs/hooks.md)                           | Hook design and mutation semantics             |
-| [models.md](./docs/models.md)                         | `elph_ai::Models` integration with harness     |
-| [durable-harness.md](./docs/durable-harness.md)       | Semi-durable harness design (planned)          |
-| [observability.md](./docs/observability.md)           | Observability design notes (planned)           |
+| Document                                        | Description                                    |
+| ----------------------------------------------- | ---------------------------------------------- |
+| [tools.md](./docs/tools.md)                     | Built-in tools, web search/fetch, `fff-search` |
+| [prompt-encoding.md](./docs/prompt-encoding.md) | TOON encoding for tool results and prompts     |
+| [skills.md](./docs/skills.md)                   | Skills loading, validation, formatting         |
+| [mcp.md](./docs/mcp.md)                         | MCP client, tool naming, DeepWiki              |
+| [agent-harness.md](./docs/agent-harness.md)     | Harness lifecycle, phases, save points         |
+| [hooks.md](./docs/hooks.md)                     | Hook design and mutation semantics             |
+| [models.md](./docs/models.md)                   | `elph_ai::Models` integration with harness     |
+| [durable-harness.md](./docs/durable-harness.md) | Semi-durable harness design (planned)          |
+| [observability.md](./docs/observability.md)     | Observability design notes (planned)           |
 
 Full `elph-ai` provider architecture is documented in the [`elph-ai`](../elph-ai) crate.
 

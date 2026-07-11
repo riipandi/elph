@@ -198,11 +198,11 @@ The tool names are appended to the system prompt after tool selection, forming a
 
 After a tool finishes, `elph-agent` may rewrite large JSON tool output as [TOON](https://github.com/toon-format/toon) before the model sees it. Encoding runs **after** `after_tool_call` and **before** `ToolExecutionEnd` is emitted. Owly does not set this in code — enable with `ELPH_PROMPT_ENCODING=toon` or `auto` in the environment or `~/.owly/.env`.
 
-| Mode | Effect |
-| ---- | ------ |
-| `off` | Default — unchanged tool results |
+| Mode   | Effect                                |
+| ------ | ------------------------------------- |
+| `off`  | Default — unchanged tool results      |
 | `toon` | Encode eligible JSON ≥ size threshold |
-| `auto` | Tabular JSON arrays only |
+| `auto` | Tabular JSON arrays only              |
 
 Full reference: [prompt-encoding.md](prompt-encoding.md), implementation in [`crates/elph-agent/src/runtime/prompt_encoding/`](../crates/elph-agent/src/runtime/prompt_encoding/).
 

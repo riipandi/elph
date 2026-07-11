@@ -6,10 +6,10 @@ Elph connects to [Model Context Protocol](https://modelcontextprotocol.io/) serv
 
 Schema: [`schemas/mcp-schema.json`](../schemas/mcp-schema.json).
 
-| Layer | Path | Role |
-|-------|------|------|
-| **Home** | `~/.elph/mcp.json` | Global servers; default for `elph mcp add` |
-| **Project** | `<project>/.elph/mcp.json` | Overrides / extra servers for this repo |
+| Layer       | Path                       | Role                                       |
+| ----------- | -------------------------- | ------------------------------------------ |
+| **Home**    | `~/.elph/mcp.json`         | Global servers; default for `elph mcp add` |
+| **Project** | `<project>/.elph/mcp.json` | Overrides / extra servers for this repo    |
 
 Runtime loads **home**, then merges **project** on top (same server name → project wins).
 Policy maps are merged the same way as per-server policy overlays.
@@ -24,23 +24,23 @@ SSE remotes can use OAuth the same way as Streamable HTTP.
 If both a static bearer (`authToken` / `authTokenEnv`) **and** an OAuth entry in `auth.json`
 exist for the same server, connection fails unless you set `authConflict`:
 
-| `authConflict` | Behavior |
-|----------------|----------|
-| `error` (default) | Fail with a clear message |
-| `preferEnv` | Use env/inline bearer; warn that auth.json is ignored |
-| `preferOauth` | Use auth.json OAuth (refreshable); warn that env is ignored |
+| `authConflict`    | Behavior                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| `error` (default) | Fail with a clear message                                   |
+| `preferEnv`       | Use env/inline bearer; warn that auth.json is ignored       |
+| `preferOauth`     | Use auth.json OAuth (refreshable); warn that env is ignored |
 
 ```json
 {
-  "servers": {
-    "api": {
-      "type": "http",
-      "url": "https://example.com/mcp",
-      "authTokenEnv": "MCP_TOKEN",
-      "oauth": true,
-      "authConflict": "preferEnv"
+    "servers": {
+        "api": {
+            "type": "http",
+            "url": "https://example.com/mcp",
+            "authTokenEnv": "MCP_TOKEN",
+            "oauth": true,
+            "authConflict": "preferEnv"
+        }
     }
-  }
 }
 ```
 
@@ -58,37 +58,37 @@ elph mcp remove --all name    # both layers
 
 ```json
 {
-  "policy": {
-    "default": "requireApproval",
-    "allow": ["mcp_fs__list*", "mcp_fs__read*"],
-    "deny": ["mcp_dangerous__*"]
-  },
-  "servers": {
-    "fs": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    "policy": {
+        "default": "requireApproval",
+        "allow": ["mcp_fs__list*", "mcp_fs__read*"],
+        "deny": ["mcp_dangerous__*"]
     },
-    "remote": {
-      "type": "http",
-      "url": "https://example.com/mcp",
-      "oauth": true
-    },
-    "legacy": {
-      "type": "sse",
-      "url": "http://localhost:3000/sse"
+    "servers": {
+        "fs": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+        },
+        "remote": {
+            "type": "http",
+            "url": "https://example.com/mcp",
+            "oauth": true
+        },
+        "legacy": {
+            "type": "sse",
+            "url": "http://localhost:3000/sse"
+        }
     }
-  }
 }
 ```
 
 ### Transports
 
-| `type` | Meaning |
-|--------|---------|
-| `stdio` | Local child process |
+| `type`                                        | Meaning                                   |
+| --------------------------------------------- | ----------------------------------------- |
+| `stdio`                                       | Local child process                       |
 | `http` / `streamableHttp` / `streamable-http` | Streamable HTTP (current remote standard) |
-| `sse` | Legacy HTTP+SSE |
+| `sse`                                         | Legacy HTTP+SSE                           |
 
 ### Auth
 
@@ -120,14 +120,14 @@ clear multi-error message instead of being half-applied.
 
 ## CLI
 
-| Command | Behavior |
-|---------|----------|
-| `elph mcp list` | Servers + oauth status (no secrets) |
-| `elph mcp add <name> <json\|file>` | Upsert server |
-| `elph mcp remove <name>` | Remove server + OAuth creds |
-| `elph mcp doctor` | Probe connectivity |
-| `elph mcp auth <name>` | OAuth browser flow |
-| `elph mcp logout <name>` | Clear OAuth tokens |
+| Command                            | Behavior                            |
+| ---------------------------------- | ----------------------------------- |
+| `elph mcp list`                    | Servers + oauth status (no secrets) |
+| `elph mcp add <name> <json\|file>` | Upsert server                       |
+| `elph mcp remove <name>`           | Remove server + OAuth creds         |
+| `elph mcp doctor`                  | Probe connectivity                  |
+| `elph mcp auth <name>`             | OAuth browser flow                  |
+| `elph mcp logout <name>`           | Clear OAuth tokens                  |
 
 ## Agent surface
 
@@ -168,20 +168,20 @@ let tools = registry.create_agent_tools();
 DeepWiki is a free remote MCP server for public GitHub documentation
 ([docs](https://docs.devin.ai/work-with-devin/deepwiki-mcp)).
 
-**Endpoint (Streamable HTTP):** `https://mcp.deepwiki.com/mcp`  
+**Endpoint (Streamable HTTP):** `https://mcp.deepwiki.com/mcp`
 (SSE `/sse` is deprecated.)
 
 ### `~/.elph/mcp.json`
 
 ```json
 {
-  "servers": {
-    "deepwiki": {
-      "type": "http",
-      "url": "https://mcp.deepwiki.com/mcp",
-      "timeoutMs": 120000
+    "servers": {
+        "deepwiki": {
+            "type": "http",
+            "url": "https://mcp.deepwiki.com/mcp",
+            "timeoutMs": 120000
+        }
     }
-  }
 }
 ```
 
