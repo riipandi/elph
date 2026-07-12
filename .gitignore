@@ -28,6 +28,8 @@ coverage.*
 !.vscode/mcp.json
 !.vscode/tasks.json
 *.bak
+*.pid
+*~
 
 # SQLite
 *.sqlite*
