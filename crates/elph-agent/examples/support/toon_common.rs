@@ -9,8 +9,8 @@ use std::time::Duration;
 
 pub use elph_agent::encode_value;
 use elph_agent::{
-    Agent, AgentEvent, AgentOptions, AgentToolResult, PartialAgentState, PromptEncodingConfig, PromptEncodingMode,
-    ToolResultContent,
+    Agent, AgentEvent, AgentOptions, AgentToolResult, PartialAgentState, PromptEncodingConfig, PromptEncodingDelimiter,
+    PromptEncodingMode, ToolResultContent,
 };
 use elph_ai::{Message, StopReason, builtin_models, get_builtin_model};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -24,8 +24,8 @@ pub const NO_TOOLS_SYSTEM: &str =
     "You are a concise assistant. Answer using only the structured data in the user message.";
 
 pub const NO_TOOLS_TASK: &str = concat!(
-    "The inventory below uses TOON format. ",
-    "How many products are listed? Reply with the count and the name of the first item."
+    "How many products are listed? ",
+    "Reply with the count and the name of the first item."
 );
 
 pub const TOOL_CALL_SYSTEM: &str =
@@ -89,11 +89,27 @@ pub async fn build_stream_fn() -> anyhow::Result<elph_agent::StreamFn> {
 }
 
 pub fn toon_prompt_encoding(mode: PromptEncodingMode) -> PromptEncodingConfig {
-    PromptEncodingConfig {
+    toon_prompt_encoding_with_delimiter(mode, None, None)
+}
+
+pub fn toon_prompt_encoding_with_delimiter(
+    mode: PromptEncodingMode,
+    delimiter: Option<PromptEncodingDelimiter>,
+    tabular_delimiter: Option<PromptEncodingDelimiter>,
+) -> PromptEncodingConfig {
+    let mut config = PromptEncodingConfig {
         mode,
         min_bytes: 512,
+        min_savings_ratio: 1.05,
         ..PromptEncodingConfig::default()
+    };
+    if let Some(delimiter) = delimiter {
+        config.delimiter = delimiter;
     }
+    if let Some(tabular) = tabular_delimiter {
+        config.tabular_delimiter = Some(tabular);
+    }
+    config
 }
 
 pub fn baseline_prompt_encoding() -> PromptEncodingConfig {
@@ -156,9 +172,14 @@ pub fn build_mcp_prompt(repo: &str, tool: &str, question: Option<&str>, exposed_
 pub fn print_encoding_preview(label: &str, value: &Value, config: &PromptEncodingConfig) {
     let raw = serde_json::to_string(value).expect("value json");
     let encoded = encode_value(value, config);
+    let tabular = config.tabular_delimiter.unwrap_or(PromptEncodingDelimiter::Tab);
 
     println!("=== TOON preview: {label} ===");
     println!("Raw JSON: {} bytes", raw.len());
+    println!(
+        "Delim:    general={:?}, tabular={:?}, savings_ratio={}",
+        config.delimiter, tabular, config.min_savings_ratio
+    );
     if let Some(toon) = &encoded {
         println!(
             "TOON:     {} bytes ({:.0}% of raw)",
@@ -170,6 +191,11 @@ pub fn print_encoding_preview(label: &str, value: &Value, config: &PromptEncodin
         println!("TOON:     skipped (mode={:?}, min_bytes={})", config.mode, config.min_bytes);
     }
     println!();
+}
+
+pub fn parse_delimiter(value: &str) -> anyhow::Result<PromptEncodingDelimiter> {
+    PromptEncodingDelimiter::from_env_str(value)
+        .ok_or_else(|| anyhow::anyhow!("unknown delimiter: {value} (use comma, tab, or pipe)"))
 }
 
 pub fn print_json_preview(label: &str, value: &Value) {
@@ -282,7 +308,10 @@ pub fn print_model_banner(encoding: Option<&PromptEncodingConfig>) {
     println!("Provider: OpenCode Zen");
     println!("Model:    big-pickle (opencode/big-pickle)");
     if let Some(config) = encoding {
-        println!("Encoding: {:?} (min_bytes={})", config.mode, config.min_bytes);
+        println!(
+            "Encoding: {:?} (min_bytes={}, tabular_delim={:?})",
+            config.mode, config.min_bytes, config.tabular_delimiter
+        );
     } else {
         println!("Encoding: embedded payload in user prompt");
     }

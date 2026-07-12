@@ -13,15 +13,17 @@ mod common;
 
 use common::{
     DEFAULT_ROWS, NO_TOOLS_SYSTEM, NO_TOOLS_TASK, RunMeta, build_agent, build_stream_fn, embed_toon_prompt,
-    print_encoding_preview, print_model_banner, require_opencode_key, resolve_model, run_agent_prompt, sample_catalog,
-    toon_prompt_encoding,
+    parse_delimiter, print_encoding_preview, print_model_banner, require_opencode_key, resolve_model, run_agent_prompt,
+    sample_catalog, toon_prompt_encoding_with_delimiter,
 };
-use elph_agent::PromptEncodingMode;
+use elph_agent::{PromptEncodingDelimiter, PromptEncodingMode};
 
 struct Args {
     task: String,
     rows: usize,
     mode: PromptEncodingMode,
+    delimiter: Option<PromptEncodingDelimiter>,
+    tabular_delimiter: Option<PromptEncodingDelimiter>,
 }
 
 #[tokio::main]
@@ -29,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     let args = parse_args()?;
     require_opencode_key()?;
 
-    let encoding = toon_prompt_encoding(args.mode);
+    let encoding = toon_prompt_encoding_with_delimiter(args.mode, args.delimiter, args.tabular_delimiter);
     let catalog = sample_catalog(args.rows);
     print_encoding_preview("user prompt payload", &catalog, &encoding);
     print_model_banner(Some(&encoding));
@@ -55,6 +57,8 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut task = NO_TOOLS_TASK.to_string();
     let mut rows = DEFAULT_ROWS;
     let mut mode = PromptEncodingMode::Toon;
+    let mut delimiter = None;
+    let mut tabular_delimiter = None;
     let mut args = std::env::args().skip(1);
 
     while let Some(arg) = args.next() {
@@ -77,6 +81,18 @@ fn parse_args() -> anyhow::Result<Args> {
                     .ok_or_else(|| anyhow::anyhow!("--mode requires toon|auto|off"))?;
                 mode = common::parse_encoding_mode(&value)?;
             }
+            "--delimiter" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("--delimiter requires comma|tab|pipe"))?;
+                delimiter = Some(parse_delimiter(&value)?);
+            }
+            "--tabular-delimiter" => {
+                let value = args
+                    .next()
+                    .ok_or_else(|| anyhow::anyhow!("--tabular-delimiter requires comma|tab|pipe"))?;
+                tabular_delimiter = Some(parse_delimiter(&value)?);
+            }
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -85,7 +101,13 @@ fn parse_args() -> anyhow::Result<Args> {
         }
     }
 
-    Ok(Args { task, rows, mode })
+    Ok(Args {
+        task,
+        rows,
+        mode,
+        delimiter,
+        tabular_delimiter,
+    })
 }
 
 fn print_help() {
@@ -94,6 +116,8 @@ fn print_help() {
     println!("Options:");
     println!("  --task <text>           Same task as default_no_tools");
     println!("  --rows <n>              Inventory rows (default: {DEFAULT_ROWS})");
-    println!("  --mode <toon|auto|off>  Encoding mode (default: toon)");
-    println!("  -h, --help              Show help");
+    println!("  --mode <toon|auto|off>          Encoding mode (default: toon)");
+    println!("  --delimiter <comma|tab|pipe>    General delimiter (default: comma)");
+    println!("  --tabular-delimiter <...>       Tabular delimiter (default: tab)");
+    println!("  -h, --help                      Show help");
 }

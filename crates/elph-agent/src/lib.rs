@@ -113,7 +113,8 @@ pub use prompt::{
 };
 pub use proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions, stream_proxy};
 pub use runtime::prompt_encoding::{
-    PromptEncodingConfig, PromptEncodingMode, PromptEncodingTargets, apply_to_tool_result, encode_value,
+    PromptEncodingConfig, PromptEncodingDelimiter, PromptEncodingMode, PromptEncodingTargets, ToonDecodeError,
+    apply_to_tool_result, decode_toon_fence, encode_value, extract_json_value, parse_toon_fence,
 };
 pub use runtime::{block_on, try_block_on};
 pub use session::id::create_tsid;

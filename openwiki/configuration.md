@@ -46,6 +46,9 @@ The configuration resolution order (from highest to lowest priority):
 | Variable               | Description                                              | Default |
 | ---------------------- | -------------------------------------------------------- | ------- |
 | `ELPH_PROMPT_ENCODING` | TOON encoding for tool results: `off`, `toon`, or `auto` | `off`   |
+| `ELPH_PROMPT_ENCODING_MIN_BYTES` | Minimum JSON bytes before encoding | `2048` |
+| `ELPH_PROMPT_ENCODING_DELIMITER` | General delimiter: `comma`, `tab`, `pipe` | `comma` |
+| `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` | Tabular delimiter: `comma`, `tab`, `pipe` | `tab` |
 
 Owly inherits this via `elph-agent` (`PromptEncodingConfig::from_env()`). Add to `~/.owly/.env` or export before running. Details: [prompt-encoding.md](prompt-encoding.md).
 

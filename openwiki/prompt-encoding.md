@@ -50,10 +50,14 @@ Plain text, non-JSON output, and payloads below `min_bytes` are left as-is.
 | Variable               | Values                | Default |
 | ---------------------- | --------------------- | ------- |
 | `ELPH_PROMPT_ENCODING` | `off`, `toon`, `auto` | `off`   |
+| `ELPH_PROMPT_ENCODING_MIN_BYTES` | usize | `2048` |
+| `ELPH_PROMPT_ENCODING_DELIMITER` | `comma`, `tab`, `pipe` | `comma` |
+| `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` | `comma`, `tab`, `pipe` | `tab` |
 
 ```sh
 export ELPH_PROMPT_ENCODING=toon   # encode eligible JSON tool results
 export ELPH_PROMPT_ENCODING=auto   # tabular JSON arrays only
+export ELPH_PROMPT_ENCODING_TABULAR_DELIMITER=tab
 ```
 
 `Agent::new` and `AgentHarness` resolve encoding via `PromptEncodingConfig::from_env()` when not set explicitly on `AgentOptions`.
@@ -90,7 +94,7 @@ let agent = Agent::new(AgentOptions {
 Encoded blocks include an optional preamble and a TOON fence:
 
 ````
-Structured data below uses TOON format.
+Data is in TOON format (2-space indent, arrays show length and fields).
 
 ```toon
 <toon body>
@@ -141,8 +145,10 @@ See also: [Elph MCP design](../docs/mcp.md), example `mcp_deepwiki` (raw MCP cal
 | ------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `encode_value(&Value, &PromptEncodingConfig)`                       | Encode JSON when config/heuristics allow; returns fenced block |
 | `apply_to_tool_result(&mut AgentToolResult, &PromptEncodingConfig)` | Same logic the agent loop uses on tool results                 |
+| `decode_toon_fence(&str)`                                           | Strict decode of a ```toon fenced block                        |
+| `extract_json_value(&str)`                                          | Parse JSON from tool text (fences, embedded objects)           |
 
-Use `encode_value` to embed TOON directly in user prompts without tool calling.
+Use `encode_value` to embed TOON directly in user prompts without tool calling. See [Using TOON with LLMs](https://toonformat.dev/guide/llm-prompts).
 
 ---
 

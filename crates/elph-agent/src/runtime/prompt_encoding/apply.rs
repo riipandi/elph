@@ -6,7 +6,10 @@ use serde_json::Value;
 use crate::types::{AgentToolResult, ToolResultContent};
 
 use super::config::PromptEncodingConfig;
-use super::encode::{already_toon_encoded, encode_value};
+use super::encode::encode_value;
+use super::extract::extract_json_value;
+use super::fence::is_toon_encoded;
+use super::heuristic::find_tabular_payload;
 
 /// Rewrite eligible tool-result text blocks using TOON (model-visible `content` only).
 pub fn apply_to_tool_result(result: &mut AgentToolResult, config: &PromptEncodingConfig) {
@@ -29,7 +32,9 @@ fn apply_structured_details(result: &mut AgentToolResult, config: &PromptEncodin
     if structured.is_null() {
         return;
     }
-    let Some(encoded) = encode_value(structured, config) else {
+
+    let payload = encoding_payload(structured, config);
+    let Some(encoded) = encode_value(payload, config) else {
         return;
     };
     replace_primary_text(result, encoded);
@@ -40,17 +45,27 @@ fn apply_tool_result_text(result: &mut AgentToolResult, config: &PromptEncodingC
         let ToolResultContent::Text(text) = block else {
             continue;
         };
-        if already_toon_encoded(&text.text) {
+        if is_toon_encoded(&text.text) {
             continue;
         }
-        let Ok(value) = serde_json::from_str::<Value>(&text.text) else {
+        let Some(value) = extract_json_value(&text.text) else {
             continue;
         };
-        let Some(encoded) = encode_value(&value, config) else {
+        let payload = encoding_payload(&value, config);
+        let Some(encoded) = encode_value(payload, config) else {
             continue;
         };
         *text = TextContent::new(encoded);
     }
+}
+
+fn encoding_payload<'a>(value: &'a Value, config: &PromptEncodingConfig) -> &'a Value {
+    if matches!(config.mode, super::config::PromptEncodingMode::Auto)
+        && let Some(tabular) = find_tabular_payload(value)
+    {
+        return tabular;
+    }
+    value
 }
 
 fn structured_content_value(details: &Value) -> Option<&Value> {
@@ -76,6 +91,7 @@ mod tests {
         PromptEncodingConfig {
             mode: super::super::config::PromptEncodingMode::Toon,
             min_bytes: 1,
+            min_savings_ratio: 1.05,
             ..PromptEncodingConfig::default()
         }
     }
@@ -100,6 +116,17 @@ mod tests {
             _ => panic!("expected text"),
         };
         assert_eq!(text, "line one\nline two");
+    }
+
+    #[test]
+    fn encodes_fenced_json_tool_text() {
+        let mut result = AgentToolResult::text("```json\n[{\"id\":1,\"name\":\"a\"},{\"id\":2,\"name\":\"b\"}]\n```");
+        apply_to_tool_result(&mut result, &toon_config());
+        let text = match &result.content[0] {
+            ToolResultContent::Text(t) => t.text.as_str(),
+            _ => panic!("expected text"),
+        };
+        assert!(text.contains("```toon"));
     }
 
     #[test]
@@ -138,5 +165,22 @@ mod tests {
             _ => panic!("expected text"),
         };
         assert!(!text.contains("```toon"));
+    }
+
+    #[test]
+    fn auto_encodes_nested_wrapper_in_tool_text() {
+        let mut result = AgentToolResult::text(r#"{"items":[{"sku":"A","qty":1},{"sku":"B","qty":2}]}"#);
+        let config = PromptEncodingConfig {
+            mode: super::super::config::PromptEncodingMode::Auto,
+            min_bytes: 1,
+            min_savings_ratio: 1.05,
+            ..PromptEncodingConfig::default()
+        };
+        apply_to_tool_result(&mut result, &config);
+        let text = match &result.content[0] {
+            ToolResultContent::Text(t) => t.text.as_str(),
+            _ => panic!("expected text"),
+        };
+        assert!(text.contains("```toon"));
     }
 }
