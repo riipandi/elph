@@ -4,13 +4,14 @@ use anyhow::{Context, Result};
 use dialoguer::{Input, Select};
 use std::collections::HashMap;
 
+use crate::agent::credential_store;
 use crate::config::Config;
 use crate::constants::{
     ONBOARDING_PROVIDERS, OWLY_MODEL_ID_ENV_KEY, OWLY_PROVIDER_ENV_KEY, is_valid_model_id, normalize_model_id,
-    provider_config, provider_requires_base_url, resolve_provider_base_url,
+    provider_config, provider_is_configured, provider_models_for_wizard, provider_oauth_capable, provider_oauth_only,
+    provider_requires_base_url, resolve_provider_base_url,
 };
-use crate::credentials::{self, save_env};
-use crate::startup::provider_has_api_key;
+use crate::credentials::{self, run_oauth_login, save_env};
 
 /// Credentials collected during interactive setup.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,11 +20,19 @@ pub struct SetupCredentials {
     pub api_key: String,
     pub base_url: Option<String>,
     pub model_id: String,
+    /// When true, OAuth was completed during setup (no API key env var).
+    pub oauth: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SetupAuthChoice {
+    ApiKey,
+    OAuth,
 }
 
 /// Returns true when interactive setup should run before the first agent call.
 pub fn needs_setup(config: &Config) -> bool {
-    !provider_has_api_key(&config.provider)
+    !provider_is_configured(&config.provider)
         || (provider_requires_base_url(&config.provider) && resolve_provider_base_url(&config.provider).is_none())
 }
 
@@ -32,15 +41,23 @@ pub fn apply_setup(credentials: SetupCredentials, config: &Config) -> Result<Con
     let provider = credentials.provider.trim();
     let provider_cfg = provider_config(provider).with_context(|| format!("Unknown provider: {provider}"))?;
 
-    let api_key = credentials.api_key.trim();
-    if api_key.is_empty() {
-        anyhow::bail!("{} API key is required.", provider_cfg.label);
+    let model_id = normalize_model_id(&credentials.model_id);
+    if !is_valid_model_id(&model_id) {
+        anyhow::bail!("Invalid model ID: {model_id}");
     }
 
     let mut updates = HashMap::from([
         (OWLY_PROVIDER_ENV_KEY.to_string(), provider.to_string()),
-        (provider_cfg.api_key_env_key.to_string(), api_key.to_string()),
+        (OWLY_MODEL_ID_ENV_KEY.to_string(), model_id.clone()),
     ]);
+
+    if !credentials.oauth {
+        let api_key = credentials.api_key.trim();
+        if api_key.is_empty() {
+            anyhow::bail!("{} API key is required.", provider_cfg.label);
+        }
+        updates.insert(provider_cfg.api_key_env_key.to_string(), api_key.to_string());
+    }
 
     if let Some(base_url_key) = provider_cfg.base_url_env_key {
         let base_url = credentials
@@ -56,12 +73,6 @@ pub fn apply_setup(credentials: SetupCredentials, config: &Config) -> Result<Con
             updates.insert(base_url_key.to_string(), base_url);
         }
     }
-
-    let model_id = normalize_model_id(&credentials.model_id);
-    if !is_valid_model_id(&model_id) {
-        anyhow::bail!("Invalid model ID: {model_id}");
-    }
-    updates.insert(OWLY_MODEL_ID_ENV_KEY.to_string(), model_id.clone());
 
     save_env(&updates)?;
     credentials::secure_env_dir()?;
@@ -82,7 +93,7 @@ pub fn provider_select_items() -> Vec<(String, String)> {
 
 /// Default model for a provider id.
 pub fn default_model_for_provider(provider: &str) -> Option<String> {
-    provider_config(provider).map(|cfg| cfg.default_model.to_string())
+    provider_config(provider).map(|cfg| cfg.default_model.clone())
 }
 
 /// Whether the setup flow should collect a base URL for this provider.
@@ -97,8 +108,24 @@ pub fn setup_base_url_required(provider: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Whether setup must run OAuth (no API key step). Only `openai-codex` today.
+pub fn setup_uses_oauth(provider: &str) -> bool {
+    provider_oauth_only(provider)
+}
+
+/// Run elph-ai OAuth login and persist tokens for `provider`.
+pub fn run_provider_oauth_login(provider: &str) -> Result<()> {
+    let store = credential_store();
+    tokio::runtime::Handle::current()
+        .block_on(run_oauth_login(provider, store.as_ref()))
+        .with_context(|| format!("OAuth login failed for {provider}"))
+}
+
 /// API key env label for prompts.
 pub fn api_key_label(provider: &str) -> Option<String> {
+    if setup_uses_oauth(provider) {
+        return None;
+    }
     provider_config(provider).map(|cfg| format!("{} API key", cfg.label))
 }
 
@@ -115,11 +142,104 @@ pub fn base_url_label(provider: &str) -> Option<String> {
     })
 }
 
+fn prompt_setup_auth(provider: &str) -> Result<SetupAuthChoice> {
+    if setup_uses_oauth(provider) {
+        return Ok(SetupAuthChoice::OAuth);
+    }
+    if provider_oauth_capable(provider) {
+        let options = ["API key", "Sign in with browser (OAuth)"];
+        let idx = Select::new()
+            .with_prompt("Authentication")
+            .items(options)
+            .default(0)
+            .interact()
+            .context("authentication selection cancelled")?;
+        return Ok(if idx == 0 {
+            SetupAuthChoice::ApiKey
+        } else {
+            SetupAuthChoice::OAuth
+        });
+    }
+    Ok(SetupAuthChoice::ApiKey)
+}
+
+fn select_model_id(provider: &str, default_model: &str) -> Result<String> {
+    let options = provider_models_for_wizard(provider);
+    if options.is_empty() {
+        return Input::new()
+            .with_prompt("Model ID")
+            .default(default_model.to_string())
+            .interact_text()
+            .context("model input cancelled");
+    }
+
+    let labels: Vec<String> = options
+        .iter()
+        .map(|opt| {
+            if opt.label == opt.id {
+                opt.id.clone()
+            } else {
+                format!("{} ({})", opt.label, opt.id)
+            }
+        })
+        .collect();
+    let default_idx = options.iter().position(|opt| opt.id == default_model).unwrap_or(0);
+
+    let selection = Select::new()
+        .with_prompt("Model")
+        .items(&labels)
+        .default(default_idx)
+        .interact()
+        .context("model selection cancelled")?;
+
+    Ok(options[selection].id.clone())
+}
+
+fn prompt_base_url(provider: &str) -> Result<Option<String>> {
+    if !setup_collects_base_url(provider) {
+        return Ok(None);
+    }
+    let prompt = base_url_label(provider).unwrap_or_else(|| "Base URL".to_string());
+    let value: String = Input::new().with_prompt(prompt).allow_empty(true).interact_text()?;
+    let trimmed = value.trim().to_string();
+    if trimmed.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(trimmed))
+    }
+}
+
+fn finish_setup(
+    config: &mut Config,
+    provider: String,
+    api_key: String,
+    base_url: Option<String>,
+    model_id: String,
+    oauth: bool,
+) -> Result<()> {
+    let next = apply_setup(
+        SetupCredentials {
+            provider,
+            api_key,
+            base_url,
+            model_id,
+            oauth,
+        },
+        config,
+    )?;
+    config.provider = next.provider;
+    config.model_id = next.model_id;
+    println!();
+    println!("\x1b[32m✓\x1b[0m Credentials saved to {}", credentials::env_path().display());
+    println!();
+    Ok(())
+}
+
 /// Run the interactive credential wizard and persist settings to `~/.owly/.env`.
 pub fn run_wizard(config: &mut Config) -> Result<()> {
     println!();
     println!("\x1b[36;1m>_ Owly setup\x1b[0m");
-    println!("Configure your inference provider and API key.");
+    println!("Configure your inference provider and credentials.");
     println!();
 
     let provider_labels: Vec<String> = provider_select_items().into_iter().map(|(_, label)| label).collect();
@@ -138,42 +258,47 @@ pub fn run_wizard(config: &mut Config) -> Result<()> {
     let provider = ONBOARDING_PROVIDERS[selection].to_string();
     let provider_cfg = provider_config(&provider).context("unknown provider")?;
 
-    let api_key: String = Input::new()
-        .with_prompt(format!("{} API key", provider_cfg.label))
-        .interact_text()
-        .context("api key input cancelled")?;
+    let auth = prompt_setup_auth(&provider)?;
+    let oauth = auth == SetupAuthChoice::OAuth;
 
-    let base_url = if setup_collects_base_url(&provider) {
-        let prompt = base_url_label(&provider).unwrap_or_else(|| "Base URL".to_string());
-        let value: String = Input::new().with_prompt(prompt).allow_empty(true).interact_text()?;
-        let trimmed = value.trim().to_string();
-        if trimmed.is_empty() { None } else { Some(trimmed) }
+    if oauth {
+        println!();
+        println!("Sign in with {} (browser flow).", provider_cfg.label);
+        run_provider_oauth_login(&provider)?;
+        println!("\x1b[32m✓\x1b[0m Signed in.");
     } else {
-        None
-    };
+        let api_key: String = Input::new()
+            .with_prompt(format!("{} API key", provider_cfg.label))
+            .interact_text()
+            .context("api key input cancelled")?;
 
-    let default_model = provider_cfg.default_model;
-    let model_id: String = Input::new()
-        .with_prompt("Model ID")
-        .default(default_model.to_string())
-        .interact_text()
-        .context("model input cancelled")?;
+        let base_url = prompt_base_url(&provider)?;
+        let model_id = select_model_id(&provider, &provider_cfg.default_model)?;
 
-    let next = apply_setup(
-        SetupCredentials {
-            provider,
-            api_key,
-            base_url,
-            model_id,
-        },
-        config,
-    )?;
-    config.provider = next.provider;
-    config.model_id = next.model_id;
+        return finish_setup(config, provider, api_key, base_url, model_id, false);
+    }
 
-    println!();
-    println!("\x1b[32m✓\x1b[0m Credentials saved to {}", credentials::env_path().display());
-    println!();
+    let base_url = prompt_base_url(&provider)?;
+    let model_id = select_model_id(&provider, &provider_cfg.default_model)?;
+    finish_setup(config, provider, String::new(), base_url, model_id, true)
+}
 
-    Ok(())
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::ProviderAuthMethod;
+
+    #[test]
+    fn openai_codex_is_oauth_only_setup() {
+        assert!(setup_uses_oauth("openai-codex"));
+        assert!(provider_oauth_only("openai-codex"));
+        assert_eq!(provider_config("openai-codex").unwrap().auth_method, ProviderAuthMethod::OAuth);
+    }
+
+    #[test]
+    fn anthropic_defaults_to_api_key_setup() {
+        assert!(!setup_uses_oauth("anthropic"));
+        assert!(provider_oauth_capable("anthropic"));
+        assert_eq!(provider_config("anthropic").unwrap().auth_method, ProviderAuthMethod::ApiKey);
+    }
 }

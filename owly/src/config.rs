@@ -9,7 +9,10 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::constants::{provider_config, resolve_configured_provider, resolve_model_id};
+use crate::constants::{
+    is_known_provider, provider_config, provider_is_configured, provider_oauth_only, resolve_configured_provider,
+    resolve_model_id,
+};
 
 /// Owly configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +33,7 @@ impl Config {
         // Check if model_override contains provider/model format
         let (provider_override, model_override) = if let Some(model) = model_override
             && let Some((provider, model_id)) = model.split_once('/')
-            && provider_config(provider).is_some()
+            && is_known_provider(provider)
         {
             (Some(provider.to_string()), Some(model_id.to_string()))
         } else if let Some(model) = model_override {
@@ -45,7 +48,7 @@ impl Config {
         let provider = provider_override.unwrap_or_else(|| {
             std::env::var(crate::constants::OWLY_PROVIDER_ENV_KEY)
                 .ok()
-                .filter(|p| provider_config(p).is_some())
+                .filter(|p| is_known_provider(p))
                 .or_else(|| file_cfg.as_ref().and_then(|f| f.provider.clone()))
                 .unwrap_or_else(|| resolve_configured_provider().to_string())
         });
@@ -64,15 +67,7 @@ impl Config {
         };
 
         // Validate provider
-        let provider_cfg = provider_config(&provider).with_context(|| format!("Unknown provider: {provider}"))?;
-
-        // Check API key (warn but don't fail - agent will handle it)
-        if std::env::var(provider_cfg.api_key_env_key).is_err() {
-            eprintln!(
-                "Warning: {} environment variable not set for {} provider.",
-                provider_cfg.api_key_env_key, provider_cfg.label
-            );
-        }
+        provider_config(&provider).with_context(|| format!("Unknown provider: {provider}"))?;
 
         Ok(Config {
             provider,
@@ -89,15 +84,20 @@ impl Config {
     }
 
     /// Get the provider label for display
-    pub fn provider_label(&self) -> &str {
+    pub fn provider_label(&self) -> String {
         provider_config(&self.provider)
             .map(|c| c.label)
-            .unwrap_or(&self.provider)
+            .unwrap_or_else(|| self.provider.clone())
     }
 
-    /// Check if API key is available
+    /// Check if provider credentials are available (API key or OAuth).
     pub fn has_api_key(&self) -> bool {
-        std::env::var(self.api_key_env_key()).is_ok()
+        provider_is_configured(&self.provider)
+    }
+
+    /// Whether this provider requires OAuth sign-in (no API key env var).
+    pub fn uses_oauth(&self) -> bool {
+        provider_oauth_only(&self.provider)
     }
 
     /// Get provider as string for model lookup

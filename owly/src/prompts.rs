@@ -7,6 +7,7 @@ use std::path::Path;
 
 use crate::constants::OWLY_DIR;
 use crate::metadata::UpdateMetadata;
+use crate::mode::{RunMode, WikiContext, personal_wiki_root};
 
 /// Create the system prompt for the agent
 pub fn create_system_prompt() -> String {
@@ -77,6 +78,14 @@ Required documentation structure:
 - Include source-file references inline where they help readers verify or continue exploring.
 - Source Map sections are optional. Add one only when it materially improves navigation for that page. Prefer inline source references for short pages.
 - Track the last successful documentation update in {OWLY_DIR}/.last-update.json.
+- During init or update you may draft a short plan at {OWLY_DIR}/_plan.md; remove it when the run finishes (`rm -f ./{OWLY_DIR}/_plan.md`).
+
+Root agent instruction files:
+- Do not create or update repository /AGENTS.md or /CLAUDE.md files during normal wiki runs (the CLI refreshes them after a successful docs write).
+- Keep generated wiki content under the repository /{OWLY_DIR} directory.
+- /{OWLY_DIR}/INSTRUCTIONS.md is the shared, user-authored wiki brief for this repository. Treat it as control metadata: read it to understand scope and priorities, but do not edit it during normal init/update/chat runs unless the user explicitly asks to change the brief.
+- Generated documentation pages should live under /{OWLY_DIR}, but /{OWLY_DIR}/INSTRUCTIONS.md itself is not generated documentation and should not be rewritten as part of routine wiki maintenance.
+- If repository agent instructions already reference OpenWiki or Owly, keep those references accurate but do not edit them unless explicitly asked.
 
 Frontmatter rules:
 - Every documentation file MUST include YAML frontmatter at the top.
@@ -103,8 +112,15 @@ status: published
     )
 }
 
-/// Runtime note appended to agent user prompts (OpenWiki-compatible).
-pub fn create_runtime_note(cwd: &Path) -> String {
+/// Runtime note appended to agent user prompts.
+pub fn create_runtime_note(ctx: &WikiContext) -> String {
+    match ctx.mode {
+        RunMode::Code => create_code_runtime_note(&ctx.repo_cwd),
+        RunMode::Personal => create_personal_runtime_note(),
+    }
+}
+
+fn create_code_runtime_note(cwd: &Path) -> String {
     format!(
         r#"
 Repository root:
@@ -122,8 +138,34 @@ Runtime note:
     )
 }
 
+fn create_personal_runtime_note() -> String {
+    let wiki = personal_wiki_root();
+    format!(
+        r#"
+Personal wiki root:
+{}
+
+Runtime note:
+- Filesystem tools are rooted at the personal wiki directory above.
+- Use virtual paths such as /quickstart.md, /themes.md, and /sources/example.md.
+- Do not create a nested /openwiki directory.
+- Shell/bash commands run on the host; keep wiki writes under the personal wiki root.
+- Connector ingestion tools are not available in this Owly build; work from existing wiki pages and user-provided context."#,
+        wiki.display()
+    )
+}
+
+/// Format wiki brief for init/update user prompts (OpenWiki-compatible).
+pub fn format_wiki_goal(wiki_goal: Option<&str>) -> String {
+    wiki_goal
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "(not provided)".to_string())
+}
+
 /// Create the user prompt for init command
-pub fn create_init_prompt(context: &str, user_message: Option<&str>) -> String {
+pub fn create_init_prompt(context: &str, wiki_goal: Option<&str>, user_message: Option<&str>) -> String {
     let mut prompt = format!(
         r#"Initialize Owly documentation for this repository.
 
@@ -131,8 +173,12 @@ Inspect the project thoroughly, identify the major technical and business domain
 
 Start with {OWLY_DIR}/quickstart.md as the entrypoint. Then create section directories and pages that explain the repository in a way that is useful to both humans and future agents.
 
+Wiki brief:
+{wiki_brief}
+
 Git context:
-{context}"#
+{context}"#,
+        wiki_brief = format_wiki_goal(wiki_goal),
     );
 
     if let Some(msg) = user_message {
@@ -146,6 +192,7 @@ Git context:
 pub fn create_update_prompt(
     last_update: Option<&UpdateMetadata>,
     git_summary: &str,
+    wiki_goal: Option<&str>,
     user_message: Option<&str>,
 ) -> String {
     let metadata_str = match last_update {
@@ -161,8 +208,12 @@ Inspect {OWLY_DIR}/, identify recent source changes, and refresh only the docume
 Last update metadata:
 {metadata_str}
 
+Wiki brief:
+{wiki_brief}
+
 Git change summary:
-{git_summary}"#
+{git_summary}"#,
+        wiki_brief = format_wiki_goal(wiki_goal),
     );
 
     if let Some(msg) = user_message {
@@ -188,9 +239,66 @@ User message:
     )
 }
 
-/// Create the system prompt for interactive mode
-pub fn create_interactive_system_prompt() -> String {
-    let base = create_system_prompt();
+/// Personal-mode system prompt (local wiki at `~/.owly/wiki`).
+pub fn create_personal_system_prompt() -> String {
+    let wiki = personal_wiki_root();
+    format!(
+        r#"You are Owly, an expert knowledge curator and technical writer.
+
+Your job is to maintain a personal knowledge wiki at {} that is excellent for both humans and future agents.
+
+Canonical wiki location:
+- The generated wiki lives at {}. Filesystem tools are rooted there; virtual path / means the wiki root.
+- Use paths such as /quickstart.md, /themes.md, /commitments.md, /open-questions.md, and /sources/<name>.md.
+- Do not create a nested /openwiki directory.
+
+Use only the tools available to you. Prefer ls, read, write, edit, grep, and find for targeted reads. Do not invent facts. Ground claims in wiki pages or evidence the user supplies.
+
+Personal wiki synthesis:
+- /quickstart.md: navigation and high-level status; link out for detail.
+- /open-questions.md: unresolved memory/wiki questions (Active, Answered, Stale sections).
+- /themes.md: compact recurring themes index with terse rows, not long narratives.
+- /commitments.md: work tasks, follow-ups, and scheduled items with Owner when inferable.
+- /personal-logistics.md: non-work errands, appointments, travel, and life-admin items.
+- /sources/<name>.md: concise evidence notes when the user names a source area.
+
+Wiki brief:
+- ~/.owly/INSTRUCTIONS.md is the user-authored brief. Read it for scope and priorities; do not edit it during routine runs unless the user asks.
+
+Security:
+- Do not read or document secrets, credentials, tokens, or .env files.
+- Keep documentation under the personal wiki root.
+
+Documentation goals:
+- Start at /quickstart.md; make the wiki navigable and maintainable.
+- Prefer one canonical page per concept; link instead of duplicating.
+- Every page needs YAML frontmatter (title, last_updated, category).
+
+Required structure:
+- /quickstart.md is the entrypoint with links to major sections.
+- Track successful updates in /.last-update.json.
+- You may draft /_plan.md during a run; remove it before finishing.
+
+Owly CLI reference (personal mode):
+- `owly personal` opens interactive chat for the personal wiki.
+- `owly personal --init` initializes ~/.owly/wiki.
+- `owly personal --update` refreshes the personal wiki.
+- `owly -p "message"` runs once and prints the result.
+
+Mode-specific behavior:
+- Personal mode does not manage repository AGENTS.md or CLAUDE.md files.
+- Connector ingestion is not available yet; synthesize from existing wiki content and user messages."#,
+        wiki.display(),
+        wiki.display()
+    )
+}
+
+/// Create the system prompt for interactive mode.
+pub fn create_interactive_system_prompt(ctx: &WikiContext) -> String {
+    let base = match ctx.mode {
+        RunMode::Code => create_system_prompt(),
+        RunMode::Personal => create_personal_system_prompt(),
+    };
     format!(
         r#"{base}
 
@@ -202,6 +310,98 @@ pub fn create_interactive_system_prompt() -> String {
 - Answer the user's questions directly.
 - Do not create or update Owly documentation unless the user explicitly asks you to.
 - When the user says /exit, /quit, or goodbye, say goodbye and signal you're done.
+- If the user asks to initialize or update the wiki, explain the appropriate owly personal or owly code init/update commands.
 "#
     )
+}
+
+/// Personal-mode init user prompt.
+pub fn create_personal_init_prompt(context: &str, wiki_goal: Option<&str>, user_message: Option<&str>) -> String {
+    let mut prompt = format!(
+        r#"Initialize Owly personal documentation for the local knowledge wiki.
+
+Inspect any existing wiki pages, identify major knowledge domains from the wiki brief and user context, and write the initial documentation under the personal wiki root.
+
+Start with /quickstart.md as the entrypoint. Then create section pages that explain the knowledge base for both humans and future agents.
+
+Wiki brief:
+{wiki_brief}
+
+Context:
+{context}"#,
+        wiki_brief = format_wiki_goal(wiki_goal),
+    );
+
+    if let Some(msg) = user_message {
+        prompt.push_str(&format!("\n\nAdditional user instruction:\n{msg}"));
+    }
+
+    prompt
+}
+
+/// Personal-mode update user prompt.
+pub fn create_personal_update_prompt(
+    last_update: Option<&UpdateMetadata>,
+    context: &str,
+    wiki_goal: Option<&str>,
+    user_message: Option<&str>,
+) -> String {
+    let metadata_str = match last_update {
+        Some(meta) => serde_json::to_string_pretty(meta).unwrap_or_default(),
+        None => "No previous Owly update metadata was found.".to_string(),
+    };
+
+    let mut prompt = format!(
+        r#"Update the existing Owly personal documentation.
+
+Inspect the personal wiki root, identify what needs refreshing from user context or stale pages, and update only affected pages. Keep edits surgical. If the wiki is already current, do not edit files.
+
+Last update metadata:
+{metadata_str}
+
+Wiki brief:
+{wiki_brief}
+
+Context:
+{context}"#,
+        wiki_brief = format_wiki_goal(wiki_goal),
+    );
+
+    if let Some(msg) = user_message {
+        prompt.push_str(&format!("\n\nAdditional user instruction:\n{msg}"));
+    }
+
+    prompt
+}
+
+/// Personal-mode chat user prompt.
+pub fn create_personal_chat_prompt(message: &str) -> String {
+    format!(
+        r#"This is an interactive chat turn for the personal wiki.
+
+Answer the user's message directly using the wiki at ~/.owly/wiki when helpful.
+
+Do not create or update wiki pages unless the user explicitly asks you to modify documentation.
+
+If the user asks to initialize or update the wiki, explain that they can run owly personal --init or owly personal --update.
+
+User message:
+{message}"#
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_wiki_goal_defaults_when_missing() {
+        assert_eq!(format_wiki_goal(None), "(not provided)");
+        assert_eq!(format_wiki_goal(Some("  ")), "(not provided)");
+    }
+
+    #[test]
+    fn format_wiki_goal_trims_content() {
+        assert_eq!(format_wiki_goal(Some("  API docs  ")), "API docs");
+    }
 }

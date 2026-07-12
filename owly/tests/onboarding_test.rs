@@ -1,9 +1,10 @@
 use owly::config::Config;
 use owly::constants::ONBOARDING_PROVIDERS;
+use owly::constants::provider_is_configured;
 use owly::credentials;
 use owly::onboarding::{
     SetupCredentials, apply_setup, default_model_for_provider, needs_setup, provider_select_items,
-    setup_base_url_required, setup_collects_base_url,
+    setup_base_url_required, setup_collects_base_url, setup_uses_oauth,
 };
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -56,6 +57,7 @@ fn apply_setup_persists_credentials() {
             api_key: "test-key".to_string(),
             base_url: None,
             model_id: "big-pickle".to_string(),
+            oauth: false,
         },
         &base,
     )
@@ -82,6 +84,7 @@ fn apply_setup_rejects_empty_api_key() {
             api_key: "   ".to_string(),
             base_url: None,
             model_id: "big-pickle".to_string(),
+            oauth: false,
         },
         &test_config("opencode"),
     )
@@ -113,6 +116,45 @@ fn needs_setup_when_api_key_missing() {
             // SAFETY: restoring prior env.
             unsafe {
                 std::env::set_var(&key, value);
+            }
+        }
+    }
+}
+
+#[test]
+fn anthropic_setup_uses_api_key_path() {
+    assert!(!setup_uses_oauth("anthropic"));
+}
+
+#[test]
+fn anthropic_is_configured_with_api_key_only() {
+    let prev: HashMap<String, Option<String>> = credentials::MANAGED_ENV_KEYS
+        .iter()
+        .filter(|k| k.ends_with("_API_KEY"))
+        .map(|k| (k.to_string(), std::env::var(k).ok()))
+        .collect();
+
+    for key in credentials::MANAGED_ENV_KEYS {
+        if key.ends_with("_API_KEY") {
+            unsafe {
+                std::env::remove_var(key);
+            }
+        }
+    }
+
+    unsafe {
+        std::env::set_var("ANTHROPIC_API_KEY", "test-key");
+    }
+    assert!(provider_is_configured("anthropic"));
+
+    for (key, value) in prev {
+        if let Some(value) = value {
+            unsafe {
+                std::env::set_var(&key, value);
+            }
+        } else {
+            unsafe {
+                std::env::remove_var(&key);
             }
         }
     }

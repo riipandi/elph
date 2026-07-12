@@ -36,7 +36,7 @@ fn test_provider_config_api_key_env_keys() {
         ("anthropic", "ANTHROPIC_API_KEY"),
         ("openai", "OPENAI_API_KEY"),
         ("openrouter", "OPENROUTER_API_KEY"),
-        ("google", "GOOGLE_API_KEY"),
+        ("google", "GEMINI_API_KEY"),
         ("deepseek", "DEEPSEEK_API_KEY"),
         ("groq", "GROQ_API_KEY"),
         ("fireworks", "FIREWORKS_API_KEY"),
@@ -54,8 +54,8 @@ fn test_provider_config_api_key_env_keys() {
 fn test_provider_config_default_models() {
     let test_cases = vec![
         ("opencode", "big-pickle"),
-        ("anthropic", "claude-sonnet-5"),
-        ("openai", "gpt-5.4-mini"),
+        ("anthropic", "claude-haiku-4-5"),
+        ("openai", "gpt-5.6-terra"),
     ];
 
     for (provider, expected_model) in test_cases {
@@ -71,7 +71,9 @@ fn test_all_providers_have_valid_config() {
         assert!(config.is_some(), "Provider {} should have a config", provider);
         let config = config.unwrap();
         assert!(!config.label.is_empty());
-        assert!(!config.api_key_env_key.is_empty());
+        if config.auth_method == ProviderAuthMethod::ApiKey {
+            assert!(!config.api_key_env_key.is_empty());
+        }
         assert!(!config.default_model.is_empty());
     }
 }

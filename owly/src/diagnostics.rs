@@ -20,6 +20,7 @@ static API_KEY_ENV_VARS: LazyLock<Vec<&'static str>> = LazyLock::new(|| {
         "FIREWORKS_API_KEY",
         "TOGETHER_API_KEY",
         "MISTRAL_API_KEY",
+        "NVIDIA_API_KEY",
         "LANGSMITH_API_KEY",
     ]
 });

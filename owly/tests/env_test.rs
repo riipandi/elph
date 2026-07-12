@@ -18,7 +18,7 @@ fn test_provider_config_anthropic() {
     let config = provider_config("anthropic").unwrap();
     assert_eq!(config.label, "Anthropic");
     assert_eq!(config.api_key_env_key, "ANTHROPIC_API_KEY");
-    assert_eq!(config.default_model, "claude-sonnet-5");
+    assert_eq!(config.default_model, "claude-haiku-4-5");
 }
 
 #[test]
@@ -26,7 +26,7 @@ fn test_provider_config_openai() {
     let config = provider_config("openai").unwrap();
     assert_eq!(config.label, "OpenAI");
     assert_eq!(config.api_key_env_key, "OPENAI_API_KEY");
-    assert_eq!(config.default_model, "gpt-5.4-mini");
+    assert_eq!(config.default_model, "gpt-5.6-terra");
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn test_provider_config_openrouter() {
 fn test_provider_config_google() {
     let config = provider_config("google").unwrap();
     assert_eq!(config.label, "Google");
-    assert_eq!(config.api_key_env_key, "GOOGLE_API_KEY");
+    assert_eq!(config.api_key_env_key, "GEMINI_API_KEY");
     assert_eq!(config.default_model, "gemini-2.5-flash");
 }
 
@@ -86,7 +86,7 @@ fn test_default_model_is_big_pickle() {
 fn test_constants_values() {
     assert_eq!(OWLY_DIR, "openwiki");
     assert_eq!(UPDATE_METADATA_PATH, "openwiki/.last-update.json");
-    assert_eq!(OWLY_VERSION, "0.0.1");
+    assert_eq!(OWLY_VERSION, env!("CARGO_PKG_VERSION"));
 }
 
 #[test]
@@ -116,4 +116,38 @@ fn test_provider_needs_api_key() {
     let _ = provider_needs_api_key("opencode");
     let _ = provider_needs_api_key("anthropic");
     let _ = provider_needs_api_key("openai");
+}
+
+#[test]
+fn test_resolve_provider_retry_attempts_default() {
+    unsafe {
+        std::env::remove_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY);
+    }
+    assert_eq!(resolve_provider_retry_attempts().unwrap(), DEFAULT_PROVIDER_RETRY_ATTEMPTS);
+}
+
+#[test]
+fn test_resolve_provider_retry_attempts_custom() {
+    unsafe {
+        std::env::set_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY, "5");
+    }
+    assert_eq!(resolve_provider_retry_attempts().unwrap(), 5);
+    unsafe {
+        std::env::remove_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY);
+    }
+}
+
+#[test]
+fn test_resolve_provider_retry_attempts_rejects_invalid() {
+    unsafe {
+        std::env::set_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY, "0");
+    }
+    assert!(resolve_provider_retry_attempts().is_err());
+    unsafe {
+        std::env::set_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY, "abc");
+    }
+    assert!(resolve_provider_retry_attempts().is_err());
+    unsafe {
+        std::env::remove_var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY);
+    }
 }

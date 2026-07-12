@@ -7,7 +7,8 @@ use anyhow::Result;
 
 use crate::config::Config;
 use crate::constants::{
-    provider_config, provider_requires_base_url, resolve_configured_provider, resolve_provider_base_url,
+    provider_config, provider_is_configured, provider_oauth_capable, provider_oauth_only, provider_requires_base_url,
+    resolve_configured_provider, resolve_provider_base_url,
 };
 
 /// Load and validate environment for running Owly
@@ -15,19 +16,28 @@ pub fn setup_environment(config: &Config) -> Result<()> {
     // Load environment from ~/.owly/.env
     crate::credentials::load_env()?;
 
-    // Validate API key is available
-    let api_key_env = config.api_key_env_key();
-    if std::env::var(api_key_env).is_err() {
-        let label = provider_config(&config.provider).map(|c| c.label).unwrap_or("Unknown");
-        anyhow::bail!(
-            "{} is required to run Owly with {}. Set it in your environment or ~/.owly/.env",
-            api_key_env,
-            label
-        );
+    if !provider_is_configured(&config.provider) {
+        let label = provider_config(&config.provider)
+            .map(|c| c.label)
+            .unwrap_or_else(|| "Unknown".to_string());
+        if provider_oauth_only(&config.provider) {
+            anyhow::bail!(
+                "OAuth sign-in is required to run Owly with {label}. Run Owly in an interactive terminal to complete setup."
+            );
+        }
+        if provider_oauth_capable(&config.provider) {
+            anyhow::bail!(
+                "An API key or OAuth sign-in is required to run Owly with {label}. Run Owly in an interactive terminal to complete setup."
+            );
+        }
+        let api_key_env = config.api_key_env_key();
+        anyhow::bail!("{api_key_env} is required to run Owly with {label}. Set it in your environment or ~/.owly/.env");
     }
 
     if provider_requires_base_url(&config.provider) && resolve_provider_base_url(&config.provider).is_none() {
-        let label = provider_config(&config.provider).map(|c| c.label).unwrap_or("Unknown");
+        let label = provider_config(&config.provider)
+            .map(|c| c.label)
+            .unwrap_or_else(|| "Unknown".to_string());
         let base_key = provider_config(&config.provider)
             .and_then(|c| c.base_url_env_key)
             .unwrap_or("BASE_URL");
@@ -61,6 +71,7 @@ pub fn get_debug_env() -> Vec<(String, String)> {
         "OPENROUTER_API_KEY",
         "ANTHROPIC_API_KEY",
         "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
         "GOOGLE_API_KEY",
         "DEEPSEEK_API_KEY",
     ];
@@ -78,7 +89,7 @@ pub fn get_debug_env() -> Vec<(String, String)> {
         .collect()
 }
 
-/// Resolve the provider from environment or config
+/// Resolve provider from environment with Owly defaults.
 pub fn resolve_provider() -> String {
     resolve_configured_provider().to_string()
 }

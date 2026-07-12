@@ -1,10 +1,14 @@
-use super::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER, OWLY_MODEL_ID_ENV_KEY, OWLY_PROVIDER_ENV_KEY, provider_config};
+use super::{
+    DEFAULT_MODEL_ID, DEFAULT_PROVIDER, DEFAULT_PROVIDER_RETRY_ATTEMPTS, OWLY_MODEL_ID_ENV_KEY, OWLY_PROVIDER_ENV_KEY,
+    OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY, is_known_provider, provider_config, provider_oauth_capable,
+    provider_oauth_only,
+};
 
 /// Resolve provider from environment
 pub fn resolve_configured_provider() -> &'static str {
     // Check OWLY_PROVIDER env var first
     if let Ok(provider) = std::env::var(OWLY_PROVIDER_ENV_KEY)
-        && provider_config(&provider).is_some()
+        && is_known_provider(&provider)
     {
         return Box::leak(provider.into_boxed_str());
     }
@@ -35,7 +39,9 @@ pub fn resolve_configured_provider() -> &'static str {
     {
         return "openrouter";
     }
-    if std::env::var("GOOGLE_API_KEY").ok().filter(|v| !v.is_empty()).is_some() {
+    if std::env::var("GEMINI_API_KEY").ok().filter(|v| !v.is_empty()).is_some()
+        || std::env::var("GOOGLE_API_KEY").ok().filter(|v| !v.is_empty()).is_some()
+    {
         return "google";
     }
     if std::env::var("DEEPSEEK_API_KEY")
@@ -82,7 +88,42 @@ pub fn provider_needs_api_key(provider: &str) -> bool {
 
 /// Get API key for a provider
 pub fn get_provider_api_key(provider: &str) -> Option<String> {
-    provider_config(provider).and_then(|c| std::env::var(c.api_key_env_key).ok())
+    provider_config(provider).and_then(|c| read_provider_api_key(c.api_key_env_key))
+}
+
+fn read_provider_api_key(env_key: &str) -> Option<String> {
+    if env_key.is_empty() {
+        return None;
+    }
+    std::env::var(env_key)
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| {
+            if env_key == "GEMINI_API_KEY" {
+                std::env::var("GOOGLE_API_KEY").ok().filter(|v| !v.trim().is_empty())
+            } else {
+                None
+            }
+        })
+}
+
+/// Returns true when the provider has credentials (API key or stored OAuth).
+pub fn provider_is_configured(provider: &str) -> bool {
+    if provider_requires_base_url(provider) && resolve_provider_base_url(provider).is_none() {
+        return false;
+    }
+
+    if provider_oauth_only(provider) {
+        return crate::credentials::has_stored_oauth(provider);
+    }
+
+    if provider_oauth_capable(provider) && crate::credentials::has_stored_oauth(provider) {
+        return true;
+    }
+
+    provider_config(provider)
+        .and_then(|cfg| read_provider_api_key(cfg.api_key_env_key))
+        .is_some()
 }
 
 /// Normalize a model id from user input.
@@ -111,4 +152,36 @@ pub fn resolve_provider_base_url(provider: &str) -> Option<String> {
 
 pub fn provider_requires_base_url(provider: &str) -> bool {
     provider_config(provider).map(|c| c.requires_base_url).unwrap_or(false)
+}
+
+/// Resolve provider retry attempts from env.
+pub fn resolve_provider_retry_attempts() -> Result<u32, String> {
+    let raw = std::env::var(OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY).ok();
+
+    let Some(raw) = raw else {
+        return Ok(DEFAULT_PROVIDER_RETRY_ATTEMPTS);
+    };
+
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Ok(DEFAULT_PROVIDER_RETRY_ATTEMPTS);
+    }
+
+    if !trimmed.chars().all(|c| c.is_ascii_digit()) || trimmed.starts_with('0') {
+        return Err(format!(
+            "Invalid {OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY}. Expected a positive integer."
+        ));
+    }
+
+    let parsed: u32 = trimmed
+        .parse()
+        .map_err(|_| format!("Invalid {OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY}. Expected a positive integer."))?;
+
+    if parsed == 0 {
+        return Err(format!(
+            "Invalid {OWLY_PROVIDER_RETRY_ATTEMPTS_ENV_KEY}. Expected a positive integer."
+        ));
+    }
+
+    Ok(parsed)
 }

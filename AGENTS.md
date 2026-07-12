@@ -61,6 +61,7 @@ tests/
 - Avoid duplication between unit and integration tests.
 - Use clear, descriptive test names.
 
+<!-- OWLY:START -->
 <!-- openwiki-context -->
 
 ## OpenWiki Documentation
@@ -69,3 +70,5 @@ When searching for repository context, read `openwiki/quickstart.md` first and f
 Prefer those docs over re-exploring the entire codebase when they already answer the question.
 
 Entry point: `openwiki/quickstart.md`.
+
+<!-- OWLY:END -->

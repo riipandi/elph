@@ -1,24 +1,25 @@
 use anyhow::Result;
 use std::io::Write;
-use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
-use tokio::sync::mpsc;
 
-use elph_agent::{Agent, AgentOptions, LocalExecutionEnv, PartialAgentState, create_all_tools, create_read_only_tools};
+use elph_agent::{
+    Agent, AgentOptions, AgentState, LocalExecutionEnv, PartialAgentState, create_all_tools, create_read_only_tools,
+};
 
 use crate::ask_user::{AskUserBridge, create_ask_tools};
+use crate::cli::format_stream_footer;
 use crate::config::Config;
 use crate::docs::{self, DocumentationSnapshot};
 use crate::env;
+use crate::mode::WikiContext;
 use crate::session::SessionStore;
-use crate::ui_events::AgentUiEvent;
 
-use super::listeners::{
-    create_checkpoint_write_subscriber, create_event_subscriber, create_tui_event_subscriber, emit_ui,
-};
-use super::model::{progress_spinner, resolve_model_and_auth};
+use crate::interactive;
+
+use super::listeners::{create_checkpoint_write_subscriber, create_event_subscriber};
+use super::model::resolve_model_and_auth;
 
 /// Result of a single agent invocation.
 #[derive(Debug)]
@@ -34,17 +35,33 @@ pub struct RunAgentOptions<'a> {
     pub system_prompt: &'a str,
     pub user_prompt: &'a str,
     pub config: &'a Config,
-    pub cwd: &'a Path,
+    pub ctx: &'a WikiContext,
     pub print_mode: bool,
     pub stream: bool,
     pub verbose: bool,
     pub session: Option<&'a mut SessionStore>,
     pub is_followup: bool,
     pub docs_snapshot_before: Option<DocumentationSnapshot>,
-    /// Suppress spinners and direct stdout/stderr writes (interactive TUI mode).
-    pub quiet: bool,
-    /// Optional live event sink for the interactive TUI transcript.
-    pub ui_events: Option<mpsc::UnboundedSender<AgentUiEvent>>,
+}
+
+fn print_assistant_response(state: &AgentState) -> bool {
+    let Some(elph_ai::Message::Assistant(assistant)) = state.messages.last().and_then(|m| m.as_llm()) else {
+        return false;
+    };
+    let mut wrote = false;
+    for block in &assistant.content {
+        if let elph_ai::AssistantContentBlock::Text(t) = block
+            && !t.text.is_empty()
+        {
+            print!("{}", t.text);
+            wrote = true;
+        }
+    }
+    if wrote {
+        println!();
+        let _ = std::io::stdout().flush();
+    }
+    wrote
 }
 
 /// Run the agent with the given command.
@@ -54,24 +71,21 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
         system_prompt,
         user_prompt,
         config,
-        cwd,
+        ctx,
         print_mode,
         stream,
         verbose,
         mut session,
         is_followup,
         docs_snapshot_before,
-        quiet,
-        ui_events,
     } = opts;
 
     env::debug_log(format!("command={command} followup={is_followup}"));
     let start_time = Instant::now();
-    let stream_text = stream || ui_events.is_some();
-    let show_thinking = verbose;
 
-    let (model, models_arc, stream_fn) = resolve_model_and_auth(config, &ui_events).await?;
-    let env = Arc::new(LocalExecutionEnv::new(cwd));
+    let (model, models_arc, stream_fn) = resolve_model_and_auth(config).await?;
+    let agent_cwd = ctx.agent_cwd();
+    let env = Arc::new(LocalExecutionEnv::new(&agent_cwd));
 
     let (mut agent_tools, base_tool_str) = if command == "chat" {
         (create_read_only_tools(env.clone()), "read, grep, find, ls (read-only mode)")
@@ -80,7 +94,7 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
     };
 
     if command == "chat" {
-        let ask_bridge = AskUserBridge::new(ui_events.clone());
+        let ask_bridge = AskUserBridge::new();
         agent_tools.extend(create_ask_tools(ask_bridge));
     }
 
@@ -127,33 +141,23 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
         ..Default::default()
     });
 
-    let generating = if quiet {
-        None
-    } else {
-        Some(progress_spinner("Thinking..."))
-    };
+    let generating = interactive::progress_spinner("Thinking...");
     let saw_any_delta = Arc::new(AtomicBool::new(false));
+    let stream_ends_with_newline = Arc::new(AtomicBool::new(true));
 
     if let Some(write_ctx) = turn_write_ctx {
-        agent
-            .subscribe(create_checkpoint_write_subscriber(write_ctx, ui_events.clone(), quiet))
-            .await;
+        agent.subscribe(create_checkpoint_write_subscriber(write_ctx)).await;
     }
 
-    if let Some(tx) = ui_events.clone() {
-        agent
-            .subscribe(create_tui_event_subscriber(tx, stream_text, show_thinking))
-            .await;
-    } else if !quiet {
-        agent
-            .subscribe(create_event_subscriber(
-                stream,
-                verbose,
-                generating.as_ref().expect("spinner").clone(),
-                saw_any_delta.clone(),
-            ))
-            .await;
-    }
+    agent
+        .subscribe(create_event_subscriber(
+            stream,
+            verbose,
+            generating.clone(),
+            saw_any_delta.clone(),
+            stream_ends_with_newline.clone(),
+        ))
+        .await;
 
     agent.prompt_text(user_prompt.to_string(), None).await?;
     agent.wait_for_idle().await;
@@ -161,59 +165,37 @@ pub async fn run_agent(opts: RunAgentOptions<'_>) -> Result<RunAgentResult> {
     let elapsed = start_time.elapsed();
     let state = agent.state().await;
 
-    if let Some(session) = session {
+    // Init/update runs use ephemeral checkpoints: only chat persists Turso state.
+    if let Some(session) = session
+        && command == "chat"
+    {
         session.save_messages(&state.messages, command).await?;
-        if command == "chat" {
-            match session
-                .try_auto_name(&state.messages, &model, models_arc.as_ref())
-                .await
-            {
-                Ok(Some(title)) => {
-                    emit_ui(&ui_events, AgentUiEvent::SessionTitleUpdated { title });
-                }
-                Ok(None) => {}
-                Err(err) => {
-                    tracing::warn!(error = %err, "auto session naming failed");
-                }
-            }
+        if let Err(err) = session
+            .try_auto_name(&state.messages, &model, models_arc.as_ref())
+            .await
+        {
+            tracing::warn!(error = %err, "auto session naming failed");
         }
     }
 
     let docs_changed = if let Some(before) = docs_snapshot_before.as_ref() {
-        let after = docs::create_snapshot(cwd)?;
+        let after = docs::create_snapshot(ctx)?;
         docs::has_changed(before, &after)
     } else {
         false
     };
 
+    let streamed = stream && saw_any_delta.load(Ordering::SeqCst);
+    let ends_with_newline = stream_ends_with_newline.load(Ordering::SeqCst);
     let completion_message = if print_mode && !stream {
-        if let Some(elph_ai::Message::Assistant(assistant)) = state.messages.last().and_then(|m| m.as_llm())
-            && !verbose
-        {
-            for block in &assistant.content {
-                if let elph_ai::AssistantContentBlock::Text(t) = block {
-                    print!("{}", t.text);
-                    let _ = std::io::stdout().flush();
-                }
-            }
-            println!();
-            String::new()
-        } else {
-            String::new()
-        }
-    } else if quiet && ui_events.is_some() {
+        print_assistant_response(&state);
         String::new()
-    } else if quiet {
-        format!("Completed in {:.1}s", elapsed.as_secs_f64())
+    } else if !stream || !streamed {
+        print_assistant_response(&state);
+        format_stream_footer(elapsed.as_secs_f64(), false, true)
     } else {
-        format!("\x1b[90mCompleted in {:.1}s\x1b[0m", elapsed.as_secs_f64())
+        format_stream_footer(elapsed.as_secs_f64(), true, ends_with_newline)
     };
-
-    if let Some(tx) = ui_events {
-        let _ = tx.send(AgentUiEvent::RunCompleted {
-            elapsed_secs: elapsed.as_secs_f64(),
-        });
-    }
 
     Ok(RunAgentResult {
         completion_message,

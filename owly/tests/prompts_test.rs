@@ -45,21 +45,21 @@ fn test_create_system_prompt_contains_frontmatter_rules() {
 
 #[test]
 fn test_create_init_prompt() {
-    let prompt = create_init_prompt("", None);
+    let prompt = create_init_prompt("", None, None);
     assert!(prompt.contains("Initialize Owly documentation"));
     assert!(prompt.contains(OWLY_DIR));
 }
 
 #[test]
 fn test_create_init_prompt_with_user_message() {
-    let prompt = create_init_prompt("", Some("Focus on API routes"));
+    let prompt = create_init_prompt("", None, Some("Focus on API routes"));
     assert!(prompt.contains("Initialize Owly documentation"));
     assert!(prompt.contains("Focus on API routes"));
 }
 
 #[test]
 fn test_create_update_prompt_no_metadata() {
-    let prompt = create_update_prompt(None, "git log output", None);
+    let prompt = create_update_prompt(None, "git log output", None, None);
     assert!(prompt.contains("Update the existing Owly documentation"));
     assert!(prompt.contains("No previous Owly update metadata"));
     assert!(prompt.contains("git log output"));
@@ -77,7 +77,7 @@ fn test_create_update_prompt_with_metadata() {
         model: "opencode/big-pickle".to_string(),
     };
 
-    let prompt = create_update_prompt(Some(&metadata), "git diff output", None);
+    let prompt = create_update_prompt(Some(&metadata), "git diff output", None, None);
     assert!(prompt.contains("Update the existing Owly documentation"));
     assert!(prompt.contains("abc123"));
     assert!(prompt.contains("git diff output"));
@@ -85,7 +85,7 @@ fn test_create_update_prompt_with_metadata() {
 
 #[test]
 fn test_create_update_prompt_with_user_message() {
-    let prompt = create_update_prompt(None, "git log", Some("Update API docs"));
+    let prompt = create_update_prompt(None, "git log", None, Some("Update API docs"));
     assert!(prompt.contains("Update the existing Owly documentation"));
     assert!(prompt.contains("Update API docs"));
 }

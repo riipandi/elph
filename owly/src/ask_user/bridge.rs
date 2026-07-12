@@ -1,22 +1,21 @@
-//! Routes ask_* prompts to the Owly TUI or CLI (dialoguer).
+//! Routes ask_* prompts to the terminal via dialoguer (blocking thread pool).
 
 use anyhow::{Context, Result};
-use tokio::sync::{mpsc, oneshot};
 
-use crate::ui_events::{AgentUiEvent, AskUserKind, AskUserResponse};
-
-#[derive(Clone)]
-pub struct AskUserBridge {
-    ui_events: Option<mpsc::UnboundedSender<AgentUiEvent>>,
+/// Kind of interactive prompt requested by an ask_* tool.
+#[derive(Debug, Clone)]
+pub enum AskUserKind {
+    Text { default: Option<String> },
+    Select { options: Vec<String>, default_index: usize },
+    Confirm { default: bool },
 }
 
-impl AskUserBridge {
-    pub fn new(ui_events: Option<mpsc::UnboundedSender<AgentUiEvent>>) -> Self {
-        Self { ui_events }
-    }
+#[derive(Clone, Default)]
+pub struct AskUserBridge;
 
-    pub fn is_tui(&self) -> bool {
-        self.ui_events.is_some()
+impl AskUserBridge {
+    pub fn new() -> Self {
+        Self
     }
 
     pub async fn prompt_text(&self, tool_call_id: &str, question: &str, default: Option<&str>) -> Result<String> {
@@ -45,41 +44,15 @@ impl AskUserBridge {
         self.prompt(tool_call_id, "ask_confirm", question, kind).await
     }
 
-    async fn prompt(&self, tool_call_id: &str, tool_name: &str, question: &str, kind: AskUserKind) -> Result<String> {
-        if let Some(tx) = &self.ui_events {
-            let (response_tx, response_rx) = oneshot::channel();
-            tx.send(AgentUiEvent::AskUserRequired {
-                tool_call_id: tool_call_id.to_string(),
-                tool_name: tool_name.to_string(),
-                question: question.to_string(),
-                kind,
-                response_tx,
-            })
-            .map_err(|_| anyhow::anyhow!("{tool_name}: TUI event channel closed"))?;
-
-            match response_rx
-                .await
-                .map_err(|_| anyhow::anyhow!("{tool_name}: response channel closed"))?
-            {
-                AskUserResponse::Answered(answer) => Ok(answer),
-                AskUserResponse::Cancelled => {
-                    anyhow::bail!("{tool_name}: user cancelled")
-                }
-            }
-        } else {
-            prompt_cli(tool_name, question, kind).await
-        }
+    async fn prompt(&self, _tool_call_id: &str, tool_name: &str, question: &str, kind: AskUserKind) -> Result<String> {
+        let question = question.to_string();
+        let tool_name = tool_name.to_string();
+        let tool_label = tool_name.clone();
+        tokio::task::spawn_blocking(move || run_dialoguer(&tool_name, &question, kind))
+            .await
+            .context(format!("{tool_label} interrupted"))?
+            .with_context(|| format!("{tool_label} failed"))
     }
-}
-
-async fn prompt_cli(tool_name: &str, question: &str, kind: AskUserKind) -> Result<String> {
-    let question = question.to_string();
-    let tool_name = tool_name.to_string();
-    let tool_label = tool_name.clone();
-    tokio::task::spawn_blocking(move || run_dialoguer(&tool_name, &question, kind))
-        .await
-        .context(format!("{tool_label} interrupted"))?
-        .with_context(|| format!("{tool_label} failed"))
 }
 
 fn run_dialoguer(tool_name: &str, question: &str, kind: AskUserKind) -> Result<String> {

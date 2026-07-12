@@ -10,13 +10,12 @@ use chrono::Utc;
 use std::path::{Path, PathBuf};
 
 use crate::constants::OWLY_DIR;
-use crate::metadata::{UpdateMetadata, get_git_head, save_metadata};
+use crate::metadata::{UpdateMetadata, get_git_head, save_metadata_ctx};
+use crate::mode::WikiContext;
 
-/// Create a snapshot of the current documentation state
-pub fn create_snapshot(cwd: &Path) -> Result<DocumentationSnapshot> {
-    let owly_dir = cwd.join(OWLY_DIR);
-
-    if !owly_dir.exists() {
+/// Create a snapshot of documentation under `wiki_root`.
+pub fn create_snapshot_at(wiki_root: &Path) -> Result<DocumentationSnapshot> {
+    if !wiki_root.exists() {
         return Ok(DocumentationSnapshot {
             files: Vec::new(),
             exists: false,
@@ -24,9 +23,20 @@ pub fn create_snapshot(cwd: &Path) -> Result<DocumentationSnapshot> {
     }
 
     let mut files = Vec::new();
-    collect_files(&owly_dir, &owly_dir, &mut files)?;
+    collect_files(wiki_root, wiki_root, &mut files)?;
 
-    Ok(DocumentationSnapshot { files, exists: true })
+    let exists = !files.is_empty();
+    Ok(DocumentationSnapshot { files, exists })
+}
+
+/// Create a snapshot for a wiki context.
+pub fn create_snapshot(ctx: &WikiContext) -> Result<DocumentationSnapshot> {
+    create_snapshot_at(&ctx.wiki_root())
+}
+
+/// Create a snapshot of the current documentation state (code mode: repository root).
+pub fn create_snapshot_for_repo(cwd: &Path) -> Result<DocumentationSnapshot> {
+    create_snapshot(&WikiContext::code(cwd))
 }
 
 /// Compare two snapshots to check if documentation has changed
@@ -91,9 +101,12 @@ pub fn read_doc_file(path: &Path) -> Result<Option<(crate::frontmatter::Frontmat
     }
 }
 
-/// Save update metadata after successful run
-pub fn save_update_metadata(cwd: &Path, command: &str, model: &str) -> Result<()> {
-    let git_head = get_git_head(cwd);
+/// Save update metadata after successful run.
+pub fn save_update_metadata(ctx: &WikiContext, command: &str, model: &str) -> Result<()> {
+    let git_head = match ctx.mode {
+        crate::mode::RunMode::Code => get_git_head(&ctx.repo_cwd),
+        crate::mode::RunMode::Personal => None,
+    };
 
     let metadata = UpdateMetadata {
         updated_at: Utc::now(),
@@ -102,28 +115,31 @@ pub fn save_update_metadata(cwd: &Path, command: &str, model: &str) -> Result<()
         model: model.to_string(),
     };
 
-    save_metadata(cwd, &metadata)
+    save_metadata_ctx(ctx, &metadata)
 }
 
 /// Save metadata only when documentation content actually changed.
 pub fn save_update_metadata_if_changed(
-    cwd: &Path,
+    ctx: &WikiContext,
     command: &str,
     model: &str,
     before: &DocumentationSnapshot,
 ) -> Result<bool> {
-    let after = create_snapshot(cwd)?;
+    let after = create_snapshot(ctx)?;
     if !has_changed(before, &after) {
         return Ok(false);
     }
-    save_update_metadata(cwd, command, model)?;
+    save_update_metadata(ctx, command, model)?;
     Ok(true)
 }
 
-/// Get git summary for changes since last update
-pub fn get_git_summary(cwd: &Path) -> String {
-    let last_update = crate::metadata::load_metadata(cwd);
-    crate::metadata::create_git_summary(cwd, last_update.as_ref())
+/// Get git summary for changes since last update.
+pub fn get_git_summary(ctx: &WikiContext) -> String {
+    if ctx.mode == crate::mode::RunMode::Personal {
+        return "(personal wiki mode — no repository git context)".to_string();
+    }
+    let last_update = crate::metadata::load_metadata_ctx(ctx);
+    crate::metadata::create_git_summary(&ctx.repo_cwd, last_update.as_ref())
 }
 
 #[derive(Debug, Clone)]

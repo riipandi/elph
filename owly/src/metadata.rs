@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
-use crate::constants::{OWLY_DIR, UPDATE_METADATA_PATH};
+use crate::constants::{OWLY_DIR, PERSONAL_UPDATE_METADATA_FILE, UPDATE_METADATA_PATH};
+use crate::mode::{RunMode, WikiContext};
 
 /// Metadata about the last successful update
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,9 +37,17 @@ pub enum UpdateNoopStatus {
     Proceed { reason: String },
 }
 
-/// Load the last update metadata
-pub fn load_metadata(cwd: &Path) -> Option<UpdateMetadata> {
-    let path = cwd.join(UPDATE_METADATA_PATH);
+/// Metadata file path for a wiki context.
+pub fn metadata_path(ctx: &WikiContext) -> std::path::PathBuf {
+    match ctx.mode {
+        RunMode::Code => ctx.repo_cwd.join(UPDATE_METADATA_PATH),
+        RunMode::Personal => ctx.wiki_root().join(PERSONAL_UPDATE_METADATA_FILE),
+    }
+}
+
+/// Load the last update metadata for a wiki context.
+pub fn load_metadata_ctx(ctx: &WikiContext) -> Option<UpdateMetadata> {
+    let path = metadata_path(ctx);
     if !path.exists() {
         return None;
     }
@@ -47,15 +56,25 @@ pub fn load_metadata(cwd: &Path) -> Option<UpdateMetadata> {
     serde_json::from_str(&content).ok()
 }
 
-/// Save update metadata
-pub fn save_metadata(cwd: &Path, metadata: &UpdateMetadata) -> Result<()> {
-    let dir = cwd.join(OWLY_DIR);
-    std::fs::create_dir_all(&dir).context("Failed to create owly directory")?;
-
-    let path = cwd.join(UPDATE_METADATA_PATH);
+/// Save update metadata for a wiki context.
+pub fn save_metadata_ctx(ctx: &WikiContext, metadata: &UpdateMetadata) -> Result<()> {
+    let path = metadata_path(ctx);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
     let content = serde_json::to_string_pretty(metadata)?;
-    std::fs::write(path, content)?;
+    std::fs::write(&path, content)?;
     Ok(())
+}
+
+/// Load the last update metadata (code mode: repository root).
+pub fn load_metadata(cwd: &Path) -> Option<UpdateMetadata> {
+    load_metadata_ctx(&WikiContext::code(cwd))
+}
+
+/// Save update metadata (code mode: repository root).
+pub fn save_metadata(cwd: &Path, metadata: &UpdateMetadata) -> Result<()> {
+    save_metadata_ctx(&WikiContext::code(cwd), metadata)
 }
 
 /// Get the current git HEAD
@@ -97,13 +116,21 @@ pub fn run_git(cwd: &Path, args: &[&str]) -> String {
     }
 }
 
-/// Check if update is a no-op (no changes since last update)
-pub fn is_update_noop(cwd: &Path) -> bool {
-    let noop_status = get_update_noop_status(cwd);
+/// Check if update is a no-op for the given wiki context.
+pub fn is_update_noop_ctx(ctx: &WikiContext) -> bool {
+    if ctx.mode == RunMode::Personal {
+        return false;
+    }
+    let noop_status = get_update_noop_status(&ctx.repo_cwd);
     matches!(noop_status, UpdateNoopStatus::Skip { .. })
 }
 
-/// Get detailed update noop status
+/// Check if update is a no-op (no changes since last update; code mode).
+pub fn is_update_noop(cwd: &Path) -> bool {
+    is_update_noop_ctx(&WikiContext::code(cwd))
+}
+
+/// Get detailed update noop status (code mode).
 pub fn get_update_noop_status(cwd: &Path) -> UpdateNoopStatus {
     let Some(last_update) = load_metadata(cwd) else {
         return UpdateNoopStatus::Proceed {

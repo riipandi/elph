@@ -68,7 +68,7 @@ fn test_create_snapshot() {
     let cwd = temp_dir.path();
 
     // Test snapshot of non-existent directory
-    let snapshot = owly::docs::create_snapshot(cwd).unwrap();
+    let snapshot = owly::docs::create_snapshot_for_repo(cwd).unwrap();
     assert!(!snapshot.exists);
 
     // Create some documentation files
@@ -78,7 +78,7 @@ fn test_create_snapshot() {
     std::fs::write(owly_dir.join("architecture.md"), "# Architecture\n").unwrap();
 
     // Test snapshot of existing directory
-    let snapshot = owly::docs::create_snapshot(cwd).unwrap();
+    let snapshot = owly::docs::create_snapshot_for_repo(cwd).unwrap();
     assert!(snapshot.exists);
 }
 
@@ -92,15 +92,15 @@ fn test_snapshot_has_changed() {
     std::fs::create_dir_all(&owly_dir).unwrap();
     std::fs::write(owly_dir.join("quickstart.md"), "# Quickstart v1\n").unwrap();
 
-    let snapshot1 = owly::docs::create_snapshot(cwd).unwrap();
+    let snapshot1 = owly::docs::create_snapshot_for_repo(cwd).unwrap();
 
     // Same content should not be changed
-    let snapshot2 = owly::docs::create_snapshot(cwd).unwrap();
+    let snapshot2 = owly::docs::create_snapshot_for_repo(cwd).unwrap();
     assert!(!owly::docs::has_changed(&snapshot1, &snapshot2));
 
     // Modify content
     std::fs::write(owly_dir.join("quickstart.md"), "# Quickstart v2\n").unwrap();
-    let snapshot3 = owly::docs::create_snapshot(cwd).unwrap();
+    let snapshot3 = owly::docs::create_snapshot_for_repo(cwd).unwrap();
     assert!(owly::docs::has_changed(&snapshot1, &snapshot3));
 }
 
@@ -108,7 +108,8 @@ fn test_snapshot_has_changed() {
 fn test_get_git_summary() {
     // Test that git summary doesn't panic even outside a git repo
     let temp_dir = TempDir::new().unwrap();
-    let summary = owly::docs::get_git_summary(temp_dir.path());
+    let ctx = owly::mode::WikiContext::code(temp_dir.path());
+    let summary = owly::docs::get_git_summary(&ctx);
     // Should return empty or partial summary, not panic
     assert!(summary.is_empty() || summary.contains("git"));
 }

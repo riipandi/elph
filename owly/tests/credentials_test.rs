@@ -11,6 +11,7 @@ fn test_managed_env_keys() {
     assert!(MANAGED_ENV_KEYS.contains(&"OPENROUTER_API_KEY"));
     assert!(MANAGED_ENV_KEYS.contains(&"ANTHROPIC_API_KEY"));
     assert!(MANAGED_ENV_KEYS.contains(&"OPENAI_API_KEY"));
+    assert!(MANAGED_ENV_KEYS.contains(&"GEMINI_API_KEY"));
     assert!(MANAGED_ENV_KEYS.contains(&"GOOGLE_API_KEY"));
     assert!(MANAGED_ENV_KEYS.contains(&"DEEPSEEK_API_KEY"));
     assert!(MANAGED_ENV_KEYS.contains(&"OWLY_PROVIDER"));
@@ -57,6 +58,8 @@ fn test_format_env_roundtrip() {
         "value\"with\"quotes",
         "value\\with\\backslashes",
         "value\nwith\nnewlines",
+        "value\rwith\rcarriage",
+        "mixed\r\nline endings",
     ];
 
     for value in test_cases {
@@ -64,4 +67,17 @@ fn test_format_env_roundtrip() {
         let parsed = parse_env_value(&formatted);
         assert_eq!(parsed, value, "Roundtrip failed for: {}", value);
     }
+}
+
+#[test]
+fn test_format_env_value_escapes_cr() {
+    assert_eq!(format_env_value("a\rb"), "\"a\\rb\"");
+    assert_eq!(parse_env_value("\"a\\rb\""), "a\rb");
+}
+
+#[test]
+fn test_credential_diagnostics_shape() {
+    let rows = get_credential_diagnostics().expect("diagnostics");
+    assert!(rows.iter().any(|r| r.key == "OWLY_PROVIDER"));
+    assert!(rows.iter().any(|r| r.key == "NVIDIA_API_KEY"));
 }

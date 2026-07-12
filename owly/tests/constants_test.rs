@@ -20,7 +20,7 @@ fn test_provider_config_anthropic() {
     let config = provider_config("anthropic").unwrap();
     assert_eq!(config.label, "Anthropic");
     assert_eq!(config.api_key_env_key, "ANTHROPIC_API_KEY");
-    assert_eq!(config.default_model, "claude-sonnet-5");
+    assert_eq!(config.default_model, "claude-haiku-4-5");
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn test_provider_config_openai() {
     let config = provider_config("openai").unwrap();
     assert_eq!(config.label, "OpenAI");
     assert_eq!(config.api_key_env_key, "OPENAI_API_KEY");
-    assert_eq!(config.default_model, "gpt-5.4-mini");
+    assert_eq!(config.default_model, "gpt-5.6-terra");
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn test_provider_config_openrouter() {
 fn test_provider_config_google() {
     let config = provider_config("google").unwrap();
     assert_eq!(config.label, "Google");
-    assert_eq!(config.api_key_env_key, "GOOGLE_API_KEY");
+    assert_eq!(config.api_key_env_key, "GEMINI_API_KEY");
     assert_eq!(config.default_model, "gemini-2.5-flash");
 }
 
@@ -88,7 +88,7 @@ fn test_default_model_is_big_pickle() {
 fn test_constants_values() {
     assert_eq!(OWLY_DIR, "openwiki");
     assert_eq!(UPDATE_METADATA_PATH, "openwiki/.last-update.json");
-    assert_eq!(OWLY_VERSION, "0.0.1");
+    assert_eq!(OWLY_VERSION, env!("CARGO_PKG_VERSION"));
 }
 
 #[test]
@@ -128,11 +128,13 @@ fn test_provider_config_all_providers() {
         assert!(config.is_some(), "Provider {} should have a config", provider);
         let config = config.unwrap();
         assert!(!config.label.is_empty(), "Provider {} should have a label", provider);
-        assert!(
-            !config.api_key_env_key.is_empty(),
-            "Provider {} should have an API key env key",
-            provider
-        );
+        if config.auth_method == ProviderAuthMethod::ApiKey {
+            assert!(
+                !config.api_key_env_key.is_empty(),
+                "Provider {} should have an API key env key",
+                provider
+            );
+        }
         assert!(
             !config.default_model.is_empty(),
             "Provider {} should have a default model",

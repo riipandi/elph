@@ -14,7 +14,7 @@
 //! Configuration is explicit: use CLI flags or environment variables.
 //! No hidden state is maintained outside the working directory.
 
-use clap::Parser;
+use clap::FromArgMatches;
 use tracing_subscriber::{EnvFilter, fmt};
 
 use owly::cli::Cli;
@@ -25,10 +25,11 @@ async fn main() -> anyhow::Result<()> {
     fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("owly=info,fff_search=warn,elph_agent=warn")),
+                .unwrap_or_else(|_| EnvFilter::new("owly=info,fff_search=error,elph_agent=warn")),
         )
         .init();
-    let cli = Cli::parse();
+    let cli = Cli::command().get_matches();
+    let cli = Cli::from_arg_matches(&cli)?;
 
     cli.execute().await
 }

@@ -23,25 +23,23 @@ path = "src/main.rs"
 anyhow.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["env"] }
+dialoguer.workspace = true
+dirs.workspace = true
 elph-agent.workspace = true
 elph-ai.workspace = true
-elph-tui.workspace = true
-tuie = { version = "0.2", features = ["harmonious"] }
-chord_macro = "0.1"
 indicatif.workspace = true
 memchr.workspace = true
 regex.workspace = true
+reqwest = { workspace = true, features = ["form", "query"] }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal", "time", "fs", "io-util"] }
 tracing-subscriber.workspace = true
 tracing.workspace = true
+turso.workspace = true
 walkdir.workspace = true
 yaml-front-matter.workspace = true
-turso.workspace = true
-dirs.workspace = true
-dialoguer.workspace = true
 
 [dev-dependencies]
 parking_lot.workspace = true

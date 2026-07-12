@@ -16,7 +16,7 @@ pub use parse::format_args_summary;
 /// All ask tool names (snake_case).
 pub const ASK_TOOL_NAMES: &[&str] = &["ask_text", "ask_select", "ask_confirm"];
 
-/// Register interactive ask tools bound to `bridge` (TUI when `ui_events` is set).
+/// Register interactive ask tools bound to `bridge` (terminal dialoguer prompts).
 pub fn create_ask_tools(bridge: AskUserBridge) -> Vec<AgentTool> {
     let bridge = Arc::new(bridge);
     vec![
