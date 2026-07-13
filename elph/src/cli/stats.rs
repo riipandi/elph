@@ -14,10 +14,6 @@ pub struct StatsArgs {
 }
 
 pub fn handle(args: &StatsArgs) -> ExitCode {
-    tracing::warn!(
-        session = ?args.session,
-        json = args.json,
-        "Stats — not yet implemented"
-    );
+    log::warn!("Stats — not yet implemented (session={:?}, json={})", args.session, args.json);
     EXIT_SUCCESS
 }

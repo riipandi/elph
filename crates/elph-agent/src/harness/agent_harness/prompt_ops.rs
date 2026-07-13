@@ -17,6 +17,7 @@ where
     S: SessionStorage + Clone + Send + Sync + 'static,
     S::Metadata: HasSessionId + Send + Sync,
 {
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.turn"))]
     pub async fn prompt(
         &self,
         text: impl Into<String>,

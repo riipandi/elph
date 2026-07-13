@@ -17,12 +17,17 @@ path = "src/lib.rs"
 default = ["git"]
 fastembed = ["dep:fastembed"]
 git = ["dep:git2"]
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
 fastembed = { workspace = true, optional = true }
+fastrace = { workspace = true, optional = true }
+fastrace-reqwest = { workspace = true, optional = true }
 git2 = { workspace = true, optional = true }
+log.workspace = true
+logforth.workspace = true
 memchr.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
@@ -31,14 +36,16 @@ serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
 tokio = { workspace = true, features = ["io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
-tracing-appender.workspace = true
-tracing-subscriber.workspace = true
-tracing.workspace = true
 tsid.workspace = true
 turso.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[[test]]
+name = "tracing_integration"
+path = "tests/tracing_integration.rs"
+required-features = ["tracing"]
 
 [lints.rust]
 linker_messages = "allow"

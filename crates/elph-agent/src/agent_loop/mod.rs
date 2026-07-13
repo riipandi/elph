@@ -75,6 +75,7 @@ pub fn agent_loop_continue(
     stream
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.loop"))]
 pub async fn run_agent_loop(
     prompts: Vec<AgentMessage>,
     context: AgentContext,
@@ -110,6 +111,7 @@ pub async fn run_agent_loop(
     Ok(new_messages)
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.loop_continue"))]
 pub async fn run_agent_loop_continue(
     context: AgentContext,
     config: AgentLoopConfig,

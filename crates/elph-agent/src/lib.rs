@@ -25,6 +25,7 @@ pub mod session;
 pub mod skills;
 pub mod subagent;
 pub mod tools;
+pub mod trace;
 pub mod types;
 
 pub use agent::{Agent, AgentListener, AgentOptions, AgentSubscription, PartialAgentState, default_model};

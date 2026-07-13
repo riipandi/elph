@@ -6,7 +6,6 @@ use rmcp::handler::client::ClientHandler;
 use rmcp::model::{CancelledNotificationParam, ProgressNotificationParam, ResourceUpdatedNotificationParam};
 use rmcp::service::{NotificationContext, RoleClient};
 use tokio::sync::mpsc;
-use tracing::debug;
 
 /// Events emitted when an MCP server notifies the client.
 #[derive(Debug, Clone)]
@@ -63,7 +62,7 @@ impl ClientHandler for McpClientService {
         let server = self.server_name.clone();
         let events = self.events.clone();
         async move {
-            debug!(%server, "MCP tools/list_changed");
+            log::debug!("MCP tools/list_changed: server={server}");
             if let Some(tx) = events {
                 let _ = tx.send(McpServerEvent::ToolListChanged { server });
             }
@@ -77,7 +76,7 @@ impl ClientHandler for McpClientService {
         let server = self.server_name.clone();
         let events = self.events.clone();
         async move {
-            debug!(%server, "MCP resources/list_changed");
+            log::debug!("MCP resources/list_changed: server={server}");
             if let Some(tx) = events {
                 let _ = tx.send(McpServerEvent::ResourceListChanged { server });
             }
@@ -91,7 +90,7 @@ impl ClientHandler for McpClientService {
         let server = self.server_name.clone();
         let events = self.events.clone();
         async move {
-            debug!(%server, "MCP prompts/list_changed");
+            log::debug!("MCP prompts/list_changed: server={server}");
             if let Some(tx) = events {
                 let _ = tx.send(McpServerEvent::PromptListChanged { server });
             }
@@ -106,7 +105,7 @@ impl ClientHandler for McpClientService {
         let server = self.server_name.clone();
         let events = self.events.clone();
         async move {
-            debug!(%server, uri = %params.uri, "MCP resources/updated");
+            log::debug!("MCP resources/updated: server={server} uri={}", params.uri);
             if let Some(tx) = events {
                 let _ = tx.send(McpServerEvent::ResourceUpdated {
                     server,
@@ -132,12 +131,11 @@ impl ClientHandler for McpClientService {
         let server = self.server_name.clone();
         let events = self.events.clone();
         async move {
-            debug!(
-                %server,
-                progress = params.progress,
-                ?params.total,
-                ?params.message,
-                "MCP progress"
+            log::debug!(
+                "MCP progress: server={server} progress={} total={:?} message={:?}",
+                params.progress,
+                params.total,
+                params.message
             );
             if let Some(tx) = events {
                 let _ = tx.send(McpServerEvent::Progress {

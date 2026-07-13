@@ -43,21 +43,21 @@ pub struct RunArgs {
 pub fn handle(args: &RunArgs) -> ExitCode {
     let prompt = args.prompt.join(" ");
     if prompt.trim().is_empty() {
-        tracing::error!("run requires a prompt");
+        log::error!("run requires a prompt");
         return EXIT_ERROR;
     }
 
     let paths = match Paths::resolve() {
         Ok(p) => p,
         Err(err) => {
-            tracing::error!(error = %err, "resolve paths");
+            log::error!("resolve paths: {err}");
             return EXIT_ERROR;
         }
     };
     let settings = match Settings::load(&paths) {
         Ok(s) => s,
         Err(err) => {
-            tracing::error!(error = %err, "load settings");
+            log::error!("load settings: {err}");
             return EXIT_ERROR;
         }
     };
@@ -66,13 +66,13 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     let resume_id = if args.r#continue { None } else { args.session.as_deref() };
 
     if args.fork {
-        tracing::warn!("--fork is not yet implemented; continuing without fork");
+        log::warn!("--fork is not yet implemented; continuing without fork");
     }
     if !args.files.is_empty() {
-        tracing::warn!(files = ?args.files, "file attachments not yet implemented");
+        log::warn!("file attachments not yet implemented: files={:?}", args.files);
     }
     if args.output_format != "text" {
-        tracing::warn!(format = %args.output_format, "only text output-format is supported");
+        log::warn!("only text output-format is supported: format={}", args.output_format);
     }
 
     let result = elph_agent::block_on(run_non_interactive(RunModeOptions {
@@ -88,7 +88,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     match result {
         Ok(()) => EXIT_SUCCESS,
         Err(err) => {
-            tracing::error!(error = %err, "run failed");
+            log::error!("run failed: {err}");
             EXIT_ERROR
         }
     }

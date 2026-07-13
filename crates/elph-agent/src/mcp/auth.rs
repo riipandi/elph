@@ -21,7 +21,6 @@ use serde_json::Value;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
 
 use super::crypto::{
     Aes256Key, ENC_PREFIX, decrypt_json_async, default_auth_key_path, encrypt_json_async, is_encrypted_value,
@@ -521,12 +520,12 @@ pub async fn run_oauth_flow(
             .get_authorization_url(&scope_refs)
             .await
             .map_err(|e| anyhow::anyhow!("build authorize URL: {e}"))?;
-        info!(%server_name, %auth_url, "opening browser for MCP OAuth");
+        log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");
         println!("Open this URL to authorize MCP server '{server_name}':\n  {auth_url}\n");
         if options.open_browser
             && let Err(error) = open_browser(&auth_url)
         {
-            warn!(%error, "failed to open browser; paste the URL manually");
+            log::warn!("failed to open browser; paste the URL manually: {error}");
         }
         let callback_url = wait_for_oauth_callback(listener)
             .await
@@ -548,12 +547,12 @@ pub async fn run_oauth_flow(
         .await
         .map_err(|e| anyhow::anyhow!("start OAuth session: {e}"))?;
         let auth_url = session.get_authorization_url().to_string();
-        info!(%server_name, %auth_url, "opening browser for MCP OAuth");
+        log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");
         println!("Open this URL to authorize MCP server '{server_name}':\n  {auth_url}\n");
         if options.open_browser
             && let Err(error) = open_browser(&auth_url)
         {
-            warn!(%error, "failed to open browser; paste the URL manually");
+            log::warn!("failed to open browser; paste the URL manually: {error}");
         }
         let callback_url = wait_for_oauth_callback(listener)
             .await

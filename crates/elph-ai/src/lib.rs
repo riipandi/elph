@@ -10,6 +10,7 @@ pub mod images;
 pub mod models;
 pub mod providers;
 pub mod session_resources;
+pub mod trace;
 pub mod types;
 pub mod utils;
 

@@ -20,23 +20,23 @@ name = "elph"
 path = "src/main.rs"
 
 [dependencies]
+agent-client-protocol.workspace = true
 anyhow.workspace = true
+chord_macro = "0.1"
 clap.workspace = true
 clap_complete.workspace = true
-elph-agent.workspace = true
-elph-ai.workspace = true
-elph-core = { workspace = true, features = ["fastembed"] }
+elph-agent = { workspace = true, features = ["tracing"] }
+elph-ai = { workspace = true, features = ["tracing"] }
+elph-core = { workspace = true, features = ["fastembed", "tracing"] }
 elph-tui.workspace = true
-tuie = { version = "0.2", features = ["harmonious"] }
-chord_macro = "0.1"
+futures-util.workspace = true
+log.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
-tracing.workspace = true
 tsid.workspace = true
-agent-client-protocol.workspace = true
-futures-util.workspace = true
+tuie = { workspace = true, features = ["harmonious"] }
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

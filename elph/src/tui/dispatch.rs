@@ -10,7 +10,7 @@ impl TurnDispatcher {
     pub fn spawn_turn(session: Arc<CodingAgentSession>, text: String, steer: bool) {
         tokio::spawn(async move {
             if let Err(err) = session.submit_prompt(text, steer).await {
-                tracing::error!(error = %err, "agent turn failed");
+                log::error!("agent turn failed: {err}");
             }
         });
     }
@@ -18,7 +18,7 @@ impl TurnDispatcher {
     pub fn spawn_abort(session: Arc<CodingAgentSession>) {
         tokio::spawn(async move {
             if let Err(err) = session.abort().await {
-                tracing::warn!(error = %err, "abort failed");
+                log::warn!("abort failed: {err}");
             }
         });
     }

@@ -43,7 +43,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
     let paths = match Paths::resolve() {
         Ok(p) => p,
         Err(err) => {
-            tracing::error!(error = %err, "resolve paths");
+            log::error!("resolve paths: {err}");
             return EXIT_ERROR;
         }
     };
@@ -52,7 +52,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
     let manager = match SessionManager::new(&paths, env, &cwd) {
         Ok(manager) => manager,
         Err(err) => {
-            tracing::error!(error = %err, "init session manager");
+            log::error!("init session manager: {err}");
             return EXIT_ERROR;
         }
     };
@@ -70,7 +70,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                 EXIT_SUCCESS
             }
             Err(err) => {
-                tracing::error!(error = %err, "list sessions");
+                log::error!("list sessions: {err}");
                 EXIT_ERROR
             }
         },
@@ -88,7 +88,7 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                     EXIT_SUCCESS
                 }
                 Err(err) => {
-                    tracing::error!(error = %err, "delete session");
+                    log::error!("delete session: {err}");
                     EXIT_ERROR
                 }
             }

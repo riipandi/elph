@@ -86,6 +86,10 @@ pub fn is_abort_error(error: &anyhow::Error) -> bool {
     error.to_string() == REQUEST_ABORTED
 }
 
+pub fn with_trace_headers(request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    crate::trace::with_trace_headers(request)
+}
+
 pub async fn send_with_abort(
     token: &Option<tokio_util::sync::CancellationToken>,
     request: reqwest::RequestBuilder,
@@ -93,6 +97,7 @@ pub async fn send_with_abort(
     if is_request_aborted(token) {
         return Err(request_aborted_error());
     }
+    let request = with_trace_headers(request);
     match token {
         Some(token) => {
             let token = token.clone();

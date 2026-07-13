@@ -77,6 +77,7 @@ pub async fn fail_tool_calls_from_truncated_message(
     }
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.tool_batch"))]
 pub async fn execute_tool_calls(
     current_context: &AgentContext,
     assistant_message: &AssistantMessage,

@@ -84,7 +84,7 @@ fn run_browser_worker(rx: Receiver<BrowserJob>) {
         let browser = match Browser::builder().stealth(true).build() {
             Ok(browser) => browser,
             Err(error) => {
-                tracing::error!(%error, "failed to start obscura browser");
+                log::error!("failed to start obscura browser: {error}");
                 return;
             }
         };

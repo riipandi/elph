@@ -39,7 +39,7 @@ struct KeyboardEnhancementGuard;
 impl Drop for KeyboardEnhancementGuard {
     fn drop(&mut self) {
         if let Err(e) = disable_keyboard_enhancement() {
-            tracing::error!(error = %e, "failed to restore keyboard enhancements");
+            log::error!("failed to restore keyboard enhancements: {e}");
         }
     }
 }
@@ -49,6 +49,6 @@ pub fn run(options: shell::TuiOptions) {
     let result = shell::run_tui(options.resume_id);
     exit_message::print_and_clear();
     if let Err(e) = result {
-        tracing::error!(error = %e, "app error");
+        log::error!("app error: {e}");
     }
 }

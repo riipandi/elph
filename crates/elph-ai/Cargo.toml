@@ -16,6 +16,9 @@ include = ["Cargo.toml", "src/**/*", "bin/**/*", "models/**/*.json", "tests/data
 name = "elph_ai"
 path = "src/lib.rs"
 
+[features]
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable"]
+
 [dependencies]
 anyhow.workspace = true
 aws-config.workspace = true
@@ -27,6 +30,8 @@ base64.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 eventsource-stream.workspace = true
+fastrace = { workspace = true, optional = true }
+fastrace-reqwest = { workspace = true, optional = true }
 futures-util.workspace = true
 futures.workspace = true
 http.workspace = true
@@ -47,7 +52,6 @@ tokio = { workspace = true, features = ["sync", "time", "rt-multi-thread", "macr
 tokio-rustls.workspace = true
 tokio-tungstenite.workspace = true
 tokio-util.workspace = true
-tracing = { workspace = true }
 url.workspace = true
 webpki-roots.workspace = true
 zstd.workspace = true
@@ -88,6 +92,11 @@ path = "examples/auth_custom.rs"
 indicatif.workspace = true
 parking_lot.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[[test]]
+name = "tracing_http"
+path = "tests/tracing_http.rs"
+required-features = ["tracing"]
 
 [lints.rust]
 linker_messages = "allow"

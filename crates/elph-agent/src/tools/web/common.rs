@@ -29,7 +29,7 @@ pub async fn do_get(client: &Client, url: &str, headers: &[(&str, &str)]) -> Res
     for (k, v) in headers {
         req = req.header(*k, *v);
     }
-    let resp = req.send().await?;
+    let resp = crate::trace::with_trace_headers(req).send().await?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -48,7 +48,7 @@ pub async fn do_post_json(
     for (k, v) in headers {
         req = req.header(*k, *v);
     }
-    let resp = req.send().await?;
+    let resp = crate::trace::with_trace_headers(req).send().await?;
     let status = resp.status();
     if !status.is_success() {
         let text = resp.text().await.unwrap_or_default();

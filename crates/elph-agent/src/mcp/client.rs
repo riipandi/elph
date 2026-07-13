@@ -20,7 +20,6 @@ use serde_json::Value;
 use tokio::process::Command;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
-use tracing::{debug, warn};
 
 use super::auth::authorization_manager_from_store;
 use super::auth_resolve::{ResolvedMcpAuth, resolve_remote_auth};
@@ -78,6 +77,7 @@ pub async fn connect(config: &McpServerConfig) -> Result<McpClient> {
     connect_with_context(config, &McpConnectContext::default()).await
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.mcp.connect"))]
 pub async fn connect_with_context(config: &McpServerConfig, ctx: &McpConnectContext) -> Result<McpClient> {
     match config {
         McpServerConfig::Stdio(cfg) => connect_stdio_with_context(cfg, ctx).await,
@@ -103,7 +103,7 @@ pub async fn connect_stdio_with_context(config: &McpStdioConfig, ctx: &McpConnec
     command.stderr(Stdio::piped());
     command.kill_on_drop(true);
 
-    debug!(command = %config.command, args = ?config.args, "spawning MCP stdio server");
+    log::debug!("spawning MCP stdio server: command={} args={:?}", config.command, config.args);
     let transport = TokioChildProcess::new(command.configure(|_| {})).context("spawn MCP stdio transport")?;
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
     let client = handler.serve(transport).await.context("initialize MCP stdio client")?;
@@ -138,11 +138,11 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
     }
 
     let resolved = resolve_remote_auth(config, &ctx.server_name, ctx.auth_store_path.as_deref()).await?;
-    debug!(
-        url = %config.url,
-        server = %ctx.server_name,
-        auth = resolved.source_label(),
-        "connecting MCP HTTP"
+    log::debug!(
+        "connecting MCP HTTP: url={} server={} auth={}",
+        config.url,
+        ctx.server_name,
+        resolved.source_label()
     );
 
     match resolved {
@@ -169,7 +169,7 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
             Ok(client)
         }
         ResolvedMcpAuth::StaticBearer { token, source } => {
-            debug!(?source, "MCP HTTP using static bearer");
+            log::debug!("MCP HTTP using static bearer: source={source:?}");
             transport_config = transport_config.auth_header(token);
             let transport = StreamableHttpClientTransport::from_config(transport_config);
             let client = handler.serve(transport).await.context("initialize MCP HTTP client")?;
@@ -184,7 +184,7 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
 }
 
 pub async fn connect_sse_with_context(config: &McpHttpConfig, ctx: &McpConnectContext) -> Result<McpClient> {
-    debug!(url = %config.url, "connecting MCP SSE server");
+    log::debug!("connecting MCP SSE server: url={}", config.url);
 
     if config.oauth && ctx.auth_store_path.is_none() {
         bail!(
@@ -194,10 +194,10 @@ pub async fn connect_sse_with_context(config: &McpHttpConfig, ctx: &McpConnectCo
     }
 
     let resolved = resolve_remote_auth(config, &ctx.server_name, ctx.auth_store_path.as_deref()).await?;
-    debug!(
-        server = %ctx.server_name,
-        auth = resolved.source_label(),
-        "MCP SSE auth resolved"
+    log::debug!(
+        "MCP SSE auth resolved: server={} auth={}",
+        ctx.server_name,
+        resolved.source_label()
     );
     let bearer = resolved.bearer_token().map(str::to_string);
 
@@ -221,6 +221,7 @@ pub async fn list_prompts_on_client(client: &McpClient) -> Result<Vec<Prompt>> {
     client.list_all_prompts().await.context("list MCP prompts")
 }
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.mcp.call_tool"))]
 pub async fn call_tool_on_client(client: &McpClient, tool_name: &str, args: Value) -> Result<CallToolResult> {
     let mut params = CallToolRequestParams::new(tool_name.to_string());
     if let Value::Object(map) = args {
@@ -250,7 +251,7 @@ pub async fn get_prompt_on_client(
 /// Gracefully cancel a client; errors are logged.
 pub async fn shutdown_client(client: McpClient) {
     if let Err(error) = client.cancel().await {
-        warn!("MCP client shutdown error: {error}");
+        log::warn!("MCP client shutdown error: {error}");
     }
 }
 

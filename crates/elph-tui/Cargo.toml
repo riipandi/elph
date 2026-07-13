@@ -29,7 +29,7 @@ pulldown-cmark.workspace = true
 rayon.workspace = true
 similar.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "signal", "sync", "time"] }
-tuie = { version = "0.2", features = ["harmonious"] }
+tuie = { workspace = true, features = ["harmonious"] }
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
 

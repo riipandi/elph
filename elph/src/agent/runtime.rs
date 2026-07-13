@@ -9,7 +9,6 @@ use elph_agent::{
 use elph_core::utils::path::AppPaths;
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, warn};
 
 use super::model_registry::resolve_model;
 use super::resource_loader::load_resources;
@@ -58,22 +57,22 @@ pub async fn create_coding_session_with_events(
         Ok(registry) => {
             let report = registry.load_report();
             if report.servers_failed > 0 {
-                warn!(
-                    ok = report.servers_ok,
-                    failed = report.servers_failed,
-                    tools = report.tools_loaded,
-                    "MCP discovery finished with server failures"
+                log::warn!(
+                    "MCP discovery finished with server failures: ok={} failed={} tools={}",
+                    report.servers_ok,
+                    report.servers_failed,
+                    report.tools_loaded
                 );
                 for server in &report.servers {
                     if !server.ok {
-                        warn!(server = %server.name, error = %server.message, "MCP server unavailable");
+                        log::warn!("MCP server unavailable: server={} error={}", server.name, server.message);
                     }
                 }
             }
             Arc::new(registry)
         }
         Err(error) => {
-            warn!("MCP tool discovery failed: {error}");
+            log::warn!("MCP tool discovery failed: {error}");
             Arc::new(McpToolRegistry::empty())
         }
     };
@@ -144,9 +143,9 @@ pub async fn create_coding_session_with_events(
                 let harness = Arc::clone(&harness_for_reload);
                 tokio::spawn(async move {
                     if let Err(error) = apply_mcp_tools_to_harness(&harness, &registry).await {
-                        warn!(error = %error, "failed to apply MCP hot-reload tools");
+                        log::warn!("failed to apply MCP hot-reload tools: {error}");
                     } else {
-                        info!("MCP tools hot-reloaded into agent harness");
+                        log::info!("MCP tools hot-reloaded into agent harness");
                     }
                 });
             },
@@ -155,7 +154,7 @@ pub async fn create_coding_session_with_events(
             },
         );
         if started {
-            info!("MCP event loop (list_changed + progress) started");
+            log::info!("MCP event loop (list_changed + progress) started");
         }
     }
 

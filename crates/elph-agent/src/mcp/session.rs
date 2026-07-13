@@ -12,7 +12,6 @@ use rmcp::model::{CallToolResult, GetPromptResult, Prompt, Resource, ResourceCon
 use serde_json::Value;
 use tokio::sync::{Mutex, mpsc};
 use tokio::time::timeout;
-use tracing::{debug, warn};
 
 use super::client::{
     McpClient, McpConnectContext, call_tool_on_client, connect_with_context, get_prompt_on_client,
@@ -79,7 +78,7 @@ impl McpServerSession {
         if guard.is_some() {
             return Ok(());
         }
-        debug!(server = %name, "opening MCP session");
+        log::debug!("opening MCP session: server={name}");
         let client = connect_with_context(config, ctx)
             .await
             .with_context(|| format!("connect MCP server \"{name}\""))?;
@@ -114,10 +113,9 @@ impl McpServerSession {
         match list_tools_on_client(client).await {
             Ok(tools) => Ok(tools),
             Err(first_error) => {
-                warn!(
-                    server = %self.name,
-                    error = %first_error,
-                    "MCP list_tools failed; reconnecting once"
+                log::warn!(
+                    "MCP list_tools failed; reconnecting once: server={} error={first_error}",
+                    self.name
                 );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
@@ -144,7 +142,10 @@ impl McpServerSession {
         match list_resources_on_client(client).await {
             Ok(v) => Ok(v),
             Err(first_error) => {
-                warn!(server = %self.name, error = %first_error, "MCP list_resources failed; reconnecting once");
+                log::warn!(
+                    "MCP list_resources failed; reconnecting once: server={} error={first_error}",
+                    self.name
+                );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
                 let client = guard.as_ref().context("MCP client missing after reconnect")?;
@@ -170,7 +171,10 @@ impl McpServerSession {
         match list_prompts_on_client(client).await {
             Ok(v) => Ok(v),
             Err(first_error) => {
-                warn!(server = %self.name, error = %first_error, "MCP list_prompts failed; reconnecting once");
+                log::warn!(
+                    "MCP list_prompts failed; reconnecting once: server={} error={first_error}",
+                    self.name
+                );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
                 let client = guard.as_ref().context("MCP client missing after reconnect")?;
@@ -196,7 +200,10 @@ impl McpServerSession {
         match read_resource_on_client(client, uri).await {
             Ok(v) => Ok(v),
             Err(first_error) => {
-                warn!(server = %self.name, error = %first_error, "MCP read_resource failed; reconnecting once");
+                log::warn!(
+                    "MCP read_resource failed; reconnecting once: server={} error={first_error}",
+                    self.name
+                );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
                 let client = guard.as_ref().context("MCP client missing after reconnect")?;
@@ -222,7 +229,10 @@ impl McpServerSession {
         match get_prompt_on_client(client, name, arguments.clone()).await {
             Ok(v) => Ok(v),
             Err(first_error) => {
-                warn!(server = %self.name, error = %first_error, "MCP get_prompt failed; reconnecting once");
+                log::warn!(
+                    "MCP get_prompt failed; reconnecting once: server={} error={first_error}",
+                    self.name
+                );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
                 let client = guard.as_ref().context("MCP client missing after reconnect")?;
@@ -248,11 +258,9 @@ impl McpServerSession {
         match call_tool_on_client(client, tool_name, args.clone()).await {
             Ok(result) => Ok(result),
             Err(first_error) => {
-                warn!(
-                    server = %self.name,
-                    tool = %tool_name,
-                    error = %first_error,
-                    "MCP call_tool failed; reconnecting once"
+                log::warn!(
+                    "MCP call_tool failed; reconnecting once: server={} tool={tool_name} error={first_error}",
+                    self.name
                 );
                 Self::drop_client_locked(&mut guard).await;
                 Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;

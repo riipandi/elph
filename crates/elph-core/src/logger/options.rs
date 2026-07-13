@@ -34,6 +34,7 @@ pub struct LoggingOptions {
     pub max_files: Option<usize>,
     pub file_enabled: bool,
     pub console_enabled: bool,
+    pub trace_enabled: bool,
 }
 
 impl LoggingOptions {
@@ -55,6 +56,15 @@ impl LoggingOptions {
         std::env::var(&key).map(|value| value != "0").unwrap_or(true)
     }
 
+    pub fn trace_enabled(prefix: &str) -> bool {
+        let key = format!("{prefix}_TRACE");
+        Self::parse_trace_enabled(std::env::var(&key).ok().as_deref())
+    }
+
+    fn parse_trace_enabled(value: Option<&str>) -> bool {
+        value.map(|value| value != "0").unwrap_or(true)
+    }
+
     pub fn resolve(env_prefix: &str, app_name: &'static str, logs_dir: Option<PathBuf>, console_enabled: bool) -> Self {
         let file_enabled = logs_dir.is_some() && Self::file_logging_enabled(env_prefix);
         Self {
@@ -65,6 +75,7 @@ impl LoggingOptions {
             max_files: Self::max_files_from_env(env_prefix),
             file_enabled,
             console_enabled,
+            trace_enabled: Self::trace_enabled(env_prefix),
         }
     }
 }
@@ -84,5 +95,16 @@ mod tests {
         assert_eq!(LogRotation::parse(Some("hourly")), LogRotation::Hourly);
         assert_eq!(LogRotation::parse(Some("weekly")), LogRotation::Weekly);
         assert_eq!(LogRotation::parse(Some("monthly")), LogRotation::Daily);
+    }
+
+    #[test]
+    fn trace_enabled_defaults_to_true() {
+        assert!(LoggingOptions::parse_trace_enabled(None));
+        assert!(LoggingOptions::parse_trace_enabled(Some("1")));
+    }
+
+    #[test]
+    fn trace_disabled_when_env_is_zero() {
+        assert!(!LoggingOptions::parse_trace_enabled(Some("0")));
     }
 }

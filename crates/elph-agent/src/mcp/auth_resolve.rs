@@ -22,7 +22,6 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
-use tracing::warn;
 
 use super::auth::{has_stored_credentials, resolve_oauth_access_token};
 use super::config::{McpAuthConflictPolicy, McpHttpConfig};
@@ -159,9 +158,8 @@ pub async fn resolve_remote_auth(
             // Prefer: allow static only when policy PreferEnv, else require OAuth.
             match policy {
                 McpAuthConflictPolicy::PreferEnv => {
-                    warn!(
-                        server = %server_name,
-                        "oauth=true but no auth.json entry; using static bearer (authConflict=preferEnv)"
+                    log::warn!(
+                        "oauth=true but no auth.json entry; using static bearer (authConflict=preferEnv): server={server_name}"
                     );
                     return Ok(ResolvedMcpAuth::StaticBearer {
                         token: s.token,
@@ -188,14 +186,14 @@ pub async fn resolve_remote_auth(
                 bail!("{}", conflict_message(server_name, static_probe, policy));
             }
             McpAuthConflictPolicy::PreferEnv => {
-                warn!("{}", conflict_message(server_name, static_probe, policy));
+                log::warn!("{}", conflict_message(server_name, static_probe, policy));
                 return Ok(ResolvedMcpAuth::StaticBearer {
                     token: static_probe.token.clone(),
                     source: static_probe.source,
                 });
             }
             McpAuthConflictPolicy::PreferOauth => {
-                warn!("{}", conflict_message(server_name, static_probe, policy));
+                log::warn!("{}", conflict_message(server_name, static_probe, policy));
                 force_oauth = true;
             }
         }

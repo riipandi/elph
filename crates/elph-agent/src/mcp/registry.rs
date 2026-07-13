@@ -17,7 +17,6 @@ use parking_lot::RwLock;
 use rmcp::model::{CallToolResult, ContentBlock, Prompt, Resource, ResourceContents, Tool as McpTool};
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
-use tracing::{info, warn};
 
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
@@ -213,7 +212,7 @@ impl McpToolRegistry {
                         message: error.clone(),
                     });
                     if options.continue_on_error {
-                        warn!(server = %name, error = %error, "MCP server discovery failed; continuing");
+                        log::warn!("MCP server discovery failed; continuing: server={name} error={error}");
                     } else {
                         anyhow::bail!("MCP server \"{name}\" discovery failed: {error}");
                     }
@@ -239,14 +238,14 @@ impl McpToolRegistry {
             effective.is_exposed(&t.exposed_name)
         });
 
-        info!(
-            tools = report.tools_loaded,
-            resources = report.resources_loaded,
-            prompts = report.prompts_loaded,
-            ok = report.servers_ok,
-            failed = report.servers_failed,
-            skipped = report.servers_skipped,
-            "MCP registry loaded"
+        log::info!(
+            "MCP registry loaded: tools={} resources={} prompts={} ok={} failed={} skipped={}",
+            report.tools_loaded,
+            report.resources_loaded,
+            report.prompts_loaded,
+            report.servers_ok,
+            report.servers_failed,
+            report.servers_skipped
         );
 
         Ok(Self {
@@ -406,7 +405,7 @@ impl McpToolRegistry {
             | McpServerEvent::ResourceUpdated { server, .. } => server.as_str(),
             McpServerEvent::Progress { .. } => return Ok(0),
         };
-        info!(%server, ?event, "MCP catalog change; refreshing server");
+        log::info!("MCP catalog change; refreshing server: server={server} event={event:?}");
         self.refresh_server(server).await
     }
 
@@ -433,7 +432,7 @@ impl McpToolRegistry {
                         message,
                     } => {
                         let line = format_progress_status(server, *progress, *total, message.as_deref());
-                        info!(%server, %progress, ?total, "MCP progress");
+                        log::info!("MCP progress: server={server} progress={progress} total={total:?}");
                         on_progress(line);
                     }
                     McpServerEvent::ToolListChanged { .. }
@@ -442,7 +441,7 @@ impl McpToolRegistry {
                     | McpServerEvent::ResourceUpdated { .. } => match registry.handle_event(&event).await {
                         Ok(_) => on_refresh(Arc::clone(&registry)),
                         Err(error) => {
-                            warn!(error = %error, "MCP hot reload failed");
+                            log::warn!("MCP hot reload failed: {error}");
                         }
                     },
                 }
@@ -451,7 +450,7 @@ impl McpToolRegistry {
         true
     }
 
-    /// Spawn catalog hot-reload only (progress goes to tracing).
+    /// Spawn catalog hot-reload only (progress goes to logging).
     pub fn spawn_hot_reload<F>(self: &Arc<Self>, on_refresh: F) -> bool
     where
         F: FnMut(Arc<McpToolRegistry>) + Send + 'static,
@@ -814,7 +813,7 @@ async fn discover_one(
 }
 
 fn debug_ignore_capability(server: &str, kind: &str, error: &anyhow::Error) {
-    tracing::debug!(server = %server, %kind, error = %error, "MCP capability not available");
+    log::debug!("MCP capability not available: server={server} kind={kind} error={error}");
 }
 
 fn format_progress_status(server: &str, progress: f64, total: Option<f64>, message: Option<&str>) -> String {

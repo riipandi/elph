@@ -10,6 +10,6 @@ pub struct DoctorArgs {
 }
 
 pub fn handle(args: &DoctorArgs) -> ExitCode {
-    tracing::warn!(json = args.json, "Doctor — not yet implemented");
+    log::warn!("Doctor — not yet implemented (json={})", args.json);
     EXIT_SUCCESS
 }

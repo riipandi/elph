@@ -20,6 +20,13 @@ default = ["mcp", "extensions"]
 extensions = ["dep:wasmtime"]
 mcp = ["dep:rmcp"]
 obscura = ["dep:obscura"]
+tracing = [
+  "dep:fastrace",
+  "dep:fastrace-reqwest",
+  "fastrace/enable",
+  "elph-ai/tracing",
+  "elph-core/tracing",
+]
 # obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
 [dependencies]
@@ -30,13 +37,16 @@ base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
-elph-core.workspace = true
+elph-core = { workspace = true, default-features = true }
+fastrace = { workspace = true, optional = true }
+fastrace-reqwest = { workspace = true, optional = true }
 fff-search.workspace = true
 futures.workspace = true
 http.workspace = true
 ignore.workspace = true
 indicatif.workspace = true
 jsonschema.workspace = true
+log.workspace = true
 memorable-ids.workspace = true
 obscura = { workspace = true, optional = true }
 parking_lot.workspace = true
@@ -63,7 +73,6 @@ tokio = { workspace = true, features = [
 tokio-util = { workspace = true, features = ["rt"] }
 toml.workspace = true
 toon-format.workspace = true
-tracing.workspace = true
 tsid.workspace = true
 turso.workspace = true
 url.workspace = true
@@ -172,6 +181,11 @@ elph-ai = { workspace = true }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tsid.workspace = true
+
+[[test]]
+name = "tracing_http"
+path = "tests/tracing_http.rs"
+required-features = ["tracing"]
 
 [lints.rust]
 linker_messages = "allow"

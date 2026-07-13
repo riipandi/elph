@@ -67,6 +67,7 @@ where
         }
     }
 
+    #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.execute_turn"))]
     pub(in crate::harness::agent_harness) async fn execute_turn(
         &self,
         turn_state: AgentHarnessTurnState,

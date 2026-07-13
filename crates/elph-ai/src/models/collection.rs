@@ -361,7 +361,8 @@ where
 {
     let stream = AssistantMessageEventStream::new();
     let output = stream.clone_handle();
-    tokio::spawn(async move {
+    let trace_model = model.clone();
+    crate::trace::spawn_stream(&trace_model, async move {
         match setup().await {
             Ok(mut inner) => {
                 while let Some(event) = inner.next_event().await {

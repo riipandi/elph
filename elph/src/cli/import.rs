@@ -18,11 +18,11 @@ pub struct ImportArgs {
 }
 
 pub fn handle(args: &ImportArgs) -> ExitCode {
-    tracing::warn!(
-        file = args.file.as_deref().unwrap_or("<none>"),
-        list = args.list,
-        json = args.json,
-        "Import — not yet implemented"
+    log::warn!(
+        "Import — not yet implemented (file={}, list={}, json={})",
+        args.file.as_deref().unwrap_or("<none>"),
+        args.list,
+        args.json
     );
     EXIT_SUCCESS
 }

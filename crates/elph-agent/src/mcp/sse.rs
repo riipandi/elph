@@ -19,7 +19,6 @@ use rmcp::service::{RxJsonRpcMessage, TxJsonRpcMessage};
 use rmcp::transport::Transport;
 use serde_json::Value;
 use tokio::sync::{Mutex, mpsc, oneshot};
-use tracing::{debug, warn};
 
 use super::config::McpHttpConfig;
 
@@ -77,6 +76,8 @@ impl SseClientTransport {
         for (key, value) in &config.headers {
             request = request.header(key.as_str(), value.as_str());
         }
+
+        request = crate::trace::with_trace_headers(request);
 
         let response = request
             .send()
@@ -154,7 +155,7 @@ impl SseClientTransport {
                                     {
                                         let _ = inbound_for_reader.send(msg);
                                     } else {
-                                        debug!(%error, "SSE skip non-JSON-RPC event");
+                                        log::debug!("SSE skip non-JSON-RPC event: {error}");
                                     }
                                 }
                             }
@@ -168,7 +169,7 @@ impl SseClientTransport {
                     }
                 }
             }
-            debug!("SSE stream closed");
+            log::debug!("SSE stream closed");
         });
 
         // Wait for endpoint
@@ -178,7 +179,7 @@ impl SseClientTransport {
             .map_err(|_| SseTransportError::NoEndpoint)?;
 
         let message_url = resolve_endpoint_url(&base_url, &endpoint_path).map_err(SseTransportError::Http)?;
-        debug!(%message_url, "SSE message endpoint ready");
+        log::debug!("SSE message endpoint ready: {message_url}");
 
         // POST sender task
         let post_client = client;
@@ -198,6 +199,7 @@ impl SseClientTransport {
                         for (k, v) in &headers {
                             req = req.header(k.as_str(), v.as_str());
                         }
+                        req = crate::trace::with_trace_headers(req);
                         match req.json(&msg).send().await {
                             Ok(resp) if resp.status().is_success() || resp.status().as_u16() == 202 => {
                                 // 200 may include JSON body as immediate response (some servers).
@@ -209,10 +211,10 @@ impl SseClientTransport {
                                 }
                             }
                             Ok(resp) => {
-                                warn!(status = %resp.status(), "SSE POST message failed");
+                                log::warn!("SSE POST message failed: status={}", resp.status());
                             }
                             Err(error) => {
-                                warn!(%error, "SSE POST message error");
+                                log::warn!("SSE POST message error: {error}");
                             }
                         }
                     }

@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 
 use crate::api::common::{
     apply_on_payload, build_http_client_for_target, invoke_on_response_from_reqwest, merge_model_headers,
+    with_trace_headers,
 };
 use crate::types::{
     AssistantImages, ContentBlock, ImagesContext, ImagesModel, ImagesOptions, ProviderImages, StopReason,
@@ -134,6 +135,7 @@ async fn run_generate(
     for (k, v) in &headers {
         req = req.header(k, v);
     }
+    let req = with_trace_headers(req);
     let response = match &options.signal {
         Some(token) => {
             let token = token.clone();

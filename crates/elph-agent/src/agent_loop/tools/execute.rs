@@ -10,6 +10,7 @@ use crate::types::{AfterToolCallContext, AfterToolCallResult, AgentContext, Agen
 
 use super::{ExecutedToolCallOutcome, FinalizedToolCall, PreparedToolCall};
 
+#[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.agent.tool"))]
 pub(super) async fn execute_prepared_tool_call(
     prepared: &PreparedToolCall,
     signal: Option<CancellationToken>,

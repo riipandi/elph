@@ -12,5 +12,5 @@ pub fn print_subcommand_help<T: CommandFactory>() -> ExitCode {
 }
 
 pub fn unimplemented(message: &str) {
-    tracing::warn!("{message}");
+    log::warn!("{message}");
 }
