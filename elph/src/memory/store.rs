@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use elph_core::floppy::{DEFAULT_EMBEDDING_DIMS, FastEmbedOptions, FloppyBuilder, MemoryStore};
+use elph_core::floppy::{DEFAULT_EMBEDDING_DIMS, EmbedOptions, FloppyBuilder, MemoryStore};
 use elph_core::floppy::{embedding_dims, resolve_embedding_model};
 use elph_core::utils::path::AppPaths;
 
@@ -24,13 +24,12 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
         std::fs::create_dir_all(paths.models_dir())
             .with_context(|| format!("create {}", paths.models_dir().display()))?;
 
-        let options = FastEmbedOptions {
+        let options = EmbedOptions {
             model: Some(settings.memory.embed_model.clone()),
             quantized: settings.memory.embed_quantized,
             cache_dir: Some(paths.models_dir()),
-            show_download_progress: Some(true),
         };
-        builder = builder.fastembed(options)?;
+        builder = builder.embed(options)?;
     } else {
         builder = builder.noop_embed();
     }

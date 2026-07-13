@@ -3,6 +3,7 @@ use std::env;
 use clap::Args;
 
 use crate::agent::{RunModeOptions, run_non_interactive};
+use crate::cli::help;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 
 #[derive(Args, Default)]
@@ -43,21 +44,21 @@ pub struct RunArgs {
 pub fn handle(args: &RunArgs) -> ExitCode {
     let prompt = args.prompt.join(" ");
     if prompt.trim().is_empty() {
-        log::error!("run requires a prompt");
+        help::cli_error("run requires a prompt");
         return EXIT_ERROR;
     }
 
     let paths = match Paths::resolve() {
         Ok(p) => p,
         Err(err) => {
-            log::error!("resolve paths: {err}");
+            help::cli_error(format!("resolve paths: {err}"));
             return EXIT_ERROR;
         }
     };
     let settings = match Settings::load(&paths) {
         Ok(s) => s,
         Err(err) => {
-            log::error!("load settings: {err}");
+            help::cli_error(format!("load settings: {err}"));
             return EXIT_ERROR;
         }
     };
@@ -66,13 +67,13 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     let resume_id = if args.r#continue { None } else { args.session.as_deref() };
 
     if args.fork {
-        log::warn!("--fork is not yet implemented; continuing without fork");
+        eprintln!("--fork is not yet implemented; continuing without fork");
     }
     if !args.files.is_empty() {
-        log::warn!("file attachments not yet implemented: files={:?}", args.files);
+        eprintln!("file attachments not yet implemented: files={:?}", args.files);
     }
     if args.output_format != "text" {
-        log::warn!("only text output-format is supported: format={}", args.output_format);
+        eprintln!("only text output-format is supported: format={}", args.output_format);
     }
 
     let result = elph_agent::block_on(run_non_interactive(RunModeOptions {
@@ -88,7 +89,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
     match result {
         Ok(()) => EXIT_SUCCESS,
         Err(err) => {
-            log::error!("run failed: {err}");
+            help::cli_error(format!("run failed: {err}"));
             EXIT_ERROR
         }
     }

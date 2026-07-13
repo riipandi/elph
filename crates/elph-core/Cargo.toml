@@ -15,14 +15,14 @@ path = "src/lib.rs"
 
 [features]
 default = ["git"]
-fastembed = ["dep:fastembed"]
+embed = ["dep:embed_anything"]
 git = ["dep:git2"]
 tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-fastembed = { workspace = true, optional = true }
+embed_anything = { workspace = true, optional = true }
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 git2 = { workspace = true, optional = true }

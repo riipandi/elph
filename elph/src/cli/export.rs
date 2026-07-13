@@ -1,5 +1,6 @@
 use clap::{Args, ValueEnum};
 
+use crate::cli::help;
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args)]
@@ -34,13 +35,13 @@ pub enum ExportFormat {
 }
 
 pub fn handle(args: &ExportArgs) -> ExitCode {
-    log::warn!(
+    help::unimplemented(&format!(
         "Export — not yet implemented (session={}, output={}, format={:?}, clipboard={}, sanitize={})",
         args.session_id.as_deref().unwrap_or("<recent>"),
         args.output.as_deref().unwrap_or("<stdout>"),
         args.format,
         args.clipboard,
         args.sanitize
-    );
+    ));
     EXIT_SUCCESS
 }

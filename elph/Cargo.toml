@@ -27,7 +27,7 @@ clap.workspace = true
 clap_complete.workspace = true
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools"] }
 elph-ai = { workspace = true, features = ["tracing"] }
-elph-core = { workspace = true, features = ["fastembed", "tracing"] }
+elph-core = { workspace = true, features = ["embed", "tracing"] }
 elph-tui.workspace = true
 futures-util.workspace = true
 log.workspace = true

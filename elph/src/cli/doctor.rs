@@ -1,5 +1,6 @@
 use clap::Args;
 
+use crate::cli::help;
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]
@@ -10,6 +11,6 @@ pub struct DoctorArgs {
 }
 
 pub fn handle(args: &DoctorArgs) -> ExitCode {
-    log::warn!("Doctor — not yet implemented (json={})", args.json);
+    help::unimplemented(&format!("Doctor — not yet implemented (json={})", args.json));
     EXIT_SUCCESS
 }

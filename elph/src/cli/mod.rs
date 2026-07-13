@@ -101,14 +101,14 @@ pub enum Commands {
 
 fn init_home() -> Result<crate::platform::Paths, ExitCode> {
     crate::platform::ensure_home_blocking(env!("CARGO_PKG_VERSION")).map_err(|err| {
-        log::error!("failed to initialize elph home: {err}");
+        help::cli_error(format!("failed to initialize elph home: {err}"));
         crate::platform::EXIT_ERROR
     })
 }
 
 fn init_datastore(paths: &crate::platform::Paths) -> Result<(), ExitCode> {
     crate::platform::ensure_datastore_blocking(paths).map_err(|err| {
-        log::error!("failed to initialize elph databases: {err}");
+        help::cli_error(format!("failed to initialize elph databases: {err}"));
         crate::platform::EXIT_ERROR
     })
 }

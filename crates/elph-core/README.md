@@ -11,10 +11,10 @@ scoring, and task-scoped lifecycle tracking. Memories persist across sessions so
 reuse lessons from past work.
 
 ```rust
-use elph_core::floppy::{FloppyBuilder, FastEmbedOptions};
+use elph_core::floppy::{FloppyBuilder, EmbedOptions};
 
 let store = FloppyBuilder::new("/path/to/store.db", "session-id")
-    .fastembed(FastEmbedOptions::default())? // requires `fastembed`
+    .embed(EmbedOptions::default())? // requires `embed`
     .build()?;
 
 store.init().await?;
@@ -22,7 +22,7 @@ let result = store.start_task("implement auth middleware").await?;
 // result.memories — top-k relevant memories for this task
 ```
 
-**Feature:** `fastembed` — local embeddings via [fastembed](https://github.com/Anush008/fastembed-rs) (all-MiniLM-L6-v2, 384 dims).
+**Feature:** `embed` — local embeddings via [embed_anything](https://github.com/StarlightSearch/EmbedAnything) (Candle / Hugging Face; default AllMiniLML6V2, 384 dims).
 Without it, supply your own [`EmbedFn`](https://docs.rs/elph_core/latest/elph_core/floppy/type.EmbedFn.html).
 
 **Configuration:** explicit via [`FloppyBuilder`](src/floppy/builder.rs) — floppy does not read environment variables.

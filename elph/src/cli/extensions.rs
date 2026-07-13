@@ -54,18 +54,18 @@ pub fn handle(args: &ExtensionsArgs) -> ExitCode {
     let paths = match Paths::resolve() {
         Ok(paths) => paths,
         Err(error) => {
-            log::error!("resolve paths: {error}");
+            help::cli_error(format!("resolve paths: {error}"));
             return EXIT_ERROR;
         }
     };
 
     let host = ExtensionHost::new();
     if let Err(error) = ExtensionHost::ensure_dirs(&paths) {
-        log::error!("ensure extension dirs: {error}");
+        help::cli_error(format!("ensure extension dirs: {error}"));
         return EXIT_ERROR;
     }
     if let Err(error) = host.reload(&paths, false) {
-        log::error!("load extensions: {error}");
+        help::cli_error(format!("load extensions: {error}"));
         return EXIT_ERROR;
     }
 
@@ -82,7 +82,7 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
     let paths = match Paths::resolve() {
         Ok(paths) => paths,
         Err(error) => {
-            log::error!("resolve paths: {error}");
+            help::cli_error(format!("resolve paths: {error}"));
             return EXIT_ERROR;
         }
     };
@@ -118,7 +118,7 @@ fn list_extensions(host: &ExtensionHost) -> ExitCode {
 fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: bool) -> ExitCode {
     let source = Path::new(source);
     if !source.join("extension.toml").is_file() {
-        log::error!("missing extension.toml: path={}", source.display());
+        eprintln!("missing extension.toml: path={}", source.display());
         return EXIT_ERROR;
     }
     match host.install_bundle(source, paths, force) {
@@ -127,7 +127,7 @@ fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: b
             EXIT_SUCCESS
         }
         Err(error) => {
-            log::error!("install extension: {error}");
+            help::cli_error(format!("install extension: {error}"));
             EXIT_ERROR
         }
     }
@@ -136,11 +136,11 @@ fn install_extension(host: &ExtensionHost, paths: &Paths, source: &str, force: b
 fn remove_extension(paths: &Paths, name: &str) -> ExitCode {
     let dest = paths.config_dir().join("extensions").join(name);
     if !dest.is_dir() {
-        log::error!("extension not installed: {name}");
+        eprintln!("extension not installed: {name}");
         return EXIT_ERROR;
     }
     if let Err(error) = std::fs::remove_dir_all(&dest) {
-        log::error!("remove extension: {error}");
+        help::cli_error(format!("remove extension: {error}"));
         return EXIT_ERROR;
     }
     println!("Removed extension '{name}'.");
@@ -159,7 +159,7 @@ fn set_enabled(paths: &Paths, name: &str, enabled: bool) -> ExitCode {
             EXIT_SUCCESS
         }
         Err(error) => {
-            log::error!("save extension settings: {error}");
+            help::cli_error(format!("save extension settings: {error}"));
             EXIT_ERROR
         }
     }

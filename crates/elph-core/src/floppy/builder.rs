@@ -1,10 +1,10 @@
 use anyhow::{Result, bail};
 
-use super::embed::{FastEmbedOptions, create_fastembed};
+use super::embed::{EmbedOptions, create_embedder};
 
-#[cfg(feature = "fastembed")]
+#[cfg(feature = "embed")]
 use super::embed::DEFAULT_EMBED_MODEL;
-#[cfg(feature = "fastembed")]
+#[cfg(feature = "embed")]
 use super::embed::{embedding_dims, resolve_embedding_model};
 use super::paths::FloppyPaths;
 use super::store::{EmbedFn, MemoryStore, noop_embedder};
@@ -14,16 +14,16 @@ use super::util::DEFAULT_EMBEDDING_DIMS;
 /// Builder for a [`MemoryStore`] with explicit configuration (no environment variables).
 pub struct FloppyBuilder {
     config: FloppyConfig,
-    custom_embed: Option<EmbedFn>,
-    fastembed_opts: Option<FastEmbedOptions>,
+    embed_fn: Option<EmbedFn>,
+    embed_opts: Option<EmbedOptions>,
 }
 
 impl FloppyBuilder {
     pub fn new(db_path: impl Into<String>, session_id: impl Into<String>) -> Self {
         Self {
             config: FloppyConfig::new(db_path, session_id),
-            custom_embed: None,
-            fastembed_opts: None,
+            embed_fn: None,
+            embed_opts: None,
         }
     }
 
@@ -62,47 +62,47 @@ impl FloppyBuilder {
         self
     }
 
-    /// Custom embedder; mutually exclusive with [`Self::fastembed`].
-    pub fn embed(mut self, embed: EmbedFn) -> Self {
-        self.custom_embed = Some(embed);
-        self.fastembed_opts = None;
+    /// Custom embedder; mutually exclusive with [`Self::embed`].
+    pub fn embed_fn(mut self, embed: EmbedFn) -> Self {
+        self.embed_fn = Some(embed);
+        self.embed_opts = None;
         self
     }
 
     /// Zero-vector embedder for read-only inspection without a local model.
     pub fn noop_embed(mut self) -> Self {
         let dims = self.config.dimensions.unwrap_or(DEFAULT_EMBEDDING_DIMS);
-        self.custom_embed = Some(noop_embedder(dims));
-        self.fastembed_opts = None;
+        self.embed_fn = Some(noop_embedder(dims));
+        self.embed_opts = None;
         self
     }
 
-    /// Local fastembed backend. Sets [`FloppyConfig::dimensions`] from the resolved model.
-    #[cfg(feature = "fastembed")]
-    pub fn fastembed(mut self, options: FastEmbedOptions) -> Result<Self> {
+    /// Local embedder via embed_anything. Sets [`FloppyConfig::dimensions`] from the resolved model.
+    #[cfg(feature = "embed")]
+    pub fn embed(mut self, options: EmbedOptions) -> Result<Self> {
         let model_name = options.model.as_deref().unwrap_or(DEFAULT_EMBED_MODEL);
         let dims = resolve_embedding_model(model_name, options.quantized)
             .map(|m| embedding_dims(&m))
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         self.config = self.config.dimensions(dims);
-        self.fastembed_opts = Some(options);
-        self.custom_embed = None;
+        self.embed_opts = Some(options);
+        self.embed_fn = None;
         Ok(self)
     }
 
-    #[cfg(not(feature = "fastembed"))]
-    pub fn fastembed(self, _options: FastEmbedOptions) -> Result<Self> {
-        bail!("fastembed backend requires the `fastembed` feature on this crate");
+    #[cfg(not(feature = "embed"))]
+    pub fn embed(self, _options: EmbedOptions) -> Result<Self> {
+        bail!("local embedder requires the `embed` feature on this crate");
     }
 
     pub fn build(self) -> Result<MemoryStore> {
-        let embed = match (self.custom_embed, self.fastembed_opts) {
+        let embed = match (self.embed_fn, self.embed_opts) {
             (Some(e), None) => e,
-            (None, Some(opts)) => create_fastembed(opts)?,
+            (None, Some(opts)) => create_embedder(opts)?,
             (None, None) => {
-                bail!("embedder required: call .embed(), .noop_embed(), or .fastembed()");
+                bail!("embedder required: call .embed_fn(), .noop_embed(), or .embed()");
             }
-            (Some(_), Some(_)) => bail!("cannot set both a custom embedder and fastembed options"),
+            (Some(_), Some(_)) => bail!("cannot set both a custom embedder and embed options"),
         };
         Ok(MemoryStore::new(self.config, embed))
     }
@@ -140,7 +140,7 @@ mod tests {
         let db = dir.path().join("t.db").to_string_lossy().into_owned();
         let store = FloppyBuilder::new(db, "s")
             .dimensions(4)
-            .embed(mock_embed())
+            .embed_fn(mock_embed())
             .build()
             .expect("build");
         assert_eq!(store.dimensions(), 4);

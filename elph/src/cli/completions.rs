@@ -35,20 +35,20 @@ pub fn handle(args: &CompletionsArgs) -> ExitCode {
         let mut file = match File::create(path) {
             Ok(file) => file,
             Err(error) => {
-                log::error!("failed to create completion file: path={} error={error}", path.display());
+                eprintln!("failed to create completion file: path={} error={error}", path.display());
                 return EXIT_ERROR;
             }
         };
         if let Err(error) = write_completions(args.shell, &mut cmd, &bin_name, &mut file) {
-            log::error!("failed to write completion file: path={} error={error}", path.display());
+            eprintln!("failed to write completion file: path={} error={error}", path.display());
             return EXIT_ERROR;
         }
-        log::info!("wrote shell completions: path={} shell={}", path.display(), args.shell);
+        println!("wrote shell completions: path={} shell={}", path.display(), args.shell);
         return EXIT_SUCCESS;
     }
 
     if let Err(error) = write_completions(args.shell, &mut cmd, &bin_name, &mut io::stdout()) {
-        log::error!("failed to write completions to stdout: {error}");
+        eprintln!("failed to write completions to stdout: {error}");
         return EXIT_ERROR;
     }
     EXIT_SUCCESS

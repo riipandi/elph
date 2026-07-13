@@ -11,6 +11,12 @@ pub fn print_subcommand_help<T: CommandFactory>() -> ExitCode {
     EXIT_SUCCESS
 }
 
+/// User-facing stub message (stdout, no log formatting).
 pub fn unimplemented(message: &str) {
-    log::warn!("{message}");
+    println!("{message}");
+}
+
+/// User-facing error (stderr, no log formatting).
+pub fn cli_error(message: impl std::fmt::Display) {
+    eprintln!("error: {message}");
 }

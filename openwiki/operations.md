@@ -142,7 +142,7 @@ Key dependencies:
 
 - `rmcp` — MCP client (gated behind `mcp` feature)
 - `wasmtime` — WASM runtime (gated behind `extensions` feature)
-- `fastembed` — Embedding models for memory
+- `embed_anything` — Local embedding models for memory
 - `tuie` — TUI framework
 - `toon-format` — Prompt encoding
 

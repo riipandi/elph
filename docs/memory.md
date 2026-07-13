@@ -158,7 +158,7 @@ In `~/.elph/settings.json`:
 | Field                   | Default         | Description                             |
 | ----------------------- | --------------- | --------------------------------------- |
 | `memory.embedModel`     | `AllMiniLML6V2` | Model name or Hugging Face alias        |
-| `memory.embedQuantized` | `true`          | Prefer `*Q` ONNX variant when available |
+| `memory.embedQuantized` | `true`          | Prefer quantized catalog variant when available |
 
 ### Model aliases (examples)
 

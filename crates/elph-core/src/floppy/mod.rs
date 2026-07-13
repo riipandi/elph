@@ -24,9 +24,9 @@ mod types;
 mod util;
 
 pub use builder::FloppyBuilder;
-pub use embed::{DEFAULT_EMBED_MODEL, FastEmbedOptions, create_fastembed};
-#[cfg(feature = "fastembed")]
-pub use embed::{embedding_dims, resolve_embedding_model};
+pub use embed::{DEFAULT_EMBED_MODEL, EmbedOptions, create_embedder};
+#[cfg(feature = "embed")]
+pub use embed::{ResolvedEmbeddingModel, embedding_dims, resolve_embedding_model};
 pub use migrations::{FloppyMigration, LAST_VERSION, MIGRATIONS, V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR, FloppyPaths};
 pub use store::{EmbedFn, MemoryStore, noop_embedder};

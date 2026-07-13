@@ -1,5 +1,6 @@
 use clap::Args;
 
+use crate::cli::help;
 use crate::platform::{EXIT_SUCCESS, ExitCode};
 
 #[derive(Args, Default)]
@@ -14,6 +15,9 @@ pub struct StatsArgs {
 }
 
 pub fn handle(args: &StatsArgs) -> ExitCode {
-    log::warn!("Stats — not yet implemented (session={:?}, json={})", args.session, args.json);
+    help::unimplemented(&format!(
+        "Stats — not yet implemented (session={:?}, json={})",
+        args.session, args.json
+    ));
     EXIT_SUCCESS
 }

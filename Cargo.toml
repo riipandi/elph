@@ -29,8 +29,8 @@ elph-agent = { path = "crates/elph-agent", version = "0.0.27" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.26" }
 elph-core = { path = "crates/elph-core", version = "0.0.15" }
 elph-tui = { path = "crates/elph-tui", version = "0.0.26" }
+embed_anything = { version = "0.7.1", default-features = true }
 eventsource-stream = "0.2.3"
-fastembed = { version = "5.17.2" }
 fastrace = "0.7.18"
 fastrace-reqwest = "0.3.0"
 fff-search = "0.9.6"

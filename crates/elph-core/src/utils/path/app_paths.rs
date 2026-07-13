@@ -72,7 +72,7 @@ pub trait AppPaths {
         self.data_dir().join("vendor")
     }
 
-    /// Local ONNX embedding model cache (fastembed / Hugging Face downloads).
+    /// Local embedding model cache (embed_anything / Hugging Face downloads).
     fn models_dir(&self) -> PathBuf {
         self.data_dir().join("models")
     }

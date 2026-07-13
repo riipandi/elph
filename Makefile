@@ -78,7 +78,12 @@ install: build ## Install elph-next to $INSTALL_DIR
 	done
 
 run: ## Run elph coding agent
-	@$(CARGO) run --bin $(ELPH_BIN) $(or $(_RESIDUAL_),$(ARGS))
+	@_args='$(or $(_RESIDUAL_),$(ARGS))'; \
+	if [ -n "$$_args" ]; then \
+		$(CARGO) run -q -p $(ELPH_BIN) -- $$_args; \
+	else \
+		$(CARGO) run -q -p $(ELPH_BIN); \
+	fi
 
 watch: ## Run elph with hot reload (requires watchexec)
 	@-$(CARGO) watch -c -- cargo run --bin $(ELPH_BIN) $(or $(_RESIDUAL_),$(ARGS)) 2>&1
