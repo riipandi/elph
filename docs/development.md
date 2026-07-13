@@ -20,6 +20,17 @@ Library crates (`elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) 
 
 See [`crates/elph-agent/docs/tools.md`](../crates/elph-agent/docs/tools.md) for the full feature matrix.
 
+### Observability
+
+The `tracing` Cargo feature enables [`fastrace`](https://crates.io/crates/fastrace) spans (not the `tracing` crate). Logging uses `log` + `logforth`. The `elph` binary enables tracing by default; library embeds opt in per crate.
+
+| Output | Path                           | Control                                                |
+| ------ | ------------------------------ | ------------------------------------------------------ |
+| Logs   | `{logs_dir}/elph.jsonl`        | `ELPH_LOG_LEVEL`, `ELPH_LOG_FILE`, `ELPH_LOG_ROTATION` |
+| Traces | `{logs_dir}/elph-traces.jsonl` | `ELPH_TRACE` (set `0` to disable)                      |
+
+See [`crates/elph-agent/docs/observability.md`](../crates/elph-agent/docs/observability.md) for span names, HTTP `traceparent` propagation, and downstream integration.
+
 ## Make targets (build)
 
 | Target            | Behavior                                              |

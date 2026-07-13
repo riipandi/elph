@@ -21,7 +21,7 @@
 | `mcp`               | yes     | MCP client — see [mcp.md](./mcp.md)                  |
 | `extensions`        | yes     | WASM extension host                                  |
 | `obscura`           | no      | Obscura browser fallback for web tools               |
-| `tracing`           | no      | `fastrace` spans + HTTP trace propagation            |
+| `tracing`           | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md) |
 
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
 

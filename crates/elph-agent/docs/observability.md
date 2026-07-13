@@ -1,261 +1,202 @@
-# Observability design notes
+# Observability
 
-**Status: planned, not yet implemented** in `elph-agent` or `elph-ai`.
+**Status: partially implemented** via [`fastrace`](https://crates.io/crates/fastrace) and [`logforth`](https://crates.io/crates/logforth).
 
-Design adapted from [pi-agent observability](https://github.com/earendil-works/pi/blob/main/packages/agent/docs/observability.md) for the Rust/Elph stack.
+Design lineage: [pi-agent observability](https://github.com/earendil-works/pi/blob/main/packages/agent/docs/observability.md). Elph uses a two-layer stack — structured **logging** and distributed **tracing** — without binding core crates to OpenTelemetry, Sentry, or any APM vendor.
 
-## Goal
+## Architecture
 
-Make `elph-ai` and `elph-agent`/harness observable without depending on OpenTelemetry, Sentry, or any APM vendor.
+| Layer   | Crate stack               | Output                                      |
+| ------- | ------------------------- | ------------------------------------------- |
+| Logging | `log` → `logforth`        | `{logs_dir}/{app}.jsonl` (rolling)          |
+| Tracing | `fastrace`                | `{logs_dir}/{app}-traces.jsonl`             |
+| Bridge  | `logforth::FastraceEvent` | Log events attached to the active span tree |
 
-Elph should emit stable, structured lifecycle events. External listeners can convert those events into OTel spans, Sentry spans, logs, metrics, or custom telemetry.
-
-## Mental model
-
-A trace is one causal tree of work, e.g. one user turn.
-
-A span is one timed operation in that tree:
+Logging and tracing are initialized together through `elph_core::logger::init()`. The returned [`LogGuard`](../../elph-core/src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and calls `fastrace::flush()`.
 
 ```rust
-struct SpanRecord {
-    trace_id: String,
-    span_id: String,
-    parent_span_id: Option<String>,
-    name: String,
-    start_time: u64,
-    end_time: Option<u64>,
-    attributes: HashMap<String, Value>,
-    status: SpanStatus, // Ok | Error
+let init = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
+    .env_prefix("ELPH")
+    .app_name("elph")
+    .logs_dir(paths.logs_dir())
+    .build();
+
+let _log_guard = elph_core::logger::init(init.logging);
+```
+
+`elph_core::trace::init()` runs inside `logger::init()` and installs a [`JsonlReporter`](../../elph-core/src/trace/reporter.rs) when tracing is enabled.
+
+## Cargo features
+
+The Cargo feature is named `tracing` for historical reasons. It enables `fastrace`, not the `tracing` crate.
+
+| Crate         | Feature   | Default | Enables                                           |
+| ------------- | --------- | ------- | ------------------------------------------------- |
+| `elph-core`   | `tracing` | no      | `fastrace`, `fastrace-reqwest`, `JsonlReporter`   |
+| `elph-ai`     | `tracing` | no      | Provider stream spans, HTTP trace propagation     |
+| `elph-agent`  | `tracing` | no      | Harness/loop/tool/MCP spans (chains to above)     |
+| `elph` binary | —         | always  | `tracing` on `elph-core`, `elph-ai`, `elph-agent` |
+
+Library consumers opt in explicitly:
+
+```toml
+elph-agent = { version = "0.0", features = ["tracing", "mcp"] }
+elph-ai = { version = "0.0", features = ["tracing"] }
+elph-core = { version = "0.0", features = ["tracing"] }
+```
+
+Without the `tracing` feature, span macros compile to no-ops and `with_trace_headers()` returns the request unchanged.
+
+## Environment variables
+
+Resolved by [`LoggingOptions::resolve`](../../elph-core/src/logger/options.rs) via [`AgentBuilder`](../../elph-agent/src/builder.rs). The `elph` binary uses prefix `ELPH`.
+
+| Variable                 | Default | Effect                                        |
+| ------------------------ | ------- | --------------------------------------------- |
+| `{PREFIX}_TRACE`         | on      | Set to `0` to disable trace file output       |
+| `{PREFIX}_LOG_LEVEL`     | `info`  | `trace` / `debug` / `info` / `warn` / `error` |
+| `{PREFIX}_LOG_FILE`      | on      | Set to `0` to disable rolling JSONL logs      |
+| `{PREFIX}_LOG_ROTATION`  | `daily` | `hourly`, `daily`, or `weekly`                |
+| `{PREFIX}_LOG_MAX_FILES` | —       | Cap retained rotated log files                |
+
+Trace collection is skipped when `trace_enabled` is false, in unit tests (`cfg!(test)`), or when the reporter cannot be created (a warning is logged and execution continues).
+
+## Trace output format
+
+Each completed span is written as one JSON line:
+
+```json
+{
+    "trace_id": "…",
+    "span_id": "…",
+    "parent_id": "…",
+    "name": "elph.agent.turn",
+    "begin_time_unix_ns": 1710000000000000000,
+    "duration_ns": 123456789,
+    "properties": { "model.id": "claude-sonnet-4" },
+    "events": []
 }
 ```
 
-Example tree:
+The reporter flushes on a one-second interval and on process shutdown.
 
-```text
-trace_id=t1 span_id=s1 parent=-  name=elph.agent.prompt
-trace_id=t1 span_id=s2 parent=s1 name=elph.agent.turn
-trace_id=t1 span_id=s3 parent=s2 name=elph.ai.provider.request
-trace_id=t1 span_id=s4 parent=s2 name=elph.agent.tool_call
-trace_id=t1 span_id=s5 parent=s4 name=elph.session.append_entry
-```
+## Span inventory
 
-## Async context
+Spans use stable `elph.*` names. Instrumentation is gated behind `#[cfg_attr(feature = "tracing", fastrace::trace(…))]` or explicit `Span` helpers.
 
-Rust has multiple async tasks that can interleave on the same runtime. A single global context breaks under concurrency.
+### Agent harness (`elph-agent`)
 
-The Rust equivalent of Node's `AsyncLocalStorage` is `tokio::task_local!` or a tracing subscriber layer with span extensions. For cross-crate use, a small runtime-agnostic context type is preferable:
+| Span name                  | Location                     | Notes                                 |
+| -------------------------- | ---------------------------- | ------------------------------------- |
+| `elph.agent.turn`          | `AgentHarness::prompt`       | Root of a user prompt turn            |
+| `elph.agent.execute_turn`  | `execute_turn`               | Turn body after queue drain           |
+| `elph.agent.loop`          | `run_agent_loop`             | Full agent loop for one turn          |
+| `elph.agent.loop_continue` | loop continuation            | Follow-up iterations in the same turn |
+| `elph.agent.tool_batch`    | tool batch dispatch          | Parallel tool call batch              |
+| `elph.agent.tool`          | `execute_prepared_tool_call` | Single tool execution                 |
 
-```rust
-// Planned
-pub struct ElphObservabilityContext {
-    pub trace_id: Option<String>,
-    pub current_span_id: Option<String>,
-    pub user_context: Option<HashMap<String, Value>>,
-}
-```
+### MCP (`elph-agent`)
 
-Deep code can read the correct current context for the active async task.
+| Span name            | Location               |
+| -------------------- | ---------------------- |
+| `elph.mcp.connect`   | `connect_with_context` |
+| `elph.mcp.call_tool` | MCP tool invocation    |
 
-Core packages should not depend on a specific tracing backend. Adapters bridge to `tracing`, OpenTelemetry, etc.
+### Provider streaming (`elph-ai`)
 
-## Core design
+| Span name        | Location                                        | Properties                                |
+| ---------------- | ----------------------------------------------- | ----------------------------------------- |
+| `elph.ai.stream` | `Models::lazy_stream` via `trace::spawn_stream` | `model.id`, `model.provider`, `model.api` |
 
-Planned runtime-agnostic abstraction:
-
-```rust
-pub enum ObservabilityEventType {
-    Start,
-    End,
-    Error,
-    Event,
-}
-
-pub struct ElphObservabilityEvent {
-    pub event_type: ObservabilityEventType,
-    pub name: String,
-    pub trace_id: String,
-    pub span_id: Option<String>,
-    pub parent_span_id: Option<String>,
-    pub timestamp: u64,
-    pub duration_ms: Option<u64>,
-    pub context: Option<HashMap<String, Value>>,
-    pub payload: Option<HashMap<String, Value>>,
-    pub error: Option<ObservabilityError>,
-}
-
-pub trait ElphObservability: Send + Sync {
-    fn get_context(&self) -> Option<ElphObservabilityContext>;
-    fn run_with_context<T>(&self, context: ElphObservabilityContext, f: impl FnOnce() -> T) -> T;
-    fn emit(&self, event: ElphObservabilityEvent);
-    fn has_subscribers(&self) -> bool;
-}
-```
-
-Public API (planned):
-
-```rust
-pub fn configure_elph_observability(obs: Arc<dyn ElphObservability>);
-pub fn subscribe_elph_observability(listener: ObservabilityListener) -> impl FnOnce();
-pub fn run_with_elph_context<T>(user_context: HashMap<String, Value>, f: impl FnOnce() -> T) -> T;
-pub async fn trace_operation<T>(name: &str, payload: HashMap<String, Value>, f: impl Future<Output = T>) -> T;
-```
-
-`trace_operation()`:
-
-1. reads the current context
-2. creates `trace_id` if missing
-3. creates a new `span_id`
-4. uses current span as `parent_span_id`
-5. emits `Start`
-6. runs callback under child context
-7. emits `End` or `Error`
-8. rethrows on error
-
-## What elph emits
-
-Elph emits what happened. It does not create OTel/Sentry spans directly.
-
-Initial minimal event names:
-
-```text
-elph.agent.prompt
-elph.agent.skill
-elph.agent.prompt_template
-elph.agent.compaction
-elph.agent.branch_navigation
-elph.agent.session.append_entry
-elph.ai.provider.request
-```
-
-Each operation emits `start`, `end`, and `error`.
-
-Later additions:
+Example trace tree for one prompt turn:
 
 ```text
 elph.agent.turn
-elph.agent.tool_call
-elph.agent.queue_update
-elph.ai.provider.retry
-elph.ai.provider.first_token
-elph.ai.provider.usage
-elph.session.read
-elph.session.write
+└─ elph.agent.execute_turn
+   └─ elph.agent.loop
+      ├─ elph.ai.stream          (model.id, model.provider, model.api)
+      ├─ elph.agent.tool_batch
+      │  └─ elph.agent.tool
+      └─ elph.agent.loop_continue
+         └─ elph.ai.stream
 ```
 
-## Minimal instrumentation points
+### HTTP trace propagation
 
-### elph-agent
+When the `tracing` feature is enabled, outbound HTTP requests include W3C `traceparent` headers via `fastrace-reqwest`:
 
-Wrap:
+- `elph_ai::trace::with_trace_headers` — all provider API requests in `elph-ai`
+- `elph_agent::trace::with_trace_headers` — MCP SSE/HTTP and web tools (`websearch`, `webfetch`)
 
-- `AgentHarness::prompt()`
-- `AgentHarness::skill()`
-- `AgentHarness::prompt_from_template()`
-- `AgentHarness::compact()`
-- `AgentHarness::navigate_tree()`
-- Session storage append facade
+Propagation requires an active local parent span (`Span::set_local_parent()` or `#[fastrace::trace]` on the calling async fn). Stream tasks use `FutureExt::in_span()` so spawned work stays `Send` without holding `LocalSpan` guards across `.await`.
 
-Example:
+## Harness lifecycle events
 
-```rust
-trace_operation(
-    "elph.agent.prompt",
-    hashmap! {
-        "session_id" => turn_state.session_id,
-        "provider" => turn_state.model.provider,
-        "model" => turn_state.model.id,
-        "prompt_length" => text.len(),
-    },
-    execute_turn(turn_state, text, options),
-).await
-```
+`AgentHarness::subscribe` emits control-plane lifecycle events (turn start/end, tool calls, provider hooks). These are separate from fastrace spans: subscribers can affect execution; trace collection is passive and must not.
 
-### elph-ai
+Use harness events for UI and policy hooks. Use trace spans for latency analysis and cross-service correlation.
 
-Wrap common provider boundaries:
+## Enabling tracing in downstream apps
 
-- `Models::stream_simple()`
-- `Models::complete_simple()`
+1. Enable the `tracing` feature on `elph-core`, `elph-ai`, and/or `elph-agent` as needed.
+2. Call `elph_core::logger::init()` early in `main`, keeping the `LogGuard` alive.
+3. Set `{PREFIX}_TRACE` (omit or non-`0` to enable) and configure log directory via `AgentBuilder::logs_dir`.
+4. Inspect `{app}-traces.jsonl` under the logs directory.
 
-End/error payloads can include safe metadata:
-
-- stop reason
-- status code
-- retry count
-- input/output/total tokens
-- cost total
-- aborted/timeout flag
+For custom root spans outside the harness, use `elph_core::trace::root_span("my.app.operation")`.
 
 ## Safety and redaction
 
-Default payloads must be safe.
+Default span properties are metadata only. The implementation does **not** attach prompts, completions, tool arguments, file contents, or provider payloads to spans.
 
 Safe by default:
 
-- provider
-- model
-- API identifier
-- session id
-- entry type
-- tool name
-- status code
-- stop reason
-- token counts
-- costs
-- durations
+- provider, model, API identifier
+- span names and durations
+- HTTP trace correlation IDs
 
-Unsafe by default:
+Unsafe by default (not captured):
 
-- prompts
-- completions
-- tool args
-- tool results
-- shell output
-- file contents
-- provider request payloads
-- provider response bodies
-- API keys
-- headers
+- prompts and completions
+- tool args and results
+- shell output and file contents
+- provider request/response bodies
+- API keys and auth headers
 
-Content capture can be opt-in later with explicit redaction hooks.
+Opt-in content capture and redaction hooks remain future work.
 
-## Listener behavior
+## Tests
 
-Observability must never affect elph execution.
+| Test crate   | File                           | Covers                                                  |
+| ------------ | ------------------------------ | ------------------------------------------------------- |
+| `elph-core`  | `tests/tracing_integration.rs` | `JsonlReporter`, `root_span`, `init` skip when disabled |
+| `elph-core`  | `trace/reporter.rs` unit tests | JSONL line format                                       |
+| `elph-ai`    | `tests/tracing_http.rs`        | `traceparent` header injection                          |
+| `elph-agent` | `tests/tracing_http.rs`        | `traceparent` header injection                          |
 
-Subscriber errors should be swallowed or isolated. Harness hooks are control-plane and may affect execution; observability subscribers are passive and must not.
+Run with the `tracing` feature enabled:
 
-## User context
-
-Users can associate arbitrary context with a turn:
-
-```rust
-run_with_elph_context(
-    hashmap! {
-        "user_id" => "u123",
-        "org_id" => "acme",
-        "region" => "eu",
-    },
-    || harness.prompt("fix this", None),
-).await?;
+```bash
+cargo test -p elph-core --features tracing
+cargo test -p elph-ai --features tracing
+cargo test -p elph-agent --features tracing
 ```
 
-Every emitted event inside that async chain includes the context.
+## Future work
 
-An OTel adapter can map this to span attributes. A Sentry adapter can map it to Sentry context/spans.
+The original runtime-agnostic `ElphObservability` trait design (custom event bus, user context propagation, OTel/Sentry adapters) is **not** implemented. Remaining gaps:
 
-## Interim approach
+| Area                 | Planned span / capability                                                 |
+| -------------------- | ------------------------------------------------------------------------- |
+| Harness entry points | `elph.agent.skill`, `elph.agent.prompt_template`, `elph.agent.compaction` |
+| Session I/O          | `elph.session.append_entry`, `elph.session.read`, `elph.session.write`    |
+| Provider detail      | `elph.ai.provider.request`, retry/first-token/usage events                |
+| User context         | `run_with_elph_context` — arbitrary key/value on every event              |
+| Adapters             | OTel span export, Sentry bridge, custom `Reporter` implementations        |
+| Redaction            | Opt-in payload capture with explicit scrubbing hooks                      |
 
-Until the dedicated observability crate exists, use:
-
-- `tracing` spans in application binaries (`elph` and downstream apps)
-- `AgentHarness::subscribe` for agent lifecycle events
-- `elph-ai` stream event hooks for provider timing
-
-Do not add vendor-specific instrumentation inside `elph-agent` core.
+Until those exist, fastrace JSONL plus harness `subscribe` events are the supported observability surface.
 
 ## Thesis
 
-Elph defines a stable, safe event contract. Adapters define where events go.
-
-This makes ai/harness observable without binding core packages to OTel, Sentry, runtime-specific context APIs, or monkey-patching.
+Elph emits stable, safe span names and structured logs. External tooling can ingest `{app}-traces.jsonl` and convert span trees into OTel, dashboards, or APM views without vendor code inside `elph-agent` or `elph-ai` core.

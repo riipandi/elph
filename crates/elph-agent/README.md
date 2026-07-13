@@ -783,7 +783,7 @@ For provider-level OpenCode streaming (without the agent loop), see `elph-ai` ex
 | [hooks.md](./docs/hooks.md)                     | Hook design and mutation semantics             |
 | [models.md](./docs/models.md)                   | `elph_ai::Models` integration with harness     |
 | [durable-harness.md](./docs/durable-harness.md) | Semi-durable harness design (planned)          |
-| [observability.md](./docs/observability.md)     | Observability design notes (planned)           |
+| [observability.md](./docs/observability.md)     | Logging, fastrace spans, env vars, propagation |
 
 Full `elph-ai` provider architecture is documented in the [`elph-ai`](../elph-ai) crate.
 

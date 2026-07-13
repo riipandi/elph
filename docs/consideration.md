@@ -6,13 +6,13 @@ Design log for evaluating third-party libraries. Verdicts guide adoption — imp
 
 ## Near-term stack (target)
 
-| Layer           | Planned crates                                         |
-| --------------- | ------------------------------------------------------ |
-| LLM / providers | `genai`, `schemars`                                    |
-| Agent runtime   | `fff-search` (done), `rmcp`, `jsonschema`              |
-| TUI             | `tuie`, `syntect`, `anstyle-syntect`, `pulldown-cmark` |
-| Config          | `figment`, `jsonc-parser`                              |
-| Shared          | `tracing`, `tokio`, `chrono`, `memchr`                 |
+| Layer           | Planned crates                                              |
+| --------------- | ----------------------------------------------------------- |
+| LLM / providers | `genai`, `schemars`                                         |
+| Agent runtime   | `fff-search` (done), `rmcp`, `jsonschema`                   |
+| TUI             | `tuie`, `syntect`, `anstyle-syntect`, `pulldown-cmark`      |
+| Config          | `figment`, `jsonc-parser`                                   |
+| Shared          | `log` + `logforth`, `fastrace`, `tokio`, `chrono`, `memchr` |
 
 ---
 
@@ -88,11 +88,11 @@ Schema: [schemas/elph-schema.json](../schemas/elph-schema.json).
 
 ## Infrastructure
 
-| Verdict   | Item                           | Rationale                                        |
-| --------- | ------------------------------ | ------------------------------------------------ |
-| **Keep**  | tracing, chrono, memchr, rayon | Logging, time, parsing, parallel fuzzy filter    |
-| **Defer** | rapidhash, obscura             | Fingerprints; embedded browser (high build cost) |
-| **Skip**  | Duplicate transitive deps      | Add only when needed in-tree                     |
+| Verdict   | Item                                            | Rationale                                                          |
+| --------- | ----------------------------------------------- | ------------------------------------------------------------------ |
+| **Keep**  | log + logforth, fastrace, chrono, memchr, rayon | Structured logs, trace spans, time, parsing, parallel fuzzy filter |
+| **Defer** | rapidhash, obscura                              | Fingerprints; embedded browser (high build cost)                   |
+| **Skip**  | Duplicate transitive deps                       | Add only when needed in-tree                                       |
 
 ---
 

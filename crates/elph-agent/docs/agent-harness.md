@@ -295,6 +295,7 @@ cargo test -p elph-agent --test harness
 - `grep` / `find` backed by `fff-search`; filesystem tools use `ExecutionEnv` directly
 - Collaboration mode (`Default` / `Plan`) with plan proposal extraction and confirmation API
 - Subagent control plane (`AgentControl`) and multi-agent tools (`spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`)
+- Core fastrace spans for turns, agent loop, tools, MCP, and provider streaming (see [observability.md](./observability.md))
 
 ### Planned
 
@@ -303,4 +304,4 @@ cargo test -p elph-agent --test harness
 - Retry handling
 - Semi-durable harness recovery (see [durable-harness.md](./durable-harness.md))
 - Broad listener/hook reentrancy test suite
-- Observability instrumentation (see [observability.md](./observability.md))
+- Extended observability: skill/template/compaction spans, session I/O, provider usage events, OTel adapters (see [observability.md](./observability.md))
