@@ -24,7 +24,7 @@ make coverage
 
 ## Test suite by crate
 
-### `elph-agent` (27 test files)
+### `elph-agent` (28 test files)
 
 **Path**: `/crates/elph-agent/tests/`
 
@@ -55,8 +55,11 @@ make coverage
 | `subagent.rs`            | Subagent orchestration                              |
 | `system_prompt.rs`       | System prompt assembly                              |
 | `tools_fff.rs`           | fff-based file search tools                         |
+| `tracing_http.rs`        | W3C traceparent header propagation                  |
 | `truncate.rs`            | Result truncation                                   |
 | `web_tools.rs`           | Web search and fetch tools                          |
+
+> Tracing tests require the `tracing` feature: `cargo test -p elph-agent --features tracing`
 
 ### `elph-ai` (~12 test files)
 
@@ -75,12 +78,21 @@ make coverage
 | `oauth_auth.rs`                  | OAuth authentication flows                       |
 | `openai_*.rs`                    | OpenAI completions, tool choice, response images |
 | `sse_abort.rs`                   | SSE abort handling                               |
+| `tracing_http.rs`                | fastrace traceparent header injection            |
+
+> Tracing tests require the `tracing` feature: `cargo test -p elph-ai --features tracing`
 
 ### `elph-core` (~4 test files)
 
 **Path**: `/crates/elph-core/tests/`
 
-Core utility tests — path resolution, logger, floppy memory store.
+Core utility tests — path resolution, logger, floppy memory store, tracing.
+
+| Test file                | What it covers                                        |
+| ------------------------ | ----------------------------------------------------- |
+| `tracing_integration.rs` | `JsonlReporter`, `root_span`, init skip when disabled |
+
+> Tracing tests require the `tracing` feature: `cargo test -p elph-core --features tracing`
 
 ### `elph-tui` (2 test files)
 
@@ -186,4 +198,6 @@ CI runs:
 - **Session logs** — Sessions store events in `~/.elph/sessions/` — inspect with `elph session view`
 - **MCP debug** — `RUST_LOG=debug` to see MCP protocol traffic
 - **Prompt encoding** — Check `RUST_LOG=debug` for encoding decisions and savings ratios
+- **Settings** — `elph doctor` shows resolved configuration
+  ebug` for encoding decisions and savings ratios
 - **Settings** — `elph doctor` shows resolved configuration

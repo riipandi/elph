@@ -81,7 +81,7 @@ Key modules:
 - `messages/` — Message conversion helpers (`/crates/elph-agent/src/messages/mod.rs`)
 - `types/` — Core agent types: loop config, messages, tools, enums (`/crates/elph-agent/src/types/mod.rs`)
 
-Features: `mcp` (default), `extensions` (default), `obscura` (optional).
+Features: `mcp` (default), `extensions` (default), `obscura` (optional), `tracing` (optional — fastrace spans), plus individual tool feature flags (`tools-read`, `tools-bash`, `tools-edit`, `tools-write`, `tools-grep`, `tools-find`, `tools-ls`, `tools-web`, `tools-multi-agent`) and convenience groups (`tools-core`, `tools-explore`, `builtin-tools`).
 
 ### `elph-ai` (library crate)
 
@@ -108,7 +108,8 @@ Shared primitives.
 Key modules:
 
 - `floppy/` — Agent memory store: Turso-backed vector search with Welford baseline scoring and EMA weight updates. Ported from [memelord](https://github.com/glommer/memelord). (`/crates/elph-core/src/floppy/`)
-- `logger/` — Log rotation and formatting (`/crates/elph-core/src/logger/`)
+- `logger/` — Structured logging via `logforth` with rotating file output and optional fastrace span attachment (`/crates/elph-core/src/logger/`)
+- `trace/` — Optional fastrace distributed tracing: `JsonlReporter`, `root_span`, W3C `traceparent` propagation (`/crates/elph-core/src/trace/`)
 - `scaffold/` — Bundled manifests, trust stores, version files (`/crates/elph-core/src/scaffold/`)
 - `utils/` — Path resolution (`AppPaths`), project key, filesystem utilities (`/crates/elph-core/src/utils/`)
 - `fs.rs` — `ensure_dirs`, `write_file_if_missing`, `write_json_file`, `write_private_file` (`/crates/elph-core/src/fs.rs`)

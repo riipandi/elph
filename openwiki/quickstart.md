@@ -27,12 +27,15 @@
 - **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).
 - **Extensions** — WASM-based dynamic plugins compiled with `wasmtime`.
 
-## Project state (HEAD `e90514a`)
+## Project state (HEAD `462d29e`)
 
 This repository is under **active development**. Recent milestones:
 
 - **Refactored** from a monolithic layout to layered crates (`elph-agent`, `elph-ai`, `elph-core`, `elph-tui`, `elph-swarm`).
 - **MCP** — Full client integration: stdio, streamable HTTP, SSE, OAuth, encrypted credentials, tool policy, session pools, hot reload.
+- **Observability** — Replaced `tracing` crate with `logforth` (structured logging) + `fastrace` (distributed tracing), including `JsonlReporter` and W3C `traceparent` propagation (`3ef42b8`).
+- **BuiltinToolsBuilder** — Feature-gated built-in tools with granular Cargo feature flags and a builder API for compile-time tool selection (`7b34c5b`).
+- **Workspace consolidation** — Removed `owly` and `eclaw` crates; unified CI (openwiki-update.yml) (`04c7352`).
 - **TUI** — Migrated from `superlighttui` to `tuie` framework (commit `b06c134`).
 - **Prompt encoding** — Optional TOON encoding for tool results (`0a0753c`).
 - **Auto session naming** — Model-generated thread titles (`2e0297f`).
