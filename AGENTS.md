@@ -1,26 +1,18 @@
 # Agent Instructions
 
-This repository uses documentation in the `/openwiki` directory as the primary source of truth.
+<!-- OPENWIKI:START -->
 
-## Language
+## OpenWiki
 
-Write **documentation**, **skills** (`.agents/skills`, OpenWiki, `docs/`), commit/PR prose when drafting, and agent reports in **English** (e.g. _behavior_, _serialize_, _catalog_).
-Keep code identifiers, paths, and upstream names literal. Match the user only if they explicitly request another language for the reply.
+This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
 
-## Readable docs and reports
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
 
-Prefer short prose, headings, and tagged bullets over wide markdown tables—especially for status, audits, gap lists, and porting notes under `docs/porting/`.
-Use a table only when a compact multi-axis comparison is clearly clearer than bullets.
-
-## Getting Started
-
-- Read: [OpenWiki quickstart](openwiki/quickstart.md)
-- Follow links from the quickstart to relevant sections (architecture, workflows, domain, operations, testing).
-- Prefer OpenWiki over re-exploring the codebase when documentation already answers the question.
+<!-- OPENWIKI:END -->
 
 ---
 
-## Testing Conventions (Rust)
+## Testing Conventions
 
 Follow these rules strictly.
 
@@ -60,15 +52,3 @@ tests/
 - Cover edge cases and failure paths.
 - Avoid duplication between unit and integration tests.
 - Use clear, descriptive test names.
-
-<!-- OWLY:START -->
-<!-- openwiki-context -->
-
-## OpenWiki Documentation
-
-When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`.
-Prefer those docs over re-exploring the entire codebase when they already answer the question.
-
-Entry point: `openwiki/quickstart.md`.
-
-<!-- OWLY:END -->

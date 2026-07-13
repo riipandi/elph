@@ -118,10 +118,6 @@ Subcommands: `list`, `show`, `rm`, `gc`, `db`.
 
 Export formats: `json`, `markdown`, `zip`. Flags: `--output`, `--clipboard`, `--sanitize`.
 
-## Owly (separate binary)
-
-Documentation agent with a working interactive CLI: `owly --init`, `owly --update`, interactive mode, print mode. See [openwiki/quickstart.md](../openwiki/quickstart.md).
-
 ## Bootstrap
 
 First run scaffolds home config, data dirs, default settings, provider directory, project `.elph/` gitignore, and version metadata. Datastore (`metadata.db`) initializes for the default TUI and datastore-dependent subcommands.
@@ -143,12 +139,10 @@ First run scaffolds home config, data dirs, default settings, provider directory
 
 Release builds via root `Makefile`. See [development.md](./development.md).
 
-| Target             | Output                          |
-| ------------------ | ------------------------------- |
-| `make build`       | All binaries: elph, eclaw, owly |
-| `make build-elph`  | `target/release/elph`           |
-| `make build-eclaw` | `target/release/eclaw`          |
-| `make build-owly`  | `target/release/owly`           |
+| Target            | Output                |
+| ----------------- | --------------------- |
+| `make build`      | `target/release/elph` |
+| `make build-elph` | `target/release/elph` |
 
 ## Related
 

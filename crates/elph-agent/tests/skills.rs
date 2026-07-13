@@ -252,9 +252,9 @@ fn resolve_user_skills_dirs_uses_app_name() {
     assert!(dirs[1].ends_with("/.elph/skills"));
     assert!(dirs[2].ends_with("/.elph/bundled/skills"));
 
-    let dirs = resolve_user_skills_dirs("eclaw");
-    assert!(dirs[1].ends_with("/.eclaw/skills"));
-    assert!(dirs[2].ends_with("/.eclaw/bundled/skills"));
+    let dirs = resolve_user_skills_dirs("acme");
+    assert!(dirs[1].ends_with("/.acme/skills"));
+    assert!(dirs[2].ends_with("/.acme/bundled/skills"));
 }
 
 #[test]
@@ -264,6 +264,6 @@ fn resolve_project_skills_dirs_uses_app_name() {
     assert_eq!(dirs[0], "/project/.agents/skills");
     assert_eq!(dirs[1], "/project/.elph/skills");
 
-    let dirs = resolve_project_skills_dirs("/project", "eclaw");
-    assert_eq!(dirs[1], "/project/.eclaw/skills");
+    let dirs = resolve_project_skills_dirs("/project", "acme");
+    assert_eq!(dirs[1], "/project/.acme/skills");
 }

@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       app:
-        description: Application to check (elph, eclaw, or owly)
+        description: Application to check (elph)
         required: true
         type: string
     outputs:

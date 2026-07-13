@@ -119,7 +119,7 @@ Scan what Elph has that pi does **not** (or solves differently):
 3. For **each** relevant extension, write **In pi / In Elph / Implications**:
     - **In pi** — absent, or nearest analogue
     - **In Elph** — modules, entry points, config/env, how it hooks the agent loop / CLI
-    - **Implications** — maintenance burden, risk if upstream later ships something similar, coupling (elph CLI, owly, MCP, Turso, …)
+    - **Implications** — maintenance burden, risk if upstream later ships something similar, coupling (elph CLI, downstream apps, MCP, Turso, …)
 
 Do **not** collapse extensions into a single “[Elph-only]” bullet. The goal is **implementation difference**, not a status badge.
 

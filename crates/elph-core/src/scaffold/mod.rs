@@ -1,7 +1,7 @@
 //! Default home-directory files scaffolded on first run.
 //!
 //! Each type writes a minimal placeholder file when missing so `elph` and
-//! `eclaw` can bootstrap their config/data trees before app-specific setup.
+//! Downstream apps can bootstrap their config/data trees before app-specific setup.
 
 mod bundled;
 mod trust;

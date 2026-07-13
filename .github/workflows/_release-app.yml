@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       app:
-        description: Application to release (elph, eclaw, or owly)
+        description: Application to release (elph)
         required: true
         type: string
 

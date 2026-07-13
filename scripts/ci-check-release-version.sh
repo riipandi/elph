@@ -4,7 +4,7 @@
 # and greater than or equal to the version in {app}/Cargo.toml on the tag commit.
 set -euo pipefail
 
-app="${APP:?APP is required (elph, eclaw, or owly)}"
+app="${APP:?APP is required (elph)}"
 tag="${GITHUB_REF_NAME:?GITHUB_REF_NAME is required (e.g. elph-v0.0.28)}"
 manifest="${app}/Cargo.toml"
 output="${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"

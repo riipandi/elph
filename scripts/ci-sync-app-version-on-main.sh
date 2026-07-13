@@ -2,7 +2,7 @@
 # Sync {app}/Cargo.toml on main to the version that was just released.
 set -euo pipefail
 
-app="${APP:?APP is required (elph, eclaw, or owly)}"
+app="${APP:?APP is required (elph)}"
 released="${RELEASED_VERSION:?RELEASED_VERSION is required}"
 manifest="${app}/Cargo.toml"
 

@@ -9,7 +9,7 @@ cd "$ROOT"
 if [[ -n "${APP:-}" ]]; then
     APPS=("$APP")
 else
-    APPS=(elph eclaw owly)
+    APPS=(elph)
 fi
 
 repo="${GITHUB_REPOSITORY:-}"
@@ -144,7 +144,7 @@ if [[ -n "${TAG:-}" ]]; then
     fi
 
     case "$tag_app" in
-    elph | eclaw | owly) ;;
+    elph) ;;
     *)
         echo "error: unknown app in tag: ${tag_app}" >&2
         exit 1

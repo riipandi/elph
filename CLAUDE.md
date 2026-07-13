@@ -4,14 +4,12 @@
 
 This file is only a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
 
-<!-- OWLY:START -->
-<!-- openwiki-context -->
+<!-- OPENWIKI:START -->
 
-## OpenWiki Documentation
+## OpenWiki
 
-When searching for repository context, read `openwiki/quickstart.md` first and follow links to the relevant section pages under `openwiki/`.
-Prefer those docs over re-exploring the entire codebase when they already answer the question.
+This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
 
-Entry point: `openwiki/quickstart.md`.
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
 
-<!-- OWLY:END -->
+<!-- OPENWIKI:END -->

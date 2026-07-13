@@ -10,6 +10,6 @@ pub use actions::{PromptAction, detect_prompt_prefix, is_quit_command, strip_sub
 pub use agent_mode::AgentMode;
 pub use chat_stream::{ChatStreamState, TranscriptStyle};
 pub use queue::PromptQueue;
-pub use slash_commands::{elph_builtin_commands, owly_builtin_commands};
+pub use slash_commands::elph_builtin_commands;
 pub use state::PromptState;
 pub use thinking_level::ThinkingLevel;

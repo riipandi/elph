@@ -53,19 +53,6 @@ Extensions contribute slash commands dynamically (e.g. `/say-hello <name>` from 
 | Extension error | System line: `Extension error: …`                   |
 | Success         | System line with extension message                  |
 
-## Owly subset (separate design)
-
-Documentation-focused commands for the Owly interactive shell:
-
-| Command          | Description           |
-| ---------------- | --------------------- |
-| `/init`          | Initialize openwiki   |
-| `/update`        | Refresh documentation |
-| `/history`       | List checkpoints      |
-| `/restore <id>`  | Restore checkpoint    |
-| `/clear`         | Reset thread          |
-| `/help`, `/exit` | Help and quit         |
-
 ## Prompt templates
 
 `~/.elph/prompts/*.md` and `<project>/.elph/prompts/*.md` map to `/filename`.

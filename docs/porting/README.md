@@ -1,9 +1,8 @@
 # Porting status (upstream → Elph)
 
-How far Elph crates lag (or lead) upstream projects:
+How far Elph crates lag (or lead) upstream **pi** projects:
 
 - TypeScript **[earendil-works/pi](https://github.com/earendil-works/pi)** → `elph-ai`, `elph-agent`, `elph/`
-- **[langchain-ai/openwiki](https://github.com/langchain-ai/openwiki)** → `owly/`
 
 **Readability:** these pages prefer short prose, bullets, and timeline entries.
 Avoid packing status into wide tables.
@@ -13,14 +12,13 @@ Avoid packing status into wide tables.
 - **[pi-ai.md](./pi-ai.md)** — `@earendil-works/pi-ai` (`packages/ai`) → `crates/elph-ai`
 - **[pi-agent.md](./pi-agent.md)** — `@earendil-works/pi-agent-core` (`packages/agent`) → `crates/elph-agent`
 - **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `elph/` (product CLI + TUI)
-- **[openwiki.md](./openwiki.md)** — [langchain-ai/openwiki](https://github.com/langchain-ai/openwiki) → `owly/` (agent wiki CLI)
 
 ## Why these docs exist
 
 Upstream projects move quickly. Each page records:
 
 1. What upstream has.
-2. What the port has (Elph / Owly).
+2. What the port has (Elph).
 3. Gaps in either direction — port debt vs intentional product extensions.
 
 ## Baseline (pi libraries)
@@ -34,7 +32,6 @@ Last documented **2026-07-11T11:23:28Z** (18:23 WIB).
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
 - **Last library implementation pass:** 2026-07-11 — Sprints 1–4 on `elph-ai` / `elph-agent`
 - **Last product gap audit:** 2026-07-11T12:14:13Z — coding-agent vs `elph/` (docs only)
-- **OpenWiki → owly docs:** 2026-07-12 — porting page + `/openwiki-port-gap` skill scaffold
 
 ## Status tags
 
@@ -43,7 +40,7 @@ Use these inline in prose (not table cells):
 - **[Parity]** — behavior/API on both sides (shape may differ by language)
 - **[Partial]** — present in the port but incomplete vs mainstream
 - **[Gap]** — in upstream; not yet in the port (port debt)
-- **[Elph delta]** / **[Owly delta]** — intentional extension missing upstream
+- **[Elph delta]** — intentional extension missing upstream
 - **[N/A]** — platform-specific; do not port 1:1
 
 ## Suggested sync workflow
@@ -63,20 +60,12 @@ Use these inline in prose (not table cells):
 
 5. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).
 
-### OpenWiki → owly
-
-1. Update the local OpenWiki clone (suggested: `/Users/ariss/Developer/github.com/langchain-ai/openwiki`).
-2. Read CHANGELOG (or recent commits) and compare to `owly/src/`.
-3. Append a **Timeline** entry on [openwiki.md](./openwiki.md).
-
 ### Skills
 
 - **`/pi-port-gap`** — pi libraries/product vs elph crates
-- **`/openwiki-port-gap`** — OpenWiki vs `owly`
 
 ## Related
 
 - [`crates/elph-ai/README.md`](../../crates/elph-ai/README.md)
 - [`crates/elph-agent/README.md`](../../crates/elph-agent/README.md)
-- [`owly/README.md`](../../owly/README.md)
 - [docs/README.md](../README.md)

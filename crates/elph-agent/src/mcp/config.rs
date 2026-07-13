@@ -353,7 +353,7 @@ pub struct McpLoadOptions {
     ///
     /// Host apps should set this via [`crate::mcp::auth::AuthStorePathBuilder`] /
     /// [`crate::mcp::auth::auth_store_path`] so the library stays path-agnostic
-    /// (elph → `~/.elph/auth.json`, owly/eclaw → their own config dirs).
+    /// (elph → `~/.elph/auth.json`; other hosts use their own config dirs).
     pub auth_store_path: Option<PathBuf>,
     /// When true (default), also list resources and prompts and expose bridge tools.
     pub discover_resources_and_prompts: bool,

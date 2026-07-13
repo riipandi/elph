@@ -248,7 +248,7 @@ An OTel adapter can map this to span attributes. A Sentry adapter can map it to 
 
 Until the dedicated observability crate exists, use:
 
-- `tracing` spans in application binaries (`elph`, `eclaw`)
+- `tracing` spans in application binaries (`elph` and downstream apps)
 - `AgentHarness::subscribe` for agent lifecycle events
 - `elph-ai` stream event hooks for provider timing
 

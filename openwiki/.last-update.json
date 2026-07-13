@@ -1,6 +1,6 @@
 {
-    "updated_at": "2026-07-12T10:09:42.839797Z",
-    "command": "update",
-    "git_head": "9d2c3e6b0c658a022fe864e02e8e5436d30b753f",
-    "model": "opencode/big-pickle"
+    "updatedAt": "2026-07-13T20:46:00.989Z",
+    "command": "init",
+    "gitHead": "e90514a9b6bffe0808706cdd0f3e4a13d539bb34",
+    "model": "deepseek-v4-flash-free"
 }

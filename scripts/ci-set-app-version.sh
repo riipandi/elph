@@ -2,7 +2,7 @@
 # Set {app}/Cargo.toml and Cargo.lock to an exact semver.
 set -euo pipefail
 
-app="${APP:?APP is required (elph, eclaw, or owly)}"
+app="${APP:?APP is required (elph)}"
 target="${TARGET_VERSION:?TARGET_VERSION is required}"
 manifest="${app}/Cargo.toml"
 

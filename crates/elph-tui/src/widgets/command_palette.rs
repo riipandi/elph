@@ -158,7 +158,7 @@ pub fn close_palette_popup(id: WidgetId<impl ?Sized>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prompt::owly_builtin_commands;
+    use crate::prompt::elph_builtin_commands;
 
     #[test]
     fn palette_visible_requires_slash_without_space() {
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn forced_mode_filters_without_slash_prefix() {
-        let commands = owly_builtin_commands();
+        let commands = elph_builtin_commands();
         let state = CommandPaletteState {
             selected: 0,
             filter_key: String::new(),
@@ -182,20 +182,20 @@ mod tests {
 
         let filtered = CommandPaletteState {
             selected: 0,
-            filter_key: "ini".into(),
+            filter_key: "mod".into(),
             forced: true,
         };
-        let cmd = filtered.selected_command(&commands, "ini").unwrap();
-        assert_eq!(cmd.name, "init");
+        let cmd = filtered.selected_command(&commands, "mod").unwrap();
+        assert_eq!(cmd.name, "model");
     }
 
     #[test]
     fn slash_mode_uses_prefix_query() {
-        let commands = owly_builtin_commands();
+        let commands = elph_builtin_commands();
         let mut state = CommandPaletteState::default();
-        state.sync_filter("/up");
-        let cmd = state.selected_command(&commands, "/up").unwrap();
-        assert_eq!(cmd.name, "update");
+        state.sync_filter("/com");
+        let cmd = state.selected_command(&commands, "/com").unwrap();
+        assert_eq!(cmd.name, "compact");
     }
 
     #[test]

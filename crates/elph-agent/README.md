@@ -626,7 +626,7 @@ See [docs/agent-harness.md](./docs/agent-harness.md) for lifecycle, phases, save
 
 ## Elph Application Integration
 
-Beyond the agent runtime, `elph-agent` provides shared application scaffolding used by Elph binaries (`elph`, `eclaw`):
+Beyond the agent runtime, `elph-agent` provides shared application scaffolding used by the `elph` binary and other crates that depend on it:
 
 ### AgentBuilder
 

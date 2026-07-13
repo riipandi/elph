@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and package elph, eclaw, and/or owly for one Rust target.
+# Build and package elph for one Rust target.
 # Optional second argument or APP env limits the build to one application.
 set -euo pipefail
 
@@ -56,14 +56,14 @@ fi
 
 if [[ -n "$app_arg" ]]; then
     case "$app_arg" in
-    elph | eclaw | owly) apps=("$app_arg") ;;
+    elph) apps=("$app_arg") ;;
     *)
-        echo "unknown app: $app_arg (expected elph, eclaw, or owly)" >&2
+        echo "unknown app: $app_arg (expected elph)" >&2
         exit 1
         ;;
     esac
 else
-    apps=(eclaw elph owly)
+    apps=(elph)
 fi
 
 for pkg in "${apps[@]}"; do

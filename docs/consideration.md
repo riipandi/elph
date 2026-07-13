@@ -45,7 +45,7 @@ Two layers: tuie agent shell + rich diff/overlay components.
 
 | Verdict   | Item                                                                                                      | Rationale                                    |
 | --------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| **Keep**  | [tuie](https://crates.io/crates/tuie)                                                                     | Agent shell for elph and owly                |
+| **Keep**  | [tuie](https://crates.io/crates/tuie)                                                                     | Agent shell for elph                         |
 | **Keep**  | [pulldown-cmark](https://github.com/pulldown-cmark/pulldown-cmark)                                        | Markdown line rendering                      |
 | **Adopt** | [syntect](https://crates.io/crates/syntect) + [anstyle-syntect](https://crates.io/crates/anstyle-syntect) | Code-block highlighting                      |
 | **Defer** | anstyle-git, termimad                                                                                     | Git diff colors; full markdown TUI redundant |

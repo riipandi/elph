@@ -37,7 +37,7 @@ pub use keymap::{
 };
 pub use prompt::{
     AgentMode, ChatStreamState, PromptAction, PromptQueue, PromptState, ThinkingLevel, TranscriptStyle,
-    detect_prompt_prefix, elph_builtin_commands, is_quit_command, owly_builtin_commands, strip_submit_trigger,
+    detect_prompt_prefix, elph_builtin_commands, is_quit_command, strip_submit_trigger,
 };
 pub use runtime::{configure_runtime, start_shell};
 pub use shell::{AgentShell, ShellChromeData, ShellHost};

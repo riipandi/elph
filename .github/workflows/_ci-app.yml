@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       app:
-        description: Application to test (elph, eclaw, or owly)
+        description: Application to test (elph)
         required: true
         type: string
       sharedKeyPrefix:

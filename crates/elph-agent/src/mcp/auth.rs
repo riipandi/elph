@@ -4,7 +4,7 @@
 //! [`DEFAULT_AUTH_FILE_NAME`] = `auth.json`). Values are stored as AES-256-GCM
 //! ciphertext with the [`crate::mcp::crypto::ENC_PREFIX`] (`enc:`) prefix.
 //!
-//! The path is **not** hardcoded to `~/.elph` — hosts (elph, eclaw, owly, …) pass
+//! The path is **not** hardcoded to `~/.elph` — each host passes
 //! it via [`AuthStorePathBuilder`] / [`McpLoadOptions::auth_store_path`](super::config::McpLoadOptions).
 
 use std::collections::BTreeMap;
@@ -723,16 +723,16 @@ mod tests {
     #[test]
     fn path_builder_custom_file_and_explicit_path() {
         let path = AuthStorePathBuilder::new()
-            .base_dir("/home/u/.owly")
+            .base_dir("/home/u/.acme")
             .file_name("creds.json")
             .build();
-        assert_eq!(path, PathBuf::from("/home/u/.owly/creds.json"));
+        assert_eq!(path, PathBuf::from("/home/u/.acme/creds.json"));
 
         let path = AuthStorePathBuilder::new()
             .base_dir("/ignored")
-            .path("/var/lib/eclaw/auth.json")
+            .path("/var/lib/acme/auth.json")
             .build();
-        assert_eq!(path, PathBuf::from("/var/lib/eclaw/auth.json"));
+        assert_eq!(path, PathBuf::from("/var/lib/acme/auth.json"));
     }
 
     #[test]

@@ -167,6 +167,6 @@ mod tests {
     #[test]
     fn log_filename_matches_expected_pattern() {
         assert_eq!(log_filename("elph", "20240715_13"), "elph-20240715_13.jsonl");
-        assert_eq!(log_filename("eclaw", "20240715_00"), "eclaw-20240715_00.jsonl");
+        assert_eq!(log_filename("acme", "20240715_00"), "acme-20240715_00.jsonl");
     }
 }

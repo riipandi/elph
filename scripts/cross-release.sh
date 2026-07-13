@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the full release/ bundle for eclaw and elph (host-aware).
+# Build the full release/ bundle for elph (host-aware).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

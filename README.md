@@ -1,6 +1,6 @@
 # Elph
 
-Rust workspace for AI agent applications — coding agent, personal assistant, and documentation tooling.
+Rust workspace for AI agent applications — coding agent CLI, shared runtime libraries, and terminal UI components.
 
 > [!WARNING]
 > This project is under active development, so you may encounter bugs.<br/>
@@ -8,7 +8,7 @@ Rust workspace for AI agent applications — coding agent, personal assistant, a
 
 ## Quick Start
 
-Releases are tagged per app (`elph-v*`, `eclaw-v*`, `owly-v*`).
+Releases are tagged as `elph-v*`.
 See [GitHub Releases](https://github.com/riipandi/elph/releases).
 
 ### Installation
@@ -17,8 +17,6 @@ See [GitHub Releases](https://github.com/riipandi/elph/releases).
 
 ```sh
 curl -fsSL https://elph.space/elph/install.sh | bash
-curl -fsSL https://elph.space/eclaw/install.sh | bash
-curl -fsSL https://elph.space/owly/install.sh | bash
 ```
 
 Pin a version or install the latest pre-release:
@@ -28,26 +26,17 @@ curl -fsSL https://elph.space/elph/install.sh | bash -s -- --version 0.0.26
 curl -fsSL https://elph.space/elph/install.sh | bash -s -- --canary
 ```
 
-Install scripts resolve the **latest release per application** from GitHub (not the repo-wide
-`Latest` badge).
-
 **From crates.io** (requires [Rust >= 1.97][rust]):
 
 ```sh
 cargo install --locked elph
-cargo install --locked eclaw
-cargo install --locked owly
 ```
 
 **From source:**
 
 ```sh
 cargo install --path elph
-cargo install --path eclaw
-cargo install --path owly
 ```
-
-Per-app setup and usage: see each package README linked above.
 
 ## Development
 
@@ -77,6 +66,8 @@ Join the flow. Amplify your AI-powered workflow with Elph! 🚀
 
 Documentation lives in [`docs/`](./docs/). Start with [docs/README.md](./docs/README.md).
 
+Living implementation notes: [openwiki/quickstart.md](./openwiki/quickstart.md).
+
 ## Attribution
 
 Elph re-implements concepts from several open-source projects in Rust:
@@ -85,7 +76,6 @@ Elph re-implements concepts from several open-source projects in Rust:
 - **[OpenAI Codex CLI](https://github.com/openai/codex)** — Agent workflow inspiration: exit summary, goals, subagent orchestration (Apache 2.0).
 - **[memelord](https://github.com/glommer/memelord)** by Glauber Costa — `floppy` memory module port (MIT).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** by Tirth Kanani — `elph codegraph` integration (MIT).
-- **[OpenWiki](https://github.com/langchain-ai/openwiki)** by LangChain — `owly` crate port (MIT).
 
 See [NOTICE.md](./NOTICE.md) for details and license texts.
 
@@ -93,7 +83,7 @@ See [NOTICE.md](./NOTICE.md) for details and license texts.
 
 This workspace uses a mixed license model:
 
-- **Applications** (`elph`, `eclaw`, `owly`) — [Apache License 2.0][license-apache] ([LICENSE-APACHE](./LICENSE-APACHE))
+- **Application** (`elph`) — [Apache License 2.0][license-apache] ([LICENSE-APACHE](./LICENSE-APACHE))
 - **Libraries** (`elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — [MIT License][license-mit] ([LICENSE-MIT](./LICENSE-MIT))
 
 Third-party attributions and upstream license requirements are listed in [NOTICE.md](./NOTICE.md).

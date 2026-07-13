@@ -4,7 +4,7 @@
 # Continue only when Cargo.toml version is strictly greater than the latest release.
 set -euo pipefail
 
-app="${APP:?APP is required (elph, eclaw, or owly)}"
+app="${APP:?APP is required (elph)}"
 manifest="${app}/Cargo.toml"
 output="${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
 

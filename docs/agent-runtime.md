@@ -144,7 +144,7 @@ Distinct from the TUI `plan` agent mode above. `AgentHarness` supports Codex-sty
 4. When the assistant wraps a plan in `<proposed_plan>...</proposed_plan>`, the harness emits `PlanProposed` then `PlanConfirmationRequired`.
 5. Host calls `resolve_plan_confirmation(choice)` — `StayInPlan`, `Implement`, or `ImplementFresh` — before the agent edits files or runs shell commands.
 
-Elph TUI wiring for plan confirmation is deferred; Owly is out of scope for this flow.
+Elph TUI wiring for plan confirmation is deferred.
 
 ### Subagents (`elph-agent`)
 

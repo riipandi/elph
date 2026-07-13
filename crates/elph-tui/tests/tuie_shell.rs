@@ -3,7 +3,7 @@
 use elph_tui::{
     AgentMode, CommandPaletteState, GlobalChordHandler, PromptPane, ShellAction, ShellActionSink, ShellChromeData,
     SidebarPlaceholder, Theme, TranscriptPane, apply_tuie_theme, build_activity_widget, build_footer_widget,
-    owly_builtin_commands, palette_visible,
+    elph_builtin_commands, palette_visible,
 };
 use tuie::emulator::Emulator;
 use tuie::prelude::*;
@@ -109,7 +109,7 @@ fn transcript_and_prompt_compose_minimal_shell() {
 
 #[test]
 fn palette_lists_all_commands_in_forced_mode() {
-    let commands = owly_builtin_commands();
+    let commands = elph_builtin_commands();
     let state = CommandPaletteState {
         forced: true,
         ..Default::default()

@@ -453,7 +453,7 @@ impl DelegateWidget for AgentShell {
 mod tests {
     use super::*;
     use crate::diff::SlashCommand;
-    use crate::prompt::{PromptAction, owly_builtin_commands};
+    use crate::prompt::{PromptAction, elph_builtin_commands};
     use tuie::emulator::Emulator;
 
     struct MockHost {
@@ -477,7 +477,7 @@ mod tests {
                 },
                 lines: vec!["› hello".into()],
                 prompt: String::new(),
-                commands: owly_builtin_commands(),
+                commands: elph_builtin_commands(),
                 palette_open: false,
                 submitted: Vec::new(),
                 exit: false,

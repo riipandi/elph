@@ -292,8 +292,8 @@ allowed-tools: bash read grep
         println!("  - {}", dir);
     }
 
-    println!("\nUser directories for 'eclaw':");
-    for dir in resolve_user_skills_dirs("eclaw") {
+    println!("\nUser directories for 'acme':");
+    for dir in resolve_user_skills_dirs("acme") {
         println!("  - {}", dir);
     }
 

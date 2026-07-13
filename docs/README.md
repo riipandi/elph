@@ -64,7 +64,6 @@ Details and source maps: [openwiki/quickstart.md](../openwiki/quickstart.md).
 | MCP → agent loop            | Done        | `mcp_{server}__{tool}` registry          |
 | WASM extensions (phase 1)   | In progress | Slash commands; wasmtime Component Model |
 | `elph` crate layout         | Done        | `agent/`, `cli/`, `platform/`, `shell/`  |
-| Owly (agent + TUI)          | Done        | Documentation agent reference            |
 | Elph TUI + coding agent     | In progress | Shell wired; overlays partially stubbed  |
 | Elph slash commands         | In progress | Built-ins + `/goal`; extension commands  |
 | Prompt templates            | Planned     | Format and dirs designed                 |

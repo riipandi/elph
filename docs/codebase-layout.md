@@ -21,9 +21,7 @@ Implementation detail lives in [openwiki](../openwiki/quickstart.md); this docum
 | `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`                       |
 | `elph-core`    | Shared primitives: `floppy/` (`query/`, `store/`), `logger/`, `scaffold/`, `utils/`      |
 | `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/`                                |
-| `eclaw`        | Personal assistant binary: `cmd/`, `runtime/`, `server/`                                 |
 | `elph`         | Product shell: `agent/`, `shell/`, `cli/`, `platform/`, `extensions/`                    |
-| `owly`         | Docs agent: `session/`, `agent/`, `checkpoint/`, `shell/`, `tui/`                        |
 
 ## `elph` module map
 
@@ -128,7 +126,7 @@ crates/elph-core/src/floppy/
 | Kind                | Location                    | Examples                                                                              |
 | ------------------- | --------------------------- | ------------------------------------------------------------------------------------- |
 | Unit                | `#[cfg(test)]` in same file | `paths.rs` path helpers, `settings` merge                                             |
-| Integration         | `<crate>/tests/*.rs`        | `elph-agent` harness, `elph-tui` keys, owly docs                                      |
+| Integration         | `<crate>/tests/*.rs`        | `elph-agent` harness, `elph-tui` keys, `elph` CLI                                     |
 | App integration     | `elph/tests/*.rs`           | CLI `--help`, bootstrap dirs, SIGINT channel                                          |
 | Shared test helpers | `<crate>/tests/common/`     | `elph-agent/tests/common/`, `elph-ai/tests/common/` (`mod common;` in each test file) |
 

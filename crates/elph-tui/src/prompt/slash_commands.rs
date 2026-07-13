@@ -13,18 +13,3 @@ pub fn elph_builtin_commands() -> Vec<SlashCommand> {
         SlashCommand::new("settings", "Open settings"),
     ]
 }
-
-/// Built-in slash commands for the Owly documentation shell.
-pub fn owly_builtin_commands() -> Vec<SlashCommand> {
-    vec![
-        SlashCommand::new("help", "List commands"),
-        SlashCommand::new("init", "Initialize openwiki"),
-        SlashCommand::new("update", "Refresh documentation"),
-        SlashCommand::new("history", "List recent checkpoints"),
-        SlashCommand::new("restore", "Restore checkpoint (# or id)"),
-        SlashCommand::new("clear", "Reset thread"),
-        SlashCommand::new("name", "Show or set session title"),
-        SlashCommand::new("exit", "Quit"),
-        SlashCommand::new("quit", "Quit"),
-    ]
-}
