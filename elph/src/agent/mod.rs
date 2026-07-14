@@ -1,5 +1,6 @@
 //! Pi coding-agent port — session orchestration above `elph-agent`.
 
+mod diagnostics;
 mod events;
 // Slash handlers are stubbed until commands ship; keep /goal wiring ready.
 #[expect(dead_code)]

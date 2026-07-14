@@ -128,13 +128,13 @@ async fn main() -> anyhow::Result<()> {
                             println!();
                             println!("🔧 Calling: {tool_name}");
                             // Show query for websearch
-                            if tool_name == "websearch"
+                            if tool_name == "web_search"
                                 && let Some(query) = args.get("query").and_then(|q| q.as_str())
                             {
                                 println!("   Query: {query}");
                             }
                             // Show URL for webfetch
-                            if tool_name == "webfetch"
+                            if tool_name == "web_fetch"
                                 && let Some(url) = args.get("url").and_then(|u| u.as_str())
                             {
                                 println!("   URL: {url}");

@@ -40,6 +40,7 @@ futures-util = "0.3.32"
 git2 = { version = "0.21.0", features = ["cred"] }
 http = "1.4.2"
 httpmock = "0.7.0"
+htmd = "0.5.4"
 ignore = "0.4.28"
 image = "0.25.10"
 indicatif = { version = "0.18.6", default-features = false, features = ["unicode-width"] }

@@ -68,9 +68,9 @@ fn main() {
     println!("\n=== Tool Policy ===");
     let policy = McpPolicyConfig {
         default: McpPolicyAction::Allow,
-        require_approval: vec!["filesystem__*".into(), "edit".into()],
+        require_approval: vec!["filesystem__*".into(), "edit_file".into()],
         deny: vec!["dangerous__*".into()],
-        allow: vec!["read".into(), "grep".into()],
+        allow: vec!["read_file".into(), "grep".into()],
     };
 
     println!("  default:        {:?}", policy.default);

@@ -12,12 +12,12 @@ use crate::tools::common::{check_aborted, ensure_parent_dir, file_error, resolve
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_write_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+pub fn create_write_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
-            name: "write".into(),
-            description: "Write content to a file. Creates parent directories when needed.".into(),
+            name: "write_file".into(),
+            description: "Creates a new file or overwrites an existing file with completely new contents. Creates parent directories when needed.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -27,7 +27,7 @@ pub fn create_write_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "required": ["path", "content"]
             }),
         },
-        "write",
+        "write_file",
         move |_, args| {
             let env = env_for_tool.clone();
             Box::pin(async move { execute_write(env, args, None).await })

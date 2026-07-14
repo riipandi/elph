@@ -12,12 +12,12 @@ use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_pa
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_edit_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
-            name: "edit".into(),
-            description: "Replace text in a file. The old_string must match exactly once.".into(),
+            name: "edit_file".into(),
+            description: "Edits files by replacing specific text with new content. The old_string must match exactly once.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -28,7 +28,7 @@ pub fn create_edit_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "required": ["path", "old_string", "new_string"]
             }),
         },
-        "edit",
+        "edit_file",
         move |_, args| {
             let env = env_for_tool.clone();
             Box::pin(async move { execute_edit(env, args, None).await })

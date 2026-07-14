@@ -14,13 +14,13 @@ use crate::tools::common::{check_aborted, is_probably_image, read_file_text, res
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_read_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
-            name: "read".into(),
+            name: "read_file".into(),
             description: format!(
-                "Read the contents of a file. Output is truncated to {DEFAULT_MAX_LINES} lines or {}/KB.",
+                "Reads the content of a specified file in the project. Output is truncated to {DEFAULT_MAX_LINES} lines or {}/KB.",
                 DEFAULT_MAX_BYTES / 1024
             ),
             parameters: json!({
@@ -33,7 +33,7 @@ pub fn create_read_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "required": ["path"]
             }),
         },
-        "read",
+        "read_file",
         move |_, args| {
             let env = env_for_tool.clone();
             Box::pin(async move { execute_read(env, args, None).await })

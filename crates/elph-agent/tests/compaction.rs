@@ -356,7 +356,7 @@ fn find_cut_point_and_turn_start_edge_cases() {
         None,
         AgentMessage::Llm(Box::new(Message::ToolResult {
             tool_call_id: "call-1".to_string(),
-            tool_name: "read".to_string(),
+            tool_name: "read_file".to_string(),
             content: vec![ContentBlock::Text {
                 text: "tool output".to_string(),
             }],
@@ -398,7 +398,7 @@ fn estimate_tokens_across_supported_message_roles() {
     let assistant_with_thinking_and_tool = AgentMessage::Llm(Box::new(Message::Assistant(faux_assistant_message(
         vec![
             faux_thinking("thinking"),
-            AssistantContentBlock::ToolCall(ToolCall::new("call-1", "read", json!({ "path": "file.ts" }))),
+            AssistantContentBlock::ToolCall(ToolCall::new("call-1", "read_file", json!({ "path": "file.ts" }))),
         ],
         None,
     ))));
@@ -411,7 +411,7 @@ fn estimate_tokens_across_supported_message_roles() {
     });
     let tool_result_with_image = AgentMessage::Llm(Box::new(Message::ToolResult {
         tool_call_id: "call-1".to_string(),
-        tool_name: "read".to_string(),
+        tool_name: "read_file".to_string(),
         content: vec![
             ContentBlock::Text {
                 text: "tool text".to_string(),
@@ -638,7 +638,7 @@ fn prepare_compaction_uses_previous_summary() {
 fn prepare_compaction_split_turn_includes_prior_file_ops() {
     let entries = vec![
         message_entry("u1", None, user_message("user msg 1")),
-        message_entry("a1", Some("u1"), assistant_with_tool("write", "written.ts")),
+        message_entry("a1", Some("u1"), assistant_with_tool("write_file", "written.ts")),
         compaction_entry(
             "c1",
             Some("a1"),
@@ -737,7 +737,7 @@ fn serialize_conversation_truncates_long_tool_results() {
     let long_content = "x".repeat(5000);
     let messages = vec![Message::ToolResult {
         tool_call_id: "tc1".to_string(),
-        tool_name: "read".to_string(),
+        tool_name: "read_file".to_string(),
         content: vec![ContentBlock::Text { text: long_content }],
         details: None,
         added_tool_names: None,
@@ -752,9 +752,9 @@ fn serialize_conversation_truncates_long_tool_results() {
 #[test]
 fn file_ops_tracking_and_formatting() {
     let mut file_ops = create_file_ops();
-    extract_file_ops_from_message(&assistant_with_tool("read", "/a.rs"), &mut file_ops);
-    extract_file_ops_from_message(&assistant_with_tool("edit", "/b.rs"), &mut file_ops);
-    extract_file_ops_from_message(&assistant_with_tool("write", "/b.rs"), &mut file_ops);
+    extract_file_ops_from_message(&assistant_with_tool("read_file", "/a.rs"), &mut file_ops);
+    extract_file_ops_from_message(&assistant_with_tool("edit_file", "/b.rs"), &mut file_ops);
+    extract_file_ops_from_message(&assistant_with_tool("write_file", "/b.rs"), &mut file_ops);
     let (read_files, modified_files) = compute_file_lists(&file_ops);
     assert_eq!(read_files, vec!["/a.rs".to_string()]);
     assert_eq!(modified_files, vec!["/b.rs".to_string()]);
@@ -1089,7 +1089,7 @@ async fn compact_generates_summary_with_faux_provider() {
 async fn compact_returns_result_with_file_details() {
     let entries = vec![
         message_entry("u1", None, user_message("read a file")),
-        message_entry("a1", Some("u1"), assistant_with_tool("read", "src/index.ts")),
+        message_entry("a1", Some("u1"), assistant_with_tool("read_file", "src/index.ts")),
         message_entry("u2", Some("a1"), user_message("continue")),
         message_entry(
             "a2",

@@ -109,20 +109,28 @@ impl BuiltinToolsBuilder {
 
     pub fn build(self) -> Vec<AgentTool> {
         let mut tools = vec![
-            #[cfg(feature = "tools-read")]
-            crate::tools::create_read_tool(self.env.clone()),
+            #[cfg(feature = "tools-read-file")]
+            crate::tools::create_read_file_tool(self.env.clone()),
             #[cfg(feature = "tools-bash")]
             crate::tools::create_bash_tool(self.env.clone()),
-            #[cfg(feature = "tools-edit")]
-            crate::tools::create_edit_tool(self.env.clone()),
-            #[cfg(feature = "tools-write")]
-            crate::tools::create_write_tool(self.env.clone()),
+            #[cfg(feature = "tools-edit-file")]
+            crate::tools::create_edit_file_tool(self.env.clone()),
+            #[cfg(feature = "tools-write-file")]
+            crate::tools::create_write_file_tool(self.env.clone()),
+            #[cfg(feature = "tools-create-dir")]
+            crate::tools::create_create_dir_tool(self.env.clone()),
+            #[cfg(feature = "tools-copy-path")]
+            crate::tools::create_copy_path_tool(self.env.clone()),
+            #[cfg(feature = "tools-delete-path")]
+            crate::tools::create_delete_path_tool(self.env.clone()),
+            #[cfg(feature = "tools-move-path")]
+            crate::tools::create_move_path_tool(self.env.clone()),
             #[cfg(feature = "tools-grep")]
             crate::tools::create_grep_tool(self.env.clone()),
-            #[cfg(feature = "tools-find")]
-            crate::tools::create_find_tool(self.env.clone()),
-            #[cfg(feature = "tools-ls")]
-            crate::tools::create_ls_tool(self.env.clone()),
+            #[cfg(feature = "tools-find-path")]
+            crate::tools::create_find_path_tool(self.env.clone()),
+            #[cfg(feature = "tools-list-dir")]
+            crate::tools::create_list_dir_tool(self.env.clone()),
         ];
         if self.include_web {
             #[cfg(feature = "tools-web")]
@@ -214,9 +222,9 @@ mod tests {
         let env = Arc::new(LocalExecutionEnv::new(PathBuf::from(".").as_path()));
         let tools = BuiltinToolsBuilder::all(env).build();
         let names: Vec<_> = tools.iter().map(|tool| tool.name().to_string()).collect();
-        assert!(names.contains(&"read".to_string()));
+        assert!(names.contains(&"read_file".to_string()));
         assert!(names.contains(&"bash".to_string()));
         assert!(names.contains(&"grep".to_string()));
-        assert!(names.contains(&"websearch".to_string()));
+        assert!(names.contains(&"web_search".to_string()));
     }
 }

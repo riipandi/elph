@@ -413,7 +413,7 @@ async fn run_agent_loop_prepares_tool_arguments_for_validation() {
     two_step_tool_then_text_responses(
         &faux,
         vec![faux_tool_call(
-            "edit",
+            "edit_file",
             json!({ "oldText": "before", "newText": "after" }),
             Some("tool-1".into()),
         )],
@@ -423,7 +423,7 @@ async fn run_agent_loop_prepares_tool_arguments_for_validation() {
     let executed_capture = executed.clone();
     let tool = AgentTool {
         tool: Tool {
-            name: "edit".into(),
+            name: "edit_file".into(),
             description: "Edit tool".into(),
             parameters: json!({
                 "type": "object",

@@ -18,12 +18,12 @@ use crate::types::{AgentTool, AgentToolResult};
 
 const DEFAULT_LIMIT: usize = 1000;
 
-pub fn create_ls_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
-            name: "ls".into(),
-            description: "List directory contents.".into(),
+            name: "list_dir".into(),
+            description: "Lists files and directories in a given path, providing an overview of filesystem contents.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -32,15 +32,15 @@ pub fn create_ls_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 }
             }),
         },
-        "ls",
+        "list_dir",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_ls(env, args, None).await })
+            Box::pin(async move { execute_list_dir(env, args, None).await })
         },
     )
 }
 
-async fn execute_ls(
+async fn execute_list_dir(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,

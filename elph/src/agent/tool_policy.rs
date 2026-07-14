@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use super::events::AgentUiEvent;
 use super::events::{ToolApprovalChoice, ToolApprovalRequest};
 
-const READ_ONLY_TOOLS: &[&str] = &["read", "grep", "find", "ls", "webfetch", "websearch"];
+const READ_ONLY_TOOLS: &[&str] = &["read_file", "grep", "find_path", "list_dir", "web_fetch", "web_search", "diagnostics"];
 
 pub struct AgentModePolicy {
     pub mode: AgentMode,

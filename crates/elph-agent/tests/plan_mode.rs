@@ -4,9 +4,9 @@ mod common;
 use std::sync::Arc;
 
 use elph_agent::{
-    AgentHarness, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessResources, AgentThinkingLevel, CollaborationMode,
-    InMemorySessionStorage, LocalExecutionEnv, PlanConfirmationChoice, QueueMode, Session, SystemPrompt,
-    create_core_tools, create_read_only_tools, extract_proposed_plan, plan_mode_blocks_tool,
+    AgentHarness, AgentHarnessEvent, AgentHarnessOptions, AgentHarnessResources, AgentThinkingLevel, BuiltinToolsBuilder,
+    CollaborationMode, InMemorySessionStorage, LocalExecutionEnv, PlanConfirmationChoice, QueueMode, Session,
+    SystemPrompt, create_search_tools, extract_proposed_plan, plan_mode_blocks_tool,
 };
 use elph_ai::{FauxResponseStep, faux_assistant_message, faux_text};
 use tempfile::TempDir;
@@ -25,8 +25,8 @@ fn extract_proposed_plan_parses_block() {
 
 #[test]
 fn plan_mode_blocks_write_tool() {
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write"));
-    assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write"));
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file"));
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write_file"));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -34,7 +34,7 @@ async fn harness_enter_plan_mode_filters_active_tools() {
     let (faux, models) = common::new_faux();
     let (_temp, env) = test_env();
     let session = Session::new(InMemorySessionStorage::new(None).expect("session"));
-    let tools = create_core_tools(env.clone());
+    let tools = BuiltinToolsBuilder::all(env.clone()).build();
 
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,
@@ -64,8 +64,8 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         .into_iter()
         .map(|t| t.name().to_string())
         .collect();
-    assert!(active.contains(&"read".to_string()));
-    assert!(!active.contains(&"write".to_string()));
+    assert!(active.contains(&"read_file".to_string()));
+    assert!(!active.contains(&"write_file".to_string()));
     assert!(!active.contains(&"bash".to_string()));
 }
 
@@ -83,7 +83,7 @@ async fn harness_emits_plan_confirmation_events() {
 
     let (_temp, env) = test_env();
     let session = Session::new(InMemorySessionStorage::new(None).expect("session"));
-    let tools = create_read_only_tools(env.clone());
+    let tools = create_search_tools(env.clone());
 
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,

@@ -158,7 +158,7 @@ async fn load_skills_with_optional_fields() {
         .expect("create dir");
     env.write_file(
         ".agents/skills/example/SKILL.md",
-        "---\nname: example\ndescription: Example skill\nlicense: MIT\ncompatibility: Requires bash\nmetadata:\n  author: test\n  version: '1.0'\nallowed-tools: bash read write\n---\nUse this skill.",
+        "---\nname: example\ndescription: Example skill\nlicense: MIT\ncompatibility: Requires bash\nmetadata:\n  author: test\n  version: '1.0'\nallowed-tools: bash read_file write_file\n---\nUse this skill.",
     )
     .await
     .expect("write file");
@@ -176,7 +176,7 @@ async fn load_skills_with_optional_fields() {
     assert_eq!(metadata.get("version").unwrap(), "1.0");
     assert_eq!(
         result.skills[0].allowed_tools,
-        Some(vec!["bash".to_string(), "read".to_string(), "write".to_string()])
+        Some(vec!["bash".to_string(), "read_file".to_string(), "write_file".to_string()])
     );
 }
 

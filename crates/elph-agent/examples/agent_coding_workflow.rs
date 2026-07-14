@@ -17,7 +17,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use parking_lot::Mutex;
 use std::time::Duration;
 
-use elph_agent::{Agent, AgentEvent, AgentOptions, LocalExecutionEnv, PartialAgentState, create_core_tools};
+use elph_agent::{Agent, AgentEvent, AgentOptions, LocalExecutionEnv, PartialAgentState, create_edit_tools};
 use elph_ai::{Message, StopReason, builtin_models, get_builtin_model};
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
     // ── Create execution environment ──
     let cwd = std::env::current_dir()?;
     let env = Arc::new(LocalExecutionEnv::new(&cwd));
-    let agent_tools = create_core_tools(env);
+    let agent_tools = create_edit_tools(env);
 
     // ── Build agent with coding-focused system prompt ──
     let agent = Agent::new(AgentOptions {
@@ -145,7 +145,7 @@ async fn main() -> anyhow::Result<()> {
                             }
                             let count = tool_calls.fetch_add(1, Ordering::SeqCst) + 1;
                             let log_entry = match tool_name.as_str() {
-                                "read" => {
+                                "read_file" => {
                                     let path = args.get("path").and_then(|p| p.as_str()).unwrap_or("?");
                                     format!("[{count}] READ {path}")
                                 }
@@ -153,11 +153,11 @@ async fn main() -> anyhow::Result<()> {
                                     let cmd = args.get("command").and_then(|c| c.as_str()).unwrap_or("?");
                                     format!("[{count}] BASH {cmd}")
                                 }
-                                "edit" => {
+                                "edit_file" => {
                                     let path = args.get("path").and_then(|p| p.as_str()).unwrap_or("?");
                                     format!("[{count}] EDIT {path}")
                                 }
-                                "write" => {
+                                "write_file" => {
                                     let path = args.get("path").and_then(|p| p.as_str()).unwrap_or("?");
                                     format!("[{count}] WRITE {path}")
                                 }

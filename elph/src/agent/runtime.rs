@@ -46,6 +46,7 @@ pub async fn create_coding_session_with_events(
 
     let resources = load_resources(options.paths, options.cwd);
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
+    tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
     let mcp_config = crate::platform::mcp::load_config(options.paths)?;
     let auth_store_path = options.paths.auth_store_path();

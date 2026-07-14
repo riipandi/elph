@@ -4,12 +4,13 @@ use super::CollaborationMode;
 
 /// Built-in tools allowed while planning (read-only exploration).
 const PLAN_MODE_TOOLS: &[&str] = &[
-    "read",
+    "read_file",
     "grep",
-    "find",
-    "ls",
-    "webfetch",
-    "websearch",
+    "find_path",
+    "list_dir",
+    "web_fetch",
+    "web_search",
+    "diagnostics",
     "ask_text",
     "ask_select",
     "ask_confirm",
@@ -17,9 +18,13 @@ const PLAN_MODE_TOOLS: &[&str] = &[
 
 /// Tools that mutate workspace state or spawn work — blocked in Plan mode.
 const MUTATING_TOOLS: &[&str] = &[
-    "write",
-    "edit",
+    "write_file",
+    "edit_file",
     "bash",
+    "create_dir",
+    "copy_path",
+    "delete_path",
+    "move_path",
     "spawn_agent",
     "send_message",
     "followup_task",
@@ -100,9 +105,14 @@ mod tests {
 
     #[test]
     fn plan_mode_filters_mutating_tools() {
-        let all = vec!["read".into(), "bash".into(), "write".into(), "grep".into()];
+        let all = vec![
+            "read_file".into(),
+            "bash".into(),
+            "write_file".into(),
+            "grep".into(),
+        ];
         let filtered = filter_active_tools(CollaborationMode::Plan, &all);
-        assert_eq!(filtered, vec!["read".to_string(), "grep".to_string()]);
+        assert_eq!(filtered, vec!["read_file".to_string(), "grep".to_string()]);
     }
 
     #[test]

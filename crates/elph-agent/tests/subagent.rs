@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use elph_agent::{
     AgentControl, AgentGraphStore, AgentHarnessResources, AgentHarnessStreamOptions, LocalExecutionEnv,
-    SubagentBootstrap, SubagentLimits, SubagentSpawnConfig, SubagentStatus, create_read_only_tools,
+    SubagentBootstrap, SubagentLimits, SubagentSpawnConfig, SubagentStatus, create_search_tools,
 };
 use elph_agent::{Migration, ensure_database};
 use elph_ai::{FauxResponseStep, StopReason, faux_assistant_message, faux_text};
@@ -34,7 +34,7 @@ async fn spawn_and_list_subagents_with_session_dir() {
         Some(StopReason::Stop),
     ))]);
     let stream_fn = common::faux_stream_fn(&faux);
-    let tools = create_read_only_tools(env.clone());
+    let tools = create_search_tools(env.clone());
 
     let sessions_root = temp.path().join("sessions").to_string_lossy().to_string();
     std::fs::create_dir_all(&sessions_root).expect("sessions root");

@@ -1,4 +1,4 @@
-//! `websearch` agent tool.
+//! `web_search` agent tool.
 
 use serde_json::{Value, json};
 
@@ -15,11 +15,11 @@ use super::ranking::{Engine, format_results, ordered_try_list};
 #[cfg(feature = "obscura")]
 use super::obscura;
 
-pub fn create_websearch_tool() -> AgentTool {
+pub fn create_web_search_tool() -> AgentTool {
     simple_tool(
         Tool {
-            name: "websearch".into(),
-            description: "Search the web using multiple search engines with automatic ranking and fallback. Supports DuckDuckGo, Brave, Exa, FireCrawl (keyless), Jina, Perplexity, Tavily, and SerpAPI. API keys are read from environment variables; DuckDuckGo and Obscura scraping are used as fallbacks.".into(),
+            name: "web_search".into(),
+            description: "Searches the web for information, providing results with snippets and links from relevant web pages. Supports multiple engines with automatic ranking and fallback. Useful for accessing real-time information.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -39,7 +39,7 @@ pub fn create_websearch_tool() -> AgentTool {
                 "required": ["query"]
             }),
         },
-        "websearch",
+        "web_search",
         |_, args| Box::pin(async move { execute_websearch(args, None).await }),
     )
 }

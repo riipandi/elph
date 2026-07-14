@@ -114,30 +114,38 @@ pub use skills::{
     SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
     load_sourced_skills_with_options,
 };
-#[cfg(any(feature = "tools-core", feature = "tools-explore"))]
+#[cfg(any(feature = "tools-edit-tools", feature = "tools-search"))]
 pub use tools::create_all_tools;
-#[cfg(any(feature = "tools-core", feature = "tools-explore", feature = "tools-web"))]
+#[cfg(any(feature = "tools-edit-tools", feature = "tools-search", feature = "tools-web"))]
 pub use tools::create_all_tools_with_web;
 #[cfg(feature = "tools-bash")]
 pub use tools::create_bash_tool;
-#[cfg(feature = "tools-core")]
-pub use tools::create_core_tools;
-#[cfg(feature = "tools-edit")]
-pub use tools::create_edit_tool;
-#[cfg(feature = "tools-find")]
-pub use tools::create_find_tool;
+#[cfg(feature = "tools-edit-tools")]
+pub use tools::create_edit_tools;
+#[cfg(feature = "tools-edit-file")]
+pub use tools::create_edit_file_tool;
+#[cfg(feature = "tools-find-path")]
+pub use tools::create_find_path_tool;
 #[cfg(feature = "tools-grep")]
 pub use tools::create_grep_tool;
-#[cfg(feature = "tools-ls")]
-pub use tools::create_ls_tool;
+#[cfg(feature = "tools-list-dir")]
+pub use tools::create_list_dir_tool;
 #[cfg(feature = "tools-multi-agent")]
 pub use tools::create_multi_agent_tools;
-#[cfg(feature = "tools-explore")]
-pub use tools::create_read_only_tools;
-#[cfg(feature = "tools-read")]
-pub use tools::create_read_tool;
-#[cfg(feature = "tools-write")]
-pub use tools::create_write_tool;
+#[cfg(feature = "tools-search")]
+pub use tools::create_search_tools;
+#[cfg(feature = "tools-read-file")]
+pub use tools::create_read_file_tool;
+#[cfg(feature = "tools-write-file")]
+pub use tools::create_write_file_tool;
+#[cfg(feature = "tools-create-dir")]
+pub use tools::create_create_dir_tool;
+#[cfg(feature = "tools-copy-path")]
+pub use tools::create_copy_path_tool;
+#[cfg(feature = "tools-delete-path")]
+pub use tools::create_delete_path_tool;
+#[cfg(feature = "tools-move-path")]
+pub use tools::create_move_path_tool;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::{
     Aes256Key, AuthStoreFile, AuthStorePathBuilder, DEFAULT_AUTH_FILE_NAME, DEFAULT_AUTH_KEY_FILE_NAME,
@@ -161,6 +169,6 @@ pub use tools::mcp::{
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-web")]
-pub use tools::{create_web_tools, create_webfetch_tool, create_websearch_tool};
+pub use tools::{create_web_tools, create_web_fetch_tool, create_web_search_tool};
 pub use tools::{echo_tool, simple_tool};
 pub use types::*;

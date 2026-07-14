@@ -30,13 +30,13 @@ pub fn extract_file_ops_from_message(message: &AgentMessage, file_ops: &mut File
             continue;
         };
         match tool_call.name.as_str() {
-            "read" => {
+            "read_file" => {
                 file_ops.read.insert(path.to_string());
             }
-            "write" => {
+            "write_file" => {
                 file_ops.written.insert(path.to_string());
             }
-            "edit" => {
+            "edit_file" => {
                 file_ops.edited.insert(path.to_string());
             }
             _ => {}

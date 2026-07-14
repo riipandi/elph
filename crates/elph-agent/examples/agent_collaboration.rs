@@ -50,10 +50,10 @@ fn main() {
     // ── 4. Tool filtering ──
     println!("\n=== Tool Filtering ===");
     let tool_names: Vec<String> = vec![
-        "read".into(),
+        "read_file".into(),
         "bash".into(),
-        "edit".into(),
-        "write".into(),
+        "edit_file".into(),
+        "write_file".into(),
         "mcp_server__search".into(),
         "multi_agent__delegate".into(),
         "create_goal".into(),
@@ -85,9 +85,9 @@ fn main() {
     // ── 6. plan_mode_block_reason ──
     println!("\n=== Block Reasons ===");
     println!("  bash: {:?}", plan_mode_block_reason("bash"));
-    println!("  edit: {:?}", plan_mode_block_reason("edit"));
-    println!("  read: {:?}", plan_mode_block_reason("read"));
-    println!("  write: {:?}", plan_mode_block_reason("write"));
+    println!("  edit_file: {:?}", plan_mode_block_reason("edit_file"));
+    println!("  read_file: {:?}", plan_mode_block_reason("read_file"));
+    println!("  write_file: {:?}", plan_mode_block_reason("write_file"));
 
     // ── 7. extract_proposed_plan ──
     println!("\n=== Extract Proposed Plan ===");

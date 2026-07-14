@@ -15,12 +15,12 @@ use crate::types::{AgentTool, AgentToolResult};
 
 const DEFAULT_LIMIT: usize = 1000;
 
-pub fn create_find_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
+pub fn create_find_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
     simple_tool(
         Tool {
-            name: "find".into(),
-            description: "Search for files by glob pattern.".into(),
+            name: "find_path".into(),
+            description: "Quickly finds files by matching glob patterns (like '*.rs'), returning matching file paths alphabetically.".into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
@@ -31,15 +31,15 @@ pub fn create_find_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "required": ["pattern"]
             }),
         },
-        "find",
+        "find_path",
         move |_, args| {
             let env = env_for_tool.clone();
-            Box::pin(async move { execute_find(env, args, None).await })
+            Box::pin(async move { execute_find_path(env, args, None).await })
         },
     )
 }
 
-async fn execute_find(
+async fn execute_find_path(
     env: Arc<LocalExecutionEnv>,
     args: Value,
     signal: Option<CancellationToken>,

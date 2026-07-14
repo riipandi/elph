@@ -82,7 +82,23 @@ pub fn strip_html(s: &str) -> String {
 }
 
 pub fn html_to_text(data: &str) -> String {
-    let clean = strip_html(data);
+    match htmd::convert(data) {
+        Ok(markdown) => {
+            let trimmed = markdown.trim();
+            if trimmed.is_empty() {
+                // Fallback to plain text extraction if conversion yields nothing.
+                strip_html_plain(data)
+            } else {
+                trimmed.to_string()
+            }
+        }
+        Err(_) => strip_html_plain(data),
+    }
+}
+
+/// Fallback: strip HTML tags and decode entities to plain text.
+fn strip_html_plain(s: &str) -> String {
+    let clean = strip_html(s);
     clean
         .replace("\r\n", "\n")
         .replace('\r', "\n")

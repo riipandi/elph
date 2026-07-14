@@ -2,7 +2,7 @@
 
 use elph_agent::tools::web::engines::parse_ddg_html;
 use elph_agent::tools::web::ranking::{Engine, ordered_try_list};
-use elph_agent::{WebSearchEngine, create_webfetch_tool, create_websearch_tool};
+use elph_agent::{WebSearchEngine, create_web_fetch_tool, create_web_search_tool};
 
 #[test]
 fn ordered_try_list_puts_duckduckgo_last() {
@@ -23,10 +23,10 @@ fn parse_ddg_html_extracts_results() {
 
 #[test]
 fn web_tools_are_registered() {
-    let search = create_websearch_tool();
-    let fetch = create_webfetch_tool();
-    assert_eq!(search.tool.name, "websearch");
-    assert_eq!(fetch.tool.name, "webfetch");
+    let search = create_web_search_tool();
+    let fetch = create_web_fetch_tool();
+    assert_eq!(search.tool.name, "web_search");
+    assert_eq!(fetch.tool.name, "web_fetch");
 }
 
 #[test]

@@ -20,18 +20,22 @@ default = ["mcp", "extensions"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 obscura = ["dep:obscura"]
-tools-read = []
+tools-read-file = []
 tools-bash = []
-tools-edit = []
-tools-write = []
+tools-edit-file = []
+tools-write-file = []
+tools-create-dir = []
+tools-copy-path = []
+tools-delete-path = []
+tools-move-path = []
 tools-grep = ["dep:fff-search"]
-tools-find = ["dep:fff-search"]
-tools-ls = ["dep:walkdir"]
+tools-find-path = ["dep:fff-search"]
+tools-list-dir = ["dep:walkdir"]
 tools-web = []
 tools-multi-agent = []
-tools-core = ["tools-read", "tools-bash", "tools-edit", "tools-write"]
-tools-explore = ["tools-read", "tools-grep", "tools-find", "tools-ls"]
-builtin-tools = ["tools-core", "tools-explore", "tools-web", "tools-multi-agent"]
+tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-dir"]
+tools-edit-tools = ["tools-edit-file", "tools-write-file", "tools-bash", "tools-create-dir", "tools-copy-path", "tools-delete-path", "tools-move-path"]
+builtin-tools = ["tools-edit-tools", "tools-search", "tools-web", "tools-multi-agent"]
 tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing", "elph-core/tracing"]
 # obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
@@ -49,6 +53,7 @@ fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
 http.workspace = true
+htmd.workspace = true
 ignore.workspace = true
 indicatif.workspace = true
 jsonschema.workspace = true
@@ -139,7 +144,7 @@ path = "examples/agent_compaction.rs"
 [[example]]
 name = "agent_coding_workflow"
 path = "examples/agent_coding_workflow.rs"
-required-features = ["tools-core"]
+required-features = ["tools-edit-tools"]
 
 [[example]]
 name = "agent_skills"
