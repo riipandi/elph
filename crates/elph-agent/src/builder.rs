@@ -136,6 +136,8 @@ impl BuiltinToolsBuilder {
             #[cfg(feature = "tools-web")]
             tools.extend(crate::tools::create_web_tools());
         }
+        // list_available_tools is a meta tool that describes all other tools.
+        tools.push(crate::tools::create_list_available_tools(&tools));
         tools
     }
 }

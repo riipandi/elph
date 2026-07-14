@@ -23,7 +23,8 @@ pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "list_dir".into(),
-            description: "Lists files and directories in a given path, providing an overview of filesystem contents.".into(),
+            description: "Lists files and directories in a given path, providing an overview of filesystem contents."
+                .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {

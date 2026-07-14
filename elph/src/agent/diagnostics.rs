@@ -4,7 +4,6 @@
 //! similar lints) to surface compile-time diagnostics. It does not mutate the
 //! workspace, so it belongs in the read-only / "Read & Search" tool group.
 
-
 use elph_agent::AgentTool;
 use elph_ai::Tool;
 use serde_json::{Value, json};

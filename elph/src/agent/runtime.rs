@@ -48,6 +48,10 @@ pub async fn create_coding_session_with_events(
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
+    // Create shared UI event channel for ask_user tool and session.
+    let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
+    tools.push(super::ask_user::create_ask_user_tool(ui_tx.clone()));
+
     let mcp_config = crate::platform::mcp::load_config(options.paths)?;
     let auth_store_path = options.paths.auth_store_path();
     let load_options = McpLoadOptions {
@@ -123,7 +127,7 @@ pub async fn create_coding_session_with_events(
 
     let harness = Arc::new(harness);
 
-    let (session, ui_rx) = CodingAgentSession::new(CodingAgentSessionParams {
+    let session = CodingAgentSession::new(CodingAgentSessionParams {
         harness: harness.clone(),
         session_manager,
         session_id,
@@ -132,6 +136,7 @@ pub async fn create_coding_session_with_events(
         show_thinking: options.settings.show_thinking,
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
+        ui_tx,
     })
     .await?;
 

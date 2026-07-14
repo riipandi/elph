@@ -2,7 +2,7 @@
 
 Elph embeds an MCP **client** (via [rmcp](https://crates.io/crates/rmcp)) so the agent can call tools exposed by external MCP servers. The MCP module is feature-gated behind `mcp` (enabled by default).
 
-**Source**: `/crates/elph-agent/src/mcp/`
+**Source**: `/crates/elph-agent/src/tools/mcp/`
 
 ## Architecture
 
@@ -20,7 +20,7 @@ McpServerSession (per-server state)
 
 ## Configuration
 
-**File**: `/crates/elph-agent/src/mcp/config.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/config.rs`
 
 MCP servers are configured via JSON (the Elph product uses `~/.elph/mcp.json`):
 
@@ -62,7 +62,7 @@ Key config types:
 
 ## Transports
 
-**File**: `/crates/elph-agent/src/mcp/client.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/client.rs`
 
 Three transport types are supported:
 
@@ -81,7 +81,7 @@ Connection functions:
 
 ## Tool Registry
 
-**File**: `/crates/elph-agent/src/mcp/registry.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/registry.rs`
 
 The `McpToolRegistry` manages:
 
@@ -101,7 +101,7 @@ Key types:
 
 ## Sessions & Connection Pool
 
-**File**: `/crates/elph-agent/src/mcp/session.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/session.rs`
 
 | Type                                                                                           | Purpose |
 | ---------------------------------------------------------------------------------------------- | ------- |
@@ -112,7 +112,7 @@ Key types:
 
 ### OAuth 2.1
 
-**File**: `/crates/elph-agent/src/mcp/auth.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/auth.rs`
 
 Supports OAuth 2.1 with PKCE for remote MCP servers:
 
@@ -125,7 +125,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ### Auth Store
 
-**File**: `/crates/elph-agent/src/mcp/auth.rs` (within)
+**File**: `/crates/elph-agent/src/tools/mcp/auth.rs` (within)
 
 - `FileCredentialStore` — Encrypted file-based credential storage
 - `FileCredentialStoreBuilder` — Builder with key path, auth file path
@@ -134,7 +134,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ### Credential Encryption
 
-**File**: `/crates/elph-agent/src/mcp/crypto.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/crypto.rs`
 
 - `Aes256Key` — AES-256-GCM encryption key
 - `encrypt_async()` / `encrypt_string_async()` — Encrypt data
@@ -143,7 +143,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ### Auth Resolution
 
-**File**: `/crates/elph-agent/src/mcp/auth_resolve.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/auth_resolve.rs`
 
 - `McpAuthSource` — Auth source enum (none, env, oauth, encrypted)
 - `McpAuthSourceReport` — Report of all auth sources
@@ -151,7 +151,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ### Auth Conflict Policy
 
-**File**: `/crates/elph-agent/src/mcp/config.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/config.rs`
 
 `McpAuthConflictPolicy` — How to handle auth conflicts:
 
@@ -161,7 +161,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ## Tool Policy
 
-**File**: `/crates/elph-agent/src/mcp/policy.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/policy.rs`
 
 | Type                                                                | Purpose |
 | ------------------------------------------------------------------- | ------- |
@@ -172,7 +172,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ## Validation
 
-**File**: `/crates/elph-agent/src/mcp/validate.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/validate.rs`
 
 - `McpConfigValidationError` — Validation error types
 - `validate_mcp_config()` — Validate MCP config structure
@@ -182,7 +182,7 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ## Events
 
-**File**: `/crates/elph-agent/src/mcp/events.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/events.rs`
 
 - `McpEventBus` — Event bus for MCP server events
 - `McpClientService` — Service wrapper around MCP client
@@ -190,13 +190,13 @@ Supports OAuth 2.1 with PKCE for remote MCP servers:
 
 ## Store Lock
 
-**File**: `/crates/elph-agent/src/mcp/store_lock.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/store_lock.rs`
 
 Filesystem locking for the credential store to prevent concurrent access.
 
 ## Truncation
 
-**File**: `/crates/elph-agent/src/mcp/truncate.rs`
+**File**: `/crates/elph-agent/src/tools/mcp/truncate.rs`
 
 Result truncation to prevent oversized tool results from consuming too much context.
 
@@ -214,24 +214,24 @@ The `elph mcp` subcommand manages MCP server configurations:
 
 ## Key source files
 
-| Concern          | Path                                         |
-| ---------------- | -------------------------------------------- |
-| Module root      | `/crates/elph-agent/src/mcp/mod.rs`          |
-| Auth & OAuth     | `/crates/elph-agent/src/mcp/auth.rs`         |
-| Auth resolution  | `/crates/elph-agent/src/mcp/auth_resolve.rs` |
-| Client & connect | `/crates/elph-agent/src/mcp/client.rs`       |
-| Config types     | `/crates/elph-agent/src/mcp/config.rs`       |
-| Crypto           | `/crates/elph-agent/src/mcp/crypto.rs`       |
-| Events           | `/crates/elph-agent/src/mcp/events.rs`       |
-| Policy           | `/crates/elph-agent/src/mcp/policy.rs`       |
-| Tool registry    | `/crates/elph-agent/src/mcp/registry.rs`     |
-| Sessions         | `/crates/elph-agent/src/mcp/session.rs`      |
-| SSE transport    | `/crates/elph-agent/src/mcp/sse.rs`          |
-| Store lock       | `/crates/elph-agent/src/mcp/store_lock.rs`   |
-| Truncation       | `/crates/elph-agent/src/mcp/truncate.rs`     |
-| Validation       | `/crates/elph-agent/src/mcp/validate.rs`     |
-| CLI commands     | `/elph/src/cli/mcp.rs`                       |
-| Platform MCP     | `/elph/src/platform/mcp.rs`                  |
+| Concern          | Path                                               |
+| ---------------- | -------------------------------------------------- |
+| Module root      | `/crates/elph-agent/src/tools/mcp/mod.rs`          |
+| Auth & OAuth     | `/crates/elph-agent/src/tools/mcp/auth.rs`         |
+| Auth resolution  | `/crates/elph-agent/src/tools/mcp/auth_resolve.rs` |
+| Client & connect | `/crates/elph-agent/src/tools/mcp/client.rs`       |
+| Config types     | `/crates/elph-agent/src/tools/mcp/config.rs`       |
+| Crypto           | `/crates/elph-agent/src/tools/mcp/crypto.rs`       |
+| Events           | `/crates/elph-agent/src/tools/mcp/events.rs`       |
+| Policy           | `/crates/elph-agent/src/tools/mcp/policy.rs`       |
+| Tool registry    | `/crates/elph-agent/src/tools/mcp/registry.rs`     |
+| Sessions         | `/crates/elph-agent/src/tools/mcp/session.rs`      |
+| SSE transport    | `/crates/elph-agent/src/tools/mcp/sse.rs`          |
+| Store lock       | `/crates/elph-agent/src/tools/mcp/store_lock.rs`   |
+| Truncation       | `/crates/elph-agent/src/tools/mcp/truncate.rs`     |
+| Validation       | `/crates/elph-agent/src/tools/mcp/validate.rs`     |
+| CLI commands     | `/elph/src/cli/mcp.rs`                             |
+| Platform MCP     | `/elph/src/platform/mcp.rs`                        |
 
 ## Change guidance
 

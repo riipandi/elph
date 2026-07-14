@@ -1,6 +1,6 @@
 //! Web tools demo — search and fetch with real API calls.
 //!
-//! Uses OpenCode big-pickle with websearch and webfetch tools.
+//! Uses OpenCode big-pickle with web_search and web_fetch tools.
 //!
 //! ```bash
 //! export OPENCODE_API_KEY="your-key"
@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Provider: OpenCode Zen");
     println!("Model:    {} ({})", model.name, model.id);
-    println!("Tools:    websearch, webfetch, read, bash, edit, write, grep, find, ls");
+    println!("Tools:    web_search, web_fetch, read_file, bash, edit_file, write_file, grep, find_path, list_dir");
     println!();
 
     let setup = progress_spinner("Resolving auth...");
@@ -79,8 +79,8 @@ async fn main() -> anyhow::Result<()> {
     let agent = Agent::new(AgentOptions {
         initial_state: Some(PartialAgentState {
             system_prompt: Some(
-                "You are a research assistant. Use websearch to find information, \
-                 webfetch to read web pages, and other tools as needed. \
+                "You are a research assistant. Use web_search to find information, \
+                 web_fetch to read web pages, and other tools as needed. \
                  Always cite your sources."
                     .into(),
             ),

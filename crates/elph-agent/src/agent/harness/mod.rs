@@ -61,8 +61,8 @@ use crate::collaboration::{CollaborationMode, filter_active_tools};
 use crate::runtime::try_block_on;
 use crate::session::tree::Session;
 use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
-#[cfg(feature = "tools-multi-agent")]
-use crate::tools::create_multi_agent_tools;
+#[cfg(feature = "tools-collaboration")]
+use crate::tools::create_collaboration_tools;
 use crate::types::{AgentMessage, AgentThinkingLevel, AgentTool, ConvertToLlmFn, QueueMode, StreamFn};
 
 pub type HarnessOpResult<T> = std::result::Result<T, AgentHarnessError>;
@@ -172,7 +172,7 @@ where
             Arc::new(move |model, context, opts| models_for_stream.stream_simple(model, context, opts));
         let base_tools: Vec<AgentTool> = tools_map
             .values()
-            .filter(|tool| !crate::collaboration::is_multi_agent_tool(tool.name()))
+            .filter(|tool| !crate::collaboration::is_collaboration_tool(tool.name()))
             .cloned()
             .collect();
         let shared_registry = options
@@ -204,9 +204,9 @@ where
                 ))
             }
         };
-        #[cfg(feature = "tools-multi-agent")]
+        #[cfg(feature = "tools-collaboration")]
         if agent_control.depth() < limits.max_depth && !is_child_harness {
-            for tool in create_multi_agent_tools(agent_control.clone()) {
+            for tool in create_collaboration_tools(agent_control.clone()) {
                 tools_map.insert(tool.name().to_string(), tool);
             }
         }

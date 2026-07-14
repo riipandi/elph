@@ -11,7 +11,7 @@ Elph is a Rust workspace of layered crates designed for building AI agent applic
 │  Platform (paths, settings, databases, extensions)   │
 ├─────────────────────────────────────────────────────┤
 │                  elph-tui (crate)                    │
-│  Warmer · Widgets · Diff engine · Keymap · Theme     │
+│  (temporarily disabled — TUI in elph binary)        │
 ├─────────────────────────────────────────────────────┤
 │                 elph-agent (crate)                   │
 │  AgentHarness · Session · Compaction · Goals ·      │
@@ -47,8 +47,9 @@ The product shell. Wires together the agent runtime, TUI, CLI, and platform conc
 Key modules:
 
 - `src/cli/` — Subcommands: `run`, `acp`, `codegraph`, `completions`, `doctor`, `export`, `import`, `mcp`, `memory`, `models`, `provider`, `server`, `session`, `stats`, `update`, `worktree` (`/elph/src/cli/mod.rs`)
-- `src/shell/` — Interactive TUI application: `ElphApp` state, event loop, overlays, render, slash dispatch, transcript render (`/elph/src/shell/mod.rs`)
-- `src/agent/` — Pi coding-agent equivalent: session orchestration, runtime wiring, slash commands, tool policy, run mode (`/elph/src/agent/mod.rs`)
+- `src/shell/` — TUI launch options (`TuiOptions`) — minimal; actual rendering lives in `crate::tui` (`/elph/src/shell/mod.rs`)
+- `src/tui.rs` — Minimal tuie-based TUI implementation, being rebuilt iteratively (`/elph/src/tui.rs`)
+- `src/agent/` — Pi coding-agent equivalent: session orchestration, runtime wiring, diagnostics tool, ask_user tool, slash commands, tool policy, run mode (`/elph/src/agent/mod.rs`)
 - `src/platform/` — Host environment: paths, settings, bootstrap, datastore, MCP config, migrations, hooks, interrupt handling (`/elph/src/platform/mod.rs`)
 - `src/extensions/` — WASM extension host (`/elph/src/extensions/mod.rs`)
 
@@ -62,26 +63,20 @@ App-agnostic agent runtime. Ported from `@earendil-works/pi-agent`.
 
 Key modules:
 
-- `agent/` — Stateful `Agent` wrapper with event subscription and queue management (`/crates/elph-agent/src/agent/mod.rs`)
-- `agent_loop/` — Low-level turn runner: stream → tool call → result → repeat (`/crates/elph-agent/src/agent_loop/mod.rs`)
-- `harness/` — `AgentHarness`: session-backed stateful runner with hooks, compaction, branching (`/crates/elph-agent/src/harness/mod.rs`)
+- `agent/` — Stateful `Agent` wrapper with event subscription, queue management, harness (`agent/harness/`), and subagents (`agent/subagent/`) (`/crates/elph-agent/src/agent/mod.rs`)
+- `runtime/` — Low-level turn runner (agent loop), event stream, execution env, loop config, proxy (`/crates/elph-agent/src/runtime/`)
+- `collaboration/` — Collaboration modes (Plan / Default), planning, tool filtering (`/crates/elph-agent/src/collaboration/`)
 - `session/` — Tree-structured session persistence with pluggable backends (filesystem, Turso, in-memory) (`/crates/elph-agent/src/session/mod.rs`)
 - `compaction/` — Context window management via summarization, branch clipping, token estimation (`/crates/elph-agent/src/compaction/mod.rs`)
 - `goals/` — Session goal persistence, auto-steering, accounting (`/crates/elph-agent/src/goals/mod.rs`)
-- `subagent/` — Multi-agent orchestration: spawn, control, event forwarding (`/crates/elph-agent/src/subagent/mod.rs`)
 - `skills/` — Skill discovery from `SKILL.md` files (`/crates/elph-agent/src/skills/mod.rs`)
-- `tools/` — Built-in tools: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`, `websearch`, `webfetch`, multi-agent tools (`/crates/elph-agent/src/tools/mod.rs`)
-- `mcp/` — MCP client with stdio, HTTP, SSE, OAuth, encryption, validation, policy, sessions (`/crates/elph-agent/src/mcp/mod.rs`)
-- `mode/` — Collaboration modes (Plan / Default), tool filtering (`/crates/elph-agent/src/mode/mod.rs`)
-- `prompt/` — Builtin prompts, external prompt templates, session naming (`/crates/elph-agent/src/prompt/mod.rs`)
-- `runtime/` — Prompt encoding (TOON), `block_on` helpers (`/crates/elph-agent/src/runtime/mod.rs`)
+- `tools/` — Built-in tools: `read_file`, `bash`, `edit_file`, `write_file`, `grep`, `find_path`, `list_dir`, `create_dir`, `copy_path`, `delete_path`, `move_path`, `web_search`, `web_fetch`, collaboration tools; MCP client lives under `tools/mcp/` (`/crates/elph-agent/src/tools/mod.rs`)
+- `prompt/` — Builtin prompts, external prompt templates, session naming, and TOON encoding (`/crates/elph-agent/src/prompt/`)
 - `plugins/` — WASM extension host (optional, feature `extensions`) (`/crates/elph-agent/src/plugins/mod.rs`)
-- `env/` — `LocalExecutionEnv` for filesystem sandboxing (`/crates/elph-agent/src/env/mod.rs`)
-- `sandbox/` — Zerobox-powered sandboxed execution policies (`/crates/elph-agent/src/sandbox/mod.rs`)
 - `messages/` — Message conversion helpers (`/crates/elph-agent/src/messages/mod.rs`)
 - `types/` — Core agent types: loop config, messages, tools, enums (`/crates/elph-agent/src/types/mod.rs`)
 
-Features: `mcp` (default), `extensions` (default), `obscura` (optional), `tracing` (optional — fastrace spans), plus individual tool feature flags (`tools-read`, `tools-bash`, `tools-edit`, `tools-write`, `tools-grep`, `tools-find`, `tools-ls`, `tools-web`, `tools-multi-agent`) and convenience groups (`tools-core`, `tools-explore`, `builtin-tools`).
+Features: `mcp` (default), `extensions` (default), `obscura` (optional), `tracing` (optional — fastrace spans), plus individual tool feature flags (`tools-read-file`, `tools-bash`, `tools-edit-file`, `tools-write-file`, `tools-grep`, `tools-find-path`, `tools-list-dir`, `tools-create-dir`, `tools-copy-path`, `tools-delete-path`, `tools-move-path`, `tools-web`, `tools-collaboration`) and convenience groups (`tools-search`, `tools-edit-tools`, `builtin-tools`).
 
 ### `elph-ai` (library crate)
 
@@ -114,26 +109,13 @@ Key modules:
 - `utils/` — Path resolution (`AppPaths`), project key, filesystem utilities (`/crates/elph-core/src/utils/`)
 - `fs.rs` — `ensure_dirs`, `write_file_if_missing`, `write_json_file`, `write_private_file` (`/crates/elph-core/src/fs.rs`)
 
-### `elph-tui` (library crate)
+### `elph-tui` (library crate — temporarily disabled)
 
 Path: `/crates/elph-tui/`
 
-Reusable terminal UI components built on [tuie](https://crates.io/crates/tuie). Migrated from `superlighttui` in commit `b06c134`.
+> **Note**: The elph-tui crate is currently disabled. The TUI implementation lives directly in the `elph` binary crate (`elph/src/tui.rs`) while iterating on the tuie-based shell. Once the public API stabilises, the reusable widget library will be extracted back into this crate and published to crates.io.
 
-Key modules:
-
-- `agent/` — Agent-facing state types: collapse, model selector, OAuth, plan confirmation, session selector, tool approval, tree navigator (`/crates/elph-tui/src/agent/`)
-- `chrome/` — Activity state, banner, tips (`/crates/elph-tui/src/chrome/`)
-- `diff/` — Differential rendering engine: edit/diff views, markdown rendering, autocomplete, overlays, scrollback (`/crates/elph-tui/src/diff/`)
-- `keymap/` — Global chord handler, shell action dispatch (`/crates/elph-tui/src/keymap/`)
-- `prompt/` — Prompt state, chat stream, slash commands, thinking level, submit modes (`/crates/elph-tui/src/prompt/`)
-- `runtime/` — Runtime configuration, shell startup (`/crates/elph-tui/src/runtime/`)
-- `shell/` — `AgentShell`, `ShellHost` trait, `ShellChromeData` (`/crates/elph-tui/src/shell/`)
-- `terminal/` — Keyboard enhancement, SIGINT handling (`/crates/elph-tui/src/terminal/`)
-- `theme/` — Theme and palette management (`/crates/elph-tui/src/theme/`)
-- `transcript/` — Streaming buffer, transcript entries, tool execution states (`/crates/elph-tui/src/transcript/`)
-- `widgets/` — `PromptPane`, `TranscriptPane`, `SidebarPlaceholder`, `StreamingText`, `CommandPaletteState`, chrome/footer builders (`/crates/elph-tui/src/widgets/`)
-- `utils/` — Display width utilities, path helpers, ANSI stripping (`/crates/elph-tui/src/utils/`)
+Key modules (current — `/crates/elph-tui/src/`): `lib.rs` only (empty crate with a notice). All former modules (`agent/`, `chrome/`, `diff/`, `keymap/`, `prompt/`, `runtime/`, `shell/`, `terminal/`, `theme/`, `transcript/`, `widgets/`, `utils/`) were moved directly into the `elph` binary or removed.
 
 ### `elph-swarm` (library crate)
 
@@ -175,8 +157,8 @@ When modifying any major area:
 - **Agent runtime**: Tests in `/crates/elph-agent/tests/{agent_loop, harness, e2e, session, goals, subagent}.rs`
 - **AI providers**: Tests in `/crates/elph-ai/tests/` — check provider-specific payloads
 - **MCP**: Tests in `/crates/elph-agent/tests/{mcp_deepwiki, encrypt_string}.rs`
-- **TUI**: Tests in `/crates/elph-tui/tests/{tuie_shell, agent_demo}.rs`
+- **TUI**: No separate tests (elph-tui crate disabled; TUI in `elph/src/tui.rs`, tests in `elph/tests/`)
 - **Skills**: Tests in `/crates/elph-agent/tests/skills.rs`
 - **Prompt encoding**: Tests in `/crates/elph-agent/tests/prompt_encoding.rs`
-- **CLI**: Tests in `/elph/tests/{cli, bootstrap, sigint, shell_host, shell_transcript}.rs`
+- **CLI**: Tests in `/elph/tests/{cli, bootstrap}.rs`
 - See [testing.md](testing.md) for detailed test patterns.

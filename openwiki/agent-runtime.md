@@ -14,14 +14,14 @@ User Input → CLI/TUI
         ┌───────┴────────┬───────────┐
         ↓                ↓           ↓
      Tools           Skills      MCP Servers
-  (read, bash,     (SKILL.md    (external tools
-   edit, grep,      files)       via rmcp)
-   web, ...)
+  (read_file, bash, (SKILL.md   (external tools
+   edit_file, grep,  files)      via rmcp)
+   web_search, ...)
 ```
 
 ## AgentHarness
 
-**File**: `/crates/elph-agent/src/harness/agent_harness/mod.rs`
+**File**: `/crates/elph-agent/src/agent/harness/mod.rs`
 
 `AgentHarness<S>` is the central stateful runner. It wraps the low-level agent loop with:
 
@@ -48,11 +48,11 @@ User message
   → persist history + emit turn_done
 ```
 
-Source: `/crates/elph-agent/src/harness/agent_harness/run_loop/`
+Source: `/crates/elph-agent/src/agent/harness/run_loop/`
 
 ### Key harness events
 
-Hooks are registered through `Harness::on_<event>()` methods. Event types defined in `/crates/elph-agent/src/harness/hooks.rs`:
+Hooks are registered through `Harness::on_<event>()` methods. Event types defined in `/crates/elph-agent/src/agent/harness/hooks.rs`:
 
 | Event                   | Trigger                   | Use case                        |
 | ----------------------- | ------------------------- | ------------------------------- |
@@ -95,7 +95,7 @@ Key files:
 
 ## Agent Loop
 
-**File**: `/crates/elph-agent/src/agent_loop/mod.rs`
+**File**: `/crates/elph-agent/src/runtime/`
 
 The low-level turn runner that handles the stream → tool call → result → repeat cycle. It operates on `AgentContext` (messages + state) and `AgentLoopConfig` (tools, mode, limits).
 
@@ -105,9 +105,9 @@ The low-level turn runner that handles the stream → tool call → result → r
 
 Key files:
 
-- `/crates/elph-agent/src/agent_loop/run_loop/` — The core loop implementation
-- `/crates/elph-agent/src/agent_loop/stream.rs` — Event stream types
-- `/crates/elph-agent/src/agent_loop/tools.rs` — Tool call failure handling
+- `/crates/elph-agent/src/runtime/run_loop/` — The core loop implementation
+- `/crates/elph-agent/src/runtime/stream.rs` — Event stream types
+- `/crates/elph-agent/src/runtime/exec/` — Tool call dispatch, execution, and failure handling
 
 ## Compaction
 
@@ -148,7 +148,7 @@ Goals are managed via the `/goal` slash command with subcommands: `status`, `pau
 
 ## Subagents
 
-**File**: `/crates/elph-agent/src/subagent/`
+**File**: `/crates/elph-agent/src/agent/subagent/`
 
 Codex-style multi-agent orchestration. The main agent can spawn subagents for parallel tasks, then merge results.
 
@@ -194,33 +194,39 @@ Key files:
 
 **File**: `/crates/elph-agent/src/tools/`
 
-| Helper                      | Tools                           |
-| --------------------------- | ------------------------------- |
-| `create_coding_tools`       | `read`, `bash`, `edit`, `write` |
-| `create_read_only_tools`    | `read`, `grep`, `find`, `ls`    |
-| `create_all_tools`          | All seven filesystem tools      |
-| `create_web_tools`          | `websearch`, `webfetch`         |
-| `create_all_tools_with_web` | Filesystem + web tools          |
-| `create_multi_agent_tools`  | Multi-agent orchestration tools |
+| Helper                        | Tools                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `create_edit_tools`           | `edit_file`, `write_file`, `bash`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `create_search_tools`         | `read_file`, `grep`, `find_path`, `list_dir`                                             |
+| `create_all_tools`            | All enabled filesystem tools (11 tools)                                                  |
+| `create_web_tools`            | `web_search`, `web_fetch`                                                                |
+| `create_all_tools_with_web`   | Filesystem + web tools                                                                   |
+| `create_collaboration_tools`  | Collaboration tools (spawn, send_message, followup_task, wait_agent, list_agents)        |
+| `create_list_available_tools` | Meta-tool listing all available tools with descriptions and parameters                   |
 
 All filesystem tools resolve paths through `ExecutionEnv` and run on blocking thread pools. Web tools do not use `ExecutionEnv`.
 
 Key source files (each tool in its own module):
 
-- `/crates/elph-agent/src/tools/read.rs`
+- `/crates/elph-agent/src/tools/read_file.rs`
 - `/crates/elph-agent/src/tools/bash.rs`
-- `/crates/elph-agent/src/tools/edit.rs`
-- `/crates/elph-agent/src/tools/write.rs`
+- `/crates/elph-agent/src/tools/edit_file.rs`
+- `/crates/elph-agent/src/tools/write_file.rs`
+- `/crates/elph-agent/src/tools/create_dir.rs`
+- `/crates/elph-agent/src/tools/copy_path.rs`
+- `/crates/elph-agent/src/tools/delete_path.rs`
+- `/crates/elph-agent/src/tools/move_path.rs`
 - `/crates/elph-agent/src/tools/grep.rs`
-- `/crates/elph-agent/src/tools/find.rs`
-- `/crates/elph-agent/src/tools/ls.rs`
-- `/crates/elph-agent/src/tools/web/` — websearch and webfetch
-- `/crates/elph-agent/src/tools/multi_agent.rs`
+- `/crates/elph-agent/src/tools/find_path.rs`
+- `/crates/elph-agent/src/tools/list_dir.rs`
+- `/crates/elph-agent/src/tools/web/` — `web_search.rs` and `web_fetch.rs`
+- `/crates/elph-agent/src/tools/collaboration.rs` — Collaboration tools (replaces `multi_agent.rs`)
+- `/crates/elph-agent/src/tools/list_available_tools.rs` — Meta-tool for tool discovery
 - `/crates/elph-agent/src/tools/fff_picker.rs` — File picker integration
 
 ## Modes
 
-**File**: `/crates/elph-agent/src/mode/`
+**File**: `/crates/elph-agent/src/collaboration/`
 
 | Mode        | Description                                           |
 | ----------- | ----------------------------------------------------- |
@@ -231,27 +237,27 @@ Key source files (each tool in its own module):
 
 ## Key source files
 
-| Concern                   | Path                                                     |
-| ------------------------- | -------------------------------------------------------- |
-| Agent harness             | `/crates/elph-agent/src/harness/agent_harness/mod.rs`    |
-| Agent harness run loop    | `/crates/elph-agent/src/harness/agent_harness/run_loop/` |
-| Agent harness hook system | `/crates/elph-agent/src/harness/hooks.rs`                |
-| Agent harness types       | `/crates/elph-agent/src/harness/types/`                  |
-| Session tree              | `/crates/elph-agent/src/session/tree.rs`                 |
-| Session backends          | `/crates/elph-agent/src/session/backends/`               |
-| Compaction                | `/crates/elph-agent/src/compaction/`                     |
-| Goals                     | `/crates/elph-agent/src/goals/`                          |
-| Subagents                 | `/crates/elph-agent/src/subagent/`                       |
-| Skills                    | `/crates/elph-agent/src/skills/`                         |
-| Built-in tools            | `/crates/elph-agent/src/tools/`                          |
-| Mode/policy               | `/crates/elph-agent/src/mode/`                           |
-| Agent loop                | `/crates/elph-agent/src/agent_loop/`                     |
-| Types                     | `/crates/elph-agent/src/types/`                          |
-| Execution env             | `/crates/elph-agent/src/env/`                            |
-| Sandbox policies          | `/crates/elph-agent/src/sandbox/`                        |
-| Messages                  | `/crates/elph-agent/src/messages/`                       |
-| Event stream              | `/crates/elph-agent/src/event_stream.rs`                 |
-| Plugin/WASM host          | `/crates/elph-agent/src/plugins/`                        |
+| Concern                   | Path                                             |
+| ------------------------- | ------------------------------------------------ |
+| Agent harness             | `/crates/elph-agent/src/agent/harness/mod.rs`    |
+| Agent harness run loop    | `/crates/elph-agent/src/agent/harness/run_loop/` |
+| Agent harness hook system | `/crates/elph-agent/src/agent/harness/hooks.rs`  |
+| Agent harness types       | `/crates/elph-agent/src/agent/harness/types/`    |
+| Session tree              | `/crates/elph-agent/src/session/tree.rs`         |
+| Session backends          | `/crates/elph-agent/src/session/backends/`       |
+| Compaction                | `/crates/elph-agent/src/compaction/`             |
+| Goals                     | `/crates/elph-agent/src/goals/`                  |
+| Subagents                 | `/crates/elph-agent/src/agent/subagent/`         |
+| Skills                    | `/crates/elph-agent/src/skills/`                 |
+| Built-in tools            | `/crates/elph-agent/src/tools/`                  |
+| Collaboration modes       | `/crates/elph-agent/src/collaboration/`          |
+| Agent loop / runtime      | `/crates/elph-agent/src/runtime/`                |
+| Types                     | `/crates/elph-agent/src/types/`                  |
+| Execution env             | `/crates/elph-agent/src/runtime/local_env/`      |
+| Messages                  | `/crates/elph-agent/src/messages/`               |
+| Event stream              | `/crates/elph-agent/src/runtime/event_stream.rs` |
+| Plugin/WASM host          | `/crates/elph-agent/src/plugins/`                |
+| MCP client                | `/crates/elph-agent/src/tools/mcp/`              |
 
 ## Change guidance
 
@@ -263,3 +269,4 @@ Key source files (each tool in its own module):
 - **Tool changes**: Test in `crates/elph-agent/tests/tools_fff.rs` and `tests/web_tools.rs`
 - **Skills changes**: Test in `crates/elph-agent/tests/skills.rs`
 - **Configuration**: Check `HarnessOptions`, `CompactionSettings`, `SessionStorage` generics
+  nStorage` generics

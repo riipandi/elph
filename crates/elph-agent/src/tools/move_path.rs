@@ -16,7 +16,9 @@ pub fn create_move_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "move_path".into(),
-            description: "Moves or renames a file or directory in the project, performing a rename if only the filename differs.".into(),
+            description:
+                "Moves or renames a file or directory in the project, performing a rename if only the filename differs."
+                    .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {

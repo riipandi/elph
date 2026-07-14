@@ -1,4 +1,4 @@
-//! Live coding tools demo — read, bash, edit, write, grep, find, ls with real API.
+//! Live coding tools demo — read_file, bash, edit_file, write_file, grep, find_path, list_dir with real API.
 //!
 //! Uses OpenCode big-pickle to perform actual file operations.
 //! The agent reads files, runs commands, edits code, and writes new files.
@@ -84,19 +84,23 @@ async fn main() -> anyhow::Result<()> {
     // ── Select tools based on --tools flag ──
     let agent_tools = match args.tools.as_str() {
         "read-only" => {
-            println!("Using read-only tools: read, grep, find, ls");
+            println!("Using search tools: read_file, grep, find_path, list_dir");
             create_search_tools(env.clone())
         }
         "coding" => {
-            println!("Using coding tools: read, bash, edit, write");
+            println!("Using edit tools: edit_file, write_file, bash, create_dir, copy_path, delete_path, move_path");
             create_edit_tools(env.clone())
         }
         "all" => {
-            println!("Using all tools: read, bash, edit, write, grep, find, ls");
+            println!(
+                "Using all tools: read_file, bash, edit_file, write_file, grep, find_path, list_dir, web_search, web_fetch"
+            );
             create_all_tools(env.clone())
         }
         _ => {
-            println!("Using coding tools (default): read, bash, edit, write");
+            println!(
+                "Using edit tools (default): edit_file, write_file, bash, create_dir, copy_path, delete_path, move_path"
+            );
             create_edit_tools(env.clone())
         }
     };

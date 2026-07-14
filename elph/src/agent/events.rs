@@ -34,6 +34,7 @@ pub enum AgentUiEvent {
         objective: Option<String>,
         status: Option<String>,
     },
+    UserQuestionRequired(UserQuestionRequest),
 }
 
 #[derive(Debug, Clone)]
@@ -55,4 +56,23 @@ pub enum ToolApprovalChoice {
     Approve,
     Reject,
     AllowSession,
+}
+
+/// Ask-user question presented by the `ask_user_question` tool.
+#[derive(Debug)]
+pub struct UserQuestionRequest {
+    /// The question text to display.
+    pub question: String,
+    /// Optional list of selectable options (select mode).
+    pub options: Option<Vec<UserQuestionOption>>,
+    /// Optional default value.
+    pub default: Option<String>,
+    /// Channel to send the user's answer back to the tool.
+    pub response_tx: tokio::sync::oneshot::Sender<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserQuestionOption {
+    pub value: String,
+    pub label: String,
 }

@@ -79,17 +79,11 @@ async fn execute_copy_path(
             })
         })
         .await??;
-        Ok(AgentToolResult::text(format!(
-            "Copied directory {source} to {destination}"
-        )))
+        Ok(AgentToolResult::text(format!("Copied directory {source} to {destination}")))
     }
 }
 
-fn copy_directory_recursive(
-    src: &str,
-    dst: &str,
-    abort: &AtomicBool,
-) -> anyhow::Result<()> {
+fn copy_directory_recursive(src: &str, dst: &str, abort: &AtomicBool) -> anyhow::Result<()> {
     for entry in WalkDir::new(src).min_depth(1) {
         if abort.load(Ordering::Relaxed) {
             return Err(anyhow::anyhow!("Operation aborted"));

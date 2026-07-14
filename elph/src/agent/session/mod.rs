@@ -26,6 +26,7 @@ pub struct CodingAgentSessionParams {
     pub show_thinking: bool,
     pub goal_runtime: Arc<GoalRuntime>,
     pub mcp_registry: Option<Arc<McpToolRegistry>>,
+    pub ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
 }
 
 pub struct CodingAgentSession {
@@ -41,7 +42,7 @@ pub struct CodingAgentSession {
 }
 
 impl CodingAgentSession {
-    pub async fn new(params: CodingAgentSessionParams) -> Result<(Self, mpsc::UnboundedReceiver<AgentUiEvent>)> {
+    pub async fn new(params: CodingAgentSessionParams) -> Result<Self> {
         let CodingAgentSessionParams {
             harness,
             session_manager,
@@ -51,8 +52,8 @@ impl CodingAgentSession {
             show_thinking,
             goal_runtime,
             mcp_registry,
+            ui_tx,
         } = params;
-        let (ui_tx, ui_rx) = mpsc::unbounded_channel();
         let mut policy = AgentModePolicy::new(agent_mode);
         if let Some(reg) = mcp_registry.clone() {
             policy = policy.with_mcp_registry(reg);
@@ -70,7 +71,7 @@ impl CodingAgentSession {
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
-        Ok((session, ui_rx))
+        Ok(session)
     }
 
     pub fn mcp_registry(&self) -> Option<Arc<McpToolRegistry>> {

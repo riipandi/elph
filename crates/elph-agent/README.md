@@ -456,16 +456,16 @@ let read_file_tool = simple_tool(
 );
 ```
 
-Built-in tools are optional Cargo features. Enable `builtin-tools` for the full catalog, or pick groups (`tools-core`, `tools-explore`, `tools-web`, …). See [docs/tools.md](./docs/tools.md).
+Built-in tools are optional Cargo features. Enable `builtin-tools` for the full catalog, or pick groups (`tools-edit-tools`, `tools-search`, `tools-web`, `tools-collaboration`). See [docs/tools.md](./docs/tools.md).
 
-| Helper / builder            | Tools                            |
-| --------------------------- | -------------------------------- |
-| `BuiltinToolsBuilder::all`  | all enabled built-in tools       |
-| `create_core_tools`         | `read`, `bash`, `edit`, `write`  |
-| `create_read_only_tools`    | `read`, `grep`, `find`, `ls`     |
-| `create_all_tools`          | all seven filesystem tools above |
-| `create_web_tools`          | `websearch`, `webfetch`          |
-| `create_all_tools_with_web` | filesystem tools + web tools     |
+| Helper / builder            | Tools                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `BuiltinToolsBuilder::all`  | all enabled built-in tools (incl. `list_available_tools`)                                |
+| `create_edit_tools`         | `edit_file`, `write_file`, `bash`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `create_search_tools`       | `read_file`, `grep`, `find_path`, `list_dir`                                             |
+| `create_all_tools`          | all filesystem tools above                                                               |
+| `create_web_tools`          | `web_search`, `web_fetch`                                                                |
+| `create_all_tools_with_web` | filesystem tools + web tools                                                             |
 
 ```rust
 use elph_agent::{BuiltinToolsBuilder, LocalExecutionEnv};
@@ -491,16 +491,17 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 
 ### Cargo features
 
-| Feature         | Default | Description                                         |
-| --------------- | ------- | --------------------------------------------------- |
-| `builtin-tools` | no      | All built-in tool groups (enabled by `elph` binary) |
-| `tools-core`    | no      | `read`, `bash`, `edit`, `write`                     |
-| `tools-explore` | no      | `read`, `grep`, `find`, `ls`                        |
-| `tools-web`     | no      | `websearch`, `webfetch`                             |
-| `mcp`           | yes     | MCP client                                          |
-| `extensions`    | yes     | WASM extension host                                 |
-| `obscura`       | no      | Obscura browser fallback for web tools              |
-| `tracing`       | no      | `fastrace` instrumentation                          |
+| Feature               | Default | Description                                                                              |
+| --------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| `builtin-tools`       | no      | All built-in tool groups (enabled by `elph` binary)                                      |
+| `tools-edit-tools`    | no      | `edit_file`, `write_file`, `bash`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                             |
+| `tools-web`           | no      | `web_search`, `web_fetch`                                                                |
+| `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                         |
+| `mcp`                 | yes     | MCP client                                                                               |
+| `extensions`          | yes     | WASM extension host                                                                      |
+| `obscura`             | no      | Obscura browser fallback for web tools                                                   |
+| `tracing`             | no      | `fastrace` instrumentation                                                               |
 
 ```bash
 # Minimal agent runtime (no built-in tools, no MCP)
@@ -744,25 +745,47 @@ Your skill content here...
 
 ## Examples
 
-| Example                | Description                                             |
-| ---------------------- | ------------------------------------------------------- |
-| `basic_agent`          | OpenCode Zen `big-pickle` through `Agent`               |
-| `agent_skills`         | Comprehensive skills demo with all spec fields          |
-| `agent_skill_math`     | Math expert skill with real AI model call               |
-| `toon_no_tools`        | TOON in user prompt (no tool calling)                   |
-| `toon_tool_call`       | TOON on custom tool JSON results                        |
-| `toon_mcp_deepwiki`    | TOON on DeepWiki MCP tool results                       |
-| `default_no_tools`     | Baseline (encoding off) — pair with `toon_no_tools`     |
-| `default_tool_call`    | Baseline (encoding off) — pair with `toon_tool_call`    |
-| `default_mcp_deepwiki` | Baseline (encoding off) — pair with `toon_mcp_deepwiki` |
+| Example                   | Description                                                     |
+| ------------------------- | --------------------------------------------------------------- |
+| `basic_agent`             | OpenCode Zen `big-pickle` through `Agent`                       |
+| `agent_coding_tools`      | Live coding tools demo with real API (read_file, bash, etc.)    |
+| `agent_coding_workflow`   | Multi-step coding workflow with real API                        |
+| `agent_web_tools`         | Web search and fetch tools with real API                        |
+| `agent_search_tools`      | Read & Search tools demo (faux, no API key)                     |
+| `agent_filesystem_tools`  | Edit tools demo: create_dir, copy_path, delete_path, move_path  |
+| `agent_list_tools`        | list_available_tools introspection (faux, no API key)           |
+| `agent_collaboration`     | Collaboration mode policy and tool filtering                    |
+| `agent_subagent`          | Subagent spawn, message, followup, wait, list                   |
+| `agent_goals`             | Goal management tools                                           |
+| `agent_skills`            | Comprehensive skills demo with all spec fields                  |
+| `agent_skill_math`        | Math expert skill with real AI model call                       |
+| `agent_tools`             | Custom tools, steering, and follow-up (faux)                    |
+| `agent_harness`           | AgentHarness lifecycle demo                                     |
+| `toon_no_tools`           | TOON in user prompt (no tool calling)                           |
+| `toon_tool_call`          | TOON on custom tool JSON results                                |
+| `toon_mcp_deepwiki`       | TOON on DeepWiki MCP tool results                               |
+| `default_no_tools`        | Baseline (encoding off) — pair with `toon_no_tools`             |
+| `default_tool_call`       | Baseline (encoding off) — pair with `toon_tool_call`            |
+| `default_mcp_deepwiki`    | Baseline (encoding off) — pair with `toon_mcp_deepwiki`         |
 
 ```bash
-export OPENCODE_API_KEY="your-key"
+# Faux provider examples (no API key needed)
+cargo run -p elph-agent --features builtin-tools --example agent_search_tools
+cargo run -p elph-agent --features builtin-tools --example agent_filesystem_tools
+cargo run -p elph-agent --features builtin-tools --example agent_list_tools
+cargo run -p elph-agent --example agent_tools
 
+# Real API examples (requires OPENCODE_API_KEY)
+export OPENCODE_API_KEY="your-key"
+cargo run -p elph-agent --features builtin-tools --example agent_coding_tools
+cargo run -p elph-agent --features builtin-tools --example agent_web_tools
 cargo run -p elph-agent --example basic_agent
+
+# TOON comparison
 cargo run -p elph-agent --example toon_tool_call
 cargo run -p elph-agent --example default_tool_call   # same prompt, compare tokens
 
+# MCP examples
 cargo run -p elph-agent --features mcp --example toon_mcp_deepwiki
 ```
 

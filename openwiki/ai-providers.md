@@ -141,10 +141,10 @@ let handle = faux_provider(RegisterFauxProviderOptions {
 
 Web search and fetch tools, shared between `elph-agent` and `elph-ai`:
 
-| Tool        | Purpose                                       |
-| ----------- | --------------------------------------------- |
-| `websearch` | Search the web using configured search engine |
-| `webfetch`  | Fetch and extract content from a URL          |
+| Tool         | Purpose                                       |
+| ------------ | --------------------------------------------- |
+| `web_search` | Search the web using configured search engine |
+| `web_fetch`  | Fetch and extract content from a URL          |
 
 Supports optional [Obscura](https://github.com/h4ckf0r0day/obscura) headless browser for JS-rendered content.
 

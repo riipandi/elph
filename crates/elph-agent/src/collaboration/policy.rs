@@ -11,9 +11,7 @@ const PLAN_MODE_TOOLS: &[&str] = &[
     "web_fetch",
     "web_search",
     "diagnostics",
-    "ask_text",
-    "ask_select",
-    "ask_confirm",
+    "ask_user_question",
 ];
 
 /// Tools that mutate workspace state or spawn work — blocked in Plan mode.
@@ -31,8 +29,8 @@ const MUTATING_TOOLS: &[&str] = &[
     "wait_agent",
 ];
 
-/// Multi-agent tools — only in Default mode.
-const MULTI_AGENT_TOOLS: &[&str] = &[
+const COLLABORATION_TOOLS: &[&str] = &[
+    "ask_user_question",
     "spawn_agent",
     "send_message",
     "followup_task",
@@ -69,8 +67,8 @@ pub fn is_mcp_read_only_bridge_tool(name: &str) -> bool {
     name.ends_with("__list_resources") || name.ends_with("__list_prompts") || name.ends_with("__read_resource")
 }
 
-pub fn is_multi_agent_tool(name: &str) -> bool {
-    MULTI_AGENT_TOOLS.contains(&name)
+pub fn is_collaboration_tool(name: &str) -> bool {
+    COLLABORATION_TOOLS.contains(&name)
 }
 
 /// Filter active tool names for the given collaboration mode.
@@ -105,12 +103,7 @@ mod tests {
 
     #[test]
     fn plan_mode_filters_mutating_tools() {
-        let all = vec![
-            "read_file".into(),
-            "bash".into(),
-            "write_file".into(),
-            "grep".into(),
-        ];
+        let all = vec!["read_file".into(), "bash".into(), "write_file".into(), "grep".into()];
         let filtered = filter_active_tools(CollaborationMode::Plan, &all);
         assert_eq!(filtered, vec!["read_file".to_string(), "grep".to_string()]);
     }

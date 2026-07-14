@@ -3,7 +3,7 @@
 //! Demonstrates: `CollaborationMode`, `PlanConfirmationChoice`,
 //! `plan_mode_system_prompt`, `plan_mode_block_reason`, `plan_mode_blocks_tool`,
 //! `filter_active_tools`, `extract_proposed_plan`, `assistant_message_text`,
-//! `implement_prompt`, `is_mcp_tool`, `is_multi_agent_tool`, `is_mutating_tool`.
+//! `implement_prompt`, `is_mcp_tool`, `is_collaboration_tool`, `is_mutating_tool`.
 //!
 //! ```bash
 //! cargo run -p elph-agent --example agent_collaboration
@@ -11,7 +11,7 @@
 
 use elph_agent::collaboration::{
     CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
-    implement_prompt, is_mcp_read_only_bridge_tool, is_mcp_tool, is_multi_agent_tool, is_mutating_tool,
+    implement_prompt, is_collaboration_tool, is_mcp_read_only_bridge_tool, is_mcp_tool, is_mutating_tool,
     plan_mode_block_reason, plan_mode_blocks_tool, plan_mode_system_prompt,
 };
 use elph_ai::{AssistantContentBlock, AssistantMessage, TextContent};
@@ -73,10 +73,10 @@ fn main() {
     println!("\n=== Tool Policy Helpers ===");
     for name in &tool_names {
         println!(
-            "  {name:30} mcp={:5} mutating={:5} multi_agent={:5} plan_blocks={:5} mcp_ro={:5}",
+            "  {name:30} mcp={:5} mutating={:5} collaboration={:5} plan_blocks={:5} mcp_ro={:5}",
             is_mcp_tool(name),
             is_mutating_tool(name),
-            is_multi_agent_tool(name),
+            is_collaboration_tool(name),
             plan_mode_blocks_tool(CollaborationMode::Plan, name),
             is_mcp_read_only_bridge_tool(name),
         );

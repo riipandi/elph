@@ -50,7 +50,7 @@ pub async fn spawn_subagent_harness(
     task_name: &str,
     agent_path: &str,
     depth: u32,
-    limits: SubagentLimits,
+    _limits: SubagentLimits,
     shared_registry: Arc<AgentRegistry>,
     agent_control: Arc<AgentControl>,
     system_prompt: String,
@@ -75,10 +75,11 @@ pub async fn spawn_subagent_harness(
             .map_err(|e| e.to_string())?;
     }
 
+    #[allow(unused_mut)]
     let mut tools = base_tools;
-    #[cfg(feature = "tools-multi-agent")]
-    if depth < limits.max_depth {
-        tools.extend(crate::tools::create_multi_agent_tools(agent_control.clone()));
+    #[cfg(feature = "tools-collaboration")]
+    if depth < _limits.max_depth {
+        tools.extend(crate::tools::create_collaboration_tools(agent_control.clone()));
     }
 
     let harness = AgentHarness::new(AgentHarnessOptions {

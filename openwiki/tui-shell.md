@@ -1,171 +1,20 @@
 # TUI & Shell
 
-The TUI system consists of two layers:
+The TUI system currently lives directly in the `elph` binary crate while the tuie-based shell is being rebuilt iteratively.
 
-1. **`elph-tui`** — Reusable terminal UI widget library built on [tuie](https://crates.io/crates/tuie)
-2. **`elph` shell** — The interactive coding agent application that uses `elph-tui`
+The `elph-tui` library crate is **temporarily disabled** (the crate contains only a notice). All former TUI widgets and shell infrastructure were either moved into the `elph` binary or removed. Once the public API stabilises, the reusable widget library will be extracted back into `elph-tui` and published to crates.io.
 
-Migrated from `superlighttui` to `tuie` in commit `b06c134`.
+**TUI source**: `/elph/src/tui.rs` — Minimal tuie-based demo app.
+**Shell source**: `/elph/src/shell/mod.rs` — Only `TuiOptions` (launch configuration).
 
-## elph-tui (Widget Library)
+## elph-tui (Widget Library — Temporarily Disabled)
 
 **Path**: `/crates/elph-tui/`
 
-### Shell
+The crate is currently empty except for `lib.rs` which contains a notice that the TUI lives directly in the `elph` binary while iterating on the tuie-based shell. All former modules (`agent/`, `chrome/`, `diff/`, `keymap/`, `prompt/`, `runtime/`, `shell/`, `terminal/`, `theme/`, `transcript/`, `widgets/`, `utils/`) were removed.
 
-**File**: `/crates/elph-tui/src/shell/`
-
-| Type              | Purpose                                                                            |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `AgentShell`      | The main TUI shell runtime — event loop, render cycle                              |
-| `ShellHost` trait | Host must implement: `poll`, `chrome_data`, `transcript_lines`, `on_prompt_action` |
-| `ShellChromeData` | UI chrome state (activity, warnings, session info)                                 |
-
-### Widgets
-
-**File**: `/crates/elph-tui/src/widgets/`
-
-| Widget               | Purpose                            |
-| -------------------- | ---------------------------------- |
-| `PromptPane`         | User input area with autocomplete  |
-| `TranscriptPane`     | Chat transcript display            |
-| `SidebarPlaceholder` | Sidebar panel                      |
-| `StreamingText`      | Real-time streaming text display   |
-| `CommandPalette`     | Slash command autocomplete palette |
-| `chrome_tuie`        | Activity widget, footer widget     |
-
-### Prompt
-
-**File**: `/crates/elph-tui/src/prompt/`
-
-| Type                    | Purpose                                          |
-| ----------------------- | ------------------------------------------------ |
-| `PromptState`           | User input state management                      |
-| `ChatStreamState`       | Streaming response state                         |
-| `PromptQueue`           | Queue of pending prompts                         |
-| `ThinkingLevel`         | Thinking budget levels (none, low, medium, high) |
-| `TranscriptStyle`       | Visual style for transcript entries              |
-| `elph_builtin_commands` | Built-in slash command definitions               |
-
-### Agent State
-
-**File**: `/crates/elph-tui/src/agent/`
-
-| Type                    | Purpose                                      |
-| ----------------------- | -------------------------------------------- |
-| `CollapseState`         | Collapse/expand state for transcript entries |
-| `ModelSelectorState`    | Model selection UI state                     |
-| `SessionSelectorState`  | Session selection UI state                   |
-| `ToolApprovalState`     | Tool execution approval dialog state         |
-| `PlanConfirmationState` | Plan mode confirmation dialog state          |
-| `TreeNavigatorState`    | Session tree navigation state                |
-| `OAuthSelectorState`    | OAuth provider selection UI state            |
-
-### Diff Engine
-
-**File**: `/crates/elph-tui/src/diff/`
-
-A differential rendering engine with rich components:
-
-| Component                      | Purpose                                         |
-| ------------------------------ | ----------------------------------------------- |
-| `DiffTui`                      | Main diff container                             |
-| `DiffView`                     | Side-by-side diff view                          |
-| `Editor`                       | Inline text editor                              |
-| `Markdown`                     | Markdown renderer                               |
-| `Text`                         | Text block rendering                            |
-| `SelectList`                   | Selection list component                        |
-| `SettingsList`                 | Settings configuration component                |
-| `AutocompletePopup`            | Autocomplete popup                              |
-| `Image`                        | Terminal image rendering (Sixel, Kitty, iTerm2) |
-| `Loader` / `CancellableLoader` | Loading indicators                              |
-| `OverlayHandle`                | Overlay management                              |
-
-### Keymap
-
-**File**: `/crates/elph-tui/src/keymap/`
-
-| Type                 | Purpose                                             |
-| -------------------- | --------------------------------------------------- |
-| `GlobalChordHandler` | Global keyboard chord handling                      |
-| `ShellAction`        | Actions dispatched from the shell                   |
-| `ShellActionSink`    | Action sink for the shell                           |
-| `PromptSubmitMode`   | How prompts are submitted (enter, ctrl+enter, etc.) |
-
-### Transcript
-
-**File**: `/crates/elph-tui/src/transcript/`
-
-| Type                  | Purpose                                 |
-| --------------------- | --------------------------------------- |
-| `StreamingBuffer`     | Buffer for streaming transcript content |
-| `TranscriptEntry`     | A single entry in the transcript        |
-| `TranscriptRole`      | Role (user, assistant, tool, system)    |
-| `ToolExecutionState`  | Tool execution tracking                 |
-| `ToolExecutionStatus` | Tool execution status enum              |
-
-### Theme
-
-**File**: `/crates/elph-tui/src/theme/`
-
-| Type        | Purpose                  |
-| ----------- | ------------------------ |
-| `Theme`     | Application theme        |
-| `ThemeMode` | Light/dark mode          |
-| `Color`     | Color definitions        |
-| `Palette`   | Color palette management |
-
-## elph Shell (Application)
-
-**Path**: `/elph/src/shell/`
-
-The interactive TUI application built on `elph-tui`.
-
-### ElphApp
-
-**File**: `/elph/src/shell/mod.rs`
-
-The main application state struct:
-
-```rust
-pub struct ElphApp {
-    pub prompt: PromptState,
-    pub chat: ChatStreamState,
-    pub theme: Theme,
-    pub should_exit: bool,
-    pub session_id: String,
-    pub turn: u32,
-    pub project_dir: String,
-    pub thinking: ThinkingLevel,
-    pub agent_running: bool,
-    pub activity: ActivityState,
-    pub slash_commands: Vec<SlashCommand>,
-    pub git_branch: Option<String>,
-    pub collapse: CollapseState,
-    // ...
-}
-```
-
-### Shell sub-modules
-
-| Module                 | File                                   | Purpose                                        |
-| ---------------------- | -------------------------------------- | ---------------------------------------------- |
-| `events.rs`            | `/elph/src/shell/events.rs`            | UI event polling, global key handling          |
-| `render.rs`            | `/elph/src/shell/render.rs`            | Frame rendering, `run_tui`, SIGINT watcher     |
-| `overlays.rs`          | `/elph/src/shell/overlays.rs`          | Model/session/tree selector overlays           |
-| `shell_host.rs`        | `/elph/src/shell/shell_host.rs`        | `ElphShellHost` — bridges TUI to agent runtime |
-| `slash.rs`             | `/elph/src/shell/slash.rs`             | Slash command dispatch                         |
-| `turn.rs`              | `/elph/src/shell/turn.rs`              | Turn lifecycle management                      |
-| `transcript_render.rs` | `/elph/src/shell/transcript_render.rs` | Transcript line rendering                      |
-
-### ShellHost implementation
-
-`ElphShellHost` (`/elph/src/shell/shell_host.rs`) implements the `ShellHost` trait, bridging TUI events to the agent runtime. It:
-
-1. Polls for UI events (model selection, tool approval, keyboard input)
-2. Provides chrome data (session ID, git branch, activity state)
-3. Dispatches prompt actions to the agent
-4. Handles tool approval dialogs
+**TUI source**: `/elph/src/tui.rs` — Minimal tuie-based demo app (`ElphTui` struct).
+**Shell source**: `/elph/src/shell/mod.rs` — Only `TuiOptions` (resume session ID).
 
 ## Slash Commands
 
@@ -195,7 +44,7 @@ Dispatch order:
 
 ## TOON Prompt Encoding
 
-**File**: `/crates/elph-agent/src/runtime/prompt_encoding/`
+**File**: `/crates/elph-agent/src/prompt/encoding/`
 
 Optional structured-data encoding for tool results using the [TOON format](https://github.com/toon-format/toon). Enabled via `ELPH_PROMPT_ENCODING` env var or harness config.
 
@@ -223,24 +72,19 @@ The encoding typically achieves 30–70% token savings on tabular data. The heur
 
 ## Key source files
 
-| Concern           | Path                                              |
-| ----------------- | ------------------------------------------------- |
-| TUI widgets       | `/crates/elph-tui/src/`                           |
-| Shell application | `/elph/src/shell/`                                |
-| Shell host        | `/elph/src/shell/shell_host.rs`                   |
-| Transcript render | `/elph/src/shell/transcript_render.rs`            |
-| Slash dispatch    | `/elph/src/shell/slash.rs`                        |
-| Overlays          | `/elph/src/shell/overlays.rs`                     |
-| TUI runtime       | `/elph/src/shell/render.rs`                       |
-| Agent interaction | `/elph/src/agent/`                                |
-| Prompt encoding   | `/crates/elph-agent/src/runtime/prompt_encoding/` |
+| Concern           | Path                                      |
+| ----------------- | ----------------------------------------- |
+| TUI (current)     | `/elph/src/tui.rs`                        |
+| Shell options     | `/elph/src/shell/`                        |
+| Agent interaction | `/elph/src/agent/`                        |
+| Diagnostics tool  | `/elph/src/agent/diagnostics.rs`          |
+| Prompt encoding   | `/crates/elph-agent/src/prompt/encoding/` |
+| Slash commands    | `/elph/src/agent/slash_commands.rs`       |
+| Agent runtime     | `/elph/src/agent/runtime.rs`              |
 
 ## Change guidance
 
-- **New widget**: Add to `/crates/elph-tui/src/widgets/` and re-export from `lib.rs`
-- **New slash command**: Add to `elph_builtin_commands()` in `/crates/elph-tui/src/prompt/mod.rs`, implement in `/elph/src/agent/slash_commands.rs`
-- **Theme changes**: Modify `/crates/elph-tui/src/theme/`
-- **Keymap changes**: Modify `/crates/elph-tui/src/keymap/`
-- **Shell behavior**: Modify `/elph/src/shell/`
+- **New slash command**: Implement in `/elph/src/agent/slash_commands.rs`
+- **TUI development**: Modify `/elph/src/tui.rs`
 - **Prompt encoding**: Test in `/crates/elph-agent/tests/prompt_encoding.rs`
-- **TUI tests**: `/crates/elph-tui/tests/tuie_shell.rs`, `tests/agent_demo.rs`
+- **TUI tests**: No separate tests (elph-tui tests removed; TUI is being rebuilt)

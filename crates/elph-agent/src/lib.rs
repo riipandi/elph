@@ -54,7 +54,7 @@ pub use builder::InitProgress;
 pub use builder::{AgentBuilder, AgentInit, BuiltinToolsBuilder};
 pub use collaboration::{
     CollaborationMode, PlanConfirmationChoice, assistant_message_text, extract_proposed_plan, filter_active_tools,
-    implement_prompt, is_mcp_read_only_bridge_tool, is_mcp_tool, is_multi_agent_tool, is_mutating_tool,
+    implement_prompt, is_collaboration_tool, is_mcp_read_only_bridge_tool, is_mcp_tool, is_mutating_tool,
     plan_mode_block_reason, plan_mode_blocks_tool, plan_mode_system_prompt,
 };
 pub use compaction::{
@@ -120,32 +120,33 @@ pub use tools::create_all_tools;
 pub use tools::create_all_tools_with_web;
 #[cfg(feature = "tools-bash")]
 pub use tools::create_bash_tool;
-#[cfg(feature = "tools-edit-tools")]
-pub use tools::create_edit_tools;
+#[cfg(feature = "tools-collaboration")]
+pub use tools::create_collaboration_tools;
+#[cfg(feature = "tools-copy-path")]
+pub use tools::create_copy_path_tool;
+#[cfg(feature = "tools-create-dir")]
+pub use tools::create_create_dir_tool;
+#[cfg(feature = "tools-delete-path")]
+pub use tools::create_delete_path_tool;
 #[cfg(feature = "tools-edit-file")]
 pub use tools::create_edit_file_tool;
+#[cfg(feature = "tools-edit-tools")]
+pub use tools::create_edit_tools;
 #[cfg(feature = "tools-find-path")]
 pub use tools::create_find_path_tool;
 #[cfg(feature = "tools-grep")]
 pub use tools::create_grep_tool;
+pub use tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use tools::create_list_dir_tool;
-#[cfg(feature = "tools-multi-agent")]
-pub use tools::create_multi_agent_tools;
-#[cfg(feature = "tools-search")]
-pub use tools::create_search_tools;
-#[cfg(feature = "tools-read-file")]
-pub use tools::create_read_file_tool;
-#[cfg(feature = "tools-write-file")]
-pub use tools::create_write_file_tool;
-#[cfg(feature = "tools-create-dir")]
-pub use tools::create_create_dir_tool;
-#[cfg(feature = "tools-copy-path")]
-pub use tools::create_copy_path_tool;
-#[cfg(feature = "tools-delete-path")]
-pub use tools::create_delete_path_tool;
 #[cfg(feature = "tools-move-path")]
 pub use tools::create_move_path_tool;
+#[cfg(feature = "tools-read-file")]
+pub use tools::create_read_file_tool;
+#[cfg(feature = "tools-search")]
+pub use tools::create_search_tools;
+#[cfg(feature = "tools-write-file")]
+pub use tools::create_write_file_tool;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::{
     Aes256Key, AuthStoreFile, AuthStorePathBuilder, DEFAULT_AUTH_FILE_NAME, DEFAULT_AUTH_KEY_FILE_NAME,
@@ -169,6 +170,6 @@ pub use tools::mcp::{
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
 #[cfg(feature = "tools-web")]
-pub use tools::{create_web_tools, create_web_fetch_tool, create_web_search_tool};
+pub use tools::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};
 pub use types::*;

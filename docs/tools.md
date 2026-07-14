@@ -6,13 +6,14 @@ Design for the agent tool catalog — permissions, provider exposure, and execut
 
 Built-in tools live in `elph-agent` and are **optional Cargo features**. The `elph` binary enables the meta feature `builtin-tools` by default so every shipped tool is available.
 
-| Group            | Feature         | Tools                            |
-| ---------------- | --------------- | -------------------------------- |
-| Core             | `tools-core`    | `read`, `bash`, `edit`, `write`  |
-| Explore          | `tools-explore` | `read`, `grep`, `find`, `ls`     |
-| Web              | `tools-web`     | `websearch`, `webfetch`          |
-| Multi-agent      | `tools-multi-agent` | injected by `AgentHarness` |
-| All of the above | `builtin-tools` | meta feature                     |
+| Group            | Feature               | Tools                                                                                    |
+| ---------------- | --------------------- | ---------------------------------------------------------------------------------------- |
+| Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                             |
+| Edit             | `tools-edit-tools`    | `edit_file`, `write_file`, `bash`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                |
+| Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`              |
+| Meta             | —                     | `list_available_tools` (auto-included)                                                   |
+| All of the above | `builtin-tools`       | meta feature                                                                             |
 
 Registration in host apps uses [`BuiltinToolsBuilder`](../crates/elph-agent/src/builder.rs). Elph wires tools in `elph/src/agent/runtime.rs`:
 
@@ -22,6 +23,17 @@ let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
 
 Implementation reference: [`crates/elph-agent/docs/tools.md`](../crates/elph-agent/docs/tools.md).
 
+## elph-specific tools
+
+The `elph` binary adds two tools on top of the `elph-agent` catalog:
+
+| Tool                | Group         | Description                                                                    |
+| ------------------- | ------------- | ------------------------------------------------------------------------------ |
+| `diagnostics`       | Read & Search | Gets errors and warnings for a file or the entire project (runs `cargo check`) |
+| `ask_user_question` | Collaboration | Asks the user a question (text, select, or confirm mode)                       |
+
+These tools are defined in `elph/src/agent/` and are not available in the `elph-agent` crate.
+
 ## Permission classes
 
 | Permission          | Behavior                                                |
@@ -30,75 +42,76 @@ Implementation reference: [`crates/elph-agent/docs/tools.md`](../crates/elph-age
 | `requires-approval` | Approval dialog each run (except brave / session allow) |
 | `always-approve`    | Always runs; cannot be restricted                       |
 
-## File tools
+## Read & Search Tools
 
-| Tool          | Default approval  | Description                                                       |
-| ------------- | ----------------- | ----------------------------------------------------------------- |
-| Read          | Auto-allow        | Read text/image; `line_offset`, `n_lines`; negative offset = tail |
-| Write         | Requires approval | Create/overwrite/append; fails on directories                     |
-| Edit          | Requires approval | Exact string replace; `replace_all`; no-op guard                  |
-| Grep          | Auto-allow        | Ripgrep search; content / files / count modes; context lines      |
-| Glob / Find   | Auto-allow        | Glob file search; recursive directory listing                     |
-| ReadMediaFile | Auto-allow        | Image/video; metadata + base64 for vision                         |
+| Tool          | Default approval | Description                                                         |
+| ------------- | ---------------- | ------------------------------------------------------------------- |
+| `read_file`   | Auto-allow       | Read text/image; `offset`, `limit`; truncated to 2000 lines / 50 KB |
+| `grep`        | Auto-allow       | Regex search via fff-search; content / files modes; context lines   |
+| `find_path`   | Auto-allow       | Glob file search via fff-search; recursive directory listing        |
+| `list_dir`    | Auto-allow       | List directory entries via walkdir; sorted, dirs suffixed with `/`  |
+| `diagnostics` | Auto-allow       | `cargo check` diagnostics (elph binary only)                        |
 
-## Shell tools
+## Edit Tools
 
-| Tool | Default approval  | Description                                                             |
-| ---- | ----------------- | ----------------------------------------------------------------------- |
-| Bash | Requires approval | `bash -c` in workspace; default timeout 120s, max 300s; streamed output |
+| Tool          | Default approval  | Description                                                |
+| ------------- | ----------------- | ---------------------------------------------------------- |
+| `edit_file`   | Requires approval | Exact string replace; `old_string` must match exactly once |
+| `write_file`  | Requires approval | Create/overwrite; creates parent dirs                      |
+| `bash`        | Requires approval | Shell command in workspace; default timeout 120s, max 300s |
+| `create_dir`  | Requires approval | Create directory with parents (`mkdir -p`)                 |
+| `copy_path`   | Requires approval | Copy file or directory recursively                         |
+| `delete_path` | Requires approval | Delete file or directory recursively                       |
+| `move_path`   | Requires approval | Move or rename file or directory                           |
 
-## Web tools
+## Web Tools
 
-| Tool       | Default approval | Description                                   |
-| ---------- | ---------------- | --------------------------------------------- |
-| FetchURL   | Auto-allow       | HTTP fetch; HTML → text; SSRF protection      |
-| WebSearch  | Auto-allow       | Multi-engine search with ranking and fallback |
-| CodeSearch | Auto-allow       | GitHub/GitLab code search                     |
+| Tool         | Default approval | Description                                           |
+| ------------ | ---------------- | ----------------------------------------------------- |
+| `web_fetch`  | Auto-allow       | HTTP fetch; HTML → Markdown via htmd; SSRF protection |
+| `web_search` | Auto-allow       | Multi-engine search with ranking and fallback         |
+
+## Collaboration Tools
+
+| Tool                | Default approval | Description                                        |
+| ------------------- | ---------------- | -------------------------------------------------- |
+| `ask_user_question` | Auto-allow       | Structured question to the user (elph binary only) |
+| `spawn_agent`       | Auto-allow       | Start a focused subagent in an isolated context    |
+| `send_message`      | Auto-allow       | Queue a message on a subagent without a turn       |
+| `followup_task`     | Auto-allow       | Send a message and run a subagent turn             |
+| `wait_agent`        | Auto-allow       | Block until a subagent reaches idle                |
+| `list_agents`       | Auto-allow       | List subagent id, task name, and status            |
+
+## Other Tools
+
+| Tool    | Description                                |
+| ------- | ------------------------------------------ |
+| `mcp`   | Extends tools with MCP server integrations |
+| `skill` | Loads instructions from an available Skill |
 
 ## Plan mode (collaboration mode)
 
 Plan mode is a **collaboration mode**, not a pair of tools. The host application switches the harness to `CollaborationMode::Plan` (for example via `/plan` in the Elph TUI). While active:
 
-- Only read-only exploration tools are exposed (`read`, `grep`, `find`, `ls`, web tools, ask tools).
-- Mutating tools (`write`, `edit`, `bash`) and multi-agent tools are blocked.
+- Only read-only exploration tools are exposed (`read_file`, `grep`, `find_path`, `list_dir`, web tools, `ask_user_question`, `diagnostics`).
+- Mutating tools (`write_file`, `edit_file`, `bash`, `create_dir`, `copy_path`, `delete_path`, `move_path`) and collaboration tools (`spawn_agent`, etc.) are blocked.
 - The model appends a planning system prompt and wraps the final plan in `<proposed_plan>...</proposed_plan>`.
 - The harness emits `PlanProposed` and `PlanConfirmationRequired` events; the host calls `resolve_plan_confirmation()` before implementation begins.
 
-## Multi-agent tools
-
-Registered automatically on `AgentHarness` when all tools are active (empty `active_tool_names`). Omitted when the host passes an explicit active-tool list.
-
-| Tool            | Description                                     |
-| --------------- | ----------------------------------------------- |
-| `spawn_agent`   | Start a focused subagent in an isolated context |
-| `send_message`  | Queue a message on a subagent without a turn    |
-| `followup_task` | Send a message and run a subagent turn          |
-| `wait_agent`    | Block until a subagent reaches idle             |
-| `list_agents`   | List subagent id, task name, and status         |
-
-## State management
-
-| Tool     | Description                                                    |
-| -------- | -------------------------------------------------------------- |
-| TodoList | Session task list; Tasks panel in TUI; per-session persistence |
-
-Item statuses: `pending` / `in_progress` / `done`. All `done` → hide panel + system notice.
-
 ## Goal tools
 
-| Tool            | Description                               |
-| --------------- | ----------------------------------------- |
-| create_goal     | Objective + optional completion criterion |
-| get_goal        | Status, turns, tokens, budgets            |
-| update_goal     | Lifecycle transitions                     |
-| set_goal_budget | Token, turn, or time budget               |
+| Tool              | Description                               |
+| ----------------- | ----------------------------------------- |
+| `create_goal`     | Objective + optional completion criterion |
+| `get_goal`        | Status, turns, tokens, budgets            |
+| `update_goal`     | Lifecycle transitions                     |
+| `set_goal_budget` | Token, turn, or time budget               |
 
-## Collaboration
+## Meta tools
 
-| Tool    | Description                                          |
-| ------- | ---------------------------------------------------- |
-| AskUser | Structured question to the user                      |
-| Skill   | Invoke registered inline skill (max nesting depth 3) |
+| Tool                   | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| `list_available_tools` | Lists all available tools with descriptions and parameters |
 
 ## Provider API exposure
 
@@ -111,18 +124,18 @@ Only a catalog subset is sent to the model. Exposure requires:
 
 ### Exposure matrix (design)
 
-| Tool                                | Approval | API | Runtime            |
-| ----------------------------------- | -------- | --- | ------------------ |
-| Read, Grep, Glob, ReadMediaFile     | Auto     | Yes | Yes                |
-| WebSearch, AskUser, TodoList, Skill | Auto     | Yes | Yes                |
-| Write, Edit, Bash                   | Requires | Yes | Yes (+ approval)   |
-| Goal tools                          | Auto     | Yes | Yes                |
-| FetchURL, CodeSearch                | Auto     | TBD | TBD                |
-| Multi-agent tools                   | Auto     | Yes | Yes (Default mode) |
+| Tool                                          | Approval | API | Runtime            |
+| --------------------------------------------- | -------- | --- | ------------------ |
+| read_file, grep, find_path, list_dir          | Auto     | Yes | Yes                |
+| web_search, web_fetch, ask_user_question      | Auto     | Yes | Yes                |
+| edit_file, write_file, bash                   | Requires | Yes | Yes (+ approval)   |
+| create_dir, copy_path, delete_path, move_path | Requires | Yes | Yes (+ approval)   |
+| Goal tools                                    | Auto     | Yes | Yes                |
+| Collaboration tools                           | Auto     | Yes | Yes (Default mode) |
 
 ## User approval
 
-**Write**, **Edit**, and **Bash** block the loop until the user chooses:
+**edit_file**, **write_file**, **bash**, **create_dir**, **copy_path**, **delete_path**, and **move_path** block the loop until the user chooses:
 
 | Choice            | Shortcut | Effect                      |
 | ----------------- | -------- | --------------------------- |

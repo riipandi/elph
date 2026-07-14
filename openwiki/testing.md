@@ -94,26 +94,18 @@ Core utility tests — path resolution, logger, floppy memory store, tracing.
 
 > Tracing tests require the `tracing` feature: `cargo test -p elph-core --features tracing`
 
-### `elph-tui` (2 test files)
+### `elph-tui` (no tests — crate disabled)
 
-**Path**: `/crates/elph-tui/tests/`
+The elph-tui crate is temporarily disabled. Former test files `tuie_shell.rs` and `agent_demo.rs` were removed along with the crate content.
 
-| Test file       | What it covers                     |
-| --------------- | ---------------------------------- |
-| `tuie_shell.rs` | TUI shell rendering and event loop |
-| `agent_demo.rs` | Agent demo integration test        |
-
-### `elph` (5 test files)
+### `elph` (2 test files)
 
 **Path**: `/elph/tests/`
 
-| Test file             | What it covers                        |
-| --------------------- | ------------------------------------- |
-| `cli.rs`              | CLI subcommand parsing and execution  |
-| `bootstrap.rs`        | Platform bootstrap (paths, datastore) |
-| `sigint.rs`           | SIGINT handling behavior              |
-| `shell_host.rs`       | Shell host implementation             |
-| `shell_transcript.rs` | Transcript rendering                  |
+| Test file      | What it covers                        |
+| -------------- | ------------------------------------- |
+| `cli.rs`       | CLI subcommand parsing and execution  |
+| `bootstrap.rs` | Platform bootstrap (paths, datastore) |
 
 ## Test patterns
 

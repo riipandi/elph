@@ -5,6 +5,8 @@ pub mod types;
 
 #[cfg(feature = "tools-bash")]
 mod bash;
+#[cfg(feature = "tools-collaboration")]
+mod collaboration;
 #[cfg(feature = "tools-edit-file")]
 mod edit_file;
 #[cfg(any(feature = "tools-grep", feature = "tools-find-path", feature = "tools-list-dir"))]
@@ -15,8 +17,6 @@ mod find_path;
 mod grep;
 #[cfg(feature = "tools-list-dir")]
 mod list_dir;
-#[cfg(feature = "tools-multi-agent")]
-mod multi_agent;
 #[cfg(feature = "tools-read-file")]
 mod read_file;
 #[cfg(feature = "tools-web")]
@@ -25,14 +25,16 @@ pub mod web;
 mod write_file;
 
 // New filesystem tools
-#[cfg(feature = "tools-create-dir")]
-mod create_dir;
 #[cfg(feature = "tools-copy-path")]
 mod copy_path;
+#[cfg(feature = "tools-create-dir")]
+mod create_dir;
 #[cfg(feature = "tools-delete-path")]
 mod delete_path;
 #[cfg(feature = "tools-move-path")]
 mod move_path;
+
+mod list_available_tools;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;
@@ -49,33 +51,34 @@ use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 
 #[cfg(feature = "tools-bash")]
 pub use bash::create_bash_tool;
+#[cfg(feature = "tools-collaboration")]
+pub use collaboration::create_collaboration_tools;
+#[cfg(feature = "tools-copy-path")]
+pub use copy_path::create_copy_path_tool;
+#[cfg(feature = "tools-create-dir")]
+pub use create_dir::create_create_dir_tool;
+#[cfg(feature = "tools-delete-path")]
+pub use delete_path::create_delete_path_tool;
 #[cfg(feature = "tools-edit-file")]
 pub use edit_file::create_edit_file_tool;
 #[cfg(feature = "tools-find-path")]
 pub use find_path::create_find_path_tool;
 #[cfg(feature = "tools-grep")]
 pub use grep::create_grep_tool;
+pub use list_available_tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use list_dir::create_list_dir_tool;
-#[cfg(feature = "tools-multi-agent")]
-pub use multi_agent::create_multi_agent_tools;
+#[cfg(feature = "tools-move-path")]
+pub use move_path::create_move_path_tool;
 #[cfg(feature = "tools-read-file")]
 pub use read_file::create_read_file_tool;
 #[cfg(feature = "tools-web")]
 pub use web::{
-    Engine as WebSearchEngine, SearchResult as WebSearchResult, create_web_tools, create_web_fetch_tool,
-    create_web_search_tool,
+    Engine as WebSearchEngine, SearchResult as WebSearchResult, create_web_fetch_tool, create_web_search_tool,
+    create_web_tools,
 };
 #[cfg(feature = "tools-write-file")]
 pub use write_file::create_write_file_tool;
-#[cfg(feature = "tools-create-dir")]
-pub use create_dir::create_create_dir_tool;
-#[cfg(feature = "tools-copy-path")]
-pub use copy_path::create_copy_path_tool;
-#[cfg(feature = "tools-delete-path")]
-pub use delete_path::create_delete_path_tool;
-#[cfg(feature = "tools-move-path")]
-pub use move_path::create_move_path_tool;
 
 pub fn simple_tool(
     tool: Tool,

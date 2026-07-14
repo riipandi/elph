@@ -56,7 +56,7 @@ where
 
         let base_tools: Vec<AgentTool> = active_tools
             .iter()
-            .filter(|tool| !crate::collaboration::is_multi_agent_tool(tool.name()))
+            .filter(|tool| !crate::collaboration::is_collaboration_tool(tool.name()))
             .cloned()
             .collect();
         self.shared

@@ -1,4 +1,4 @@
-//! Multi-agent tools — spawn and coordinate subagents.
+//! Collaboration tools — spawn agents and coordinate subagents.
 
 use std::future::Future;
 use std::pin::Pin;
@@ -10,7 +10,7 @@ use crate::agent::subagent::AgentControl;
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
-pub fn create_multi_agent_tools(control: Arc<AgentControl>) -> Vec<AgentTool> {
+pub fn create_collaboration_tools(control: Arc<AgentControl>) -> Vec<AgentTool> {
     vec![
         spawn_agent_tool(control.clone()),
         send_message_tool(control.clone()),

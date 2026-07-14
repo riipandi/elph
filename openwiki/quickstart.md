@@ -10,7 +10,7 @@
 | **Runtime** | `crates/elph-agent` | App-agnostic agent runtime: turn loop, session persistence, compaction, goals, subagents, skills, MCP client, WASM plugins |
 | **AI**      | `crates/elph-ai`    | Unified LLM provider layer: model catalog, provider abstraction, OAuth, image generation, web tools                        |
 | **Core**    | `crates/elph-core`  | Shared primitives: `floppy` memory store (Turso vector DB), logger, path resolution, filesystem helpers                    |
-| **TUI**     | `crates/elph-tui`   | Reusable terminal UI widgets built on [tuie](https://crates.io/crates/tuie)                                                |
+| **TUI**     | `crates/elph-tui`   | Temporarily disabled — TUI lives in `elph` binary (`tui.rs`)                                                               |
 | **Swarm**   | `crates/elph-swarm` | Multi-agent coordination (early stage)                                                                                     |
 
 ## Key concepts
@@ -27,10 +27,13 @@
 - **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).
 - **Extensions** — WASM-based dynamic plugins compiled with `wasmtime`.
 
-## Project state (HEAD `462d29e`)
+## Project state (HEAD `d8eaf06`)
 
 This repository is under **active development**. Recent milestones:
 
+- **Tool reorganization** — Renamed tools for clarity (`read`→`read_file`, `edit`→`edit_file`, `write`→`write_file`, `ls`→`list_dir`, `find`→`find_path`, `websearch`→`web_search`, `webfetch`→`web_fetch`), added new filesystem tools (`create_dir`, `copy_path`, `delete_path`, `move_path`), and added `diagnostics` tool for `cargo check` integration (`d8eaf06`).
+- **Module reorganization** — Flattened harness structure: `harness/` → `agent/harness/`, `subagent/` → `agent/subagent/`, `mode/` → `collaboration/`, `mcp/` → `tools/mcp/`, `env/` → `runtime/local_env/`, `agent_loop/` → `runtime/`, prompt encoding → `prompt/encoding/` (`c3bb9fd`).
+- **TUI reset** — Moved TUI into `elph` binary; `elph-tui` crate temporarily disabled (`874eb24`).
 - **Refactored** from a monolithic layout to layered crates (`elph-agent`, `elph-ai`, `elph-core`, `elph-tui`, `elph-swarm`).
 - **MCP** — Full client integration: stdio, streamable HTTP, SSE, OAuth, encrypted credentials, tool policy, session pools, hot reload.
 - **Observability** — Replaced `tracing` crate with `logforth` (structured logging) + `fastrace` (distributed tracing), including `JsonlReporter` and W3C `traceparent` propagation (`3ef42b8`).
@@ -38,8 +41,10 @@ This repository is under **active development**. Recent milestones:
 - **Workspace consolidation** — Removed `owly` and `eclaw` crates; unified CI (openwiki-update.yml) (`04c7352`).
 - **TUI** — Migrated from `superlighttui` to `tuie` framework (commit `b06c134`).
 - **Prompt encoding** — Optional TOON encoding for tool results (`0a0753c`).
+- **Diagnostics tool** — New `diagnostics` tool runs `cargo check` to surface compile-time errors (`d8eaf06`).
 - **Auto session naming** — Model-generated thread titles (`2e0297f`).
-- **Sandbox policies** — Zerobox-powered sandboxed tool execution (early stage).
+- **Conditional tracing** — Tracing gated behind `ELPH_TRACE` env var (`04309cd`).
+- **Embeddings** — Replaced `fastembed` with `embed_anything` for local embedding models (`eb217f2`).
 
 ## Documentation map
 
