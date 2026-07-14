@@ -67,13 +67,17 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 min_height: 3,
                 border_style: BorderStyle::Round,
                 border_color: Color::DarkGrey,
+                align_items: AlignItems::Baseline,
                 margin_bottom: 0,
                 padding_top: 0,
                 padding_bottom: 0,
                 padding_left: 1,
                 padding_right: 1,
             ) {
-                // This will be am input field
+                // View(margin_top: -1, margin_left: 1) {
+                //     Text(content: " Overlap Example ", wrap: TextWrap::NoWrap)
+                // }
+                // Text(content: format!("1 Current Time: {} - Press \"q\" to quit.", time.get().format("%r")))
              }
         }
     }
