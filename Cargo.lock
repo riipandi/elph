@@ -3074,8 +3074,10 @@ dependencies = [
  "anyhow",
  "chrono",
  "iocraft",
+ "mexprp",
  "reqwest 0.13.4",
  "serde",
+ "serde_json",
  "tokio",
  "unicode-width 0.2.2",
 ]
@@ -5935,6 +5937,15 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "mexprp"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50bb16f008075c96f108b693a7fc6b33bc3ad5d6db0b5dff46d887f9c26b1068"
+dependencies = [
+ "thiserror 1.0.69",
 ]
 
 [[package]]
