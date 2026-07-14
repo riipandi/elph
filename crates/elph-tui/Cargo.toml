@@ -55,6 +55,10 @@ name = "basic_context"
 path = "examples/basic_context.rs"
 
 [[example]]
+name = "basic_counter"
+path = "examples/basic_counter.rs"
+
+[[example]]
 name = "basic_form"
 path = "examples/basic_form.rs"
 
