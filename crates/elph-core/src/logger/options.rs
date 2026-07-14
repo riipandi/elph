@@ -120,4 +120,37 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn parse_trace_enabled_edge_cases() {
+        assert!(LoggingOptions::parse_trace_enabled(Some("")));
+        assert!(LoggingOptions::parse_trace_enabled(Some("  ")));
+        assert!(!LoggingOptions::parse_trace_enabled(Some("FALSE")));
+    }
+
+    #[test]
+    fn rotation_parse_unknown_defaults_daily() {
+        assert_eq!(LogRotation::parse(Some("unknown")), LogRotation::Daily);
+    }
+
+    #[test]
+    fn level_from_env_defaults_to_info() {
+        let level = LoggingOptions::level_from_env("NONEXISTENT_PREFIX_XYZ");
+        assert_eq!(level, "info");
+    }
+
+    #[test]
+    fn max_files_from_env_returns_none_for_missing() {
+        assert!(LoggingOptions::max_files_from_env("NONEXISTENT_PREFIX_XYZ").is_none());
+    }
+
+    #[test]
+    fn file_logging_enabled_defaults_to_true() {
+        assert!(LoggingOptions::file_logging_enabled("NONEXISTENT_PREFIX_XYZ"));
+    }
+
+    #[test]
+    fn trace_enabled_from_env_defaults_to_true() {
+        assert!(LoggingOptions::trace_enabled("NONEXISTENT_PREFIX_XYZ"));
+    }
 }

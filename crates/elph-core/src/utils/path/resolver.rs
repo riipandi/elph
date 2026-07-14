@@ -91,3 +91,121 @@ fn env_path(name: &str) -> Option<PathBuf> {
 fn user_home() -> Result<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from).context("HOME is not set")
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::LazyLock;
+
+    /// Serialize env-var mutation tests to avoid cross-test races
+    static ENV_LOCK: LazyLock<parking_lot::Mutex<()>> = LazyLock::new(|| parking_lot::Mutex::new(()));
+
+    #[test]
+    fn resolved_paths_from_dirs_roundtrip() {
+        let paths =
+            ResolvedPaths::from_dirs(PathBuf::from("/config"), PathBuf::from("/data"), PathBuf::from("/project"));
+        assert_eq!(paths.config_dir, PathBuf::from("/config"));
+        assert_eq!(paths.data_dir, PathBuf::from("/data"));
+        assert_eq!(paths.project_dir, PathBuf::from("/project"));
+    }
+
+    #[test]
+    fn env_path_trims_and_rejects_empty() {
+        assert!(env_path("NONEXISTENT_ENV_VAR_12345").is_none());
+    }
+
+    #[test]
+    fn config_dir_uses_home_when_no_env() {
+        let _lock = ENV_LOCK.lock();
+        let resolver = PathResolver {
+            home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
+            data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
+            project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
+            config_dir_name: ".elph",
+            data_dir_name: "elph",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+        }
+        let paths = resolver.resolve().expect("resolve");
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+        assert_eq!(paths.config_dir, tmp.path().join(".elph"));
+    }
+
+    #[test]
+    fn env_var_overrides_data_dir() {
+        let _lock = ENV_LOCK.lock();
+        let resolver = PathResolver {
+            home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
+            data_env: "ELPH_TEST_DATA_DIR",
+            project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
+            config_dir_name: ".elph",
+            data_dir_name: "elph",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+        }
+        unsafe {
+            std::env::set_var("ELPH_TEST_DATA_DIR", "/custom/data");
+        }
+        let paths = resolver.resolve().expect("resolve");
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+        unsafe {
+            std::env::remove_var("ELPH_TEST_DATA_DIR");
+        }
+        assert_eq!(paths.data_dir, PathBuf::from("/custom/data"));
+    }
+
+    #[test]
+    fn xdg_data_home_fallback() {
+        let _lock = ENV_LOCK.lock();
+        let resolver = PathResolver {
+            home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
+            data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
+            project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
+            config_dir_name: ".elph",
+            data_dir_name: "elph",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+        }
+        unsafe {
+            std::env::set_var("XDG_DATA_HOME", "/xdg/data");
+        }
+        let paths = resolver.resolve().expect("resolve");
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+        unsafe {
+            std::env::remove_var("XDG_DATA_HOME");
+        }
+        assert_eq!(paths.data_dir, PathBuf::from("/xdg/data/elph"));
+    }
+
+    #[test]
+    fn project_dir_falls_back_to_cwd() {
+        let _lock = ENV_LOCK.lock();
+        let resolver = PathResolver {
+            home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
+            data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
+            project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
+            config_dir_name: ".elph",
+            data_dir_name: "elph",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+        }
+        let paths = resolver.resolve().expect("resolve");
+        unsafe {
+            std::env::remove_var("HOME");
+        }
+        assert!(paths.project_dir.exists());
+    }
+}

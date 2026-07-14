@@ -20,16 +20,12 @@ const FILE_WRITER_BUFFER_LINES: usize = 16_384;
 /// Keeps the global logforth bridge alive so async appenders can flush on shutdown.
 pub struct LogGuard {
     bridge: Arc<LogBridge>,
-    trace_enabled: bool,
 }
 
 impl Drop for LogGuard {
     fn drop(&mut self) {
         self.bridge.flush();
-        #[cfg(feature = "tracing")]
-        if self.trace_enabled {
-            crate::trace::flush();
-        }
+        crate::trace::flush();
     }
 }
 
@@ -85,6 +81,7 @@ fn file_appender(options: &LoggingOptions) -> append::Async {
         .build()
 }
 
+#[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
 fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGuard> {
     let filter = level_filter(&options.level);
     let mut starter = logforth::starter_log::builder();
@@ -116,5 +113,49 @@ fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGu
     log::set_boxed_logger(Box::new(bridge.clone())).expect("failed to set global logger");
     log::set_max_level(parse_max_level(&options.level));
 
-    Some(LogGuard { bridge, trace_enabled })
+    Some(LogGuard { bridge })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn parse_max_level_valid() {
+        assert_eq!(parse_max_level("trace"), log::LevelFilter::Trace);
+        assert_eq!(parse_max_level("debug"), log::LevelFilter::Debug);
+        assert_eq!(parse_max_level("info"), log::LevelFilter::Info);
+        assert_eq!(parse_max_level("warn"), log::LevelFilter::Warn);
+        assert_eq!(parse_max_level("error"), log::LevelFilter::Error);
+    }
+
+    #[test]
+    fn parse_max_level_defaults_to_info() {
+        assert_eq!(parse_max_level("unknown"), log::LevelFilter::Info);
+        assert_eq!(parse_max_level(""), log::LevelFilter::Info);
+    }
+
+    #[test]
+    fn log_guard_flushes_on_drop() {
+        let bridge = Arc::new(LogBridge::new(logforth::starter_log::builder().build()));
+        let guard = LogGuard { bridge: bridge.clone() };
+        drop(guard);
+        // No panic = flush succeeded
+    }
+
+    #[test]
+    fn init_returns_none_in_test_mode() {
+        let options = LoggingOptions {
+            app_name: "test",
+            logs_dir: PathBuf::from("/tmp"),
+            level: "info".to_string(),
+            rotation: LogRotation::Daily,
+            max_files: None,
+            file_enabled: true,
+            console_enabled: true,
+            trace_enabled: true,
+        };
+        assert!(init(options).is_none());
+    }
 }

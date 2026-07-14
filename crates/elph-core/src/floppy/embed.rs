@@ -18,6 +18,7 @@ use super::store::EmbedFuture;
 pub const DEFAULT_EMBED_MODEL: &str = "AllMiniLML6V2";
 
 /// Resolved local embedding model (Hugging Face repo id + vector dimensions).
+#[cfg(feature = "embed")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedEmbeddingModel {
     pub hf_model_id: String,
@@ -236,5 +237,18 @@ mod tests {
         let m = resolve_embedding_model("sentence-transformers/all-MiniLM-L12-v2", false).unwrap();
         assert_eq!(m.hf_model_id, "sentence-transformers/all-MiniLM-L12-v2");
         assert_eq!(m.dimensions, 384);
+    }
+
+    #[test]
+    fn default_embed_options() {
+        let opts = EmbedOptions::default();
+        assert!(opts.quantized);
+        assert!(opts.model.is_none());
+        assert!(opts.cache_dir.is_none());
+    }
+
+    #[test]
+    fn resolve_unknown_model_returns_err() {
+        assert!(resolve_embedding_model("nonexistent-model-v99", false).is_err());
     }
 }

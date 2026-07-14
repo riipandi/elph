@@ -76,4 +76,32 @@ mod tests {
 
         assert_eq!(fs::read_to_string(path).expect("read marker"), "first");
     }
+
+    #[test]
+    fn ensure_dirs_creates_all() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dirs: Vec<PathBuf> = vec![tmp.path().join("a"), tmp.path().join("b/c")];
+        ensure_dirs(&dirs).expect("ensure_dirs");
+        assert!(tmp.path().join("a").exists());
+        assert!(tmp.path().join("b/c").exists());
+    }
+
+    #[test]
+    fn write_private_file_creates_new() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("private.txt");
+        write_private_file(&path, b"secret").expect("write_private_file");
+        assert_eq!(fs::read_to_string(&path).expect("read"), "secret");
+    }
+}
+
+#[test]
+fn write_json_file_produces_valid_json() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let path = tmp.path().join("test.json");
+    let data = serde_json::json!({"name": "test", "count": 42});
+    write_json_file(&path, &data).expect("write");
+    let content = fs::read_to_string(&path).expect("read");
+    let parsed: serde_json::Value = serde_json::from_str(&content).expect("parse");
+    assert_eq!(parsed, data);
 }

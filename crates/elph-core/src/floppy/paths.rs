@@ -53,3 +53,30 @@ impl FloppyPaths {
         MemoryStore::new(self.config(session_id), embed)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_local_uses_default_dir() {
+        let paths = FloppyPaths::project_local();
+        assert_eq!(paths.data_dir(), Path::new(".floppy"));
+    }
+
+    #[test]
+    fn custom_dir_resolves_db_path() {
+        let paths = FloppyPaths::new("/tmp/myfloppy");
+        assert_eq!(paths.db_path(), PathBuf::from("/tmp/myfloppy/store.db"));
+        assert!(paths.db_path_string().contains("store.db"));
+    }
+
+    #[test]
+    fn exists_checks_db_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = FloppyPaths::new(tmp.path());
+        assert!(!paths.exists());
+        std::fs::write(paths.db_path(), b"").expect("write");
+        assert!(paths.exists());
+    }
+}

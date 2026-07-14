@@ -96,3 +96,42 @@ impl FloppyConfig {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_config_sets_defaults() {
+        let cfg = FloppyConfig::new("test.db", "session-1");
+        assert_eq!(cfg.db_path, "test.db");
+        assert_eq!(cfg.session_id, "session-1");
+        assert_eq!(cfg.dimensions, Some(384));
+        assert!(cfg.vector_type.is_none());
+        assert!(cfg.top_k.is_none());
+    }
+
+    #[test]
+    fn builder_methods_override() {
+        let cfg = FloppyConfig::new("db", "s1")
+            .vector_type(VectorType::Vector64)
+            .top_k(10)
+            .learning_rate(0.5)
+            .decay_rate(0.9)
+            .apply_migrations(false);
+        assert_eq!(cfg.vector_type, Some(VectorType::Vector64));
+        assert_eq!(cfg.top_k, Some(10));
+        assert_eq!(cfg.learning_rate, Some(0.5));
+        assert_eq!(cfg.decay_rate, Some(0.9));
+        assert_eq!(cfg.apply_migrations, Some(false));
+    }
+
+    #[test]
+    fn vector_type_serialization() {
+        let v = VectorType::Vector32;
+        let json = serde_json::to_string(&v).unwrap();
+        assert_eq!(json, "\"vector32\"");
+        let parsed: VectorType = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, VectorType::Vector32);
+    }
+}

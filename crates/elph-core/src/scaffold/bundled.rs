@@ -30,3 +30,15 @@ impl BundledManifest {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_creates_version_string() {
+        let manifest = BundledManifest::defaults("elph", "1.0.0");
+        assert_eq!(manifest.version, "elph-1.0.0");
+        assert!(manifest.checksums.is_empty());
+    }
+}
