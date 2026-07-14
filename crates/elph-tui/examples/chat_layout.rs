@@ -71,7 +71,7 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 padding_right: 1,
                 margin_bottom: 0,
             ) {
-                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Session: 1234567890")
+                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Session: a01m1234567890 | turn: 0")
                 Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "$0.00 | 0k | 0.0% (262k)")
             }
 
