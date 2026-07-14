@@ -17,7 +17,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["mcp", "extensions"]
-extensions = ["dep:wasmtime"]
+extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 obscura = ["dep:obscura"]
 tools-read = []
@@ -184,6 +184,37 @@ required-features = ["mcp"]
 name = "encrypt_string"
 path = "examples/encrypt_string.rs"
 required-features = ["mcp"]
+
+[[example]]
+name = "agent_init"
+path = "examples/agent_init.rs"
+required-features = ["builtin-tools"]
+
+[[example]]
+name = "agent_goals"
+path = "examples/agent_goals.rs"
+required-features = ["builtin-tools"]
+
+[[example]]
+name = "agent_messages"
+path = "examples/agent_messages.rs"
+
+[[example]]
+name = "agent_mcp_config"
+path = "examples/agent_mcp_config.rs"
+required-features = ["mcp"]
+
+[[example]]
+name = "agent_compaction_full"
+path = "examples/agent_compaction_full.rs"
+
+[[example]]
+name = "agent_subagent"
+path = "examples/agent_subagent.rs"
+
+[[example]]
+name = "agent_collaboration"
+path = "examples/agent_collaboration.rs"
 
 [dev-dependencies]
 elph-ai = { workspace = true }
