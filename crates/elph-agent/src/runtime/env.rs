@@ -66,3 +66,61 @@ pub(crate) fn absolute_env_path(cwd: &str, path: &str) -> String {
         LocalExecutionEnv::normalize_path(&base)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn join_env_path_empty_base() {
+        assert_eq!(join_env_path("", "child"), "child");
+        assert_eq!(join_env_path("", "/child"), "child");
+    }
+
+    #[test]
+    fn join_env_path_normal() {
+        assert_eq!(join_env_path("base", "child"), "base/child");
+        assert_eq!(join_env_path("base/", "child"), "base/child");
+        assert_eq!(join_env_path("base", "/child"), "base/child");
+        assert_eq!(join_env_path("base/", "/child"), "base/child");
+    }
+
+    #[test]
+    fn dirname_env_path_root() {
+        assert_eq!(dirname_env_path("/"), "/");
+        assert_eq!(dirname_env_path("/file"), "/");
+        assert_eq!(dirname_env_path("file"), "/");
+    }
+
+    #[test]
+    fn dirname_env_path_nested() {
+        assert_eq!(dirname_env_path("a/b/c"), "a/b");
+        assert_eq!(dirname_env_path("a/b/c/"), "a/b");
+    }
+
+    #[test]
+    fn basename_env_path_normal() {
+        assert_eq!(basename_env_path("a/b/c"), "c");
+        assert_eq!(basename_env_path("a/b/c/"), "c");
+        assert_eq!(basename_env_path("file"), "file");
+    }
+
+    #[test]
+    fn relative_env_path_same_root() {
+        assert_eq!(relative_env_path("/root", "/root"), "");
+        assert_eq!(relative_env_path("/root/", "/root/"), "");
+    }
+
+    #[test]
+    fn relative_env_path_child() {
+        assert_eq!(relative_env_path("/root", "/root/child"), "child");
+        assert_eq!(relative_env_path("/root/", "/root/child"), "child");
+        assert_eq!(relative_env_path("/root", "/root/a/b"), "a/b");
+    }
+
+    #[test]
+    fn relative_env_path_unrelated() {
+        assert_eq!(relative_env_path("/root", "/other/path"), "other/path");
+        assert_eq!(relative_env_path("/root", "other/path"), "other/path");
+    }
+}

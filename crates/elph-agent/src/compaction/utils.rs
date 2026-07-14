@@ -178,3 +178,92 @@ pub fn serialize_conversation(messages: &[Message]) -> String {
 
     parts.join("\n\n")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_ai::{Message, UserContent};
+
+    #[test]
+    fn compute_file_lists_separates_read_and_write() {
+        let mut ops = create_file_ops();
+        ops.read.insert("read.txt".into());
+        ops.written.insert("write.txt".into());
+        let (reads, writes) = compute_file_lists(&ops);
+        assert_eq!(reads, vec!["read.txt"]);
+        assert_eq!(writes, vec!["write.txt"]);
+    }
+
+    #[test]
+    fn compute_file_lists_empty() {
+        let ops = create_file_ops();
+        let (reads, writes) = compute_file_lists(&ops);
+        assert!(reads.is_empty());
+        assert!(writes.is_empty());
+    }
+
+    #[test]
+    fn compute_file_lists_edited_appears_in_modified() {
+        let mut ops = create_file_ops();
+        ops.read.insert("read.txt".into());
+        ops.edited.insert("edit.txt".into());
+        let (reads, writes) = compute_file_lists(&ops);
+        assert_eq!(reads, vec!["read.txt"]);
+        assert_eq!(writes, vec!["edit.txt"]);
+    }
+
+    #[test]
+    fn compute_file_lists_read_also_written_excluded_from_read_only() {
+        let mut ops = create_file_ops();
+        ops.read.insert("both.txt".into());
+        ops.written.insert("both.txt".into());
+        let (reads, writes) = compute_file_lists(&ops);
+        assert!(reads.is_empty());
+        assert_eq!(writes, vec!["both.txt"]);
+    }
+
+    #[test]
+    fn format_file_operations_both() {
+        let result = format_file_operations(&["r1".into()], &["w1".into()]);
+        assert!(result.contains("<read-files>"));
+        assert!(result.contains("<modified-files>"));
+        assert!(result.contains("r1"));
+        assert!(result.contains("w1"));
+    }
+
+    #[test]
+    fn format_file_operations_empty() {
+        let result = format_file_operations(&[], &[]);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn truncate_for_summary_short() {
+        assert_eq!(truncate_for_summary("hello", 100), "hello");
+    }
+
+    #[test]
+    fn truncate_for_summary_long() {
+        let long = "x".repeat(200);
+        let result = truncate_for_summary(&long, 100);
+        // verify result is not the full original
+        assert!(result.len() < long.len());
+    }
+
+    #[test]
+    fn extract_text_from_user_content_text() {
+        let content = UserContent::Text("hello world".into());
+        assert_eq!(extract_text_from_user_content(&content), "hello world");
+    }
+
+    #[test]
+    fn serialize_conversation_user_message() {
+        let messages = vec![Message::User {
+            content: UserContent::Text("hello".into()),
+            timestamp: 0,
+        }];
+        let result = serialize_conversation(&messages);
+        assert!(result.contains("[User]"));
+        assert!(result.contains("hello"));
+    }
+}

@@ -83,4 +83,19 @@ mod tests {
         assert!(t);
         assert!(!s.contains("second line"));
     }
+
+    #[test]
+    fn truncate_json_value_short() {
+        let v = serde_json::json!("short");
+        let result = truncate_json_value(&v, 100);
+        assert_eq!(result, v);
+    }
+
+    #[test]
+    fn truncate_json_value_long() {
+        let v = serde_json::json!("x".repeat(200));
+        let result = truncate_json_value(&v, 20);
+        assert!(result.is_object());
+        assert_eq!(result["_truncated"], serde_json::json!(true));
+    }
 }

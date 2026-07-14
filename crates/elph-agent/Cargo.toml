@@ -188,6 +188,7 @@ required-features = ["mcp"]
 [dev-dependencies]
 elph-ai = { workspace = true }
 elph-core = { workspace = true, features = ["tracing"] }
+httpmock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tsid.workspace = true

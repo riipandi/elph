@@ -225,9 +225,7 @@ The last message in context must be `user` or `toolResult` (not `assistant`).
 ## Agent Options
 
 ```rust
-use elph_agent::{
-    Agent, AgentOptions, PartialAgentState, QueueMode, ToolExecutionMode,
-};
+use elph_agent::{Agent, AgentOptions, PartialAgentState, QueueMode, ToolExecutionMode};
 
 let agent = Agent::new(AgentOptions {
     // Initial state
@@ -564,7 +562,8 @@ let agent = Agent::new(AgentOptions {
 For direct control without the `Agent` class:
 
 ```rust
-use elph_agent::{agent_loop, agent_loop_continue, AgentContext, AgentLoopConfig, default_convert_to_llm_fn};
+use elph_agent::{AgentContext, AgentLoopConfig};
+use elph_agent::{agent_loop, agent_loop_continue, default_convert_to_llm_fn};
 
 let context = AgentContext {
     system_prompt: "You are helpful.".into(),
@@ -597,10 +596,9 @@ These low-level streams are observational. They preserve event order, but they d
 `AgentHarness` is the session-backed orchestration layer above the low-level agent loop. It owns session persistence, runtime configuration, resource resolution, compaction, tree navigation, and extension hooks.
 
 ```rust
-use elph_agent::{
-    AgentHarness, AgentHarnessOptions, AgentHarnessResources, AgentThinkingLevel,
-    InMemorySessionStorage, LocalExecutionEnv, QueueMode, Session, SystemPrompt, echo_tool,
-};
+use elph_agent::{AgentHarness, AgentHarnessOptions, AgentHarnessResources, AgentThinkingLevel};
+use elph_agent::{InMemorySessionStorage, LocalExecutionEnv, QueueMode, Session, SystemPrompt};
+use elph_agent::echo_tool;
 use elph_ai::{Models, builtin_models};
 use std::sync::Arc;
 

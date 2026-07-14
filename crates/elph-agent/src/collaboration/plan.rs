@@ -54,4 +54,44 @@ mod tests {
     fn missing_block_returns_none() {
         assert!(extract_proposed_plan("no plan here").is_none());
     }
+
+    #[test]
+    fn empty_plan_returns_none() {
+        let text = "<proposed_plan></proposed_plan>";
+        assert!(extract_proposed_plan(text).is_none());
+    }
+
+    #[test]
+    fn extract_preserves_original_case() {
+        let text = "<PROPOSED_PLAN>\nMixed Case Plan\n</PROPOSED_PLAN>";
+        assert_eq!(extract_proposed_plan(text).as_deref(), Some("Mixed Case Plan"));
+    }
+
+    #[test]
+    fn assistant_message_text_collects_text_blocks() {
+        use elph_ai::AssistantContentBlock;
+        use elph_ai::TextContent;
+        let blocks = vec![
+            AssistantContentBlock::Text(TextContent::new("hello")),
+            AssistantContentBlock::Text(TextContent::new(" world")),
+        ];
+        assert_eq!(assistant_message_text(&blocks), "hello world");
+    }
+
+    #[test]
+    fn assistant_message_text_skips_non_text() {
+        use elph_ai::AssistantContentBlock;
+        use elph_ai::TextContent;
+        let blocks = vec![AssistantContentBlock::Text(TextContent::new("text"))];
+        assert_eq!(assistant_message_text(&blocks), "text");
+    }
+
+    #[test]
+    fn plan_confirmation_choice_serialization() {
+        let choice = PlanConfirmationChoice::Implement;
+        let json = serde_json::to_string(&choice).unwrap();
+        assert_eq!(json, "\"implement\"");
+        let parsed: PlanConfirmationChoice = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, PlanConfirmationChoice::Implement);
+    }
 }
