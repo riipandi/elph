@@ -1,10 +1,15 @@
 //! Wrapped row layout approximating iocraft multiline [`TextInput`].
 
-use unicode_width::UnicodeWidthChar;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 /// Wrap width inside iocraft [`TextInput`] (reserves one column for the cursor).
 pub fn text_input_wrap_width(viewport_width: u16) -> usize {
     viewport_width.max(1).saturating_sub(1) as usize
+}
+
+/// Wrap width for [`Text`] with an overlay cursor (no reserved column).
+pub fn overlay_editor_wrap_width(viewport_width: u16) -> usize {
+    viewport_width.max(1) as usize
 }
 
 #[derive(Debug, Clone)]
@@ -14,17 +19,23 @@ struct TextRow {
     width: usize,
 }
 
-/// Wrapped text layout for scroll metrics and cursor row tracking.
+/// Wrapped row index for scroll metrics and cursor tracking (does not own the source text).
 #[derive(Debug, Clone)]
 pub struct WrappedTextLayout {
-    text: String,
     rows: Vec<TextRow>,
 }
 
 impl WrappedTextLayout {
     pub fn new(text: &str, viewport_width: u16) -> Self {
-        let text = text.to_string();
-        let max_width = text_input_wrap_width(viewport_width);
+        Self::with_max_width(text, text_input_wrap_width(viewport_width))
+    }
+
+    /// Wrapped rows aligned with iocraft [`Text`] (`TextWrap::Wrap`) in a fixed-width column.
+    pub fn new_for_overlay_editor(text: &str, viewport_width: u16) -> Self {
+        Self::with_max_width(text, overlay_editor_wrap_width(viewport_width))
+    }
+
+    fn with_max_width(text: &str, max_width: usize) -> Self {
         let mut rows = Vec::new();
 
         if text.is_empty() {
@@ -33,15 +44,15 @@ impl WrappedTextLayout {
                 len: 0,
                 width: 0,
             });
-            return Self { text, rows };
+            return Self { rows };
         }
 
         let mut line_start = 0usize;
         for (newline_idx, _) in text.match_indices('\n') {
-            Self::push_wrapped_line(&text, line_start, newline_idx, max_width, &mut rows);
+            Self::push_wrapped_line(text, line_start, newline_idx, max_width, &mut rows);
             line_start = newline_idx + 1;
         }
-        Self::push_wrapped_line(&text, line_start, text.len(), max_width, &mut rows);
+        Self::push_wrapped_line(text, line_start, text.len(), max_width, &mut rows);
 
         if rows.is_empty() {
             rows.push(TextRow {
@@ -51,7 +62,7 @@ impl WrappedTextLayout {
             });
         }
 
-        Self { text, rows }
+        Self { rows }
     }
 
     fn push_wrapped_line(text: &str, start: usize, end: usize, max_width: usize, rows: &mut Vec<TextRow>) {
@@ -70,26 +81,22 @@ impl WrappedTextLayout {
         for (idx, ch) in slice.char_indices() {
             let w = UnicodeWidthChar::width(ch).unwrap_or(0);
             if col > 0 && col + w > max_width {
-                let len = idx - row_start;
-                let width = slice[row_start..idx]
-                    .chars()
-                    .map(|c| UnicodeWidthChar::width(c).unwrap_or(0))
-                    .sum();
                 rows.push(TextRow {
                     offset: start + row_start,
-                    len,
-                    width,
+                    len: idx - row_start,
+                    width: col,
                 });
                 row_start = idx;
-                col = 0;
+                col = w;
+            } else {
+                col += w;
             }
-            col += w;
         }
         let tail = &slice[row_start..];
         rows.push(TextRow {
             offset: start + row_start,
             len: tail.len(),
-            width: tail.chars().map(|c| UnicodeWidthChar::width(c).unwrap_or(0)).sum(),
+            width: col,
         });
     }
 
@@ -97,24 +104,133 @@ impl WrappedTextLayout {
         self.rows.len().max(1) as u16
     }
 
-    pub fn row_column_for_offset(&self, offset: usize) -> (u16, u16) {
-        let offset = offset.min(self.text.len());
-        for (i, row) in self.rows.iter().enumerate() {
-            if offset >= row.offset {
-                let offset_in_row = offset - row.offset;
-                if offset_in_row <= row.len {
-                    let col = self.text[row.offset..offset]
-                        .chars()
-                        .map(|c| UnicodeWidthChar::width(c).unwrap_or(0))
-                        .sum::<usize>() as u16;
-                    return (i as u16, col);
-                }
+    fn row_index_for_offset(&self, offset: usize) -> usize {
+        let mut lo = 0usize;
+        let mut hi = self.rows.len();
+        while lo < hi {
+            let mid = (lo + hi) / 2;
+            if self.rows[mid].offset <= offset {
+                lo = mid + 1;
+            } else {
+                hi = mid;
             }
+        }
+        lo.saturating_sub(1)
+    }
+
+    pub fn row_column_for_offset(&self, text: &str, offset: usize) -> (u16, u16) {
+        let offset = offset.min(text.len());
+        let row_idx = self.row_index_for_offset(offset);
+        let row = &self.rows[row_idx];
+        let offset_in_row = offset.saturating_sub(row.offset);
+        if offset_in_row <= row.len {
+            let col = display_width(&text[row.offset..offset]) as u16;
+            return (row_idx as u16, col);
         }
         (
             self.rows.len().saturating_sub(1) as u16,
             self.rows.last().map_or(0, |r| r.width as u16),
         )
+    }
+
+    pub fn left_of_offset(text: &str, offset: usize) -> usize {
+        if offset == 0 {
+            0
+        } else {
+            text[..offset].char_indices().last().map_or(0, |(i, _)| i)
+        }
+    }
+
+    pub fn right_of_offset(text: &str, offset: usize) -> usize {
+        if offset >= text.len() {
+            text.len()
+        } else {
+            text[offset..]
+                .char_indices()
+                .nth(1)
+                .map_or(text.len(), |(i, _)| offset + i)
+        }
+    }
+
+    fn offset_for_closest_column_in_row(&self, text: &str, row: u16, col: u16) -> usize {
+        let row = &self.rows[row as usize];
+        let col = col as usize;
+        if col >= row.width {
+            return row.offset + row.len;
+        }
+        let mut width = 0;
+        for (idx, c) in text[row.offset..].char_indices() {
+            if width >= col {
+                return row.offset + idx;
+            }
+            width += UnicodeWidthChar::width(c).unwrap_or(0);
+        }
+        row.offset + row.len
+    }
+
+    pub fn above_offset(&self, text: &str, offset: usize, col_preference: Option<u16>) -> usize {
+        let (row, col) = self.row_column_for_offset(text, offset);
+        if row == 0 {
+            return offset;
+        }
+        self.offset_for_closest_column_in_row(text, row - 1, col_preference.unwrap_or(col))
+    }
+
+    pub fn below_offset(&self, text: &str, offset: usize, col_preference: Option<u16>) -> usize {
+        let (row, col) = self.row_column_for_offset(text, offset);
+        if row as usize + 1 >= self.rows.len() {
+            return offset;
+        }
+        self.offset_for_closest_column_in_row(text, row + 1, col_preference.unwrap_or(col))
+    }
+
+    pub fn row_start_offset(&self, text: &str, offset: usize) -> usize {
+        let row_idx = self.row_index_for_offset(offset.min(text.len()));
+        self.rows[row_idx].offset
+    }
+
+    pub fn row_end_offset(&self, text: &str, offset: usize) -> usize {
+        let row_idx = self.row_index_for_offset(offset.min(text.len()));
+        let r = &self.rows[row_idx];
+        r.offset + r.len
+    }
+
+    /// First `max_lines` wrapped rows as explicit newlines; ellipsis on the last line when clipped.
+    pub fn clamp_display_lines(&self, text: &str, max_lines: u16, max_line_width: usize) -> (String, u16, bool) {
+        let max = max_lines.max(1) as usize;
+        if self.rows.len() <= max {
+            return (text.to_string(), self.row_count(), false);
+        }
+        let mut lines: Vec<String> = Vec::with_capacity(max);
+        for row in self.rows.iter().take(max.saturating_sub(1)) {
+            lines.push(text[row.offset..row.offset + row.len].to_string());
+        }
+        let last = &self.rows[max - 1];
+        let last_line = &text[last.offset..last.offset + last.len];
+        lines.push(mark_clamped_line(last_line, max_line_width));
+        (lines.join("\n"), max_lines, true)
+    }
+}
+
+fn display_width(slice: &str) -> usize {
+    slice.chars().map(|c| UnicodeWidthChar::width(c).unwrap_or(0)).sum()
+}
+
+fn mark_clamped_line(line: &str, max_line_width: usize) -> String {
+    const MARKER: &str = " …";
+    let marker_w = MARKER.width();
+    if max_line_width == 0 {
+        return String::new();
+    }
+    if marker_w >= max_line_width {
+        return "…".to_string();
+    }
+    let body_budget = max_line_width - marker_w;
+    let body = crate::utils::truncate_with_ellipsis(line, body_budget);
+    if body.ends_with('…') {
+        body
+    } else {
+        format!("{body}{MARKER}")
     }
 }
 

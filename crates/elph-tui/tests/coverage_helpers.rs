@@ -9,48 +9,32 @@ use elph_tui::text_editing::*;
 #[test]
 fn wire_edit_handle_key_applies_word_left() {
     let mut value = "hello world".to_string();
-    let mut cursor = 11usize;
     let mut esc = false;
-    let mut newline = false;
     let mut handle = TextInputHandle::default();
-    handle.set_cursor_offset(11);
-
-    assert!(wire_edit_handle_key(
-        KeyCode::Left,
-        KeyEventKind::Press,
-        KeyModifiers::ALT,
-        false,
-        &mut esc,
-        &mut newline,
-        &mut value,
-        &mut cursor,
-        &mut handle,
-    ));
+    let result =
+        apply_wire_edit_key(KeyCode::Left, KeyEventKind::Press, KeyModifiers::ALT, false, false, &value, 11).unwrap();
+    assert_eq!(result.cursor, 6);
+    wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
     assert_eq!(value, "hello world");
-    assert_eq!(cursor, 6);
 }
 
 #[test]
 fn wire_edit_handle_key_applies_text_change() {
     let mut value = "hello world".to_string();
-    let mut cursor = 11usize;
     let mut esc = false;
-    let mut newline = false;
     let mut handle = TextInputHandle::default();
-
-    assert!(wire_edit_handle_key(
+    let result = apply_wire_edit_key(
         KeyCode::Backspace,
         KeyEventKind::Press,
         KeyModifiers::SUPER,
         false,
-        &mut esc,
-        &mut newline,
-        &mut value,
-        &mut cursor,
-        &mut handle,
-    ));
+        false,
+        &value,
+        11,
+    )
+    .unwrap();
+    wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
     assert_eq!(value, "");
-    assert_eq!(cursor, 0);
 }
 
 #[test]
@@ -59,19 +43,14 @@ fn wire_edit_apply_result_cursor_only() {
         text: "abc".into(),
         cursor: 1,
         pending_esc: false,
-        pending_newline: false,
         cursor_only: true,
     };
     let mut value = "abc".to_string();
-    let mut cursor = 3;
     let mut esc = true;
-    let mut newline = true;
     let mut handle = TextInputHandle::default();
-    wire_edit_apply_result(result, &mut value, &mut cursor, &mut handle, &mut esc, &mut newline);
+    wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
     assert_eq!(value, "abc");
-    assert_eq!(cursor, 1);
     assert!(!esc);
-    assert!(!newline);
 }
 
 #[test]
@@ -133,17 +112,7 @@ fn scrollbar_cell_char_variants() {
 #[test]
 fn apply_wire_edit_key_noop_when_cursor_unchanged() {
     assert!(
-        apply_wire_edit_key(
-            KeyCode::Left,
-            KeyEventKind::Press,
-            KeyModifiers::ALT,
-            false,
-            false,
-            false,
-            "hi",
-            0,
-        )
-        .is_none()
+        apply_wire_edit_key(KeyCode::Left, KeyEventKind::Press, KeyModifiers::ALT, false, false, "hi", 0,).is_none()
     );
 }
 

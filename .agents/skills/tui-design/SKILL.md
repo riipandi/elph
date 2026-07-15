@@ -2,9 +2,10 @@
 name: tui-design
 description: >-
     Guide terminal UI development with iocraft: component mental model, flex layout, scroll regions,
-    overlap decoration, state/hooks, input handling, and common layout pitfalls.
+    overlap decoration, state/hooks, input handling, accessibility, and common layout pitfalls.
     Use when building or refactoring a TUI, fixing scroll/focus/layout bugs, choosing iocraft patterns,
-    or the user mentions iocraft, terminal UI, TUI components, or runs /tui-design.
+    improving keyboard/contrast/screen-reader ergonomics, or the user mentions iocraft, terminal UI,
+    TUI components, accessibility, a11y, or runs /tui-design.
 ---
 
 # TUI Design (iocraft)
@@ -167,6 +168,94 @@ Use `.print()` for static snapshots in examples without a runtime loop.
 - Global shortcuts (quit, cycle mode) belong in the shell's `use_terminal_events`; avoid duplicating handlers in every child.
 - Tab may be consumed by the focused input — choose bindings that do not fight focus when simulating mode switches in demos.
 
+## Accessibility
+
+Terminal UIs are **keyboard-first** by nature, but accessibility still requires deliberate design: discoverable bindings, readable contrast, non-color-only state, and layouts that do not trap or hide content. Treat a11y as a first-class constraint alongside layout — not a post-hoc polish pass.
+
+### Keyboard-first & discoverability
+
+- **Every interactive action must have a keyboard path.** Mouse wheel / click are optional enhancements (`enable_mouse_capture`), never the only way to scroll, select, or submit.
+- **Document shortcuts in visible chrome** — status row, footer, or `/help`. Prefer text like `Shift+↑/↓ scroll` over expecting users to guess.
+- **Use consistent modifier vocabulary** across the app: e.g. `Shift` for transcript scroll, `Ctrl` for app control, plain `Enter` vs `Shift+Enter` for submit vs newline in chat editors.
+- **Avoid binding conflicts** between global shell handlers and focused widgets. When a region disables `keyboard_scroll` on `ScrollView`, provide an explicit alternative (e.g. `Shift+Arrow` on the panel).
+- **Handle press, ignore release** — prevents double-firing for users with sticky keys or assistive tech that synthesizes both events.
+
+```rust
+if kind == KeyEventKind::Release {
+    return;
+}
+```
+
+- **Expose quit / exit** on a well-known chord (`Ctrl+D`, `:q`) and mention it in help text.
+
+### Focus & input ergonomics
+
+- **One clear focus target** per screen state. Border style changes (`BorderStyle::Round` when focused) help sighted users; pair with a text cue if the focused region is not obvious.
+- **Do not steal focus** on every re-render. Store draft text and editor state in `use_state` / `use_ref`, not ephemeral props recreated each frame.
+- **Multiline editors:** distinguish submit vs newline in both behavior and docs (`submit_on_enter: true` → plain Enter submits, Shift+Enter / Ctrl+J insert newline).
+- **Bracketed paste & CSI u** (when the app enables keyboard enhancement) improve paste fidelity and modified keys for screen readers and non-US layouts — preserve these hooks in the platform layer; do not strip enhancement flags without cause.
+
+### Visual readability
+
+- **Contrast:** body text, borders, scrollbar thumb/track, and error/success states must remain legible on default dark terminals. Prefer `Color::Grey` / `Color::DarkGrey` minimum for secondary chrome; avoid mid-grey on grey for primary content.
+- **Never encode state by color alone.** Pair accent colors with text labels (e.g. agent mode badge shows `build` / `plan` / `ask`, not only a colored border).
+- **Weight and punctuation** can reinforce meaning when color is muted: `Weight::Bold` on labels, explicit prefixes (`Error:`, `Tool:`) in transcript bubbles.
+- **Visible caret** in editors — render a cursor block or distinct cell in focused `Textarea` / `TextInput`; do not rely on blink alone (many terminals disable blink).
+- **Unicode symbols** (scrollbar `│`, borders) aid sighted users but degrade in some fonts/locales — keep critical information in ASCII labels nearby.
+
+### Structure, motion & screen readers
+
+Terminals lack a full accessibility tree like the web. Mitigate with **plain-text structure**:
+
+- **Stable reading order:** header → transcript → status → input → footer. Do not reorder zones visually with absolute positioning unless the DOM-equivalent order still makes sense when read top-to-bottom.
+- **Meaningful text content** over decorative-only rows. Tool call lines should say what happened (`read_file: path`), not just an icon glyph.
+- **Avoid gratuitous flicker** — spinning indicators are fine for in-progress work; do not flash large regions. Respect `use_future` tick rates that are readable (1s clocks, not 50ms strobe).
+- **Screen readers / braille displays** often linearize the screen. Assume users hear one line at a time: put the most important status on dedicated rows, not only in overlapping corner badges.
+- **Announce destructive actions** in text (`:q!` vs `:q`) — confirmation copy is accessibility as much as safety.
+
+### Scroll regions & sticky chrome
+
+Overlapping sticky headers are a common **accessibility trap**: content below gets covered and becomes unreachable.
+
+- **Reserve real viewport space** for sticky UI — inset the `ScrollView` below the sticky header (`top: sticky_rows`, `bottom: 0`), do not float a full-height overlay on top of a full-height scroller.
+- **Cap sticky height** so a long pinned prompt cannot consume the entire panel; keep a minimum scrollable band (e.g. 3+ lines).
+- **Clip sticky overflow** (`overflow: Hidden`, explicit `height`) so wrapped user prompts do not spill over assistant content.
+- **Pair `auto_scroll: true`** with a manual scroll path so users who scrolled up can return to the latest message without restarting.
+- **Sticky only when the user scrolled up** — disable sticky while `is_auto_scroll_pinned()`; a bottom-pinned offset looks like a large manual scroll and wrongly pins the latest long user bubble after submit. Clamp sticky height against the **full panel** viewport, not the inset scroll viewport, or long headers flicker (inset shrinks → clamp returns 0 → inset expands → repeat).
+- **Line-clamp sticky prompts** — long pasted user messages use `layout_sticky_header` / `clamp_wrapped_transcript_lines` (default 4 body lines, ellipsis on the last line, dim `⋯ full prompt in transcript` hint). Never size the inset from the full wrapped row count of a paste.
+
+```rust
+// Sticky header in flow at top; ScrollView lives in the remaining band.
+View(position: Relative, height: 100pct) {
+    View(position: Absolute, top: sticky_rows, bottom: 0) {
+        ScrollView(auto_scroll: true, scrollbar: true) { /* transcript */ }
+    }
+    View(position: Absolute, top: 0, height: sticky_rows, overflow: Hidden) {
+        /* sticky user prompt */
+    }
+}
+```
+
+### Terminal size & environment
+
+- **Responsive layout:** derive widths/heights from `use_terminal_size`; test mentally at 80×24 and very wide terminals. `min_height: 0` on flex children prevents clipped input at small heights.
+- **Wrap width discipline** — pass consistent `screen_width - padding` into bubbles and editors so reflow does not shuffle content under users mid-read.
+- **256-color / truecolor** assumptions fail on monochrome or high-contrast host settings — semantic roles should still read correctly without color (labels, weight, position).
+
+### Accessibility checklist (before merge)
+
+| Check                     | Pass criteria                                       |
+| ------------------------- | --------------------------------------------------- |
+| Keyboard complete         | All flows work with mouse disabled                  |
+| Shortcuts documented      | Footer/status/help lists non-obvious chords         |
+| Focus visible             | Focused editor/list has border or caret             |
+| Color + text              | Modes and errors use words, not hue alone           |
+| Contrast OK               | Primary text readable on default background         |
+| Sticky safe               | Sticky headers inset scroll; min scroll rows remain |
+| No release double-actions | Handlers ignore `KeyEventKind::Release`             |
+| Small terminal            | 80×24: input + transcript + footer all reachable    |
+| Linearizable              | Top-to-bottom read order still makes sense          |
+
 ## Visual design (general)
 
 - Prefer a small set of semantic roles: primary text, secondary/dim, border, accent, error/success.
@@ -185,12 +274,13 @@ When implementing or fixing a TUI:
 3. **Extract** a new `#[component]` when a block exceeds ~40 lines or is reused.
 4. **Wire state** at the lowest ancestor that needs it; pass derived values as props.
 5. **Test layout** at small and large terminal sizes mentally: does the grow region still clip?
-6. **Verify** compile the affected crate/example:
+6. **Run the accessibility checklist** — keyboard-only path, focus visibility, sticky/scroll traps, color+text labels.
+7. **Verify** compile the affected crate/example:
     ```bash
     cargo check -p <crate>
     cargo check -p <crate> --example <name>   # if applicable
     ```
-7. **Change only what the task needs** — no drive-by refactors across unrelated widgets.
+8. **Change only what the task needs** — no drive-by refactors across unrelated widgets.
 
 ## Decision guide
 
@@ -198,10 +288,13 @@ When implementing or fixing a TUI:
 | ------------------------------------- | ------------------------------------------------- |
 | List/chat that fills remaining height | Flex grow + `ScrollView`                          |
 | Pin to latest message                 | `auto_scroll: true` + bottom-aligned inner column |
+| Sticky user prompt                    | Inset `ScrollView` below header + clipped overlay |
 | Label on border corner                | Absolute child + `background_color: Reset`        |
 | Periodic UI refresh                   | `use_future` + `use_state` for clock/tick         |
 | Quit app                              | `should_exit` state + `system.exit()`             |
 | Modal / overlay (future)              | Absolute full-size `View` above siblings          |
+| Keyboard-only scroll                  | `Shift+Arrow` or `PageUp`/`PageDown` on panel     |
+| Accessible mode/status                | Text label + color (not color alone)              |
 
 ## Anti-patterns
 
@@ -211,3 +304,9 @@ When implementing or fixing a TUI:
 - Coloring every border by transient state when only a badge needs emphasis
 - Ignoring `KeyEventKind::Release` and firing actions twice
 - Copy-pasting layout trees instead of shared child components
+- **Mouse-only** scroll or click targets with no keyboard equivalent
+- **Color-only** state (red border with no error text; mode hue with no label)
+- **Full-height sticky overlay** on a full-height `ScrollView` — hides and blocks content below
+- **Low-contrast** grey-on-grey for primary transcript or input text
+- **Hidden shortcuts** — power features with no footer/help mention
+- **Focus loss on re-render** — controlled `TextInput` round-trips that reset cursor; prefer a single buffer + direct render for multiline editors

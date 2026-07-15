@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use elph_tui::text_editing::*;
 use iocraft::prelude::*;
 
@@ -19,6 +21,37 @@ fn prev_word_from_after_space() {
 #[test]
 fn next_word_from_start() {
     assert_eq!(next_word_offset("hello world", 0), 6);
+}
+
+#[test]
+fn delete_word_backward_uses_cursor_at_word_start() {
+    let text = "hello world";
+    let at_word_start = "hello ".len();
+    let cursor = at_word_start;
+    let (out, pos) = delete_word_backward(text, cursor);
+    assert_eq!(out, "world");
+    assert_eq!(pos, 0);
+    let (wrong, _) = delete_word_backward(text, text.len());
+    assert_eq!(wrong, "hello ");
+}
+
+#[test]
+fn wire_edit_delete_word_syncs_handle_after_text_change() {
+    let mut value = "hello world".to_string();
+    let mut esc = false;
+    let mut handle = TextInputHandle::default();
+    let result = apply_wire_edit_key(
+        KeyCode::Backspace,
+        KeyEventKind::Press,
+        KeyModifiers::ALT,
+        false,
+        false,
+        &value,
+        "hello ".len(),
+    )
+    .unwrap();
+    wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
+    assert_eq!(value, "world");
 }
 
 #[test]
@@ -332,7 +365,6 @@ fn apply_wire_edit_key_word_left_moves_cursor_only() {
         KeyModifiers::ALT,
         false,
         false,
-        false,
         "hello world",
         11,
     )
@@ -344,17 +376,8 @@ fn apply_wire_edit_key_word_left_moves_cursor_only() {
 
 #[test]
 fn apply_wire_edit_key_esc_sets_pending() {
-    let result = apply_wire_edit_key(
-        KeyCode::Esc,
-        KeyEventKind::Press,
-        KeyModifiers::empty(),
-        false,
-        false,
-        false,
-        "hi",
-        2,
-    )
-    .unwrap();
+    let result =
+        apply_wire_edit_key(KeyCode::Esc, KeyEventKind::Press, KeyModifiers::empty(), false, false, "hi", 2).unwrap();
     assert!(result.pending_esc);
     assert_eq!(result.text, "hi");
 }
@@ -368,7 +391,6 @@ fn apply_wire_edit_key_release_is_ignored() {
             KeyModifiers::ALT,
             false,
             false,
-            false,
             "hi",
             2,
         )
@@ -377,67 +399,145 @@ fn apply_wire_edit_key_release_is_ignored() {
 }
 
 #[test]
-fn wire_edit_cursor_only_must_not_touch_value_string() {
-    let mut value = "hello world".to_string();
-    let prev = value.clone();
-    let mut cursor = 11usize;
-    let mut esc = false;
-    let mut newline = false;
-    let mut handle = TextInputHandle::default();
-
-    assert!(wire_edit_handle_key(
-        KeyCode::Left,
+fn cursor_navigation_keys_are_classified_for_burst_suppression() {
+    assert!(is_cursor_navigation_key(
+        KeyCode::Up,
         KeyEventKind::Press,
-        KeyModifiers::ALT,
-        false,
-        &mut esc,
-        &mut newline,
-        &mut value,
-        &mut cursor,
-        &mut handle,
+        KeyModifiers::empty()
     ));
-    assert_eq!(value, prev);
-    assert_eq!(cursor, 6);
+    assert!(!is_cursor_navigation_key(KeyCode::Up, KeyEventKind::Press, KeyModifiers::SHIFT));
+    assert!(is_transcript_scroll_key(KeyCode::Up, KeyEventKind::Press, KeyModifiers::SHIFT));
+    assert!(!is_cursor_navigation_key(
+        KeyCode::Char('a'),
+        KeyEventKind::Press,
+        KeyModifiers::empty()
+    ));
 }
 
 #[test]
-fn wire_edit_text_change_updates_handle_cursor() {
-    let mut value = "hi".to_string();
-    let mut cursor = 2usize;
-    let mut esc = false;
-    let mut newline = false;
-    let mut handle = TextInputHandle::default();
+fn paste_burst_detects_rapid_key_events() {
+    let t0 = Instant::now();
+    assert!(!key_event_in_paste_burst(None, t0));
+    assert!(key_event_in_paste_burst(Some(t0), t0 + Duration::from_millis(10)));
+    assert!(!key_event_in_paste_burst(Some(t0), t0 + Duration::from_millis(110)));
+}
 
-    assert!(wire_edit_handle_key(
+#[test]
+fn should_submit_on_enter_skips_shift_and_raw_paste_burst() {
+    let now = Instant::now();
+    assert!(should_submit_on_enter(
+        true,
+        true,
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::empty(),
+        false,
+        None,
+        now,
+    ));
+    assert!(!should_submit_on_enter(
+        true,
+        true,
         KeyCode::Enter,
         KeyEventKind::Press,
         KeyModifiers::SHIFT,
-        true,
-        &mut esc,
-        &mut newline,
-        &mut value,
-        &mut cursor,
-        &mut handle,
+        false,
+        None,
+        now,
     ));
-    assert_eq!(value, "hi\n");
-    assert_eq!(cursor, 3);
+    assert!(!should_submit_on_enter(
+        true,
+        true,
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::empty(),
+        true,
+        None,
+        now,
+    ));
 }
 
 #[test]
-fn apply_wire_edit_key_shift_enter_sets_pending_newline() {
+fn should_submit_on_enter_blocked_during_paste_submit_guard() {
+    let now = Instant::now();
+    assert!(!should_submit_on_enter(
+        true,
+        true,
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::empty(),
+        false,
+        Some(now + Duration::from_millis(200)),
+        now,
+    ));
+    assert!(should_submit_on_enter(
+        true,
+        true,
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::empty(),
+        false,
+        Some(now - Duration::from_millis(1)),
+        now,
+    ));
+}
+
+#[test]
+fn wire_edit_cursor_only_must_not_touch_value_string() {
+    let mut value = "hello world".to_string();
+    let prev = value.clone();
+    let mut esc = false;
+    let mut handle = TextInputHandle::default();
+    let result =
+        apply_wire_edit_key(KeyCode::Left, KeyEventKind::Press, KeyModifiers::ALT, false, false, &value, 11).unwrap();
+    wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
+    assert_eq!(value, prev);
+}
+
+#[test]
+fn wire_edit_text_change_updates_cursor() {
+    let mut value = "hi".to_string();
+    let mut cursor = 2;
+    let mut esc = false;
     let result = apply_wire_edit_key(
         KeyCode::Enter,
         KeyEventKind::Press,
         KeyModifiers::SHIFT,
         true,
         false,
-        false,
-        "hi",
-        2,
+        &value,
+        cursor,
     )
     .unwrap();
+    wire_edit_apply_to_cursor(result, &mut value, &mut cursor, &mut esc);
+    assert_eq!(value, "hi\n");
+    assert_eq!(cursor, 3);
+}
+
+#[test]
+fn apply_wire_edit_key_shift_enter_inserts_newline_at_eof() {
+    let result =
+        apply_wire_edit_key(KeyCode::Enter, KeyEventKind::Press, KeyModifiers::SHIFT, true, false, "hi", 2).unwrap();
     assert_eq!(result.text, "hi\n");
-    assert!(result.pending_newline);
+    assert_eq!(result.cursor, 3);
+    assert!(!result.cursor_only);
+}
+
+#[test]
+fn apply_wire_edit_key_shift_enter_splits_mid_line() {
+    let result = apply_wire_edit_key(
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::SHIFT,
+        true,
+        false,
+        "with session",
+        4,
+    )
+    .unwrap();
+    assert_eq!(result.text, "with\n session");
+    assert_eq!(result.cursor, 5);
+    assert!(!result.cursor_only);
 }
 
 #[test]
@@ -446,7 +546,6 @@ fn apply_wire_edit_key_super_backspace_deletes_line_start() {
         KeyCode::Backspace,
         KeyEventKind::Press,
         KeyModifiers::SUPER,
-        false,
         false,
         false,
         "hello world",
@@ -466,7 +565,6 @@ fn apply_wire_edit_key_after_esc_word_left() {
         KeyModifiers::empty(),
         false,
         true,
-        false,
         "hello world",
         11,
     )
@@ -483,7 +581,6 @@ fn apply_wire_edit_key_after_esc_falls_back_without_after_esc_match() {
         KeyModifiers::empty(),
         false,
         true,
-        false,
         "hi",
         1,
     );
@@ -498,7 +595,6 @@ fn apply_wire_edit_key_all_edit_actions() {
         KeyModifiers::ALT,
         false,
         false,
-        false,
         "hello world",
         11,
     )
@@ -509,7 +605,6 @@ fn apply_wire_edit_key_all_edit_actions() {
         KeyCode::Delete,
         KeyEventKind::Press,
         KeyModifiers::ALT,
-        false,
         false,
         false,
         "hello world",
@@ -524,7 +619,6 @@ fn apply_wire_edit_key_all_edit_actions() {
         KeyModifiers::SUPER,
         false,
         false,
-        false,
         "hello world",
         5,
     )
@@ -535,7 +629,6 @@ fn apply_wire_edit_key_all_edit_actions() {
         KeyCode::Right,
         KeyEventKind::Press,
         KeyModifiers::ALT,
-        false,
         false,
         false,
         "hello world",
@@ -554,7 +647,6 @@ fn apply_wire_edit_key_unmatched_returns_none() {
             KeyModifiers::empty(),
             false,
             false,
-            false,
             "hi",
             1,
         )
@@ -563,20 +655,19 @@ fn apply_wire_edit_key_unmatched_returns_none() {
 }
 
 #[test]
-fn apply_wire_edit_key_ctrl_j_clears_pending_newline() {
+fn apply_wire_edit_key_ctrl_j_inserts_newline() {
     let result = apply_wire_edit_key(
         KeyCode::Char('j'),
         KeyEventKind::Press,
         KeyModifiers::CONTROL,
         true,
         false,
-        true,
         "hi",
         2,
     )
     .unwrap();
     assert_eq!(result.text, "hi\n");
-    assert!(!result.pending_newline);
+    assert_eq!(result.cursor, 3);
 }
 
 #[test]

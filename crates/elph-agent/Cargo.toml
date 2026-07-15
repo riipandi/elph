@@ -273,5 +273,10 @@ name = "subagent"
 path = "tests/subagent.rs"
 required-features = ["builtin-tools"]
 
+[[test]]
+name = "tools_fff"
+path = "tests/tools_fff.rs"
+required-features = ["tools-search"]
+
 [lints.rust]
 linker_messages = "allow"

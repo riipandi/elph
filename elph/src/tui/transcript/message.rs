@@ -35,6 +35,11 @@ impl TranscriptStyle {
         matches!(self, Self::User | Self::PlainUser)
     }
 
+    /// Extra terminal rows from top + bottom bubble padding.
+    pub fn bubble_padding_rows(self) -> u16 {
+        self.padding().saturating_mul(2)
+    }
+
     fn text_color(self) -> Color {
         match self {
             Self::Dim | Self::PlainDim => Color::DarkGrey,
@@ -108,19 +113,59 @@ pub fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage)
     .into()
 }
 
-pub fn transcript_sticky_overlay(screen_width: u16, message: &TranscriptMessage) -> AnyElement<'static> {
-    let bubble = transcript_message_bubble(screen_width, message);
+pub fn transcript_sticky_bubble(
+    screen_width: u16,
+    message: &TranscriptMessage,
+    display_content: &str,
+) -> AnyElement<'static> {
+    let style = message.style;
+    element! {
+        View(
+            width: screen_width - 3,
+            background_color: style.background_color(),
+            margin_bottom: 0,
+            padding: style.padding(),
+        ) {
+            Text(color: style.text_color(), wrap: TextWrap::NoWrap, content: display_content.to_string())
+        }
+    }
+    .into()
+}
+
+pub fn transcript_sticky_overlay(
+    screen_width: u16,
+    height: u16,
+    message: &TranscriptMessage,
+    display_content: &str,
+    truncated: bool,
+) -> AnyElement<'static> {
+    let bubble = transcript_sticky_bubble(screen_width, message, display_content);
     element! {
         View(
             position: Position::Absolute,
             top: 0,
             left: 0,
             width: screen_width,
+            height: height,
+            overflow: Overflow::Hidden,
             background_color: Color::Reset,
             padding_left: 1,
             padding_right: 1,
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::FlexStart,
         ) {
             #(bubble)
+            #(if truncated {
+                Some(element! {
+                    Text(
+                        color: Color::DarkGrey,
+                        wrap: TextWrap::NoWrap,
+                        content: "  ⋯ full prompt in transcript",
+                    )
+                })
+            } else {
+                None
+            })
         }
     }
     .into()

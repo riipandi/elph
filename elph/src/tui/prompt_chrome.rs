@@ -7,7 +7,7 @@ use crate::types::{AgentMode, ThinkingLevel};
 use super::editor::Editor;
 use super::footer::Footer;
 
-#[derive(Clone, Default, Props)]
+#[derive(Default, Props)]
 pub struct PromptChromeProps {
     pub screen_width: u16,
     pub screen_height: u16,
@@ -16,11 +16,13 @@ pub struct PromptChromeProps {
     pub project_label: String,
     pub model_label: String,
     pub draft: Option<State<String>>,
+    pub live_draft: Option<Ref<String>>,
     pub suppress_enter_newline: Option<Ref<bool>>,
+    pub on_submit: HandlerMut<'static, String>,
 }
 
 #[component]
-pub fn PromptChrome(props: &PromptChromeProps) -> impl Into<AnyElement<'static>> {
+pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'static>> {
     element! {
         View(
             width: props.screen_width,
@@ -39,7 +41,9 @@ pub fn PromptChrome(props: &PromptChromeProps) -> impl Into<AnyElement<'static>>
                 screen_height: props.screen_height,
                 agent_mode: props.agent_mode,
                 draft: props.draft,
+                live_draft: props.live_draft,
                 suppress_enter_newline: props.suppress_enter_newline,
+                on_submit: props.on_submit.take(),
             )
             Footer(
                 screen_width: props.screen_width,

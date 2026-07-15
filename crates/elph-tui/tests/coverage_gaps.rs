@@ -1,4 +1,3 @@
-use elph_tui::components::textarea::apply_text_input_change;
 use elph_tui::prelude::*;
 use elph_tui::text_editing::*;
 use futures::StreamExt;
@@ -26,116 +25,6 @@ async fn render_exit(element: impl Into<AnyElement<'static>>) -> Vec<String> {
         .map(|c| c.to_string())
         .collect::<Vec<_>>()
         .await
-}
-
-#[derive(Default, Props)]
-struct ApplyHarnessProps {
-    scenario: u8,
-}
-
-#[component]
-fn ApplyHarness(mut hooks: Hooks, props: &ApplyHarnessProps) -> impl Into<AnyElement<'static>> {
-    let mut system = hooks.use_context_mut::<SystemContext>();
-    let mut tick = hooks.use_state(|| 0u32);
-    let mut value = hooks.use_state(|| "draft".to_string());
-    let mut input_handle = hooks.use_ref_default::<TextInputHandle>();
-    let mut cursor_snapshot = hooks.use_ref(|| 5usize);
-    let mut suppress = hooks.use_ref(|| false);
-    let mut pending = hooks.use_ref(|| false);
-
-    let scenario = props.scenario;
-    hooks.use_effect(
-        move || {
-            input_handle.write().set_cursor_offset(5);
-            match scenario {
-                0 => {
-                    suppress.set(true);
-                    apply_text_input_change(
-                        Some(suppress),
-                        Some(pending),
-                        &mut value,
-                        &mut input_handle,
-                        cursor_snapshot,
-                        "\n".to_string(),
-                    );
-                }
-                1 => {
-                    value.set("hello\n\n".to_string());
-                    pending.set(true);
-                    input_handle.write().set_cursor_offset(7);
-                    cursor_snapshot.set(7);
-                    apply_text_input_change(
-                        None,
-                        Some(pending),
-                        &mut value,
-                        &mut input_handle,
-                        cursor_snapshot,
-                        "hello\n\n\n".to_string(),
-                    );
-                }
-                2 => {
-                    value.set("hi".to_string());
-                    input_handle.write().set_cursor_offset(2);
-                    cursor_snapshot.set(2);
-                    apply_text_input_change(
-                        None,
-                        None,
-                        &mut value,
-                        &mut input_handle,
-                        cursor_snapshot,
-                        "hi\n".to_string(),
-                    );
-                }
-                3 => {
-                    value.set("hi".to_string());
-                    input_handle.write().set_cursor_offset(2);
-                    cursor_snapshot.set(2);
-                    apply_text_input_change(
-                        None,
-                        None,
-                        &mut value,
-                        &mut input_handle,
-                        cursor_snapshot,
-                        "hit".to_string(),
-                    );
-                }
-                _ => {
-                    value.set("a\n".to_string());
-                    pending.set(true);
-                    input_handle.write().set_cursor_offset(2);
-                    cursor_snapshot.set(2);
-                    apply_text_input_change(
-                        None,
-                        Some(pending),
-                        &mut value,
-                        &mut input_handle,
-                        cursor_snapshot,
-                        "a\nb".to_string(),
-                    );
-                }
-            }
-        },
-        (),
-    );
-
-    hooks.use_future(async move {
-        tick.set(1);
-    });
-    if tick.get() >= 1 {
-        system.exit();
-    }
-
-    element! {
-        Text(content: value.read().clone())
-    }
-}
-
-#[apply(test!)]
-async fn apply_text_input_change_branches_render() {
-    for scenario in 0u8..5 {
-        let frames = render_exit(element!(ApplyHarness(scenario: scenario))).await;
-        assert!(!frames.is_empty());
-    }
 }
 
 #[component]
@@ -186,7 +75,7 @@ async fn scroll_view_helpers_with_live_handle() {
 }
 
 #[apply(test!)]
-async fn wire_editing_covers_release_super_and_esc_sequences() {
+async fn input_shortcuts_covers_release_super_and_esc_sequences() {
     let frames = element!(EventExitHost(
         children: vec![element! {
             Input(width: 30u16, initial_value: "one two three".to_string(), has_focus: true)
@@ -215,7 +104,7 @@ async fn wire_editing_covers_release_super_and_esc_sequences() {
 }
 
 #[apply(test!)]
-async fn wire_editing_unfocused_and_non_matching_keys() {
+async fn input_shortcuts_unfocused_and_non_matching_keys() {
     let frames = element!(EventExitHost(
         children: vec![element! {
             Input(width: 20u16, initial_value: "abc".to_string(), has_focus: false)

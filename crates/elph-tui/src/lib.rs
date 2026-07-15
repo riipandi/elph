@@ -6,6 +6,7 @@
 
 pub mod color;
 pub mod components;
+pub mod paste;
 pub mod text_editing;
 pub mod text_input_layout;
 pub mod transcript_layout;

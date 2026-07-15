@@ -11,17 +11,19 @@ fn editor_max_height(screen_height: u16) -> u16 {
     (screen_height / 4).clamp(4, 12)
 }
 
-#[derive(Clone, Copy, Default, Props)]
+#[derive(Default, Props)]
 pub struct EditorProps {
     pub screen_width: u16,
     pub screen_height: u16,
     pub agent_mode: AgentMode,
     pub draft: Option<State<String>>,
+    pub live_draft: Option<Ref<String>>,
     pub suppress_enter_newline: Option<Ref<bool>>,
+    pub on_submit: HandlerMut<'static, String>,
 }
 
 #[component]
-pub fn Editor(props: &EditorProps) -> impl Into<AnyElement<'static>> {
+pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
     let label_color = rgb_color(props.agent_mode.label_rgb());
 
     element! {
@@ -46,7 +48,10 @@ pub fn Editor(props: &EditorProps) -> impl Into<AnyElement<'static>> {
                 show_border: Some(false),
                 has_focus: true,
                 value: props.draft,
+                live_draft: props.live_draft,
                 suppress_enter_newline: props.suppress_enter_newline,
+                submit_on_enter: true,
+                on_submit: props.on_submit.take(),
                 text_color: Some(Color::Grey),
                 cursor_color: Some(Color::DarkGrey),
             )

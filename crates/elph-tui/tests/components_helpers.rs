@@ -180,9 +180,10 @@ fn render_qr_invalid_payload() {
 
 #[test]
 fn wrapped_layout_handles_wide_chars_and_mid_row_offsets() {
-    let layout = WrappedTextLayout::new("日本語テスト", 4);
+    let text = "日本語テスト";
+    let layout = WrappedTextLayout::new(text, 4);
     assert!(layout.row_count() >= 2);
-    let (row, col) = layout.row_column_for_offset(3);
+    let (row, col) = layout.row_column_for_offset(text, 3);
     assert!(row < layout.row_count());
     let _ = col;
 }
@@ -239,8 +240,9 @@ fn slider_label_formats_or_empty() {
 
 #[test]
 fn wrapped_layout_offset_past_end_clamps() {
-    let layout = WrappedTextLayout::new("abc", 10);
-    let (row, col) = layout.row_column_for_offset(100);
+    let text = "abc";
+    let layout = WrappedTextLayout::new(text, 10);
+    let (row, col) = layout.row_column_for_offset(text, 100);
     assert_eq!(row, 0);
     assert_eq!(col, 3);
 }

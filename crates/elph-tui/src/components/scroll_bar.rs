@@ -26,12 +26,11 @@ pub fn scrollbar_thumb_position(scroll_offset: u16, viewport_height: u16, conten
         return 0;
     }
     let thumb_size = scrollbar_thumb_rows(viewport_height, content_height) as usize;
-    let max_off = (ch - vh) as usize;
-    if max_off > 0 {
-        scroll_offset as usize * vh.saturating_sub(thumb_size) / max_off
-    } else {
-        0
-    }
+    let max_off = ch - vh;
+    (scroll_offset as usize)
+        .saturating_mul(vh.saturating_sub(thumb_size))
+        .checked_div(max_off)
+        .unwrap_or(0)
 }
 
 /// Label for [`ScrollIndicator`] (e.g. `12-20/40`).

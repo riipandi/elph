@@ -1,6 +1,6 @@
 //! Single-line text input (OpenTUI Input analogue).
 
-use crate::text_editing::wire_editing_shortcuts;
+use crate::text_editing::wire_input_shortcuts;
 use iocraft::prelude::*;
 
 /// Props for [`Input`].
@@ -22,9 +22,8 @@ pub fn Input(props: &InputProps, mut hooks: Hooks) -> impl Into<AnyElement<'stat
     let mut value = props.value.unwrap_or(internal);
     let has_focus = props.has_focus;
     let input_handle = hooks.use_ref_default::<TextInputHandle>();
-    let cursor_snapshot = hooks.use_ref(|| 0usize);
 
-    wire_editing_shortcuts(&mut hooks, has_focus, false, value, input_handle, cursor_snapshot, None);
+    wire_input_shortcuts(&mut hooks, has_focus, value, input_handle);
 
     element! {
         View(

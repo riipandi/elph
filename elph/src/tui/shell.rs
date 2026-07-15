@@ -25,7 +25,7 @@ pub struct MainShellProps {
 }
 
 #[component]
-pub fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let (screen_width, screen_height) = hooks.use_terminal_size();
     let mut system = hooks.use_context_mut::<SystemContext>();
     let mut time = hooks.use_state(Local::now);
@@ -33,6 +33,7 @@ pub fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyEleme
     let mut agent_mode = hooks.use_state(|| props.initial_agent_mode);
     let mut thinking_level = hooks.use_state(|| props.initial_thinking_level);
     let mut draft = hooks.use_state(String::new);
+    let mut live_draft = hooks.use_ref(String::new);
     let mut messages = hooks.use_state(seed_transcript_messages);
     let mut suppress_enter_newline = hooks.use_ref(|| false);
     let session_label = session_label(props.resume_id.as_deref());
@@ -70,28 +71,6 @@ pub fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyEleme
                     persist_session_prefs(&paths, agent_mode.get(), next);
                 }
                 (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => should_exit.set(true),
-                (m, KeyCode::Enter) if !m.contains(KeyModifiers::SHIFT) => {
-                    let text = draft.read().clone();
-                    if text.trim().is_empty() {
-                        return;
-                    }
-                    if is_quit_command(&text) {
-                        should_exit.set(true);
-                        draft.set(String::new());
-                        suppress_enter_newline.set(true);
-                        return;
-                    }
-                    messages.set({
-                        let mut list = messages.read().clone();
-                        list.push(TranscriptMessage {
-                            content: text,
-                            style: TranscriptStyle::User,
-                        });
-                        list
-                    });
-                    draft.set(String::new());
-                    suppress_enter_newline.set(true);
-                }
                 _ => {}
             }
         }
@@ -136,7 +115,31 @@ pub fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyEleme
                 project_label: props.project_label.clone(),
                 model_label: props.model_label.clone(),
                 draft: Some(draft),
+                live_draft: Some(live_draft),
                 suppress_enter_newline: Some(suppress_enter_newline),
+                on_submit: move |text: String| {
+                    if text.trim().is_empty() {
+                        return;
+                    }
+                    if is_quit_command(&text) {
+                        should_exit.set(true);
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        suppress_enter_newline.set(true);
+                        return;
+                    }
+                    messages.set({
+                        let mut list = messages.read().clone();
+                        list.push(TranscriptMessage {
+                            content: text,
+                            style: TranscriptStyle::User,
+                        });
+                        list
+                    });
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    suppress_enter_newline.set(true);
+                },
             )
         }
     }

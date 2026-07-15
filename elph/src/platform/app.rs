@@ -40,7 +40,7 @@ pub const EXIT_INTERRUPTED: ExitCode = 130;
 // Keyboard enhancement helpers (previously in elph-tui).
 
 static KB_ENHANCED: AtomicBool = AtomicBool::new(false);
-static BRACKETED_PASTE_DISABLED: AtomicBool = AtomicBool::new(false);
+static BRACKETED_PASTE_ENABLED: AtomicBool = AtomicBool::new(false);
 
 fn enable_keyboard_enhancement() -> io::Result<()> {
     if KB_ENHANCED.swap(true, Ordering::Relaxed) {
@@ -55,8 +55,10 @@ fn enable_keyboard_enhancement() -> io::Result<()> {
                 | crossterm::event::KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
         )
     )?;
-    execute!(io::stdout(), DisableBracketedPaste)?;
-    BRACKETED_PASTE_DISABLED.store(true, Ordering::Relaxed);
+    // Bracketed paste delivers one atomic `TerminalEvent::Paste` — required for multiline paste in
+    // the chat editor (see `wire_input_shortcuts` / `elph_tui::paste::apply_paste_at_cursor`).
+    execute!(io::stdout(), EnableBracketedPaste)?;
+    BRACKETED_PASTE_ENABLED.store(true, Ordering::Relaxed);
     io::stdout().flush()?;
     Ok(())
 }
@@ -66,8 +68,8 @@ fn disable_keyboard_enhancement() -> io::Result<()> {
         return Ok(());
     }
     execute!(io::stdout(), PopKeyboardEnhancementFlags)?;
-    if BRACKETED_PASTE_DISABLED.swap(false, Ordering::Relaxed) {
-        execute!(io::stdout(), EnableBracketedPaste)?;
+    if BRACKETED_PASTE_ENABLED.swap(false, Ordering::Relaxed) {
+        execute!(io::stdout(), DisableBracketedPaste)?;
     }
     io::stdout().flush()?;
     Ok(())

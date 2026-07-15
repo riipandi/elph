@@ -49,3 +49,80 @@ fn effective_scroll_offset_pins_to_bottom() {
 fn effective_scroll_offset_when_content_fits() {
     assert_eq!(effective_scroll_offset(0, true, 10, 20), 0);
 }
+
+#[test]
+fn scroll_viewport_height_reserves_sticky_header() {
+    assert_eq!(scroll_viewport_height(20, 0), 20);
+    assert_eq!(scroll_viewport_height(20, 8), 12);
+    assert_eq!(scroll_viewport_height(3, 5), 1);
+}
+
+#[test]
+fn sticky_header_row_count_includes_padding() {
+    let layouts = layout_transcript_rows(&["one\n\ntwo"], 20, 0);
+    assert_eq!(sticky_header_row_count(&layouts[0], 2), 5);
+}
+
+#[test]
+fn clamp_sticky_header_preserves_min_scroll_area() {
+    assert_eq!(clamp_sticky_header_rows(15, 20, 3), 15);
+    assert_eq!(clamp_sticky_header_rows(18, 20, 3), 17);
+    assert_eq!(clamp_sticky_header_rows(10, 3, 3), 0);
+}
+
+#[test]
+fn active_sticky_none_when_auto_scroll_pinned() {
+    let texts = ["sys", "user one", "assistant", "user two"];
+    let layouts = layout_transcript_rows(&texts, 40, 1);
+    let is_user = [false, true, false, true];
+    let bottom_offset = 50;
+    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, bottom_offset, true), None);
+    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, 6, false), Some(3));
+}
+
+#[test]
+fn sticky_body_line_clamp_respects_panel_budget() {
+    assert_eq!(sticky_body_line_clamp(20, 3), 4);
+    assert_eq!(sticky_body_line_clamp(8, 3), 4);
+    assert_eq!(sticky_body_line_clamp(5, 3), 1);
+}
+
+#[test]
+fn clamp_wrapped_transcript_lines_truncates_long_content() {
+    let long = (0..12)
+        .map(|i| format!("paragraph {i} with extra words"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let (text, rows, truncated) = clamp_wrapped_transcript_lines(&long, 24, 3);
+    assert!(truncated);
+    assert_eq!(rows, 3);
+    assert!(text.contains('…'));
+    assert_eq!(text.matches('\n').count(), 2);
+}
+
+#[test]
+fn clamp_wrapped_transcript_lines_keeps_short_content() {
+    let (text, rows, truncated) = clamp_wrapped_transcript_lines("hi", 40, 4);
+    assert!(!truncated);
+    assert_eq!(rows, 1);
+    assert_eq!(text, "hi");
+}
+
+#[test]
+fn layout_sticky_header_line_clamps_tall_prompt() {
+    let long = "line\n".repeat(30);
+    let header = layout_sticky_header(&long, 40, 2, 20, 3).expect("header");
+    assert!(header.truncated);
+    assert!(header.height <= 7);
+    assert!(header.display_text.contains('…'));
+}
+
+#[test]
+fn pinned_bottom_offset_does_not_activate_sticky_when_auto_scroll_pinned() {
+    let texts = ["user paste"];
+    let layouts = layout_transcript_rows(&texts, 40, 0);
+    let is_user = [true];
+    let pinned_offset = 80;
+    assert_eq!(sticky_user_message_index(&layouts, &is_user, pinned_offset), Some(0));
+    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, pinned_offset, true), None);
+}

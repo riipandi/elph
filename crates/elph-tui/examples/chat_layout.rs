@@ -10,8 +10,8 @@
 use anyhow::Result;
 use chrono::Local;
 use elph_tui::{
-    Textarea, effective_scroll_offset, layout_transcript_rows, scroll_view_down, scroll_view_up,
-    sticky_user_message_index, transcript_text_width,
+    Textarea, active_sticky_user_message_index, layout_sticky_header, layout_transcript_rows, scroll_view_down,
+    scroll_view_up, transcript_text_width,
 };
 use iocraft::prelude::*;
 use std::time::Duration;
@@ -126,6 +126,10 @@ impl TranscriptStyle {
         matches!(self, Self::User | Self::PlainUser)
     }
 
+    fn bubble_padding_rows(self) -> u16 {
+        self.padding().saturating_mul(2)
+    }
+
     fn text_color(self) -> Color {
         match self {
             Self::Dim | Self::PlainDim => Color::DarkGrey,
@@ -199,19 +203,59 @@ fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage) -> 
     .into()
 }
 
-fn transcript_sticky_overlay(screen_width: u16, message: &TranscriptMessage) -> AnyElement<'static> {
-    let bubble = transcript_message_bubble(screen_width, message);
+fn transcript_sticky_bubble(
+    screen_width: u16,
+    message: &TranscriptMessage,
+    display_content: &str,
+) -> AnyElement<'static> {
+    let style = message.style;
+    element! {
+        View(
+            width: screen_width - 3,
+            background_color: style.background_color(),
+            margin_bottom: 0,
+            padding: style.padding(),
+        ) {
+            Text(color: style.text_color(), wrap: TextWrap::NoWrap, content: display_content.to_string())
+        }
+    }
+    .into()
+}
+
+fn transcript_sticky_overlay(
+    screen_width: u16,
+    height: u16,
+    message: &TranscriptMessage,
+    display_content: &str,
+    truncated: bool,
+) -> AnyElement<'static> {
+    let bubble = transcript_sticky_bubble(screen_width, message, display_content);
     element! {
         View(
             position: Position::Absolute,
             top: 0,
             left: 0,
             width: screen_width,
+            height: height,
+            overflow: Overflow::Hidden,
             background_color: Color::Reset,
             padding_left: 1,
             padding_right: 1,
+            flex_direction: FlexDirection::Column,
+            justify_content: JustifyContent::FlexStart,
         ) {
             #(bubble)
+            #(if truncated {
+                Some(element! {
+                    Text(
+                        color: Color::DarkGrey,
+                        wrap: TextWrap::NoWrap,
+                        content: "  ⋯ full prompt in transcript",
+                    )
+                })
+            } else {
+                None
+            })
         }
     }
     .into()
@@ -258,18 +302,15 @@ struct TranscriptPanelProps {
 }
 
 const TRANSCRIPT_SCROLL_STEP: i32 = 2;
+const STICKY_MIN_SCROLL_ROWS: u16 = 3;
 
 #[component]
 fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
-    let min_content_height = scroll_handle.read().viewport_height().max(1);
+    let mut panel_viewport = hooks.use_ref(|| 0u16);
     let handle = scroll_handle.read();
-    let scroll_offset = effective_scroll_offset(
-        handle.scroll_offset(),
-        handle.is_auto_scroll_pinned(),
-        handle.content_height(),
-        handle.viewport_height(),
-    );
+    let scroll_viewport = handle.viewport_height().max(1);
+    let min_content_height = scroll_viewport;
     let row_layouts = layout_transcript_rows(
         &props.messages.iter().map(|m| m.content.as_str()).collect::<Vec<_>>(),
         transcript_text_width(props.screen_width),
@@ -278,8 +319,34 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
     let is_user: Vec<_> = props.messages.iter().map(|m| m.style.is_user()).collect();
     let sticky_idx = props
         .sticky_scroll
-        .then(|| sticky_user_message_index(&row_layouts, &is_user, scroll_offset))
+        .then(|| {
+            active_sticky_user_message_index(
+                &row_layouts,
+                &is_user,
+                handle.scroll_offset(),
+                handle.is_auto_scroll_pinned(),
+            )
+        })
         .flatten();
+    let panel_height = {
+        let mut outer = panel_viewport.write();
+        if sticky_idx.is_none() {
+            *outer = scroll_viewport;
+            scroll_viewport
+        } else {
+            (*outer).max(scroll_viewport).max(1)
+        }
+    };
+    let sticky_header = sticky_idx.and_then(|idx| {
+        layout_sticky_header(
+            &props.messages[idx].content,
+            transcript_text_width(props.screen_width),
+            props.messages[idx].style.bubble_padding_rows(),
+            panel_height,
+            STICKY_MIN_SCROLL_ROWS,
+        )
+    });
+    let sticky_rows = sticky_header.as_ref().map(|h| h.height).unwrap_or(0);
     let bubbles: Vec<_> = props
         .messages
         .iter()
@@ -324,33 +391,48 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                 position: Position::Relative,
                 overflow: Overflow::Hidden,
             ) {
-                ScrollView(
-                    handle: Some(scroll_handle),
-                    scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
-                    scrollbar: true,
-                    scrollbar_thumb_color: Color::Rgb { r: (88), g: (88), b: (88) },
-                    scrollbar_track_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                    keyboard_scroll: Some(false),
-                    auto_scroll: true,
+                View(
+                    position: Position::Absolute,
+                    top: sticky_rows as i32,
+                    left: 0,
+                    width: 100pct,
+                    bottom: 0,
+                    overflow: Overflow::Hidden,
                 ) {
-                    View(
-                        width: props.screen_width,
-                        min_height: min_content_height,
-                        background_color: Color::Reset,
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::End,
-                        align_items: AlignItems::Baseline,
-                        padding_top: 0,
-                        padding_bottom: 0,
-                        padding_left: 1,
-                        padding_right: 1,
-                        gap: 1,
+                    ScrollView(
+                        handle: Some(scroll_handle),
+                        scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
+                        scrollbar: true,
+                        scrollbar_thumb_color: Color::Rgb { r: (88), g: (88), b: (88) },
+                        scrollbar_track_color: Color::Rgb { r: (48), g: (48), b: (48) },
+                        keyboard_scroll: Some(false),
+                        auto_scroll: true,
                     ) {
-                        #(bubbles)
+                        View(
+                            width: props.screen_width,
+                            min_height: min_content_height,
+                            background_color: Color::Reset,
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::End,
+                            align_items: AlignItems::Baseline,
+                            padding_top: 0,
+                            padding_bottom: 0,
+                            padding_left: 1,
+                            padding_right: 1,
+                            gap: 1,
+                        ) {
+                            #(bubbles)
+                        }
                     }
                 }
-                #(if let Some(idx) = sticky_idx {
-                    Some(transcript_sticky_overlay(props.screen_width, &props.messages[idx]))
+                #(if let (Some(idx), Some(header)) = (sticky_idx, sticky_header.as_ref()) {
+                    Some(transcript_sticky_overlay(
+                        props.screen_width,
+                        header.height,
+                        &props.messages[idx],
+                        &header.display_text,
+                        header.truncated,
+                    ))
                 } else {
                     None
                 })
@@ -663,7 +745,7 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
             TranscriptPanel(
                 screen_width: screen_width,
                 messages: messages.read().clone(),
-                sticky_scroll: false,
+                sticky_scroll: false, // Disable sticky scroll for the transcript panel
             )
             StatusRow(
                 screen_width: screen_width,

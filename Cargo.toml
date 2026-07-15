@@ -118,4 +118,6 @@ incremental = true # Incremental: rebuild only changed code — much faster iter
 debug = "limited" # Limited debug info: line numbers only, no type/variable debug
 
 [patch.crates-io]
+# Bracketed multiline paste (`TerminalEvent::Paste`) — not in iocraft 0.8.4 on crates.io.
+iocraft = { path = "vendor/iocraft" }
 obscura = { git = "https://github.com/h4ckf0r0day/obscura", tag = "v0.1.9" }
