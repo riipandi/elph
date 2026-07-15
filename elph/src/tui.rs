@@ -6,7 +6,10 @@
 
 use anyhow::Result;
 use chrono::Local;
-use elph_tui::Textarea;
+use elph_tui::{
+    Textarea, effective_scroll_offset, layout_transcript_rows, scroll_view_down, scroll_view_up,
+    sticky_user_message_index, transcript_text_width,
+};
 use iocraft::prelude::*;
 use std::time::Duration;
 
@@ -41,6 +44,10 @@ enum TranscriptStyle {
 }
 
 impl TranscriptStyle {
+    fn is_user(self) -> bool {
+        matches!(self, Self::User | Self::PlainUser)
+    }
+
     fn text_color(self) -> Color {
         match self {
             Self::Dim | Self::PlainDim => Color::DarkGrey,
@@ -108,7 +115,25 @@ fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage) -> 
             margin_bottom: 0,
             padding: style.padding(),
         ) {
-            Text(color: style.text_color(), content: message.content.clone())
+            Text(color: style.text_color(), wrap: TextWrap::Wrap, content: message.content.clone())
+        }
+    }
+    .into()
+}
+
+fn transcript_sticky_overlay(screen_width: u16, message: &TranscriptMessage) -> AnyElement<'static> {
+    let bubble = transcript_message_bubble(screen_width, message);
+    element! {
+        View(
+            position: Position::Absolute,
+            top: 0,
+            left: 0,
+            width: screen_width,
+            background_color: Color::Reset,
+            padding_left: 1,
+            padding_right: 1,
+        ) {
+            #(bubble)
         }
     }
     .into()
@@ -154,6 +179,7 @@ struct MainShellProps {
     initial_thinking_level: ThinkingLevel,
     model_label: String,
     project_label: String,
+    sticky_scroll: bool,
 }
 
 #[derive(Default, Props)]
@@ -188,8 +214,8 @@ fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
 #[derive(Clone, Default, Props)]
 struct TranscriptPanelProps {
     screen_width: u16,
-    screen_height: u16,
     messages: Vec<TranscriptMessage>,
+    sticky_scroll: bool,
 }
 
 const TRANSCRIPT_SCROLL_STEP: i32 = 2;
@@ -197,6 +223,25 @@ const TRANSCRIPT_SCROLL_STEP: i32 = 2;
 #[component]
 fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
+    // At least viewport tall so short transcripts stay bottom-anchored; grows with content.
+    let min_content_height = scroll_handle.read().viewport_height().max(1);
+    let handle = scroll_handle.read();
+    let scroll_offset = effective_scroll_offset(
+        handle.scroll_offset(),
+        handle.is_auto_scroll_pinned(),
+        handle.content_height(),
+        handle.viewport_height(),
+    );
+    let row_layouts = layout_transcript_rows(
+        &props.messages.iter().map(|m| m.content.as_str()).collect::<Vec<_>>(),
+        transcript_text_width(props.screen_width),
+        1,
+    );
+    let is_user: Vec<_> = props.messages.iter().map(|m| m.style.is_user()).collect();
+    let sticky_idx = props
+        .sticky_scroll
+        .then(|| sticky_user_message_index(&row_layouts, &is_user, scroll_offset))
+        .flatten();
     let bubbles: Vec<_> = props
         .messages
         .iter()
@@ -216,8 +261,8 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                 return;
             }
             match code {
-                KeyCode::Up => scroll_handle.write().scroll_by(-TRANSCRIPT_SCROLL_STEP),
-                KeyCode::Down => scroll_handle.write().scroll_by(TRANSCRIPT_SCROLL_STEP),
+                KeyCode::Up => scroll_view_up(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP),
+                KeyCode::Down => scroll_view_down(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP),
                 _ => {}
             }
         }
@@ -238,6 +283,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
             View(
                 width: 100pct,
                 height: 100pct,
+                position: Position::Relative,
                 overflow: Overflow::Hidden,
             ) {
                 ScrollView(
@@ -251,7 +297,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                 ) {
                     View(
                         width: props.screen_width,
-                        height: props.screen_height - 3,
+                        min_height: min_content_height,
                         background_color: Color::Reset,
                         flex_direction: FlexDirection::Column,
                         justify_content: JustifyContent::End,
@@ -265,6 +311,11 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                         #(bubbles)
                     }
                 }
+                #(if let Some(idx) = sticky_idx {
+                    Some(transcript_sticky_overlay(props.screen_width, &props.messages[idx]))
+                } else {
+                    None
+                })
             }
         }
     }
@@ -582,8 +633,8 @@ fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'
             )
             TranscriptPanel(
                 screen_width: screen_width,
-                screen_height: screen_height,
                 messages: messages.read().clone(),
+                sticky_scroll: props.sticky_scroll,
             )
             StatusRow(
                 screen_width: screen_width,
@@ -618,6 +669,7 @@ pub async fn run_tui(resume_id: Option<String>) -> Result<()> {
             settings.session.model_id.as_deref(),
         ),
         project_label: project_footer_label(&paths),
+        sticky_scroll: settings.sticky_scroll,
     ))
     .render_loop()
     .fullscreen()
