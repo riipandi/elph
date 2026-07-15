@@ -217,7 +217,14 @@ pub fn match_key_to_action(
     let ctrl_only = modifiers.contains(KeyModifiers::CONTROL)
         && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::SHIFT | KeyModifiers::META);
 
-    // Chat editor newline: Ctrl+J (Shift+Enter is handled by multiline TextInput when the terminal reports SHIFT).
+    // Chat editor newline: Shift+Enter and Ctrl+J. Plain Enter is submit (handled by the app shell).
+    if multiline
+        && matches!(code, KeyCode::Enter)
+        && modifiers.contains(KeyModifiers::SHIFT)
+        && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+    {
+        return Some(TextEditAction::InsertNewline);
+    }
     if multiline && matches!(code, KeyCode::Char('j') | KeyCode::Char('J')) && ctrl_only {
         return Some(TextEditAction::InsertNewline);
     }
@@ -280,6 +287,7 @@ pub fn wire_editing_shortcuts(
     mut value: State<String>,
     input_handle: Ref<TextInputHandle>,
     cursor_snapshot: Ref<usize>,
+    pending_newline: Option<Ref<bool>>,
 ) {
     let pending_esc = hooks.use_ref(|| false);
 
@@ -287,6 +295,7 @@ pub fn wire_editing_shortcuts(
         let mut input_handle = input_handle;
         let mut cursor_snapshot = cursor_snapshot;
         let mut pending_esc = pending_esc;
+        let pending_newline = pending_newline;
         move |event| {
             if !has_focus {
                 return;
@@ -316,16 +325,34 @@ pub fn wire_editing_shortcuts(
                 return;
             };
 
-            let cursor = input_handle.read().cursor_offset();
+            let cursor = cursor_snapshot.get().min(value.read().len());
             let text = value.read().clone();
-            let (new_text, new_cursor) = apply_action(action, &text, cursor);
-            let changed = new_text != text || new_cursor != cursor;
-            if new_text != text {
+            let (new_text, mut new_cursor) = apply_action(action, &text, cursor);
+            let shift_enter = matches!(code, KeyCode::Enter) && modifiers.contains(KeyModifiers::SHIFT);
+            if action == TextEditAction::InsertNewline {
+                if new_text.ends_with('\n') && cursor >= text.len() {
+                    new_cursor = new_text.len();
+                }
+                if let Some(mut pending) = pending_newline {
+                    pending.set(true);
+                }
+            }
+            let text_changed = new_text != text;
+            let changed = text_changed || new_cursor != cursor;
+            if text_changed {
                 value.set(new_text);
             }
             if changed {
                 cursor_snapshot.set(new_cursor);
-                input_handle.write().set_cursor_offset(new_cursor);
+                if !text_changed {
+                    input_handle.write().set_cursor_offset(new_cursor);
+                }
+            }
+            if action == TextEditAction::InsertNewline
+                && !shift_enter
+                && let Some(mut pending) = pending_newline
+            {
+                pending.set(false);
             }
         }
     });
@@ -483,6 +510,18 @@ mod tests {
     fn match_ctrl_j_inserts_newline() {
         let action = match_key_to_action(KeyCode::Char('j'), KeyModifiers::CONTROL, true, false);
         assert_eq!(action, Some(TextEditAction::InsertNewline));
+    }
+
+    #[test]
+    fn match_shift_enter_inserts_newline() {
+        let action = match_key_to_action(KeyCode::Enter, KeyModifiers::SHIFT, true, false);
+        assert_eq!(action, Some(TextEditAction::InsertNewline));
+    }
+
+    #[test]
+    fn plain_enter_is_not_newline_shortcut() {
+        let action = match_key_to_action(KeyCode::Enter, KeyModifiers::empty(), true, false);
+        assert_eq!(action, None);
     }
 
     #[test]

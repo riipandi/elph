@@ -87,7 +87,7 @@ impl Drop for KeyboardEnhancementGuard {
 pub fn run(resume_id: Option<String>) {
     let _ = enable_keyboard_enhancement();
     let _guard = KeyboardEnhancementGuard;
-    let result = elph_agent::try_block_on(crate::tui::run_tui(resume_id));
+    let result = elph_agent::try_block_on(crate::tui::run_tui(crate::tui::TuiOptions { resume_id }));
     exit_message::print_and_clear();
     if let Err(e) = result {
         log::error!("app error: {e}");

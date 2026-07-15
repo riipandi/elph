@@ -40,6 +40,17 @@ pub fn display_row_count(text: &str, viewport_width: u16) -> u16 {
     WrappedTextLayout::new(text, viewport_width).row_count()
 }
 
+/// Cursor offset used for viewport sizing (maps end-of-line `\n` to the empty continuation row).
+pub fn layout_cursor_for_viewport(text: &str, cursor: usize) -> usize {
+    if text.ends_with('\n') {
+        let tail = text.len();
+        if cursor >= tail.saturating_sub(1) {
+            return tail;
+        }
+    }
+    cursor.min(text.len())
+}
+
 /// Rows to allocate vertically: omit a trailing empty continuation row unless the cursor is on it.
 pub fn visible_row_count(text: &str, cursor: usize, viewport_width: u16) -> u16 {
     let layout = WrappedTextLayout::new(text, viewport_width);
@@ -100,19 +111,6 @@ fn layout_textarea(
     }
 }
 
-/// Remount key for iocraft [`TextInput`] when the clipped viewport geometry changes.
-fn textarea_remount_key(layout: &TextareaLayout) -> u32 {
-    (layout.viewport_height as u32) << 20 | (layout.show_scrollbar as u32) << 19 | layout.input_width as u32
-}
-
-/// Byte offset after a single `\n` inserted at `prev_cursor`.
-fn cursor_after_newline_insertion(prev: &str, new: &str, prev_cursor: usize) -> usize {
-    if newline_count(new) <= newline_count(prev) {
-        return prev_cursor.min(new.len());
-    }
-    (prev_cursor + '\n'.len_utf8()).min(new.len())
-}
-
 /// While suppression is active, keep real keystrokes and drop only ghost trailing newlines.
 fn resolve_suppressed_change(new_value: String) -> String {
     if new_value.ends_with('\n') {
@@ -122,8 +120,14 @@ fn resolve_suppressed_change(new_value: String) -> String {
     }
 }
 
+/// `TextInput` always inserts `\n` on Enter; intentional newlines go through [`wire_editing_shortcuts`].
+fn is_unauthorized_newline_insert(prev: &str, new: &str) -> bool {
+    newline_count(new) > newline_count(prev)
+}
+
 fn apply_text_input_change(
     suppress_enter_newline: Option<Ref<bool>>,
+    pending_newline: Option<Ref<bool>>,
     value: &mut State<String>,
     input_handle: &mut Ref<TextInputHandle>,
     mut cursor_snapshot: Ref<usize>,
@@ -145,12 +149,31 @@ fn apply_text_input_change(
         return;
     }
 
-    value.set(new_value.clone());
-    if newline_count(&new_value) > newline_count(&prev) {
-        let next_cursor = cursor_after_newline_insertion(&prev, &new_value, prev_cursor);
-        cursor_snapshot.set(next_cursor);
-        input_handle.write().set_cursor_offset(next_cursor);
+    if is_unauthorized_newline_insert(&prev, &new_value) {
+        if pending_newline.as_ref().is_some_and(|p| p.get()) {
+            if let Some(mut pending) = pending_newline {
+                pending.set(false);
+            }
+            // Wire already inserted the newline; TextInput may fire on_change again on a
+            // stale local buffer (second Shift+Enter → extra `\n`). Keep wire's value.
+            let next_cursor = cursor_snapshot.get().min(prev.len());
+            cursor_snapshot.set(next_cursor);
+            input_handle.write().set_cursor_offset(next_cursor);
+            return;
+        }
+        value.set(prev);
+        cursor_snapshot.set(prev_cursor);
+        input_handle.write().set_cursor_offset(prev_cursor);
+        return;
     }
+
+    if pending_newline.as_ref().is_some_and(|p| p.get())
+        && let Some(mut pending) = pending_newline
+    {
+        pending.set(false);
+    }
+
+    value.set(new_value);
 }
 
 /// Multiline text input with optional external state.
@@ -164,28 +187,46 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
     let show_border = props.show_border.unwrap_or(true);
     let mut input_handle = hooks.use_ref_default::<TextInputHandle>();
     let cursor_snapshot = hooks.use_ref(|| 0usize);
+    let pending_newline = hooks.use_ref(|| false);
     let scroll_offset = hooks.use_state(|| 0u16);
 
-    wire_editing_shortcuts(&mut hooks, has_focus, true, value, input_handle, cursor_snapshot);
+    wire_editing_shortcuts(
+        &mut hooks,
+        has_focus,
+        true,
+        value,
+        input_handle,
+        cursor_snapshot,
+        Some(pending_newline),
+    );
 
     let h_pad = if show_border { 2 } else { 0 };
     let inner_width = props.width.saturating_sub(h_pad);
     let text = value.read().clone();
-    let cursor = input_handle.read().cursor_offset();
-    let layout = layout_textarea(&text, cursor, inner_width, min_height, props.max_height);
+    let layout_cursor = layout_cursor_for_viewport(&text, cursor_snapshot.get());
+    let layout = layout_textarea(&text, layout_cursor, inner_width, min_height, props.max_height);
     let wrapped = WrappedTextLayout::new(&text, layout.input_width);
-    let (cursor_row, _) = wrapped.row_column_for_offset(cursor);
-
-    let remount_key = textarea_remount_key(&layout);
+    let (cursor_row, _) = wrapped.row_column_for_offset(layout_cursor);
 
     hooks.use_effect(
         {
+            let text = text.clone();
             let mut cursor_snapshot = cursor_snapshot;
+            let mut input_handle = input_handle;
             move || {
-                cursor_snapshot.set(cursor);
+                let handle_cursor = input_handle.read().cursor_offset();
+                let snapshot_cursor = cursor_snapshot.get();
+                let tail = text.len();
+                if text.ends_with('\n') && snapshot_cursor == tail && handle_cursor < tail {
+                    input_handle.write().set_cursor_offset(tail);
+                    return;
+                }
+                if handle_cursor != snapshot_cursor {
+                    cursor_snapshot.set(handle_cursor);
+                }
             }
         },
-        cursor,
+        (text.clone(), cursor_snapshot.get()),
     );
 
     hooks.use_effect(
@@ -200,21 +241,6 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
             }
         },
         (cursor_row, layout.viewport_height, layout.content_rows),
-    );
-
-    // Remount clears iocraft's stale vertical scroll offset; restore cursor afterward.
-    hooks.use_effect(
-        {
-            let mut input_handle = input_handle;
-            let mut scroll_offset = scroll_offset;
-            let cursor_snapshot = cursor_snapshot;
-            move || {
-                let next = update_scroll_offset(0, cursor_row, layout.viewport_height, layout.content_rows);
-                scroll_offset.set(next);
-                input_handle.write().set_cursor_offset(cursor_snapshot.get());
-            }
-        },
-        remount_key,
     );
 
     let border_style = if show_border && has_focus {
@@ -249,7 +275,6 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
                 overflow: Overflow::Hidden,
             ) {
                 TextInput(
-                    key: remount_key,
                     handle: Some(input_handle),
                     has_focus: has_focus,
                     multiline: true,
@@ -259,6 +284,7 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
                     on_change: move |new_value| {
                         apply_text_input_change(
                             suppress_enter_newline,
+                            Some(pending_newline),
                             &mut value,
                             &mut input_handle,
                             cursor_snapshot,
@@ -315,6 +341,20 @@ mod tests {
     }
 
     #[test]
+    fn unauthorized_newline_detects_plain_enter() {
+        assert!(!is_unauthorized_newline_insert("hi", "hi"));
+        assert!(is_unauthorized_newline_insert("hi", "hi\n"));
+    }
+
+    #[test]
+    fn pending_wire_newline_rejects_textinput_double_insert() {
+        let prev = "hello\n\n";
+        let textinput_ghost = "hello\n\n\n";
+        assert!(is_unauthorized_newline_insert(prev, textinput_ghost));
+        assert!(!is_unauthorized_newline_insert(prev, prev));
+    }
+
+    #[test]
     fn logical_line_count_includes_trailing_newline_row() {
         assert_eq!(logical_line_count("hello"), 1);
         assert_eq!(logical_line_count("hello\n"), 2);
@@ -334,6 +374,16 @@ mod tests {
         assert_eq!(visible_row_count(text, text.len(), 20), 2);
         assert_eq!(visible_row_count("line1\nline2\n", "line1\nline2".len(), 20), 2);
         assert_eq!(visible_row_count("line1\nline2\n", "line1\nline2\n".len(), 20), 3);
+        assert_eq!(visible_row_count(text, text.len().saturating_sub(1), 20), 1);
+    }
+
+    #[test]
+    fn viewport_grows_when_cursor_on_trailing_empty_line() {
+        let text = "hello\n";
+        let on_empty = layout_textarea(text, text.len(), 20, 1, None);
+        let before_empty = layout_textarea(text, text.len().saturating_sub(1), 20, 1, None);
+        assert_eq!(on_empty.viewport_height, 2);
+        assert_eq!(before_empty.viewport_height, 1);
     }
 
     #[test]
@@ -352,21 +402,8 @@ mod tests {
     }
 
     #[test]
-    fn cursor_after_newline_insertion_advances_one_byte() {
-        assert_eq!(cursor_after_newline_insertion("hi", "hi\n", 2), 3);
-        assert_eq!(cursor_after_newline_insertion("hi", "h\ni", 1), 2);
-    }
-
-    #[test]
     fn update_scroll_offset_follows_cursor() {
         assert_eq!(update_scroll_offset(0, 4, 3, 8), 2);
         assert_eq!(update_scroll_offset(5, 2, 3, 8), 2);
-    }
-
-    #[test]
-    fn remount_key_changes_with_viewport() {
-        let a = layout_textarea("a", 0, 20, 1, None);
-        let b = layout_textarea("a\nb", 2, 20, 1, None);
-        assert_ne!(textarea_remount_key(&a), textarea_remount_key(&b));
     }
 }
