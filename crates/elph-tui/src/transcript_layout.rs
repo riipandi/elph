@@ -3,6 +3,7 @@
 use std::hash::{Hash, Hasher};
 
 use crate::text_input_layout::WrappedTextLayout;
+use crate::utils::sanitize_sticky_display_text;
 
 /// Cheap fingerprint for memoizing transcript layout across scroll-only re-renders.
 pub fn transcript_messages_revision(messages: &[(&str, bool)], screen_width: u16) -> u64 {
@@ -133,9 +134,10 @@ pub fn sticky_body_line_budget(
 
 /// Clamp transcript text to at most `max_body_lines` wrapped rows (ellipsis on last line).
 pub fn clamp_wrapped_transcript_lines(text: &str, wrap_width: u16, max_body_lines: u16) -> (String, u16, bool) {
-    let layout = WrappedTextLayout::new_for_overlay_editor(text, wrap_width);
+    let text = sanitize_sticky_display_text(text);
+    let layout = WrappedTextLayout::new_for_overlay_editor(&text, wrap_width);
     let line_width = wrap_width.max(1) as usize;
-    layout.clamp_display_lines(text, max_body_lines, line_width)
+    layout.clamp_display_lines(&text, max_body_lines, line_width)
 }
 
 /// Breathing room between the sticky card and the scrollable transcript (no border line).
@@ -166,8 +168,9 @@ pub fn layout_sticky_header(
     panel_height: u16,
     min_scroll_rows: u16,
 ) -> Option<StickyHeaderLayout> {
-    let body_budget = sticky_body_line_budget(content, wrap_width, panel_height, min_scroll_rows, bubble_padding_rows);
-    let (display_text, body_rows, truncated) = clamp_wrapped_transcript_lines(content, wrap_width, body_budget);
+    let content = sanitize_sticky_display_text(content);
+    let body_budget = sticky_body_line_budget(&content, wrap_width, panel_height, min_scroll_rows, bubble_padding_rows);
+    let (display_text, body_rows, truncated) = clamp_wrapped_transcript_lines(&content, wrap_width, body_budget);
     let mut height = sticky_header_display_rows(body_rows, bubble_padding_rows);
     height = clamp_sticky_header_rows(height, panel_height, min_scroll_rows);
     if height == 0 {

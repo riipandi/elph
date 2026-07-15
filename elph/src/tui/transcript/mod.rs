@@ -3,16 +3,18 @@
 mod message;
 
 use elph_tui::{
-    TranscriptRowLayout, active_sticky_user_message_index, layout_sticky_header, layout_transcript_rows_widths,
-    scroll_view_down, scroll_view_up, transcript_bubble_inner_width,
+    TranscriptRowLayout, active_sticky_user_message_index, layout_sticky_header, scroll_view_down, scroll_view_up,
+    transcript_bubble_inner_width, wrapped_transcript_row_count,
 };
 use iocraft::prelude::*;
 
-use super::theme::{BORDER_MUTED, SCROLLBAR_TRACK};
+use super::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK};
 
-pub use message::{TranscriptMessage, TranscriptStyle, seed_transcript_messages};
+pub use message::{
+    TranscriptMessage, TranscriptStyle, format_tool_card_content, format_tool_card_result, seed_transcript_messages,
+};
 
-use message::{transcript_message_bubble, transcript_sticky_overlay};
+use message::{build_transcript_bubbles, transcript_sticky_overlay};
 
 const TRANSCRIPT_SCROLL_STEP: i32 = 3;
 /// Minimum scrollable lines below a sticky user prompt.
@@ -50,12 +52,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .as_ref()
         .is_none_or(|c| c.revision != cache_key.0 || c.screen_width != cache_key.1)
     {
-        let texts: Vec<&str> = messages.iter().map(|m| m.content.as_str()).collect();
-        let wrap_widths: Vec<u16> = messages
-            .iter()
-            .map(|m| transcript_bubble_inner_width(props.screen_width, m.style.horizontal_padding()))
-            .collect();
-        let row_layouts = layout_transcript_rows_widths(&texts, &wrap_widths, 1);
+        let row_layouts = layout_transcript_rows(&messages, props.screen_width);
         let is_sticky_prompt: Vec<_> = messages.iter().map(|m| m.style.is_sticky_prompt()).collect();
         render_cache.set(Some(TranscriptRenderCache {
             revision: cache_key.0,
@@ -69,10 +66,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let cached = cache.as_ref().expect("transcript render cache");
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
-    let bubbles: Vec<_> = messages
-        .iter()
-        .map(|message| transcript_message_bubble(props.screen_width, message))
-        .collect();
+    let bubbles = build_transcript_bubbles(props.screen_width, &messages);
 
     let handle = scroll_handle.read();
     let scroll_viewport = handle.viewport_height().max(1);
@@ -81,7 +75,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .sticky_scroll
         .then(|| {
             active_sticky_user_message_index(
-                &row_layouts,
+                row_layouts,
                 is_sticky_prompt,
                 handle.scroll_offset(),
                 handle.is_auto_scroll_pinned(),
@@ -155,7 +149,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                     handle: Some(scroll_handle),
                     scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
                     scrollbar: true,
-                    scrollbar_thumb_color: BORDER_MUTED,
+                    scrollbar_thumb_color: SCROLLBAR_THUMB,
                     scrollbar_track_color: SCROLLBAR_TRACK,
                     keyboard_scroll: Some(false),
                     auto_scroll: true,
@@ -171,7 +165,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         padding_bottom: 0,
                         padding_left: 1,
                         padding_right: 1,
-                        gap: 1,
+                        gap: 0,
                     ) {
                         #(bubbles)
                     }
@@ -188,4 +182,23 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             }
         }
     }
+}
+
+fn layout_transcript_rows(messages: &[TranscriptMessage], screen_width: u16) -> Vec<TranscriptRowLayout> {
+    let mut layouts = Vec::with_capacity(messages.len());
+    let mut cursor = 0u32;
+    for (index, message) in messages.iter().enumerate() {
+        let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding());
+        let row_count = wrapped_transcript_row_count(&message.content, wrap_width) as u32;
+        layouts.push(TranscriptRowLayout {
+            start_row: cursor,
+            row_count,
+        });
+        cursor = cursor.saturating_add(row_count);
+        if index + 1 < messages.len() {
+            let next_style = messages.get(index + 1).map(|m| m.style);
+            cursor = cursor.saturating_add(message.style.entry_gap_after(next_style) as u32);
+        }
+    }
+    layouts
 }

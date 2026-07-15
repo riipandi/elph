@@ -101,6 +101,14 @@ impl CodingAgentSession {
         &self.session_id
     }
 
+    pub fn context_window(&self) -> u32 {
+        self.selection.model.context_window
+    }
+
+    pub fn supports_image_input(&self) -> bool {
+        self.selection.model.input.iter().any(|cap| cap == "image")
+    }
+
     pub fn goal_runtime(&self) -> Arc<GoalRuntime> {
         self.goal_runtime.clone()
     }

@@ -8,6 +8,7 @@ use super::theme::BORDER_MUTED;
 pub struct HeaderProps {
     pub screen_width: u16,
     pub session_label: String,
+    pub stats_label: String,
 }
 
 #[component]
@@ -28,7 +29,7 @@ pub fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
             margin_bottom: 0,
         ) {
             Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: props.session_label.clone())
-            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "$0.00 | 0k | 0.0% (262k)")
+            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: props.stats_label.clone())
         }
     }
 }

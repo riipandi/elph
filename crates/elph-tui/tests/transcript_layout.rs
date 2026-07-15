@@ -156,6 +156,18 @@ fn clamp_wrapped_transcript_lines_keeps_short_content() {
 }
 
 #[test]
+fn layout_sticky_header_sanitizes_dirty_prompt_before_clamp() {
+    let dirty = "\x1b[1mExplain\x07\x1b[0m\r\nsticky\u{200b} scroll";
+    let pad = 2u16;
+    let header = layout_sticky_header(dirty, 40, pad, 20, 3).expect("header");
+    assert!(!header.display_text.contains('\x1b'));
+    assert!(!header.display_text.contains('\x07'));
+    assert!(!header.display_text.contains('\u{200b}'));
+    assert!(header.display_text.contains("Explain"));
+    assert!(header.display_text.contains("sticky scroll"));
+}
+
+#[test]
 fn layout_sticky_header_line_clamps_tall_prompt() {
     let long = "line\n".repeat(30);
     let sticky_pad = 2u16;

@@ -88,8 +88,8 @@ impl Settings {
             sticky_scroll: true,
             prefered_response_language: default_response_language(),
             session: SessionSettings {
-                provider_id: None,
-                model_id: None,
+                provider_id: Some(default_provider_id()),
+                model_id: Some(default_model_id()),
                 agent_mode: default_agent_mode(),
                 thinking_level: default_thinking_level(),
             },
@@ -144,6 +144,14 @@ fn default_response_language() -> String {
     "inherit".to_string()
 }
 
+fn default_provider_id() -> String {
+    crate::agent::DEFAULT_PROVIDER.to_string()
+}
+
+fn default_model_id() -> String {
+    crate::agent::DEFAULT_MODEL_ID.to_string()
+}
+
 fn default_agent_mode() -> String {
     "build".to_string()
 }
@@ -180,6 +188,8 @@ mod tests {
         assert_eq!(settings, decoded);
         assert_eq!(decoded.memory.embed_model, "AllMiniLML6V2");
         assert!(decoded.memory.embed_quantized);
+        assert_eq!(decoded.session.provider_id.as_deref(), Some("opencode"));
+        assert_eq!(decoded.session.model_id.as_deref(), Some("big-pickle"));
     }
 
     #[test]

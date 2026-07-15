@@ -9,8 +9,8 @@
 
 use anyhow::Result;
 use elph_tui::{
-    KittScannerView, Textarea, TranscriptRowLayout, active_sticky_user_message_index, layout_sticky_header,
-    layout_transcript_rows_widths, rgb, scroll_view_down, scroll_view_up, transcript_bubble_inner_width,
+    Textarea, TranscriptRowLayout, active_sticky_user_message_index, layout_sticky_header, loader::SpinnerLoader, rgb,
+    scroll_view_down, scroll_view_up, transcript_bubble_inner_width, wrapped_transcript_row_count,
 };
 use iocraft::prelude::*;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -111,26 +111,43 @@ struct TranscriptMessage {
 
 #[derive(Clone, Copy)]
 enum TranscriptStyle {
-    Dim,
     User,
+    SkillPrompt,
+    Thinking,
     Assistant,
     Error,
-    PlainDim,
-    PlainUser,
-    Tool,
+    Meta,
+    ToolRunning,
+    ToolSuccess,
+    ToolFailed,
 }
 
-impl TranscriptStyle {
-    fn is_user(self) -> bool {
-        matches!(self, Self::User | Self::PlainUser)
-    }
+const COLORED_CARD_PAD: u16 = 1;
+const COLORED_CARD_GAP: u16 = 1;
 
+impl TranscriptStyle {
     fn is_sticky_prompt(self) -> bool {
         matches!(self, Self::User)
     }
 
-    fn bubble_padding_rows(self) -> u16 {
-        self.padding().saturating_mul(2)
+    fn has_tinted_background(self) -> bool {
+        !matches!(self.background_color(), Color::Reset)
+    }
+
+    fn entry_gap_after(self, next: Option<TranscriptStyle>) -> u16 {
+        match (self, next) {
+            (Self::Thinking, Some(Self::Assistant)) | (Self::Assistant, Some(Self::Thinking)) => 0,
+            (Self::Thinking | Self::Assistant, Some(Self::User | Self::SkillPrompt)) => 1,
+            _ if self.has_tinted_background() => COLORED_CARD_GAP,
+            _ => 0,
+        }
+    }
+
+    fn forms_flush_pair_with(self, other: Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::Thinking, Self::Assistant) | (Self::Assistant, Self::Thinking)
+        )
     }
 
     fn sticky_padding_top(self) -> u16 {
@@ -151,25 +168,35 @@ impl TranscriptStyle {
 
     fn text_color(self) -> Color {
         match self {
-            Self::Dim | Self::PlainDim => Color::DarkGrey,
-            Self::User | Self::PlainUser | Self::Tool => Color::White,
-            Self::Assistant => Color::DarkGreen,
-            Self::Error => Color::DarkRed,
+            Self::Thinking => Color::DarkGrey,
+            Self::SkillPrompt => Color::Rgb { r: 149, g: 117, b: 205 },
+            Self::Meta => Color::Rgb { r: 240, g: 198, b: 116 },
+            Self::User | Self::Assistant => Color::Rgb { r: 212, g: 212, b: 212 },
+            Self::Error => Color::Rgb { r: 204, g: 102, b: 102 },
+            Self::ToolRunning => Color::Rgb { r: 128, g: 128, b: 128 },
+            Self::ToolSuccess => Color::Rgb { r: 181, g: 189, b: 104 },
+            Self::ToolFailed => Color::Rgb { r: 204, g: 102, b: 102 },
         }
     }
 
     fn background_color(self) -> Color {
         match self {
-            Self::Dim | Self::User | Self::Assistant | Self::Error => Color::Rgb { r: 48, g: 48, b: 48 },
-            Self::PlainDim | Self::PlainUser => Color::Reset,
-            Self::Tool => Color::Rgb { r: 0, g: 95, b: 175 },
+            Self::Assistant | Self::Thinking => Color::Reset,
+            Self::User => Color::Rgb { r: 52, g: 53, b: 65 },
+            Self::Error => Color::Rgb { r: 60, g: 40, b: 40 },
+            Self::SkillPrompt => Color::Rgb { r: 45, g: 40, b: 56 },
+            Self::Meta => Color::Rgb { r: 60, g: 55, b: 40 },
+            Self::ToolRunning => Color::Rgb { r: 40, g: 40, b: 50 },
+            Self::ToolSuccess => Color::Rgb { r: 40, g: 50, b: 40 },
+            Self::ToolFailed => Color::Rgb { r: 60, g: 40, b: 40 },
         }
     }
 
     fn padding(self) -> u16 {
-        match self {
-            Self::PlainDim | Self::PlainUser => 0,
-            _ => 1,
+        if self.has_tinted_background() {
+            COLORED_CARD_PAD
+        } else {
+            0
         }
     }
 }
@@ -177,43 +204,109 @@ impl TranscriptStyle {
 fn seed_transcript_messages() -> Vec<TranscriptMessage> {
     vec![
         TranscriptMessage {
-            content: LOREM_IPSUM.to_string(),
-            style: TranscriptStyle::Dim,
+            content: "Walk me through the four-zone shell layout.".to_string(),
+            style: TranscriptStyle::User,
         },
         TranscriptMessage {
-            content: LOREM_IPSUM.to_string(),
-            style: TranscriptStyle::User,
+            content: "/tui-design sync chat_layout with production".to_string(),
+            style: TranscriptStyle::SkillPrompt,
+        },
+        TranscriptMessage {
+            content: "○ read_file : examples/chat_layout.rs".to_string(),
+            style: TranscriptStyle::ToolRunning,
+        },
+        TranscriptMessage {
+            content: "● read_file : examples/chat_layout.rs".to_string(),
+            style: TranscriptStyle::ToolSuccess,
+        },
+        TranscriptMessage {
+            content: "Check sticky scroll, status row, and editor overlap…".to_string(),
+            style: TranscriptStyle::Thinking,
         },
         TranscriptMessage {
             content: LOREM_IPSUM.to_string(),
             style: TranscriptStyle::Assistant,
         },
         TranscriptMessage {
-            content: LOREM_IPSUM.to_string(),
-            style: TranscriptStyle::Error,
+            content: "✕ bash : npm test — exit 1".to_string(),
+            style: TranscriptStyle::ToolFailed,
         },
         TranscriptMessage {
-            content: LOREM_IPSUM.to_string(),
-            style: TranscriptStyle::PlainDim,
-        },
-        TranscriptMessage {
-            content: LOREM_IPSUM.to_string(),
-            style: TranscriptStyle::PlainUser,
-        },
-        TranscriptMessage {
-            content: "read_file : /U/a/b/c/d/project-dir/examples/chat_layout.rs".to_string(),
-            style: TranscriptStyle::Tool,
+            content: "Steering queued — will run after current turn".to_string(),
+            style: TranscriptStyle::Meta,
         },
     ]
 }
 
-fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage) -> AnyElement<'static> {
+fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage]) -> Vec<AnyElement<'static>> {
+    let mut bubbles = Vec::with_capacity(messages.len());
+    let mut index = 0;
+    while index < messages.len() {
+        let message = &messages[index];
+        let next_style = messages.get(index + 1).map(|m| m.style);
+        if let Some(next) = messages.get(index + 1)
+            && message.style.forms_flush_pair_with(next.style)
+        {
+            let after_pair = messages.get(index + 2).map(|m| m.style);
+            bubbles.push(thinking_response_pair_card(
+                screen_width,
+                message,
+                next,
+                TranscriptStyle::Assistant.entry_gap_after(after_pair),
+            ));
+            index += 2;
+            continue;
+        }
+        bubbles.push(transcript_message_bubble(
+            screen_width,
+            message,
+            message.style.entry_gap_after(next_style),
+        ));
+        index += 1;
+    }
+    bubbles
+}
+
+fn thinking_response_pair_card(
+    screen_width: u16,
+    first: &TranscriptMessage,
+    second: &TranscriptMessage,
+    margin_bottom: u16,
+) -> AnyElement<'static> {
+    let (thinking, assistant) = if first.style == TranscriptStyle::Thinking {
+        (first, second)
+    } else {
+        (second, first)
+    };
+    element! {
+        View(
+            width: screen_width - 3,
+            background_color: Color::Reset,
+            border_style: BorderStyle::None,
+            margin_bottom: margin_bottom,
+            padding: 0,
+            flex_direction: FlexDirection::Column,
+            gap: 0,
+        ) {
+            Text(color: thinking.style.text_color(), wrap: TextWrap::Wrap, content: thinking.content.as_str())
+            Text(color: assistant.style.text_color(), wrap: TextWrap::Wrap, content: assistant.content.as_str())
+        }
+    }
+    .into()
+}
+
+fn transcript_message_bubble(
+    screen_width: u16,
+    message: &TranscriptMessage,
+    margin_bottom: u16,
+) -> AnyElement<'static> {
     let style = message.style;
     element! {
         View(
             width: screen_width - 3,
             background_color: style.background_color(),
-            margin_bottom: 0,
+            border_style: BorderStyle::None,
+            margin_bottom: margin_bottom,
             padding: style.padding(),
         ) {
             Text(color: style.text_color(), wrap: TextWrap::Wrap, content: message.content.as_str())
@@ -244,7 +337,7 @@ fn transcript_sticky_overlay(height: u16, message: &TranscriptMessage, display_c
         ) {
             View(
                 width: 100pct,
-                background_color: style.background_color(),
+                background_color: Color::Rgb { r: 52, g: 53, b: 65 },
                 padding_top: style.sticky_padding_top(),
                 padding_bottom: style.sticky_padding_bottom(),
                 padding_left: pad_h,
@@ -263,6 +356,25 @@ fn transcript_sticky_overlay(height: u16, message: &TranscriptMessage, display_c
     .into()
 }
 
+fn layout_transcript_rows_demo(messages: &[TranscriptMessage], screen_width: u16) -> Vec<TranscriptRowLayout> {
+    let mut layouts = Vec::with_capacity(messages.len());
+    let mut cursor = 0u32;
+    for (index, message) in messages.iter().enumerate() {
+        let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding());
+        let row_count = wrapped_transcript_row_count(&message.content, wrap_width) as u32;
+        layouts.push(TranscriptRowLayout {
+            start_row: cursor,
+            row_count,
+        });
+        cursor = cursor.saturating_add(row_count);
+        if index + 1 < messages.len() {
+            let next_style = messages.get(index + 1).map(|m| m.style);
+            cursor = cursor.saturating_add(message.style.entry_gap_after(next_style) as u32);
+        }
+    }
+    layouts
+}
+
 fn is_quit_command(text: &str) -> bool {
     matches!(text.trim(), ":q" | ":q!")
 }
@@ -271,6 +383,7 @@ fn is_quit_command(text: &str) -> bool {
 struct HeaderProps {
     screen_width: u16,
     session_label: String,
+    stats_label: String,
 }
 
 #[component]
@@ -282,7 +395,7 @@ fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
             background_color: Color::Reset,
             border_style: BorderStyle::Single,
             border_edges: Edges::Top,
-            border_color: Color::Rgb { r: (88), g: (88), b: (88) },
+            border_color: Color::Rgb { r: 80, g: 80, b: 80 },
             position: Position::Relative,
             align_items: AlignItems::Center,
             justify_content: JustifyContent::SpaceBetween,
@@ -291,7 +404,7 @@ fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
             margin_bottom: 0,
         ) {
             Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: props.session_label.clone())
-            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "$0.00 | 0k | 0.0% (262k)")
+            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: props.stats_label.clone())
         }
     }
 }
@@ -330,12 +443,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
         .as_ref()
         .is_none_or(|c| c.revision != cache_key.0 || c.screen_width != cache_key.1)
     {
-        let texts: Vec<&str> = messages.iter().map(|m| m.content.as_str()).collect();
-        let wrap_widths: Vec<u16> = messages
-            .iter()
-            .map(|m| transcript_bubble_inner_width(props.screen_width, m.style.horizontal_padding()))
-            .collect();
-        let row_layouts = layout_transcript_rows_widths(&texts, &wrap_widths, 1);
+        let row_layouts = layout_transcript_rows_demo(&messages, props.screen_width);
         let is_sticky_prompt: Vec<_> = messages.iter().map(|m| m.style.is_sticky_prompt()).collect();
         render_cache.set(Some(TranscriptRenderCache {
             revision: cache_key.0,
@@ -349,10 +457,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
     let cached = cache.as_ref().expect("transcript render cache");
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
-    let bubbles: Vec<_> = messages
-        .iter()
-        .map(|message| transcript_message_bubble(props.screen_width, message))
-        .collect();
+    let bubbles = build_transcript_bubbles(props.screen_width, &messages);
 
     let handle = scroll_handle.read();
     let scroll_viewport = handle.viewport_height().max(1);
@@ -422,7 +527,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
             overflow: Overflow::Hidden,
             border_style: BorderStyle::Single,
             border_edges: Edges::Top,
-            border_color: Color::Rgb { r: (88), g: (88), b: (88) },
+            border_color: Color::Rgb { r: 80, g: 80, b: 80 },
             margin_bottom: 1,
         ) {
             View(
@@ -451,7 +556,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                         padding_bottom: 0,
                         padding_left: 1,
                         padding_right: 1,
-                        gap: 1,
+                        gap: 0,
                     ) {
                         #(bubbles)
                     }
@@ -481,9 +586,9 @@ const TIPS: &[&str] = &[
     "Click footer labels to change mode",
 ];
 
-const BUSY_CANCEL_HINT: &str = "Esc cancel";
+const BUSY_CANCEL_HINT: &str = "Ctrl+C cancel";
 
-const ELAPSED_TICK_MS: u64 = 200;
+const SHELL_TICK_MS: u64 = 50;
 
 #[derive(Props)]
 struct StatusRowProps {
@@ -491,6 +596,8 @@ struct StatusRowProps {
     busy: bool,
     activity_label: String,
     accent: Color,
+    spinner_tick: u32,
+    elapsed_secs: f64,
 }
 
 impl Default for StatusRowProps {
@@ -500,8 +607,18 @@ impl Default for StatusRowProps {
             busy: false,
             activity_label: String::new(),
             accent: rgb(0xfa, 0xb2, 0x83),
+            spinner_tick: 0,
+            elapsed_secs: 0.0,
         }
     }
+}
+
+fn braille_spinner_glyph(tick: u32) -> &'static str {
+    let mut spinner = SpinnerLoader::new();
+    for _ in 0..(tick as usize % 10) {
+        spinner.tick();
+    }
+    spinner.glyph()
 }
 
 fn initial_tip_index() -> usize {
@@ -535,40 +652,24 @@ fn format_activity_line(label: &str, elapsed_secs: f64) -> String {
 #[component]
 fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut tip_index = hooks.use_ref(initial_tip_index);
-    let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
-    let mut is_busy = hooks.use_ref(|| false);
-    let mut elapsed_secs = hooks.use_state(|| 0.0f64);
+    let mut was_busy = hooks.use_ref(|| false);
 
-    let was_busy = is_busy.get();
-    is_busy.set(props.busy);
-
-    if props.busy && !was_busy {
-        busy_started_at.set(Some(Instant::now()));
-        elapsed_secs.set(0.0);
-    } else if !props.busy && was_busy {
-        busy_started_at.set(None);
+    if props.busy && !was_busy.get() {
+        was_busy.set(true);
+    } else if !props.busy && was_busy.get() {
+        was_busy.set(false);
         tip_index.set(random_tip_index(tip_index.get(), TIPS.len()));
-        elapsed_secs.set(0.0);
     }
-
-    hooks.use_future(async move {
-        loop {
-            tokio::time::sleep(Duration::from_millis(ELAPSED_TICK_MS)).await;
-            if !is_busy.get() {
-                continue;
-            }
-            if let Some(started) = busy_started_at.read().as_ref() {
-                let next = format_elapsed_secs(*started);
-                if (elapsed_secs.get() - next).abs() > f64::EPSILON {
-                    elapsed_secs.set(next);
-                }
-            }
-        }
-    });
 
     let right_half = props.screen_width / 2;
     let idle_tip = TIPS[tip_index.get() % TIPS.len()].to_string();
-    let activity_line = format_activity_line(&props.activity_label, elapsed_secs.get());
+    let activity_line = format_activity_line(&props.activity_label, props.elapsed_secs);
+    let _spinner_frame = props.spinner_tick;
+    let spinner_glyph = if props.busy {
+        braille_spinner_glyph(props.spinner_tick)
+    } else {
+        " "
+    };
 
     element! {
         View(
@@ -596,17 +697,15 @@ fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyElement<'
                             padding: 0,
                         ) {
                             Text(
+                                color: props.accent,
+                                wrap: TextWrap::NoWrap,
+                                content: spinner_glyph.to_string(),
+                            )
+                            Text(
                                 color: Color::DarkGrey,
                                 wrap: TextWrap::NoWrap,
                                 content: activity_line,
                             )
-                            View(padding: 0, margin: 0) {
-                                KittScannerView(
-                                    width: 8u16,
-                                    accent: props.accent,
-                                    active: true,
-                                )
-                            }
                         }
                     }
                 } else {
@@ -665,7 +764,7 @@ fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
             width: props.screen_width,
             flex_shrink: 0f32,
             border_style: BorderStyle::Round,
-            border_color: Color::Rgb { r: (108), g: (108), b: (108) },
+            border_color: Color::Rgb { r: 80, g: 80, b: 80 },
             position: Position::Relative,
             align_items: AlignItems::FlexStart,
             margin_bottom: 0,
@@ -731,11 +830,16 @@ struct FooterRightProps {
     width: u16,
     model_label: String,
     thinking_level: ThinkingLevel,
+    supports_images: bool,
 }
 
 #[component]
 fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
-    let footer_right = format!("IMG | {} | {}", props.model_label, props.thinking_level.label());
+    let footer_right = if props.supports_images {
+        format!("IMG | {} | {}", props.model_label, props.thinking_level.label())
+    } else {
+        format!("{} | {}", props.model_label, props.thinking_level.label())
+    };
 
     element! {
         View(
@@ -755,6 +859,7 @@ struct FooterProps {
     project_label: String,
     model_label: String,
     thinking_level: ThinkingLevel,
+    supports_images: bool,
 }
 
 #[component]
@@ -774,6 +879,7 @@ fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                 width: half,
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
+                supports_images: props.supports_images,
             )
         }
     }
@@ -787,6 +893,7 @@ struct PromptChromeProps {
     thinking_level: ThinkingLevel,
     project_label: String,
     model_label: String,
+    supports_images: bool,
     draft: Option<State<String>>,
     live_draft: Option<Ref<String>>,
     suppress_enter_newline: Option<Ref<bool>>,
@@ -822,6 +929,7 @@ fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'static>>
                 project_label: props.project_label.clone(),
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
+                supports_images: props.supports_images,
             )
         }
     }
@@ -841,18 +949,40 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut suppress_enter_newline = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
     let mut busy_generation = hooks.use_state(|| 0u64);
-    let mut activity_label = hooks.use_state(|| "Working".to_string());
+    let mut activity_label = hooks.use_state(|| "Thinking".to_string());
+    let mut elapsed_secs = hooks.use_state(|| 0.0f64);
+    let mut spinner_tick = hooks.use_state(|| 0u32);
+    let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
+    let mut turn_count = hooks.use_state(|| 0u32);
 
     hooks.use_future(async move {
         loop {
-            tokio::time::sleep(Duration::from_millis(50)).await;
+            tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
+            if busy.get() {
+                if let Some(started) = busy_started_at.read().as_ref() {
+                    let next = format_elapsed_secs(*started);
+                    if (elapsed_secs.get() - next).abs() > f64::EPSILON {
+                        elapsed_secs.set(next);
+                    }
+                }
+                spinner_tick.set(spinner_tick.get().wrapping_add(1));
+                if elapsed_secs.get() >= 1.0 {
+                    activity_label.set("Responding".to_string());
+                }
+            }
             if !busy.get() {
                 continue;
             }
             let generation = busy_generation.get();
-            tokio::time::sleep(Duration::from_secs(3)).await;
-            if busy.get() && busy_generation.get() == generation {
+            if busy_started_at
+                .read()
+                .as_ref()
+                .is_some_and(|s| s.elapsed() >= Duration::from_secs(3))
+                && busy_generation.get() == generation
+            {
                 busy.set(false);
+                busy_started_at.set(None);
+                elapsed_secs.set(0.0);
             }
         }
     });
@@ -886,6 +1016,8 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
 
     let (accent_r, accent_g, accent_b) = agent_mode.get().label_rgb();
     let scanner_accent = rgb(accent_r, accent_g, accent_b);
+    let session_label = format!("Session: 019f631516e6g29o | turn: {}", turn_count.get());
+    let stats_label = "$0.00 | 0k | 0.0% (200k)".to_string();
 
     element! {
         View(
@@ -901,7 +1033,8 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
         ) {
             Header(
                 screen_width: screen_width,
-                session_label: "Session: 019f631516e6g29o | turn: 0".to_string(),
+                session_label: session_label,
+                stats_label: stats_label,
             )
             TranscriptPanel(
                 screen_width: screen_width,
@@ -914,14 +1047,17 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 busy: busy.get(),
                 activity_label: activity_label.read().clone(),
                 accent: scanner_accent,
+                spinner_tick: spinner_tick.get(),
+                elapsed_secs: elapsed_secs.get(),
             )
             PromptChrome(
                 screen_width: screen_width,
                 screen_height: screen_height,
                 agent_mode: agent_mode.get(),
                 thinking_level: thinking_level.get(),
-                project_label: "~ my-project [branch-name]".to_string(),
-                model_label: "anthropic/opus-4.8".to_string(),
+                project_label: "~ elph [refactor-tui]".to_string(),
+                model_label: "opencode/big-pickle".to_string(),
+                supports_images: false,
                 draft: Some(draft),
                 live_draft: Some(live_draft),
                 suppress_enter_newline: Some(suppress_enter_newline),
@@ -938,16 +1074,25 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                     }
                     messages.set({
                         let mut list = messages.read().clone();
+                        let style = if text.trim_start().starts_with('/') {
+                            TranscriptStyle::SkillPrompt
+                        } else {
+                            TranscriptStyle::User
+                        };
                         list.push(TranscriptMessage {
                             content: text,
-                            style: TranscriptStyle::User,
+                            style,
                         });
                         list
                     });
                     messages_revision.set(messages_revision.get().wrapping_add(1));
+                    turn_count.set(turn_count.get().saturating_add(1));
                     busy.set(true);
+                    busy_started_at.set(Some(Instant::now()));
+                    elapsed_secs.set(0.0);
+                    spinner_tick.set(0);
                     busy_generation.set(busy_generation.get().saturating_add(1));
-                    activity_label.set("Working".to_string());
+                    activity_label.set("Thinking".to_string());
                     draft.set(String::new());
                     live_draft.set(String::new());
                     suppress_enter_newline.set(true);

@@ -15,6 +15,7 @@ pub struct PromptChromeProps {
     pub thinking_level: ThinkingLevel,
     pub project_label: String,
     pub model_label: String,
+    pub supports_images: bool,
     pub draft: Option<State<String>>,
     pub live_draft: Option<Ref<String>>,
     pub suppress_enter_newline: Option<Ref<bool>>,
@@ -50,6 +51,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                 project_label: props.project_label.clone(),
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
+                supports_images: props.supports_images,
             )
         }
     }

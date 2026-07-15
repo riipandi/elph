@@ -1,9 +1,11 @@
 //! Status row between transcript and editor.
 
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use elph_tui::{KittScannerView, rgb};
+use elph_tui::rgb;
 use iocraft::prelude::*;
+
+use super::activity::{braille_spinner_glyph, format_activity_line};
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+Q exit";
 
@@ -16,9 +18,7 @@ const TIPS: &[&str] = &[
     "Click footer labels to change mode",
 ];
 
-const BUSY_CANCEL_HINT: &str = "Esc cancel";
-
-const ELAPSED_TICK_MS: u64 = 200;
+const BUSY_CANCEL_HINT: &str = "Ctrl+C cancel";
 
 /// Props for [`StatusRow`].
 #[derive(Props)]
@@ -27,6 +27,10 @@ pub struct StatusRowProps {
     pub busy: bool,
     pub activity_label: String,
     pub accent: Color,
+    /// Drives braille spinner animation from the shell tick (no local timer).
+    pub spinner_tick: u32,
+    /// Elapsed seconds for the active turn, updated by the shell tick.
+    pub elapsed_secs: f64,
 }
 
 impl Default for StatusRowProps {
@@ -35,7 +39,9 @@ impl Default for StatusRowProps {
             screen_width: 80,
             busy: false,
             activity_label: String::new(),
-            accent: default_scanner_accent(),
+            accent: default_spinner_accent(),
+            spinner_tick: 0,
+            elapsed_secs: 0.0,
         }
     }
 }
@@ -60,53 +66,27 @@ fn random_tip_index(current: usize, tip_count: usize) -> usize {
     next
 }
 
-/// Elapsed seconds rounded to one decimal (200ms tick granularity).
-fn format_elapsed_secs(started: Instant) -> f64 {
-    let tenths = started.elapsed().as_millis() / 100;
-    tenths as f64 / 10.0
-}
-
-fn format_activity_line(label: &str, elapsed_secs: f64) -> String {
-    format!("{label} · {elapsed_secs:.1}s")
-}
-
 #[component]
 pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut tip_index = hooks.use_ref(initial_tip_index);
-    let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
-    let mut is_busy = hooks.use_ref(|| false);
-    let mut elapsed_secs = hooks.use_state(|| 0.0f64);
+    let mut was_busy = hooks.use_ref(|| false);
 
-    let was_busy = is_busy.get();
-    is_busy.set(props.busy);
-
-    if props.busy && !was_busy {
-        busy_started_at.set(Some(Instant::now()));
-        elapsed_secs.set(0.0);
-    } else if !props.busy && was_busy {
-        busy_started_at.set(None);
+    if props.busy && !was_busy.get() {
+        was_busy.set(true);
+    } else if !props.busy && was_busy.get() {
+        was_busy.set(false);
         tip_index.set(random_tip_index(tip_index.get(), TIPS.len()));
-        elapsed_secs.set(0.0);
     }
-
-    hooks.use_future(async move {
-        loop {
-            tokio::time::sleep(Duration::from_millis(ELAPSED_TICK_MS)).await;
-            if !is_busy.get() {
-                continue;
-            }
-            if let Some(started) = busy_started_at.read().as_ref() {
-                let next = format_elapsed_secs(*started);
-                if (elapsed_secs.get() - next).abs() > f64::EPSILON {
-                    elapsed_secs.set(next);
-                }
-            }
-        }
-    });
 
     let right_half = props.screen_width / 2;
     let idle_tip = TIPS[tip_index.get() % TIPS.len()].to_string();
-    let activity_line = format_activity_line(&props.activity_label, elapsed_secs.get());
+    let activity_line = format_activity_line(&props.activity_label, props.elapsed_secs);
+    let _spinner_frame = props.spinner_tick;
+    let spinner_glyph = if props.busy {
+        braille_spinner_glyph(props.spinner_tick)
+    } else {
+        " "
+    };
 
     element! {
         View(
@@ -134,17 +114,15 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                             padding: 0,
                         ) {
                             Text(
+                                color: props.accent,
+                                wrap: TextWrap::NoWrap,
+                                content: spinner_glyph.to_string(),
+                            )
+                            Text(
                                 color: Color::DarkGrey,
                                 wrap: TextWrap::NoWrap,
                                 content: activity_line,
                             )
-                            View(padding: 0, margin: 0) {
-                                KittScannerView(
-                                    width: 8u16,
-                                    accent: props.accent,
-                                    active: true,
-                                )
-                            }
                         }
                     }
                 } else {
@@ -179,9 +157,15 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
     }
 }
 
-/// Default accent for the KITT scanner (opencode theme).
-pub fn default_scanner_accent() -> Color {
+/// Default accent for the braille spinner (opencode theme).
+pub fn default_spinner_accent() -> Color {
     rgb(0xfa, 0xb2, 0x83)
+}
+
+/// Elapsed seconds rounded to one decimal (50ms tick granularity).
+pub fn format_elapsed_secs(started: Instant) -> f64 {
+    let tenths = started.elapsed().as_millis() / 100;
+    tenths as f64 / 10.0
 }
 
 #[cfg(test)]
@@ -204,7 +188,7 @@ mod tests {
     #[test]
     fn format_elapsed_rounds_to_tenths() {
         let started = Instant::now();
-        std::thread::sleep(Duration::from_millis(250));
+        std::thread::sleep(std::time::Duration::from_millis(250));
         let elapsed = format_elapsed_secs(started);
         assert!((0.2..=0.4).contains(&elapsed));
     }

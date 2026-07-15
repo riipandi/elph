@@ -4,6 +4,8 @@ use iocraft::prelude::*;
 
 use crate::types::ThinkingLevel;
 
+use super::labels::footer_right_label;
+
 #[derive(Clone, Default, Props)]
 pub struct FooterLeftProps {
     pub width: u16,
@@ -29,11 +31,12 @@ pub struct FooterRightProps {
     pub width: u16,
     pub model_label: String,
     pub thinking_level: ThinkingLevel,
+    pub supports_images: bool,
 }
 
 #[component]
 pub fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
-    let footer_right = format!("IMG | {} | {}", props.model_label, props.thinking_level.label());
+    let footer_right = footer_right_label(&props.model_label, props.thinking_level, props.supports_images);
 
     element! {
         View(
@@ -53,6 +56,7 @@ pub struct FooterProps {
     pub project_label: String,
     pub model_label: String,
     pub thinking_level: ThinkingLevel,
+    pub supports_images: bool,
 }
 
 #[component]
@@ -72,6 +76,7 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                 width: half,
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
+                supports_images: props.supports_images,
             )
         }
     }
