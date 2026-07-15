@@ -1,5 +1,6 @@
 //! Multiline prompt editor (1-row default, grows with content).
 
+use crate::text_editing::wire_editing_shortcuts;
 use iocraft::prelude::*;
 
 /// Props for [`Textarea`].
@@ -19,15 +20,39 @@ pub struct TextareaProps {
     pub suppress_enter_newline: Option<Ref<bool>>,
 }
 
-fn insert_newline_at_cursor(text: &mut String, cursor: usize) -> usize {
-    let cursor = cursor.min(text.len());
-    text.insert(cursor, '\n');
-    cursor + 1
-}
-
 fn visible_row_count(text: &str, min_height: u16) -> u16 {
     let lines = text.lines().count().max(1) as u16;
     lines.max(min_height.max(1))
+}
+
+/// While suppression is active, keep real keystrokes and drop only ghost trailing newlines.
+fn resolve_suppressed_change(new_value: String) -> String {
+    if new_value.ends_with('\n') {
+        String::new()
+    } else {
+        new_value
+    }
+}
+
+/// Apply a [`TextInput`] change while optionally swallowing the ghost `\n` multiline Enter adds on submit.
+fn apply_text_input_change(
+    suppress_enter_newline: Option<Ref<bool>>,
+    value: &mut State<String>,
+    input_handle: &mut Ref<TextInputHandle>,
+    new_value: String,
+) {
+    if let Some(mut suppress) = suppress_enter_newline
+        && suppress.get()
+    {
+        suppress.set(false);
+        let resolved = resolve_suppressed_change(new_value);
+        if resolved.is_empty() {
+            input_handle.write().set_cursor_offset(0);
+        }
+        value.set(resolved);
+        return;
+    }
+    value.set(new_value);
 }
 
 /// Multiline text input with optional external state.
@@ -39,38 +64,10 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
     let has_focus = props.has_focus;
     let min_height = props.min_height.max(1);
     let show_border = props.show_border.unwrap_or(true);
-    let input_handle = hooks.use_ref_default::<TextInputHandle>();
+    let mut input_handle = hooks.use_ref_default::<TextInputHandle>();
 
-    hooks.use_terminal_events({
-        let mut input_handle = input_handle;
-        move |event| {
-            if !has_focus {
-                return;
-            }
-            let TerminalEvent::Key(KeyEvent {
-                code: KeyCode::Enter,
-                kind,
-                modifiers,
-                ..
-            }) = event
-            else {
-                return;
-            };
-            if kind == KeyEventKind::Release {
-                return;
-            }
-            // Plain Enter is handled by the shell (submit). TextInput also treats Enter as
-            // newline when multiline; the parent clears that via `suppress_enter_newline`.
-            // Terminals often omit Shift on Enter, so provide Ctrl/Alt+Enter for newlines.
-            if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
-                let cursor = input_handle.read().cursor_offset();
-                let mut text = value.read().clone();
-                let next = insert_newline_at_cursor(&mut text, cursor);
-                value.set(text);
-                input_handle.write().set_cursor_offset(next);
-            }
-        }
-    });
+    // Plain Enter is handled by the shell (submit). Ctrl/Alt+Enter inserts a newline.
+    wire_editing_shortcuts(&mut hooks, has_focus, true, value, input_handle);
 
     let height = visible_row_count(&value.read(), min_height);
     let border_style = if show_border && has_focus {
@@ -98,14 +95,12 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
                 cursor_color: props.cursor_color.unwrap_or(Color::DarkGrey),
                 value: value.to_string(),
                 on_change: move |new_value| {
-                    if let Some(mut suppress) = suppress_enter_newline
-                        && suppress.get()
-                    {
-                        suppress.set(false);
-                        value.set(String::new());
-                        return;
-                    }
-                    value.set(new_value);
+                    apply_text_input_change(
+                        suppress_enter_newline,
+                        &mut value,
+                        &mut input_handle,
+                        new_value,
+                    );
                 },
             )
         }
@@ -115,11 +110,11 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::text_editing::insert_newline_at_cursor;
 
     #[test]
     fn insert_newline_at_cursor_appends() {
-        let mut text = "hi".to_string();
-        let next = insert_newline_at_cursor(&mut text, 2);
+        let (text, next) = insert_newline_at_cursor("hi", 2);
         assert_eq!(text, "hi\n");
         assert_eq!(next, 3);
     }
@@ -129,5 +124,17 @@ mod tests {
         assert_eq!(visible_row_count("one", 1), 1);
         assert_eq!(visible_row_count("a\nb", 1), 2);
         assert_eq!(visible_row_count("a", 3), 3);
+    }
+
+    #[test]
+    fn resolve_suppressed_change_keeps_first_typed_char() {
+        assert_eq!(resolve_suppressed_change("a".into()), "a");
+        assert_eq!(resolve_suppressed_change("ab".into()), "ab");
+    }
+
+    #[test]
+    fn resolve_suppressed_change_drops_ghost_newlines() {
+        assert_eq!(resolve_suppressed_change("\n".into()), "");
+        assert_eq!(resolve_suppressed_change("hello\n".into()), "");
     }
 }

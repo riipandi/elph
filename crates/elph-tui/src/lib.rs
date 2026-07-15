@@ -6,6 +6,7 @@
 
 pub mod color;
 pub mod components;
+pub mod text_editing;
 pub mod types;
 pub mod utils;
 
