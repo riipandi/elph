@@ -30,4 +30,4 @@ pub use select::{SelectList, SelectListProps};
 pub use slider::{Slider, SliderProps};
 pub use tab_select::{TabSelect, TabSelectProps};
 pub use text::{StyledText, StyledTextProps};
-pub use textarea::{Textarea, TextareaProps};
+pub use textarea::{Textarea, TextareaProps, logical_line_count};

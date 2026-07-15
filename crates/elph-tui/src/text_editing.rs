@@ -22,13 +22,16 @@ pub fn is_word_char(c: char) -> bool {
 }
 
 /// Byte offset of the previous word boundary (macOS Option+← / Linux Ctrl+←).
+///
+/// Word motion does not cross line boundaries.
 pub fn prev_word_offset(text: &str, cursor: usize) -> usize {
     let mut i = cursor.min(text.len());
-    if i == 0 {
-        return 0;
+    let line_start = line_start_offset(text, cursor);
+    if i <= line_start {
+        return line_start;
     }
 
-    while i > 0 {
+    while i > line_start {
         let ch = text[..i].chars().last().unwrap();
         if is_word_char(ch) {
             break;
@@ -36,7 +39,7 @@ pub fn prev_word_offset(text: &str, cursor: usize) -> usize {
         i -= ch.len_utf8();
     }
 
-    while i > 0 {
+    while i > line_start {
         let ch = text[..i].chars().last().unwrap();
         if !is_word_char(ch) {
             break;
@@ -48,11 +51,13 @@ pub fn prev_word_offset(text: &str, cursor: usize) -> usize {
 }
 
 /// Byte offset of the next word boundary (macOS Option+→ / Linux Ctrl+→).
+///
+/// Word motion does not cross line boundaries.
 pub fn next_word_offset(text: &str, cursor: usize) -> usize {
     let mut i = cursor.min(text.len());
-    let len = text.len();
+    let line_end = line_end_offset(text, cursor);
 
-    while i < len {
+    while i < line_end {
         let ch = text[i..].chars().next().unwrap();
         if !is_word_char(ch) {
             break;
@@ -60,7 +65,7 @@ pub fn next_word_offset(text: &str, cursor: usize) -> usize {
         i += ch.len_utf8();
     }
 
-    while i < len {
+    while i < line_end {
         let ch = text[i..].chars().next().unwrap();
         if is_word_char(ch) {
             break;
@@ -82,10 +87,72 @@ pub fn line_end_offset(text: &str, cursor: usize) -> usize {
     text[cursor..].find('\n').map(|i| cursor + i).unwrap_or(text.len())
 }
 
+fn line_is_blank(line: &str) -> bool {
+    line.chars().all(|c| c.is_whitespace())
+}
+
+/// When the cursor is at column 0, delete the preceding newline (join with previous line).
+fn delete_preceding_newline_if_at_line_start(text: &str, cursor: usize) -> Option<(String, usize)> {
+    let cursor = cursor.min(text.len());
+    let start = line_start_offset(text, cursor);
+    if start == cursor && start > 0 && text.as_bytes().get(start - 1) == Some(&b'\n') {
+        let mut out = text.to_string();
+        out.remove(start - 1);
+        Some((out, start - 1))
+    } else {
+        None
+    }
+}
+
+/// Cmd+Backspace at column 0 on a blank line: remove all contiguous blank lines above.
+fn delete_blank_lines_backward(text: &str, cursor: usize) -> Option<(String, usize)> {
+    let cursor = cursor.min(text.len());
+    let line_start = line_start_offset(text, cursor);
+    if line_start != cursor || line_start == 0 {
+        return None;
+    }
+
+    let line_end = line_end_offset(text, cursor);
+    let current_line = &text[line_start..line_end];
+    if !line_is_blank(current_line) {
+        return delete_preceding_newline_if_at_line_start(text, cursor);
+    }
+
+    let mut delete_from = line_start;
+    let mut scan_line_start = line_start;
+
+    loop {
+        if scan_line_start == 0 {
+            break;
+        }
+        let prev_newline = scan_line_start - 1;
+        if text.as_bytes().get(prev_newline) != Some(&b'\n') {
+            break;
+        }
+        let prev_line_start = line_start_offset(text, prev_newline);
+        let prev_line = &text[prev_line_start..prev_newline];
+        if line_is_blank(prev_line) {
+            delete_from = prev_line_start;
+            scan_line_start = prev_line_start;
+        } else {
+            delete_from = prev_newline;
+            break;
+        }
+    }
+
+    if delete_from == line_start {
+        return delete_preceding_newline_if_at_line_start(text, cursor);
+    }
+
+    let mut out = text.to_string();
+    out.drain(delete_from..line_start);
+    Some((out, delete_from))
+}
+
 pub fn delete_word_backward(text: &str, cursor: usize) -> (String, usize) {
     let start = prev_word_offset(text, cursor);
     if start == cursor {
-        return (text.to_string(), cursor);
+        return delete_preceding_newline_if_at_line_start(text, cursor).unwrap_or_else(|| (text.to_string(), cursor));
     }
     let mut out = text.to_string();
     out.drain(start..cursor);
@@ -103,9 +170,12 @@ pub fn delete_word_forward(text: &str, cursor: usize) -> (String, usize) {
 }
 
 pub fn delete_to_line_start(text: &str, cursor: usize) -> (String, usize) {
+    let cursor = cursor.min(text.len());
     let start = line_start_offset(text, cursor);
     if start == cursor {
-        return (text.to_string(), cursor);
+        return delete_blank_lines_backward(text, cursor)
+            .or_else(|| delete_preceding_newline_if_at_line_start(text, cursor))
+            .unwrap_or_else(|| (text.to_string(), cursor));
     }
     let mut out = text.to_string();
     out.drain(start..cursor);
@@ -147,6 +217,11 @@ pub fn match_key_to_action(
     let ctrl_only = modifiers.contains(KeyModifiers::CONTROL)
         && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::SHIFT | KeyModifiers::META);
 
+    // Chat editor newline: Ctrl+J (Shift+Enter is handled by multiline TextInput when the terminal reports SHIFT).
+    if multiline && matches!(code, KeyCode::Char('j') | KeyCode::Char('J')) && ctrl_only {
+        return Some(TextEditAction::InsertNewline);
+    }
+
     // macOS terminals often map Cmd+Backspace/Delete to readline Ctrl+U / Ctrl+K (0x15 / 0x0b).
     if matches!(code, KeyCode::Char('u') | KeyCode::Char('U')) && ctrl_only {
         return Some(TextEditAction::DeleteToLineStart);
@@ -180,9 +255,6 @@ pub fn match_key_to_action(
         KeyCode::Backspace if modifiers.intersects(word_mod) => Some(TextEditAction::DeleteWordBackward),
         KeyCode::Delete if super_only => Some(TextEditAction::DeleteToLineEnd),
         KeyCode::Delete if modifiers.intersects(word_mod) => Some(TextEditAction::DeleteWordForward),
-        KeyCode::Enter if multiline && modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) => {
-            Some(TextEditAction::InsertNewline)
-        }
         _ => None,
     }
 }
@@ -207,11 +279,13 @@ pub fn wire_editing_shortcuts(
     multiline: bool,
     mut value: State<String>,
     input_handle: Ref<TextInputHandle>,
+    cursor_snapshot: Ref<usize>,
 ) {
     let pending_esc = hooks.use_ref(|| false);
 
     hooks.use_terminal_events({
         let mut input_handle = input_handle;
+        let mut cursor_snapshot = cursor_snapshot;
         let mut pending_esc = pending_esc;
         move |event| {
             if !has_focus {
@@ -245,10 +319,14 @@ pub fn wire_editing_shortcuts(
             let cursor = input_handle.read().cursor_offset();
             let text = value.read().clone();
             let (new_text, new_cursor) = apply_action(action, &text, cursor);
+            let changed = new_text != text || new_cursor != cursor;
             if new_text != text {
                 value.set(new_text);
             }
-            input_handle.write().set_cursor_offset(new_cursor);
+            if changed {
+                cursor_snapshot.set(new_cursor);
+                input_handle.write().set_cursor_offset(new_cursor);
+            }
         }
     });
 }
@@ -294,6 +372,78 @@ mod tests {
     }
 
     #[test]
+    fn prev_word_stays_on_same_line() {
+        assert_eq!(prev_word_offset("hello\n", "hello\n".len()), 6);
+        assert_eq!(prev_word_offset("hello\nworld", "hello\nworld".len()), 6);
+    }
+
+    #[test]
+    fn delete_word_backward_after_newline_keeps_first_line() {
+        let text = "hello\nworld";
+        let (out, cursor) = delete_word_backward(text, text.len());
+        assert_eq!(out, "hello\n");
+        assert_eq!(cursor, 6);
+    }
+
+    #[test]
+    fn delete_to_line_start_joins_empty_continuation_line() {
+        let text = "hello\n";
+        let (out, cursor) = delete_to_line_start(text, text.len());
+        assert_eq!(out, "hello");
+        assert_eq!(cursor, 5);
+    }
+
+    #[test]
+    fn delete_to_line_start_removes_all_trailing_blank_lines() {
+        let text = "hello\n\n\n";
+        let (out, cursor) = delete_to_line_start(text, text.len());
+        assert_eq!(out, "hello");
+        assert_eq!(cursor, 5);
+    }
+
+    #[test]
+    fn delete_to_line_start_removes_whitespace_only_blank_lines() {
+        let text = "hello\n   \n";
+        let (out, cursor) = delete_to_line_start(text, text.len());
+        assert_eq!(out, "hello");
+        assert_eq!(cursor, 5);
+    }
+
+    #[test]
+    fn delete_to_line_start_on_content_line_joins_one_line() {
+        let text = "hello\n\nworld";
+        let cursor = "hello\n\n".len();
+        let (out, pos) = delete_to_line_start(text, cursor);
+        assert_eq!(out, "hello\nworld");
+        assert_eq!(pos, 6);
+    }
+
+    #[test]
+    fn delete_word_backward_joins_empty_continuation_line() {
+        let text = "hello\n";
+        let (out, cursor) = delete_word_backward(text, text.len());
+        assert_eq!(out, "hello");
+        assert_eq!(cursor, 5);
+    }
+
+    #[test]
+    fn delete_word_backward_joins_double_newline_at_empty_line() {
+        let text = "hello\n\n";
+        let (out, cursor) = delete_word_backward(text, text.len());
+        assert_eq!(out, "hello\n");
+        assert_eq!(cursor, 6);
+    }
+
+    #[test]
+    fn delete_word_backward_at_line_start_joins_with_previous_line() {
+        let text = "hello\nworld";
+        let cursor = "hello\n".len();
+        let (out, pos) = delete_word_backward(text, cursor);
+        assert_eq!(out, "helloworld");
+        assert_eq!(pos, 5);
+    }
+
+    #[test]
     fn match_ctrl_backspace() {
         let action = match_key_to_action(KeyCode::Backspace, KeyModifiers::CONTROL, false, false);
         assert_eq!(action, Some(TextEditAction::DeleteWordBackward));
@@ -327,6 +477,12 @@ mod tests {
     fn match_alt_f_word_right() {
         let action = match_key_to_action(KeyCode::Char('f'), KeyModifiers::ALT, false, false);
         assert_eq!(action, Some(TextEditAction::WordRight));
+    }
+
+    #[test]
+    fn match_ctrl_j_inserts_newline() {
+        let action = match_key_to_action(KeyCode::Char('j'), KeyModifiers::CONTROL, true, false);
+        assert_eq!(action, Some(TextEditAction::InsertNewline));
     }
 
     #[test]

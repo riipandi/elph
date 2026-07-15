@@ -22,8 +22,9 @@ pub fn Input(props: &InputProps, mut hooks: Hooks) -> impl Into<AnyElement<'stat
     let mut value = props.value.unwrap_or(internal);
     let has_focus = props.has_focus;
     let input_handle = hooks.use_ref_default::<TextInputHandle>();
+    let cursor_snapshot = hooks.use_ref(|| 0usize);
 
-    wire_editing_shortcuts(&mut hooks, has_focus, false, value, input_handle);
+    wire_editing_shortcuts(&mut hooks, has_focus, false, value, input_handle, cursor_snapshot);
 
     element! {
         View(

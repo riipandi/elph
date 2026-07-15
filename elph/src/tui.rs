@@ -301,7 +301,7 @@ fn StatusRow(props: &StatusRowProps) -> impl Into<AnyElement<'static>> {
                 justify_content: JustifyContent::End,
                 padding: 0,
             ) {
-                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Enter send · Ctrl/Alt+Enter newline · Shift+↑↓ scroll · Ctrl+D quit")
+                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Enter send · Shift+Enter/Ctrl+J newline · Shift+↑↓ scroll · Ctrl+D quit")
             }
         }
     }
@@ -318,16 +318,11 @@ struct EditorProps {
 #[component]
 fn Editor(props: &EditorProps) -> impl Into<AnyElement<'static>> {
     let label_color = rgb_color(props.agent_mode.label_rgb());
-    let rows = props
-        .draft
-        .map(|draft| draft.read().lines().count().max(1) as u16)
-        .unwrap_or(1u16)
-        .max(1u16);
 
     element! {
         View(
             width: props.screen_width,
-            min_height: rows,
+            flex_shrink: 0f32,
             border_style: BorderStyle::Round,
             border_color: Color::Rgb { r: (108), g: (108), b: (108) },
             position: Position::Relative,
