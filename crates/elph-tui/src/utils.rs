@@ -102,20 +102,3 @@ pub fn truncate_with_ellipsis(text: &str, max_width: usize) -> String {
     out.push('…');
     out
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wraps_words() {
-        let lines = wrap_text("hello world foo", 8);
-        assert_eq!(lines, vec!["hello", "world", "foo"]);
-    }
-
-    #[test]
-    fn truncates() {
-        assert_eq!(truncate_with_ellipsis("hello", 10), "hello");
-        assert_eq!(truncate_with_ellipsis("hello world", 8), "hello w…");
-    }
-}

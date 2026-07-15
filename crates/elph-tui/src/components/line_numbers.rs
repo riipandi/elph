@@ -34,19 +34,3 @@ pub fn LineNumbers(props: &LineNumbersProps) -> impl Into<AnyElement<'static>> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn counts_lines() {
-        let props = LineNumbersProps {
-            line_count: 3,
-            start_line: 0,
-            gutter_width: 4,
-            ..Default::default()
-        };
-        assert_eq!(props.line_count, 3);
-    }
-}

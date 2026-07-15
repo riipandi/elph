@@ -18,14 +18,3 @@ pub fn from_hex(hex: &str) -> Option<Color> {
 pub const fn rgb(r: u8, g: u8, b: u8) -> Color {
     Color::Rgb { r, g, b }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_hex() {
-        assert_eq!(from_hex("#FF00AA"), Some(rgb(255, 0, 170)));
-        assert_eq!(from_hex("3B82F6"), Some(rgb(59, 130, 246)));
-    }
-}

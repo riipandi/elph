@@ -99,15 +99,3 @@ pub fn FrameBufferView(props: &FrameBufferViewProps) -> impl Into<AnyElement<'st
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn writes_cells() {
-        let mut buf = FrameBuffer::new(5, 2);
-        buf.set_text(1, 0, "hi");
-        assert_eq!(buf.line(0), " hi  ");
-    }
-}

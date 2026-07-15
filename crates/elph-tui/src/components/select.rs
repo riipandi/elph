@@ -106,14 +106,3 @@ pub fn SelectList(props: &SelectListProps, mut hooks: Hooks) -> impl Into<AnyEle
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::types::SelectOption;
-
-    #[test]
-    fn option_construct() {
-        let opt = SelectOption::new("Save", "Save file");
-        assert_eq!(opt.name, "Save");
-    }
-}

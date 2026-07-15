@@ -36,4 +36,8 @@ pub use select::{SelectList, SelectListProps};
 pub use slider::{Slider, SliderProps};
 pub use tab_select::{TabSelect, TabSelectProps};
 pub use text::{StyledText, StyledTextProps};
-pub use textarea::{Textarea, TextareaProps, logical_line_count};
+pub use textarea::{
+    CursorSyncAction, PlannedTextInputChange, Textarea, TextareaLayout, TextareaProps, display_row_count,
+    is_unauthorized_newline_insert, layout_cursor_for_viewport, layout_textarea, logical_line_count, newline_count,
+    plan_cursor_sync, plan_text_input_change, resolve_suppressed_change, visible_row_count,
+};

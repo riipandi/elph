@@ -66,29 +66,3 @@ pub fn effective_scroll_offset(
         scroll_offset
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn layouts_accumulate_with_gap() {
-        let layouts = layout_transcript_rows(&["a", "bb\ncc"], 20, 1);
-        assert_eq!(layouts[0].start_row, 0);
-        assert_eq!(layouts[0].row_count, 1);
-        assert_eq!(layouts[1].start_row, 2);
-        assert_eq!(layouts[1].row_count, 2);
-    }
-
-    #[test]
-    fn sticky_picks_last_user_at_or_above_offset() {
-        let texts = ["sys", "user one", "assistant", "user two"];
-        let layouts = layout_transcript_rows(&texts, 40, 1);
-        let is_user = [false, true, false, true];
-        assert_eq!(sticky_user_message_index(&layouts, &is_user, 0), None);
-        assert_eq!(sticky_user_message_index(&layouts, &is_user, 1), None);
-        assert_eq!(sticky_user_message_index(&layouts, &is_user, 2), Some(1));
-        assert_eq!(sticky_user_message_index(&layouts, &is_user, 5), Some(1));
-        assert_eq!(sticky_user_message_index(&layouts, &is_user, 6), Some(3));
-    }
-}

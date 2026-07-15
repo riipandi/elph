@@ -12,7 +12,7 @@ pub struct CodeBlockProps {
     pub gutter_width: u16,
 }
 
-fn highlight_rust_line(line: &str) -> Vec<MixedTextContent> {
+pub fn highlight_rust_line(line: &str) -> Vec<MixedTextContent> {
     let keywords = [
         "fn", "let", "mut", "pub", "use", "struct", "enum", "impl", "return", "if", "else", "match",
     ];
@@ -112,16 +112,5 @@ pub fn CodeBlock(props: &CodeBlockProps) -> impl Into<AnyElement<'static>> {
                 #(code_lines)
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn highlights_keywords() {
-        let parts = highlight_rust_line("fn main() {}");
-        assert!(!parts.is_empty());
     }
 }

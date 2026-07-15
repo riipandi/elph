@@ -27,14 +27,3 @@ pub fn StyledText(props: &StyledTextProps) -> impl Into<AnyElement<'static>> {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn props_default() {
-        let props = StyledTextProps::default();
-        assert!(props.content.is_empty());
-    }
-}

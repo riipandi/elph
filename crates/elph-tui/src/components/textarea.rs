@@ -31,7 +31,7 @@ pub fn logical_line_count(text: &str) -> u16 {
     lines.max(1) as u16
 }
 
-fn newline_count(text: &str) -> usize {
+pub fn newline_count(text: &str) -> usize {
     text.chars().filter(|&c| c == '\n').count()
 }
 
@@ -65,7 +65,7 @@ pub fn visible_row_count(text: &str, cursor: usize, viewport_width: u16) -> u16 
     rows.max(1)
 }
 
-fn compute_viewport_height(content_rows: u16, min_height: u16, max_height: Option<u16>) -> u16 {
+pub fn compute_viewport_height(content_rows: u16, min_height: u16, max_height: Option<u16>) -> u16 {
     let min_h = min_height.max(1);
     match max_height {
         None => content_rows.max(min_h),
@@ -73,14 +73,15 @@ fn compute_viewport_height(content_rows: u16, min_height: u16, max_height: Optio
     }
 }
 
-struct TextareaLayout {
-    input_width: u16,
-    content_rows: u16,
-    viewport_height: u16,
-    show_scrollbar: bool,
+#[derive(Debug, PartialEq, Eq)]
+pub struct TextareaLayout {
+    pub input_width: u16,
+    pub content_rows: u16,
+    pub viewport_height: u16,
+    pub show_scrollbar: bool,
 }
 
-fn layout_textarea(
+pub fn layout_textarea(
     text: &str,
     cursor: usize,
     outer_width: u16,
@@ -112,7 +113,7 @@ fn layout_textarea(
 }
 
 /// While suppression is active, keep real keystrokes and drop only ghost trailing newlines.
-fn resolve_suppressed_change(new_value: String) -> String {
+pub fn resolve_suppressed_change(new_value: String) -> String {
     if new_value.ends_with('\n') {
         String::new()
     } else {
@@ -121,8 +122,66 @@ fn resolve_suppressed_change(new_value: String) -> String {
 }
 
 /// `TextInput` always inserts `\n` on Enter; intentional newlines go through [`wire_editing_shortcuts`].
-fn is_unauthorized_newline_insert(prev: &str, new: &str) -> bool {
+pub fn is_unauthorized_newline_insert(prev: &str, new: &str) -> bool {
     newline_count(new) > newline_count(prev)
+}
+
+/// Pure decision for [`apply_text_input_change`] (unit-tested).
+#[derive(Debug, PartialEq, Eq)]
+pub enum PlannedTextInputChange {
+    Suppressed { value: String, reset_cursor: bool },
+    KeepWireNewline { cursor: usize },
+    Rollback { cursor: usize },
+    Accept { value: String },
+}
+
+/// Handle/snapshot reconciliation after render (see `Textarea` cursor `use_effect`).
+#[derive(Debug, PartialEq, Eq)]
+pub enum CursorSyncAction {
+    PushHandleToSnapshot(usize),
+    PullSnapshotFromHandle(usize),
+    Noop,
+}
+
+pub fn plan_cursor_sync(text: &str, snapshot_cursor: usize, handle_cursor: usize) -> CursorSyncAction {
+    let tail = text.len();
+    if text.ends_with('\n') && snapshot_cursor == tail && handle_cursor < tail {
+        CursorSyncAction::PushHandleToSnapshot(tail)
+    } else if handle_cursor != snapshot_cursor {
+        CursorSyncAction::PullSnapshotFromHandle(handle_cursor)
+    } else {
+        CursorSyncAction::Noop
+    }
+}
+
+pub fn plan_text_input_change(
+    prev: &str,
+    prev_cursor: usize,
+    new_value: &str,
+    snapshot_cursor: usize,
+    suppress_enter: bool,
+    pending_newline: bool,
+) -> PlannedTextInputChange {
+    if suppress_enter {
+        let resolved = resolve_suppressed_change(new_value.to_string());
+        return PlannedTextInputChange::Suppressed {
+            reset_cursor: resolved.is_empty(),
+            value: resolved,
+        };
+    }
+
+    if is_unauthorized_newline_insert(prev, new_value) {
+        if pending_newline {
+            return PlannedTextInputChange::KeepWireNewline {
+                cursor: snapshot_cursor.min(prev.len()),
+            };
+        }
+        return PlannedTextInputChange::Rollback { cursor: prev_cursor };
+    }
+
+    PlannedTextInputChange::Accept {
+        value: new_value.to_string(),
+    }
 }
 
 fn apply_text_input_change(
@@ -135,45 +194,45 @@ fn apply_text_input_change(
 ) {
     let prev = value.read().clone();
     let prev_cursor = input_handle.read().cursor_offset();
+    let suppress = suppress_enter_newline.as_ref().is_some_and(|s| s.get());
+    let pending = pending_newline.as_ref().is_some_and(|p| p.get());
 
     if let Some(mut suppress) = suppress_enter_newline
         && suppress.get()
     {
         suppress.set(false);
-        let resolved = resolve_suppressed_change(new_value);
-        if resolved.is_empty() {
-            cursor_snapshot.set(0);
-            input_handle.write().set_cursor_offset(0);
-        }
-        value.set(resolved);
-        return;
     }
 
-    if is_unauthorized_newline_insert(&prev, &new_value) {
-        if pending_newline.as_ref().is_some_and(|p| p.get()) {
+    match plan_text_input_change(&prev, prev_cursor, &new_value, cursor_snapshot.get(), suppress, pending) {
+        PlannedTextInputChange::Suppressed {
+            value: resolved,
+            reset_cursor,
+        } => {
+            if reset_cursor {
+                cursor_snapshot.set(0);
+                input_handle.write().set_cursor_offset(0);
+            }
+            value.set(resolved);
+        }
+        PlannedTextInputChange::KeepWireNewline { cursor } => {
             if let Some(mut pending) = pending_newline {
                 pending.set(false);
             }
-            // Wire already inserted the newline; TextInput may fire on_change again on a
-            // stale local buffer (second Shift+Enter → extra `\n`). Keep wire's value.
-            let next_cursor = cursor_snapshot.get().min(prev.len());
-            cursor_snapshot.set(next_cursor);
-            input_handle.write().set_cursor_offset(next_cursor);
-            return;
+            cursor_snapshot.set(cursor);
+            input_handle.write().set_cursor_offset(cursor);
         }
-        value.set(prev);
-        cursor_snapshot.set(prev_cursor);
-        input_handle.write().set_cursor_offset(prev_cursor);
-        return;
+        PlannedTextInputChange::Rollback { cursor } => {
+            value.set(prev);
+            cursor_snapshot.set(cursor);
+            input_handle.write().set_cursor_offset(cursor);
+        }
+        PlannedTextInputChange::Accept { value: next } => {
+            if pending && let Some(mut pending) = pending_newline {
+                pending.set(false);
+            }
+            value.set(next);
+        }
     }
-
-    if pending_newline.as_ref().is_some_and(|p| p.get())
-        && let Some(mut pending) = pending_newline
-    {
-        pending.set(false);
-    }
-
-    value.set(new_value);
 }
 
 /// Multiline text input with optional external state.
@@ -216,13 +275,14 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
             move || {
                 let handle_cursor = input_handle.read().cursor_offset();
                 let snapshot_cursor = cursor_snapshot.get();
-                let tail = text.len();
-                if text.ends_with('\n') && snapshot_cursor == tail && handle_cursor < tail {
-                    input_handle.write().set_cursor_offset(tail);
-                    return;
-                }
-                if handle_cursor != snapshot_cursor {
-                    cursor_snapshot.set(handle_cursor);
+                match plan_cursor_sync(&text, snapshot_cursor, handle_cursor) {
+                    CursorSyncAction::PushHandleToSnapshot(tail) => {
+                        input_handle.write().set_cursor_offset(tail);
+                    }
+                    CursorSyncAction::PullSnapshotFromHandle(cursor) => {
+                        cursor_snapshot.set(cursor);
+                    }
+                    CursorSyncAction::Noop => {}
                 }
             }
         },
@@ -314,96 +374,5 @@ pub fn Textarea(props: &TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement
                 None
             })
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::text_editing::insert_newline_at_cursor;
-    use crate::text_input_layout::update_scroll_offset;
-
-    #[test]
-    fn insert_newline_at_cursor_appends() {
-        let (text, next) = insert_newline_at_cursor("hi", 2);
-        assert_eq!(text, "hi\n");
-        assert_eq!(next, 3);
-    }
-
-    #[test]
-    fn resolve_suppressed_change_keeps_first_typed_char() {
-        assert_eq!(resolve_suppressed_change("a".into()), "a");
-    }
-
-    #[test]
-    fn resolve_suppressed_change_drops_ghost_newlines() {
-        assert_eq!(resolve_suppressed_change("\n".into()), "");
-    }
-
-    #[test]
-    fn unauthorized_newline_detects_plain_enter() {
-        assert!(!is_unauthorized_newline_insert("hi", "hi"));
-        assert!(is_unauthorized_newline_insert("hi", "hi\n"));
-    }
-
-    #[test]
-    fn pending_wire_newline_rejects_textinput_double_insert() {
-        let prev = "hello\n\n";
-        let textinput_ghost = "hello\n\n\n";
-        assert!(is_unauthorized_newline_insert(prev, textinput_ghost));
-        assert!(!is_unauthorized_newline_insert(prev, prev));
-    }
-
-    #[test]
-    fn logical_line_count_includes_trailing_newline_row() {
-        assert_eq!(logical_line_count("hello"), 1);
-        assert_eq!(logical_line_count("hello\n"), 2);
-        assert_eq!(logical_line_count("a\nb\n"), 3);
-    }
-
-    #[test]
-    fn display_row_count_grows_with_newlines() {
-        assert_eq!(display_row_count("one", 20), 1);
-        assert_eq!(display_row_count("a\nb", 20), 2);
-        assert_eq!(display_row_count("hello\n", 20), 2);
-    }
-
-    #[test]
-    fn visible_row_count_omits_trailing_blank_unless_cursor_there() {
-        let text = "hello\n";
-        assert_eq!(visible_row_count(text, text.len(), 20), 2);
-        assert_eq!(visible_row_count("line1\nline2\n", "line1\nline2".len(), 20), 2);
-        assert_eq!(visible_row_count("line1\nline2\n", "line1\nline2\n".len(), 20), 3);
-        assert_eq!(visible_row_count(text, text.len().saturating_sub(1), 20), 1);
-    }
-
-    #[test]
-    fn viewport_grows_when_cursor_on_trailing_empty_line() {
-        let text = "hello\n";
-        let on_empty = layout_textarea(text, text.len(), 20, 1, None);
-        let before_empty = layout_textarea(text, text.len().saturating_sub(1), 20, 1, None);
-        assert_eq!(on_empty.viewport_height, 2);
-        assert_eq!(before_empty.viewport_height, 1);
-    }
-
-    #[test]
-    fn viewport_height_caps_at_max() {
-        let layout = layout_textarea("a\nb\nc\nd\ne", 4, 20, 1, Some(3));
-        assert_eq!(layout.viewport_height, 3);
-        assert!(layout.show_scrollbar);
-        assert_eq!(layout.content_rows, 5);
-    }
-
-    #[test]
-    fn viewport_height_grows_without_max() {
-        let layout = layout_textarea("a\nb\nc", 4, 20, 1, None);
-        assert_eq!(layout.viewport_height, 3);
-        assert!(!layout.show_scrollbar);
-    }
-
-    #[test]
-    fn update_scroll_offset_follows_cursor() {
-        assert_eq!(update_scroll_offset(0, 4, 3, 8), 2);
-        assert_eq!(update_scroll_offset(5, 2, 3, 8), 2);
     }
 }

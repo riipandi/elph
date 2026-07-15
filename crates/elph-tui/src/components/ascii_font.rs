@@ -23,7 +23,7 @@ fn bitmap_char(ch: char) -> [&'static str; 5] {
     }
 }
 
-fn render_bitmap(text: &str) -> String {
+pub fn render_bitmap(text: &str) -> String {
     let mut lines: Vec<String> = vec![String::new(); 5];
     for ch in text.chars() {
         let glyph = bitmap_char(ch);
@@ -67,16 +67,5 @@ pub fn AsciiText(props: &AsciiTextProps) -> impl Into<AnyElement<'static>> {
         View(flex_direction: FlexDirection::Column) {
             #(rows)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bitmap_non_empty() {
-        let out = render_bitmap("ELPH");
-        assert!(out.contains('█'));
     }
 }

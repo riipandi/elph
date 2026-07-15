@@ -39,7 +39,7 @@ fn diff_line_prefix(tag: ChangeTag) -> &'static str {
     }
 }
 
-fn unified_lines(old_text: &str, new_text: &str) -> Vec<AnyElement<'static>> {
+pub fn unified_lines(old_text: &str, new_text: &str) -> Vec<AnyElement<'static>> {
     let diff = TextDiff::from_lines(old_text, new_text);
     diff.iter_all_changes()
         .map(|change| {
@@ -99,16 +99,5 @@ pub fn DiffView(props: &DiffViewProps) -> impl Into<AnyElement<'static>> {
             height: props.height,
             children: children,
         )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn unified_diff_non_empty() {
-        let lines = unified_lines("a\n", "b\n");
-        assert!(!lines.is_empty());
     }
 }

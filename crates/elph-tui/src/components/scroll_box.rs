@@ -79,18 +79,3 @@ pub fn ScrollBox<'a>(props: &mut ScrollBoxProps<'a>) -> impl Into<AnyElement<'a>
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn max_offset_when_content_fits_viewport() {
-        assert_eq!(scroll_view_max_offset(10, 20), 0);
-    }
-
-    #[test]
-    fn max_offset_when_content_overflows() {
-        assert_eq!(scroll_view_max_offset(50, 20), 30);
-    }
-}

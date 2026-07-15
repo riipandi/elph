@@ -7,7 +7,7 @@
 pub mod color;
 pub mod components;
 pub mod text_editing;
-mod text_input_layout;
+pub mod text_input_layout;
 pub mod transcript_layout;
 pub mod types;
 pub mod utils;

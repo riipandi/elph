@@ -131,21 +131,3 @@ pub fn update_scroll_offset(current: u16, cursor_row: u16, viewport_height: u16,
     let max_offset = content_height.saturating_sub(viewport_height);
     offset.min(max_offset)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn row_count_matches_newlines() {
-        let layout = WrappedTextLayout::new("a\nb\nc", 20);
-        assert_eq!(layout.row_count(), 3);
-    }
-
-    #[test]
-    fn row_column_on_second_line() {
-        let text = "a\nb";
-        let layout = WrappedTextLayout::new(text, 20);
-        assert_eq!(layout.row_column_for_offset(2), (1, 0));
-    }
-}

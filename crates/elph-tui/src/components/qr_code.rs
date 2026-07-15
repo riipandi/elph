@@ -12,7 +12,7 @@ pub struct QrCodeViewProps {
     pub color: Option<Color>,
 }
 
-fn render_qr(payload: &str, dark: &str, light: &str) -> String {
+pub fn render_qr(payload: &str, dark: &str, light: &str) -> String {
     let Ok(code) = QrCode::new(payload.as_bytes()) else {
         return "invalid payload".to_string();
     };
@@ -58,16 +58,5 @@ pub fn QrCodeView(props: &QrCodeViewProps) -> impl Into<AnyElement<'static>> {
                 }
             }).collect::<Vec<_>>())
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn renders_qr() {
-        let grid = render_qr("elph", "█", " ");
-        assert!(grid.contains('█'));
     }
 }

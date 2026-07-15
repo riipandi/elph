@@ -18,6 +18,16 @@ impl ScrollbarStyle {
     }
 }
 
+/// Thumb length in rows for a vertical scrollbar (matches [`VerticalScrollbar`] layout).
+pub fn scrollbar_thumb_rows(viewport_height: u16, content_height: u16) -> u16 {
+    let vh = viewport_height as usize;
+    let ch = content_height as usize;
+    if vh == 0 || ch <= vh {
+        return 0;
+    }
+    (vh * vh / ch).max(1) as u16
+}
+
 /// Props for [`ScrollIndicator`].
 #[derive(Clone, Copy, Default, Props)]
 pub struct ScrollIndicatorProps {
@@ -48,7 +58,7 @@ pub fn VerticalScrollbar(props: &VerticalScrollbarProps) -> impl Into<AnyElement
     let rows: Vec<_> = if vh == 0 || ch <= vh {
         Vec::new()
     } else {
-        let thumb_size = (vh * vh / ch).max(1);
+        let thumb_size = scrollbar_thumb_rows(props.viewport_height, props.content_height) as usize;
         let max_off = (ch - vh) as usize;
         let thumb_pos = if max_off > 0 {
             props.scroll_offset as usize * (vh.saturating_sub(thumb_size)) / max_off
@@ -87,16 +97,5 @@ pub fn ScrollIndicator(props: &ScrollIndicatorProps) -> impl Into<AnyElement<'st
         View(width: props.width, align_items: AlignItems::End) {
             Text(content: label, color: Color::DarkGrey, wrap: TextWrap::NoWrap)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dark_style_has_colors() {
-        let style = ScrollbarStyle::dark();
-        assert!(style.thumb_color.is_some());
     }
 }
