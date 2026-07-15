@@ -6,12 +6,13 @@
 
 use anyhow::Result;
 use chrono::Local;
+use elph_tui::Textarea;
 use iocraft::prelude::*;
 use std::time::Duration;
 
 use crate::agent::agent_mode_from_setting;
 use crate::platform::{Paths, Settings};
-use crate::types::{AgentMode, ThinkingLevel};
+use crate::types::{AgentMode, ThinkingLevel, is_quit_command};
 
 const LOREM_IPSUM: &str = "Lorem ipsum odor amet, consectetuer adipiscing elit. \
 Lobortis hendrerit nec ipsum dapibus quam. Donec malesuada tincidunt elementum \
@@ -21,6 +22,97 @@ per donec lectus. Quisque auctor urna; phasellus urna tortor ligula. Class \
 pharetra bibendum tristique, quisque consectetur placerat potenti. Imperdiet ut \
 torquent vestibulum eleifend bibendum et. Dictumst vulputate interdum iaculis \
 at conubia venenatis.";
+
+#[derive(Clone)]
+struct TranscriptMessage {
+    content: String,
+    style: TranscriptStyle,
+}
+
+#[derive(Clone, Copy)]
+enum TranscriptStyle {
+    Dim,
+    User,
+    Assistant,
+    Error,
+    PlainDim,
+    PlainUser,
+    Tool,
+}
+
+impl TranscriptStyle {
+    fn text_color(self) -> Color {
+        match self {
+            Self::Dim | Self::PlainDim => Color::DarkGrey,
+            Self::User | Self::PlainUser | Self::Tool => Color::White,
+            Self::Assistant => Color::DarkGreen,
+            Self::Error => Color::DarkRed,
+        }
+    }
+
+    fn background_color(self) -> Color {
+        match self {
+            Self::Dim | Self::User | Self::Assistant | Self::Error => Color::Rgb { r: 48, g: 48, b: 48 },
+            Self::PlainDim | Self::PlainUser => Color::Reset,
+            Self::Tool => Color::Rgb { r: 0, g: 95, b: 175 },
+        }
+    }
+
+    fn padding(self) -> u16 {
+        match self {
+            Self::PlainDim | Self::PlainUser => 0,
+            _ => 1,
+        }
+    }
+}
+
+fn seed_transcript_messages() -> Vec<TranscriptMessage> {
+    vec![
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::Dim,
+        },
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::User,
+        },
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::Assistant,
+        },
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::Error,
+        },
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::PlainDim,
+        },
+        TranscriptMessage {
+            content: LOREM_IPSUM.to_string(),
+            style: TranscriptStyle::PlainUser,
+        },
+        TranscriptMessage {
+            content: "read_file : /U/a/b/c/d/project-dir/examples/chat_layout.rs".to_string(),
+            style: TranscriptStyle::Tool,
+        },
+    ]
+}
+
+fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage) -> AnyElement<'static> {
+    let style = message.style;
+    element! {
+        View(
+            width: screen_width - 3,
+            background_color: style.background_color(),
+            margin_bottom: 0,
+            padding: style.padding(),
+        ) {
+            Text(color: style.text_color(), content: message.content.clone())
+        }
+    }
+    .into()
+}
 
 fn session_label(resume_id: Option<&str>) -> String {
     let id = resume_id.unwrap_or("019f631516e6g29o");
@@ -93,14 +185,44 @@ fn Header(props: &HeaderProps) -> impl Into<AnyElement<'static>> {
     }
 }
 
-#[derive(Default, Props)]
+#[derive(Clone, Default, Props)]
 struct TranscriptPanelProps {
     screen_width: u16,
     screen_height: u16,
+    messages: Vec<TranscriptMessage>,
 }
 
+const TRANSCRIPT_SCROLL_STEP: i32 = 2;
+
 #[component]
-fn TranscriptPanel(props: &TranscriptPanelProps) -> impl Into<AnyElement<'static>> {
+fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+    let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
+    let bubbles: Vec<_> = props
+        .messages
+        .iter()
+        .map(|message| transcript_message_bubble(props.screen_width, message))
+        .collect();
+
+    hooks.use_terminal_events({
+        let mut scroll_handle = scroll_handle;
+        move |event| {
+            let TerminalEvent::Key(KeyEvent {
+                code, kind, modifiers, ..
+            }) = event
+            else {
+                return;
+            };
+            if kind == KeyEventKind::Release || !modifiers.contains(KeyModifiers::SHIFT) {
+                return;
+            }
+            match code {
+                KeyCode::Up => scroll_handle.write().scroll_by(-TRANSCRIPT_SCROLL_STEP),
+                KeyCode::Down => scroll_handle.write().scroll_by(TRANSCRIPT_SCROLL_STEP),
+                _ => {}
+            }
+        }
+    });
+
     element! {
         View(
             width: props.screen_width,
@@ -119,11 +241,12 @@ fn TranscriptPanel(props: &TranscriptPanelProps) -> impl Into<AnyElement<'static
                 overflow: Overflow::Hidden,
             ) {
                 ScrollView(
-                    scroll_step: 2,
+                    handle: Some(scroll_handle),
+                    scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
                     scrollbar: true,
                     scrollbar_thumb_color: Color::Rgb { r: (88), g: (88), b: (88) },
                     scrollbar_track_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                    keyboard_scroll: true,
+                    keyboard_scroll: Some(false),
                     auto_scroll: true,
                 ) {
                     View(
@@ -139,62 +262,7 @@ fn TranscriptPanel(props: &TranscriptPanelProps) -> impl Into<AnyElement<'static
                         padding_right: 1,
                         gap: 1,
                     ) {
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                            margin_bottom: 0,
-                            padding: 1,
-                        ) {
-                            Text(color: Color::DarkGrey, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                            margin_bottom: 0,
-                            padding: 1,
-                        ) {
-                            Text(color: Color::White, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                            margin_bottom: 0,
-                            padding: 1,
-                        ) {
-                            Text(color: Color::DarkGreen, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                            margin_bottom: 0,
-                            padding: 1,
-                        ) {
-                            Text(color: Color::DarkRed, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Reset,
-                            margin_bottom: 0,
-                            padding: 0,
-                        ) {
-                            Text(color: Color::DarkGrey, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Reset,
-                            margin_bottom: 0,
-                            padding: 0,
-                        ) {
-                            Text(color: Color::White, content: LOREM_IPSUM)
-                        }
-                        View(
-                            width: props.screen_width - 3,
-                            background_color: Color::Rgb { r: (0), g: (95), b: (175) },
-                            margin_bottom: 0,
-                            padding: 1,
-                        ) {
-                            Text(color: Color::White, content: "read_file : /U/a/b/c/d/project-dir/examples/chat_layout.rs")
-                        }
+                        #(bubbles)
                     }
                 }
             }
@@ -233,7 +301,7 @@ fn StatusRow(props: &StatusRowProps) -> impl Into<AnyElement<'static>> {
                 justify_content: JustifyContent::End,
                 padding: 0,
             ) {
-                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Press Ctrl+D to quit.")
+                Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: "Enter send · Ctrl/Alt+Enter newline · Shift+↑↓ scroll · Ctrl+D quit")
             }
         }
     }
@@ -243,16 +311,23 @@ fn StatusRow(props: &StatusRowProps) -> impl Into<AnyElement<'static>> {
 struct EditorProps {
     screen_width: u16,
     agent_mode: AgentMode,
+    draft: Option<State<String>>,
+    suppress_enter_newline: Option<Ref<bool>>,
 }
 
 #[component]
 fn Editor(props: &EditorProps) -> impl Into<AnyElement<'static>> {
     let label_color = rgb_color(props.agent_mode.label_rgb());
+    let rows = props
+        .draft
+        .map(|draft| draft.read().lines().count().max(1) as u16)
+        .unwrap_or(1u16)
+        .max(1u16);
 
     element! {
         View(
             width: props.screen_width,
-            min_height: 3,
+            min_height: rows,
             border_style: BorderStyle::Round,
             border_color: Color::Rgb { r: (108), g: (108), b: (108) },
             position: Position::Relative,
@@ -263,12 +338,15 @@ fn Editor(props: &EditorProps) -> impl Into<AnyElement<'static>> {
             padding_left: 1,
             padding_right: 1,
         ) {
-            TextInput(
+            Textarea(
+                width: props.screen_width.saturating_sub(2),
+                min_height: 1u16,
+                show_border: Some(false),
                 has_focus: true,
-                multiline: true,
-                color: Color::Grey,
-                cursor_color: Color::DarkGrey,
-                value: "Ask anything... \"Fix broken tests\"",
+                value: props.draft,
+                suppress_enter_newline: props.suppress_enter_newline,
+                text_color: Some(Color::Grey),
+                cursor_color: Some(Color::DarkGrey),
             )
             View(
                 position: Position::Absolute,
@@ -368,6 +446,8 @@ struct PromptChromeProps {
     thinking_level: ThinkingLevel,
     project_label: String,
     model_label: String,
+    draft: Option<State<String>>,
+    suppress_enter_newline: Option<Ref<bool>>,
 }
 
 #[component]
@@ -388,6 +468,8 @@ fn PromptChrome(props: &PromptChromeProps) -> impl Into<AnyElement<'static>> {
             Editor(
                 screen_width: props.screen_width,
                 agent_mode: props.agent_mode,
+                draft: props.draft,
+                suppress_enter_newline: props.suppress_enter_newline,
             )
             Footer(
                 screen_width: props.screen_width,
@@ -407,6 +489,9 @@ fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'
     let mut should_exit = hooks.use_state(|| false);
     let mut agent_mode = hooks.use_state(|| props.initial_agent_mode);
     let mut thinking_level = hooks.use_state(|| props.initial_thinking_level);
+    let mut draft = hooks.use_state(String::new);
+    let mut messages = hooks.use_state(seed_transcript_messages);
+    let mut suppress_enter_newline = hooks.use_ref(|| false);
     let session_label = session_label(props.resume_id.as_deref());
     let paths = hooks.use_state(|| Paths::resolve().expect("resolve elph paths"));
 
@@ -442,6 +527,28 @@ fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'
                     persist_session_prefs(&paths, agent_mode.get(), next);
                 }
                 (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => should_exit.set(true),
+                (m, KeyCode::Enter) if !m.contains(KeyModifiers::SHIFT) => {
+                    let text = draft.read().clone();
+                    if text.trim().is_empty() {
+                        return;
+                    }
+                    if is_quit_command(&text) {
+                        should_exit.set(true);
+                        draft.set(String::new());
+                        suppress_enter_newline.set(true);
+                        return;
+                    }
+                    messages.set({
+                        let mut list = messages.read().clone();
+                        list.push(TranscriptMessage {
+                            content: text,
+                            style: TranscriptStyle::User,
+                        });
+                        list
+                    });
+                    draft.set(String::new());
+                    suppress_enter_newline.set(true);
+                }
                 _ => {}
             }
         }
@@ -472,6 +579,7 @@ fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'
             TranscriptPanel(
                 screen_width: screen_width,
                 screen_height: screen_height,
+                messages: messages.read().clone(),
             )
             StatusRow(
                 screen_width: screen_width,
@@ -483,6 +591,8 @@ fn MainShell(props: &MainShellProps, mut hooks: Hooks) -> impl Into<AnyElement<'
                 thinking_level: thinking_level.get(),
                 project_label: props.project_label.clone(),
                 model_label: props.model_label.clone(),
+                draft: Some(draft),
+                suppress_enter_newline: Some(suppress_enter_newline),
             )
         }
     }

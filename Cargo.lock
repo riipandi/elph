@@ -2930,6 +2930,7 @@ dependencies = [
  "elph-agent",
  "elph-ai",
  "elph-core",
+ "elph-tui",
  "futures-util",
  "iocraft",
  "libc",
