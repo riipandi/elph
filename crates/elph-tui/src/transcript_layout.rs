@@ -17,11 +17,17 @@ pub fn transcript_messages_revision(messages: &[(&str, bool)], screen_width: u16
     hasher.finish()
 }
 
-/// Default wrapped body lines shown in a sticky user prompt (CSS `line-clamp` analogue).
-pub const STICKY_DEFAULT_LINE_CLAMP: u16 = 4;
+/// Minimum wrapped body lines in the sticky user prompt card.
+pub const STICKY_MIN_BODY_ROWS: u16 = 1;
 
-/// Hard cap on sticky body lines even on tall terminals.
-pub const STICKY_MAX_LINE_CLAMP: u16 = 6;
+/// Maximum wrapped body lines in the sticky user prompt card.
+pub const STICKY_MAX_BODY_ROWS: u16 = 2;
+
+/// Default wrapped body lines (alias of [`STICKY_MAX_BODY_ROWS`]).
+pub const STICKY_DEFAULT_LINE_CLAMP: u16 = STICKY_MAX_BODY_ROWS;
+
+/// Hard cap on sticky body lines (alias of [`STICKY_MAX_BODY_ROWS`]).
+pub const STICKY_MAX_LINE_CLAMP: u16 = STICKY_MAX_BODY_ROWS;
 
 /// Row span of one transcript entry inside a vertical scroll column.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,15 +95,40 @@ pub fn clamp_sticky_header_rows(sticky_rows: u16, viewport_height: u16, min_scro
     sticky_rows.min(viewport_height.saturating_sub(min_scroll_rows))
 }
 
-/// Wrapped body line budget for sticky chrome given the full panel height.
-pub fn sticky_body_line_clamp(panel_height: u16, min_scroll_rows: u16) -> u16 {
-    if panel_height <= min_scroll_rows.saturating_add(1) {
-        return 1;
+/// Wrapped row count for transcript text at `wrap_width`.
+pub fn wrapped_transcript_row_count(text: &str, wrap_width: u16) -> u16 {
+    WrappedTextLayout::new_for_overlay_editor(text, wrap_width).row_count()
+}
+
+/// Max body rows the panel can afford (chrome + minimum scroll area reserved).
+pub fn sticky_panel_body_cap(panel_height: u16, min_scroll_rows: u16, bubble_padding_rows: u16) -> u16 {
+    if panel_height <= min_scroll_rows.saturating_add(STICKY_MIN_BODY_ROWS) {
+        return STICKY_MIN_BODY_ROWS;
     }
-    let scroll_budget = panel_height.saturating_sub(min_scroll_rows).saturating_sub(1);
-    STICKY_DEFAULT_LINE_CLAMP
-        .min(scroll_budget)
-        .clamp(1, STICKY_MAX_LINE_CLAMP)
+    let chrome_rows = bubble_padding_rows.saturating_add(STICKY_SCROLL_GAP_ROWS);
+    let available = panel_height.saturating_sub(min_scroll_rows).saturating_sub(chrome_rows);
+    if available < STICKY_MIN_BODY_ROWS {
+        return STICKY_MIN_BODY_ROWS;
+    }
+    available.min(STICKY_MAX_BODY_ROWS)
+}
+
+/// Wrapped body line budget for sticky chrome: 1–2 rows, shrinking only on very short panels.
+pub fn sticky_body_line_clamp(panel_height: u16, min_scroll_rows: u16, bubble_padding_rows: u16) -> u16 {
+    sticky_panel_body_cap(panel_height, min_scroll_rows, bubble_padding_rows)
+}
+
+/// Body rows to show: natural wrapped lines, capped by panel budget (1–2).
+pub fn sticky_body_line_budget(
+    content: &str,
+    wrap_width: u16,
+    panel_height: u16,
+    min_scroll_rows: u16,
+    bubble_padding_rows: u16,
+) -> u16 {
+    let natural = wrapped_transcript_row_count(content, wrap_width);
+    let panel_cap = sticky_panel_body_cap(panel_height, min_scroll_rows, bubble_padding_rows);
+    natural.clamp(STICKY_MIN_BODY_ROWS, panel_cap)
 }
 
 /// Clamp transcript text to at most `max_body_lines` wrapped rows (ellipsis on last line).
@@ -107,19 +138,22 @@ pub fn clamp_wrapped_transcript_lines(text: &str, wrap_width: u16, max_body_line
     layout.clamp_display_lines(text, max_body_lines, line_width)
 }
 
-/// Terminal rows for sticky chrome: clamped body + bubble padding + optional hint row.
-pub fn sticky_header_display_rows(body_rows: u16, bubble_padding_rows: u16, truncated: bool) -> u16 {
-    let mut rows = body_rows.saturating_add(bubble_padding_rows);
-    if truncated {
-        rows = rows.saturating_add(1);
-    }
-    rows
+/// Breathing room between the sticky card and the scrollable transcript (no border line).
+pub const STICKY_SCROLL_GAP_ROWS: u16 = 1;
+
+/// Terminal rows for sticky chrome: wrapped body + bubble padding + scroll gap.
+pub fn sticky_header_display_rows(body_rows: u16, bubble_padding_rows: u16) -> u16 {
+    body_rows
+        .saturating_add(bubble_padding_rows)
+        .saturating_add(STICKY_SCROLL_GAP_ROWS)
 }
 
 /// Resolved sticky header: line-clamped text and stable row height for viewport inset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StickyHeaderLayout {
     pub display_text: String,
+    /// Wrapped body rows after content-aware sizing (1–2).
+    pub body_rows: u16,
     pub height: u16,
     pub truncated: bool,
 }
@@ -132,37 +166,40 @@ pub fn layout_sticky_header(
     panel_height: u16,
     min_scroll_rows: u16,
 ) -> Option<StickyHeaderLayout> {
-    let body_clamp = sticky_body_line_clamp(panel_height, min_scroll_rows);
-    let (display_text, body_rows, truncated) = clamp_wrapped_transcript_lines(content, wrap_width, body_clamp);
-    let mut height = sticky_header_display_rows(body_rows, bubble_padding_rows, truncated);
+    let body_budget = sticky_body_line_budget(content, wrap_width, panel_height, min_scroll_rows, bubble_padding_rows);
+    let (display_text, body_rows, truncated) = clamp_wrapped_transcript_lines(content, wrap_width, body_budget);
+    let mut height = sticky_header_display_rows(body_rows, bubble_padding_rows);
     height = clamp_sticky_header_rows(height, panel_height, min_scroll_rows);
     if height == 0 {
         return None;
     }
     Some(StickyHeaderLayout {
         display_text,
+        body_rows,
         height,
         truncated,
     })
 }
 
-/// Index of the user message that should stick at the top for `scroll_offset` (lines).
+/// Index of the submitted user prompt that should stick at the top for `scroll_offset` (lines).
 ///
-/// Returns the last user entry whose start row is at or above the viewport top.
+/// `is_sticky_prompt[i]` must be true only for editor-submitted user input (not assistant, tool,
+/// or plain transcript lines). Returns the last eligible entry whose start row is at or above the
+/// viewport top.
 pub fn sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
-    is_user: &[bool],
+    is_sticky_prompt: &[bool],
     scroll_offset: i32,
 ) -> Option<usize> {
-    if layouts.len() != is_user.len() || scroll_offset <= 0 {
+    if layouts.len() != is_sticky_prompt.len() || scroll_offset <= 0 {
         return None;
     }
     let offset = scroll_offset as u32;
     layouts
         .iter()
-        .zip(is_user.iter())
+        .zip(is_sticky_prompt.iter())
         .enumerate()
-        .rposition(|(_, (layout, user))| *user && layout.start_row <= offset)
+        .rposition(|(_, (layout, sticky))| *sticky && layout.start_row <= offset)
 }
 
 /// Sticky prompt for manual scroll only — not while `auto_scroll` is pinned to the bottom.
@@ -172,14 +209,14 @@ pub fn sticky_user_message_index(
 /// viewport inset flicker on long pasted messages.
 pub fn active_sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
-    is_user: &[bool],
+    is_sticky_prompt: &[bool],
     scroll_offset: i32,
     auto_scroll_pinned: bool,
 ) -> Option<usize> {
     if auto_scroll_pinned {
         return None;
     }
-    sticky_user_message_index(layouts, is_user, scroll_offset)
+    sticky_user_message_index(layouts, is_sticky_prompt, scroll_offset)
 }
 
 /// Effective scroll offset when `auto_scroll` may be pinned to the bottom.
@@ -193,5 +230,56 @@ pub fn effective_scroll_offset(
         crate::components::scroll_view_max_offset(content_height, viewport_height)
     } else {
         scroll_offset
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sticky_panel_body_cap_respects_panel_and_chrome() {
+        let pad = 2u16;
+        assert_eq!(sticky_panel_body_cap(20, 3, pad), STICKY_MAX_BODY_ROWS);
+        assert_eq!(sticky_panel_body_cap(8, 3, pad), STICKY_MAX_BODY_ROWS);
+        assert_eq!(sticky_panel_body_cap(4, 3, pad), STICKY_MIN_BODY_ROWS);
+    }
+
+    #[test]
+    fn sticky_body_line_budget_follows_natural_wrap() {
+        let pad = 2u16;
+        assert_eq!(sticky_body_line_budget("ok", 40, 20, 3, pad), 1);
+        let long = "word ".repeat(20);
+        assert_eq!(sticky_body_line_budget(long.trim(), 12, 20, 3, pad), STICKY_MAX_BODY_ROWS);
+    }
+
+    #[test]
+    fn sticky_header_display_rows_includes_padding_and_scroll_gap() {
+        assert_eq!(sticky_header_display_rows(2, 2), 5);
+        assert_eq!(sticky_header_display_rows(1, 2), 4);
+    }
+
+    #[test]
+    fn layout_sticky_header_height_tracks_content_rows() {
+        let pad = 2u16;
+        let short = layout_sticky_header("ok", 40, pad, 20, 3).expect("short");
+        assert!(!short.truncated);
+        assert_eq!(short.body_rows, 1);
+        assert_eq!(short.height, sticky_header_display_rows(1, pad));
+
+        let long = "word ".repeat(20);
+        let wide = layout_sticky_header(long.trim(), 12, pad, 20, 3).expect("long");
+        assert_eq!(wide.body_rows, 2);
+        assert_eq!(wide.height, sticky_header_display_rows(2, pad));
+    }
+
+    #[test]
+    fn clamp_wrapped_transcript_lines_wraps_before_line_clamp() {
+        let long = "word ".repeat(20);
+        let (text, rows, truncated) = clamp_wrapped_transcript_lines(long.trim(), 12, STICKY_MAX_BODY_ROWS);
+        assert!(truncated);
+        assert_eq!(rows, STICKY_MAX_BODY_ROWS);
+        assert!(text.contains('\n'));
+        assert!(text.contains('…'));
     }
 }

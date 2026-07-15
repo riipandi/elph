@@ -83,7 +83,7 @@ pub fn layout_metrics_from_wrapped(
         None => visible_row_count_from_layout(wrapped, text, cursor),
     };
     let viewport_height = compute_viewport_height(visible_rows, min_height, max_height);
-    let show_scrollbar = scrollbar_reserved && content_rows > viewport_height;
+    let show_scrollbar = scrollbar_reserved;
     TextareaLayout {
         input_width,
         content_rows,

@@ -31,13 +31,12 @@ struct TranscriptRenderCache {
     revision: u64,
     screen_width: u16,
     row_layouts: Vec<TranscriptRowLayout>,
-    is_user: Vec<bool>,
+    is_sticky_prompt: Vec<bool>,
 }
 
 #[component]
 pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
-    let mut panel_viewport = hooks.use_ref(|| 0u16);
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
     let scroll_generation = hooks.use_state(|| 0u32);
     let empty_messages = hooks.use_state(Vec::<TranscriptMessage>::new);
@@ -57,19 +56,19 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             .map(|m| transcript_bubble_inner_width(props.screen_width, m.style.horizontal_padding()))
             .collect();
         let row_layouts = layout_transcript_rows_widths(&texts, &wrap_widths, 1);
-        let is_user: Vec<_> = messages.iter().map(|m| m.style.is_user()).collect();
+        let is_sticky_prompt: Vec<_> = messages.iter().map(|m| m.style.is_sticky_prompt()).collect();
         render_cache.set(Some(TranscriptRenderCache {
             revision: cache_key.0,
             screen_width: cache_key.1,
             row_layouts,
-            is_user,
+            is_sticky_prompt,
         }));
     }
 
     let cache = render_cache.read();
     let cached = cache.as_ref().expect("transcript render cache");
     let row_layouts = &cached.row_layouts;
-    let is_user = &cached.is_user;
+    let is_sticky_prompt = &cached.is_sticky_prompt;
     let bubbles: Vec<_> = messages
         .iter()
         .map(|message| transcript_message_bubble(props.screen_width, message))
@@ -83,26 +82,21 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .then(|| {
             active_sticky_user_message_index(
                 &row_layouts,
-                &is_user,
+                is_sticky_prompt,
                 handle.scroll_offset(),
                 handle.is_auto_scroll_pinned(),
             )
         })
         .flatten();
-    let panel_height = {
-        let mut outer = panel_viewport.write();
-        if sticky_idx.is_none() {
-            *outer = scroll_viewport;
-            scroll_viewport
-        } else {
-            (*outer).max(scroll_viewport).max(1)
-        }
-    };
+    let panel_height = scroll_viewport;
     let sticky_header = sticky_idx.and_then(|idx| {
+        if !messages[idx].style.is_sticky_prompt() {
+            return None;
+        }
         layout_sticky_header(
             &messages[idx].content,
             transcript_bubble_inner_width(props.screen_width, messages[idx].style.horizontal_padding()),
-            messages[idx].style.bubble_padding_rows(),
+            messages[idx].style.sticky_bubble_padding_rows(),
             panel_height,
             STICKY_MIN_SCROLL_ROWS,
         )
@@ -157,47 +151,36 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 position: Position::Relative,
                 overflow: Overflow::Hidden,
             ) {
-                View(
-                    position: Position::Absolute,
-                    top: sticky_rows as i32,
-                    left: 0,
-                    width: 100pct,
-                    bottom: 0,
-                    overflow: Overflow::Hidden,
+                ScrollView(
+                    handle: Some(scroll_handle),
+                    scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
+                    scrollbar: true,
+                    scrollbar_thumb_color: BORDER_MUTED,
+                    scrollbar_track_color: SCROLLBAR_TRACK,
+                    keyboard_scroll: Some(false),
+                    auto_scroll: true,
                 ) {
-                    ScrollView(
-                        handle: Some(scroll_handle),
-                        scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
-                        scrollbar: true,
-                        scrollbar_thumb_color: BORDER_MUTED,
-                        scrollbar_track_color: SCROLLBAR_TRACK,
-                        keyboard_scroll: Some(false),
-                        auto_scroll: true,
+                    View(
+                        width: props.screen_width,
+                        min_height: min_content_height,
+                        background_color: Color::Reset,
+                        flex_direction: FlexDirection::Column,
+                        justify_content: JustifyContent::End,
+                        align_items: AlignItems::Baseline,
+                        padding_top: sticky_rows,
+                        padding_bottom: 0,
+                        padding_left: 1,
+                        padding_right: 1,
+                        gap: 1,
                     ) {
-                        View(
-                            width: props.screen_width,
-                            min_height: min_content_height,
-                            background_color: Color::Reset,
-                            flex_direction: FlexDirection::Column,
-                            justify_content: JustifyContent::End,
-                            align_items: AlignItems::Baseline,
-                            padding_top: 0,
-                            padding_bottom: 0,
-                            padding_left: 1,
-                            padding_right: 1,
-                            gap: 1,
-                        ) {
-                            #(bubbles)
-                        }
+                        #(bubbles)
                     }
                 }
                 #(if let (Some(idx), Some(header)) = (sticky_idx, sticky_header.as_ref()) {
                     Some(transcript_sticky_overlay(
-                        props.screen_width,
                         header.height,
                         &messages[idx],
                         &header.display_text,
-                        header.truncated,
                     ))
                 } else {
                     None

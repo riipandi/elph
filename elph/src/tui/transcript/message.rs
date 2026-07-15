@@ -2,7 +2,7 @@
 
 use iocraft::prelude::*;
 
-use crate::tui::theme::{BORDER_MUTED, BUBBLE_BG, TOOL_BG};
+use crate::tui::theme::{BUBBLE_BG, TOOL_BG};
 
 const LOREM_IPSUM: &str = "Lorem ipsum odor amet, consectetuer adipiscing elit. \
 Lobortis hendrerit nec ipsum dapibus quam. Donec malesuada tincidunt elementum \
@@ -31,13 +31,29 @@ pub enum TranscriptStyle {
 }
 
 impl TranscriptStyle {
-    pub fn is_user(self) -> bool {
-        matches!(self, Self::User | Self::PlainUser)
+    /// Submitted editor prompt — the only transcript entry eligible for sticky scroll.
+    pub fn is_sticky_prompt(self) -> bool {
+        matches!(self, Self::User)
     }
 
     /// Extra terminal rows from top + bottom bubble padding.
     pub fn bubble_padding_rows(self) -> u16 {
         self.padding().saturating_mul(2)
+    }
+
+    /// Top padding rows inside the sticky card bubble.
+    pub fn sticky_padding_top(self) -> u16 {
+        self.padding()
+    }
+
+    /// Bottom padding rows inside the sticky card bubble.
+    pub fn sticky_padding_bottom(self) -> u16 {
+        self.padding()
+    }
+
+    /// Vertical padding rows counted in [`layout_sticky_header`] height.
+    pub fn sticky_bubble_padding_rows(self) -> u16 {
+        self.sticky_padding_top().saturating_add(self.sticky_padding_bottom())
     }
 
     /// Horizontal inset on each side inside the bubble (`View` padding).
@@ -118,63 +134,67 @@ pub fn transcript_message_bubble(screen_width: u16, message: &TranscriptMessage)
     .into()
 }
 
-pub fn transcript_sticky_bubble(
-    screen_width: u16,
+#[cfg(test)]
+mod tests {
+    use super::TranscriptStyle;
+
+    #[test]
+    fn sticky_prompt_is_submitted_user_input_only() {
+        assert!(TranscriptStyle::User.is_sticky_prompt());
+        assert!(!TranscriptStyle::PlainUser.is_sticky_prompt());
+        assert!(!TranscriptStyle::Assistant.is_sticky_prompt());
+        assert!(!TranscriptStyle::Tool.is_sticky_prompt());
+        assert!(!TranscriptStyle::Dim.is_sticky_prompt());
+    }
+
+    #[test]
+    fn sticky_user_bubble_has_symmetric_padding() {
+        assert_eq!(TranscriptStyle::User.sticky_padding_top(), 1);
+        assert_eq!(TranscriptStyle::User.sticky_padding_bottom(), 1);
+        assert_eq!(TranscriptStyle::User.sticky_bubble_padding_rows(), 2);
+    }
+}
+
+pub fn transcript_sticky_overlay(
+    height: u16,
     message: &TranscriptMessage,
     display_content: &str,
 ) -> AnyElement<'static> {
     let style = message.style;
-    element! {
-        View(
-            width: screen_width - 3,
-            background_color: style.background_color(),
-            margin_bottom: 0,
-            padding: style.padding(),
-        ) {
-            Text(color: style.text_color(), wrap: TextWrap::Wrap, content: display_content.to_string())
-        }
-    }
-    .into()
-}
-
-pub fn transcript_sticky_overlay(
-    screen_width: u16,
-    height: u16,
-    message: &TranscriptMessage,
-    display_content: &str,
-    truncated: bool,
-) -> AnyElement<'static> {
-    let bubble = transcript_sticky_bubble(screen_width, message, display_content);
+    let pad_h = style.padding();
     element! {
         View(
             position: Position::Absolute,
             top: 0,
             left: 0,
-            width: screen_width,
+            right: 1,
             height: height,
             overflow: Overflow::Hidden,
             background_color: Color::Reset,
-            border_style: BorderStyle::Single,
-            border_edges: Edges::Bottom,
-            border_color: BORDER_MUTED,
+            border_style: BorderStyle::None,
             padding_left: 1,
             padding_right: 1,
+            padding_bottom: 1,
             flex_direction: FlexDirection::Column,
             justify_content: JustifyContent::FlexStart,
-            gap: 0,
+            align_items: AlignItems::Baseline,
         ) {
-            #(bubble)
-            #(if truncated {
-                Some(element! {
-                    Text(
-                        color: Color::DarkGrey,
-                        wrap: TextWrap::NoWrap,
-                        content: "  ⋯ full prompt in transcript",
-                    )
-                })
-            } else {
-                None
-            })
+            View(
+                width: 100pct,
+                background_color: style.background_color(),
+                padding_top: style.sticky_padding_top(),
+                padding_bottom: style.sticky_padding_bottom(),
+                padding_left: pad_h,
+                padding_right: pad_h,
+                flex_shrink: 0f32,
+                margin_bottom: 0,
+            ) {
+                Text(
+                    color: style.text_color(),
+                    wrap: TextWrap::NoWrap,
+                    content: display_content.to_string(),
+                )
+            }
         }
     }
     .into()

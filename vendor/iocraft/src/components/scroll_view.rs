@@ -171,17 +171,23 @@ impl Component for ScrollViewScrollbar {
 
     fn draw(&mut self, drawer: &mut ComponentDrawer<'_>) {
         let vh = self.viewport_height as usize;
-        let ch = self.content_height as usize;
-        if vh == 0 || ch <= vh {
+        if vh == 0 {
             return;
         }
+        let ch = self.content_height as usize;
 
-        let thumb_size = (vh * vh / ch).max(1);
-        let max_off = (ch - vh) as i32;
-        let thumb_pos = if max_off > 0 {
-            (self.scroll_offset as usize * (vh - thumb_size)) / max_off as usize
+        let (thumb_pos, thumb_size) = if ch <= vh {
+            // Content fits: full-height thumb on a full-height track.
+            (0, vh)
         } else {
-            0
+            let thumb_size = (vh * vh / ch).max(1);
+            let max_off = (ch - vh) as i32;
+            let thumb_pos = if max_off > 0 {
+                (self.scroll_offset as usize * (vh.saturating_sub(thumb_size))) / max_off as usize
+            } else {
+                0
+            };
+            (thumb_pos, thumb_size)
         };
 
         let thumb_color = self.thumb_color.unwrap_or(Color::White);
@@ -355,7 +361,7 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
     });
 
     let children = std::mem::take(&mut props.children);
-    let show_scrollbar = props.scrollbar.unwrap_or(true) && content_height.get() > viewport_height.get();
+    let show_scrollbar = props.scrollbar.unwrap_or(true);
     let scrollbar_thumb_color = props.scrollbar_thumb_color;
     let scrollbar_track_color = props.scrollbar_track_color;
 

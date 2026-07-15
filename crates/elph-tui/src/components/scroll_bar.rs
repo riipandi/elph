@@ -33,6 +33,21 @@ pub fn scrollbar_thumb_position(scroll_offset: u16, viewport_height: u16, conten
         .unwrap_or(0)
 }
 
+/// Thumb length and top row for a vertical scrollbar track.
+pub fn scrollbar_thumb_geometry(viewport_height: u16, content_height: u16, scroll_offset: u16) -> (usize, usize) {
+    let vh = viewport_height as usize;
+    if vh == 0 {
+        return (0, 0);
+    }
+    let ch = content_height as usize;
+    if ch <= vh {
+        return (0, vh);
+    }
+    let thumb_size = scrollbar_thumb_rows(viewport_height, content_height) as usize;
+    let thumb_pos = scrollbar_thumb_position(scroll_offset, viewport_height, content_height);
+    (thumb_pos, thumb_size)
+}
+
 /// Label for [`ScrollIndicator`] (e.g. `12-20/40`).
 pub fn scroll_indicator_label(offset: u32, visible: u32, total: u32) -> String {
     let top = offset.saturating_add(1);
@@ -44,8 +59,11 @@ pub fn scroll_indicator_label(offset: u32, visible: u32, total: u32) -> String {
 pub fn scrollbar_thumb_rows(viewport_height: u16, content_height: u16) -> u16 {
     let vh = viewport_height as usize;
     let ch = content_height as usize;
-    if vh == 0 || ch <= vh {
+    if vh == 0 {
         return 0;
+    }
+    if ch <= vh {
+        return viewport_height;
     }
     (vh * vh / ch).max(1) as u16
 }
@@ -66,6 +84,10 @@ pub struct VerticalScrollbarProps {
     pub content_height: u16,
     pub scroll_offset: u16,
     pub style: Option<ScrollbarStyle>,
+    /// Full track height when taller than [`viewport_height`] (e.g. sticky chrome above scroll).
+    pub track_height: Option<u16>,
+    /// Track rows above the scroll thumb zone (sticky header inset).
+    pub track_inset_top: Option<u16>,
 }
 
 /// Character for one vertical scrollbar cell.
@@ -75,14 +97,34 @@ pub fn scrollbar_cell_char(on_thumb: bool) -> &'static str {
 
 /// Per-row thumb flags for [`VerticalScrollbar`] (true = thumb cell).
 pub fn scrollbar_thumb_row_flags(viewport_height: u16, content_height: u16, scroll_offset: u16) -> Vec<bool> {
-    let vh = viewport_height as usize;
-    let ch = content_height as usize;
-    if vh == 0 || ch <= vh {
+    scrollbar_track_row_flags(viewport_height, 0, viewport_height, content_height, scroll_offset)
+}
+
+/// Per-row thumb flags on a full-height track with a non-scrolling inset at the top.
+pub fn scrollbar_track_row_flags(
+    track_height: u16,
+    track_inset_top: u16,
+    viewport_height: u16,
+    content_height: u16,
+    scroll_offset: u16,
+) -> Vec<bool> {
+    let track_h = track_height as usize;
+    if track_h == 0 {
         return Vec::new();
     }
-    let thumb_size = scrollbar_thumb_rows(viewport_height, content_height) as usize;
-    let thumb_pos = scrollbar_thumb_position(scroll_offset, viewport_height, content_height);
-    (0..vh).map(|y| y >= thumb_pos && y < thumb_pos + thumb_size).collect()
+    let inset = track_inset_top.min(track_height) as usize;
+    let scroll_zone = viewport_height as usize;
+    let (thumb_pos, thumb_size) = scrollbar_thumb_geometry(viewport_height, content_height, scroll_offset);
+    (0..track_h)
+        .map(|y| {
+            if y < inset {
+                false
+            } else {
+                let local = y - inset;
+                local < scroll_zone && local >= thumb_pos && local < thumb_pos + thumb_size
+            }
+        })
+        .collect()
 }
 
 /// One-column vertical scrollbar (iocraft [`ScrollView`] style).
@@ -91,24 +133,53 @@ pub fn VerticalScrollbar(props: &VerticalScrollbarProps) -> impl Into<AnyElement
     let style = props.style.unwrap_or_else(ScrollbarStyle::dark);
     let thumb_color = style.thumb_color.unwrap_or(Color::White);
     let track_color = style.track_color.unwrap_or(Color::DarkGrey);
+    let track_height = props.track_height.unwrap_or(props.viewport_height);
+    let track_inset = props.track_inset_top.unwrap_or(0);
 
-    let rows: Vec<_> = scrollbar_thumb_row_flags(props.viewport_height, props.content_height, props.scroll_offset)
-        .into_iter()
-        .map(|on_thumb| {
-            element! {
-                Text(
-                    content: scrollbar_cell_char(on_thumb),
-                    color: if on_thumb { thumb_color } else { track_color },
-                    wrap: TextWrap::NoWrap,
-                )
-            }
-        })
-        .collect();
+    let rows: Vec<_> = scrollbar_track_row_flags(
+        track_height,
+        track_inset,
+        props.viewport_height,
+        props.content_height,
+        props.scroll_offset,
+    )
+    .into_iter()
+    .map(|on_thumb| {
+        element! {
+            Text(
+                content: scrollbar_cell_char(on_thumb),
+                color: if on_thumb { thumb_color } else { track_color },
+                wrap: TextWrap::NoWrap,
+            )
+        }
+    })
+    .collect();
 
     element! {
-        View(width: 1, height: props.viewport_height, flex_shrink: 0f32) {
+        View(width: 1, height: track_height, flex_shrink: 0f32) {
             #(rows)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn thumb_fills_track_when_content_fits_viewport() {
+        assert_eq!(scrollbar_thumb_rows(12, 4), 12);
+        let flags = scrollbar_thumb_row_flags(12, 4, 0);
+        assert_eq!(flags.len(), 12);
+        assert!(flags.iter().all(|&on| on));
+    }
+
+    #[test]
+    fn track_inset_reserves_sticky_zone_on_full_height_track() {
+        let flags = scrollbar_track_row_flags(20, 4, 16, 40, 5);
+        assert_eq!(flags.len(), 20);
+        assert!(flags[..4].iter().all(|&on| !on));
+        assert!(flags[4..].iter().any(|&on| on));
     }
 }
 

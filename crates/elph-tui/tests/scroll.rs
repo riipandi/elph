@@ -19,9 +19,9 @@ fn dark_style_has_colors() {
 }
 
 #[test]
-fn thumb_rows_hidden_when_content_fits() {
-    assert_eq!(scrollbar_thumb_rows(10, 8), 0);
-    assert_eq!(scrollbar_thumb_rows(10, 10), 0);
+fn thumb_rows_fill_viewport_when_content_fits() {
+    assert_eq!(scrollbar_thumb_rows(10, 8), 10);
+    assert_eq!(scrollbar_thumb_rows(10, 10), 10);
 }
 
 #[test]

@@ -196,8 +196,10 @@ fn scrollbar_thumb_row_flags_cover_overflow() {
 }
 
 #[test]
-fn scrollbar_thumb_row_flags_empty_when_content_fits() {
-    assert!(scrollbar_thumb_row_flags(10, 8, 0).is_empty());
+fn scrollbar_thumb_row_flags_fill_viewport_when_content_fits() {
+    let flags = scrollbar_thumb_row_flags(10, 8, 0);
+    assert_eq!(flags.len(), 10);
+    assert!(flags.iter().all(|&on_thumb| on_thumb));
 }
 
 #[test]

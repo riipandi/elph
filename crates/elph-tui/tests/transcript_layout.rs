@@ -22,12 +22,21 @@ fn layouts_accumulate_with_gap() {
 fn sticky_picks_last_user_at_or_above_offset() {
     let texts = ["sys", "user one", "assistant", "user two"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
-    let is_user = [false, true, false, true];
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, 0), None);
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, 1), None);
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, 2), Some(1));
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, 5), Some(1));
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, 6), Some(3));
+    let is_sticky_prompt = [false, true, false, true];
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 0), None);
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 1), None);
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 2), Some(1));
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 5), Some(1));
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 6), Some(3));
+}
+
+#[test]
+fn sticky_ignores_assistant_tool_and_plain_user() {
+    let texts = ["assistant", "plain user", "submitted prompt", "tool call"];
+    let layouts = layout_transcript_rows(&texts, 40, 1);
+    let is_sticky_prompt = [false, false, true, false];
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 20), Some(2));
+    assert_eq!(sticky_user_message_index(&layouts, &[false, false, false, false], 20), None);
 }
 
 #[test]
@@ -99,17 +108,30 @@ fn clamp_sticky_header_preserves_min_scroll_area() {
 fn active_sticky_none_when_auto_scroll_pinned() {
     let texts = ["sys", "user one", "assistant", "user two"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
-    let is_user = [false, true, false, true];
+    let is_sticky_prompt = [false, true, false, true];
     let bottom_offset = 50;
-    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, bottom_offset, true), None);
-    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, 6, false), Some(3));
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, bottom_offset, true),
+        None
+    );
+    assert_eq!(active_sticky_user_message_index(&layouts, &is_sticky_prompt, 6, false), Some(3));
 }
 
 #[test]
 fn sticky_body_line_clamp_respects_panel_budget() {
-    assert_eq!(sticky_body_line_clamp(20, 3), 4);
-    assert_eq!(sticky_body_line_clamp(8, 3), 4);
-    assert_eq!(sticky_body_line_clamp(5, 3), 1);
+    let pad = 2u16;
+    assert_eq!(sticky_body_line_clamp(20, 3, pad), STICKY_MAX_BODY_ROWS);
+    assert_eq!(sticky_body_line_clamp(8, 3, pad), STICKY_MAX_BODY_ROWS);
+    assert_eq!(sticky_body_line_clamp(4, 3, pad), STICKY_MIN_BODY_ROWS);
+}
+
+#[test]
+fn layout_sticky_header_shrinks_for_single_line_prompt() {
+    let pad = 2u16;
+    let header = layout_sticky_header("hello", 40, pad, 20, 3).expect("header");
+    assert!(!header.truncated);
+    assert_eq!(header.body_rows, 1);
+    assert_eq!(header.height, sticky_header_display_rows(1, pad));
 }
 
 #[test]
@@ -136,9 +158,11 @@ fn clamp_wrapped_transcript_lines_keeps_short_content() {
 #[test]
 fn layout_sticky_header_line_clamps_tall_prompt() {
     let long = "line\n".repeat(30);
-    let header = layout_sticky_header(&long, 40, 2, 20, 3).expect("header");
+    let sticky_pad = 2u16;
+    let header = layout_sticky_header(&long, 40, sticky_pad, 20, 3).expect("header");
     assert!(header.truncated);
-    assert!(header.height <= 7);
+    assert!(header.height <= sticky_header_display_rows(STICKY_MAX_BODY_ROWS, sticky_pad));
+    assert_eq!(header.display_text.matches('\n').count(), 1);
     assert!(header.display_text.contains('…'));
 }
 
@@ -146,8 +170,11 @@ fn layout_sticky_header_line_clamps_tall_prompt() {
 fn pinned_bottom_offset_does_not_activate_sticky_when_auto_scroll_pinned() {
     let texts = ["user paste"];
     let layouts = layout_transcript_rows(&texts, 40, 0);
-    let is_user = [true];
+    let is_sticky_prompt = [true];
     let pinned_offset = 80;
-    assert_eq!(sticky_user_message_index(&layouts, &is_user, pinned_offset), Some(0));
-    assert_eq!(active_sticky_user_message_index(&layouts, &is_user, pinned_offset, true), None);
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset), Some(0));
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true),
+        None
+    );
 }
