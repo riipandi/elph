@@ -34,7 +34,12 @@ pub use diff::{DiffMode, DiffView, DiffViewProps};
 pub use frame_buffer::{FrameBuffer, FrameBufferView, FrameBufferViewProps};
 pub use input::{Input, InputProps};
 pub use line_numbers::{LineNumbers, LineNumbersProps};
-pub use markdown::{MarkdownView, MarkdownViewProps};
+pub use markdown::{
+    MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTheme, MarkdownView, MarkdownViewProps, StyledSpan,
+    markdown_document_row_count, markdown_has_open_container_at, markdown_source_row_count, parse_markdown_document,
+    plain_text_document, render_linkified_plain_text, render_markdown_block, render_markdown_children,
+    render_markdown_document, render_markdown_lines, spans_with_links, streaming_tail_document,
+};
 pub use progress_indicator::{KittScannerView, KittScannerViewProps, SpinnerLoaderView, SpinnerLoaderViewProps};
 pub use qr_code::{QrCodeView, QrCodeViewProps};
 pub use scroll_bar::{ScrollIndicator, ScrollIndicatorProps, ScrollbarStyle, scrollbar_track_row_flags};

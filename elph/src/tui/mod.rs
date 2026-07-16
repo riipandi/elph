@@ -15,6 +15,7 @@ mod slash_palette;
 mod theme;
 mod tool_approval;
 mod transcript;
+mod user_question;
 
 use std::sync::{Arc, Mutex};
 

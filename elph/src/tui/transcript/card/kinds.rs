@@ -113,8 +113,12 @@ pub fn thinking_response_pair_card(
     } else {
         (second, first)
     };
+    let inner_width = chrome
+        .outer_width
+        .saturating_sub(chrome.padding_h.saturating_mul(2))
+        .max(1);
     let assistant_body = if assistant.markdown.is_some() {
-        assistant_message_elements(assistant, TEXT_FG)
+        assistant_message_elements(assistant, TEXT_FG, inner_width)
     } else {
         vec![
             element! {
@@ -138,8 +142,9 @@ pub fn thinking_response_pair_card(
         ) {
             Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: thinking.content.as_str())
             View(
-                width: 100pct,
+                width: inner_width,
                 flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexStart,
                 gap: 0,
             ) {
                 #(assistant_body)

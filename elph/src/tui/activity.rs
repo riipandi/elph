@@ -70,6 +70,11 @@ pub fn format_activity_line(label: &str, elapsed_secs: f64) -> String {
     }
 }
 
+/// Idle status notice shown briefly after a turn completes.
+pub fn format_turn_complete_notice(elapsed_secs: f64) -> String {
+    format!("Turn complete · {elapsed_secs:.1}s")
+}
+
 fn truncate_status(line: &str, max_chars: usize) -> String {
     if line.chars().count() <= max_chars {
         return line.to_string();
@@ -120,5 +125,10 @@ mod tests {
     #[test]
     fn format_activity_line_includes_elapsed() {
         assert_eq!(format_activity_line("Thinking", 1.2), "Thinking · 1.2s");
+    }
+
+    #[test]
+    fn format_turn_complete_notice_includes_elapsed() {
+        assert_eq!(format_turn_complete_notice(3.45), "Turn complete · 3.5s");
     }
 }

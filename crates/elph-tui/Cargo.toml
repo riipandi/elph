@@ -20,8 +20,10 @@ anyhow.workspace = true
 chrono.workspace = true
 figlet-rs.workspace = true
 iocraft.workspace = true
+linkify.workspace = true
 memchr.workspace = true
 pulldown-cmark.workspace = true
+syntect.workspace = true
 qrcode.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -30,6 +32,13 @@ similar.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
+anstyle.workspace = true
+anstyle-syntect.workspace = true
+two-face.workspace = true
+textwrap.workspace = true
+supports-color.workspace = true
+url.workspace = true
+html-escape.workspace = true
 
 [dev-dependencies]
 futures.workspace = true

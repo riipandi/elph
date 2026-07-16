@@ -4,7 +4,8 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
-use elph_agent::{AgentHarness, GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
+use elph_agent::{AgentHarness, AgentHarnessErrorCode};
+use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::{Mutex, mpsc};
@@ -44,6 +45,10 @@ pub struct CodingAgentSession {
     show_thinking: bool,
     goal_runtime: Arc<GoalRuntime>,
     mcp_registry: Option<Arc<McpToolRegistry>>,
+    /// Serializes harness turns so only one prompt/template/compact runs at a time.
+    turn_gate: Arc<Mutex<()>>,
+    /// Serializes agent-mode reconciliation (Ctrl+A rapid cycling).
+    mode_gate: Arc<Mutex<()>>,
 }
 
 impl CodingAgentSession {
@@ -75,6 +80,8 @@ impl CodingAgentSession {
             show_thinking,
             goal_runtime,
             mcp_registry,
+            turn_gate: Arc::new(Mutex::new(())),
+            mode_gate: Arc::new(Mutex::new(())),
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -131,8 +138,11 @@ impl CodingAgentSession {
     }
 
     pub async fn set_agent_mode(&self, mode: AgentMode) -> Result<()> {
+        let _guard = self.mode_gate.lock().await;
         *self.mode_state.lock().await = mode;
         self.policy.lock().await.set_mode(mode);
+        // Wait for any in-flight turn before reconciling tools (avoids mid-turn mode races).
+        let _turn_guard = self.turn_gate.lock().await;
         self.apply_agent_mode(mode).await
     }
 
@@ -145,22 +155,24 @@ impl CodingAgentSession {
     }
 
     pub async fn submit_prompt(&self, text: String, steer: bool) -> Result<()> {
-        let start = Instant::now();
+        let _guard = self.turn_gate.lock().await;
+        let started = Instant::now();
         let result = if steer {
             self.harness.steer(text, None).await.map(|_| ())
         } else {
             self.harness.prompt(text, None).await.map(|_| ())
         };
-        let elapsed_secs = start.elapsed().as_secs_f64();
-        let _ = self.harness.wait_for_idle().await;
-        let _ = self.ui_tx.send(AgentUiEvent::RunCompleted { elapsed_secs });
-        match result {
-            Ok(_) => Ok(()),
-            Err(err) => {
+        match &result {
+            Ok(()) => self.finish_ui_turn(started).await,
+            Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Error: {err}")));
-                Err(anyhow::anyhow!("{err}"))
+            }
+            Err(err) => {
+                self.finish_ui_turn(started).await;
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Error: {err}")));
             }
         }
+        result.map_err(|err| anyhow::anyhow!("{err}"))
     }
 
     pub async fn abort(&self) -> Result<()> {
@@ -172,11 +184,14 @@ impl CodingAgentSession {
     }
 
     pub async fn compact(&self) -> Result<()> {
-        self.harness
-            .compact(None)
-            .await
-            .map(|_| ())
-            .map_err(|e| anyhow::anyhow!("{e}"))
+        let _guard = self.turn_gate.lock().await;
+        let started = Instant::now();
+        let result = self.harness.compact(None).await.map(|_| ());
+        self.finish_ui_turn(started).await;
+        if let Err(err) = &result {
+            let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
+        }
+        result.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<()> {
@@ -189,12 +204,20 @@ impl CodingAgentSession {
     }
 
     pub async fn prompt_from_template(&self, name: &str, args: &str) -> Result<()> {
-        let start = Instant::now();
+        let _guard = self.turn_gate.lock().await;
+        let started = Instant::now();
         let parsed = parse_command_args(args);
         let result = self.harness.prompt_from_template(name, &parsed).await.map(|_| ());
-        let elapsed_secs = start.elapsed().as_secs_f64();
-        let _ = self.harness.wait_for_idle().await;
-        let _ = self.ui_tx.send(AgentUiEvent::RunCompleted { elapsed_secs });
+        match &result {
+            Ok(()) => self.finish_ui_turn(started).await,
+            Err(err) if err.code == AgentHarnessErrorCode::Busy => {
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Template error: {err}")));
+            }
+            Err(err) => {
+                self.finish_ui_turn(started).await;
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Template error: {err}")));
+            }
+        }
         result.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
@@ -241,5 +264,12 @@ impl CodingAgentSession {
 
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
         reconcile_harness_tools(&self.harness, mode, self.mcp_registry.as_deref()).await
+    }
+
+    async fn finish_ui_turn(&self, started: Instant) {
+        let _ = self.harness.wait_for_idle().await;
+        let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
+            elapsed_secs: started.elapsed().as_secs_f64(),
+        });
     }
 }

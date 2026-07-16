@@ -14,12 +14,10 @@ use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
 
-use crate::tui::activity::activity_label_for_event;
+use crate::tui::activity::{activity_label_for_event, format_turn_complete_notice};
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
-use crate::tui::chrome::{
-    ChromeStats, Header, StatusRow, format_elapsed_secs, header_stats_from_chrome, read_git_branch,
-    refresh_chrome_stats,
-};
+use crate::tui::chrome::{ChromeStats, Header, StatusRow};
+use crate::tui::chrome::{format_elapsed_secs, header_stats_from_chrome, read_git_branch, refresh_chrome_stats};
 use crate::tui::focus::{ShellFocus, prompt_focus_char};
 use crate::tui::labels::{footer_left_label, project_footer_label, session_label};
 use crate::tui::prompt::{Footer, PromptChrome};
@@ -28,12 +26,20 @@ use crate::tui::slash_handler::{SlashContext, SlashOutcome, handle_slash_submit,
 use crate::tui::slash_palette::{SlashPaletteKeyAction, build_snapshot, resolve_snapshot_key_action, sync_selection};
 use crate::tui::tool_approval::{PendingToolApproval, ToolApprovalPrompt, choice_from_key};
 use crate::tui::transcript::{TranscriptMessage, TranscriptPanel, TranscriptStyle};
+use crate::tui::user_question::{PendingUserQuestion, UserQuestionPrompt, confirm_from_key, option_index_from_key};
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
 /// Cap transcript repaints during streaming so the prompt editor stays responsive.
 const TRANSCRIPT_PUBLISH_MS: u64 = 66;
 const MAX_UI_EVENTS_PER_TICK: usize = 64;
+/// How long the status row shows turn elapsed after completion before returning to tips.
+const TURN_COMPLETE_NOTICE_MS: u64 = 5_000;
+
+struct TurnCompleteNotice {
+    text: String,
+    since: Instant,
+}
 
 fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate]) -> bool {
     let trimmed = input.trim();
@@ -153,6 +159,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut prompt_queue = hooks.use_ref(PromptQueue::default);
     let mut event_applier = hooks.use_ref(|| TranscriptEventApplier::new(props.show_thinking));
     let mut pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
+    let mut pending_user_question = hooks.use_ref(|| None::<PendingUserQuestion>);
     let mut slash_commands = hooks.use_state(|| props.slash_commands.clone());
     let mut prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
     let mut slash_palette_index = hooks.use_state(|| 0usize);
@@ -188,6 +195,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let session_id = props.session_id.clone();
     let mut transcript_pending = hooks.use_ref(|| false);
     let mut last_transcript_publish = hooks.use_ref(|| Instant::now() - Duration::from_millis(TRANSCRIPT_PUBLISH_MS));
+    let mut turn_complete_notice = hooks.use_ref(|| None::<TurnCompleteNotice>);
 
     hooks.use_future(async move {
         loop {
@@ -236,8 +244,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 spinner_tick.set(spinner_tick.get().wrapping_add(1));
             }
 
+            let turn_notice_expired = turn_complete_notice
+                .read()
+                .as_ref()
+                .is_some_and(|notice| notice.since.elapsed() >= Duration::from_millis(TURN_COMPLETE_NOTICE_MS));
+            if turn_notice_expired {
+                turn_complete_notice.set(None);
+            }
+
             let mut transcript_changed = false;
             let mut run_completed = false;
+            let mut run_completed_elapsed: Option<f64> = None;
 
             if let Some(rx) = ui_events.as_ref()
                 && let Ok(mut guard) = rx.lock()
@@ -248,8 +265,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         break;
                     };
                     events_processed += 1;
-                    if let AgentUiEvent::RunCompleted { .. } = &event {
+                    if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
                         run_completed = true;
+                        run_completed_elapsed = Some(*elapsed_secs);
                     }
 
                     if let AgentUiEvent::Status(ref message) = event
@@ -273,6 +291,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         continue;
                     }
 
+                    if let AgentUiEvent::UserQuestionRequired(req) = event {
+                        activity_label.set("Awaiting your answer".to_string());
+                        pending_user_question.set(Some(PendingUserQuestion::from_request(req)));
+                        transcript_changed = true;
+                        continue;
+                    }
+
                     if let Some(label) = activity_label_for_event(&event, show_thinking) {
                         activity_label.set(label);
                     }
@@ -291,11 +316,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             if transcript_pending.get()
                 && (run_completed
-                    || last_transcript_publish
-                        .get()
-                        .elapsed()
-                        .as_millis()
-                        >= TRANSCRIPT_PUBLISH_MS as u128)
+                    || last_transcript_publish.get().elapsed().as_millis() >= TRANSCRIPT_PUBLISH_MS as u128)
             {
                 messages_revision.set(messages_revision.get().wrapping_add(1));
                 transcript_pending.set(false);
@@ -310,6 +331,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 chrome_refresh_pending.set(true);
 
                 if let Some(next) = prompt_queue.write().pop_front() {
+                    turn_complete_notice.set(None);
                     mark_busy(
                         &mut BusyActivation {
                             busy: &mut busy,
@@ -324,6 +346,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         chrome_refresh_pending.set(true);
                         TurnDispatcher::spawn_turn(Arc::clone(session), next, false);
                     }
+                } else if let Some(elapsed_secs) = run_completed_elapsed {
+                    turn_complete_notice.set(Some(TurnCompleteNotice {
+                        text: format_turn_complete_notice(elapsed_secs),
+                        since: Instant::now(),
+                    }));
                 }
             }
         }
@@ -344,6 +371,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             let mut pending_tool_approval = pending_tool_approval;
+            let mut pending_user_question = pending_user_question;
             if pending_tool_approval.read().is_some()
                 && let Some(choice) = choice_from_key(modifiers, code)
             {
@@ -355,6 +383,36 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     ToolApprovalChoice::AllowSession => "Running tool (session allow)…".to_string(),
                     ToolApprovalChoice::Reject => "Tool denied".to_string(),
                 });
+                return;
+            }
+
+            let user_question_confirm = pending_user_question
+                .read()
+                .as_ref()
+                .is_some_and(|pending| pending.is_confirm)
+                .then(|| confirm_from_key(modifiers, code))
+                .flatten();
+            if let Some(yes) = user_question_confirm {
+                if let Some(question) = pending_user_question.write().take() {
+                    question.respond_confirm(yes);
+                }
+                activity_label.set("Thinking".to_string());
+                return;
+            }
+
+            let user_question_option = pending_user_question.read().as_ref().and_then(|pending| {
+                let index = option_index_from_key(modifiers, code)?;
+                pending
+                    .options
+                    .as_ref()?
+                    .get(index.saturating_sub(1))
+                    .map(|option| option.value.clone())
+            });
+            if let Some(value) = user_question_option {
+                if let Some(question) = pending_user_question.write().take() {
+                    question.respond_option(value);
+                }
+                activity_label.set("Thinking".to_string());
                 return;
             }
 
@@ -432,6 +490,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 (m, KeyCode::Char('c')) if m.contains(KeyModifiers::CONTROL) && busy.get() => {
                     activity_label.set("Cancelling…".to_string());
                     prompt_queue.write().clear();
+                    if let Some(pending) = pending_tool_approval.write().take() {
+                        pending.respond(ToolApprovalChoice::Reject);
+                    }
+                    if let Some(question) = pending_user_question.write().take() {
+                        question.respond(String::new());
+                    }
                     if let Some(session) = agent_session.as_ref() {
                         TurnDispatcher::spawn_abort(Arc::clone(session));
                     } else {
@@ -526,6 +590,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 accent: scanner_accent,
                 spinner_tick: spinner_tick.get(),
                 elapsed_secs: elapsed_secs.get(),
+                idle_notice: turn_complete_notice.read().as_ref().map(|notice| notice.text.clone()),
             )
             #(if let Some(pending) = pending_tool_approval.read().as_ref() {
                 element! {
@@ -548,6 +613,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         )
                     }
                 }
+            } else if let Some(question) = pending_user_question.read().as_ref()
+                && !question.needs_text_input() {
+                element! {
+                    View(
+                        width: screen_width,
+                        flex_shrink: 0f32,
+                        flex_direction: FlexDirection::Column,
+                    ) {
+                        UserQuestionPrompt(
+                            screen_width: screen_width,
+                            question: question.question.clone(),
+                            options: question.options.clone(),
+                            is_confirm: question.is_confirm,
+                            needs_text_input: false,
+                        )
+                        Footer(
+                            screen_width: screen_width,
+                            project_label: footer_left.clone(),
+                            model_label: model_label.clone(),
+                            thinking_level: thinking_level.get(),
+                            supports_images: supports_images,
+                        )
+                    }
+                }
             } else {
                 element! {
                     View(
@@ -555,6 +644,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         flex_shrink: 0f32,
                         flex_direction: FlexDirection::Column,
                     ) {
+                        #(pending_user_question.read().as_ref().filter(|question| question.needs_text_input()).map(|question| -> AnyElement<'static> {
+                            element! {
+                                UserQuestionPrompt(
+                                    screen_width: screen_width,
+                                    question: question.question.clone(),
+                                    options: None,
+                                    is_confirm: false,
+                                    needs_text_input: true,
+                                )
+                            }.into()
+                        }))
                         PromptChrome(
                         screen_width: screen_width,
                         screen_height: screen_height,
@@ -575,6 +675,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         },
                         on_submit: move |text: String| {
                     shell_focus.set(ShellFocus::Prompt);
+                    if let Some(question) = pending_user_question.write().take() {
+                        let answer = if text.trim().is_empty() {
+                            question.default.clone().unwrap_or_default()
+                        } else {
+                            text
+                        };
+                        question.respond(answer);
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        suppress_enter_newline.set(true);
+                        activity_label.set("Thinking".to_string());
+                        return;
+                    }
                     if text.trim().is_empty() {
                         return;
                     }

@@ -1,6 +1,6 @@
 //! ASCII banner text (FIGlet + compact bitmap fallback).
 
-use figlet_rs::FIGfont;
+use figlet_rs::FIGlet;
 use iocraft::prelude::*;
 
 /// Props for [`AsciiText`].
@@ -36,10 +36,10 @@ pub fn render_bitmap(text: &str) -> String {
 }
 
 pub fn render_figlet(text: &str) -> String {
-    if let Ok(font) = FIGfont::standard()
+    if let Ok(font) = FIGlet::standard()
         && let Some(figure) = font.convert(text)
     {
-        return figure.to_string();
+        return figure.as_str().to_string();
     }
     render_bitmap(text)
 }

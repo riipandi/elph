@@ -100,12 +100,7 @@ impl AgentRegistry {
             .lock()
             .await
             .values()
-            .filter(|record| {
-                matches!(
-                    record.info.status,
-                    SubagentStatus::Pending | SubagentStatus::Running
-                )
-            })
+            .filter(|record| matches!(record.info.status, SubagentStatus::Pending | SubagentStatus::Running))
             .cloned()
             .collect()
     }

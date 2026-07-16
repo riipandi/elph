@@ -10,25 +10,18 @@ use iocraft::prelude::*;
 
 use super::card::{build_transcript_bubbles, transcript_sticky_overlay};
 use super::layout::layout_transcript_rows;
-use super::markdown::refresh_assistant_markdown;
-use super::types::{TranscriptMessage, TranscriptStyle};
+use super::markdown::{
+    apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker, partition_assistant_markdown,
+};
+use super::types::TranscriptMessage;
 use crate::tui::focus::transcript_nav_key;
 use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK, TRANSCRIPT_BORDER_FOCUSED};
 
 const TRANSCRIPT_SCROLL_STEP: i32 = 3;
 /// Minimum scrollable lines below a sticky user prompt.
 const STICKY_MIN_SCROLL_ROWS: u16 = 3;
-const MARKDOWN_DEBOUNCE_MS: u64 = 150;
-
-fn has_streaming_assistant(messages: &[TranscriptMessage]) -> bool {
-    messages.iter().any(|message| {
-        message.style == TranscriptStyle::Assistant
-            && message
-                .markdown
-                .as_ref()
-                .is_some_and(|markdown| !markdown.stream_complete)
-    })
-}
+const MARKDOWN_DEBOUNCE_MS: u64 = 80;
+const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 2;
 
 #[derive(Clone, Default, Props)]
 pub struct TranscriptPanelProps {
@@ -63,13 +56,28 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         loop {
             tokio::time::sleep(Duration::from_millis(MARKDOWN_DEBOUNCE_MS)).await;
             let width = screen_width_ref.get();
-            let changed = if has_streaming_assistant(&messages_state.read()) {
-                false
-            } else {
+
+            let (partition_changed, jobs) = {
                 let mut msgs = messages_state.write();
-                refresh_assistant_markdown(&mut msgs, width)
+                let changed = partition_assistant_markdown(&mut msgs, width);
+                let jobs = collect_markdown_parse_jobs(&msgs);
+                (changed, jobs)
             };
-            if changed {
+
+            let mut parsed = false;
+            for job in jobs.into_iter().take(MAX_MARKDOWN_PARSE_JOBS_PER_TICK) {
+                let source = job.source.clone();
+                let document = match tokio::task::spawn_blocking(move || parse_markdown_on_worker(&source)).await {
+                    Ok(doc) => doc,
+                    Err(_) => continue,
+                };
+                let mut msgs = messages_state.write();
+                if apply_markdown_parse_result(&mut msgs, &job, document) {
+                    parsed = true;
+                }
+            }
+
+            if partition_changed || parsed {
                 markdown_layout_revision.set(markdown_layout_revision.get().wrapping_add(1));
             }
         }

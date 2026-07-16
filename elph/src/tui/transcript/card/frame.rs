@@ -2,7 +2,7 @@
 
 use iocraft::prelude::*;
 
-use super::super::markdown::render::render_markdown_part;
+use super::super::markdown::render::render_markdown_buffer;
 use super::super::types::TranscriptMessage;
 use super::chrome::TranscriptCardChrome;
 
@@ -15,62 +15,59 @@ pub fn render_flush_card(chrome: &TranscriptCardChrome, message: &TranscriptMess
 }
 
 pub fn render_assistant_card(chrome: &TranscriptCardChrome, message: &TranscriptMessage) -> AnyElement<'static> {
-    if message
-        .markdown
-        .as_ref()
-        .is_none_or(|markdown| !markdown.stream_complete)
-    {
-        return render_flush_card(chrome, message);
-    }
-    let children = assistant_message_elements(message, chrome.foreground);
-    element! {
-        View(
-            width: chrome.outer_width,
-            background_color: Color::Reset,
-            border_style: BorderStyle::None,
-            margin_bottom: chrome.margin_bottom,
-            padding_top: chrome.padding_top,
-            padding_bottom: chrome.padding_bottom,
-            padding_left: chrome.padding_h,
-            padding_right: chrome.padding_h,
-            flex_direction: FlexDirection::Column,
-            gap: 0,
-        ) {
-            #(children)
+    if message.markdown.is_some() {
+        let inner_width = chrome
+            .outer_width
+            .saturating_sub(chrome.padding_h.saturating_mul(2))
+            .max(1);
+        let body = assistant_message_body(message, chrome.foreground, inner_width);
+        return element! {
+            View(
+                width: chrome.outer_width,
+                background_color: Color::Reset,
+                border_style: BorderStyle::None,
+                margin_bottom: chrome.margin_bottom,
+                padding_top: chrome.padding_top,
+                padding_bottom: chrome.padding_bottom,
+                padding_left: chrome.padding_h,
+                padding_right: chrome.padding_h,
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexStart,
+                gap: 0,
+            ) {
+                #(body)
+            }
         }
+        .into();
     }
-    .into()
+    render_flush_card(chrome, message)
 }
 
-pub(crate) fn assistant_message_elements(message: &TranscriptMessage, foreground: Color) -> Vec<AnyElement<'static>> {
+pub(crate) fn assistant_message_body(
+    message: &TranscriptMessage,
+    foreground: Color,
+    inner_width: u16,
+) -> Vec<AnyElement<'static>> {
     let Some(markdown) = &message.markdown else {
         return Vec::new();
     };
-    if !markdown.stream_complete {
-        return vec![
-            element! {
-                Text(color: foreground, wrap: TextWrap::Wrap, content: message.content.clone())
-            }
-            .into(),
-        ];
+    if message.content.is_empty() && !markdown.has_rendered_body() {
+        return Vec::new();
     }
-    let raw = &message.content;
-    let mut children = Vec::new();
-    let mut source_start = 0usize;
-    for part in &markdown.parts {
-        children.extend(render_markdown_part(&raw[source_start..part.source_end]));
-        source_start = part.source_end;
-    }
-    let tail = markdown.tail(raw);
-    if !tail.is_empty() {
-        children.push(
-            element! {
-                Text(color: foreground, wrap: TextWrap::Wrap, content: tail.to_string())
-            }
-            .into(),
-        );
-    }
-    children
+    vec![render_markdown_buffer(
+        markdown,
+        &message.content,
+        foreground,
+        inner_width,
+    )]
+}
+
+pub(crate) fn assistant_message_elements(
+    message: &TranscriptMessage,
+    foreground: Color,
+    inner_width: u16,
+) -> Vec<AnyElement<'static>> {
+    assistant_message_body(message, foreground, inner_width)
 }
 
 fn render_text_card(
@@ -79,6 +76,10 @@ fn render_text_card(
     background: Color,
     foreground: Color,
 ) -> AnyElement<'static> {
+    let inner_width = chrome
+        .outer_width
+        .saturating_sub(chrome.padding_h.saturating_mul(2))
+        .max(1);
     element! {
         View(
             width: chrome.outer_width,
@@ -89,8 +90,11 @@ fn render_text_card(
             padding_bottom: chrome.padding_bottom,
             padding_left: chrome.padding_h,
             padding_right: chrome.padding_h,
+            align_items: AlignItems::FlexStart,
         ) {
-            Text(color: foreground, wrap: TextWrap::Wrap, content: content.to_string())
+            View(width: inner_width) {
+                Text(color: foreground, wrap: TextWrap::Wrap, content: content.to_string())
+            }
         }
     }
     .into()

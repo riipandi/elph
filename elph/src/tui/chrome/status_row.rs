@@ -32,6 +32,8 @@ pub struct StatusRowProps {
     pub spinner_tick: u32,
     /// Elapsed seconds for the active turn, updated by the shell tick.
     pub elapsed_secs: f64,
+    /// Replaces the idle tip briefly after a turn completes (e.g. `Turn complete · 1.2s`).
+    pub idle_notice: Option<String>,
 }
 
 impl Default for StatusRowProps {
@@ -43,6 +45,7 @@ impl Default for StatusRowProps {
             accent: default_spinner_accent(),
             spinner_tick: 0,
             elapsed_secs: 0.0,
+            idle_notice: None,
         }
     }
 }
@@ -80,7 +83,10 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
     }
 
     let right_half = props.screen_width / 2;
-    let idle_tip = TIPS[tip_index.get() % TIPS.len()].to_string();
+    let idle_line = props
+        .idle_notice
+        .clone()
+        .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
     let activity_line = format_activity_line(&props.activity_label, props.elapsed_secs);
     let _spinner_frame = props.spinner_tick;
     let spinner_glyph = if props.busy {
@@ -129,7 +135,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                 } else {
                     element! {
                         View(align_items: AlignItems::Center, justify_content: JustifyContent::Start) {
-                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: idle_tip)
+                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: idle_line)
                         }
                     }
                 })
