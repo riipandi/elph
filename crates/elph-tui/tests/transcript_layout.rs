@@ -155,7 +155,7 @@ fn active_sticky_hidden_for_short_or_empty_transcript() {
 }
 
 #[test]
-fn active_sticky_falls_back_to_latest_before_first_turn_scrolls_past() {
+fn active_sticky_hidden_at_scroll_top_during_manual_scroll() {
     let texts = ["sys", "user one"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
     let is_sticky_prompt = [false, true];
@@ -163,7 +163,41 @@ fn active_sticky_falls_back_to_latest_before_first_turn_scrolls_past() {
     assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 0), None);
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, 0, false, viewport),
-        Some(1)
+        None
+    );
+}
+
+#[test]
+fn active_sticky_tracks_scrolled_past_prompt_while_manual_scrolling() {
+    let texts = ["sys", "user one", "assistant", "user two"];
+    let layouts = layout_transcript_rows(&texts, 40, 1);
+    let is_sticky_prompt = [false, true, false, true];
+    let viewport = 5;
+    let first_user = 1usize;
+    let second_user = 3usize;
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 0, false, viewport),
+        None
+    );
+    assert_eq!(
+        active_sticky_user_message_index(
+            &layouts,
+            &is_sticky_prompt,
+            layouts[first_user].start_row as i32,
+            false,
+            viewport
+        ),
+        Some(first_user)
+    );
+    assert_eq!(
+        active_sticky_user_message_index(
+            &layouts,
+            &is_sticky_prompt,
+            layouts[second_user].start_row as i32,
+            false,
+            viewport
+        ),
+        Some(second_user)
     );
 }
 

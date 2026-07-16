@@ -1,5 +1,6 @@
 //! Transcript message types and per-style layout tokens.
 
+use chrono::{DateTime, Utc};
 use iocraft::prelude::Color;
 
 use crate::tui::theme::{
@@ -31,6 +32,8 @@ pub struct TranscriptMessage {
     pub markdown: Option<AssistantMarkdownBuffer>,
     /// Wall time spent in this process segment (thinking, tool, response, subagent status, …).
     pub duration_secs: Option<f64>,
+    /// When the user submitted this prompt from the editor (`None` for seeded or legacy rows).
+    pub submitted_at: Option<DateTime<Utc>>,
 }
 
 impl TranscriptMessage {
@@ -41,6 +44,7 @@ impl TranscriptMessage {
             tool: None,
             markdown: None,
             duration_secs: None,
+            submitted_at: None,
         }
     }
 
@@ -55,6 +59,7 @@ impl TranscriptMessage {
             }),
             markdown: None,
             duration_secs: None,
+            submitted_at: None,
         }
     }
 
@@ -148,6 +153,14 @@ impl TranscriptStyle {
 
     pub fn is_sticky_prompt(self) -> bool {
         matches!(self, Self::User)
+    }
+
+    pub fn is_user_input_card(self) -> bool {
+        matches!(self, Self::User | Self::SkillPrompt | Self::Meta)
+    }
+
+    pub fn content_chrome_cols(self) -> u16 {
+        if self.is_user_input_card() { 1 } else { 0 }
     }
 
     pub fn has_tinted_background(self) -> bool {
@@ -311,6 +324,26 @@ mod tests {
         );
         assert_eq!(TranscriptStyle::Thinking.entry_gap_after(Some(TranscriptStyle::ToolSuccess)), 1);
         assert_eq!(TranscriptStyle::Assistant.entry_gap_after(Some(TranscriptStyle::ToolFailed)), 1);
+    }
+
+    #[test]
+    fn user_input_cards_are_detected_for_chrome() {
+        assert!(TranscriptStyle::User.is_user_input_card());
+        assert!(TranscriptStyle::SkillPrompt.is_user_input_card());
+        assert!(TranscriptStyle::Meta.is_user_input_card());
+        assert!(!TranscriptStyle::Assistant.is_user_input_card());
+        assert_eq!(TranscriptStyle::User.content_chrome_cols(), 1);
+        assert_eq!(TranscriptStyle::Assistant.content_chrome_cols(), 0);
+    }
+
+    #[test]
+    fn layout_text_omits_right_rail_timestamp() {
+        let at = chrono::DateTime::parse_from_rfc3339("2026-07-17T14:32:00Z")
+            .expect("timestamp")
+            .with_timezone(&chrono::Utc);
+        let mut message = TranscriptMessage::text("hello", TranscriptStyle::User);
+        message.submitted_at = Some(at);
+        assert_eq!(message.layout_text(), "hello");
     }
 
     #[test]

@@ -5,6 +5,7 @@ mod chrome;
 mod frame;
 mod kinds;
 mod sticky;
+pub(crate) mod timestamp_layout;
 mod tool_format;
 
 pub use builder::build_transcript_bubbles;

@@ -48,4 +48,11 @@ impl TranscriptCardChrome {
     pub fn tinted(screen_width: u16, style: TranscriptStyle, margin_bottom: u16) -> Self {
         Self::from_style(screen_width, style, margin_bottom)
     }
+
+    pub fn inner_width(&self, style: TranscriptStyle) -> u16 {
+        self.outer_width
+            .saturating_sub(self.padding_h.saturating_mul(2))
+            .saturating_sub(style.content_chrome_cols())
+            .max(1)
+    }
 }

@@ -5,18 +5,18 @@ use super::model::{MarkdownLine, MarkdownLineKind};
 /// Rows between adjacent markdown block segments (paragraph, code, list, …).
 pub const BLOCK_GAP_ROWS: u16 = 1;
 
-/// Horizontal inset inside a code block background (left + right).
-pub const CODE_HORIZONTAL_PADDING: u16 = 2;
+/// Horizontal inset per side inside a multi-line code block card.
+pub const CODE_BLOCK_INSET_H: u16 = 2;
 
-/// Vertical inset inside a code block background (top + bottom). Inter-block spacing
-/// comes from [`BLOCK_GAP_ROWS`] via [`segment_gap_after`], not extra outer padding.
-pub const CODE_BLOCK_INSET_V: u16 = 0;
+/// Vertical inset per side (top/bottom) inside a multi-line code block card.
+/// Inter-block spacing comes from [`BLOCK_GAP_ROWS`] via [`segment_gap_after`].
+pub const CODE_BLOCK_INSET_V: u16 = 1;
 
 /// Total vertical rows reserved inside a code block container (top + bottom inset).
 pub const CODE_VERTICAL_PADDING: u16 = CODE_BLOCK_INSET_V.saturating_mul(2);
 
 pub fn code_content_width(outer_width: u16) -> u16 {
-    outer_width.saturating_sub(CODE_HORIZONTAL_PADDING).max(1)
+    outer_width.saturating_sub(CODE_BLOCK_INSET_H.saturating_mul(2)).max(1)
 }
 
 /// Multi-line fenced blocks use the tinted card; single-line blocks render inline.
@@ -125,6 +125,18 @@ mod tests {
         let doc = parse_markdown_document("```\ncode\n```\n\nAfter");
         let code_end = segment_end(&doc.lines, 0);
         assert_eq!(segment_gap_after(&doc.lines, 0, code_end), BLOCK_GAP_ROWS);
+    }
+
+    #[test]
+    fn code_content_width_reserves_horizontal_insets() {
+        assert_eq!(code_content_width(20), 16);
+        assert_eq!(code_content_width(3), 1);
+    }
+
+    #[test]
+    fn multi_line_code_block_has_vertical_inset() {
+        assert_eq!(CODE_BLOCK_INSET_V, 1);
+        assert_eq!(CODE_VERTICAL_PADDING, 2);
     }
 
     #[test]

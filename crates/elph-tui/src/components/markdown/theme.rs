@@ -34,7 +34,7 @@ impl MarkdownTheme {
             inline_code: theme.success,
             link: theme.accent,
             code_bg: theme.code_block_bg,
-            code_inset: theme.container_inset(),
+            code_inset: super::blocks::CODE_BLOCK_INSET_H,
             blockquote: theme.text_muted,
             list_marker: theme.accent_soft,
             table_border: theme.border,

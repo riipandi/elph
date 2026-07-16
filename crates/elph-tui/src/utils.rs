@@ -149,6 +149,11 @@ fn chunk_graphemes(text: &str, max_width: usize) -> Vec<String> {
     chunks
 }
 
+/// Display-column width of `text` (grapheme-aware via unicode-width).
+pub fn display_width(text: &str) -> usize {
+    UnicodeWidthStr::width(text)
+}
+
 /// Truncate text to `max_width` display columns with an ellipsis suffix.
 pub fn truncate_with_ellipsis(text: &str, max_width: usize) -> String {
     if max_width == 0 {

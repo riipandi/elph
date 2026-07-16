@@ -4,8 +4,16 @@ use crate::agent::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 use crate::platform::Paths;
 use crate::types::ThinkingLevel;
 
+pub fn session_header_segments(session_id: &str, mcp_connected: usize, skills_count: usize) -> [String; 3] {
+    [
+        format!("Session: {session_id}"),
+        format!("MCP: {mcp_connected}"),
+        format!("Skills: {skills_count}"),
+    ]
+}
+
 pub fn session_label(session_id: &str, mcp_connected: usize, skills_count: usize) -> String {
-    format!("Session: {session_id} | MCP: {mcp_connected} | Skills: {skills_count}")
+    session_header_segments(session_id, mcp_connected, skills_count).join(" | ")
 }
 
 /// Git metadata shown in the footer left segment (omitted outside a git work tree).

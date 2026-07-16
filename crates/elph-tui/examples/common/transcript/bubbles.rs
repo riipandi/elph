@@ -131,10 +131,9 @@ fn tool_call_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
     let style = message.style;
     let tool = message.tool.as_ref().expect("tool card detail");
     let output = tool.output.trim().to_string();
-    let running = style == TranscriptStyle::ToolRunning;
     let status = tool_process_status(style);
     let text_color = style.text_color();
-    let inner_width = screen_width.saturating_sub(3 + COLORED_CARD_PAD_H * 2).max(8);
+    let _inner_width = screen_width.saturating_sub(3 + COLORED_CARD_PAD_H * 2).max(8);
     element! {
         View(
             width: screen_width - 3,
@@ -154,19 +153,9 @@ fn tool_call_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
                 running_color: Some(text_color),
                 done_color: Some(text_color),
                 failed_color: Some(text_color),
-                emphasize_running: true,
+                emphasize_running: false,
+                animate_running: false,
             )
-            #(if running && output.is_empty() {
-                Some(element! {
-                    ProcessActivityTrail(
-                        width: inner_width.min(28),
-                        active: true,
-                        accent: Some(text_color),
-                    )
-                })
-            } else {
-                None
-            })
             #(if !tool.args.is_empty() {
                 Some(element! {
                     Text(

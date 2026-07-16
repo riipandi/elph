@@ -96,7 +96,7 @@ fn measure_column_plans(table: &MarkdownTable, columns: usize) -> Vec<ColumnWidt
         }
     }
 
-    for index in 0..columns {
+    for (index, plan) in plans.iter_mut().enumerate().take(columns) {
         let header = table
             .rows
             .first()
@@ -113,10 +113,7 @@ fn measure_column_plans(table: &MarkdownTable, columns: usize) -> Vec<ColumnWidt
         let word_outer = longest_word
             .saturating_add(CELL_PAD_X.saturating_mul(2))
             .max(MIN_COL_WIDTH);
-        plans[index].min = header_outer
-            .max(word_outer)
-            .min(plans[index].natural)
-            .max(MIN_COL_WIDTH);
+        plan.min = header_outer.max(word_outer).min(plan.natural).max(MIN_COL_WIDTH);
     }
 
     plans

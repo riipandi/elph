@@ -119,6 +119,13 @@ mod tests {
     }
 
     #[test]
+    fn multi_line_code_block_row_count_includes_vertical_inset() {
+        let doc = parse_markdown_document("```\nline one\nline two\n```");
+        let rows = markdown_document_row_count(&doc, 40);
+        assert_eq!(rows, 4, "two code lines plus top/bottom inset");
+    }
+
+    #[test]
     fn single_line_code_block_wraps_at_full_width_without_card_padding() {
         let long = "x".repeat(80);
         let doc = parse_markdown_document(&format!("```\n{long}\n```"));

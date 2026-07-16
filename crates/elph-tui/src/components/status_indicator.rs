@@ -70,6 +70,8 @@ pub struct ProcessStatusIndicatorProps {
     pub status: ProcessStatus,
     pub color: Option<Color>,
     pub theme: Option<UiTheme>,
+    /// When false, running rows use the static `◌` glyph instead of a braille spinner.
+    pub animate_running: bool,
 }
 
 impl Default for ProcessStatusIndicatorProps {
@@ -78,6 +80,7 @@ impl Default for ProcessStatusIndicatorProps {
             status: ProcessStatus::Queued,
             color: None,
             theme: None,
+            animate_running: true,
         }
     }
 }
@@ -93,7 +96,7 @@ pub fn ProcessStatusIndicator(props: &ProcessStatusIndicatorProps, hooks: Hooks)
         ProcessStatus::Failed => theme.error,
     });
 
-    let indicator: AnyElement<'static> = if props.status == ProcessStatus::Running {
+    let indicator: AnyElement<'static> = if props.status == ProcessStatus::Running && props.animate_running {
         element! {
             SpinnerLoaderView(color: Some(color), active: true, theme: Some(theme))
         }
@@ -131,6 +134,8 @@ pub struct ProcessStatusRowProps {
     pub theme: Option<UiTheme>,
     /// When true, running rows use bold label text (default: true).
     pub emphasize_running: bool,
+    /// When false, running rows use the static `◌` glyph instead of a braille spinner.
+    pub animate_running: bool,
 }
 
 impl Default for ProcessStatusRowProps {
@@ -146,6 +151,7 @@ impl Default for ProcessStatusRowProps {
             duration_secs: None,
             duration_color: None,
             emphasize_running: true,
+            animate_running: true,
         }
     }
 }
@@ -203,7 +209,12 @@ pub fn ProcessStatusRow(props: &ProcessStatusRowProps, hooks: Hooks) -> impl Int
 
     element! {
         View(flex_direction: FlexDirection::Row, gap: theme.gap_md, align_items: AlignItems::Center) {
-            ProcessStatusIndicator(status: props.status, color: Some(color), theme: Some(theme))
+            ProcessStatusIndicator(
+                status: props.status,
+                color: Some(color),
+                theme: Some(theme),
+                animate_running: props.animate_running,
+            )
             Text(content: props.label.clone(), color: color, weight: weight, wrap: TextWrap::NoWrap)
             #(duration_suffix.map(|suffix| element! {
                 Text(content: suffix, color: duration_color, wrap: TextWrap::NoWrap)
@@ -258,6 +269,7 @@ mod tests {
     #[test]
     fn glyphs_match_lifecycle() {
         assert_eq!(process_status_glyph(ProcessStatus::Queued), "○");
+        assert_eq!(process_status_glyph(ProcessStatus::Running), "◌");
         assert_eq!(process_status_glyph(ProcessStatus::Done), "●");
         assert_eq!(process_status_glyph(ProcessStatus::Failed), "✕");
     }

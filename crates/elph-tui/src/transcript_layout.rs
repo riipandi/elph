@@ -262,8 +262,9 @@ pub fn sticky_user_message_index(
 ///
 /// Returns `None` for an empty transcript or when content still fits the viewport (no scroll).
 /// While `auto_scroll` is pinned to the bottom, use the latest submitted user prompt.
-/// During manual scroll, pick the last sticky turn at or above the viewport top; if none match
-/// yet (e.g. offset zero before the first turn scrolls past), fall back to the latest sticky.
+/// During manual scroll, hide at the top of the transcript (`scroll_offset <= 0`) so the in-flow
+/// cards are shown without a duplicate overlay. Below that, pick the last sticky turn whose start
+/// row is at or above the viewport top (the prompt you have scrolled past).
 pub fn active_sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
     is_sticky_prompt: &[bool],
@@ -277,8 +278,10 @@ pub fn active_sticky_user_message_index(
     if auto_scroll_pinned {
         return latest_sticky_user_message_index(is_sticky_prompt);
     }
+    if scroll_offset <= 0 {
+        return None;
+    }
     sticky_user_message_index(layouts, is_sticky_prompt, scroll_offset)
-        .or_else(|| latest_sticky_user_message_index(is_sticky_prompt))
 }
 
 /// Effective scroll offset when `auto_scroll` may be pinned to the bottom.

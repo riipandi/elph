@@ -2,7 +2,7 @@
 
 use iocraft::prelude::*;
 
-use super::blocks::{CODE_BLOCK_INSET_V, code_content_width, segment_end, segment_gap_after};
+use super::blocks::{CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, code_content_width, segment_end, segment_gap_after};
 use super::linkify::spans_with_links;
 use super::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind, StyledSpan};
 use super::table::render_markdown_table;
@@ -84,8 +84,8 @@ fn render_code_block(
             background_color: theme.code_bg,
             padding_top: CODE_BLOCK_INSET_V,
             padding_bottom: CODE_BLOCK_INSET_V,
-            padding_left: theme.code_inset,
-            padding_right: theme.code_inset,
+            padding_left: CODE_BLOCK_INSET_H,
+            padding_right: CODE_BLOCK_INSET_H,
             flex_direction: FlexDirection::Column,
             gap: 0,
             flex_shrink: 0f32,

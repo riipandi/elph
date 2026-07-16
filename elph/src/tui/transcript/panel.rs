@@ -135,16 +135,26 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         if !messages[idx].style.is_sticky_prompt() {
             return None;
         }
+        let style = messages[idx].style;
         layout_sticky_header(
             &messages[idx].content,
-            transcript_bubble_inner_width(props.screen_width, messages[idx].style.horizontal_padding()),
-            messages[idx].style.sticky_bubble_padding_rows(),
+            transcript_bubble_inner_width(props.screen_width, style.horizontal_padding())
+                .saturating_sub(style.content_chrome_cols())
+                .max(1),
+            style.sticky_bubble_padding_rows(),
             panel_height,
             STICKY_MIN_SCROLL_ROWS,
         )
     });
-    let sticky_rows = sticky_header.as_ref().map(|h| h.height).unwrap_or(0);
+    let sticky_rows = sticky_header.as_ref().map(|header| header.height).unwrap_or(0);
     last_sticky_rows.set(sticky_rows);
+    let sticky_overlay = sticky_idx.zip(sticky_header.as_ref()).map(|(idx, header)| {
+        let style = messages[idx].style;
+        let inner_width = transcript_bubble_inner_width(props.screen_width, style.horizontal_padding())
+            .saturating_sub(style.content_chrome_cols())
+            .max(1);
+        transcript_sticky_overlay(header.height, inner_width, &messages[idx], &header.display_text)
+    });
     let min_content_height = scroll_zone;
 
     let transcript_focused = props.has_focus;
@@ -272,15 +282,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         }
                     }
                 }
-                #(if let (Some(idx), Some(header)) = (sticky_idx, sticky_header.as_ref()) {
-                    Some(transcript_sticky_overlay(
-                        header.height,
-                        &messages[idx],
-                        &header.display_text,
-                    ))
-                } else {
-                    None
-                })
+                #(sticky_overlay)
             }
         }
     }

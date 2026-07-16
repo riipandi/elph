@@ -1,17 +1,21 @@
 //! Per-style transcript card renderers.
 
-use elph_tui::components::{ProcessActivityTrail, ProcessStatus, ProcessStatusRow};
+use elph_tui::components::{ProcessStatus, ProcessStatusRow};
 use iocraft::prelude::*;
 
 use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_rows};
-use crate::tui::theme::{TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_OUTPUT_FG};
+use crate::tui::theme::{TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_OUTPUT_FG, USER_INPUT_ACCENT};
 use crate::tui::tool_params::{ToolParamsView, parse_tool_params};
 
 use super::super::types::{TranscriptMessage, TranscriptStyle};
 use super::chrome::{
     COLORED_CARD_PAD_H, FLUSH_CARD_PAD, THINKING_RESPONSE_GAP, TOOL_OUTPUT_SECTION_GAP, TranscriptCardChrome,
 };
-use super::frame::{assistant_message_elements, render_assistant_card, render_flush_card, render_tinted_card};
+use super::frame::{
+    assistant_message_elements, render_assistant_card, render_flush_card, render_invisible_tinted_card,
+    render_tinted_card, render_user_input_card,
+};
+use super::timestamp_layout::{layout_user_input_lines, render_user_input_lines, user_input_right_rail};
 
 use super::tool_format::format_tool_output_display;
 
@@ -35,7 +39,7 @@ fn tool_process_status(style: TranscriptStyle) -> ProcessStatus {
 
 pub fn user_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
-    render_tinted_card(&chrome, message)
+    render_user_input_card(&chrome, message, true)
 }
 
 pub fn suppressed_sticky_user_prompt_card(
@@ -44,12 +48,12 @@ pub fn suppressed_sticky_user_prompt_card(
     margin_bottom: u16,
 ) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
-    super::frame::render_invisible_tinted_card(&chrome, message)
+    render_invisible_tinted_card(&chrome, message)
 }
 
 pub fn skill_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
-    render_tinted_card(&chrome, message)
+    render_user_input_card(&chrome, message, true)
 }
 
 fn process_phase_header(
@@ -152,28 +156,28 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
 pub fn meta_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
     if message.duration_secs.is_none() {
-        return render_tinted_card(&chrome, message);
+        return render_user_input_card(&chrome, message, true);
     }
-    let duration_suffix = message
-        .duration_secs
-        .map(crate::tui::activity::format_duration_label_suffix)
-        .unwrap_or_default();
+    let inner_width = chrome.inner_width(message.style);
+    let right_rail = user_input_right_rail(message.submitted_at, message.duration_secs);
+    let lines = layout_user_input_lines(&message.content, right_rail.as_deref(), inner_width);
+    let body = render_user_input_lines(inner_width, &lines, right_rail.as_deref(), chrome.foreground, TOOL_ARGS_FG);
     element! {
         View(
             width: chrome.outer_width,
             background_color: chrome.background,
-            border_style: BorderStyle::None,
+            border_style: BorderStyle::Bold,
+            border_edges: Edges::Left,
+            border_color: USER_INPUT_ACCENT,
             margin_bottom: margin_bottom,
             padding_top: chrome.padding_top,
             padding_bottom: chrome.padding_bottom,
             padding_left: chrome.padding_h,
             padding_right: chrome.padding_h,
-            flex_direction: FlexDirection::Row,
+            flex_direction: FlexDirection::Column,
             gap: 0,
-            flex_wrap: FlexWrap::Wrap,
         ) {
-            Text(color: chrome.foreground, wrap: TextWrap::Wrap, content: message.content.clone())
-            Text(color: TOOL_ARGS_FG, wrap: TextWrap::NoWrap, content: duration_suffix)
+            #(body)
         }
     }
     .into()
@@ -189,7 +193,6 @@ pub fn tool_call_card(screen_width: u16, message: &TranscriptMessage, margin_bot
             .then(|| parse_ask_user_tool_rows(&tool.args_summary))
             .flatten();
         let has_generic_args = ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
-        let running = style == TranscriptStyle::ToolRunning;
         let status = tool_process_status(style);
         let inner_width = chrome
             .outer_width
@@ -216,19 +219,9 @@ pub fn tool_call_card(screen_width: u16, message: &TranscriptMessage, margin_bot
                     done_color: Some(chrome.foreground),
                     failed_color: Some(chrome.foreground),
                     duration_color: Some(TOOL_ARGS_FG),
-                    emphasize_running: true,
+                    emphasize_running: false,
+                    animate_running: false,
                 )
-                #(if running && output.is_empty() {
-                    Some(element! {
-                        ProcessActivityTrail(
-                            width: inner_width.min(28),
-                            active: true,
-                            accent: Some(chrome.foreground),
-                        )
-                    })
-                } else {
-                    None
-                })
                 #(if ask_user_rows.is_some() {
                     Some(element! {
                         View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {

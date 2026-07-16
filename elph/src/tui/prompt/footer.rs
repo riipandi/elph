@@ -2,18 +2,22 @@
 
 use iocraft::prelude::*;
 
+use crate::tui::chrome::{chrome_half_width, fit_footer_left, fit_footer_right};
+use crate::tui::labels::GitFooterInfo;
 use crate::types::ThinkingLevel;
-
-use crate::tui::labels::footer_right_label;
 
 #[derive(Clone, Default, Props)]
 pub struct FooterLeftProps {
     pub width: u16,
-    pub project_label: String,
+    pub project_name: String,
+    pub git: Option<GitFooterInfo>,
+    pub turn: u32,
 }
 
 #[component]
 pub fn FooterLeft(props: &FooterLeftProps) -> impl Into<AnyElement<'static>> {
+    let label = fit_footer_left(&props.project_name, props.git.as_ref(), props.turn, props.width.max(1) as usize);
+
     element! {
         View(
             width: props.width,
@@ -21,7 +25,7 @@ pub fn FooterLeft(props: &FooterLeftProps) -> impl Into<AnyElement<'static>> {
             justify_content: JustifyContent::Start,
             padding: 0,
         ) {
-            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: props.project_label.clone())
+            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: label)
         }
     }
 }
@@ -36,7 +40,12 @@ pub struct FooterRightProps {
 
 #[component]
 pub fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
-    let footer_right = footer_right_label(&props.model_label, props.thinking_level, props.supports_images);
+    let label = fit_footer_right(
+        &props.model_label,
+        props.thinking_level,
+        props.supports_images,
+        props.width.max(1) as usize,
+    );
 
     element! {
         View(
@@ -45,7 +54,7 @@ pub fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
             justify_content: JustifyContent::End,
             padding: 0,
         ) {
-            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: footer_right)
+            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: label)
         }
     }
 }
@@ -53,7 +62,9 @@ pub fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
 #[derive(Clone, Default, Props)]
 pub struct FooterProps {
     pub screen_width: u16,
-    pub project_label: String,
+    pub project_name: String,
+    pub git: Option<GitFooterInfo>,
+    pub turn: u32,
     pub model_label: String,
     pub thinking_level: ThinkingLevel,
     pub supports_images: bool,
@@ -61,7 +72,7 @@ pub struct FooterProps {
 
 #[component]
 pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
-    let half = props.screen_width / 2;
+    let half = chrome_half_width(props.screen_width) as u16;
 
     element! {
         View(
@@ -71,7 +82,12 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
             padding_left: 1,
             padding_right: 1,
         ) {
-            FooterLeft(width: half, project_label: props.project_label.clone())
+            FooterLeft(
+                width: half,
+                project_name: props.project_name.clone(),
+                git: props.git.clone(),
+                turn: props.turn,
+            )
             FooterRight(
                 width: half,
                 model_label: props.model_label.clone(),

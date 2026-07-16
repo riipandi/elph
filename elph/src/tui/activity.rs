@@ -1,7 +1,25 @@
 //! Dynamic activity labels and braille spinner for the status row.
 
+use chrono::{DateTime, Local, Utc};
+
 use crate::agent::AgentUiEvent;
 use elph_tui::loader::SpinnerLoader;
+
+/// Dimmed submit-time label for user-input transcript cards.
+pub fn format_submitted_timestamp(at: DateTime<Utc>) -> String {
+    let local = at.with_timezone(&Local);
+    let now = Local::now();
+    if local.date_naive() == now.date_naive() {
+        local.format("%H:%M").to_string()
+    } else {
+        local.format("%b %d, %H:%M").to_string()
+    }
+}
+
+/// Inline dimmed timestamp for layout/render (`14:32`).
+pub fn format_submitted_timestamp_suffix(at: DateTime<Utc>) -> String {
+    format_submitted_timestamp(at)
+}
 
 /// Braille spinner glyph for the given animation tick (parent-driven, non-blocking).
 pub fn braille_spinner_glyph(tick: u32) -> &'static str {
@@ -289,6 +307,26 @@ mod tests {
     fn braille_spinner_cycles() {
         assert_eq!(braille_spinner_glyph(0), "⠋");
         assert_eq!(braille_spinner_glyph(1), "⠙");
+    }
+
+    #[test]
+    fn format_submitted_timestamp_suffix_has_no_separator_prefix() {
+        let at = DateTime::parse_from_rfc3339("2026-07-17T14:32:00Z")
+            .expect("timestamp")
+            .with_timezone(&Utc);
+        let suffix = format_submitted_timestamp_suffix(at);
+        assert!(!suffix.starts_with('·'));
+        assert!(suffix.contains(':'));
+    }
+
+    #[test]
+    fn format_submitted_timestamp_includes_clock_time() {
+        let at = DateTime::parse_from_rfc3339("2026-07-17T14:32:00Z")
+            .expect("timestamp")
+            .with_timezone(&Utc);
+        let label = format_submitted_timestamp(at);
+        assert!(label.contains(':'));
+        assert!(!label.is_empty());
     }
 
     #[test]

@@ -24,10 +24,10 @@ use crate::tui::activity::{
 };
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header};
-use crate::tui::chrome::{format_elapsed_secs, header_stats_from_chrome, read_git_footer_info, refresh_chrome_stats};
+use crate::tui::chrome::{format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{prompt_focus_char, shell_global_shortcut};
-use crate::tui::labels::{footer_left_label, project_footer_label, session_label};
+
 use crate::tui::prompt::PromptChrome;
 use crate::tui::session_prefs::persist_session_prefs;
 use crate::tui::slash_handler::{SlashContext, SlashOutcome};
@@ -334,7 +334,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         supports_images: props.supports_images,
         ..ChromeStats::default()
     });
-    let mut project_label = hooks.use_state(|| props.project_label.clone());
+    let mut git_footer = hooks.use_state(|| {
+        let paths = Paths::resolve().expect("resolve elph paths");
+        read_git_footer_info(paths.project_dir())
+    });
     let mut chrome_tick = hooks.use_ref(|| 0u32);
     let fallback_context_limit = props.context_limit;
     let fallback_model_label = props.model_label.clone();
@@ -373,8 +376,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             if chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0 {
                 chrome_refresh_pending.set(false);
                 let paths = paths.read().clone();
-                let git_footer = read_git_footer_info(paths.project_dir());
-                project_label.set(project_footer_label(&paths, git_footer.as_ref()));
+                git_footer.set(read_git_footer_info(paths.project_dir()));
 
                 if let Some(session) = agent_session_for_chrome.as_ref() {
                     let resources = session.harness().get_resources().await;
@@ -1158,9 +1160,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .and_then(|session| session.mcp_registry())
         .map(|registry| registry.load_report().servers_ok)
         .unwrap_or(0);
-    let session_label = session_label(&session_id, mcp_connected, skills_count.get());
-    let footer_left = footer_left_label(&project_label.read(), chrome.turn_count);
-    let stats_label = header_stats_from_chrome(&chrome, &footer_token_display);
+    let project_name = paths
+        .read()
+        .project_dir()
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("?")
+        .to_string();
+    let git = git_footer.read().clone();
     let model_label = if chrome.model_label.is_empty() {
         fallback_model_label.clone()
     } else {
@@ -1213,8 +1220,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         ) {
             Header(
                 screen_width: screen_width,
-                session_label: session_label,
-                stats_label: stats_label,
+                session_id: session_id.clone(),
+                mcp_connected: mcp_connected,
+                skills_count: skills_count.get(),
+                cost_usd: chrome.cost_usd,
+                tokens_used: chrome.tokens_used,
+                context_pct: chrome.context_pct,
+                context_limit: chrome.context_limit,
+                token_display: footer_token_display.clone(),
             )
             TranscriptPanel(
                 screen_width: screen_width,
@@ -1408,7 +1421,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 agent_mode: agent_mode.get(),
                 thinking_level: thinking_level.get(),
                 has_focus: prompt_focused,
-                project_label: footer_left.clone(),
+                project_name: project_name.clone(),
+                git: git.clone(),
+                turn: chrome.turn_count,
                 model_label: model_label.clone(),
                 supports_images: supports_images,
                 draft: Some(draft),
@@ -1451,11 +1466,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
 
                         let is_slash = text.trim_start().starts_with('/');
-                        push_transcript_message(
-                            &mut messages,
-                            &mut messages_revision,
-                            TranscriptMessage::text(text.clone(), TranscriptStyle::for_user_submit(&text)),
+                        let mut submitted = TranscriptMessage::text(
+                            text.clone(),
+                            TranscriptStyle::for_user_submit(&text),
                         );
+                        if submitted.style.is_user_input_card() {
+                            submitted.submitted_at = Some(chrono::Utc::now());
+                        }
+                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
 
                         let extension_registry = extension_host.registry();
                         let ext_registry = extension_registry.read();
