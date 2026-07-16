@@ -14,6 +14,7 @@ pub struct PromptChromeProps {
     pub screen_height: u16,
     pub agent_mode: AgentMode,
     pub thinking_level: ThinkingLevel,
+    pub has_focus: bool,
     pub project_label: String,
     pub model_label: String,
     pub supports_images: bool,
@@ -24,6 +25,7 @@ pub struct PromptChromeProps {
     pub slash_palette_snapshot: SlashPaletteSnapshot,
     pub slash_palette_selected: Option<State<usize>>,
     pub on_submit: HandlerMut<'static, String>,
+    pub on_escape: HandlerMut<'static, ()>,
 }
 
 #[component]
@@ -59,11 +61,17 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     screen_width: props.screen_width,
                     screen_height: props.screen_height,
                     agent_mode: props.agent_mode,
+                    has_focus: props.has_focus,
                     draft: props.draft,
                     live_draft: props.live_draft,
                     suppress_enter_newline: props.suppress_enter_newline,
                     force_clear: props.force_editor_clear,
                     on_submit: props.on_submit.take(),
+                    on_escape: if props.slash_palette_snapshot.visible {
+                        HandlerMut::default()
+                    } else {
+                        props.on_escape.take()
+                    },
                 )
                 SlashCommandPalette(
                     screen_width: props.screen_width,

@@ -5,6 +5,7 @@
 mod activity;
 mod agent_bridge;
 mod chrome;
+mod focus;
 mod labels;
 mod prompt;
 mod session_prefs;

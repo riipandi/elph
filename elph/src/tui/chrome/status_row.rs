@@ -10,6 +10,7 @@ use crate::tui::activity::{braille_spinner_glyph, format_activity_line};
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+Q exit";
 
 const TIPS: &[&str] = &[
+    "Esc scrolls transcript · type to edit",
     "Shift+↑↓ scrolls the transcript",
     "Ctrl+A cycles agent mode",
     "Shift+Tab cycles thinking level",

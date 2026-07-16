@@ -37,6 +37,7 @@ pub struct TextareaInputContext<'a> {
     pub pending_esc: &'a mut bool,
     pub paste_burst: &'a mut PasteBurstState,
     pub last_key_at: &'a mut Option<Instant>,
+    pub on_escape: &'a mut HandlerMut<'static, ()>,
 }
 
 /// Handle one terminal event against live editor state.
@@ -59,6 +60,16 @@ pub fn handle_textarea_terminal_event(
     else {
         return TextareaInputResult::Ignored;
     };
+
+    if kind != KeyEventKind::Release
+        && code == KeyCode::Esc
+        && modifiers.is_empty()
+        && !*ctx.pending_esc
+        && !ctx.on_escape.is_default()
+    {
+        (ctx.on_escape)(());
+        return TextareaInputResult::Consumed;
+    }
 
     let now = Instant::now();
     if kind != KeyEventKind::Release && code != KeyCode::Enter {
@@ -180,6 +191,7 @@ mod tests {
         burst: &'a mut PasteBurstState,
         last: &'a mut Option<Instant>,
         submit_on_enter: bool,
+        on_escape: &'a mut HandlerMut<'static, ()>,
     ) -> TextareaInputContext<'a> {
         TextareaInputContext {
             has_focus: true,
@@ -189,6 +201,7 @@ mod tests {
             pending_esc: esc,
             paste_burst: burst,
             last_key_at: last,
+            on_escape,
         }
     }
 
@@ -199,7 +212,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit("hi".into())
@@ -213,7 +227,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Char('c')), &mut state, ctx),
             TextareaInputResult::Changed
@@ -223,13 +238,34 @@ mod tests {
     }
 
     #[test]
+    fn plain_escape_invokes_blur_handler() {
+        let mut state = TextareaState::from_text("hi".into());
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let blurred = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let blurred_capture = std::sync::Arc::clone(&blurred);
+        let mut on_escape = HandlerMut::from(move |_| {
+            blurred_capture.store(true, std::sync::atomic::Ordering::Relaxed);
+        });
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Esc), &mut state, ctx),
+            TextareaInputResult::Consumed
+        );
+        assert!(blurred.load(std::sync::atomic::Ordering::Relaxed));
+        assert_eq!(state.text, "hi");
+    }
+
+    #[test]
     fn shift_enter_inserts_newline() {
         let mut state = TextareaState::from_text("hi".into());
         state.cursor = 2;
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(shift_enter(), &mut state, ctx),
             TextareaInputResult::Changed
@@ -245,6 +281,7 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for (i, ch) in paste.chars().enumerate() {
             let ctx = TextareaInputContext {
@@ -255,6 +292,7 @@ mod tests {
                 pending_esc: &mut esc,
                 paste_burst: &mut burst,
                 last_key_at: &mut last,
+                on_escape: &mut on_escape,
             };
             let result = handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
             if i == 0 {
@@ -274,6 +312,7 @@ mod tests {
             pending_esc: &mut esc,
             paste_burst: &mut burst,
             last_key_at: &mut last,
+            on_escape: &mut on_escape,
         };
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Char('!')), &mut state, ctx),
@@ -296,7 +335,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(shift_key_press(KeyCode::Up), &mut state, ctx),
             TextareaInputResult::Consumed
@@ -311,7 +351,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Left), &mut state, ctx),
             TextareaInputResult::Changed
@@ -325,7 +366,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx),
             TextareaInputResult::Changed
@@ -340,12 +382,13 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx);
 
         for ch in ELPH_PASTE.chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
             assert_eq!(
                 handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx),
                 TextareaInputResult::Consumed
@@ -361,13 +404,14 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for ch in ELPH_PASTE.chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
         thread::sleep(Duration::from_millis(110));
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         handle_textarea_terminal_event(shift_key_press(KeyCode::Up), &mut state, ctx);
         assert_eq!(state.text, ELPH_PASTE);
         assert_eq!(state.cursor, ELPH_PASTE.len());
@@ -379,16 +423,17 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for (i, ch) in ELPH_PASTE.chars().enumerate() {
             if i > 0 && i % 37 == 0 {
                 thread::sleep(Duration::from_millis(110));
             }
-            let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
         thread::sleep(Duration::from_millis(110));
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         handle_textarea_terminal_event(shift_key_press(KeyCode::Up), &mut state, ctx);
         assert_eq!(state.text, ELPH_PASTE);
         assert_eq!(state.cursor, ELPH_PASTE.len());
@@ -399,7 +444,8 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         handle_textarea_terminal_event(TerminalEvent::Paste(paste.into()), &mut state, ctx);
         assert_eq!(state.text, paste, "text mismatch for paste len {}", paste.len());
         assert_eq!(state.cursor, paste.len(), "cursor should be at EOF");
@@ -421,13 +467,14 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for ch in "hello".chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit("hello".into())
@@ -440,15 +487,16 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for ch in "hello".chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
 
         thread::sleep(Duration::from_millis(110));
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit("hello".into())
@@ -461,11 +509,12 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         handle_textarea_terminal_event(key_press(KeyCode::Char('x')), &mut state, ctx);
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit("x".into())
@@ -478,13 +527,14 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx);
 
         thread::sleep(Duration::from_millis(160));
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Submit(ELPH_PASTE.into())
@@ -497,13 +547,14 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
         for ch in ELPH_PASTE.chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Consumed
@@ -512,7 +563,7 @@ mod tests {
         assert!(burst.buffer.ends_with('\n'));
 
         thread::sleep(Duration::from_millis(110));
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         handle_textarea_terminal_event(shift_key_press(KeyCode::Up), &mut state, ctx);
         assert_eq!(state.text, format!("{ELPH_PASTE}\n"));
         assert_eq!(state.cursor, ELPH_PASTE.len() + 1);
@@ -524,11 +575,12 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx);
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, true);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
         assert_eq!(
             handle_textarea_terminal_event(key_press(KeyCode::Enter), &mut state, ctx),
             TextareaInputResult::Consumed
@@ -543,15 +595,16 @@ mod tests {
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
+        let mut on_escape = HandlerMut::default();
 
-        let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
         handle_textarea_terminal_event(TerminalEvent::Paste(ELPH_PASTE.into()), &mut state, ctx);
 
         // Simulate terminal echo starting after the old 150ms guard but within scaled guard.
         thread::sleep(Duration::from_millis(220));
 
         for ch in ELPH_PASTE.chars() {
-            let ctx = test_context(&mut esc, &mut burst, &mut last, false);
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
             assert_eq!(
                 handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx),
                 TextareaInputResult::Consumed

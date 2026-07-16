@@ -40,6 +40,8 @@ pub struct TextareaProps {
     /// When true, plain `Enter` calls [`Self::on_submit`] (Shift+Enter / Ctrl+J still insert newlines).
     pub submit_on_enter: bool,
     pub on_submit: HandlerMut<'static, String>,
+    /// Plain `Esc` (no CSI-u prefix) — e.g. blur the editor for transcript scroll.
+    pub on_escape: HandlerMut<'static, ()>,
 }
 
 use crate::components::scroll_bar::ScrollbarStyle;

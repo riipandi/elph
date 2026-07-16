@@ -15,6 +15,7 @@ use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
 
 use crate::tui::activity::activity_label_for_event;
+use crate::tui::focus::{ShellFocus, prompt_focus_char};
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{
     ChromeStats, Header, StatusRow, format_elapsed_secs, header_stats_from_chrome, read_git_branch,
@@ -154,6 +155,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut slash_palette_index = hooks.use_state(|| 0usize);
     let mut slash_palette_query = hooks.use_ref(String::new);
     let mut palette_refresh_pending = hooks.use_state(|| false);
+    let mut shell_focus = hooks.use_state(ShellFocus::default);
 
     let extension_host = props.extension_host.clone();
     let cwd = props.cwd.clone();
@@ -359,7 +361,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 return;
             }
 
+            if shell_focus.get() == ShellFocus::Transcript
+                && let Some(ch) = prompt_focus_char(code, modifiers)
+            {
+                shell_focus.set(ShellFocus::Prompt);
+                let mut text = live_draft.read().clone();
+                text.push(ch);
+                draft.set(text.clone());
+                live_draft.set(text);
+                suppress_enter_newline.set(false);
+                return;
+            }
+
             match (modifiers, code) {
+                (m, KeyCode::Esc) if m.is_empty() && shell_focus.get() == ShellFocus::Transcript => {
+                    shell_focus.set(ShellFocus::Prompt);
+                }
                 (m, KeyCode::Char('a')) if m.contains(KeyModifiers::CONTROL) => {
                     let next = agent_mode.get().next();
                     agent_mode.set(next);
@@ -437,6 +454,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         chrome.model_label.clone()
     };
     let supports_images = chrome.supports_images;
+    let prompt_focused = shell_focus.get() == ShellFocus::Prompt;
+    let transcript_focused = shell_focus.get() == ShellFocus::Transcript;
 
     let draft_for_palette = live_draft.read().clone();
     let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
@@ -474,6 +493,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 messages: Some(messages),
                 messages_revision: messages_revision.get(),
                 sticky_scroll: props.sticky_scroll,
+                has_focus: transcript_focused,
             )
             StatusRow(
                 screen_width: screen_width,
@@ -516,6 +536,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         screen_height: screen_height,
                         agent_mode: agent_mode.get(),
                         thinking_level: thinking_level.get(),
+                        has_focus: prompt_focused,
                         project_label: footer_left.clone(),
                         model_label: model_label.clone(),
                         supports_images: supports_images,
@@ -525,7 +546,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         force_editor_clear: Some(force_editor_clear),
                         slash_palette_snapshot: slash_palette_snapshot,
                         slash_palette_selected: Some(slash_palette_index),
+                        on_escape: move |_| {
+                            shell_focus.set(ShellFocus::Transcript);
+                        },
                         on_submit: move |text: String| {
+                    shell_focus.set(ShellFocus::Prompt);
                     if text.trim().is_empty() {
                         return;
                     }

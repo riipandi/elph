@@ -62,7 +62,13 @@ pub const TOOL_FAILED_FG: Color = Color::Rgb { r: 204, g: 102, b: 102 };
 
 /// Pi `borderMuted` (`#505050`).
 pub const EDITOR_BORDER: Color = Color::Rgb { r: 80, g: 80, b: 80 };
+/// Muted editor chrome when transcript has focus.
+pub const EDITOR_BORDER_DIMMED: Color = Color::Rgb { r: 56, g: 56, b: 56 };
+pub const EDITOR_TEXT_FOCUSED: Color = Color::Grey;
+pub const EDITOR_TEXT_DIMMED: Color = Color::DarkGrey;
 pub const EDITOR_CURSOR: Color = Color::White;
+/// Transcript panel top border when the scroll region has focus.
+pub const TRANSCRIPT_BORDER_FOCUSED: Color = Color::Rgb { r: 120, g: 120, b: 120 };
 
 pub fn rgb_color((r, g, b): (u8, u8, u8)) -> Color {
     Color::Rgb { r, g, b }

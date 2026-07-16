@@ -123,7 +123,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let show_border = props.show_border.unwrap_or(true);
 
     let mut editor = hooks.use_ref(|| TextareaState::from_text(value.read().clone()));
-    let pending_esc = hooks.use_ref(|| false);
+    let mut pending_esc = hooks.use_ref(|| false);
     let paste_burst = hooks.use_ref(crate::paste::PasteBurstState::default);
     let last_key_at = hooks.use_ref(|| None::<std::time::Instant>);
     let mut scroll_row = hooks.use_ref(|| 0u16);
@@ -131,6 +131,11 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
     let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
+    let on_escape = props.on_escape.take();
+
+    if !has_focus {
+        pending_esc.set(false);
+    }
 
     {
         let mut ed = editor.write();
@@ -205,6 +210,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut value = value;
         let mut generation = generation;
         let mut on_submit = on_submit;
+        let mut on_escape = on_escape;
         let mut pending_esc = pending_esc;
         let mut paste_burst = paste_burst;
         let mut last_key_at = last_key_at;
@@ -228,6 +234,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         pending_esc: &mut esc,
                         paste_burst: &mut burst,
                         last_key_at: &mut last,
+                        on_escape: &mut on_escape,
                     },
                 )
             };

@@ -1,15 +1,16 @@
 //! Scrollable transcript panel with sticky user prompts.
 
 use elph_tui::{
-    active_sticky_user_message_index, layout_sticky_header, scroll_view_down, scroll_view_up,
-    transcript_bubble_inner_width,
+    active_sticky_user_message_index, layout_sticky_header, scroll_view_down, scroll_view_max_offset,
+    scroll_view_up, transcript_bubble_inner_width,
 };
 use iocraft::prelude::*;
 
 use super::card::{build_transcript_bubbles, transcript_sticky_overlay};
 use super::layout::layout_transcript_rows;
 use super::types::TranscriptMessage;
-use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK};
+use crate::tui::focus::transcript_nav_key;
+use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK, TRANSCRIPT_BORDER_FOCUSED};
 
 const TRANSCRIPT_SCROLL_STEP: i32 = 3;
 /// Minimum scrollable lines below a sticky user prompt.
@@ -22,6 +23,7 @@ pub struct TranscriptPanelProps {
     /// Bumped when `messages` changes — avoids re-hashing on scroll-only re-renders.
     pub messages_revision: u64,
     pub sticky_scroll: bool,
+    pub has_focus: bool,
 }
 
 struct TranscriptRenderCache {
@@ -92,6 +94,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     });
     let sticky_rows = sticky_header.as_ref().map(|h| h.height).unwrap_or(0);
 
+    let transcript_focused = props.has_focus;
     hooks.use_terminal_events({
         let mut scroll_handle = scroll_handle;
         let mut scroll_generation = scroll_generation;
@@ -102,19 +105,58 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             else {
                 return;
             };
-            if kind == KeyEventKind::Release || !modifiers.contains(KeyModifiers::SHIFT) {
+            if kind == KeyEventKind::Release {
                 return;
             }
-            let scrolled = match code {
-                KeyCode::Up => {
-                    scroll_view_up(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
-                    true
+
+            let scroll_step = match code {
+                KeyCode::PageUp | KeyCode::PageDown => TRANSCRIPT_SCROLL_STEP.saturating_mul(3),
+                _ => TRANSCRIPT_SCROLL_STEP,
+            };
+
+            let scrolled = if transcript_focused && transcript_nav_key(code, kind, modifiers) {
+                match code {
+                    KeyCode::Up | KeyCode::PageUp => {
+                        scroll_view_up(&mut scroll_handle.write(), scroll_step);
+                        true
+                    }
+                    KeyCode::Down | KeyCode::PageDown => {
+                        scroll_view_down(&mut scroll_handle.write(), scroll_step);
+                        true
+                    }
+                    KeyCode::Home => {
+                        scroll_handle.write().scroll_to(0);
+                        true
+                    }
+                    KeyCode::End => {
+                        let (content_height, viewport_height) = {
+                            let h = scroll_handle.read();
+                            (h.content_height(), h.viewport_height())
+                        };
+                        scroll_handle
+                            .write()
+                            .scroll_to(scroll_view_max_offset(content_height, viewport_height));
+                        true
+                    }
+                    _ => false,
                 }
-                KeyCode::Down => {
-                    scroll_view_down(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
-                    true
+            } else if modifiers.contains(KeyModifiers::SHIFT)
+                && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+                && matches!(code, KeyCode::Up | KeyCode::Down)
+            {
+                match code {
+                    KeyCode::Up => {
+                        scroll_view_up(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
+                        true
+                    }
+                    KeyCode::Down => {
+                        scroll_view_down(&mut scroll_handle.write(), TRANSCRIPT_SCROLL_STEP);
+                        true
+                    }
+                    _ => false,
                 }
-                _ => false,
+            } else {
+                false
             };
             if scrolled {
                 scroll_generation.set(scroll_generation.get().wrapping_add(1));
@@ -131,7 +173,11 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             overflow: Overflow::Hidden,
             border_style: BorderStyle::Single,
             border_edges: Edges::Top,
-            border_color: BORDER_MUTED,
+            border_color: if props.has_focus {
+                TRANSCRIPT_BORDER_FOCUSED
+            } else {
+                BORDER_MUTED
+            },
             margin_bottom: 1,
         ) {
             View(
