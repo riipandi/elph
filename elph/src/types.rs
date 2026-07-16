@@ -120,7 +120,12 @@ pub enum PromptAction {
 
 /// Returns true when submitted text is the Neovim-style quit command (`:q`).
 pub fn is_quit_command(text: &str) -> bool {
-    matches!(text.trim(), ":q" | ":q!")
+    text.trim() == ":q"
+}
+
+/// Returns true for forced quit (`:q!`) — exits immediately, even during an active turn.
+pub fn is_force_quit_command(text: &str) -> bool {
+    text.trim() == ":q!"
 }
 
 #[cfg(test)]
@@ -142,7 +147,14 @@ mod tests {
     #[test]
     fn detects_quit_command() {
         assert!(is_quit_command(":q"));
+        assert!(!is_quit_command(":q!"));
         assert!(!is_quit_command("hello"));
+    }
+
+    #[test]
+    fn detects_force_quit_command() {
+        assert!(is_force_quit_command(":q!"));
+        assert!(!is_force_quit_command(":q"));
     }
 }
 

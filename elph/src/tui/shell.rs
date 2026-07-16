@@ -14,10 +14,11 @@ use crate::agent::{
 };
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
-use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
+use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_force_quit_command, is_quit_command};
 
 use crate::tui::activity::{
-    TurnTokenTracker, activity_label_for_event, format_busy_token_info, format_turn_canceled_notice,
+    TurnTokenTracker, activity_label_for_event, format_busy_right_with_quit_confirm, format_busy_token_info,
+    format_quit_canceled_notice, format_quit_while_busy_transcript, format_turn_canceled_notice,
     format_turn_complete_notice,
 };
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
@@ -131,6 +132,98 @@ fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool) {
     });
 }
 
+struct PendingQuitAction<'a> {
+    pending_quit_confirm: &'a mut Ref<bool>,
+    should_exit: &'a mut State<bool>,
+    busy: &'a State<bool>,
+    turn_cancel_requested: &'a mut Ref<bool>,
+    prompt_queue: &'a mut Ref<PromptQueue>,
+    pending_tool_approval: &'a mut Ref<Option<PendingToolApproval>>,
+    pending_user_question: &'a mut Ref<Option<PendingUserQuestion>>,
+    agent_session: &'a Option<Arc<CodingAgentSession>>,
+}
+
+fn arm_pending_quit(
+    pending_quit_confirm: &mut Ref<bool>,
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+) {
+    if pending_quit_confirm.get() {
+        return;
+    }
+    pending_quit_confirm.set(true);
+    push_transcript_message(
+        messages,
+        messages_revision,
+        TranscriptMessage::text(format_quit_while_busy_transcript(), TranscriptStyle::Meta),
+    );
+}
+
+fn dismiss_pending_quit(
+    pending_quit_confirm: &mut Ref<bool>,
+    idle_status_notice: &mut Ref<Option<IdleStatusNotice>>,
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+) {
+    if !pending_quit_confirm.get() {
+        return;
+    }
+    pending_quit_confirm.set(false);
+    idle_status_notice.set(Some(IdleStatusNotice {
+        text: format_quit_canceled_notice(),
+        since: Instant::now(),
+    }));
+    push_transcript_message(
+        messages,
+        messages_revision,
+        TranscriptMessage::text(format_quit_canceled_notice(), TranscriptStyle::Meta),
+    );
+}
+
+fn confirm_pending_quit(ctx: PendingQuitAction<'_>) {
+    ctx.pending_quit_confirm.set(false);
+    if ctx.busy.get() {
+        ctx.turn_cancel_requested.set(true);
+        ctx.prompt_queue.write().clear();
+        if let Some(pending) = ctx.pending_tool_approval.write().take() {
+            pending.respond(ToolApprovalChoice::Reject);
+        }
+        if let Some(question) = ctx.pending_user_question.write().take() {
+            question.respond(String::new());
+        }
+        if let Some(session) = ctx.agent_session.as_ref() {
+            TurnDispatcher::spawn_abort(Arc::clone(session));
+        }
+    }
+    ctx.should_exit.set(true);
+}
+
+/// Request application exit. Returns `true` when the shell should exit now.
+fn request_quit(
+    ctx: PendingQuitAction<'_>,
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    force: bool,
+) -> bool {
+    if force {
+        confirm_pending_quit(ctx);
+        return true;
+    }
+    if ctx.busy.get() {
+        if ctx.pending_quit_confirm.get() {
+            confirm_pending_quit(ctx);
+            true
+        } else {
+            arm_pending_quit(ctx.pending_quit_confirm, messages, messages_revision);
+            false
+        }
+    } else {
+        ctx.pending_quit_confirm.set(false);
+        ctx.should_exit.set(true);
+        true
+    }
+}
+
 fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracker>>, chrome: &ChromeStats) {
     tracker.set(Some(TurnTokenTracker::new(chrome.tokens_used)));
 }
@@ -216,6 +309,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut last_transcript_publish = hooks.use_ref(|| Instant::now() - Duration::from_millis(TRANSCRIPT_PUBLISH_MS));
     let mut idle_status_notice = hooks.use_ref(|| None::<IdleStatusNotice>);
     let mut turn_cancel_requested = hooks.use_ref(|| false);
+    let mut pending_quit_confirm = hooks.use_ref(|| false);
     let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
 
     hooks.use_future(async move {
@@ -368,6 +462,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             if run_completed {
+                pending_quit_confirm.set(false);
                 busy.set(false);
                 busy_started_at.set(None);
                 elapsed_secs.set(0.0);
@@ -413,6 +508,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     hooks.use_terminal_events({
         let paths = paths.read().clone();
         let agent_session = agent_session.clone();
+        let mut messages = messages;
+        let mut messages_revision = messages_revision;
         move |event| {
             let TerminalEvent::Key(KeyEvent {
                 code, kind, modifiers, ..
@@ -426,6 +523,37 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             let mut pending_tool_approval = pending_tool_approval;
             let mut pending_user_question = pending_user_question;
+            let mut pending_quit_confirm = pending_quit_confirm;
+            if pending_quit_confirm.get()
+                && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
+            {
+                match code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        confirm_pending_quit(PendingQuitAction {
+                            pending_quit_confirm: &mut pending_quit_confirm,
+                            should_exit: &mut should_exit,
+                            busy: &busy,
+                            turn_cancel_requested: &mut turn_cancel_requested,
+                            prompt_queue: &mut prompt_queue,
+                            pending_tool_approval: &mut pending_tool_approval,
+                            pending_user_question: &mut pending_user_question,
+                            agent_session: &agent_session,
+                        });
+                        return;
+                    }
+                    KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                        dismiss_pending_quit(
+                            &mut pending_quit_confirm,
+                            &mut idle_status_notice,
+                            &mut messages,
+                            &mut messages_revision,
+                        );
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+
             if pending_tool_approval.read().is_some()
                 && let Some(choice) = choice_from_key(modifiers, code)
             {
@@ -544,7 +672,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         });
                     }
                 }
-                (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => should_exit.set(true),
+                (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => {
+                    let _ = request_quit(
+                        PendingQuitAction {
+                            pending_quit_confirm: &mut pending_quit_confirm,
+                            should_exit: &mut should_exit,
+                            busy: &busy,
+                            turn_cancel_requested: &mut turn_cancel_requested,
+                            prompt_queue: &mut prompt_queue,
+                            pending_tool_approval: &mut pending_tool_approval,
+                            pending_user_question: &mut pending_user_question,
+                            agent_session: &agent_session,
+                        },
+                        &mut messages,
+                        &mut messages_revision,
+                        false,
+                    );
+                }
                 (m, KeyCode::Char('c')) if m.contains(KeyModifiers::CONTROL) && busy.get() => {
                     turn_cancel_requested.set(true);
                     activity_label.set("Cancelling…".to_string());
@@ -615,10 +759,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let prompt_focused = shell_focus.get() == ShellFocus::Prompt;
     let transcript_focused = shell_focus.get() == ShellFocus::Transcript;
     let busy_token_info = if busy.get() {
-        turn_token_tracker
+        let base = turn_token_tracker
             .read()
             .as_ref()
             .map(|tracker| format_busy_token_info(tracker.stream_tokens, tracker.tokens_per_sec(elapsed_secs.get())))
+            .unwrap_or_default();
+        if pending_quit_confirm.get() {
+            Some(format_busy_right_with_quit_confirm(&base))
+        } else if base.is_empty() {
+            None
+        } else {
+            Some(base)
+        }
     } else {
         None
     };
@@ -773,8 +925,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if text.trim().is_empty() {
                         return;
                     }
-                    if is_quit_command(&text) {
-                        should_exit.set(true);
+                    if is_force_quit_command(&text) || is_quit_command(&text) {
+                        let _ = request_quit(
+                            PendingQuitAction {
+                                pending_quit_confirm: &mut pending_quit_confirm,
+                                should_exit: &mut should_exit,
+                                busy: &busy,
+                                turn_cancel_requested: &mut turn_cancel_requested,
+                                prompt_queue: &mut prompt_queue,
+                                pending_tool_approval: &mut pending_tool_approval,
+                                pending_user_question: &mut pending_user_question,
+                                agent_session: &agent_session,
+                            },
+                            &mut messages,
+                            &mut messages_revision,
+                            is_force_quit_command(&text),
+                        );
                         draft.set(String::new());
                         live_draft.set(String::new());
                         suppress_enter_newline.set(true);
@@ -805,7 +971,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     });
 
                     match outcome {
-                        SlashOutcome::Quit => should_exit.set(true),
+                        SlashOutcome::Quit => {
+                            let _ = request_quit(
+                                PendingQuitAction {
+                                    pending_quit_confirm: &mut pending_quit_confirm,
+                                    should_exit: &mut should_exit,
+                                    busy: &busy,
+                                    turn_cancel_requested: &mut turn_cancel_requested,
+                                    prompt_queue: &mut prompt_queue,
+                                    pending_tool_approval: &mut pending_tool_approval,
+                                    pending_user_question: &mut pending_user_question,
+                                    agent_session: &agent_session,
+                                },
+                                &mut messages,
+                                &mut messages_revision,
+                                false,
+                            );
+                        }
                         SlashOutcome::Status(message) => {
                             push_transcript_message(
                                 &mut messages,

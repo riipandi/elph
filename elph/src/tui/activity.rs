@@ -80,6 +80,29 @@ pub fn format_turn_canceled_notice(elapsed_secs: f64) -> String {
     format!("Turn canceled · {elapsed_secs:.1}s")
 }
 
+/// Transcript notice when quit is requested while a turn is still running.
+pub fn format_quit_while_busy_transcript() -> String {
+    "Agent is still responding. Press y to quit (cancels the turn), n to keep waiting, or repeat /exit, :q, or Ctrl+D to confirm."
+        .to_string()
+}
+
+/// Status-row suffix while quit confirmation is pending during an active turn.
+pub const QUIT_CONFIRM_BUSY_HINT: &str = "y quit · n stay";
+
+/// Brief status notice after the user dismisses a pending quit.
+pub fn format_quit_canceled_notice() -> String {
+    "Quit canceled".to_string()
+}
+
+/// Append quit-confirm keys to the busy status-row right segment when needed.
+pub fn format_busy_right_with_quit_confirm(base: &str) -> String {
+    if base.trim().is_empty() {
+        QUIT_CONFIRM_BUSY_HINT.to_string()
+    } else {
+        format!("{base} | {QUIT_CONFIRM_BUSY_HINT}")
+    }
+}
+
 /// Conservative token estimate for one streaming delta (matches compaction heuristic).
 pub fn estimate_delta_tokens(delta: &str) -> u64 {
     delta.chars().count().div_ceil(4) as u64
@@ -218,6 +241,24 @@ mod tests {
         assert_eq!(format_stream_token_delta(0), "");
         assert_eq!(format_stream_token_delta(240), "+240");
         assert_eq!(format_stream_token_delta(1_200), "+1k");
+    }
+
+    #[test]
+    fn format_busy_right_with_quit_confirm_appends_hint() {
+        assert_eq!(
+            format_busy_right_with_quit_confirm("+240 · 12 t/s"),
+            "+240 · 12 t/s | y quit · n stay"
+        );
+        assert_eq!(format_busy_right_with_quit_confirm(""), QUIT_CONFIRM_BUSY_HINT);
+    }
+
+    #[test]
+    fn format_quit_while_busy_transcript_mentions_confirm_keys() {
+        let notice = format_quit_while_busy_transcript();
+        assert!(notice.contains("y"));
+        assert!(notice.contains("/exit"));
+        assert!(notice.contains(":q"));
+        assert!(notice.contains("Ctrl+D"));
     }
 
     #[test]
