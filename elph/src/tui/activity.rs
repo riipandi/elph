@@ -75,6 +75,11 @@ pub fn format_turn_complete_notice(elapsed_secs: f64) -> String {
     format!("Turn complete · {elapsed_secs:.1}s")
 }
 
+/// Idle status notice shown briefly after the user cancels an active turn.
+pub fn format_turn_canceled_notice(elapsed_secs: f64) -> String {
+    format!("Turn canceled · {elapsed_secs:.1}s")
+}
+
 /// Conservative token estimate for one streaming delta (matches compaction heuristic).
 pub fn estimate_delta_tokens(delta: &str) -> u64 {
     delta.chars().count().div_ceil(4) as u64
@@ -196,6 +201,11 @@ mod tests {
     #[test]
     fn format_turn_complete_notice_includes_elapsed() {
         assert_eq!(format_turn_complete_notice(3.45), "Turn complete · 3.5s");
+    }
+
+    #[test]
+    fn format_turn_canceled_notice_includes_elapsed() {
+        assert_eq!(format_turn_canceled_notice(2.1), "Turn canceled · 2.1s");
     }
 
     #[test]

@@ -9,7 +9,11 @@ use crate::types::SlashCommand;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashPaletteKeyAction {
     MoveSelection(usize),
-    CompleteDraft(String),
+    CompleteDraft {
+        text: String,
+        /// When true, the shell sets `suppress_enter_newline` so the editor does not submit.
+        suppress_enter_newline: bool,
+    },
     /// Close the palette and return to normal prompt input.
     Dismiss,
 }
@@ -27,8 +31,18 @@ pub fn resolve_key_action(
 
     match (modifiers, code) {
         (_, KeyCode::Esc) if modifiers.is_empty() => Some(SlashPaletteKeyAction::Dismiss),
-        (_, KeyCode::Tab) | (_, KeyCode::Right) => selected_command_name(filtered_commands, selected_index)
-            .map(|name| SlashPaletteKeyAction::CompleteDraft(complete_command(draft, name))),
+        (_, KeyCode::Tab) | (_, KeyCode::Right) => {
+            selected_command_name(filtered_commands, selected_index).map(|name| SlashPaletteKeyAction::CompleteDraft {
+                text: complete_command(draft, name),
+                suppress_enter_newline: false,
+            })
+        }
+        (_, KeyCode::Enter) if modifiers.is_empty() => {
+            selected_command_name(filtered_commands, selected_index).map(|name| SlashPaletteKeyAction::CompleteDraft {
+                text: complete_command(draft, name),
+                suppress_enter_newline: true,
+            })
+        }
         (_, KeyCode::Up) | (_, KeyCode::Down) if modifiers.is_empty() => {
             if filtered_commands.is_empty() {
                 return None;
@@ -96,7 +110,28 @@ mod tests {
         let commands = sample_commands();
         let filtered = super::super::model::filter_commands(&commands, "go");
         let action = resolve_key_action(draft, &filtered, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
-        assert_eq!(action, SlashPaletteKeyAction::CompleteDraft("/goal ".into()));
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/goal ".into(),
+                suppress_enter_newline: false,
+            }
+        );
+    }
+
+    #[test]
+    fn enter_completes_selected_command_without_submitting() {
+        let draft = "/go";
+        let commands = sample_commands();
+        let filtered = super::super::model::filter_commands(&commands, "go");
+        let action = resolve_key_action(draft, &filtered, 0, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/goal ".into(),
+                suppress_enter_newline: true,
+            }
+        );
     }
 
     #[test]

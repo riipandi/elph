@@ -32,6 +32,16 @@ pub(crate) fn handle_enter_key(key: EnterKey<'_>) -> Option<TextareaInputResult>
         return Some(TextareaInputResult::Consumed);
     }
 
+    if key.suppress_enter_newline.is_some_and(|s| s.get())
+        && key.code == KeyCode::Enter
+        && key.kind != KeyEventKind::Release
+    {
+        if let Some(mut suppress) = key.suppress_enter_newline {
+            suppress.set(false);
+        }
+        return Some(TextareaInputResult::Consumed);
+    }
+
     if should_submit_on_enter(
         true,
         key.submit_on_enter,
@@ -48,17 +58,6 @@ pub(crate) fn handle_enter_key(key: EnterKey<'_>) -> Option<TextareaInputResult>
                 suppress.set(true);
             }
             return Some(TextareaInputResult::Submit(draft));
-        }
-        return Some(TextareaInputResult::Consumed);
-    }
-
-    // Consume one ghost Enter only immediately after submit (before the user types again).
-    if key.suppress_enter_newline.is_some_and(|s| s.get())
-        && key.code == KeyCode::Enter
-        && key.kind != KeyEventKind::Release
-    {
-        if let Some(mut suppress) = key.suppress_enter_newline {
-            suppress.set(false);
         }
         return Some(TextareaInputResult::Consumed);
     }

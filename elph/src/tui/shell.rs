@@ -4,18 +4,21 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use elph_agent::PromptTemplate;
+use elph_agent::{PromptTemplate, Skill};
 use elph_tui::rgb;
 use iocraft::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice, slash_commands_for_palette};
+use crate::agent::{
+    AgentUiEvent, CodingAgentSession, ToolApprovalChoice, parse_skill_slash, slash_commands_for_palette,
+};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
 
 use crate::tui::activity::{
-    TurnTokenTracker, activity_label_for_event, format_busy_token_info, format_turn_complete_notice,
+    TurnTokenTracker, activity_label_for_event, format_busy_token_info, format_turn_canceled_notice,
+    format_turn_complete_notice,
 };
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header, StatusRow};
@@ -38,17 +41,22 @@ const MAX_UI_EVENTS_PER_TICK: usize = 64;
 /// How long the status row shows turn elapsed after completion before returning to tips.
 const TURN_COMPLETE_NOTICE_MS: u64 = 5_000;
 
-struct TurnCompleteNotice {
+struct IdleStatusNotice {
     text: String,
     since: Instant,
 }
 
-fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate]) -> bool {
+fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate], skills: &[Skill]) -> bool {
     let trimmed = input.trim();
     if trimmed == "/compact" || trimmed == "/c" || trimmed.starts_with("/compact ") || trimmed.starts_with("/c ") {
         return true;
     }
     let body = trimmed.trim_start_matches('/').trim();
+    if let Some((name, _)) = parse_skill_slash(body)
+        && skills.iter().any(|skill| skill.name == name)
+    {
+        return true;
+    }
     let name = body
         .split_once(' ')
         .map_or(body, |(command, _)| command)
@@ -74,6 +82,7 @@ pub struct MainShellProps {
     pub extension_host: ExtensionHost,
     pub slash_commands: Vec<SlashCommand>,
     pub prompt_templates: Vec<PromptTemplate>,
+    pub skills: Vec<Skill>,
     pub cwd: PathBuf,
 }
 
@@ -96,6 +105,7 @@ impl Default for MainShellProps {
             extension_host: ExtensionHost::new(),
             slash_commands: Vec::new(),
             prompt_templates: Vec::new(),
+            skills: Vec::new(),
             cwd: PathBuf::new(),
         }
     }
@@ -155,6 +165,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     });
     let mut messages_revision = hooks.use_state(|| 0u64);
     let mut suppress_enter_newline = hooks.use_ref(|| false);
+    let mut slash_palette_active = hooks.use_ref(|| false);
+    let mut force_palette_sync = hooks.use_ref(|| false);
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
@@ -168,6 +180,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_user_question = hooks.use_ref(|| None::<PendingUserQuestion>);
     let mut slash_commands = hooks.use_state(|| props.slash_commands.clone());
     let mut prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
+    let mut skills = hooks.use_state(|| props.skills.clone());
     let mut slash_palette_index = hooks.use_state(|| 0usize);
     let mut slash_palette_query = hooks.use_ref(String::new);
     let mut palette_refresh_pending = hooks.use_state(|| false);
@@ -201,7 +214,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let session_id = props.session_id.clone();
     let mut transcript_pending = hooks.use_ref(|| false);
     let mut last_transcript_publish = hooks.use_ref(|| Instant::now() - Duration::from_millis(TRANSCRIPT_PUBLISH_MS));
-    let mut turn_complete_notice = hooks.use_ref(|| None::<TurnCompleteNotice>);
+    let mut idle_status_notice = hooks.use_ref(|| None::<IdleStatusNotice>);
+    let mut turn_cancel_requested = hooks.use_ref(|| false);
     let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
 
     hooks.use_future(async move {
@@ -210,11 +224,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             if palette_refresh_pending.get() {
                 if let Some(session) = agent_session_for_palette.as_ref() {
-                    let templates = session.harness().get_resources().await.prompt_templates;
+                    let resources = session.harness().get_resources().await;
+                    let templates = resources.prompt_templates.clone();
+                    let loaded_skills = resources.skills.clone();
                     prompt_templates.set(templates.clone());
+                    skills.set(loaded_skills.clone());
                     slash_commands.set(slash_commands_for_palette(
                         Some(&extension_host_for_palette.registry().read()),
                         Some(&templates),
+                        Some(&loaded_skills),
                     ));
                 }
                 palette_refresh_pending.set(false);
@@ -256,12 +274,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 spinner_tick.set(spinner_tick.get().wrapping_add(1));
             }
 
-            let turn_notice_expired = turn_complete_notice
+            let idle_notice_expired = idle_status_notice
                 .read()
                 .as_ref()
                 .is_some_and(|notice| notice.since.elapsed() >= Duration::from_millis(TURN_COMPLETE_NOTICE_MS));
-            if turn_notice_expired {
-                turn_complete_notice.set(None);
+            if idle_notice_expired {
+                idle_status_notice.set(None);
             }
 
             let mut transcript_changed = false;
@@ -358,7 +376,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 chrome_refresh_pending.set(true);
 
                 if let Some(next) = prompt_queue.write().pop_front() {
-                    turn_complete_notice.set(None);
+                    idle_status_notice.set(None);
+                    turn_cancel_requested.set(false);
                     mark_busy(
                         &mut BusyActivation {
                             busy: &mut busy,
@@ -374,8 +393,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         chrome_refresh_pending.set(true);
                         TurnDispatcher::spawn_turn(Arc::clone(session), next, false);
                     }
+                } else if turn_cancel_requested.get() {
+                    turn_cancel_requested.set(false);
+                    let elapsed = run_completed_elapsed.unwrap_or_else(|| elapsed_secs.get());
+                    idle_status_notice.set(Some(IdleStatusNotice {
+                        text: format_turn_canceled_notice(elapsed),
+                        since: Instant::now(),
+                    }));
                 } else if let Some(elapsed_secs) = run_completed_elapsed {
-                    turn_complete_notice.set(Some(TurnCompleteNotice {
+                    idle_status_notice.set(Some(IdleStatusNotice {
                         text: format_turn_complete_notice(elapsed_secs),
                         since: Instant::now(),
                     }));
@@ -450,10 +476,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 resolve_snapshot_key_action(&draft_text, &palette_snapshot, slash_palette_index.get(), code, modifiers)
             {
                 match action {
-                    SlashPaletteKeyAction::CompleteDraft(completed) => {
+                    SlashPaletteKeyAction::CompleteDraft {
+                        text: completed,
+                        suppress_enter_newline: suppress_enter,
+                    } => {
                         draft.set(completed.clone());
                         live_draft.set(completed);
-                        suppress_enter_newline.set(false);
+                        suppress_enter_newline.set(suppress_enter);
+                        force_palette_sync.set(true);
                         slash_palette_query.write().clear();
                         slash_palette_index.set(0);
                     }
@@ -486,7 +516,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 (m, KeyCode::Esc) if m.is_empty() && shell_focus.get() == ShellFocus::Transcript => {
                     shell_focus.set(ShellFocus::Prompt);
                 }
-                (m, KeyCode::Char('a')) if m.contains(KeyModifiers::CONTROL) => {
+                (m, KeyCode::Tab) if m.is_empty() => {
                     let next = agent_mode.get().next();
                     agent_mode.set(next);
                     persist_session_prefs(&paths, next, thinking_level.get());
@@ -516,6 +546,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
                 (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => should_exit.set(true),
                 (m, KeyCode::Char('c')) if m.contains(KeyModifiers::CONTROL) && busy.get() => {
+                    turn_cancel_requested.set(true);
                     activity_label.set("Cancelling…".to_string());
                     prompt_queue.write().clear();
                     if let Some(pending) = pending_tool_approval.write().take() {
@@ -527,10 +558,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if let Some(session) = agent_session.as_ref() {
                         TurnDispatcher::spawn_abort(Arc::clone(session));
                     } else {
+                        let canceled_elapsed = busy_started_at
+                            .read()
+                            .as_ref()
+                            .map(|started| format_elapsed_secs(*started))
+                            .unwrap_or(elapsed_secs.get());
                         busy.set(false);
                         busy_started_at.set(None);
                         elapsed_secs.set(0.0);
                         turn_token_tracker.set(None);
+                        turn_cancel_requested.set(false);
+                        idle_status_notice.set(Some(IdleStatusNotice {
+                            text: format_turn_canceled_notice(canceled_elapsed),
+                            since: Instant::now(),
+                        }));
                     }
                 }
                 (m, KeyCode::Char('c'))
@@ -574,15 +615,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let prompt_focused = shell_focus.get() == ShellFocus::Prompt;
     let transcript_focused = shell_focus.get() == ShellFocus::Transcript;
     let busy_token_info = if busy.get() {
-        turn_token_tracker.read().as_ref().map(|tracker| {
-            format_busy_token_info(tracker.stream_tokens, tracker.tokens_per_sec(elapsed_secs.get()))
-        })
+        turn_token_tracker
+            .read()
+            .as_ref()
+            .map(|tracker| format_busy_token_info(tracker.stream_tokens, tracker.tokens_per_sec(elapsed_secs.get())))
     } else {
         None
     };
 
     let draft_for_palette = live_draft.read().clone();
     let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
+    slash_palette_active.set(slash_palette_snapshot.visible);
     {
         let old_index = slash_palette_index.get();
         let mut query = slash_palette_query.write();
@@ -626,7 +669,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 accent: scanner_accent,
                 spinner_tick: spinner_tick.get(),
                 elapsed_secs: elapsed_secs.get(),
-                idle_notice: turn_complete_notice.read().as_ref().map(|notice| notice.text.clone()),
+                idle_notice: idle_status_notice.read().as_ref().map(|notice| notice.text.clone()),
                 busy_token_info: busy_token_info.clone(),
             )
             #(if let Some(pending) = pending_tool_approval.read().as_ref() {
@@ -704,6 +747,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         draft: Some(draft),
                         live_draft: Some(live_draft),
                         suppress_enter_newline: Some(suppress_enter_newline),
+                        slash_palette_active: Some(slash_palette_active),
+                        force_palette_sync: Some(force_palette_sync),
                         force_editor_clear: Some(force_editor_clear),
                         slash_palette_snapshot: slash_palette_snapshot,
                         slash_palette_selected: Some(slash_palette_index),
@@ -746,11 +791,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     let extension_registry = extension_host.registry();
                     let ext_registry = extension_registry.read();
                     let templates = prompt_templates.read().clone();
+                    let loaded_skills = skills.read().clone();
                     let paths_snapshot = paths.read().clone();
                     let outcome = handle_slash_submit(SlashContext {
                         input: &text,
                         extensions: Some(&ext_registry),
                         prompt_templates: Some(&templates),
+                        skills: Some(&loaded_skills),
                         agent_session: agent_session.clone(),
                         extension_host: Some(&extension_host),
                         paths: Some(&paths_snapshot),
@@ -781,8 +828,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             );
                         }
                         SlashOutcome::SpawnAgentTurn if is_slash => {
-                            if agent_session.is_some() && slash_turn_sets_busy(&text, &templates) {
+                            if agent_session.is_some() && slash_turn_sets_busy(&text, &templates, &loaded_skills) {
                                 chrome_refresh_pending.set(true);
+                                idle_status_notice.set(None);
+                                turn_cancel_requested.set(false);
                                 mark_busy(
                                     &mut BusyActivation {
                                         busy: &mut busy,
@@ -801,6 +850,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 prompt_queue.write().push(text);
                             } else if let Some(session) = agent_session.as_ref() {
                                 chrome_refresh_pending.set(true);
+                                idle_status_notice.set(None);
+                                turn_cancel_requested.set(false);
                                 mark_busy(
                                     &mut BusyActivation {
                                         busy: &mut busy,
@@ -835,5 +886,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_agent::Skill;
+
+    fn sample_skill() -> Skill {
+        Skill {
+            name: "tui-design".into(),
+            description: "TUI patterns".into(),
+            content: "Use iocraft".into(),
+            file_path: "/tmp/tui-design/SKILL.md".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn slash_turn_sets_busy_for_skill_slash() {
+        let skills = vec![sample_skill()];
+        assert!(slash_turn_sets_busy("/skill:tui-design layout bug", &[], &skills,));
+    }
+
+    #[test]
+    fn slash_turn_sets_busy_ignores_unknown_skill() {
+        let skills = vec![sample_skill()];
+        assert!(!slash_turn_sets_busy("/skill:missing", &[], &skills));
     }
 }

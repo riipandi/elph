@@ -12,7 +12,8 @@ use tokio::sync::{Mutex, mpsc};
 
 use super::events::AgentUiEvent;
 use super::model_registry::ModelSelection;
-use super::resource_loader::load_resources;
+use super::resource_loader::{LoadResourcesResult, load_resources};
+
 use super::session_manager::SessionManager;
 use super::tool_policy::{AgentModePolicy, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
@@ -47,7 +48,7 @@ pub struct CodingAgentSession {
     mcp_registry: Option<Arc<McpToolRegistry>>,
     /// Serializes harness turns so only one prompt/template/compact runs at a time.
     turn_gate: Arc<Mutex<()>>,
-    /// Serializes agent-mode reconciliation (Ctrl+A rapid cycling).
+    /// Serializes agent-mode reconciliation (Tab rapid cycling).
     mode_gate: Arc<Mutex<()>>,
 }
 
@@ -165,7 +166,7 @@ impl CodingAgentSession {
         match &result {
             Ok(()) => self.finish_ui_turn(started).await,
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
-                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Error: {err}")));
+                self.finish_ui_turn_rejected(started, format!("Error: {err}")).await;
             }
             Err(err) => {
                 self.finish_ui_turn(started).await;
@@ -194,13 +195,33 @@ impl CodingAgentSession {
         result.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
-    pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<()> {
+    pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
         let env = self.harness.env();
-        let resources = load_resources(paths, cwd, env.as_ref()).await;
+        let loaded = load_resources(paths, cwd, env.as_ref()).await;
         self.harness
-            .set_resources(resources)
+            .set_resources(loaded.resources.clone())
             .await
-            .map_err(|e| anyhow::anyhow!("{e}"))
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        Ok(loaded)
+    }
+
+    pub async fn invoke_skill(&self, name: &str, args: &str) -> Result<()> {
+        let _guard = self.turn_gate.lock().await;
+        let started = Instant::now();
+        let additional = (!args.trim().is_empty()).then(|| args.trim());
+        let result = self.harness.skill(name, additional).await.map(|_| ());
+        match &result {
+            Ok(()) => self.finish_ui_turn(started).await,
+            Err(err) if err.code == AgentHarnessErrorCode::Busy => {
+                self.finish_ui_turn_rejected(started, format!("Skill error: {err}"))
+                    .await;
+            }
+            Err(err) => {
+                self.finish_ui_turn(started).await;
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Skill error: {err}")));
+            }
+        }
+        result.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn prompt_from_template(&self, name: &str, args: &str) -> Result<()> {
@@ -211,7 +232,8 @@ impl CodingAgentSession {
         match &result {
             Ok(()) => self.finish_ui_turn(started).await,
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
-                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Template error: {err}")));
+                self.finish_ui_turn_rejected(started, format!("Template error: {err}"))
+                    .await;
             }
             Err(err) => {
                 self.finish_ui_turn(started).await;
@@ -268,6 +290,16 @@ impl CodingAgentSession {
 
     async fn finish_ui_turn(&self, started: Instant) {
         let _ = self.harness.wait_for_idle().await;
+        self.emit_run_completed(started).await;
+    }
+
+    /// Harness rejected a turn before it started (e.g. busy) — unblock the TUI without waiting.
+    async fn finish_ui_turn_rejected(&self, started: Instant, status: String) {
+        let _ = self.ui_tx.send(AgentUiEvent::Status(status));
+        self.emit_run_completed(started).await;
+    }
+
+    async fn emit_run_completed(&self, started: Instant) {
         let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
             elapsed_secs: started.elapsed().as_secs_f64(),
         });

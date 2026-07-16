@@ -400,3 +400,56 @@ async fn scroll_view_pinned_up_and_down() {
     let frames = render_exit(element!(PinnedScroll)).await;
     assert!(!frames.is_empty());
 }
+
+#[apply(test!)]
+async fn auto_scroll_mouse_wheel_steps_from_bottom_without_jumping_to_top() {
+    #[component]
+    fn AutoScrollMouse(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+        let mut system = hooks.use_context_mut::<SystemContext>();
+        let mut done = hooks.use_state(|| false);
+
+        hooks.use_terminal_events(move |event| {
+            if let TerminalEvent::Key(KeyEvent {
+                code: KeyCode::Char('q'),
+                kind: KeyEventKind::Press,
+                ..
+            }) = event
+            {
+                done.set(true);
+            }
+        });
+
+        if done.get() {
+            system.exit();
+        }
+
+        let mut lines = String::new();
+        for i in 0..20 {
+            if i > 0 {
+                lines.push('\n');
+            }
+            lines.push_str(&format!("Line {i}"));
+        }
+
+        element! {
+            View(width: 20u16, height: 5u16) {
+                ScrollView(auto_scroll: true, scroll_step: Some(3)) {
+                    Text(content: lines)
+                }
+            }
+        }
+    }
+
+    let frames = element!(AutoScrollMouse)
+        .mock_terminal_render_loop(MockTerminalConfig::with_events(futures::stream::iter(vec![
+            TerminalEvent::FullscreenMouse(FullscreenMouseEvent::new(MouseEventKind::ScrollUp, 0, 0)),
+            TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('q'))),
+        ])))
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .await;
+
+    let output = frames.last().expect("rendered frame");
+    assert!(output.contains("Line 12"));
+    assert!(!output.contains("Line 0"));
+}

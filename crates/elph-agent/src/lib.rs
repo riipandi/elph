@@ -112,8 +112,9 @@ pub use session::{
 };
 pub use skills::{
     LoadSkillsResult, LoadSourcedSkillsResult, SkillDiagnostic, SkillDiagnosticCode, SourcedSkill,
-    SourcedSkillDiagnostic, format_skill_invocation, load_skills, load_skills_with_options, load_sourced_skills,
-    load_sourced_skills_with_options,
+    SourcedSkillDiagnostic, format_skill_invocation, format_skill_missing_args_notice, load_skills,
+    load_skills_with_options, load_sourced_skills, load_sourced_skills_with_options, skill_args_validation_notice,
+    skill_requires_arguments,
 };
 #[cfg(any(feature = "tools-edit-tools", feature = "tools-search"))]
 pub use tools::create_all_tools;

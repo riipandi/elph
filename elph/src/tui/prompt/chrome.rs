@@ -21,6 +21,8 @@ pub struct PromptChromeProps {
     pub draft: Option<State<String>>,
     pub live_draft: Option<Ref<String>>,
     pub suppress_enter_newline: Option<Ref<bool>>,
+    pub slash_palette_active: Option<Ref<bool>>,
+    pub force_palette_sync: Option<Ref<bool>>,
     pub force_editor_clear: Option<Ref<bool>>,
     pub slash_palette_snapshot: SlashPaletteSnapshot,
     pub slash_palette_selected: Option<State<usize>>,
@@ -65,6 +67,8 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     draft: props.draft,
                     live_draft: props.live_draft,
                     suppress_enter_newline: props.suppress_enter_newline,
+                    slash_palette_active: props.slash_palette_active,
+                    force_palette_sync: props.force_palette_sync,
                     force_clear: props.force_editor_clear,
                     on_submit: props.on_submit.take(),
                     on_escape: if props.slash_palette_snapshot.visible {

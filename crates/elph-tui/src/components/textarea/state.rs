@@ -309,5 +309,6 @@ mod tests {
     #[test]
     fn focused_sync_rejects_stale_parent_after_deletion() {
         assert!(!TextareaState::should_sync_focused_external("/goal", "/goal "));
+        assert!(!TextareaState::should_sync_focused_external("/goal pause", "/goal "));
     }
 }

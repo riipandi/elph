@@ -121,8 +121,10 @@ impl TranscriptStyle {
 
     pub fn for_user_submit(text: &str) -> Self {
         let trimmed = text.trim_start();
-        if trimmed.starts_with('/') {
+        if trimmed.starts_with("/skill:") {
             Self::SkillPrompt
+        } else if trimmed.starts_with('/') {
+            Self::Meta
         } else {
             Self::User
         }
@@ -237,7 +239,11 @@ mod tests {
 
     #[test]
     fn for_user_submit_detects_skill_and_chat_prompts() {
-        assert_eq!(TranscriptStyle::for_user_submit("/tui-design"), TranscriptStyle::SkillPrompt);
+        assert_eq!(
+            TranscriptStyle::for_user_submit("/skill:tui-design"),
+            TranscriptStyle::SkillPrompt
+        );
+        assert_eq!(TranscriptStyle::for_user_submit("/help"), TranscriptStyle::Meta);
         assert_eq!(TranscriptStyle::for_user_submit("hello"), TranscriptStyle::User);
     }
 

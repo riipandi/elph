@@ -116,6 +116,8 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let internal = hooks.use_state(|| props.initial_value.clone());
     let mut value = props.value.unwrap_or(internal);
     let suppress_enter_newline = props.suppress_enter_newline;
+    let slash_palette_active = props.slash_palette_active;
+    let force_palette_sync = props.force_palette_sync;
     let force_clear = props.force_clear;
     let live_draft = props.live_draft;
     let has_focus = props.has_focus;
@@ -152,7 +154,14 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             viewport_cache.set(None);
             generation.set(generation.get().wrapping_add(1));
         }
-        sync_editor_from_parent(&mut ed, &value.read(), has_focus);
+        if force_palette_sync.is_some_and(|signal| signal.get()) {
+            ed.sync_external(&value.read());
+            if let Some(mut signal) = force_palette_sync {
+                signal.set(false);
+            }
+        } else {
+            sync_editor_from_parent(&mut ed, &value.read(), has_focus);
+        }
     }
 
     let h_pad = if show_border { 2 } else { 0 };
@@ -231,6 +240,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         input_width,
                         submit_on_enter,
                         suppress_enter_newline,
+                        slash_palette_active,
                         pending_esc: &mut esc,
                         paste_burst: &mut burst,
                         last_key_at: &mut last,
@@ -392,6 +402,14 @@ mod tests {
     fn focused_parent_slash_completion_still_syncs() {
         let mut ed = TextareaState::from_text("/go".into());
         sync_editor_from_parent(&mut ed, "/goal ", true);
+        assert_eq!(ed.text, "/goal ");
+        assert_eq!(ed.cursor, 6);
+    }
+
+    #[test]
+    fn forced_palette_sync_applies_trailing_space_completion() {
+        let mut ed = TextareaState::from_text("/goal".into());
+        ed.sync_external("/goal ");
         assert_eq!(ed.text, "/goal ");
         assert_eq!(ed.cursor, 6);
     }

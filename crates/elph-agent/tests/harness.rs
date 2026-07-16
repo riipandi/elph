@@ -739,6 +739,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             compatibility: None,
             metadata: None,
             allowed_tools: None,
+            argument_hint: None,
         }],
         ..Default::default()
     };
@@ -799,6 +800,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
                                 compatibility: None,
                                 metadata: None,
                                 allowed_tools: None,
+                                argument_hint: None,
                             }],
                             ..Default::default()
                         })
@@ -1200,6 +1202,7 @@ async fn harness_resources_update_events_clone_resources() {
             compatibility: None,
             metadata: None,
             allowed_tools: None,
+            argument_hint: None,
         }],
         prompt_templates: vec![elph_agent::PromptTemplate {
             name: "review".into(),

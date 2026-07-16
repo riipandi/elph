@@ -1,7 +1,8 @@
 //! Built-in slash command registry and dispatch.
 
+use crate::agent::{parse_skill_slash, skill_slash_name, truncate_skill_palette_description};
 use crate::types::SlashCommand;
-use elph_agent::{ExtensionRegistry, PromptTemplate};
+use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 #[derive(Debug, Clone)]
 pub struct BuiltinSlashCommand {
@@ -105,6 +106,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
 pub fn slash_commands_for_palette(
     extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
@@ -123,6 +125,14 @@ pub fn slash_commands_for_palette(
         for template in templates {
             if !builtin_names.contains(&template.name) {
                 commands.push(SlashCommand::new(&template.name, &template.description));
+            }
+        }
+    }
+    if let Some(skills) = skills {
+        for skill in skills {
+            let name = skill_slash_name(&skill.name);
+            if !builtin_names.contains(&name) {
+                commands.push(SlashCommand::new(name, truncate_skill_palette_description(&skill.description)));
             }
         }
     }
@@ -146,6 +156,7 @@ pub enum SlashDispatch {
     Reload,
     Extension { name: String, args: String },
     PromptTemplate { name: String, args: String },
+    Skill { name: String, args: String },
     OverlayNeeded(OverlayCommand),
     Unimplemented(String),
 }
@@ -158,8 +169,9 @@ pub fn slash_unimplemented_message(command: &str) -> String {
 pub fn format_help_message(
     extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
 ) -> String {
-    let commands = slash_commands_for_palette(extensions, prompt_templates);
+    let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands {
         lines.push(format!("  /{} — {}", cmd.name, cmd.description));
@@ -192,6 +204,7 @@ pub fn dispatch_slash_command(
     input: &str,
     extensions: Option<&ExtensionRegistry>,
     prompt_templates: Option<&[PromptTemplate]>,
+    skills: Option<&[Skill]>,
 ) -> Option<SlashDispatch> {
     let trimmed = input.trim();
     if !trimmed.starts_with('/') {
@@ -201,6 +214,14 @@ pub fn dispatch_slash_command(
     if body.is_empty() {
         return None;
     }
+
+    if let Some((name, args)) = parse_skill_slash(body) {
+        if skills.is_some_and(|items| items.iter().any(|skill| skill.name == name)) {
+            return Some(SlashDispatch::Skill { name, args });
+        }
+        return Some(SlashDispatch::Unimplemented(format!("/skill:{name}")));
+    }
+
     let (name, args) = split_slash_body(body);
 
     if let Some(dispatch) = builtin_dispatch(&name, args.clone()) {
@@ -231,38 +252,51 @@ mod tests {
         assert_eq!(slash_unimplemented_message("/settings"), "settings not yet implemented");
     }
 
+    fn sample_skill() -> Skill {
+        Skill {
+            name: "code-review".into(),
+            description: "Review changes".into(),
+            content: "Review the code".into(),
+            file_path: "/tmp/code-review/SKILL.md".into(),
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn provider_subcommands_are_unimplemented() {
         assert_eq!(
-            dispatch_slash_command("/provider connect", None, None),
+            dispatch_slash_command("/provider connect", None, None, None),
             Some(SlashDispatch::Unimplemented("/provider".into()))
         );
         assert_eq!(
-            dispatch_slash_command("/provider connect anthropic", None, None),
+            dispatch_slash_command("/provider connect anthropic", None, None, None),
             Some(SlashDispatch::Unimplemented("/provider".into()))
         );
     }
 
     #[test]
     fn wired_commands_dispatch() {
-        assert_eq!(dispatch_slash_command("/exit", None, None), Some(SlashDispatch::Quit));
-        assert_eq!(dispatch_slash_command("/compact", None, None), Some(SlashDispatch::Compact));
+        assert_eq!(dispatch_slash_command("/exit", None, None, None), Some(SlashDispatch::Quit));
         assert_eq!(
-            dispatch_slash_command("/goal pause", None, None),
+            dispatch_slash_command("/compact", None, None, None),
+            Some(SlashDispatch::Compact)
+        );
+        assert_eq!(
+            dispatch_slash_command("/goal pause", None, None, None),
             Some(SlashDispatch::Goal { args: "pause".into() })
         );
-        assert_eq!(dispatch_slash_command("/help", None, None), Some(SlashDispatch::Help));
-        assert_eq!(dispatch_slash_command("/reload", None, None), Some(SlashDispatch::Reload));
+        assert_eq!(dispatch_slash_command("/help", None, None, None), Some(SlashDispatch::Help));
+        assert_eq!(dispatch_slash_command("/reload", None, None, None), Some(SlashDispatch::Reload));
     }
 
     #[test]
     fn overlay_commands_dispatch() {
         assert_eq!(
-            dispatch_slash_command("/model opus", None, None),
+            dispatch_slash_command("/model opus", None, None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: "opus".into() }))
         );
         assert_eq!(
-            dispatch_slash_command("/tree", None, None),
+            dispatch_slash_command("/tree", None, None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree))
         );
     }
@@ -275,12 +309,38 @@ mod tests {
             content: "Review $@".into(),
         }];
         assert_eq!(
-            dispatch_slash_command("/review main.rs", None, Some(&templates)),
+            dispatch_slash_command("/review main.rs", None, Some(&templates), None),
             Some(SlashDispatch::PromptTemplate {
                 name: "review".into(),
                 args: "main.rs".into()
             })
         );
+    }
+
+    #[test]
+    fn skill_slash_dispatch() {
+        let skills = vec![sample_skill()];
+        assert_eq!(
+            dispatch_slash_command("/skill:code-review src/", None, None, Some(&skills)),
+            Some(SlashDispatch::Skill {
+                name: "code-review".into(),
+                args: "src/".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/skill:missing", None, None, Some(&skills)),
+            Some(SlashDispatch::Unimplemented("/skill:missing".into()))
+        );
+    }
+
+    #[test]
+    fn palette_lists_skill_commands_with_prefix() {
+        let skills = vec![sample_skill()];
+        let names: Vec<_> = slash_commands_for_palette(None, None, Some(&skills))
+            .into_iter()
+            .map(|cmd| cmd.name)
+            .collect();
+        assert!(names.contains(&"skill:code-review".to_string()));
     }
 
     #[test]
@@ -297,7 +357,7 @@ mod tests {
             description: "Custom help".into(),
             content: "Help me".into(),
         }];
-        let names: Vec<_> = slash_commands_for_palette(None, Some(&templates))
+        let names: Vec<_> = slash_commands_for_palette(None, Some(&templates), None)
             .into_iter()
             .map(|cmd| cmd.name)
             .collect();

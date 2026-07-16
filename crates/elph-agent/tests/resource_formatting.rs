@@ -14,6 +14,7 @@ fn format_skill_invocation_includes_additional_instructions() {
         compatibility: None,
         metadata: None,
         allowed_tools: Some(vec!["read".to_string(), "grep".to_string()]),
+        argument_hint: None,
     };
 
     assert_eq!(

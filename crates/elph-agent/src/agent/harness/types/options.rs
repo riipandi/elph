@@ -26,6 +26,8 @@ pub struct Skill {
     pub metadata: Option<std::collections::HashMap<String, Value>>,
     /// Space-separated list of pre-approved tools the skill may use.
     pub allowed_tools: Option<Vec<String>>,
+    /// Palette / slash hint; `<name>` marks required args, `[name]` optional (prompt-template convention).
+    pub argument_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

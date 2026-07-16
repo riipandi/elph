@@ -407,6 +407,21 @@ fn cursor_navigation_keys_are_classified_for_burst_suppression() {
     ));
     assert!(!is_cursor_navigation_key(KeyCode::Up, KeyEventKind::Press, KeyModifiers::SHIFT));
     assert!(is_transcript_scroll_key(KeyCode::Up, KeyEventKind::Press, KeyModifiers::SHIFT));
+    assert!(is_slash_palette_capture_key(
+        KeyCode::Tab,
+        KeyEventKind::Press,
+        KeyModifiers::NONE
+    ));
+    assert!(is_slash_palette_capture_key(
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::NONE
+    ));
+    assert!(!is_slash_palette_capture_key(
+        KeyCode::Enter,
+        KeyEventKind::Press,
+        KeyModifiers::SHIFT
+    ));
     assert!(!is_cursor_navigation_key(
         KeyCode::Char('a'),
         KeyEventKind::Press,

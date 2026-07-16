@@ -3,7 +3,7 @@
 use iocraft::prelude::*;
 
 use super::super::model::{SlashPaletteSnapshot, list_viewport_cap, palette_window_start};
-use super::super::row_layout::{CMD_COLUMN_CHARS, CMD_DESC_GAP_COLS, visible_terminal_rows, wrap_palette_description};
+use super::super::row_layout::{CMD_DESC_GAP_COLS, visible_terminal_rows, wrap_palette_description};
 use super::chrome::PaletteCardChrome;
 
 #[derive(Clone, Default, Props)]
@@ -32,9 +32,9 @@ fn palette_row(chrome: &PaletteCardChrome, name: &str, description: &str, select
         chrome.desc_idle_color
     };
 
-    let cmd_col = CMD_COLUMN_CHARS as u16;
+    let cmd_col = chrome.command_column_width;
     let desc_width = chrome.list_width.saturating_sub(cmd_col + CMD_DESC_GAP_COLS).max(1);
-    let desc_lines = wrap_palette_description(description, chrome.list_width);
+    let desc_lines = wrap_palette_description(description, chrome.list_width, cmd_col);
     let row_height = desc_lines.len().max(1) as u16;
     let desc_text = desc_lines.join("\n");
 
@@ -106,8 +106,14 @@ pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'st
             .min(len.saturating_sub(1));
         let scroll_cap = viewport_cap.min(len.max(1));
         let window_start = palette_window_start(index, scroll_cap, len);
-        let body_height =
-            visible_terminal_rows(options, window_start, scroll_cap, props.chrome.list_width, viewport_cap);
+        let body_height = visible_terminal_rows(
+            options,
+            window_start,
+            scroll_cap,
+            props.chrome.list_width,
+            props.chrome.command_column_width,
+            viewport_cap,
+        );
         element! {
             View(
                 width: props.chrome.list_width,

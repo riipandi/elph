@@ -345,16 +345,29 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
             };
 
             if let Some(delta) = delta {
-                let new_offset = clamp_offset(scroll_offset.get() + delta, content_height.get(), vh.get());
+                let ch = content_height.get();
+                let vh_val = vh.get();
+                let max = max_offset(ch, vh_val);
+                let pinned = auto_scroll && !user_scrolled_up.get();
+
+                let new_offset = if delta == i32::MIN / 2 {
+                    0
+                } else if delta == i32::MAX / 2 {
+                    max
+                } else if pinned {
+                    if delta < 0 {
+                        clamp_offset(max + delta, ch, vh_val)
+                    } else {
+                        max
+                    }
+                } else {
+                    clamp_offset(scroll_offset.get() + delta, ch, vh_val)
+                };
+
                 scroll_offset.set(new_offset);
 
                 if auto_scroll {
-                    let max = max_offset(content_height.get(), vh.get());
-                    if delta < 0 {
-                        user_scrolled_up.set(true);
-                    } else if new_offset >= max {
-                        user_scrolled_up.set(false);
-                    }
+                    user_scrolled_up.set(new_offset < max);
                 }
             }
         }
@@ -676,6 +689,62 @@ mod tests {
         let output = canvases.last().unwrap().to_string();
         // Scrollbar track character should be present when content exceeds viewport.
         assert!(output.contains('\u{2502}')); // │
+    }
+
+    #[apply(test!)]
+    async fn test_scroll_view_mouse_scroll_up_from_auto_scroll_does_not_jump_to_top() {
+        #[component]
+        fn AutoScrollMouse(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+            let mut system = hooks.use_context_mut::<SystemContext>();
+            let mut done = hooks.use_state(|| false);
+
+            hooks.use_terminal_events(move |event| {
+                if let TerminalEvent::Key(KeyEvent {
+                    code: KeyCode::Char('q'),
+                    kind: KeyEventKind::Press,
+                    ..
+                }) = event
+                {
+                    done.set(true);
+                }
+            });
+
+            if done.get() {
+                system.exit();
+            }
+
+            let mut lines = String::new();
+            for i in 0..20 {
+                if i > 0 {
+                    lines.push('\n');
+                }
+                lines.push_str(&format!("Line {i}"));
+            }
+
+            element! {
+                View(width: 20, height: 5) {
+                    ScrollView(auto_scroll: true, scroll_step: Some(3)) {
+                        Text(content: lines)
+                    }
+                }
+            }
+        }
+
+        let canvases: Vec<_> = element!(AutoScrollMouse)
+            .mock_terminal_render_loop(MockTerminalConfig::with_events(stream::iter(vec![
+                TerminalEvent::FullscreenMouse(FullscreenMouseEvent::new(
+                    MouseEventKind::ScrollUp,
+                    0,
+                    0,
+                )),
+                TerminalEvent::Key(KeyEvent::new(KeyEventKind::Press, KeyCode::Char('q'))),
+            ])))
+            .collect()
+            .await;
+
+        let output = canvases.last().unwrap().to_string();
+        assert!(output.contains("Line 12"));
+        assert!(!output.contains("Line 0"));
     }
 
     #[apply(test!)]

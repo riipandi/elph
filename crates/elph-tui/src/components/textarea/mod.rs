@@ -34,6 +34,10 @@ pub struct TextareaProps {
     pub show_border: Option<bool>,
     /// Set by the parent on submit so plain Enter's ghost `\n` is dropped, not the next keystroke.
     pub suppress_enter_newline: Option<Ref<bool>>,
+    /// When true, Tab/→/Enter are left to the slash palette (no caret move or submit).
+    pub slash_palette_active: Option<Ref<bool>>,
+    /// Parent sets true after palette completion to force a one-shot draft sync.
+    pub force_palette_sync: Option<Ref<bool>>,
     /// Parent sets `true` to clear the live buffer (e.g. Ctrl+C while idle).
     pub force_clear: Option<Ref<bool>>,
     pub scrollbar_style: Option<ScrollbarStyle>,

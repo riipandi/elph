@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::agent::goal_slash::handle_goal_slash;
-use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch};
+use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch, format_skill_conflict_notice};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 
@@ -66,7 +66,12 @@ impl SlashDispatcher {
                     let mut messages = Vec::new();
                     if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
                         match session.reload_resources(paths, cwd).await {
-                            Ok(_) => messages.push("Resources reloaded.".into()),
+                            Ok(loaded) => {
+                                messages.push("Resources reloaded.".into());
+                                if let Some(notice) = format_skill_conflict_notice(&loaded.skill_conflicts) {
+                                    messages.push(notice);
+                                }
+                            }
                             Err(err) => messages.push(format!("Resource reload failed: {err}")),
                         }
                     }
@@ -81,7 +86,7 @@ impl SlashDispatcher {
                     if messages.is_empty() {
                         messages.push("Reload unavailable.".into());
                     }
-                    let _ = ui_tx.send(AgentUiEvent::Status(messages.join(" ")));
+                    let _ = ui_tx.send(AgentUiEvent::Status(messages.join("\n\n")));
                 }
                 SlashDispatch::Extension { name, args } => {
                     let status = if let Some(host) = extension_host.as_ref() {
@@ -99,6 +104,11 @@ impl SlashDispatcher {
                 SlashDispatch::PromptTemplate { name, args } => {
                     if let Err(err) = session.prompt_from_template(&name, &args).await {
                         let _ = ui_tx.send(AgentUiEvent::Status(format!("Template error: {err}")));
+                    }
+                }
+                SlashDispatch::Skill { name, args } => {
+                    if let Err(err) = session.invoke_skill(&name, &args).await {
+                        log::error!("skill dispatch failed ({name}): {err}");
                     }
                 }
                 SlashDispatch::Quit

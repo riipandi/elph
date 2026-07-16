@@ -4,6 +4,8 @@ use elph_tui::types::SelectOption;
 
 use crate::types::SlashCommand;
 
+pub use super::fuzzy::filter_commands;
+
 pub const MAX_VISIBLE_ROWS: u16 = 8;
 pub const FAST_SCROLL_STEP: usize = 5;
 
@@ -63,18 +65,6 @@ pub fn query_from_draft(draft: &str) -> Option<String> {
     let body = trimmed.trim_start_matches('/').trim_start();
     let query = body.split_once(' ').map_or(body, |(name, _)| name);
     Some(query.to_ascii_lowercase())
-}
-
-pub fn filter_commands(commands: &[SlashCommand], query: &str) -> Vec<SlashCommand> {
-    let query = query.trim().to_ascii_lowercase();
-    if query.is_empty() {
-        return commands.to_vec();
-    }
-    commands
-        .iter()
-        .filter(|cmd| cmd.name.to_ascii_lowercase().starts_with(&query))
-        .cloned()
-        .collect()
 }
 
 pub fn commands_to_options(commands: &[SlashCommand]) -> Vec<SelectOption> {
@@ -186,11 +176,18 @@ mod tests {
     }
 
     #[test]
-    fn filter_matches_prefix_case_insensitive() {
+    fn filter_fuzzy_matches_prefix_case_insensitive() {
         let commands = sample_commands();
         let filtered = filter_commands(&commands, "GO");
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].name, "goal");
+    }
+
+    #[test]
+    fn filter_fuzzy_matches_subsequence_in_name() {
+        let commands = sample_commands();
+        let filtered = filter_commands(&commands, "mdl");
+        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("model"));
     }
 
     #[test]

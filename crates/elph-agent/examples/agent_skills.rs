@@ -320,6 +320,7 @@ allowed-tools: bash read grep
         compatibility: Some("Requires Python 3.10+".to_string()),
         metadata: Some(metadata),
         allowed_tools: Some(vec!["python".to_string(), "pytest".to_string()]),
+        argument_hint: None,
     };
 
     println!("Custom skill formatted for invocation:");

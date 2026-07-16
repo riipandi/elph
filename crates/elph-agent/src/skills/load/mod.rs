@@ -34,6 +34,8 @@ struct SkillFrontmatter {
     metadata: Option<HashMap<String, Value>>,
     #[serde(rename = "allowed-tools")]
     allowed_tools: Option<String>,
+    #[serde(rename = "argument-hint")]
+    argument_hint: Option<String>,
 }
 
 fn diagnostic(
@@ -350,6 +352,7 @@ async fn load_skill_from_file(
             compatibility: parsed.frontmatter.compatibility,
             metadata: parsed.frontmatter.metadata,
             allowed_tools,
+            argument_hint: parsed.frontmatter.argument_hint,
         }),
         diagnostics,
     }

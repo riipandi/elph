@@ -13,6 +13,7 @@ pub struct PaletteCardChrome {
     pub card_width: u16,
     pub content_width: u16,
     pub list_width: u16,
+    pub command_column_width: u16,
     pub border_color: Color,
     pub background: Color,
     pub title_color: Color,
@@ -29,6 +30,7 @@ impl Default for PaletteCardChrome {
             card_width: 0,
             content_width: 0,
             list_width: 0,
+            command_column_width: 0,
             border_color: Color::Reset,
             background: Color::Reset,
             title_color: Color::Reset,
@@ -46,10 +48,12 @@ impl PaletteCardChrome {
         let card_width = row_layout::palette_card_width(screen_width);
         let list_width = row_layout::palette_list_width(screen_width);
         let content_width = list_width;
+        let command_column_width = row_layout::palette_command_column_width(&snapshot.options, list_width);
         Self {
             card_width,
             content_width,
             list_width,
+            command_column_width,
             border_color: BORDER_MUTED,
             background: Color::Reset,
             title_color: TOOL_ARGS_FG,

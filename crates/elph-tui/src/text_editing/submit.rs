@@ -39,6 +39,13 @@ pub fn is_transcript_scroll_key(code: KeyCode, kind: KeyEventKind, modifiers: Ke
         && matches!(code, KeyCode::Up | KeyCode::Down)
 }
 
+/// Tab / → / Enter complete the slash palette — the editor must not move the caret or submit.
+pub fn is_slash_palette_capture_key(code: KeyCode, kind: KeyEventKind, modifiers: KeyModifiers) -> bool {
+    kind != KeyEventKind::Release
+        && modifiers.is_empty()
+        && matches!(code, KeyCode::Tab | KeyCode::Right | KeyCode::Enter)
+}
+
 /// Arrow / Home / End keys must not open the raw-paste burst window or advance `last_key_at`.
 pub fn is_cursor_navigation_key(code: KeyCode, kind: KeyEventKind, modifiers: KeyModifiers) -> bool {
     kind != KeyEventKind::Release

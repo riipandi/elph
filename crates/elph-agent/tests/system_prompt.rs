@@ -12,6 +12,7 @@ fn visible_skill() -> Skill {
         compatibility: None,
         metadata: None,
         allowed_tools: None,
+        argument_hint: None,
     }
 }
 
@@ -26,6 +27,7 @@ fn second_skill() -> Skill {
         compatibility: None,
         metadata: None,
         allowed_tools: None,
+        argument_hint: None,
     }
 }
 
@@ -40,6 +42,7 @@ fn disabled_skill() -> Skill {
         compatibility: None,
         metadata: None,
         allowed_tools: None,
+        argument_hint: None,
     }
 }
 
@@ -84,6 +87,7 @@ fn format_skills_for_system_prompt_escapes_xml_fields() {
         compatibility: None,
         metadata: None,
         allowed_tools: None,
+        argument_hint: None,
     }]);
 
     assert!(formatted.contains(

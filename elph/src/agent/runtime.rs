@@ -45,7 +45,8 @@ pub async fn create_coding_session_with_events(
     };
     let selection = resolve_model(options.settings, options.provider_override, options.model_override).await?;
 
-    let resources = load_resources(options.paths, options.cwd, env.as_ref()).await;
+    let loaded = load_resources(options.paths, options.cwd, env.as_ref()).await;
+    let resources = loaded.resources;
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 

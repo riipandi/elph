@@ -7,12 +7,12 @@ use iocraft::prelude::*;
 
 use crate::tui::activity::{braille_spinner_glyph, format_activity_line};
 
-const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+Q exit";
+const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
 
 const TIPS: &[&str] = &[
     "Esc scrolls transcript · type to edit",
     "Shift+↑↓ scrolls the transcript",
-    "Ctrl+A cycles agent mode",
+    "Tab cycles agent mode",
     "Shift+Tab cycles thinking level",
     "Ctrl+L opens the model picker",
     "Shift+Enter inserts a newline",
@@ -205,10 +205,7 @@ mod tests {
 
     #[test]
     fn format_busy_right_line_includes_token_info_and_cancel_hint() {
-        assert_eq!(
-            format_busy_right_line(Some("+240 · 12 t/s")),
-            "+240 · 12 t/s | Ctrl+C cancel"
-        );
+        assert_eq!(format_busy_right_line(Some("+240 · 12 t/s")), "+240 · 12 t/s | Ctrl+C cancel");
         assert_eq!(format_busy_right_line(None), "Ctrl+C cancel");
     }
 

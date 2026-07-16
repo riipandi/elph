@@ -10,7 +10,9 @@ use iocraft::prelude::*;
 
 use super::state::TextareaState;
 use crate::paste::PasteBurstState;
-use crate::text_editing::{is_cursor_navigation_key, is_plain_submit_enter, is_transcript_scroll_key};
+use crate::text_editing::{
+    is_cursor_navigation_key, is_plain_submit_enter, is_slash_palette_capture_key, is_transcript_scroll_key,
+};
 
 /// Raw key bursts shorter than this are treated as fast typing, not paste streams.
 const PASTE_STREAM_SUBMIT_BLOCK_MIN_CHARS: usize = 8;
@@ -34,6 +36,7 @@ pub struct TextareaInputContext<'a> {
     pub input_width: u16,
     pub submit_on_enter: bool,
     pub suppress_enter_newline: Option<Ref<bool>>,
+    pub slash_palette_active: Option<Ref<bool>>,
     pub pending_esc: &'a mut bool,
     pub paste_burst: &'a mut PasteBurstState,
     pub last_key_at: &'a mut Option<Instant>,
@@ -68,6 +71,12 @@ pub fn handle_textarea_terminal_event(
         && !ctx.on_escape.is_default()
     {
         (ctx.on_escape)(());
+        return TextareaInputResult::Consumed;
+    }
+
+    if ctx.slash_palette_active.is_some_and(|active| active.get())
+        && is_slash_palette_capture_key(code, kind, modifiers)
+    {
         return TextareaInputResult::Consumed;
     }
 
@@ -198,6 +207,7 @@ mod tests {
             input_width: 20,
             submit_on_enter,
             suppress_enter_newline: None,
+            slash_palette_active: None,
             pending_esc: esc,
             paste_burst: burst,
             last_key_at: last,
@@ -289,6 +299,7 @@ mod tests {
                 input_width: 40,
                 submit_on_enter: false,
                 suppress_enter_newline: None,
+                slash_palette_active: None,
                 pending_esc: &mut esc,
                 paste_burst: &mut burst,
                 last_key_at: &mut last,
@@ -309,6 +320,7 @@ mod tests {
             input_width: 40,
             submit_on_enter: false,
             suppress_enter_newline: None,
+            slash_palette_active: None,
             pending_esc: &mut esc,
             paste_burst: &mut burst,
             last_key_at: &mut last,

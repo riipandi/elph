@@ -82,13 +82,13 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let cwd = paths.project_dir().clone();
     let env = LocalExecutionEnv::new(&cwd);
     let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
-    let slash_commands = slash_commands_for_palette(
-        Some(&extension_host.registry().read()),
-        Some(&bootstrap_resources.prompt_templates),
-    );
-    let prompt_templates = bootstrap_resources.prompt_templates;
+    let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
+    let skills = bootstrap_resources.resources.skills.clone();
+    let slash_commands =
+        slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
     let agent = try_bootstrap_agent(&paths, &settings, options.resume_id.as_deref()).await;
+    let skill_conflict_notice = crate::agent::format_skill_conflict_notice(&bootstrap_resources.skill_conflicts);
     let (agent_session, ui_events, session_id, context_limit, supports_images, bootstrap_notice) = match agent {
         Ok(agent) => {
             log::info!("agent session ready: {}", agent.session.session_id());
@@ -101,20 +101,17 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
                 session_id,
                 context_limit,
                 supports_images,
-                None,
+                skill_conflict_notice,
             )
         }
         Err(err) => {
             log::warn!("agent session unavailable: {err}");
             let session_id = options.resume_id.clone().unwrap_or_else(|| "unavailable".to_string());
-            (
-                None,
-                None,
-                session_id,
-                200_000,
-                false,
-                Some(format!("Agent unavailable: {err}")),
-            )
+            let notice = match skill_conflict_notice {
+                Some(conflicts) => Some(format!("Agent unavailable: {err}\n\n{conflicts}")),
+                None => Some(format!("Agent unavailable: {err}")),
+            };
+            (None, None, session_id, 200_000, false, notice)
         }
     };
 
@@ -139,6 +136,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         extension_host: extension_host,
         slash_commands: slash_commands,
         prompt_templates: prompt_templates,
+        skills: skills,
         cwd: cwd,
     ))
     .render_loop()

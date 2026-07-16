@@ -125,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
             compatibility: None,
             metadata: None,
             allowed_tools: None,
+            argument_hint: None,
         },
         Skill {
             name: "internal-tool".into(),
@@ -136,6 +137,7 @@ async fn main() -> anyhow::Result<()> {
             compatibility: None,
             metadata: None,
             allowed_tools: None,
+            argument_hint: None,
         },
     ];
 

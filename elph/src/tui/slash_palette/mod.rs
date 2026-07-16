@@ -11,6 +11,7 @@
 
 mod card;
 mod component;
+mod fuzzy;
 mod keyboard;
 mod layout;
 mod model;
