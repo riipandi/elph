@@ -4,14 +4,18 @@ use crate::agent::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 use crate::platform::Paths;
 use crate::types::ThinkingLevel;
 
-pub fn session_label(session_id: &str, turn: u32) -> String {
-    format!("Session: {session_id} | turn: {turn}")
+pub fn session_label(session_id: &str, mcp_connected: usize, skills_count: usize) -> String {
+    format!("Session: {session_id} | MCP: {mcp_connected} | Skills: {skills_count}")
 }
 
 pub fn project_footer_label(paths: &Paths, branch: Option<&str>) -> String {
     let name = paths.project_dir().file_name().and_then(|s| s.to_str()).unwrap_or("?");
     let branch = branch.filter(|b| !b.is_empty()).unwrap_or("main");
     format!("~ {name} [{branch}]")
+}
+
+pub fn footer_left_label(project_line: &str, turn: u32) -> String {
+    format!("{project_line} | turn: {turn}")
 }
 
 pub fn format_tokens_k(n: u64) -> String {
@@ -68,8 +72,11 @@ mod tests {
     }
 
     #[test]
-    fn session_label_includes_turn_count() {
-        assert_eq!(session_label("abc123", 3), "Session: abc123 | turn: 3");
+    fn session_label_includes_mcp_and_skills() {
+        assert_eq!(
+            session_label("abc123", 2, 5),
+            "Session: abc123 | MCP: 2 | Skills: 5"
+        );
     }
 
     #[test]
@@ -83,6 +90,11 @@ mod tests {
             project_footer_label(&paths, Some("refactor-tui")),
             "~ my-project [refactor-tui]"
         );
+    }
+
+    #[test]
+    fn footer_left_appends_turn_count() {
+        assert_eq!(footer_left_label("~ elph [main]", 0), "~ elph [main] | turn: 0");
     }
 
     #[test]

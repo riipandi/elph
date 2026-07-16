@@ -1,33 +1,48 @@
 //! Root shell: layout zones, global keyboard handling, and session state.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use elph_agent::PromptTemplate;
 use elph_tui::rgb;
 use iocraft::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::agent::{
-    AgentUiEvent, CodingAgentSession, SlashDispatch, ToolApprovalChoice, dispatch_slash_command,
-    slash_unimplemented_message,
-};
-use crate::platform::Paths;
-use crate::types::{AgentMode, ThinkingLevel, is_quit_command};
+use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice, slash_commands_for_palette};
+use crate::extensions::ExtensionHost;
+use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
+use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
 
-use super::activity::activity_label_for_event;
-use super::agent_bridge::{PromptQueue, SlashDispatcher, TranscriptEventApplier, TurnDispatcher};
-use super::chrome::{ChromeStats, header_stats_from_chrome, read_git_branch, refresh_chrome_stats};
-use super::footer::Footer;
-use super::header::Header;
-use super::labels::{project_footer_label, session_label};
-use super::prompt_chrome::PromptChrome;
-use super::session_prefs::persist_session_prefs;
-use super::status_row::{StatusRow, format_elapsed_secs};
-use super::tool_approval::{PendingToolApproval, ToolApprovalPrompt, choice_from_key};
-use super::transcript::{TranscriptMessage, TranscriptPanel, TranscriptStyle};
+use crate::tui::activity::activity_label_for_event;
+use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
+use crate::tui::chrome::{
+    ChromeStats, Header, StatusRow, format_elapsed_secs, header_stats_from_chrome, read_git_branch,
+    refresh_chrome_stats,
+};
+use crate::tui::labels::{footer_left_label, project_footer_label, session_label};
+use crate::tui::prompt::{Footer, PromptChrome};
+use crate::tui::session_prefs::persist_session_prefs;
+use crate::tui::slash_handler::{SlashContext, SlashOutcome, handle_slash_submit, overlay_deferred_message};
+use crate::tui::slash_palette::{SlashPaletteKeyAction, build_snapshot, resolve_snapshot_key_action, sync_selection};
+use crate::tui::tool_approval::{PendingToolApproval, ToolApprovalPrompt, choice_from_key};
+use crate::tui::transcript::{TranscriptMessage, TranscriptPanel, TranscriptStyle};
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
+
+fn slash_turn_sets_busy(input: &str, templates: &[PromptTemplate]) -> bool {
+    let trimmed = input.trim();
+    if trimmed == "/compact" || trimmed == "/c" || trimmed.starts_with("/compact ") || trimmed.starts_with("/c ") {
+        return true;
+    }
+    let body = trimmed.trim_start_matches('/').trim();
+    let name = body
+        .split_once(' ')
+        .map_or(body, |(command, _)| command)
+        .to_ascii_lowercase();
+    templates.iter().any(|template| template.name == name)
+}
 
 #[derive(Props)]
 pub struct MainShellProps {
@@ -44,6 +59,10 @@ pub struct MainShellProps {
     pub show_thinking: bool,
     pub agent_session: Option<Arc<CodingAgentSession>>,
     pub ui_events: Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>,
+    pub extension_host: ExtensionHost,
+    pub slash_commands: Vec<SlashCommand>,
+    pub prompt_templates: Vec<PromptTemplate>,
+    pub cwd: PathBuf,
 }
 
 impl Default for MainShellProps {
@@ -62,6 +81,10 @@ impl Default for MainShellProps {
             show_thinking: false,
             agent_session: None,
             ui_events: None,
+            extension_host: ExtensionHost::new(),
+            slash_commands: Vec::new(),
+            prompt_templates: Vec::new(),
+            cwd: PathBuf::new(),
         }
     }
 }
@@ -116,6 +139,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     });
     let mut messages_revision = hooks.use_state(|| 0u64);
     let mut suppress_enter_newline = hooks.use_ref(|| false);
+    let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
     let mut elapsed_secs = hooks.use_state(|| 0.0f64);
@@ -125,13 +149,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut prompt_queue = hooks.use_ref(PromptQueue::default);
     let mut event_applier = hooks.use_ref(|| TranscriptEventApplier::new(props.show_thinking));
     let mut pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
+    let mut slash_commands = hooks.use_state(|| props.slash_commands.clone());
+    let mut prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
+    let mut slash_palette_index = hooks.use_state(|| 0usize);
+    let mut slash_palette_query = hooks.use_ref(String::new);
+    let mut palette_refresh_pending = hooks.use_state(|| false);
+
+    let extension_host = props.extension_host.clone();
+    let cwd = props.cwd.clone();
 
     let agent_session = props.agent_session.clone();
     let agent_session_for_loop = agent_session.clone();
     let agent_session_for_chrome = agent_session.clone();
+    let agent_session_for_palette = agent_session.clone();
+    let extension_host_for_palette = extension_host.clone();
     let ui_events = props.ui_events.clone();
     let paths = hooks.use_state(|| Paths::resolve().expect("resolve elph paths"));
     let mut turn_count = hooks.use_state(|| 0u32);
+    let mut skills_count = hooks.use_state(|| 0usize);
     let mut chrome_stats = hooks.use_state(|| ChromeStats {
         context_limit: props.context_limit,
         model_label: props.model_label.clone(),
@@ -151,6 +186,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         loop {
             tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
 
+            if palette_refresh_pending.get() {
+                if let Some(session) = agent_session_for_palette.as_ref() {
+                    let templates = session.harness().get_resources().await.prompt_templates;
+                    prompt_templates.set(templates.clone());
+                    slash_commands.set(slash_commands_for_palette(
+                        Some(&extension_host_for_palette.registry().read()),
+                        Some(&templates),
+                    ));
+                }
+                palette_refresh_pending.set(false);
+            }
+
             chrome_tick.set(chrome_tick.get().wrapping_add(1));
             if chrome_tick.get() % CHROME_REFRESH_TICKS == 0 {
                 let paths = paths.read().clone();
@@ -158,6 +205,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 project_label.set(project_footer_label(&paths, branch.as_deref()));
 
                 if let Some(session) = agent_session_for_chrome.as_ref() {
+                    let resources = session.harness().get_resources().await;
+                    skills_count.set(resources.skills.len());
                     let stats = refresh_chrome_stats(
                         Arc::clone(session),
                         fallback_context_limit,
@@ -182,36 +231,42 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut transcript_changed = false;
             let mut run_completed = false;
 
-            if let Some(rx) = ui_events.as_ref() {
-                if let Ok(mut guard) = rx.lock() {
-                    while let Ok(event) = guard.try_recv() {
-                        if let AgentUiEvent::RunCompleted { .. } = &event {
-                            run_completed = true;
-                        }
+            if let Some(rx) = ui_events.as_ref()
+                && let Ok(mut guard) = rx.lock()
+            {
+                while let Ok(event) = guard.try_recv() {
+                    if let AgentUiEvent::RunCompleted { .. } = &event {
+                        run_completed = true;
+                    }
 
-                        if let AgentUiEvent::ToolApprovalRequired(req) = event {
-                            let tool_name = req.tool_name.clone();
-                            activity_label.set(format!("Approve: {tool_name}"));
-                            pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
-                            {
-                                let mut msgs = messages.write();
-                                msgs.push(TranscriptMessage::text(
-                                    format!("Tool approval required: {tool_name} (y/n/a)"),
-                                    TranscriptStyle::Meta,
-                                ));
-                            }
-                            transcript_changed = true;
-                            continue;
-                        }
+                    if let AgentUiEvent::Status(ref message) = event
+                        && message.to_ascii_lowercase().contains("reloaded")
+                    {
+                        palette_refresh_pending.set(true);
+                    }
 
-                        if let Some(label) = activity_label_for_event(&event, show_thinking) {
-                            activity_label.set(label);
-                        }
+                    if let AgentUiEvent::ToolApprovalRequired(req) = event {
+                        let tool_name = req.tool_name.clone();
+                        activity_label.set(format!("Approve: {tool_name}"));
+                        pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
                         {
                             let mut msgs = messages.write();
-                            if event_applier.write().apply(&mut msgs, event) {
-                                transcript_changed = true;
-                            }
+                            msgs.push(TranscriptMessage::text(
+                                format!("Tool approval required: {tool_name} (y/n/a)"),
+                                TranscriptStyle::Meta,
+                            ));
+                        }
+                        transcript_changed = true;
+                        continue;
+                    }
+
+                    if let Some(label) = activity_label_for_event(&event, show_thinking) {
+                        activity_label.set(label);
+                    }
+                    {
+                        let mut msgs = messages.write();
+                        if event_applier.write().apply(&mut msgs, event) {
+                            transcript_changed = true;
                         }
                     }
                 }
@@ -275,6 +330,32 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 return;
             }
 
+            let draft_text = live_draft.read().clone();
+            let palette_snapshot = build_snapshot(&draft_text, &slash_commands.read(), screen_height);
+            if let Some(action) =
+                resolve_snapshot_key_action(&draft_text, &palette_snapshot, slash_palette_index.get(), code, modifiers)
+            {
+                match action {
+                    SlashPaletteKeyAction::CompleteDraft(completed) => {
+                        draft.set(completed.clone());
+                        live_draft.set(completed);
+                        suppress_enter_newline.set(false);
+                        slash_palette_query.write().clear();
+                        slash_palette_index.set(0);
+                    }
+                    SlashPaletteKeyAction::MoveSelection(index) => {
+                        slash_palette_index.set(index);
+                    }
+                    SlashPaletteKeyAction::Dismiss => {
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        slash_palette_index.set(0);
+                        suppress_enter_newline.set(true);
+                    }
+                }
+                return;
+            }
+
             match (modifiers, code) {
                 (m, KeyCode::Char('a')) if m.contains(KeyModifiers::CONTROL) => {
                     let next = agent_mode.get().next();
@@ -315,6 +396,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         elapsed_secs.set(0.0);
                     }
                 }
+                (m, KeyCode::Char('c'))
+                    if m.contains(KeyModifiers::CONTROL) && !busy.get() && pending_tool_approval.read().is_none() =>
+                {
+                    if matches!(handle_prompt_interrupt_text(&draft_text), PromptInterrupt::Cleared) {
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        force_editor_clear.set(true);
+                        slash_palette_index.set(0);
+                        slash_palette_query.write().clear();
+                        suppress_enter_newline.set(true);
+                    }
+                }
                 _ => {}
             }
         }
@@ -327,7 +420,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let (accent_r, accent_g, accent_b) = agent_mode.get().label_rgb();
     let scanner_accent = rgb(accent_r, accent_g, accent_b);
     let chrome = chrome_stats.read();
-    let session_label = session_label(&session_id, turn_count.get());
+    let mcp_connected = agent_session
+        .as_ref()
+        .and_then(|session| session.mcp_registry())
+        .map(|registry| registry.load_report().servers_ok)
+        .unwrap_or(0);
+    let session_label = session_label(&session_id, mcp_connected, skills_count.get());
+    let footer_left = footer_left_label(&project_label.read(), turn_count.get());
     let stats_label = header_stats_from_chrome(&chrome, &footer_token_display);
     let model_label = if chrome.model_label.is_empty() {
         fallback_model_label.clone()
@@ -335,6 +434,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         chrome.model_label.clone()
     };
     let supports_images = chrome.supports_images;
+
+    let draft_for_palette = live_draft.read().clone();
+    let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
+    {
+        let old_index = slash_palette_index.get();
+        let mut query = slash_palette_query.write();
+        let mut index = old_index;
+        sync_selection(&mut query, &mut index, &slash_palette_snapshot);
+        // iocraft marks state dirty on every `.set()` even when the value is unchanged;
+        // calling set during render without this guard causes an infinite re-render loop.
+        if index != old_index {
+            slash_palette_index.set(index);
+        }
+    }
 
     element! {
         View(
@@ -381,7 +494,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         )
                         Footer(
                             screen_width: screen_width,
-                            project_label: project_label.read().clone(),
+                            project_label: footer_left.clone(),
                             model_label: model_label.clone(),
                             thinking_level: thinking_level.get(),
                             supports_images: supports_images,
@@ -400,12 +513,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         screen_height: screen_height,
                         agent_mode: agent_mode.get(),
                         thinking_level: thinking_level.get(),
-                        project_label: project_label.read().clone(),
+                        project_label: footer_left.clone(),
                         model_label: model_label.clone(),
                         supports_images: supports_images,
                         draft: Some(draft),
                         live_draft: Some(live_draft),
                         suppress_enter_newline: Some(suppress_enter_newline),
+                        force_editor_clear: Some(force_editor_clear),
+                        slash_palette_snapshot: slash_palette_snapshot,
+                        slash_palette_selected: Some(slash_palette_index),
                         on_submit: move |text: String| {
                     if text.trim().is_empty() {
                         return;
@@ -418,64 +534,91 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
+                    let is_slash = text.trim_start().starts_with('/');
                     push_transcript_message(
                         &mut messages,
                         &mut messages_revision,
                         TranscriptMessage::text(text.clone(), TranscriptStyle::for_user_submit(&text)),
                     );
 
-                    if let Some(dispatch) = dispatch_slash_command(&text, None) {
-                        match dispatch {
-                            SlashDispatch::Quit => should_exit.set(true),
-                            SlashDispatch::Compact | SlashDispatch::Goal { .. } => {
-                                if let Some(session) = agent_session.as_ref() {
-                                    SlashDispatcher::spawn(Arc::clone(session), dispatch);
-                                } else {
-                                    push_transcript_message(
-                                        &mut messages,
-                                        &mut messages_revision,
-                                        TranscriptMessage::text(
-                                            "Agent session required for this command.",
-                                            TranscriptStyle::Meta,
-                                        ),
-                                    );
-                                }
+                    let extension_registry = extension_host.registry();
+                    let ext_registry = extension_registry.read();
+                    let templates = prompt_templates.read().clone();
+                    let paths_snapshot = paths.read().clone();
+                    let outcome = handle_slash_submit(SlashContext {
+                        input: &text,
+                        extensions: Some(&ext_registry),
+                        prompt_templates: Some(&templates),
+                        agent_session: agent_session.clone(),
+                        extension_host: Some(&extension_host),
+                        paths: Some(&paths_snapshot),
+                        cwd: Some(&cwd),
+                    });
+
+                    match outcome {
+                        SlashOutcome::Quit => should_exit.set(true),
+                        SlashOutcome::Status(message) => {
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                TranscriptMessage::text(message, TranscriptStyle::Meta),
+                            );
+                        }
+                        SlashOutcome::Unimplemented(message) => {
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                TranscriptMessage::text(message, TranscriptStyle::Meta),
+                            );
+                        }
+                        SlashOutcome::OverlayDeferred(overlay) => {
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
+                            );
+                        }
+                        SlashOutcome::SpawnAgentTurn if is_slash => {
+                            if agent_session.is_some() && slash_turn_sets_busy(&text, &templates) {
+                                mark_busy(
+                                    &mut BusyActivation {
+                                        busy: &mut busy,
+                                        busy_started_at: &mut busy_started_at,
+                                        elapsed_secs: &mut elapsed_secs,
+                                        spinner_tick: &mut spinner_tick,
+                                        activity_label: &mut activity_label,
+                                    },
+                                    false,
+                                );
                             }
-                            SlashDispatch::Unimplemented(command) => {
+                        }
+                        SlashOutcome::SpawnAgentTurn => {
+                            if busy.get() {
+                                prompt_queue.write().push(text);
+                            } else if let Some(session) = agent_session.as_ref() {
+                                turn_count.set(turn_count.get().saturating_add(1));
+                                mark_busy(
+                                    &mut BusyActivation {
+                                        busy: &mut busy,
+                                        busy_started_at: &mut busy_started_at,
+                                        elapsed_secs: &mut elapsed_secs,
+                                        spinner_tick: &mut spinner_tick,
+                                        activity_label: &mut activity_label,
+                                    },
+                                    false,
+                                );
+                                TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
+                            } else {
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
                                     TranscriptMessage::text(
-                                        slash_unimplemented_message(&command),
+                                        "Agent session unavailable — check logs or run `elph doctor`.",
                                         TranscriptStyle::Meta,
                                     ),
                                 );
                             }
                         }
-                    } else if busy.get() {
-                        prompt_queue.write().push(text);
-                    } else if let Some(session) = agent_session.as_ref() {
-                        turn_count.set(turn_count.get().saturating_add(1));
-                        mark_busy(
-                            &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                elapsed_secs: &mut elapsed_secs,
-                                spinner_tick: &mut spinner_tick,
-                                activity_label: &mut activity_label,
-                            },
-                            false,
-                        );
-                        TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
-                    } else {
-                        push_transcript_message(
-                            &mut messages,
-                            &mut messages_revision,
-                            TranscriptMessage::text(
-                                "Agent session unavailable — check logs or run `elph doctor`.",
-                                TranscriptStyle::Meta,
-                            ),
-                        );
                     }
 
                     draft.set(String::new());

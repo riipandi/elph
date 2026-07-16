@@ -2,7 +2,7 @@
 
 use iocraft::prelude::*;
 
-use super::theme::BORDER_MUTED;
+use crate::tui::theme::BORDER_MUTED;
 
 #[derive(Default, Props)]
 pub struct HeaderProps {

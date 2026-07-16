@@ -152,7 +152,7 @@ async fn run_streaming(
     Ok(())
 }
 
-async fn run_buffered(events: &mut elph_ai::EventStreamIterator, progress: &ProgressBar) -> anyhow::Result<()> {
+async fn run_buffered(events: &mut elph_ai::EventStreamIterator, progress: &CliSpinner) -> anyhow::Result<()> {
     let mut final_message = None;
     let mut stop_reason = StopReason::Stop;
 

@@ -5,7 +5,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use elph_tui::rgb;
 use iocraft::prelude::*;
 
-use super::activity::{braille_spinner_glyph, format_activity_line};
+use crate::tui::activity::{braille_spinner_glyph, format_activity_line};
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+Q exit";
 

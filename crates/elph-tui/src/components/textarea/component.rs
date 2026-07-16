@@ -102,7 +102,7 @@ fn resolve_textarea_layout(
 /// parent state for performance. Clearing the editor on empty external would wipe live input.
 fn sync_editor_from_parent(ed: &mut TextareaState, external: &str, has_focus: bool) {
     if has_focus {
-        if !external.is_empty() && ed.text != external {
+        if TextareaState::should_sync_focused_external(&ed.text, external) {
             ed.sync_external(external);
         }
         return;
@@ -114,8 +114,9 @@ fn sync_editor_from_parent(ed: &mut TextareaState, external: &str, has_focus: bo
 #[component]
 pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let internal = hooks.use_state(|| props.initial_value.clone());
-    let value = props.value.unwrap_or(internal);
+    let mut value = props.value.unwrap_or(internal);
     let suppress_enter_newline = props.suppress_enter_newline;
+    let force_clear = props.force_clear;
     let live_draft = props.live_draft;
     let has_focus = props.has_focus;
     let min_height = props.min_height.max(1);
@@ -128,11 +129,24 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let mut scroll_row = hooks.use_ref(|| 0u16);
     let mut layout_cache = hooks.use_ref(|| None::<TextareaLayoutCache>);
     let mut viewport_cache = hooks.use_ref(|| None::<ViewportRenderCache>);
-    let generation = hooks.use_state(|| 0u32);
+    let mut generation = hooks.use_state(|| 0u32);
     let on_submit = props.on_submit.take();
 
     {
         let mut ed = editor.write();
+        if force_clear.is_some_and(|signal| signal.get()) {
+            ed.clear_after_submit();
+            if let Some(mut signal) = force_clear {
+                signal.set(false);
+            }
+            if let Some(mut live) = live_draft {
+                live.set(String::new());
+            }
+            value.set(String::new());
+            layout_cache.set(None);
+            viewport_cache.set(None);
+            generation.set(generation.get().wrapping_add(1));
+        }
         sync_editor_from_parent(&mut ed, &value.read(), has_focus);
     }
 
@@ -241,7 +255,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                 }
                 TextareaInputResult::Changed => {
                     if !paste_burst.read().active {
-                        sync_live_draft(&editor.read().text);
+                        let text = editor.read().text.clone();
+                        sync_live_draft(&text);
+                        value.set(text);
                     }
                     if let Some(mut suppress) = suppress_enter_newline {
                         suppress.set(false);
@@ -352,9 +368,39 @@ mod tests {
     }
 
     #[test]
+    fn focused_stale_parent_does_not_clobber_post_completion_typing() {
+        let mut ed = TextareaState::from_text("/goal args".into());
+        sync_editor_from_parent(&mut ed, "/goal ", true);
+        assert_eq!(ed.text, "/goal args");
+    }
+
+    #[test]
+    fn focused_stale_parent_does_not_restore_deleted_suffix() {
+        let mut ed = TextareaState::from_text("/goal".into());
+        sync_editor_from_parent(&mut ed, "/goal ", true);
+        assert_eq!(ed.text, "/goal");
+    }
+
+    #[test]
+    fn focused_parent_slash_completion_still_syncs() {
+        let mut ed = TextareaState::from_text("/go".into());
+        sync_editor_from_parent(&mut ed, "/goal ", true);
+        assert_eq!(ed.text, "/goal ");
+        assert_eq!(ed.cursor, 6);
+    }
+
+    #[test]
     fn unfocused_parent_still_syncs_empty_draft() {
         let mut ed = TextareaState::from_text("hello".into());
         sync_editor_from_parent(&mut ed, "", false);
         assert!(ed.text.is_empty());
+    }
+
+    #[test]
+    fn clear_after_submit_wipes_buffer() {
+        let mut ed = TextareaState::from_text("draft".into());
+        ed.clear_after_submit();
+        assert!(ed.text.is_empty());
+        assert_eq!(ed.cursor, 0);
     }
 }

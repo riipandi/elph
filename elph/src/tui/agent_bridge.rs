@@ -1,10 +1,13 @@
 //! Non-blocking agent turn dispatch and transcript event application.
 
 use std::collections::{HashMap, VecDeque};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch};
+use crate::extensions::ExtensionHost;
+use crate::platform::Paths;
 
 use super::transcript::{TranscriptMessage, TranscriptStyle};
 
@@ -33,21 +36,74 @@ impl TurnDispatcher {
 pub struct SlashDispatcher;
 
 impl SlashDispatcher {
-    pub fn spawn(session: Arc<CodingAgentSession>, dispatch: SlashDispatch) {
+    pub fn spawn(
+        session: Arc<CodingAgentSession>,
+        dispatch: SlashDispatch,
+        extension_host: Option<ExtensionHost>,
+        paths: Option<Paths>,
+        cwd: Option<PathBuf>,
+    ) {
         tokio::spawn(async move {
             let ui_tx = session.ui_event_sender();
-            let status = match dispatch {
-                SlashDispatch::Compact => match session.compact().await {
-                    Ok(_) => "History compacted.".into(),
-                    Err(err) => format!("Compact failed: {err}"),
-                },
-                SlashDispatch::Goal { args } => match handle_goal_slash(session.goal_runtime().as_ref(), &args).await {
-                    Ok(message) => message,
-                    Err(err) => format!("Goal error: {err}"),
-                },
-                SlashDispatch::Quit | SlashDispatch::Unimplemented(_) => return,
-            };
-            let _ = ui_tx.send(AgentUiEvent::Status(status));
+            match dispatch {
+                SlashDispatch::Compact => {
+                    let status = match session.compact().await {
+                        Ok(_) => "History compacted.".into(),
+                        Err(err) => format!("Compact failed: {err}"),
+                    };
+                    let _ = ui_tx.send(AgentUiEvent::Status(status));
+                }
+                SlashDispatch::Goal { args } => {
+                    let status = match handle_goal_slash(session.goal_runtime().as_ref(), &args).await {
+                        Ok(message) => message,
+                        Err(err) => format!("Goal error: {err}"),
+                    };
+                    let _ = ui_tx.send(AgentUiEvent::Status(status));
+                }
+                SlashDispatch::Reload => {
+                    let mut messages = Vec::new();
+                    if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
+                        match session.reload_resources(paths, cwd).await {
+                            Ok(_) => messages.push("Resources reloaded.".into()),
+                            Err(err) => messages.push(format!("Resource reload failed: {err}")),
+                        }
+                    }
+                    if let Some(host) = extension_host.as_ref()
+                        && let Some(paths) = paths.as_ref()
+                    {
+                        match host.reload(paths, true) {
+                            Ok(_) => messages.push("Extensions reloaded.".into()),
+                            Err(err) => messages.push(format!("Extension reload failed: {err}")),
+                        }
+                    }
+                    if messages.is_empty() {
+                        messages.push("Reload unavailable.".into());
+                    }
+                    let _ = ui_tx.send(AgentUiEvent::Status(messages.join(" ")));
+                }
+                SlashDispatch::Extension { name, args } => {
+                    let status = if let Some(host) = extension_host.as_ref() {
+                        match host.dispatch_slash(&name, &args) {
+                            Some(Ok(result)) if result.is_error => format!("Extension error: {}", result.message),
+                            Some(Ok(result)) => result.message,
+                            Some(Err(err)) => format!("Extension error: {err}"),
+                            None => format!("Extension command not found: /{name}"),
+                        }
+                    } else {
+                        "Extension host unavailable.".into()
+                    };
+                    let _ = ui_tx.send(AgentUiEvent::Status(status));
+                }
+                SlashDispatch::PromptTemplate { name, args } => {
+                    if let Err(err) = session.prompt_from_template(&name, &args).await {
+                        let _ = ui_tx.send(AgentUiEvent::Status(format!("Template error: {err}")));
+                    }
+                }
+                SlashDispatch::Quit
+                | SlashDispatch::Help
+                | SlashDispatch::Unimplemented(_)
+                | SlashDispatch::OverlayNeeded(_) => {}
+            }
         });
     }
 }
@@ -197,10 +253,10 @@ impl TranscriptEventApplier {
         if let Some(index) = self.live_tool_indexes.remove(id)
             && let Some(message) = messages.get_mut(index)
         {
-            if let Some(tool) = message.tool.as_mut() {
-                if !output.is_empty() {
-                    tool.output = output.to_string();
-                }
+            if let Some(tool) = message.tool.as_mut()
+                && !output.is_empty()
+            {
+                tool.output = output.to_string();
             }
             message.style = if is_error {
                 TranscriptStyle::ToolFailed

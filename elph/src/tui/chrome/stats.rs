@@ -9,7 +9,7 @@ use elph_ai::get_builtin_model;
 use crate::agent::CodingAgentSession;
 use crate::platform::exit_message::aggregate_usage_from_entries;
 
-use super::labels::{header_stats_label, model_footer_label};
+use crate::tui::labels::{header_stats_label, model_footer_label};
 
 /// Snapshot of usage and model metadata shown in header/footer chrome.
 #[derive(Debug, Clone, PartialEq)]

@@ -4,7 +4,7 @@ use iocraft::prelude::*;
 
 use crate::types::ThinkingLevel;
 
-use super::labels::footer_right_label;
+use crate::tui::labels::footer_right_label;
 
 #[derive(Clone, Default, Props)]
 pub struct FooterLeftProps {

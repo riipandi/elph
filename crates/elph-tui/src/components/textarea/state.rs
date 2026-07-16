@@ -24,6 +24,33 @@ impl TextareaState {
         }
     }
 
+    /// Whether a focused editor should accept a parent draft update.
+    ///
+    /// While focused, keystrokes live only in the editor buffer until mirrored to `live_draft`.
+    /// A stale parent `draft` must not clobber text the user typed after slash completion.
+    pub fn should_sync_focused_external(editor: &str, external: &str) -> bool {
+        if external.is_empty() || editor == external {
+            return false;
+        }
+        if editor.starts_with(external) && editor.len() > external.len() {
+            return false;
+        }
+        if external.starts_with(editor) && external.len() > editor.len() {
+            if let (Some(ed_query), Some(ext_query)) = (slash_command_query(editor), slash_command_query(external))
+                && ed_query == ext_query
+            {
+                // Same command token — parent only added trailing space/args decoration.
+                // Do not restore suffix the user just deleted.
+                return false;
+            }
+            return true;
+        }
+        if let (Some(ed_query), Some(ext_query)) = (slash_command_query(editor), slash_command_query(external)) {
+            return ext_query.starts_with(ed_query) && ext_query.len() > ed_query.len();
+        }
+        false
+    }
+
     /// Sync from an external [`State`] when the parent mutates the draft.
     pub fn sync_external(&mut self, external: &str) {
         if self.text == external {
@@ -31,8 +58,9 @@ impl TextareaState {
         }
         let was_at_eof = self.cursor == self.text.len();
         let suffix_append = external.len() > self.text.len() && external.starts_with(&self.text);
+        let slash_completion = self.text.starts_with('/') && external.starts_with('/');
         self.text = external.to_string();
-        self.cursor = if was_at_eof && suffix_append {
+        self.cursor = if (was_at_eof && suffix_append) || slash_completion {
             self.text.len()
         } else {
             self.cursor.min(self.text.len())
@@ -205,6 +233,16 @@ impl TextareaState {
     }
 }
 
+fn slash_command_query(draft: &str) -> Option<&str> {
+    let trimmed = draft.trim_start();
+    if !trimmed.starts_with('/') {
+        return None;
+    }
+    let body = trimmed.trim_start_matches('/').trim_start();
+    let (name, _) = body.split_once(' ').map_or((body, ""), |(n, _)| (n, ""));
+    if name.is_empty() { None } else { Some(name) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,5 +283,31 @@ mod tests {
         state.cursor = 3;
         state.sync_external("hi there");
         assert_eq!(state.cursor, 3);
+    }
+
+    #[test]
+    fn sync_external_slash_completion_lands_cursor_at_eof() {
+        let mut state = TextareaState::from_text("/goal".into());
+        state.cursor = 2;
+        state.sync_external("/compact ");
+        assert_eq!(state.text, "/compact ");
+        assert_eq!(state.cursor, 9);
+    }
+
+    #[test]
+    fn focused_sync_accepts_slash_completion_prefix() {
+        assert!(TextareaState::should_sync_focused_external("/go", "/goal "));
+        assert!(TextareaState::should_sync_focused_external("/c", "/compact "));
+    }
+
+    #[test]
+    fn focused_sync_rejects_stale_parent_after_typing() {
+        assert!(!TextareaState::should_sync_focused_external("/goal args", "/goal "));
+        assert!(!TextareaState::should_sync_focused_external("/goal x", "/goal "));
+    }
+
+    #[test]
+    fn focused_sync_rejects_stale_parent_after_deletion() {
+        assert!(!TextareaState::should_sync_focused_external("/goal", "/goal "));
     }
 }

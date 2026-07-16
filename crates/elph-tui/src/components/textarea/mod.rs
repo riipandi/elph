@@ -34,6 +34,8 @@ pub struct TextareaProps {
     pub show_border: Option<bool>,
     /// Set by the parent on submit so plain Enter's ghost `\n` is dropped, not the next keystroke.
     pub suppress_enter_newline: Option<Ref<bool>>,
+    /// Parent sets `true` to clear the live buffer (e.g. Ctrl+C while idle).
+    pub force_clear: Option<Ref<bool>>,
     pub scrollbar_style: Option<ScrollbarStyle>,
     /// When true, plain `Enter` calls [`Self::on_submit`] (Shift+Enter / Ctrl+J still insert newlines).
     pub submit_on_enter: bool,

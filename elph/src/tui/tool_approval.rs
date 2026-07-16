@@ -54,12 +54,11 @@ fn format_args_preview(args: &str, width: usize, max_lines: usize) -> Vec<String
         while start < paragraph.len() && lines.len() < max_lines {
             let end = (start + width).min(paragraph.len());
             let mut slice_end = end;
-            if end < paragraph.len() {
-                if let Some(rel) = paragraph[start..end].rfind(' ') {
-                    if rel > width / 3 {
-                        slice_end = start + rel;
-                    }
-                }
+            if end < paragraph.len()
+                && let Some(rel) = paragraph[start..end].rfind(' ')
+                && rel > width / 3
+            {
+                slice_end = start + rel;
             }
             lines.push(paragraph[start..slice_end].trim().to_string());
             start = slice_end;
@@ -74,12 +73,11 @@ fn format_args_preview(args: &str, width: usize, max_lines: usize) -> Vec<String
     if lines.is_empty() {
         lines.push("(no arguments)".to_string());
     }
-    if args.lines().count() > max_lines || args.len() > width.saturating_mul(max_lines) {
-        if let Some(last) = lines.last_mut() {
-            if last.len() + 1 <= width {
-                last.push('…');
-            }
-        }
+    if (args.lines().count() > max_lines || args.len() > width.saturating_mul(max_lines))
+        && let Some(last) = lines.last_mut()
+        && last.len() < width
+    {
+        last.push('…');
     }
     lines
 }

@@ -5,14 +5,12 @@
 mod activity;
 mod agent_bridge;
 mod chrome;
-mod editor;
-mod footer;
-mod header;
 mod labels;
-mod prompt_chrome;
+mod prompt;
 mod session_prefs;
 mod shell;
-mod status_row;
+mod slash_handler;
+mod slash_palette;
 mod theme;
 mod tool_approval;
 mod transcript;
@@ -23,8 +21,14 @@ use anyhow::Result;
 use iocraft::prelude::*;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use elph_agent::LocalExecutionEnv;
+
 use crate::agent::agent_mode_from_setting;
-use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, create_coding_session_with_events};
+use crate::agent::{
+    AgentUiEvent, CodingAgentSession, CreateSessionOptions, create_coding_session_with_events, load_resources,
+    slash_commands_for_palette,
+};
+use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
 use crate::types::ThinkingLevel;
 
@@ -65,6 +69,22 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let paths = Paths::resolve()?;
     Settings::ensure(&paths)?;
     let settings = Settings::load(&paths)?;
+
+    let extension_host = ExtensionHost::new();
+    if let Err(err) = ExtensionHost::ensure_dirs(&paths) {
+        log::warn!("extension dirs unavailable: {err}");
+    } else if let Err(err) = extension_host.reload(&paths, true) {
+        log::warn!("extension reload failed: {err}");
+    }
+
+    let cwd = paths.project_dir().clone();
+    let env = LocalExecutionEnv::new(&cwd);
+    let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
+    let slash_commands = slash_commands_for_palette(
+        Some(&extension_host.registry().read()),
+        Some(&bootstrap_resources.prompt_templates),
+    );
+    let prompt_templates = bootstrap_resources.prompt_templates;
 
     let agent = try_bootstrap_agent(&paths, &settings, options.resume_id.as_deref()).await;
     let (agent_session, ui_events, session_id, context_limit, supports_images, bootstrap_notice) = match agent {
@@ -114,6 +134,10 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         show_thinking: settings.show_thinking,
         agent_session: agent_session,
         ui_events: ui_events,
+        extension_host: extension_host,
+        slash_commands: slash_commands,
+        prompt_templates: prompt_templates,
+        cwd: cwd,
     ))
     .render_loop()
     .fullscreen()

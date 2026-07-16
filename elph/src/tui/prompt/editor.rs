@@ -5,7 +5,7 @@ use iocraft::prelude::*;
 
 use crate::types::AgentMode;
 
-use super::theme::{EDITOR_BORDER, EDITOR_CURSOR, rgb_color};
+use crate::tui::theme::{EDITOR_BORDER, EDITOR_CURSOR, rgb_color};
 
 fn editor_max_height(screen_height: u16) -> u16 {
     (screen_height / 4).clamp(4, 12)
@@ -19,6 +19,7 @@ pub struct EditorProps {
     pub draft: Option<State<String>>,
     pub live_draft: Option<Ref<String>>,
     pub suppress_enter_newline: Option<Ref<bool>>,
+    pub force_clear: Option<Ref<bool>>,
     pub on_submit: HandlerMut<'static, String>,
 }
 
@@ -49,6 +50,7 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                 value: props.draft,
                 live_draft: props.live_draft,
                 suppress_enter_newline: props.suppress_enter_newline,
+                force_clear: props.force_clear,
                 submit_on_enter: true,
                 on_submit: props.on_submit.take(),
                 text_color: Some(Color::Grey),

@@ -11,9 +11,13 @@ use tokio::sync::{Mutex, mpsc};
 
 use super::events::AgentUiEvent;
 use super::model_registry::ModelSelection;
+use super::resource_loader::load_resources;
 use super::session_manager::SessionManager;
 use super::tool_policy::{AgentModePolicy, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
+use crate::platform::Paths;
+use elph_agent::parse_command_args;
+use std::path::Path;
 
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {
@@ -174,6 +178,26 @@ impl CodingAgentSession {
             .await
             .map(|_| ())
             .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<()> {
+        let env = self.harness.env();
+        let resources = load_resources(paths, cwd, env.as_ref()).await;
+        self.harness
+            .set_resources(resources)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
+    pub async fn prompt_from_template(&self, name: &str, args: &str) -> Result<()> {
+        let start = Instant::now();
+        let parsed = parse_command_args(args);
+        let _ = self.ui_tx.send(AgentUiEvent::Status("Thinking…".into()));
+        let result = self.harness.prompt_from_template(name, &parsed).await.map(|_| ());
+        let elapsed_secs = start.elapsed().as_secs_f64();
+        let _ = self.harness.wait_for_idle().await;
+        let _ = self.ui_tx.send(AgentUiEvent::RunCompleted { elapsed_secs });
+        result.map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn set_model_from_value(&self, value: &str) -> Result<String> {

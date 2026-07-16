@@ -39,11 +39,25 @@
  This is an example response from AI agent
 
 ╭─────────────────────────────────────────────────────────────────╮
-│ >                                                               │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)
+│ PREFIX_SYMBOL                                                   │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)
 ╰─────────────────────────────────────────────────── AGENT_MODE ──╯
 MODEL_NAME | PROVIDER | T: high | IMG      $0.00 | 0k | 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
 PROJECT_DIR [abcd12345]                      turn: 0 | main [-N +N]      (PROJECT_DIR only name, not full path)
 ```
+
+### Prefix Symbol
+
+The prompt character changes based on input content. Always **white**, **bold**.
+Leading spaces are trimmed before detection. Prefix resets to `>` when input is empty.
+
+| Input starts with | Prompt | Meaning                       | Remarks                  |
+| ----------------- | ------ | ----------------------------- | ------------------------ |
+| (default)         | `>`    | Normal chat input             | Border color: dark grey  |
+| `/`               | `/`    | Slash command                 | Border color: dark grey  |
+| `!`               | `$`    | Shell command with context    | Border color: dark green |
+| `!!`              | `#`    | Shell command without context | Border color: dark green |
+
+Check order: `!!` → `!` → `/` → default (`>`).
 
 ---
 
@@ -124,20 +138,6 @@ PROJECT_DIR [abcd12345]                      turn: 0 | main [-N +N]      (PROJEC
 - **Submit**: `Enter` sends message and clears input.
 - **Prompt prefix**: Rendered as a separate element before the textarea (not using textarea's Prompt).
 - **Trigger stripped on submit**: `/cmd` → message is `cmd`, `!!rpt` → message is `rpt`.
-
-### Prompt Prefix (dynamic)
-
-The prompt character changes based on input content. Always **white**, **bold**.
-Leading spaces are trimmed before detection. Prefix resets to `>` when input is empty.
-
-| Input starts with | Prompt | Meaning                       |
-| ----------------- | ------ | ----------------------------- |
-| (default)         | `>`    | Normal chat input             |
-| `/`               | `/`    | Slash command                 |
-| `!`               | `$`    | Shell command with context    |
-| `!!`              | `#`    | Shell command without context |
-
-Check order: `!!` → `!` → `/` → default (`>`).
 
 ### Slash Commands
 
