@@ -71,6 +71,9 @@ impl MarkdownLine {
         if matches!(self.kind, MarkdownLineKind::Table) && self.table.is_some() {
             return false;
         }
+        if matches!(self.kind, MarkdownLineKind::Rule) {
+            return false;
+        }
         self.spans.iter().all(|span| span.text.trim().is_empty())
     }
 }

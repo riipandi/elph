@@ -30,12 +30,14 @@ pub use crate::transcript_layout::{
 pub use crate::transcript_layout::{
     effective_scroll_offset, layout_transcript_rows, layout_transcript_rows_widths, transcript_messages_revision,
 };
+pub use crate::transcript_layout::{
+    latest_sticky_user_message_index, sticky_source_bubble_suppressed, sticky_user_message_index,
+    transcript_bubble_inner_width, transcript_bubble_overlaps_viewport, transcript_content_row_count,
+    transcript_supports_sticky_scroll, transcript_text_width, wrapped_transcript_row_count,
+};
 pub use crate::transcript_layout::{layout_sticky_header, scroll_viewport_height, sticky_body_line_budget};
 pub use crate::transcript_layout::{
     sticky_body_line_clamp, sticky_header_display_rows, sticky_header_row_count, sticky_panel_body_cap,
-};
-pub use crate::transcript_layout::{
-    sticky_user_message_index, transcript_bubble_inner_width, transcript_text_width, wrapped_transcript_row_count,
 };
 pub use ascii_font::{AsciiText, AsciiTextProps};
 pub use card::{Card, CardBorderStyle, CardProps};

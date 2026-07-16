@@ -30,6 +30,7 @@ struct TranscriptRenderCache {
 pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
+    let mut last_sticky_rows = hooks.use_ref(|| 0u16);
     let scroll_generation = hooks.use_state(|| 0u32);
     let empty_messages = hooks.use_state(Vec::<TranscriptMessage>::new);
     let messages_state = props.messages.unwrap_or(empty_messages);
@@ -56,11 +57,10 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let cached = cache.as_ref().expect("transcript render cache");
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
-    let bubbles = build_transcript_bubbles(props.screen_width, &messages);
 
     let handle = scroll_handle.read();
-    let scroll_viewport = handle.viewport_height().max(1);
-    let min_content_height = scroll_viewport;
+    let scroll_zone = handle.viewport_height().max(1);
+    let panel_viewport = scroll_zone.saturating_add(*last_sticky_rows.read());
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
@@ -69,10 +69,19 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 is_sticky_prompt,
                 handle.scroll_offset(),
                 handle.is_auto_scroll_pinned(),
+                panel_viewport,
             )
         })
         .flatten();
-    let panel_height = scroll_viewport;
+    let effective_scroll_offset = if handle.is_auto_scroll_pinned() {
+        scroll_view_max_offset(handle.content_height(), scroll_zone)
+    } else {
+        handle.scroll_offset()
+    };
+    let suppress_sticky_source =
+        sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset, scroll_zone);
+    let bubbles = build_transcript_bubbles(props.screen_width, &messages, suppress_sticky_source);
+    let panel_height = panel_viewport;
     let sticky_header = sticky_idx.and_then(|idx| {
         if !messages[idx].style.is_sticky_prompt() {
             return None;
@@ -86,6 +95,8 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         )
     });
     let sticky_rows = sticky_header.as_ref().map(|h| h.height).unwrap_or(0);
+    last_sticky_rows.set(sticky_rows);
+    let min_content_height = scroll_zone;
 
     let transcript_focused = props.has_focus;
     hooks.use_terminal_events({
@@ -183,29 +194,37 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 position: Position::Relative,
                 overflow: Overflow::Hidden,
             ) {
-                ScrollView(
-                    handle: Some(scroll_handle),
-                    scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
-                    scrollbar: true,
-                    scrollbar_thumb_color: scrollbar.thumb_color,
-                    scrollbar_track_color: scrollbar.track_color,
-                    keyboard_scroll: Some(props.keyboard_scroll),
-                    auto_scroll: true,
+                View(
+                    position: Position::Absolute,
+                    top: sticky_rows,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    overflow: Overflow::Hidden,
                 ) {
-                    View(
-                        width: props.screen_width,
-                        min_height: min_content_height,
-                        background_color: Color::Reset,
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::End,
-                        align_items: AlignItems::Baseline,
-                        padding_top: sticky_rows,
-                        padding_bottom: 0,
-                        padding_left: pad,
-                        padding_right: pad,
-                        gap: 0,
+                    ScrollView(
+                        handle: Some(scroll_handle),
+                        scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
+                        scrollbar: true,
+                        scrollbar_thumb_color: scrollbar.thumb_color,
+                        scrollbar_track_color: scrollbar.track_color,
+                        keyboard_scroll: Some(props.keyboard_scroll),
+                        auto_scroll: true,
                     ) {
-                        #(bubbles)
+                        View(
+                            width: props.screen_width,
+                            min_height: min_content_height,
+                            background_color: Color::Reset,
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::End,
+                            align_items: AlignItems::Baseline,
+                            padding_bottom: 0,
+                            padding_left: pad,
+                            padding_right: pad,
+                            gap: 0,
+                        ) {
+                            #(bubbles)
+                        }
                     }
                 }
                 #(if let (Some(idx), Some(header)) = (sticky_idx, sticky_header.as_ref()) {

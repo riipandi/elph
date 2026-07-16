@@ -10,6 +10,11 @@ pub fn render_tinted_card(chrome: &TranscriptCardChrome, message: &TranscriptMes
     render_text_card(chrome, &message.content, chrome.background, chrome.foreground)
 }
 
+/// Layout-preserving placeholder while the same prompt is shown in the sticky overlay.
+pub fn render_invisible_tinted_card(chrome: &TranscriptCardChrome, message: &TranscriptMessage) -> AnyElement<'static> {
+    render_text_card(chrome, &message.layout_text(), chrome.background, chrome.background)
+}
+
 pub fn render_flush_card(chrome: &TranscriptCardChrome, message: &TranscriptMessage) -> AnyElement<'static> {
     render_text_card(chrome, &message.content, Color::Reset, chrome.foreground)
 }

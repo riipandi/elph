@@ -10,7 +10,10 @@
 use anyhow::Result;
 use elph_tui::loader::SpinnerLoader;
 use elph_tui::{ProcessActivityTrail, ProcessStatus, ProcessStatusRow, Textarea, TranscriptRowLayout};
-use elph_tui::{active_sticky_user_message_index, layout_sticky_header, rgb, scroll_view_down, scroll_view_up};
+use elph_tui::{
+    active_sticky_user_message_index, layout_sticky_header, rgb, scroll_view_down, scroll_view_max_offset,
+    scroll_view_up, sticky_source_bubble_suppressed,
+};
 use elph_tui::{transcript_bubble_inner_width, wrapped_transcript_row_count};
 use iocraft::prelude::*;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -296,7 +299,11 @@ fn seed_transcript_messages() -> Vec<TranscriptMessage> {
     ]
 }
 
-fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage]) -> Vec<AnyElement<'static>> {
+fn build_transcript_bubbles(
+    screen_width: u16,
+    messages: &[TranscriptMessage],
+    suppress_sticky_source: Option<usize>,
+) -> Vec<AnyElement<'static>> {
     let mut bubbles = Vec::with_capacity(messages.len());
     let mut index = 0;
     while index < messages.len() {
@@ -319,6 +326,7 @@ fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage]) -
             screen_width,
             message,
             message.style.entry_gap_after(next_style),
+            suppress_sticky_source == Some(index),
         ));
         index += 1;
     }
@@ -360,8 +368,32 @@ fn transcript_message_bubble(
     screen_width: u16,
     message: &TranscriptMessage,
     margin_bottom: u16,
+    suppress_sticky_source: bool,
 ) -> AnyElement<'static> {
     let style = message.style;
+    let pad_h = style.horizontal_padding();
+    if suppress_sticky_source && style == TranscriptStyle::User {
+        return element! {
+            View(
+                width: screen_width - 3,
+                background_color: style.background_color(),
+                border_style: BorderStyle::None,
+                margin_bottom: margin_bottom,
+                padding_top: style.padding(),
+                padding_bottom: style.padding(),
+                padding_left: pad_h,
+                padding_right: pad_h,
+                align_items: AlignItems::FlexStart,
+            ) {
+                Text(
+                    color: style.background_color(),
+                    wrap: TextWrap::Wrap,
+                    content: message.content.clone(),
+                )
+            }
+        }
+        .into();
+    }
     if message.tool.is_some()
         && matches!(
             style,
@@ -370,7 +402,6 @@ fn transcript_message_bubble(
     {
         return tool_call_card(screen_width, message, margin_bottom);
     }
-    let pad_h = style.horizontal_padding();
     element! {
         View(
             width: screen_width - 3,
@@ -569,6 +600,7 @@ const STICKY_MIN_SCROLL_ROWS: u16 = 3;
 fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let scroll_handle = hooks.use_ref_default::<ScrollViewHandle>();
     let mut render_cache = hooks.use_ref(|| None::<TranscriptRenderCache>);
+    let mut last_sticky_rows = hooks.use_ref(|| 0u16);
     let scroll_generation = hooks.use_state(|| 0u32);
     let empty_messages = hooks.use_state(Vec::<TranscriptMessage>::new);
     let messages_state = props.messages.unwrap_or(empty_messages);
@@ -595,11 +627,10 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
     let cached = cache.as_ref().expect("transcript render cache");
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
-    let bubbles = build_transcript_bubbles(props.screen_width, &messages);
 
     let handle = scroll_handle.read();
-    let scroll_viewport = handle.viewport_height().max(1);
-    let min_content_height = scroll_viewport;
+    let scroll_zone = handle.viewport_height().max(1);
+    let panel_viewport = scroll_zone.saturating_add(*last_sticky_rows.read());
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
@@ -608,10 +639,19 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                 is_sticky_prompt,
                 handle.scroll_offset(),
                 handle.is_auto_scroll_pinned(),
+                panel_viewport,
             )
         })
         .flatten();
-    let panel_height = scroll_viewport;
+    let effective_scroll_offset = if handle.is_auto_scroll_pinned() {
+        scroll_view_max_offset(handle.content_height(), scroll_zone)
+    } else {
+        handle.scroll_offset()
+    };
+    let suppress_sticky_source =
+        sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset, scroll_zone);
+    let bubbles = build_transcript_bubbles(props.screen_width, &messages, suppress_sticky_source);
+    let panel_height = panel_viewport;
     let sticky_header = sticky_idx.and_then(|idx| {
         if !messages[idx].style.is_sticky_prompt() {
             return None;
@@ -625,6 +665,8 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
         )
     });
     let sticky_rows = sticky_header.as_ref().map(|h| h.height).unwrap_or(0);
+    last_sticky_rows.set(sticky_rows);
+    let min_content_height = scroll_zone;
 
     hooks.use_terminal_events({
         let mut scroll_handle = scroll_handle;
@@ -674,29 +716,37 @@ fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl Into<
                 position: Position::Relative,
                 overflow: Overflow::Hidden,
             ) {
-                ScrollView(
-                    handle: Some(scroll_handle),
-                    scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
-                    scrollbar: true,
-                    scrollbar_thumb_color: Color::Rgb { r: (88), g: (88), b: (88) },
-                    scrollbar_track_color: Color::Rgb { r: (48), g: (48), b: (48) },
-                    keyboard_scroll: Some(false),
-                    auto_scroll: true,
+                View(
+                    position: Position::Absolute,
+                    top: sticky_rows,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    overflow: Overflow::Hidden,
                 ) {
-                    View(
-                        width: props.screen_width,
-                        min_height: min_content_height,
-                        background_color: Color::Reset,
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::End,
-                        align_items: AlignItems::Baseline,
-                        padding_top: sticky_rows,
-                        padding_bottom: 0,
-                        padding_left: 1,
-                        padding_right: 1,
-                        gap: 0,
+                    ScrollView(
+                        handle: Some(scroll_handle),
+                        scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
+                        scrollbar: true,
+                        scrollbar_thumb_color: Color::Rgb { r: (88), g: (88), b: (88) },
+                        scrollbar_track_color: Color::Rgb { r: (48), g: (48), b: (48) },
+                        keyboard_scroll: Some(false),
+                        auto_scroll: true,
                     ) {
-                        #(bubbles)
+                        View(
+                            width: props.screen_width,
+                            min_height: min_content_height,
+                            background_color: Color::Reset,
+                            flex_direction: FlexDirection::Column,
+                            justify_content: JustifyContent::End,
+                            align_items: AlignItems::Baseline,
+                            padding_bottom: 0,
+                            padding_left: 1,
+                            padding_right: 1,
+                            gap: 0,
+                        ) {
+                            #(bubbles)
+                        }
                     }
                 }
                 #(if let (Some(idx), Some(header)) = (sticky_idx, sticky_header.as_ref()) {

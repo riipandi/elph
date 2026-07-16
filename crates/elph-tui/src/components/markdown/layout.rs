@@ -25,6 +25,9 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
     if line.is_blank() {
         return 1;
     }
+    if line.kind == MarkdownLineKind::Rule {
+        return 1;
+    }
     if line.code_background {
         let inner = code_content_width(wrap_width);
         return wrapped_line_row_count(&line_plain_text(line), inner).max(1);

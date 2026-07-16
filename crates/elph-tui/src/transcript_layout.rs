@@ -184,6 +184,59 @@ pub fn layout_sticky_header(
     })
 }
 
+/// Total wrapped scroll rows for a laid-out transcript (0 when empty).
+pub fn transcript_content_row_count(layouts: &[TranscriptRowLayout]) -> u32 {
+    layouts
+        .last()
+        .map(|layout| layout.start_row.saturating_add(layout.row_count))
+        .unwrap_or(0)
+}
+
+/// Whether the transcript is tall enough to scroll and warrant sticky user-prompt chrome.
+///
+/// Empty or viewport-fitting sessions (typical at session start) return false so the sticky card
+/// stays hidden until content actually overflows the panel.
+pub fn transcript_supports_sticky_scroll(layouts: &[TranscriptRowLayout], viewport_rows: u16) -> bool {
+    let viewport = viewport_rows.max(1) as u32;
+    !layouts.is_empty() && transcript_content_row_count(layouts) > viewport
+}
+
+/// Whether the laid-out bubble at `message_idx` intersects the scroll viewport.
+pub fn transcript_bubble_overlaps_viewport(
+    layouts: &[TranscriptRowLayout],
+    message_idx: usize,
+    scroll_offset: i32,
+    viewport_rows: u16,
+) -> bool {
+    let Some(layout) = layouts.get(message_idx) else {
+        return false;
+    };
+    if scroll_offset < 0 {
+        return false;
+    }
+    let view_top = scroll_offset as u32;
+    let view_bottom = view_top.saturating_add(viewport_rows.max(1) as u32);
+    let bubble_top = layout.start_row;
+    let bubble_bottom = layout.start_row.saturating_add(layout.row_count);
+    bubble_top < view_bottom && bubble_bottom > view_top
+}
+
+/// Hide the in-flow sticky source bubble when it would duplicate the pinned overlay.
+pub fn sticky_source_bubble_suppressed(
+    layouts: &[TranscriptRowLayout],
+    sticky_idx: Option<usize>,
+    scroll_offset: i32,
+    viewport_rows: u16,
+) -> Option<usize> {
+    let idx = sticky_idx?;
+    transcript_bubble_overlaps_viewport(layouts, idx, scroll_offset, viewport_rows).then_some(idx)
+}
+
+/// Index of the latest submitted user prompt eligible for sticky chrome.
+pub fn latest_sticky_user_message_index(is_sticky_prompt: &[bool]) -> Option<usize> {
+    is_sticky_prompt.iter().rposition(|&sticky| sticky)
+}
+
 /// Index of the submitted user prompt that should stick at the top for `scroll_offset` (lines).
 ///
 /// `is_sticky_prompt[i]` must be true only for editor-submitted user input (not assistant, tool,
@@ -194,7 +247,7 @@ pub fn sticky_user_message_index(
     is_sticky_prompt: &[bool],
     scroll_offset: i32,
 ) -> Option<usize> {
-    if layouts.len() != is_sticky_prompt.len() || scroll_offset <= 0 {
+    if layouts.len() != is_sticky_prompt.len() || scroll_offset < 0 {
         return None;
     }
     let offset = scroll_offset as u32;
@@ -205,21 +258,27 @@ pub fn sticky_user_message_index(
         .rposition(|(_, (layout, sticky))| *sticky && layout.start_row <= offset)
 }
 
-/// Sticky prompt for manual scroll only — not while `auto_scroll` is pinned to the bottom.
+/// Sticky prompt shown for the active transcript turn.
 ///
-/// When pinned, [`effective_scroll_offset`] equals the bottom offset (often large). Feeding that
-/// into [`sticky_user_message_index`] wrongly pins the latest user bubble after submit and causes
-/// viewport inset flicker on long pasted messages.
+/// Returns `None` for an empty transcript or when content still fits the viewport (no scroll).
+/// While `auto_scroll` is pinned to the bottom, use the latest submitted user prompt.
+/// During manual scroll, pick the last sticky turn at or above the viewport top; if none match
+/// yet (e.g. offset zero before the first turn scrolls past), fall back to the latest sticky.
 pub fn active_sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
     is_sticky_prompt: &[bool],
     scroll_offset: i32,
     auto_scroll_pinned: bool,
+    viewport_rows: u16,
 ) -> Option<usize> {
-    if auto_scroll_pinned {
+    if layouts.len() != is_sticky_prompt.len() || !transcript_supports_sticky_scroll(layouts, viewport_rows) {
         return None;
     }
+    if auto_scroll_pinned {
+        return latest_sticky_user_message_index(is_sticky_prompt);
+    }
     sticky_user_message_index(layouts, is_sticky_prompt, scroll_offset)
+        .or_else(|| latest_sticky_user_message_index(is_sticky_prompt))
 }
 
 /// Effective scroll offset when `auto_scroll` may be pinned to the bottom.

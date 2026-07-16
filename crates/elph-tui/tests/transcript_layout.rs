@@ -105,16 +105,66 @@ fn clamp_sticky_header_preserves_min_scroll_area() {
 }
 
 #[test]
-fn active_sticky_none_when_auto_scroll_pinned() {
+fn sticky_source_bubble_suppressed_only_when_viewport_overlaps() {
+    let layouts = layout_transcript_rows(&["assistant", "user prompt"], 40, 1);
+    let user_idx = 1;
+    assert!(transcript_bubble_overlaps_viewport(&layouts, user_idx, 0, 8));
+    assert_eq!(sticky_source_bubble_suppressed(&layouts, Some(user_idx), 0, 8), Some(user_idx));
+    assert_eq!(sticky_source_bubble_suppressed(&layouts, Some(user_idx), 20, 4), None);
+    assert_eq!(sticky_source_bubble_suppressed(&layouts, None, 0, 8), None);
+}
+
+#[test]
+fn transcript_supports_sticky_scroll_requires_overflow() {
+    let layouts = layout_transcript_rows(&["one", "two"], 40, 1);
+    let rows = transcript_content_row_count(&layouts) as u16;
+    assert!(rows >= 3);
+    assert!(!transcript_supports_sticky_scroll(&layouts, rows));
+    assert!(transcript_supports_sticky_scroll(&layouts, rows.saturating_sub(1)));
+    assert!(!transcript_supports_sticky_scroll(&[], 20));
+}
+
+#[test]
+fn active_sticky_uses_latest_when_auto_scroll_pinned() {
     let texts = ["sys", "user one", "assistant", "user two"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
     let is_sticky_prompt = [false, true, false, true];
+    let viewport = 5;
     let bottom_offset = 50;
     assert_eq!(
-        active_sticky_user_message_index(&layouts, &is_sticky_prompt, bottom_offset, true),
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, bottom_offset, true, viewport),
+        Some(3)
+    );
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 6, false, viewport),
+        Some(3)
+    );
+}
+
+#[test]
+fn active_sticky_hidden_for_short_or_empty_transcript() {
+    let texts = ["sys", "user one", "assistant", "user two"];
+    let layouts = layout_transcript_rows(&texts, 40, 1);
+    let is_sticky_prompt = [false, true, false, true];
+    let tall_viewport = 40;
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 0, true, tall_viewport),
         None
     );
-    assert_eq!(active_sticky_user_message_index(&layouts, &is_sticky_prompt, 6, false), Some(3));
+    assert_eq!(active_sticky_user_message_index(&[], &[], 0, true, 20), None);
+}
+
+#[test]
+fn active_sticky_falls_back_to_latest_before_first_turn_scrolls_past() {
+    let texts = ["sys", "user one"];
+    let layouts = layout_transcript_rows(&texts, 40, 1);
+    let is_sticky_prompt = [false, true];
+    let viewport = 2;
+    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, 0), None);
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 0, false, viewport),
+        Some(1)
+    );
 }
 
 #[test]
@@ -179,14 +229,23 @@ fn layout_sticky_header_line_clamps_tall_prompt() {
 }
 
 #[test]
-fn pinned_bottom_offset_does_not_activate_sticky_when_auto_scroll_pinned() {
+fn pinned_bottom_offset_activates_latest_sticky_when_auto_scroll_pinned() {
     let texts = ["user paste"];
     let layouts = layout_transcript_rows(&texts, 40, 0);
     let is_sticky_prompt = [true];
     let pinned_offset = 80;
     assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset), Some(0));
     assert_eq!(
-        active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true),
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true, 20),
         None
+    );
+
+    let long = "word ".repeat(40);
+    let long_layouts = layout_transcript_rows(&[long.trim()], 12, 0);
+    let long_rows = transcript_content_row_count(&long_layouts) as u16;
+    assert!(transcript_supports_sticky_scroll(&long_layouts, long_rows - 1));
+    assert_eq!(
+        active_sticky_user_message_index(&long_layouts, &[true], pinned_offset, true, long_rows - 1),
+        Some(0)
     );
 }

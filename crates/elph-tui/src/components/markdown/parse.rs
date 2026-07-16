@@ -237,7 +237,7 @@ impl<'a> ParserState<'a> {
         self.reset_block();
         self.lines.push(MarkdownLine {
             kind: MarkdownLineKind::Rule,
-            spans: vec![StyledSpan::plain("─".repeat(24), self.theme.blockquote)],
+            spans: Vec::new(),
             code_background: false,
             table: None,
         });
@@ -657,6 +657,23 @@ mod tests {
         assert!(done.contains("✅ Done"), "done line: {done}");
         assert!(launch.starts_with("• "), "launch line: {launch}");
         assert!(launch.contains("🚀 Launch"), "launch line: {launch}");
+    }
+
+    #[test]
+    fn thematic_break_parses_as_rule_line() {
+        let doc = parse_markdown_document("Above\n\n---\n\nBelow");
+        assert!(
+            doc.lines.iter().any(|line| line.kind == MarkdownLineKind::Rule),
+            "lines: {:?}",
+            doc.lines.iter().map(|l| l.kind).collect::<Vec<_>>()
+        );
+        let rule = doc
+            .lines
+            .iter()
+            .find(|line| line.kind == MarkdownLineKind::Rule)
+            .expect("rule");
+        assert!(rule.spans.is_empty());
+        assert!(!rule.is_blank());
     }
 
     #[test]

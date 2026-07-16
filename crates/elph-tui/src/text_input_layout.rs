@@ -156,6 +156,17 @@ impl WrappedTextLayout {
         self.rows.len().max(1) as u16
     }
 
+    /// Wrapped display lines for the full source text.
+    pub fn wrapped_line_strings(&self, text: &str) -> Vec<String> {
+        if self.rows.is_empty() {
+            return vec![String::new()];
+        }
+        self.rows
+            .iter()
+            .map(|row| text[row.offset..row.offset + row.len].to_string())
+            .collect()
+    }
+
     fn row_index_for_offset(&self, offset: usize) -> usize {
         let mut lo = 0usize;
         let mut hi = self.rows.len();

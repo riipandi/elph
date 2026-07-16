@@ -4,11 +4,15 @@ use iocraft::prelude::*;
 
 use super::super::types::{TranscriptMessage, TranscriptStyle};
 use super::kinds::{
-    chat_response_card, error_card, meta_card, skill_prompt_card, thinking_card, thinking_response_pair_card,
-    tool_call_card, user_prompt_card,
+    chat_response_card, error_card, meta_card, skill_prompt_card, suppressed_sticky_user_prompt_card, thinking_card,
+    thinking_response_pair_card, tool_call_card, user_prompt_card,
 };
 
-pub fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage]) -> Vec<AnyElement<'static>> {
+pub fn build_transcript_bubbles(
+    screen_width: u16,
+    messages: &[TranscriptMessage],
+    suppress_sticky_source: Option<usize>,
+) -> Vec<AnyElement<'static>> {
     let mut bubbles = Vec::with_capacity(messages.len());
     let mut index = 0;
     while index < messages.len() {
@@ -24,7 +28,12 @@ pub fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage
             continue;
         }
         let margin_bottom = message.style.entry_gap_after(next_style);
-        bubbles.push(transcript_message_bubble(screen_width, message, margin_bottom));
+        bubbles.push(transcript_message_bubble(
+            screen_width,
+            message,
+            margin_bottom,
+            suppress_sticky_source == Some(index),
+        ));
         index += 1;
     }
     bubbles
@@ -34,8 +43,12 @@ pub fn transcript_message_bubble(
     screen_width: u16,
     message: &TranscriptMessage,
     margin_bottom: u16,
+    suppress_sticky_source: bool,
 ) -> AnyElement<'static> {
     match message.style {
+        TranscriptStyle::User if suppress_sticky_source => {
+            suppressed_sticky_user_prompt_card(screen_width, message, margin_bottom)
+        }
         TranscriptStyle::User => user_prompt_card(screen_width, message, margin_bottom),
         TranscriptStyle::SkillPrompt => skill_prompt_card(screen_width, message, margin_bottom),
         TranscriptStyle::Thinking => thinking_card(screen_width, message, margin_bottom),

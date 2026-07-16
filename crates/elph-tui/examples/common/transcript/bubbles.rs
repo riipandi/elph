@@ -7,7 +7,11 @@ use elph_tui::prelude::*;
 const COLORED_CARD_PAD: u16 = 1;
 const COLORED_CARD_PAD_H: u16 = COLORED_CARD_PAD + 1;
 
-pub fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage]) -> Vec<AnyElement<'static>> {
+pub fn build_transcript_bubbles(
+    screen_width: u16,
+    messages: &[TranscriptMessage],
+    suppress_sticky_source: Option<usize>,
+) -> Vec<AnyElement<'static>> {
     let mut bubbles = Vec::with_capacity(messages.len());
     let mut index = 0;
     while index < messages.len() {
@@ -30,6 +34,7 @@ pub fn build_transcript_bubbles(screen_width: u16, messages: &[TranscriptMessage
             screen_width,
             message,
             message.style.entry_gap_after(next_style),
+            suppress_sticky_source == Some(index),
         ));
         index += 1;
     }
@@ -71,8 +76,32 @@ fn transcript_message_bubble(
     screen_width: u16,
     message: &TranscriptMessage,
     margin_bottom: u16,
+    suppress_sticky_source: bool,
 ) -> AnyElement<'static> {
     let style = message.style;
+    let pad_h = style.horizontal_padding();
+    if suppress_sticky_source && style == TranscriptStyle::User {
+        return element! {
+            View(
+                width: screen_width - 3,
+                background_color: style.background_color(),
+                border_style: BorderStyle::None,
+                margin_bottom: margin_bottom,
+                padding_top: style.padding(),
+                padding_bottom: style.padding(),
+                padding_left: pad_h,
+                padding_right: pad_h,
+                align_items: AlignItems::FlexStart,
+            ) {
+                Text(
+                    color: style.background_color(),
+                    wrap: TextWrap::Wrap,
+                    content: message.content.clone(),
+                )
+            }
+        }
+        .into();
+    }
     if message.tool.is_some()
         && matches!(
             style,
@@ -81,7 +110,6 @@ fn transcript_message_bubble(
     {
         return tool_call_card(screen_width, message, margin_bottom);
     }
-    let pad_h = style.horizontal_padding();
     element! {
         View(
             width: screen_width - 3,

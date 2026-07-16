@@ -38,6 +38,15 @@ pub fn user_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_b
     render_tinted_card(&chrome, message)
 }
 
+pub fn suppressed_sticky_user_prompt_card(
+    screen_width: u16,
+    message: &TranscriptMessage,
+    margin_bottom: u16,
+) -> AnyElement<'static> {
+    let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
+    super::frame::render_invisible_tinted_card(&chrome, message)
+}
+
 pub fn skill_prompt_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
     render_tinted_card(&chrome, message)

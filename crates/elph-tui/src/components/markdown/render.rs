@@ -111,6 +111,23 @@ fn render_table_block(
     })
 }
 
+fn markdown_horizontal_rule_text(width: u16) -> String {
+    "─".repeat(width.max(1) as usize)
+}
+
+fn render_rule_line(width: u16, theme: &MarkdownTheme, margin_bottom: u16) -> AnyElement<'static> {
+    element! {
+        View(width: width, margin_bottom: margin_bottom, flex_shrink: 0f32) {
+            Text(
+                content: markdown_horizontal_rule_text(width),
+                color: theme.blockquote,
+                wrap: TextWrap::NoWrap,
+            )
+        }
+    }
+    .into()
+}
+
 fn render_list_block(lines: &[MarkdownLine], width: u16, margin_bottom: u16) -> AnyElement<'static> {
     let items: Vec<AnyElement<'static>> = lines
         .iter()
@@ -173,6 +190,12 @@ pub fn render_markdown_children_with_theme(
 
         if line.kind == MarkdownLineKind::Table {
             children.push(render_table_block(line, width, theme, gap));
+            index = end;
+            continue;
+        }
+
+        if line.kind == MarkdownLineKind::Rule {
+            children.push(render_rule_line(width, theme, gap));
             index = end;
             continue;
         }
@@ -326,6 +349,18 @@ mod tests {
         let doc = streaming_tail_document("```rust\nlet x = 1;");
         assert!(doc.lines.iter().any(|line| line.kind == MarkdownLineKind::Code));
         assert!(doc.lines.iter().all(|line| !line.code_background));
+    }
+
+    #[test]
+    fn horizontal_rule_renders_full_width() {
+        let doc = parse_markdown_document("Above\n\n---\n\nBelow");
+        let width = 32u16;
+        let block = render_markdown_block(&doc, width);
+        let rendered = element! { View(width: width) { #(vec![block]) } }.to_string();
+        assert!(
+            rendered.contains(&markdown_horizontal_rule_text(width)),
+            "expected full-width rule, got:\n{rendered}"
+        );
     }
 
     #[test]
