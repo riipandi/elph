@@ -11,11 +11,11 @@
 
 mod card;
 mod component;
-mod fuzzy;
+pub mod fuzzy;
 mod keyboard;
 mod layout;
 mod model;
-mod row_layout;
+pub mod row_layout;
 mod state;
 
 pub use component::SlashCommandPalette;
@@ -24,4 +24,6 @@ pub use keyboard::resolve_snapshot_key_action;
 pub use layout::palette_anchor_bottom;
 pub use model::SlashPaletteSnapshot;
 pub use model::build_snapshot;
+pub use model::list_viewport_cap;
+pub use model::palette_window_start;
 pub use state::sync_selection;

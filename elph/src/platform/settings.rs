@@ -33,6 +33,9 @@ pub struct Settings {
     pub auto_compact_limit: u8,
     #[serde(default = "default_footer_token_display")]
     pub footer_token_display: String,
+    /// Curated `provider/model_id` entries shown in the model picker Scoped tab.
+    #[serde(default)]
+    pub scoped_model_items: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -98,6 +101,7 @@ impl Settings {
             auto_compact_context: true,
             auto_compact_limit: default_compact_limit(),
             footer_token_display: default_footer_token_display(),
+            scoped_model_items: Vec::new(),
         }
     }
 
@@ -190,6 +194,16 @@ mod tests {
         assert!(decoded.memory.embed_quantized);
         assert_eq!(decoded.session.provider_id.as_deref(), Some("opencode"));
         assert_eq!(decoded.session.model_id.as_deref(), Some("big-pickle"));
+    }
+
+    #[test]
+    fn scoped_model_items_default_empty() {
+        let settings = Settings::defaults();
+        assert!(settings.scoped_model_items.is_empty());
+
+        let json = r#"{"theme":"auto"}"#;
+        let decoded: Settings = serde_json::from_str(json).expect("deserialize");
+        assert!(decoded.scoped_model_items.is_empty());
     }
 
     #[test]

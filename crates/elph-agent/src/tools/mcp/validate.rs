@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use serde_json::Value;
 
 use super::client::validate_server_config;
+use super::compat::normalize_mcp_config_value;
 use super::config::McpConfig;
 
 /// Embedded copy of `schemas/mcp-schema.json` (draft-07).
@@ -111,6 +112,7 @@ pub fn validate_mcp_config(config: &McpConfig) -> Result<(), McpConfigValidation
 /// Parse raw JSON text, validate against schema + semantic rules, return typed config.
 pub fn parse_and_validate_mcp_config(raw: &str) -> Result<McpConfig> {
     let value: Value = serde_json::from_str(raw).context("parse MCP config JSON")?;
+    let value = normalize_mcp_config_value(value);
     validate_mcp_config_value(&value).map_err(|e| anyhow::anyhow!("{e}"))?;
     let config: McpConfig = serde_json::from_value(value).context("deserialize MCP config")?;
     validate_mcp_config_semantic(&config).map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -210,5 +212,40 @@ mod tests {
             }
         }"#;
         parse_and_validate_mcp_config(raw).expect("sse+policy valid");
+    }
+
+    #[test]
+    fn accepts_cursor_mcp_servers_format() {
+        let raw = r#"{
+            "mcpServers": {
+                "context7": {
+                    "url": "https://mcp.context7.com/mcp",
+                    "headers": {
+                        "CONTEXT7_API_KEY": "env.CONTEXT7_API_KEY"
+                    }
+                },
+                "deepwiki": {
+                    "url": "https://mcp.deepwiki.com/mcp"
+                },
+                "lightpanda": {
+                    "command": "lightpanda",
+                    "args": ["mcp", "--obey-robots"],
+                    "type": "stdio"
+                }
+            }
+        }"#;
+        let cfg = parse_and_validate_mcp_config(raw).expect("cursor-style config");
+        assert_eq!(cfg.server_count(), 3);
+        let context7 = cfg.servers.get("context7").expect("context7");
+        assert_eq!(context7.kind_label(), "http");
+        assert_eq!(
+            context7
+                .http_config()
+                .expect("http")
+                .headers
+                .get("CONTEXT7_API_KEY")
+                .map(String::as_str),
+            Some("env.CONTEXT7_API_KEY")
+        );
     }
 }

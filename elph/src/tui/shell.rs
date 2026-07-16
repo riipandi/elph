@@ -18,7 +18,7 @@ use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
 use crate::platform::handle_prompt_interrupt_text;
-use crate::platform::{Paths, PromptInterrupt};
+use crate::platform::{Paths, PromptInterrupt, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 
@@ -34,13 +34,22 @@ use crate::tui::chrome::{format_elapsed_secs, read_git_footer_info, refresh_chro
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{prompt_focus_char, shell_global_shortcut};
 
+use crate::tui::model_selector::ModelSelectorFocus;
+use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
+use crate::tui::model_selector_shell::{
+    OpenModelSelectorArgs, apply_model_selection_locally, apply_model_selector_filter_seed, close_model_selector,
+    focus_model_selector_list, model_selector_confirm_on_enter, model_selector_filter_reserved_key,
+    model_selector_filter_seed, model_selector_list_backspace, model_selector_list_nav_delta,
+    model_selector_provider_delta, model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector,
+    spawn_runtime_model_switch, sync_pending_filter,
+};
 use crate::tui::prompt::PromptChrome;
 use crate::tui::session_prefs::persist_session_prefs;
 use crate::tui::shell_submit::{
     UserShellEvent, bash_args_summary, format_shell_agent_context, next_user_shell_tool_id, spawn_user_shell,
 };
 use crate::tui::slash_handler::{SlashContext, SlashOutcome};
-use crate::tui::slash_handler::{handle_slash_submit, overlay_deferred_message};
+use crate::tui::slash_handler::{handle_slash_submit, overlay_deferred_message, slash_echoes_prompt_in_transcript};
 use crate::tui::slash_palette::SlashPaletteKeyAction;
 use crate::tui::slash_palette::{build_snapshot, resolve_snapshot_key_action, sync_selection};
 use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
@@ -329,6 +338,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut question_input_focus = hooks.use_state(QuestionInputFocus::default);
     let mut question_validation_error = hooks.use_state(|| None::<String>);
     let mut approval_selected = hooks.use_state(|| 0usize);
+    let mut pending_model_selector = hooks.use_ref(|| None::<crate::tui::model_selector::PendingModelSelector>);
+    let mut model_provider_index = hooks.use_state(|| 0usize);
+    let mut model_selected_index = hooks.use_state(|| 0usize);
+    let mut model_filter = hooks.use_state(String::new);
+    let mut model_input_focus = hooks.use_state(ModelSelectorFocus::default);
 
     let extension_host = props.extension_host.clone();
     let cwd = props.cwd.clone();
@@ -696,6 +710,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     hooks.use_terminal_events({
         let paths = paths.read().clone();
         let agent_session = agent_session.clone();
+        let extension_host_for_keys = extension_host.clone();
+        let cwd_for_keys = cwd.clone();
         let mut messages = messages;
         let mut messages_revision = messages_revision;
         move |event| {
@@ -711,6 +727,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             let mut pending_tool_approval = pending_tool_approval;
             let mut pending_user_question = pending_user_question;
+            let mut pending_model_selector = pending_model_selector;
+            let mut model_provider_index = model_provider_index;
+            let mut model_selected_index = model_selected_index;
+            let mut model_filter = model_filter;
+            let mut model_input_focus = model_input_focus;
             let mut question_multi_checked = question_multi_checked;
             let mut question_input_focus = question_input_focus;
             let mut question_validation_error = question_validation_error;
@@ -743,9 +764,175 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
             }
 
-            let status_dialog_open = pending_tool_approval.read().is_some() || pending_user_question.read().is_some();
+            let model_selector_open = pending_model_selector.read().is_some();
+            let status_dialog_open =
+                pending_tool_approval.read().is_some() || pending_user_question.read().is_some() || model_selector_open;
 
             if status_dialog_open {
+                if model_selector_open && pending_user_question.read().is_none() {
+                    let mut pending_model_selector = pending_model_selector;
+                    let mut model_provider_index = model_provider_index;
+                    let mut model_selected_index = model_selected_index;
+                    let mut model_filter = model_filter;
+                    let mut model_input_focus = model_input_focus;
+                    let mut draft = draft;
+                    let mut live_draft = live_draft;
+                    let mut shell_focus = shell_focus;
+                    let mut chrome_stats = chrome_stats;
+                    let mut chrome_refresh_pending = chrome_refresh_pending;
+
+                    if modifiers.contains(KeyModifiers::CONTROL)
+                        && matches!(code, KeyCode::Char('l') | KeyCode::Char('L'))
+                    {
+                        close_model_selector(
+                            &mut pending_model_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
+                        return;
+                    }
+
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_model_selector(
+                            &mut pending_model_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
+                        return;
+                    }
+
+                    if modifiers.is_empty() && code == KeyCode::Tab {
+                        let next = match model_input_focus.get() {
+                            ModelSelectorFocus::Search => ModelSelectorFocus::List,
+                            ModelSelectorFocus::List => ModelSelectorFocus::Search,
+                        };
+                        model_input_focus.set(next);
+                        if let Some(pending) = pending_model_selector.write().as_mut() {
+                            pending.input_focus = next;
+                        }
+                        return;
+                    }
+
+                    if model_input_focus.get() == ModelSelectorFocus::List
+                        && let Some(seed) = model_selector_filter_seed(modifiers, code)
+                        && let Some(pending) = pending_model_selector.write().as_mut()
+                    {
+                        apply_model_selector_filter_seed(seed, &mut model_filter, &mut model_input_focus, pending);
+                        model_selected_index.set(pending.model_index);
+                        return;
+                    }
+
+                    if model_input_focus.get() == ModelSelectorFocus::Search
+                        && model_selector_filter_reserved_key(modifiers, code)
+                    {
+                        return;
+                    }
+
+                    if model_input_focus.get() == ModelSelectorFocus::List
+                        && let Some(delta) = model_selector_scope_delta(modifiers, code)
+                    {
+                        if let Some(pending) = pending_model_selector.write().as_mut() {
+                            focus_model_selector_list(&mut model_input_focus, pending);
+                            sync_pending_filter(pending, &model_filter.read());
+                            pending.apply_scope_nav(delta);
+                            model_provider_index.set(pending.provider_index);
+                            model_selected_index.set(pending.model_index);
+                        }
+                        return;
+                    }
+
+                    if model_input_focus.get() == ModelSelectorFocus::List {
+                        if let Some(delta) = model_selector_provider_delta(modifiers, code) {
+                            if let Some(pending) = pending_model_selector.write().as_mut() {
+                                focus_model_selector_list(&mut model_input_focus, pending);
+                                sync_pending_filter(pending, &model_filter.read());
+                                pending.apply_horizontal_nav(delta);
+                                model_provider_index.set(pending.provider_index);
+                                model_selected_index.set(pending.model_index);
+                            }
+                            return;
+                        }
+
+                        if modifiers.is_empty()
+                            && code == KeyCode::Backspace
+                            && let Some(pending) = pending_model_selector.write().as_mut()
+                            && model_selector_list_backspace(model_input_focus.get(), &mut model_filter, pending)
+                        {
+                            model_selected_index.set(pending.model_index);
+                            return;
+                        }
+
+                        if let Some(delta) = model_selector_list_nav_delta(modifiers, code) {
+                            if let Some(pending) = pending_model_selector.write().as_mut() {
+                                focus_model_selector_list(&mut model_input_focus, pending);
+                                sync_pending_filter(pending, &model_filter.read());
+                                let len = pending.filtered_models().len();
+                                if len > 0 {
+                                    let next =
+                                        (pending.model_index as isize + delta).clamp(0, len as isize - 1) as usize;
+                                    pending.model_index = next;
+                                    model_selected_index.set(next);
+                                }
+                            }
+                            return;
+                        }
+                    }
+
+                    if modifiers.is_empty()
+                        && code == KeyCode::Enter
+                        && model_selector_confirm_on_enter(model_input_focus.get())
+                    {
+                        let selection = pending_model_selector.read().as_ref().and_then(|pending| {
+                            let mut pending = pending.clone();
+                            sync_pending_filter(&mut pending, &model_filter.read());
+                            pending.selected_model().map(|row| row.value)
+                        });
+                        if let Some(value) = selection {
+                            let paths_snapshot = paths.clone();
+                            let agent = agent_session.clone();
+                            let mut stats = chrome_stats.read().clone();
+                            match apply_model_selection_locally(&value, &paths_snapshot, &mut stats) {
+                                Ok(label) => {
+                                    chrome_stats.set(stats);
+                                    chrome_refresh_pending.set(true);
+                                    push_transcript_message(
+                                        &mut messages,
+                                        &mut messages_revision,
+                                        TranscriptMessage::text(format!("Model set to {label}"), TranscriptStyle::Meta),
+                                    );
+                                    if let Some(session) = agent {
+                                        spawn_runtime_model_switch(session, value);
+                                    }
+                                }
+                                Err(err) => {
+                                    push_transcript_message(
+                                        &mut messages,
+                                        &mut messages_revision,
+                                        TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
+                                    );
+                                }
+                            }
+                        }
+                        close_model_selector(
+                            &mut pending_model_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
+                        return;
+                    }
+
+                    if !shell_global_shortcut(modifiers, code) {
+                        return;
+                    }
+                }
+
+                if model_selector_open && pending_user_question.read().is_none() {
+                    return;
+                }
+
                 let step_tab_jump = {
                     let pending_ref = pending_user_question.read();
                     match pending_ref.as_ref() {
@@ -1136,6 +1323,90 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         slash_palette_index.set(0);
                         suppress_enter_newline.set(true);
                     }
+                    SlashPaletteKeyAction::SubmitCommand { slash_input } => {
+                        input_prefix_kind.set(InputPrefixKind::Default);
+                        draft.set(String::new());
+                        live_draft.set(String::new());
+                        slash_palette_query.write().clear();
+                        slash_palette_index.set(0);
+                        suppress_enter_newline.set(true);
+                        force_palette_sync.set(true);
+
+                        let body = slash_input.trim().trim_start_matches('/').trim().to_string();
+
+                        let extension_registry = extension_host_for_keys.registry();
+                        let ext_registry = extension_registry.read();
+                        let templates = prompt_templates.read().clone();
+                        let loaded_skills = skills.read().clone();
+                        let outcome = handle_slash_submit(SlashContext {
+                            input: &slash_input,
+                            extensions: Some(&ext_registry),
+                            prompt_templates: Some(&templates),
+                            skills: Some(&loaded_skills),
+                            agent_session: agent_session.clone(),
+                            extension_host: Some(&extension_host_for_keys),
+                            paths: Some(&paths),
+                            cwd: Some(&cwd_for_keys),
+                        });
+
+                        if slash_echoes_prompt_in_transcript(&outcome) {
+                            let mut submitted =
+                                TranscriptMessage::text(body.clone(), TranscriptStyle::for_user_submit(&slash_input));
+                            if submitted.style.is_user_input_card() {
+                                submitted.submitted_at = Some(chrono::Utc::now());
+                            }
+                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        }
+
+                        match outcome {
+                            SlashOutcome::OpenModelSelector { filter } => {
+                                let settings = Settings::load(&paths).ok();
+                                open_model_selector(OpenModelSelectorArgs {
+                                    pending: &mut pending_model_selector,
+                                    provider_index: &mut model_provider_index,
+                                    model_index: &mut model_selected_index,
+                                    filter: &mut model_filter,
+                                    input_focus: &mut model_input_focus,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial_filter: filter,
+                                    paths: &paths,
+                                    provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
+                                    model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                                });
+                            }
+                            SlashOutcome::OverlayDeferred(overlay) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
+                                );
+                            }
+                            SlashOutcome::Status(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                            }
+                            SlashOutcome::Assistant(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    TranscriptMessage::assistant_slash_markdown(message),
+                                );
+                            }
+                            SlashOutcome::Unimplemented(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
                 }
                 return;
             }
@@ -1162,6 +1433,34 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             match (modifiers, code) {
+                (m, KeyCode::Char('l')) | (m, KeyCode::Char('L'))
+                    if m.contains(KeyModifiers::CONTROL) && pending_user_question.read().is_none() =>
+                {
+                    if pending_model_selector.read().is_some() {
+                        close_model_selector(
+                            &mut pending_model_selector,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                        );
+                    } else {
+                        let settings = Settings::load(&paths).ok();
+                        open_model_selector(OpenModelSelectorArgs {
+                            pending: &mut pending_model_selector,
+                            provider_index: &mut model_provider_index,
+                            model_index: &mut model_selected_index,
+                            filter: &mut model_filter,
+                            input_focus: &mut model_input_focus,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            initial_filter: String::new(),
+                            paths: &paths,
+                            provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
+                            model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                        });
+                    }
+                }
                 (m, KeyCode::Esc) if m.is_empty() && shell_focus.get() == ShellFocus::Transcript => {
                     shell_focus.set(ShellFocus::Prompt);
                 }
@@ -1293,12 +1592,69 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     };
     let supports_images = chrome.supports_images;
     let user_question_open = pending_user_question.read().is_some();
-    let status_dialog_open = pending_tool_approval.read().is_some() || user_question_open;
+    let model_selector_open = pending_model_selector.read().is_some();
+    let status_dialog_open = pending_tool_approval.read().is_some() || user_question_open || model_selector_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
     let question_has_focus = user_question_open;
-    let approval_has_focus = pending_tool_approval.read().is_some() && !user_question_open;
+    let model_selector_has_focus = model_selector_open && !user_question_open;
+    let approval_has_focus = pending_tool_approval.read().is_some() && !user_question_open && !model_selector_open;
+    if let Some(pending) = pending_model_selector.write().as_mut() {
+        let next_filter = model_selector_sanitize_filter(&model_filter.read());
+        if next_filter != model_filter.read().as_str() {
+            model_filter.set(next_filter.clone());
+        }
+        if pending.filter != next_filter {
+            pending.model_index = 0;
+            model_selected_index.set(0);
+        }
+        pending.provider_index = model_provider_index.get();
+        pending.model_index = model_selected_index.get();
+        pending.filter = next_filter;
+        pending.input_focus = model_input_focus.get();
+        pending.clamp_indices();
+        if pending.provider_index != model_provider_index.get() {
+            model_provider_index.set(pending.provider_index);
+        }
+        if pending.model_index != model_selected_index.get() {
+            model_selected_index.set(pending.model_index);
+        }
+    }
+    let model_selector_view = pending_model_selector
+        .read()
+        .as_ref()
+        .map(ModelSelectorView::from_pending);
+    let model_selector_overlay = model_selector_view.map(|view| -> AnyElement<'static> {
+        element! {
+            ModelSelectorBar(
+                screen_width: screen_width,
+                screen_height: screen_height,
+                view: view,
+                provider_index: Some(model_provider_index),
+                model_index: Some(model_selected_index),
+                filter: Some(model_filter),
+                input_focus: model_input_focus.get(),
+                has_focus: model_selector_has_focus,
+                on_filter_submit: move |_| {
+                    model_input_focus.set(ModelSelectorFocus::List);
+                    if let Some(pending) = pending_model_selector.write().as_mut() {
+                        pending.input_focus = ModelSelectorFocus::List;
+                    }
+                },
+                on_confirm: move |_| {},
+                on_cancel: move |_| {
+                    close_model_selector(
+                        &mut pending_model_selector,
+                        &mut draft,
+                        &mut live_draft,
+                        &mut shell_focus,
+                    );
+                },
+            )
+        }
+        .into()
+    });
     let user_question_view = pending_user_question.read().as_ref().map(|pending| {
         UserQuestionView::from_pending(
             pending,
@@ -1553,7 +1909,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 force_editor_clear: Some(force_editor_clear),
                 slash_palette_snapshot: slash_palette_snapshot,
                 slash_palette_selected: Some(slash_palette_index),
-                blocked_hint: user_question_open.then(|| "Answer the question above".to_string()),
+                editor_overlay: model_selector_overlay,
+                blocked_hint: if user_question_open {
+                    Some("Answer the question above".to_string())
+                } else if model_selector_open {
+                    Some("Select a model above".to_string())
+                } else {
+                    None
+                },
                 on_escape: move |_| {
                     shell_focus.set(ShellFocus::Transcript);
                 },
@@ -1658,14 +2021,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             body.clone()
                         };
                         let is_slash = prefix_kind == InputPrefixKind::Slash;
-                        let mut submitted = TranscriptMessage::text(
-                            body.clone(),
-                            TranscriptStyle::for_user_submit(&slash_input),
-                        );
-                        if submitted.style.is_user_input_card() {
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                        }
-                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
 
                         let extension_registry = extension_host.registry();
                         let ext_registry = extension_registry.read();
@@ -1682,6 +2037,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             paths: Some(&paths_snapshot),
                             cwd: Some(&cwd),
                         });
+
+                        if slash_echoes_prompt_in_transcript(&outcome) {
+                            let mut submitted = TranscriptMessage::text(
+                                body.clone(),
+                                TranscriptStyle::for_user_submit(&slash_input),
+                            );
+                            if submitted.style.is_user_input_card() {
+                                submitted.submitted_at = Some(chrono::Utc::now());
+                            }
+                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        }
 
                         match outcome {
                             SlashOutcome::Quit => {
@@ -1708,12 +2074,40 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
+                            SlashOutcome::Assistant(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    TranscriptMessage::assistant_slash_markdown(message),
+                                );
+                            }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::OpenModelSelector { filter } => {
+                                let settings = Settings::load(&paths_snapshot).ok();
+                                open_model_selector(OpenModelSelectorArgs {
+                                    pending: &mut pending_model_selector,
+                                    provider_index: &mut model_provider_index,
+                                    model_index: &mut model_selected_index,
+                                    filter: &mut model_filter,
+                                    input_focus: &mut model_input_focus,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial_filter: filter,
+                                    paths: &paths_snapshot,
+                                    provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
+                                    model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                suppress_enter_newline.set(true);
+                                return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(

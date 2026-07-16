@@ -54,7 +54,10 @@ pub async fn create_coding_session_with_events(
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
     tools.push(super::ask_user::create_ask_user_tool(ui_tx.clone()));
 
-    let mcp_config = crate::platform::mcp::load_config(options.paths)?;
+    let (mcp_config, mcp_config_warnings) = crate::platform::mcp::load_config_best_effort(options.paths);
+    for warning in &mcp_config_warnings {
+        log::warn!("{warning}");
+    }
     let auth_store_path = options.paths.auth_store_path();
     let load_options = McpLoadOptions {
         auth_store_path: Some(auth_store_path),
@@ -152,9 +155,17 @@ pub async fn create_coding_session_with_events(
         show_thinking: options.settings.show_thinking,
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
-        ui_tx,
+        ui_tx: ui_tx.clone(),
     })
     .await?;
+
+    if !mcp_config_warnings.is_empty() {
+        let notice = format!(
+            "MCP configuration issues (agent started with valid servers only):\n{}",
+            mcp_config_warnings.join("\n")
+        );
+        let _ = ui_tx.send(super::events::AgentUiEvent::Status(notice));
+    }
 
     // Catalog hot-reload + progress → TUI status (after ui channel exists).
     {

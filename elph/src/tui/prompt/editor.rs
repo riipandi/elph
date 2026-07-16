@@ -52,7 +52,7 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
         .map(|kind| kind.get())
         .unwrap_or(InputPrefixKind::Default);
     let prefix_kind = effective_prefix_kind(stored_kind, &draft_text, &props.prefix_config);
-    let border_color = prompt_border_color(prefix_kind, has_focus);
+    let border_color = prompt_border_color(prefix_kind, props.agent_mode, has_focus);
     let inset = theme.shell_zone_padding();
     let inner_width = theme.shell_editor_inner_width(props.screen_width);
     let prefix_cols = if props.prefix_config.enabled {

@@ -32,6 +32,8 @@ pub struct PromptChromeProps {
     pub force_editor_clear: Option<Ref<bool>>,
     pub slash_palette_snapshot: SlashPaletteSnapshot,
     pub slash_palette_selected: Option<State<usize>>,
+    /// Inline dialog anchored above the editor (e.g. model picker); same slot as slash palette.
+    pub editor_overlay: Option<AnyElement<'static>>,
     pub on_submit: HandlerMut<'static, String>,
     pub on_escape: HandlerMut<'static, ()>,
     pub blocked_hint: Option<String>,
@@ -94,6 +96,21 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     anchor_bottom: palette_anchor,
                     selected_index: props.slash_palette_selected,
                 )
+                #(props.editor_overlay.take().map(|overlay| -> AnyElement<'static> {
+                    element! {
+                        View(
+                            width: props.screen_width,
+                            position: Position::Absolute,
+                            left: 0,
+                            bottom: palette_anchor,
+                            flex_shrink: 0f32,
+                            align_items: AlignItems::FlexStart,
+                        ) {
+                            #(overlay)
+                        }
+                    }
+                    .into()
+                }))
             }
             Footer(
                 screen_width: props.screen_width,

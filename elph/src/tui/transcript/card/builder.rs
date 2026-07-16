@@ -27,7 +27,7 @@ pub fn build_transcript_bubbles(
             index += 2;
             continue;
         }
-        let margin_bottom = message.style.entry_gap_after(next_style);
+        let margin_bottom = message.transcript_margin_bottom(next_style);
         bubbles.push(transcript_message_bubble(
             screen_width,
             message,

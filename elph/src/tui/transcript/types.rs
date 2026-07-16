@@ -34,6 +34,8 @@ pub struct TranscriptMessage {
     pub duration_secs: Option<f64>,
     /// When the user submitted this prompt from the editor (`None` for seeded or legacy rows).
     pub submitted_at: Option<DateTime<Utc>>,
+    /// Slash output rendered as assistant markdown with meta-like exterior spacing.
+    pub local_slash_response: bool,
 }
 
 impl TranscriptMessage {
@@ -45,7 +47,20 @@ impl TranscriptMessage {
             markdown: None,
             duration_secs: None,
             submitted_at: None,
+            local_slash_response: false,
         }
+    }
+
+    pub fn assistant_markdown(content: impl Into<String>) -> Self {
+        let mut message = Self::text(content, TranscriptStyle::Assistant);
+        message.markdown = Some(AssistantMarkdownBuffer::new());
+        message
+    }
+
+    pub fn assistant_slash_markdown(content: impl Into<String>) -> Self {
+        let mut message = Self::assistant_markdown(content);
+        message.local_slash_response = true;
+        message
     }
 
     pub fn tool_call(name: impl Into<String>, args_summary: impl Into<String>, style: TranscriptStyle) -> Self {
@@ -60,7 +75,30 @@ impl TranscriptMessage {
             markdown: None,
             duration_secs: None,
             submitted_at: None,
+            local_slash_response: false,
         }
+    }
+
+    pub fn transcript_margin_bottom(&self, next_style: Option<TranscriptStyle>) -> u16 {
+        if self.local_slash_response {
+            COLORED_CARD_GAP
+        } else {
+            self.style.entry_gap_after(next_style)
+        }
+    }
+
+    pub fn transcript_padding_top(&self) -> u16 {
+        if self.local_slash_response {
+            COLORED_CARD_PAD
+        } else if self.style.is_flush_text() {
+            FLUSH_CARD_PAD
+        } else {
+            COLORED_CARD_PAD
+        }
+    }
+
+    pub fn transcript_padding_bottom(&self) -> u16 {
+        self.transcript_padding_top()
     }
 
     /// Flattened text for scroll row layout (matches rendered line breaks).
@@ -156,7 +194,7 @@ impl TranscriptStyle {
     }
 
     pub fn is_user_input_card(self) -> bool {
-        matches!(self, Self::User | Self::SkillPrompt | Self::Meta)
+        matches!(self, Self::User | Self::SkillPrompt)
     }
 
     pub fn content_chrome_cols(self) -> u16 {
@@ -168,7 +206,7 @@ impl TranscriptStyle {
     }
 
     pub(crate) fn is_flush_text(self) -> bool {
-        matches!(self, Self::Thinking | Self::Assistant)
+        matches!(self, Self::Thinking | Self::Assistant | Self::Meta)
     }
 
     pub fn entry_gap_after(self, next: Option<TranscriptStyle>) -> u16 {
@@ -224,7 +262,8 @@ impl TranscriptStyle {
     pub(crate) fn background_color(self) -> Color {
         match self {
             Self::Assistant => Color::Reset,
-            Self::User | Self::SkillPrompt | Self::Meta => USER_INPUT_BG,
+            Self::User | Self::SkillPrompt => USER_INPUT_BG,
+            Self::Meta => Color::Reset,
             Self::Error => TOOL_FAILED_BG,
             Self::Thinking => THINKING_BG,
             Self::ToolRunning => TOOL_RUNNING_BG,
@@ -245,7 +284,7 @@ impl TranscriptStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tui::theme::{THINKING_BG, TOOL_FAILED_BG, TOOL_RUNNING_BG, TOOL_SUCCESS_BG, USER_INPUT_BG};
+    use crate::tui::theme::{META_FG, THINKING_BG, TOOL_FAILED_BG, TOOL_RUNNING_BG, TOOL_SUCCESS_BG, USER_INPUT_BG};
 
     #[test]
     fn sticky_prompt_is_submitted_user_input_only() {
@@ -278,7 +317,7 @@ mod tests {
     fn user_input_cards_share_gray_background() {
         assert_eq!(TranscriptStyle::User.background_color(), USER_INPUT_BG);
         assert_eq!(TranscriptStyle::SkillPrompt.background_color(), USER_INPUT_BG);
-        assert_eq!(TranscriptStyle::Meta.background_color(), USER_INPUT_BG);
+        assert_eq!(TranscriptStyle::Meta.background_color(), Color::Reset);
     }
 
     #[test]
@@ -330,10 +369,18 @@ mod tests {
     fn user_input_cards_are_detected_for_chrome() {
         assert!(TranscriptStyle::User.is_user_input_card());
         assert!(TranscriptStyle::SkillPrompt.is_user_input_card());
-        assert!(TranscriptStyle::Meta.is_user_input_card());
+        assert!(!TranscriptStyle::Meta.is_user_input_card());
         assert!(!TranscriptStyle::Assistant.is_user_input_card());
         assert_eq!(TranscriptStyle::User.content_chrome_cols(), 1);
         assert_eq!(TranscriptStyle::Assistant.content_chrome_cols(), 0);
+        assert_eq!(TranscriptStyle::Meta.content_chrome_cols(), 0);
+    }
+
+    #[test]
+    fn meta_status_lines_are_flush_and_dimmed() {
+        assert!(TranscriptStyle::Meta.is_flush_text());
+        assert!(!TranscriptStyle::Meta.has_tinted_background());
+        assert_eq!(TranscriptStyle::Meta.text_color(), META_FG);
     }
 
     #[test]
@@ -351,6 +398,18 @@ mod tests {
         assert_eq!(TranscriptStyle::User.sticky_padding_top(), 1);
         assert_eq!(TranscriptStyle::User.sticky_padding_bottom(), 1);
         assert_eq!(TranscriptStyle::User.sticky_bubble_padding_rows(), 2);
+    }
+
+    #[test]
+    fn local_slash_response_uses_meta_like_exterior_spacing() {
+        let message = TranscriptMessage::assistant_slash_markdown("## Tools");
+        assert_eq!(message.transcript_padding_top(), COLORED_CARD_PAD);
+        assert_eq!(message.transcript_margin_bottom(None), COLORED_CARD_GAP);
+        assert_eq!(message.transcript_margin_bottom(Some(TranscriptStyle::User)), COLORED_CARD_GAP);
+        assert_eq!(
+            TranscriptMessage::assistant_markdown("reply").transcript_margin_bottom(None),
+            FLUSH_CARD_GAP
+        );
     }
 
     #[test]

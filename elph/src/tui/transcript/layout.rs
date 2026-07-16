@@ -29,7 +29,7 @@ pub fn layout_transcript_rows(messages: &[TranscriptMessage], screen_width: u16)
         cursor = cursor.saturating_add(row_count);
         if index + 1 < messages.len() {
             let next_style = messages.get(index + 1).map(|m| m.style);
-            cursor = cursor.saturating_add(message.style.entry_gap_after(next_style) as u32);
+            cursor = cursor.saturating_add(message.transcript_margin_bottom(next_style) as u32);
         }
     }
     layouts

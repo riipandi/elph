@@ -21,6 +21,7 @@ pub struct PaletteCardChrome {
     pub name_active_color: Color,
     pub desc_active_color: Color,
     pub desc_idle_color: Color,
+    pub args_hint_color: Color,
     pub title: String,
 }
 
@@ -38,6 +39,7 @@ impl Default for PaletteCardChrome {
             name_active_color: Color::Reset,
             desc_active_color: Color::Reset,
             desc_idle_color: Color::Reset,
+            args_hint_color: Color::Reset,
             title: String::new(),
         }
     }
@@ -48,7 +50,11 @@ impl PaletteCardChrome {
         let card_width = row_layout::palette_card_width(screen_width);
         let list_width = row_layout::palette_list_width(screen_width);
         let content_width = list_width;
-        let command_column_width = row_layout::palette_command_column_width(&snapshot.options, list_width);
+        let command_column_width = if snapshot.is_args_phase() {
+            row_layout::palette_command_column_width(&snapshot.options, list_width)
+        } else {
+            row_layout::palette_command_column_width_for_commands(&snapshot.filtered_commands, list_width)
+        };
         Self {
             card_width,
             content_width,
@@ -61,13 +67,15 @@ impl PaletteCardChrome {
             name_active_color: TEXT_FG,
             desc_active_color: TEXT_FG,
             desc_idle_color: Color::DarkGrey,
+            args_hint_color: TOOL_ARGS_FG,
             title: card_title(snapshot),
         }
     }
 }
 
 fn card_title(snapshot: &SlashPaletteSnapshot) -> String {
-    format!("{:02} Commands", snapshot.match_count)
+    let label = if snapshot.is_args_phase() { "Args" } else { "Commands" };
+    format!("{:02} {label}", snapshot.match_count)
 }
 
 #[cfg(test)]
@@ -94,6 +102,14 @@ mod tests {
         let snapshot = build_snapshot("/he", &commands, 40);
         let chrome = PaletteCardChrome::from_snapshot(80, AgentMode::Build, &snapshot);
         assert_eq!(chrome.title, "01 Commands");
+    }
+
+    #[test]
+    fn title_labels_args_phase() {
+        let commands = vec![SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]")];
+        let snapshot = build_snapshot("/tools ", &commands, 40);
+        let chrome = PaletteCardChrome::from_snapshot(80, AgentMode::Build, &snapshot);
+        assert_eq!(chrome.title, "03 Args");
     }
 
     #[test]

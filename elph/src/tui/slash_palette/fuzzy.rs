@@ -27,7 +27,7 @@ pub fn command_match_score(cmd: &SlashCommand, query: &str) -> Option<i32> {
     best
 }
 
-fn max_score(left: Option<i32>, right: Option<i32>) -> Option<i32> {
+pub fn max_score(left: Option<i32>, right: Option<i32>) -> Option<i32> {
     match (left, right) {
         (Some(a), Some(b)) => Some(a.max(b)),
         (Some(a), None) => Some(a),
@@ -36,7 +36,7 @@ fn max_score(left: Option<i32>, right: Option<i32>) -> Option<i32> {
     }
 }
 
-fn field_score(query: &str, text: &str, weight: i32, allow_prefix: bool) -> Option<i32> {
+pub fn field_score(query: &str, text: &str, weight: i32, allow_prefix: bool) -> Option<i32> {
     let raw = if allow_prefix {
         prefix_score(query, text).or_else(|| subsequence_score(query, text))
     } else {

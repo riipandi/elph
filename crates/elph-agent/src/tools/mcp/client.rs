@@ -29,6 +29,7 @@ use tokio::time::timeout;
 use super::auth::authorization_manager_from_store;
 use super::auth_resolve::ResolvedMcpAuth;
 use super::auth_resolve::resolve_remote_auth;
+use super::compat::resolve_http_headers;
 use super::config::{McpHttpConfig, McpServerConfig, McpStdioConfig};
 use super::events::{McpClientService, McpServerEvent};
 use super::sse::SseClientTransport;
@@ -126,8 +127,9 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
 
     // Custom headers always applied.
     if !config.headers.is_empty() {
+        let resolved = resolve_http_headers(&config.headers)?;
         let mut headers = std::collections::HashMap::new();
-        for (key, value) in &config.headers {
+        for (key, value) in &resolved {
             let name =
                 HeaderName::from_bytes(key.as_bytes()).with_context(|| format!("invalid HTTP header name: {key}"))?;
             let value = HeaderValue::from_str(value).with_context(|| format!("invalid HTTP header value for {key}"))?;

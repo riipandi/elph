@@ -17,7 +17,13 @@ pub struct PaletteCardBodyProps {
     pub screen_height: u16,
 }
 
-fn palette_row(chrome: &PaletteCardChrome, name: &str, description: &str, selected: bool) -> AnyElement<'static> {
+fn palette_command_row(
+    chrome: &PaletteCardChrome,
+    command_name: &str,
+    args_hint: Option<&str>,
+    description: &str,
+    selected: bool,
+) -> AnyElement<'static> {
     let prefix = list_selection_row_prefix(selected);
     let name_color = if selected {
         chrome.name_active_color
@@ -37,6 +43,34 @@ fn palette_row(chrome: &PaletteCardChrome, name: &str, description: &str, select
     let row_height = desc_lines.len().max(1) as u16;
     let desc_text = desc_lines.join("\n");
 
+    let mut name_segments: Vec<AnyElement<'static>> = Vec::new();
+    name_segments.push(
+        element! {
+            Text(
+                content: format!("{prefix}{command_name}"),
+                color: name_color,
+                weight: name_weight,
+                wrap: TextWrap::NoWrap,
+                align: TextAlign::Left,
+            )
+        }
+        .into(),
+    );
+    if let Some(hint) = args_hint {
+        name_segments.push(
+            element! {
+                Text(
+                    content: format!(" {hint}"),
+                    color: chrome.args_hint_color,
+                    weight: Weight::Normal,
+                    wrap: TextWrap::NoWrap,
+                    align: TextAlign::Left,
+                )
+            }
+            .into(),
+        );
+    }
+
     element! {
         View(
             width: chrome.list_width,
@@ -46,14 +80,8 @@ fn palette_row(chrome: &PaletteCardChrome, name: &str, description: &str, select
             justify_content: JustifyContent::FlexStart,
             gap: CMD_DESC_GAP_COLS,
         ) {
-            View(width: cmd_col, height: row_height, align_items: AlignItems::FlexStart) {
-                Text(
-                    content: format!("{prefix}{name}"),
-                    color: name_color,
-                    weight: name_weight,
-                    wrap: TextWrap::NoWrap,
-                    align: TextAlign::Left,
-                )
+            View(width: cmd_col, height: row_height, align_items: AlignItems::FlexStart, flex_direction: FlexDirection::Row) {
+                #(name_segments)
             }
             View(width: desc_width, height: row_height, align_items: AlignItems::FlexStart) {
                 Text(
@@ -68,6 +96,10 @@ fn palette_row(chrome: &PaletteCardChrome, name: &str, description: &str, select
     .into()
 }
 
+fn palette_arg_row(chrome: &PaletteCardChrome, arg: &str, description: &str, selected: bool) -> AnyElement<'static> {
+    palette_command_row(chrome, arg, None, description, selected)
+}
+
 fn palette_list_rows(props: &PaletteCardBodyProps) -> Vec<AnyElement<'static>> {
     let options = &props.snapshot.options;
     let len = options.len();
@@ -80,12 +112,32 @@ fn palette_list_rows(props: &PaletteCardBodyProps) -> Vec<AnyElement<'static>> {
     let scroll_cap = viewport_cap.min(len.max(1));
     let window_start = palette_window_start(index, scroll_cap, len);
 
+    if props.snapshot.is_args_phase() {
+        return options
+            .iter()
+            .enumerate()
+            .skip(window_start)
+            .take(scroll_cap)
+            .map(|(i, opt)| palette_arg_row(&props.chrome, &opt.name, &opt.description, i == index))
+            .collect();
+    }
+
     options
         .iter()
         .enumerate()
         .skip(window_start)
         .take(scroll_cap)
-        .map(|(i, opt)| palette_row(&props.chrome, &opt.name, &opt.description, i == index))
+        .zip(
+            props
+                .snapshot
+                .filtered_commands
+                .iter()
+                .skip(window_start)
+                .take(scroll_cap),
+        )
+        .map(|((i, opt), cmd)| {
+            palette_command_row(&props.chrome, &opt.name, cmd.args_hint.as_deref(), &opt.description, i == index)
+        })
         .collect()
 }
 

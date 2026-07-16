@@ -17,10 +17,11 @@ mod slash_commands;
 mod system_prompt;
 mod tool_policy;
 mod tools_catalog;
+mod tools_slash;
 
 pub use events::{AgentUiEvent, ToolApprovalChoice};
 pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
-pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items};
+pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};
 pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 pub use provider::{provider_api_key_env, provider_config};
 pub use resource_loader::LoadResourcesResult;
@@ -35,6 +36,10 @@ pub use skills_load::SkillConflict;
 pub use skills_load::{format_skill_conflict_notice, truncate_skill_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
+pub use slash_commands::{
+    SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
+    slash_unimplemented_message,
+};
 pub use slash_commands::{dispatch_slash_command, format_help_message};
-pub use slash_commands::{slash_commands_for_palette, slash_unimplemented_message};
 pub use tool_policy::agent_mode_from_setting;
+pub use tools_slash::tools_slash_message;

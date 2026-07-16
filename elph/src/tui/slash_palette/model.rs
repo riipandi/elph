@@ -2,6 +2,8 @@
 
 use elph_tui::types::SelectOption;
 
+use crate::agent::SlashArgCompletion;
+use crate::agent::slash_arg_completions;
 use crate::types::SlashCommand;
 
 pub use super::fuzzy::filter_commands;
@@ -9,10 +11,26 @@ pub use super::fuzzy::filter_commands;
 pub const MAX_VISIBLE_ROWS: u16 = 8;
 pub const FAST_SCROLL_STEP: usize = 5;
 
+/// Palette mode: filter command names, or complete command arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SlashPalettePhase {
+    Command,
+    Args { command: String },
+}
+
+/// Parsed slash draft for palette routing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlashDraftParts {
+    pub command_query: String,
+    pub args_command: Option<String>,
+    pub args_query: String,
+}
+
 /// Render-ready snapshot derived from the editor draft and command list.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SlashPaletteSnapshot {
     pub visible: bool,
+    pub phase: SlashPalettePhase,
     pub query: String,
     pub filtered_commands: Vec<SlashCommand>,
     pub options: Vec<SelectOption>,
@@ -30,12 +48,17 @@ impl SlashPaletteSnapshot {
     pub fn hidden() -> Self {
         Self {
             visible: false,
+            phase: SlashPalettePhase::Command,
             query: String::new(),
             filtered_commands: Vec::new(),
             options: Vec::new(),
             list_height: 0,
             match_count: 0,
         }
+    }
+
+    pub fn is_args_phase(&self) -> bool {
+        matches!(self.phase, SlashPalettePhase::Args { .. })
     }
 
     pub fn should_render(&self) -> bool {
@@ -47,30 +70,83 @@ impl SlashPaletteSnapshot {
     }
 }
 
-/// Palette is shown only while the user is typing a command name (before the first space).
-pub fn palette_visible(draft: &str) -> bool {
-    let trimmed = draft.trim_start();
-    if !trimmed.starts_with('/') {
-        return false;
-    }
-    let body = trimmed.trim_start_matches('/').trim_start();
-    !body.contains(' ')
-}
-
-pub fn query_from_draft(draft: &str) -> Option<String> {
+pub fn parse_slash_draft(draft: &str) -> Option<SlashDraftParts> {
     let trimmed = draft.trim_start();
     if !trimmed.starts_with('/') {
         return None;
     }
     let body = trimmed.trim_start_matches('/').trim_start();
-    let query = body.split_once(' ').map_or(body, |(name, _)| name);
-    Some(query.to_ascii_lowercase())
+    if let Some((command, rest)) = body.split_once(' ') {
+        let (args_query, _) = rest.split_once(' ').map_or((rest, ""), |(token, tail)| (token, tail));
+        Some(SlashDraftParts {
+            command_query: command.to_ascii_lowercase(),
+            args_command: Some(command.to_ascii_lowercase()),
+            args_query: args_query.trim().to_ascii_lowercase(),
+        })
+    } else {
+        Some(SlashDraftParts {
+            command_query: body.to_ascii_lowercase(),
+            args_command: None,
+            args_query: String::new(),
+        })
+    }
+}
+
+/// Palette is shown while typing a command name or args with known completions.
+pub fn palette_visible(draft: &str) -> bool {
+    let Some(parts) = parse_slash_draft(draft) else {
+        return false;
+    };
+    if parts.args_command.is_none() {
+        return true;
+    }
+    let command = parts.args_command.as_deref().unwrap_or("");
+    slash_arg_completions(command).is_some()
+}
+
+pub fn query_from_draft(draft: &str) -> Option<String> {
+    let parts = parse_slash_draft(draft)?;
+    if parts.args_command.is_some() {
+        Some(parts.args_query)
+    } else {
+        Some(parts.command_query)
+    }
+}
+
+pub fn palette_phase_from_draft(draft: &str) -> Option<SlashPalettePhase> {
+    let parts = parse_slash_draft(draft)?;
+    if let Some(command) = parts.args_command.filter(|name| slash_arg_completions(name).is_some()) {
+        Some(SlashPalettePhase::Args { command })
+    } else {
+        Some(SlashPalettePhase::Command)
+    }
 }
 
 pub fn commands_to_options(commands: &[SlashCommand]) -> Vec<SelectOption> {
     commands
         .iter()
-        .map(|cmd| SelectOption::new(format!("/{}", cmd.name), cmd.description.clone()))
+        .map(|cmd| SelectOption::new(cmd.palette_command_name(), cmd.description.clone()))
+        .collect()
+}
+
+pub fn arg_completions_to_options(completions: &[SlashArgCompletion]) -> Vec<SelectOption> {
+    completions
+        .iter()
+        .map(|entry| SelectOption::new(entry.value, entry.description))
+        .collect()
+}
+
+pub fn filter_arg_completions(command: &str, query: &str) -> Vec<SlashArgCompletion> {
+    let Some(all) = slash_arg_completions(command) else {
+        return Vec::new();
+    };
+    let query = query.trim().to_ascii_lowercase();
+    if query.is_empty() {
+        return all.to_vec();
+    }
+    all.iter()
+        .copied()
+        .filter(|entry| entry.value.starts_with(&query))
         .collect()
 }
 
@@ -105,6 +181,11 @@ pub fn clamp_index(index: usize, len: usize) -> usize {
     if len == 0 { 0 } else { index.min(len - 1) }
 }
 
+/// Slash input to dispatch when Enter confirms an overlay command in the palette.
+pub fn palette_submit_slash_input(draft: &str, command_name: &str) -> String {
+    complete_command(draft, command_name).trim_end().to_string()
+}
+
 pub fn complete_command(draft: &str, command_name: &str) -> String {
     let trimmed = draft.trim_start();
     let body = trimmed.trim_start_matches('/').trim_start();
@@ -116,10 +197,31 @@ pub fn complete_command(draft: &str, command_name: &str) -> String {
     }
 }
 
+pub fn complete_slash_arg(draft: &str, command_name: &str, arg_value: &str) -> String {
+    let trimmed = draft.trim_start();
+    let body = trimmed.trim_start_matches('/').trim_start();
+    let tail = body
+        .split_once(' ')
+        .and_then(|(_, rest)| rest.split_once(' '))
+        .map(|(_, rest)| rest.trim())
+        .filter(|rest| !rest.is_empty());
+    if let Some(rest) = tail {
+        format!("/{command_name} {arg_value} {rest}")
+    } else {
+        format!("/{command_name} {arg_value} ")
+    }
+}
+
 pub fn selected_command_name(filtered: &[SlashCommand], index: usize) -> Option<&str> {
     filtered
         .get(clamp_index(index, filtered.len()))
         .map(|cmd| cmd.name.as_str())
+}
+
+pub fn selected_arg_value(options: &[SelectOption], index: usize) -> Option<&str> {
+    options
+        .get(clamp_index(index, options.len()))
+        .map(|opt| opt.name.as_str())
 }
 
 pub fn build_snapshot(draft: &str, commands: &[SlashCommand], screen_height: u16) -> SlashPaletteSnapshot {
@@ -127,12 +229,24 @@ pub fn build_snapshot(draft: &str, commands: &[SlashCommand], screen_height: u16
         return SlashPaletteSnapshot::hidden();
     }
     let query = query_from_draft(draft).unwrap_or_default();
-    let filtered_commands = filter_commands(commands, &query);
-    let options = commands_to_options(&filtered_commands);
+    let phase = palette_phase_from_draft(draft).unwrap_or(SlashPalettePhase::Command);
+    let (filtered_commands, options) = match &phase {
+        SlashPalettePhase::Command => {
+            let filtered_commands = filter_commands(commands, &query);
+            let options = commands_to_options(&filtered_commands);
+            (filtered_commands, options)
+        }
+        SlashPalettePhase::Args { command } => {
+            let filtered = filter_arg_completions(command, &query);
+            let options = arg_completions_to_options(&filtered);
+            (Vec::new(), options)
+        }
+    };
     let match_count = options.len();
     let list_height = list_height(match_count, screen_height);
     SlashPaletteSnapshot {
         visible: true,
+        phase,
         query,
         filtered_commands,
         options,
@@ -158,8 +272,26 @@ mod tests {
         assert!(!palette_visible("hello"));
         assert!(palette_visible("/model"));
         assert!(palette_visible("  /go"));
-        assert!(!palette_visible("/goal pause"));
+        assert!(palette_visible("/goal pause"));
+        assert!(palette_visible("/tools j"));
         assert!(!palette_visible("/help args"));
+        assert!(!palette_visible("/model filter"));
+    }
+
+    #[test]
+    fn args_phase_lists_tools_formats() {
+        let mut commands = sample_commands();
+        commands.push(SlashCommand::new("tools", "Show active tools").with_args_hint("[json|list|table]"));
+        let snapshot = build_snapshot("/tools j", &commands, 40);
+        assert!(snapshot.is_args_phase());
+        assert_eq!(snapshot.match_count, 1);
+        assert_eq!(snapshot.options[0].name, "json");
+    }
+
+    #[test]
+    fn complete_slash_arg_preserves_trailing_tokens() {
+        assert_eq!(complete_slash_arg("/tools j extra", "tools", "json"), "/tools json extra");
+        assert_eq!(complete_slash_arg("/tools j", "tools", "json"), "/tools json ");
     }
 
     #[test]
@@ -170,9 +302,10 @@ mod tests {
     }
 
     #[test]
-    fn query_stops_at_first_space() {
-        assert_eq!(query_from_draft("/goal pause").as_deref(), Some("goal"));
+    fn query_tracks_command_or_arg_token() {
+        assert_eq!(query_from_draft("/goal pause").as_deref(), Some("pause"));
         assert_eq!(query_from_draft("/mod").as_deref(), Some("mod"));
+        assert_eq!(query_from_draft("/tools ").as_deref(), Some(""));
     }
 
     #[test]

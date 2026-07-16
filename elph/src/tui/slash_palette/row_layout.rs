@@ -3,6 +3,8 @@
 use elph_tui::types::SelectOption;
 use elph_tui::utils::wrap_text;
 
+use crate::types::SlashCommand;
+
 /// Selection marker width (`❯ ` or `  `).
 pub const ROW_PREFIX_CHARS: usize = 2;
 
@@ -36,11 +38,35 @@ pub fn palette_command_label_width(name: &str) -> usize {
     ROW_PREFIX_CHARS.saturating_add(name.chars().count())
 }
 
+/// Width of a command row including an optional dimmed args hint (` /tools [json|list]`).
+pub fn palette_slash_row_label_width(command_name: &str, args_hint: Option<&str>) -> usize {
+    let mut width = palette_command_label_width(command_name);
+    if let Some(hint) = args_hint {
+        width = width.saturating_add(1).saturating_add(hint.chars().count());
+    }
+    width
+}
+
 /// Command column width derived from the widest visible command name.
 pub fn palette_command_column_width(options: &[SelectOption], list_width: u16) -> u16 {
     let mut max_label = CMD_COLUMN_MIN_CHARS;
     for option in options {
         max_label = max_label.max(palette_command_label_width(&option.name));
+    }
+    max_label = max_label.min(CMD_COLUMN_MAX_CHARS);
+
+    let max_allowed = list_width
+        .saturating_sub(CMD_DESC_GAP_COLS + MIN_DESC_COLUMN_CHARS)
+        .max(1) as usize;
+    max_label.min(max_allowed).max(1) as u16
+}
+
+/// Command column width when args hints render in a separate dimmed segment.
+pub fn palette_command_column_width_for_commands(commands: &[SlashCommand], list_width: u16) -> u16 {
+    let mut max_label = CMD_COLUMN_MIN_CHARS;
+    for command in commands {
+        let width = palette_slash_row_label_width(&command.palette_command_name(), command.args_hint.as_deref());
+        max_label = max_label.max(width);
     }
     max_label = max_label.min(CMD_COLUMN_MAX_CHARS);
 

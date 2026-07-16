@@ -21,6 +21,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 use tokio::sync::{mpsc, oneshot};
 
+use super::compat::resolve_http_headers;
 use super::config::McpHttpConfig;
 
 const ENDPOINT_WAIT: Duration = Duration::from_secs(30);
@@ -65,6 +66,8 @@ impl SseClientTransport {
             .map_err(|e| SseTransportError::Http(e.to_string()))?;
 
         let auth_token = bearer_override.or_else(|| config.resolve_auth_token());
+        let headers =
+            resolve_http_headers(&config.headers).map_err(|error| SseTransportError::Http(error.to_string()))?;
 
         let mut request = client
             .get(&config.url)
@@ -74,7 +77,7 @@ impl SseClientTransport {
         if let Some(token) = &auth_token {
             request = request.bearer_auth(token);
         }
-        for (key, value) in &config.headers {
+        for (key, value) in &headers {
             request = request.header(key.as_str(), value.as_str());
         }
 
@@ -93,7 +96,6 @@ impl SseClientTransport {
         }
 
         let base_url = config.url.clone();
-        let headers = config.headers.clone();
 
         let (endpoint_tx, endpoint_rx) = oneshot::channel::<String>();
         let endpoint_tx = Arc::new(Mutex::new(Some(endpoint_tx)));

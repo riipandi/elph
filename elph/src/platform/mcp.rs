@@ -75,6 +75,32 @@ pub fn load_config(paths: &Paths) -> Result<McpConfig> {
     Ok(home.merge_with(&project))
 }
 
+/// Merged home + project config; invalid layers are skipped with warnings (agent runtime).
+pub fn load_config_best_effort(paths: &Paths) -> (McpConfig, Vec<String>) {
+    let mut warnings = Vec::new();
+    let home = match load_layer(paths, McpConfigScope::Home) {
+        Ok(config) => config,
+        Err(error) => {
+            warnings.push(format!(
+                "MCP home config ignored ({}): {error}",
+                config_path(paths, McpConfigScope::Home).display()
+            ));
+            McpConfig::default()
+        }
+    };
+    let project = match load_layer(paths, McpConfigScope::Project) {
+        Ok(config) => config,
+        Err(error) => {
+            warnings.push(format!(
+                "MCP project config ignored ({}): {error}",
+                config_path(paths, McpConfigScope::Project).display()
+            ));
+            McpConfig::default()
+        }
+    };
+    (home.merge_with(&project), warnings)
+}
+
 /// Async load + validate each layer, then merge.
 pub async fn load_config_async(paths: &Paths) -> Result<McpConfig> {
     let home = load_layer_async(paths, McpConfigScope::Home).await?;
@@ -234,6 +260,23 @@ mod tests {
                 .servers
                 .contains_key("local")
         );
+    }
+
+    #[test]
+    fn best_effort_keeps_valid_home_when_project_invalid() {
+        let tmp = tempdir().unwrap();
+        let paths = test_paths(&tmp);
+
+        let home =
+            parse_and_validate_mcp_config(r#"{"servers":{"ok":{"type":"stdio","command":"home-bin"}}}"#).unwrap();
+        save_layer(&paths, McpConfigScope::Home, &home).unwrap();
+
+        std::fs::write(paths.project_mcp_config_path(), r#"{"servers":{"bad":{"type":"http"}}}"#).unwrap();
+
+        let (merged, warnings) = load_config_best_effort(&paths);
+        assert_eq!(merged.server_count(), 1);
+        assert!(warnings.iter().any(|w| w.contains("project config ignored")));
+        assert!(load_config(&paths).is_err());
     }
 
     #[test]

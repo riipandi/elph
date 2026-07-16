@@ -19,7 +19,15 @@ use std::{
 };
 
 // Re-exports for basic types.
-pub use crossterm::event::{KeyCode, KeyEventKind, KeyEventState, KeyModifiers, MouseEventKind};
+pub use crossterm::event::{
+    KeyCode, KeyEventKind, KeyEventState, KeyModifiers, KeyboardEnhancementFlags, MouseEventKind,
+};
+
+/// Kitty keyboard protocol flags used by Elph (enabled only after raw mode is on).
+const KEYBOARD_ENHANCEMENT_FLAGS: KeyboardEnhancementFlags = KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+    .union(KeyboardEnhancementFlags::REPORT_EVENT_TYPES)
+    .union(KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES)
+    .union(KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS);
 
 /// An event fired when a key is pressed.
 #[non_exhaustive]
@@ -153,8 +161,10 @@ struct StdTerminal<'a> {
     fullscreen: bool,
     mouse_capture: bool,
     raw_mode_enabled: bool,
+    keyboard_support_probed: bool,
     supports_keyboard_enhancement: bool,
     enabled_keyboard_enhancement: bool,
+    bracketed_paste_enabled: bool,
     prev_canvas_top_row: u16,
     prev_canvas_height: u16,
     prev_size_on_write: Option<(u16, u16)>,
@@ -404,11 +414,6 @@ impl<'a> StdTerminal<'a> {
         mouse_capture: bool,
     ) -> io::Result<Self> {
         let input_is_terminal = stdin().is_terminal();
-        // The probe blocks on a query response, and some terminals (e.g. WezTerm)
-        // don't answer queries while a synchronized update is open — probing lazily
-        // from within a render would stall until the query times out.
-        let supports_keyboard_enhancement =
-            input_is_terminal && terminal::supports_keyboard_enhancement().unwrap_or(false);
         let mut term = Self {
             dest,
             alt,
@@ -416,8 +421,10 @@ impl<'a> StdTerminal<'a> {
             fullscreen,
             mouse_capture,
             raw_mode_enabled: false,
-            supports_keyboard_enhancement,
+            keyboard_support_probed: false,
+            supports_keyboard_enhancement: false,
             enabled_keyboard_enhancement: false,
+            bracketed_paste_enabled: false,
             prev_canvas_top_row: 0,
             prev_canvas_height: 0,
             size: None,
@@ -430,27 +437,47 @@ impl<'a> StdTerminal<'a> {
         Ok(term)
     }
 
+    fn probe_keyboard_enhancement_support(&mut self) -> io::Result<()> {
+        if self.keyboard_support_probed {
+            return Ok(());
+        }
+        self.keyboard_support_probed = true;
+        if self.input_is_terminal {
+            // Probe only after raw mode is on so CSI-u responses are not echoed to the shell.
+            self.supports_keyboard_enhancement = terminal::supports_keyboard_enhancement().unwrap_or(false);
+        }
+        Ok(())
+    }
+
     fn set_raw_mode_enabled(&mut self, raw_mode_enabled: bool) -> io::Result<()> {
         if raw_mode_enabled != self.raw_mode_enabled {
             if raw_mode_enabled {
+                terminal::enable_raw_mode()?;
+                self.probe_keyboard_enhancement_support()?;
                 if self.supports_keyboard_enhancement {
-                    self.dest.execute(event::PushKeyboardEnhancementFlags(
-                        event::KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
-                    ))?;
+                    self.dest
+                        .execute(event::PushKeyboardEnhancementFlags(KEYBOARD_ENHANCEMENT_FLAGS))?;
                     self.enabled_keyboard_enhancement = true;
                 }
+                // Bracketed paste → atomic `TerminalEvent::Paste` for multiline editor paste.
+                self.dest.execute(event::EnableBracketedPaste)?;
+                self.bracketed_paste_enabled = true;
                 if self.mouse_capture {
                     self.dest.execute(event::EnableMouseCapture)?;
                 }
-                terminal::enable_raw_mode()?;
             } else {
-                terminal::disable_raw_mode()?;
                 if self.mouse_capture {
                     self.dest.execute(event::DisableMouseCapture)?;
                 }
+                if self.bracketed_paste_enabled {
+                    self.dest.execute(event::DisableBracketedPaste)?;
+                    self.bracketed_paste_enabled = false;
+                }
                 if self.enabled_keyboard_enhancement {
                     self.dest.execute(event::PopKeyboardEnhancementFlags)?;
+                    self.enabled_keyboard_enhancement = false;
                 }
+                terminal::disable_raw_mode()?;
             }
             self.raw_mode_enabled = raw_mode_enabled;
         }

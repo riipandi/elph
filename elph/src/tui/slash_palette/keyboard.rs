@@ -2,9 +2,83 @@
 
 use iocraft::prelude::{KeyCode, KeyModifiers};
 
+use super::model::SlashPalettePhase;
 use super::model::SlashPaletteSnapshot;
-use super::model::{complete_command, palette_visible, selected_command_name};
+use super::model::{
+    complete_command, complete_slash_arg, palette_submit_slash_input, palette_visible, query_from_draft,
+    selected_arg_value, selected_command_name,
+};
+use crate::agent::slash_palette_submit_on_enter;
 use crate::types::SlashCommand;
+
+fn overlay_or_complete_action(draft: &str, command_name: &str) -> SlashPaletteKeyAction {
+    if slash_palette_submit_on_enter(command_name) {
+        SlashPaletteKeyAction::SubmitCommand {
+            slash_input: palette_submit_slash_input(draft, command_name),
+        }
+    } else {
+        SlashPaletteKeyAction::CompleteDraft {
+            text: complete_command(draft, command_name),
+            suppress_enter_newline: false,
+        }
+    }
+}
+
+fn args_complete_action(
+    draft: &str,
+    command: &str,
+    options: &[elph_tui::types::SelectOption],
+    selected_index: usize,
+) -> Option<SlashPaletteKeyAction> {
+    let arg = selected_arg_value(options, selected_index)?;
+    Some(SlashPaletteKeyAction::CompleteDraft {
+        text: complete_slash_arg(draft, command, arg),
+        suppress_enter_newline: false,
+    })
+}
+
+fn enter_args_palette_action(
+    draft: &str,
+    command: &str,
+    options: &[elph_tui::types::SelectOption],
+    selected_index: usize,
+) -> Option<SlashPaletteKeyAction> {
+    let mut action = args_complete_action(draft, command, options, selected_index)?;
+    if let SlashPaletteKeyAction::CompleteDraft {
+        suppress_enter_newline, ..
+    } = &mut action
+    {
+        *suppress_enter_newline = true;
+    }
+    Some(action)
+}
+
+fn enter_palette_action(
+    draft: &str,
+    filtered_commands: &[SlashCommand],
+    selected_index: usize,
+) -> Option<SlashPaletteKeyAction> {
+    if let Some(name) = selected_command_name(filtered_commands, selected_index) {
+        return Some(if slash_palette_submit_on_enter(name) {
+            SlashPaletteKeyAction::SubmitCommand {
+                slash_input: palette_submit_slash_input(draft, name),
+            }
+        } else {
+            SlashPaletteKeyAction::CompleteDraft {
+                text: complete_command(draft, name),
+                suppress_enter_newline: true,
+            }
+        });
+    }
+
+    let query = query_from_draft(draft)?;
+    if slash_palette_submit_on_enter(&query) {
+        return Some(SlashPaletteKeyAction::SubmitCommand {
+            slash_input: palette_submit_slash_input(draft, &query),
+        });
+    }
+    None
+}
 
 /// Palette-specific key outcome for the shell to apply.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +91,10 @@ pub enum SlashPaletteKeyAction {
     },
     /// Close the palette and return to normal prompt input.
     Dismiss,
+    /// Submit an overlay slash command (for example `/model`) from the palette.
+    SubmitCommand {
+        slash_input: String,
+    },
 }
 
 pub fn resolve_key_action(
@@ -33,17 +111,9 @@ pub fn resolve_key_action(
     match (modifiers, code) {
         (_, KeyCode::Esc) if modifiers.is_empty() => Some(SlashPaletteKeyAction::Dismiss),
         (_, KeyCode::Tab) | (_, KeyCode::Right) => {
-            selected_command_name(filtered_commands, selected_index).map(|name| SlashPaletteKeyAction::CompleteDraft {
-                text: complete_command(draft, name),
-                suppress_enter_newline: false,
-            })
+            selected_command_name(filtered_commands, selected_index).map(|name| overlay_or_complete_action(draft, name))
         }
-        (_, KeyCode::Enter) if modifiers.is_empty() => {
-            selected_command_name(filtered_commands, selected_index).map(|name| SlashPaletteKeyAction::CompleteDraft {
-                text: complete_command(draft, name),
-                suppress_enter_newline: true,
-            })
-        }
+        (_, KeyCode::Enter) if modifiers.is_empty() => enter_palette_action(draft, filtered_commands, selected_index),
         (_, KeyCode::Up) | (_, KeyCode::Down) if modifiers.is_empty() => {
             if filtered_commands.is_empty() {
                 return None;
@@ -69,6 +139,33 @@ pub fn resolve_snapshot_key_action(
 ) -> Option<SlashPaletteKeyAction> {
     if !snapshot.should_render() {
         return None;
+    }
+    if let SlashPalettePhase::Args { command } = &snapshot.phase {
+        if !palette_visible(draft) {
+            return None;
+        }
+        return match (modifiers, code) {
+            (_, KeyCode::Esc) if modifiers.is_empty() => Some(SlashPaletteKeyAction::Dismiss),
+            (_, KeyCode::Tab) | (_, KeyCode::Right) => {
+                args_complete_action(draft, command, &snapshot.options, selected_index)
+            }
+            (_, KeyCode::Enter) if modifiers.is_empty() => {
+                enter_args_palette_action(draft, command, &snapshot.options, selected_index)
+            }
+            (_, KeyCode::Up) | (_, KeyCode::Down) if modifiers.is_empty() => {
+                if snapshot.options.is_empty() {
+                    return None;
+                }
+                Some(SlashPaletteKeyAction::MoveSelection(index_after_key(
+                    selected_index,
+                    snapshot.options.len(),
+                    code,
+                    modifiers,
+                    super::model::FAST_SCROLL_STEP,
+                )))
+            }
+            _ => None,
+        };
     }
     resolve_key_action(draft, &snapshot.filtered_commands, selected_index, code, modifiers)
 }
@@ -136,6 +233,51 @@ mod tests {
     }
 
     #[test]
+    fn tab_on_model_submits_overlay_command() {
+        let draft = "/model";
+        let commands = sample_commands();
+        let filtered = super::super::model::filter_commands(&commands, "model");
+        let index = filtered.iter().position(|cmd| cmd.name == "model").expect("model");
+        let action = resolve_key_action(draft, &filtered, index, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::SubmitCommand {
+                slash_input: "/model".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn enter_on_model_submits_overlay_command() {
+        let draft = "/model";
+        let commands = sample_commands();
+        let filtered = super::super::model::filter_commands(&commands, "model");
+        let index = filtered.iter().position(|cmd| cmd.name == "model").expect("model");
+        let action = resolve_key_action(draft, &filtered, index, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::SubmitCommand {
+                slash_input: "/model".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn enter_on_partial_model_submits_overlay_command() {
+        let draft = "/mod";
+        let commands = sample_commands();
+        let filtered = super::super::model::filter_commands(&commands, "mod");
+        let index = filtered.iter().position(|cmd| cmd.name == "model").expect("model");
+        let action = resolve_key_action(draft, &filtered, index, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::SubmitCommand {
+                slash_input: "/model".into(),
+            }
+        );
+    }
+
+    #[test]
     fn down_moves_selection_within_bounds() {
         let commands = sample_commands();
         let action = resolve_key_action("/g", &commands, 0, KeyCode::Down, KeyModifiers::NONE).unwrap();
@@ -176,7 +318,24 @@ mod tests {
     }
 
     #[test]
-    fn keys_ignored_after_command_name_is_committed() {
-        assert!(resolve_key_action("/goal pause", &sample_commands(), 0, KeyCode::Down, KeyModifiers::NONE).is_none());
+    fn keys_ignored_when_command_has_no_arg_completions() {
+        assert!(resolve_key_action("/help args", &sample_commands(), 0, KeyCode::Down, KeyModifiers::NONE).is_none());
+    }
+
+    #[test]
+    fn args_phase_tab_completes_tools_format() {
+        use super::super::model::build_snapshot;
+
+        let mut commands = sample_commands();
+        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]"));
+        let snapshot = build_snapshot("/tools j", &commands, 40);
+        let action = resolve_snapshot_key_action("/tools j", &snapshot, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/tools json ".into(),
+                suppress_enter_newline: false,
+            }
+        );
     }
 }

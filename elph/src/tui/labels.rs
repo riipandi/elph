@@ -1,6 +1,5 @@
 //! Footer and header label formatting.
 
-use crate::agent::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 use crate::platform::Paths;
 use crate::types::ThinkingLevel;
 
@@ -93,9 +92,17 @@ pub fn footer_right_label(model_label: &str, thinking_level: ThinkingLevel, supp
 }
 
 pub fn model_footer_label(provider_id: Option<&str>, model_id: Option<&str>) -> String {
-    let provider = provider_id.unwrap_or(DEFAULT_PROVIDER);
-    let model = model_id.unwrap_or(DEFAULT_MODEL_ID);
-    format!("{provider}/{model}")
+    match (provider_id, model_id) {
+        (Some(provider), Some(model)) => format!("{provider}/{model}"),
+        _ => "No model selected".to_string(),
+    }
+}
+
+/// Display name for the footer when a model is explicitly selected.
+pub fn model_display_label(provider_id: &str, model_id: &str) -> String {
+    elph_ai::get_builtin_model(provider_id, model_id)
+        .map(|model| format!("{} [{provider_id}]", model.name))
+        .unwrap_or_else(|| format!("{provider_id}/{model_id}"))
 }
 
 #[cfg(test)]
@@ -103,8 +110,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn model_footer_label_falls_back_to_opencode_big_pickle() {
-        assert_eq!(model_footer_label(None, None), "opencode/big-pickle");
+    fn model_footer_label_shows_unselected_when_missing() {
+        assert_eq!(model_footer_label(None, None), "No model selected");
+        assert_eq!(model_footer_label(Some("anthropic"), None), "No model selected");
     }
 
     #[test]

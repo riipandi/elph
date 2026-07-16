@@ -186,6 +186,7 @@ impl SelectItem {
 pub struct SlashCommand {
     pub name: String,
     pub description: String,
+    pub args_hint: Option<String>,
 }
 
 impl SlashCommand {
@@ -193,6 +194,23 @@ impl SlashCommand {
         Self {
             name: name.into(),
             description: description.into(),
+            args_hint: None,
+        }
+    }
+
+    pub fn with_args_hint(mut self, hint: impl Into<String>) -> Self {
+        self.args_hint = Some(hint.into());
+        self
+    }
+
+    pub fn palette_command_name(&self) -> String {
+        format!("/{}", self.name)
+    }
+
+    pub fn palette_command_label(&self) -> String {
+        match &self.args_hint {
+            Some(hint) => format!("{} {hint}", self.palette_command_name()),
+            None => self.palette_command_name(),
         }
     }
 }

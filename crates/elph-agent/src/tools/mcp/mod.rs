@@ -21,6 +21,8 @@ mod auth_resolve;
 #[cfg(feature = "mcp")]
 mod client;
 #[cfg(feature = "mcp")]
+mod compat;
+#[cfg(feature = "mcp")]
 mod config;
 #[cfg(feature = "mcp")]
 mod crypto;

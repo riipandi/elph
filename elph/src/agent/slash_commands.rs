@@ -8,98 +8,50 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 pub struct BuiltinSlashCommand {
     pub name: &'static str,
     pub description: &'static str,
+    pub args_hint: Option<&'static str>,
+}
+
+fn builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: None,
+    }
+}
+
+fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &'static str) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: Some(args_hint),
+    }
 }
 
 pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
     vec![
-        BuiltinSlashCommand {
-            name: "settings",
-            description: "Open settings menu",
-        },
-        BuiltinSlashCommand {
-            name: "model",
-            description: "Select model",
-        },
-        BuiltinSlashCommand {
-            name: "export",
-            description: "Export session (JSONL)",
-        },
-        BuiltinSlashCommand {
-            name: "import",
-            description: "Import session JSONL",
-        },
-        BuiltinSlashCommand {
-            name: "copy",
-            description: "Copy last agent message",
-        },
-        BuiltinSlashCommand {
-            name: "name",
-            description: "Set session display name",
-        },
-        BuiltinSlashCommand {
-            name: "session",
-            description: "Show session info",
-        },
-        BuiltinSlashCommand {
-            name: "changelog",
-            description: "Show changelog",
-        },
-        BuiltinSlashCommand {
-            name: "hotkeys",
-            description: "Show keyboard shortcuts",
-        },
-        BuiltinSlashCommand {
-            name: "fork",
-            description: "Fork from a message",
-        },
-        BuiltinSlashCommand {
-            name: "clone",
-            description: "Clone current session",
-        },
-        BuiltinSlashCommand {
-            name: "tree",
-            description: "Navigate session tree",
-        },
-        BuiltinSlashCommand {
-            name: "trust",
-            description: "Save project trust decision",
-        },
-        BuiltinSlashCommand {
-            name: "provider",
-            description: "Manage providers (connect, disconnect)",
-        },
-        BuiltinSlashCommand {
-            name: "new",
-            description: "Start a new session",
-        },
-        BuiltinSlashCommand {
-            name: "compact",
-            description: "Compact conversation history",
-        },
-        BuiltinSlashCommand {
-            name: "resume",
-            description: "Resume a different session",
-        },
-        BuiltinSlashCommand {
-            name: "reload",
-            description: "Reload resources",
-        },
-        BuiltinSlashCommand {
-            name: "quit",
-            description: "Quit Elph",
-        },
-        BuiltinSlashCommand {
-            name: "help",
-            description: "List commands",
-        },
-        BuiltinSlashCommand {
-            name: "exit",
-            description: "Quit Elph",
-        },
-        BuiltinSlashCommand {
-            name: "goal",
-            description: "Manage session goals",
-        },
+        builtin("settings", "Open settings menu"),
+        builtin_with_args("model", "Select model", "[filter]"),
+        builtin("export", "Export session (JSONL)"),
+        builtin("import", "Import session JSONL"),
+        builtin("copy", "Copy last agent message"),
+        builtin("name", "Set session display name"),
+        builtin("session", "Show session info"),
+        builtin("changelog", "Show changelog"),
+        builtin("hotkeys", "Show keyboard shortcuts"),
+        builtin("fork", "Fork from a message"),
+        builtin("clone", "Clone current session"),
+        builtin("tree", "Navigate session tree"),
+        builtin("trust", "Save project trust decision"),
+        builtin("provider", "Manage providers (connect, disconnect)"),
+        builtin("new", "Start a new session"),
+        builtin("compact", "Compact conversation history"),
+        builtin("resume", "Resume a different session"),
+        builtin("reload", "Reload resources"),
+        builtin("quit", "Quit Elph"),
+        builtin("help", "List commands"),
+        builtin_with_args("tools", "Show active tools", "[json|list|table]"),
+        builtin("exit", "Quit Elph"),
+        builtin_with_args("goal", "Manage session goals", "<subcommand>"),
     ]
 }
 
@@ -110,7 +62,13 @@ pub fn slash_commands_for_palette(
 ) -> Vec<SlashCommand> {
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
-        .map(|cmd| SlashCommand::new(cmd.name, cmd.description))
+        .map(|cmd| {
+            let mut entry = SlashCommand::new(cmd.name, cmd.description);
+            if let Some(hint) = cmd.args_hint {
+                entry = entry.with_args_hint(hint);
+            }
+            entry
+        })
         .collect();
     let builtin_names: std::collections::HashSet<String> = commands.iter().map(|cmd| cmd.name.clone()).collect();
 
@@ -153,6 +111,7 @@ pub enum SlashDispatch {
     Compact,
     Goal { args: String },
     Help,
+    Tools { args: String },
     Reload,
     Extension { name: String, args: String },
     PromptTemplate { name: String, args: String },
@@ -184,12 +143,76 @@ fn split_slash_body(body: &str) -> (String, String) {
     (name.to_ascii_lowercase(), args.trim().to_string())
 }
 
+/// One selectable argument value for slash-command arg autocompletion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlashArgCompletion {
+    pub value: &'static str,
+    pub description: &'static str,
+}
+
+const TOOLS_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "table",
+        description: "Markdown table (default)",
+    },
+    SlashArgCompletion {
+        value: "json",
+        description: "Pretty-printed JSON",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "Grouped bullet list",
+    },
+];
+
+const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "status",
+        description: "Show current goal",
+    },
+    SlashArgCompletion {
+        value: "pause",
+        description: "Pause active goal",
+    },
+    SlashArgCompletion {
+        value: "resume",
+        description: "Resume paused goal",
+    },
+    SlashArgCompletion {
+        value: "cancel",
+        description: "Clear active goal",
+    },
+    SlashArgCompletion {
+        value: "replace",
+        description: "Replace goal objective",
+    },
+    SlashArgCompletion {
+        value: "next",
+        description: "Queue next goal (unimplemented)",
+    },
+];
+
+/// Static arg suggestions for built-in slash commands (palette args phase).
+pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCompletion]> {
+    match command_name {
+        "tools" => Some(TOOLS_ARG_COMPLETIONS),
+        "goal" | "goals" => Some(GOAL_ARG_COMPLETIONS),
+        _ => None,
+    }
+}
+
+/// Overlay slash commands that run immediately when confirmed from the palette.
+pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
+    matches!(command_name, "model" | "tree" | "resume")
+}
+
 fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
     match name {
         "exit" | "quit" | "q" => Some(SlashDispatch::Quit),
         "compact" | "c" => Some(SlashDispatch::Compact),
         "goal" | "goals" => Some(SlashDispatch::Goal { args }),
         "help" | "h" | "?" => Some(SlashDispatch::Help),
+        "tools" => Some(SlashDispatch::Tools { args }),
         "reload" => Some(SlashDispatch::Reload),
         "model" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: args })),
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
@@ -286,11 +309,31 @@ mod tests {
             Some(SlashDispatch::Goal { args: "pause".into() })
         );
         assert_eq!(dispatch_slash_command("/help", None, None, None), Some(SlashDispatch::Help));
+        assert_eq!(
+            dispatch_slash_command("/tools", None, None, None),
+            Some(SlashDispatch::Tools { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/tools json", None, None, None),
+            Some(SlashDispatch::Tools { args: "json".into() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/tools table", None, None, None),
+            Some(SlashDispatch::Tools { args: "table".into() })
+        );
         assert_eq!(dispatch_slash_command("/reload", None, None, None), Some(SlashDispatch::Reload));
     }
 
     #[test]
     fn overlay_commands_dispatch() {
+        assert_eq!(
+            dispatch_slash_command("/model", None, None, None),
+            Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: String::new() }))
+        );
+        assert_eq!(
+            dispatch_slash_command("/model ", None, None, None),
+            Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: String::new() }))
+        );
         assert_eq!(
             dispatch_slash_command("/model opus", None, None, None),
             Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: "opus".into() }))
@@ -341,6 +384,22 @@ mod tests {
             .map(|cmd| cmd.name)
             .collect();
         assert!(names.contains(&"skill:code-review".to_string()));
+    }
+
+    #[test]
+    fn palette_includes_tools_args_hint() {
+        let commands = slash_commands_for_palette(None, None, None);
+        let tools = commands.iter().find(|cmd| cmd.name == "tools").expect("tools");
+        assert_eq!(tools.args_hint.as_deref(), Some("[json|list|table]"));
+        assert_eq!(tools.palette_command_label(), "/tools [json|list|table]");
+        assert_eq!(tools.description, "Show active tools");
+    }
+
+    #[test]
+    fn slash_arg_completions_cover_tools_and_goal() {
+        assert!(slash_arg_completions("tools").is_some());
+        assert!(slash_arg_completions("goal").is_some());
+        assert!(slash_arg_completions("model").is_none());
     }
 
     #[test]

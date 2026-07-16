@@ -6,6 +6,8 @@
 use elph_tui::InputPrefixKind;
 use iocraft::prelude::Color;
 
+use crate::types::AgentMode;
+
 /// Pi `darkGray` / muted chrome — near xterm 239 Grey30 (`#4e4e4e`).
 pub const BORDER_MUTED: Color = Color::Rgb { r: 80, g: 80, b: 80 };
 
@@ -30,8 +32,8 @@ pub const USER_INPUT_ACCENT: Color = Color::Rgb { r: 129, g: 161, b: 193 };
 /// Pi `customMessageLabel` (`#9575cd`).
 pub const SKILL_FG: Color = Color::Rgb { r: 149, g: 117, b: 205 };
 
-/// Pi `mdHeading` (`#f0c674`).
-pub const META_FG: Color = Color::Rgb { r: 240, g: 198, b: 116 };
+/// Dim status lines in the transcript (model changes, slash echoes, agent status).
+pub const META_FG: Color = Color::DarkGrey;
 
 /// Thinking blocks: no tinted card — foreground only (Pi `dim` / `thinkingText`).
 pub const THINKING_BG: Color = Color::Reset;
@@ -68,11 +70,14 @@ pub const EDITOR_CURSOR: Color = Color::White;
 pub const PROMPT_PREFIX_FG: Color = Color::White;
 pub const PROMPT_BORDER_DEFAULT: Color = BORDER_MUTED;
 pub const PROMPT_BORDER_SHELL: Color = Color::Rgb { r: 34, g: 197, b: 94 };
+/// Soft cyan border for Plan agent mode — matches [`AgentMode::Plan`] label color.
+pub const PROMPT_BORDER_PLAN: Color = Color::Rgb { r: 6, g: 182, b: 212 };
 
-/// Border color for the prompt editor from input prefix kind.
-pub fn prompt_border_color(kind: InputPrefixKind, has_focus: bool) -> Color {
+/// Border color for the prompt editor from input prefix kind and agent mode.
+pub fn prompt_border_color(kind: InputPrefixKind, agent_mode: AgentMode, has_focus: bool) -> Color {
     let base = match kind {
         InputPrefixKind::ShellWithContext | InputPrefixKind::ShellNoContext => PROMPT_BORDER_SHELL,
+        InputPrefixKind::Default | InputPrefixKind::Slash if agent_mode == AgentMode::Plan => PROMPT_BORDER_PLAN,
         InputPrefixKind::Default | InputPrefixKind::Slash => PROMPT_BORDER_DEFAULT,
     };
     if has_focus { base } else { dim_border_color(base) }
@@ -98,6 +103,22 @@ pub fn rgb_color((r, g, b): (u8, u8, u8)) -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn plan_mode_prompt_border_is_soft_blue() {
+        assert_eq!(
+            prompt_border_color(InputPrefixKind::Default, AgentMode::Plan, true),
+            PROMPT_BORDER_PLAN
+        );
+        assert_eq!(
+            prompt_border_color(InputPrefixKind::Slash, AgentMode::Plan, true),
+            PROMPT_BORDER_PLAN
+        );
+        assert_eq!(
+            prompt_border_color(InputPrefixKind::Default, AgentMode::Build, true),
+            PROMPT_BORDER_DEFAULT
+        );
+    }
 
     #[test]
     fn user_input_bg_is_darker_than_legacy_bubble() {

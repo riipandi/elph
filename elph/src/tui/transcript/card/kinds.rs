@@ -4,7 +4,7 @@ use elph_tui::components::{ProcessStatus, ProcessStatusRow};
 use iocraft::prelude::*;
 
 use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_rows};
-use crate::tui::theme::{TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_OUTPUT_FG, USER_INPUT_ACCENT};
+use crate::tui::theme::{TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_OUTPUT_FG};
 use crate::tui::tool_params::{ToolParamsView, parse_tool_params};
 
 use super::super::types::{TranscriptMessage, TranscriptStyle};
@@ -15,8 +15,6 @@ use super::frame::{
     assistant_message_elements, render_assistant_card, render_flush_card, render_invisible_tinted_card,
     render_tinted_card, render_user_input_card,
 };
-use super::timestamp_layout::{layout_user_input_lines, render_user_input_lines, user_input_right_rail};
-
 use super::tool_format::format_tool_output_display;
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -103,7 +101,11 @@ pub fn thinking_card(screen_width: u16, message: &TranscriptMessage, margin_bott
 }
 
 pub fn chat_response_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
-    let chrome = TranscriptCardChrome::from_style(screen_width, message.style, margin_bottom);
+    let mut chrome = TranscriptCardChrome::from_style(screen_width, message.style, margin_bottom);
+    if message.local_slash_response {
+        chrome.padding_top = message.transcript_padding_top();
+        chrome.padding_bottom = message.transcript_padding_bottom();
+    }
     if message.duration_secs.is_none() {
         return render_assistant_card(&chrome, message);
     }
@@ -154,33 +156,8 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
 }
 
 pub fn meta_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
-    let chrome = TranscriptCardChrome::tinted(screen_width, message.style, margin_bottom);
-    if message.duration_secs.is_none() {
-        return render_user_input_card(&chrome, message, true);
-    }
-    let inner_width = chrome.inner_width(message.style);
-    let right_rail = user_input_right_rail(message.submitted_at, message.duration_secs);
-    let lines = layout_user_input_lines(&message.content, right_rail.as_deref(), inner_width);
-    let body = render_user_input_lines(inner_width, &lines, right_rail.as_deref(), chrome.foreground, TOOL_ARGS_FG);
-    element! {
-        View(
-            width: chrome.outer_width,
-            background_color: chrome.background,
-            border_style: BorderStyle::Bold,
-            border_edges: Edges::Left,
-            border_color: USER_INPUT_ACCENT,
-            margin_bottom: margin_bottom,
-            padding_top: chrome.padding_top,
-            padding_bottom: chrome.padding_bottom,
-            padding_left: chrome.padding_h,
-            padding_right: chrome.padding_h,
-            flex_direction: FlexDirection::Column,
-            gap: 0,
-        ) {
-            #(body)
-        }
-    }
-    .into()
+    let chrome = TranscriptCardChrome::from_style(screen_width, message.style, margin_bottom);
+    render_flush_card(&chrome, message)
 }
 
 pub fn tool_call_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
