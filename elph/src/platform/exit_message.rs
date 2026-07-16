@@ -7,6 +7,7 @@ use elph_ai::{Message, StopReason, Usage};
 use parking_lot::Mutex;
 
 const DIM: &str = "\x1b[2m";
+const ORANGE: &str = "\x1b[38;2;249;115;22m";
 const WHITE: &str = "\x1b[37m";
 const RESET: &str = "\x1b[0m";
 
@@ -71,7 +72,7 @@ pub fn print_and_clear() {
 }
 
 pub fn print_exit_summary(snapshot: &ExitSnapshot) {
-    println_dim(pick_goodbye_message(&snapshot.session_id));
+    println_orange(pick_goodbye_message(&snapshot.session_id));
     println_white(format!("Resume this session: elph --resume {}", snapshot.session_id));
     println_dim(format!("Total cost            : ${:.4}", snapshot.cost_usd));
     println_dim(format!(
@@ -98,6 +99,14 @@ pub fn pick_goodbye_message(session_id: &str) -> &'static str {
 
 fn println_dim(line: impl AsRef<str>) {
     println!("{}", dim(line.as_ref()));
+}
+
+fn println_orange(line: impl AsRef<str>) {
+    if supports_ansi_color() {
+        println!("{ORANGE}{}{RESET}", line.as_ref());
+    } else {
+        println!("{}", line.as_ref());
+    }
 }
 
 fn println_white(line: impl AsRef<str>) {

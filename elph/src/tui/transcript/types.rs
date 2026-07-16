@@ -16,6 +16,9 @@ use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 use super::card::{format_tool_args_display, format_tool_output_display, tool_status_marker};
 use super::markdown::AssistantMarkdownBuffer;
 
+/// Extra scroll-row padding above ephemeral transcript notices (`transient:*` keys).
+pub const EPHEMERAL_NOTICE_EXTRA_PAD_TOP: u16 = 1;
+
 /// Structured payload for tool invocation cards in the transcript.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ToolCardDetail {
@@ -54,11 +57,7 @@ impl TranscriptMessage {
         }
     }
 
-    pub fn startup_status(
-        key: impl Into<String>,
-        content: impl Into<String>,
-        style: TranscriptStyle,
-    ) -> Self {
+    pub fn startup_status(key: impl Into<String>, content: impl Into<String>, style: TranscriptStyle) -> Self {
         let mut message = Self::text(content, style);
         message.startup_key = Some(key.into());
         message
@@ -66,6 +65,13 @@ impl TranscriptMessage {
 
     pub fn is_startup_status(&self) -> bool {
         self.startup_key.is_some() || self.style.is_status_line()
+    }
+
+    /// Ephemeral transcript toasts (`transient:*` keys) that auto-expire.
+    pub fn is_ephemeral_notice(&self) -> bool {
+        self.startup_key
+            .as_deref()
+            .is_some_and(|key| key.starts_with("transient:"))
     }
 
     pub fn assistant_markdown(content: impl Into<String>) -> Self {
@@ -108,12 +114,17 @@ impl TranscriptMessage {
     }
 
     pub fn transcript_padding_top(&self) -> u16 {
-        if self.local_slash_response {
+        let base = if self.local_slash_response {
             COLORED_CARD_PAD
         } else if self.style.is_flush_text() {
             FLUSH_CARD_PAD
         } else {
             COLORED_CARD_PAD
+        };
+        if self.is_ephemeral_notice() {
+            base.saturating_add(EPHEMERAL_NOTICE_EXTRA_PAD_TOP)
+        } else {
+            base
         }
     }
 
@@ -238,7 +249,12 @@ impl TranscriptStyle {
     pub(crate) fn is_flush_text(self) -> bool {
         matches!(
             self,
-            Self::Thinking | Self::Assistant | Self::Meta | Self::StatusRunning | Self::StatusSuccess | Self::StatusFailed
+            Self::Thinking
+                | Self::Assistant
+                | Self::Meta
+                | Self::StatusRunning
+                | Self::StatusSuccess
+                | Self::StatusFailed
         )
     }
 
@@ -427,6 +443,14 @@ mod tests {
         assert!(TranscriptStyle::Meta.is_flush_text());
         assert!(!TranscriptStyle::Meta.has_tinted_background());
         assert_eq!(TranscriptStyle::Meta.text_color(), META_FG);
+    }
+
+    #[test]
+    fn ephemeral_notice_adds_extra_padding_top() {
+        let notice =
+            TranscriptMessage::startup_status("transient:agent_mode", "Agent mode: plan.", TranscriptStyle::Meta);
+        assert!(notice.is_ephemeral_notice());
+        assert_eq!(notice.transcript_padding_top(), FLUSH_CARD_PAD + EPHEMERAL_NOTICE_EXTRA_PAD_TOP);
     }
 
     #[test]

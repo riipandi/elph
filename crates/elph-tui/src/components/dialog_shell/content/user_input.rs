@@ -25,6 +25,8 @@ pub struct DialogUserInputContentProps {
     pub dialog_chrome: bool,
     /// Flush single-line field for inline dialog rows (no underline bar).
     pub compact: bool,
+    /// Characters the parent handles as shortcuts — never inserted into the field.
+    pub blocked_chars: Vec<char>,
     pub on_submit: HandlerMut<'static, ()>,
     pub on_cancel: HandlerMut<'static, ()>,
 }
@@ -44,6 +46,7 @@ impl Default for DialogUserInputContentProps {
             show_placeholder_when_focused: false,
             dialog_chrome: false,
             compact: false,
+            blocked_chars: Vec::new(),
             on_submit: HandlerMut::default(),
             on_cancel: HandlerMut::default(),
         }
@@ -191,6 +194,7 @@ pub fn DialogUserInputContent(
                         width: props.width,
                         value: Some(value),
                         has_focus: has_focus,
+                        blocked_chars: props.blocked_chars.clone(),
                         text_color: Some(text_color),
                         cursor_color: Some(cursor_color),
                         inset: Some(if props.compact { 0 } else { theme.input_inset() }),

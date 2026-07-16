@@ -67,7 +67,12 @@ pub fn mcp_server_status_label(progress: &McpServerLoadProgress) -> String {
         McpServerLoadProgress::Started { name, index, total } => {
             format!("MCP {index}/{total}{STARTUP_SEP}{name}")
         }
-        McpServerLoadProgress::Finished { name, ok: true, tool_count, .. } => {
+        McpServerLoadProgress::Finished {
+            name,
+            ok: true,
+            tool_count,
+            ..
+        } => {
             format!("MCP{STARTUP_SEP}{name}{STARTUP_SEP}{tool_count} tools")
         }
         McpServerLoadProgress::Finished { name, ok: false, .. } => {
@@ -150,17 +155,8 @@ pub fn begin_mcp_startup(messages: &mut Vec<TranscriptMessage>, enabled_servers:
     );
 }
 
-pub fn mark_mcp_startup_summary(messages: &mut Vec<TranscriptMessage>, report: &McpLoadReport) {
-    apply_mcp_startup_summary_line(messages, &format_mcp_load_summary(report));
-}
-
 pub fn apply_mcp_startup_summary_line(messages: &mut Vec<TranscriptMessage>, summary: &str) {
-    upsert_startup_line(
-        messages,
-        STARTUP_KEY_MCP_LOAD,
-        summary,
-        TranscriptStyle::StatusSuccess,
-    );
+    upsert_startup_line(messages, STARTUP_KEY_MCP_LOAD, summary, TranscriptStyle::StatusSuccess);
 }
 
 pub fn mark_mcp_startup_failed(messages: &mut Vec<TranscriptMessage>, err: &str) {
@@ -362,10 +358,7 @@ pub enum BootstrapUiEvent {
 }
 
 /// Run agent + MCP bootstrap off the UI thread; progress arrives on the returned channel.
-pub fn spawn_bootstrap_worker(
-    config: TuiBootstrapConfig,
-    paths: Paths,
-) -> UnboundedReceiver<BootstrapUiEvent> {
+pub fn spawn_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths) -> UnboundedReceiver<BootstrapUiEvent> {
     let (tx, rx) = unbounded_channel();
     tokio::spawn(async move {
         run_bootstrap_worker(config, paths, tx).await;
@@ -441,7 +434,7 @@ mod tests {
 
         let mut messages = Vec::new();
         begin_mcp_startup(&mut messages, 3);
-        mark_mcp_startup_summary(&mut messages, &report);
+        apply_mcp_startup_summary_line(&mut messages, &summary);
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].content, summary);
         assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
@@ -454,10 +447,7 @@ mod tests {
             index: 1,
             total: 3,
         });
-        assert_eq!(
-            started,
-            "  MCP server \"code-review-graph\" · connecting…"
-        );
+        assert_eq!(started, "  MCP server \"code-review-graph\" · connecting…");
 
         let ok = format_mcp_server_transcript(&McpServerLoadProgress::Finished {
             name: "deepwiki".into(),
@@ -475,10 +465,7 @@ mod tests {
             tool_count: 0,
             message: "MCP error - Connection closed".into(),
         });
-        assert_eq!(
-            fail,
-            "  MCP server \"lightpanda\" · MCP error - Connection closed"
-        );
+        assert_eq!(fail, "  MCP server \"lightpanda\" · MCP error - Connection closed");
     }
 
     #[test]

@@ -46,10 +46,10 @@ use crate::tui::model_selector::ModelSelectorFocus;
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
 use crate::tui::model_selector_shell::{
     OpenModelSelectorArgs, apply_model_selection_locally, apply_model_selector_filter_seed, close_model_selector,
-    focus_model_selector_list, model_selector_confirm_on_enter, model_selector_filter_reserved_key,
-    model_selector_filter_seed, model_selector_list_backspace, model_selector_list_nav_delta,
-    model_selector_provider_delta, model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector,
-    spawn_runtime_model_switch, sync_pending_filter,
+    focus_model_selector_list, model_selector_confirm_on_enter, model_selector_filter_seed,
+    model_selector_list_backspace, model_selector_list_nav_delta, model_selector_provider_delta,
+    model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector, spawn_runtime_model_switch,
+    sync_pending_filter,
 };
 use crate::tui::prompt::PromptChrome;
 use crate::tui::session_prefs::persist_session_prefs;
@@ -62,14 +62,17 @@ use crate::tui::slash_palette::SlashPaletteKeyAction;
 use crate::tui::slash_palette::{build_snapshot, palette_visible, resolve_snapshot_key_action, sync_selection};
 use crate::tui::startup::{
     BootstrapPhase, BootstrapUiEvent, McpFooterLineKind, TuiBootstrapConfig, append_startup_warning,
-    apply_mcp_server_progress, begin_agent_startup, begin_mcp_startup, bootstrap_activity_label, bootstrap_is_active,
-    apply_mcp_startup_summary_line, classify_mcp_footer_line, mark_agent_startup_failed, mark_agent_startup_ready,
-    mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
+    apply_mcp_server_progress, apply_mcp_startup_summary_line, begin_agent_startup, begin_mcp_startup,
+    bootstrap_activity_label, bootstrap_is_active, classify_mcp_footer_line, mark_agent_startup_failed,
+    mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
 use crate::tui::tool_approval::PendingToolApproval;
 use crate::tui::tool_approval::{choice_at_index, pick_tool_approval_index_from_key};
-use crate::tui::transcript::{TranscriptMessage, TranscriptPanel, TranscriptStyle};
+use crate::tui::transcript::{
+    AGENT_MODE_NOTICE_KEY, TranscriptMessage, TranscriptPanel, TranscriptStyle, agent_mode_notice_expired,
+    next_agent_mode_notice_deadline, remove_ephemeral_notice, show_agent_mode_notice,
+};
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
     QuestionInputFocus, StepNavOutcome, advance_question_selection, apply_step_nav_outcome, apply_step_submit_outcome,
@@ -102,9 +105,7 @@ fn count_submitted_user_prompts(messages: &[TranscriptMessage]) -> u32 {
     messages
         .iter()
         .filter(|message| {
-            message.style.is_user_input_card()
-                && message.submitted_at.is_some()
-                && !message.content.trim().is_empty()
+            message.style.is_user_input_card() && message.submitted_at.is_some() && !message.content.trim().is_empty()
         })
         .count() as u32
 }
@@ -539,6 +540,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut turn_cancel_requested = hooks.use_ref(|| false);
     let mut pending_quit_confirm = hooks.use_ref(|| false);
     let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    let mut agent_mode_notice_deadline = hooks.use_ref(|| None::<Instant>);
 
     let cwd_for_mention_index = cwd.clone();
     hooks.use_future(async move {
@@ -668,7 +670,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         activity_elapsed_secs.set(next);
                     }
                 }
-                let spinner_step = if bootstrap_is_active(bootstrap_phase.get()) { 2 } else { 1 };
+                let spinner_step = if bootstrap_is_active(bootstrap_phase.get()) {
+                    2
+                } else {
+                    1
+                };
                 spinner_tick.set(spinner_tick.get().wrapping_add(spinner_step));
             }
 
@@ -678,6 +684,25 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .is_some_and(|notice| notice.since.elapsed() >= Duration::from_millis(TURN_COMPLETE_NOTICE_MS));
             if idle_notice_expired {
                 idle_status_notice.set(None);
+            }
+
+            if agent_mode_notice_expired(agent_mode_notice_deadline.get()) {
+                let removed = {
+                    let mut list = messages.read().clone();
+                    let changed = remove_ephemeral_notice(&mut list, AGENT_MODE_NOTICE_KEY);
+                    if changed {
+                        messages.set(list);
+                    }
+                    changed
+                };
+                if removed {
+                    agent_mode_notice_deadline.set(None);
+                    publish_transcript_now(
+                        &mut messages_revision,
+                        &mut transcript_pending,
+                        &mut last_transcript_publish,
+                    );
+                }
             }
 
             let mut transcript_changed = false;
@@ -860,15 +885,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 transcript_pending.set(true);
             }
 
-            let transcript_publish_ms =
-                transcript_publish_interval_ms(bootstrap_is_active(bootstrap_phase.get()));
+            let transcript_publish_ms = transcript_publish_interval_ms(bootstrap_is_active(bootstrap_phase.get()));
             if transcript_pending.get()
                 && (run_completed
-                    || last_transcript_publish
-                        .get()
-                        .elapsed()
-                        .as_millis()
-                        >= transcript_publish_ms as u128)
+                    || last_transcript_publish.get().elapsed().as_millis() >= transcript_publish_ms as u128)
             {
                 messages_revision.set(messages_revision.get().wrapping_add(1));
                 transcript_pending.set(false);
@@ -1053,21 +1073,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
-                    if model_input_focus.get() == ModelSelectorFocus::Search
-                        && model_selector_filter_reserved_key(modifiers, code)
-                    {
-                        return;
-                    }
-
-                    if model_input_focus.get() == ModelSelectorFocus::List
-                        && let Some(delta) = model_selector_scope_delta(modifiers, code)
-                    {
+                    if let Some(delta) = model_selector_scope_delta(modifiers, code) {
                         if let Some(pending) = pending_model_selector.write().as_mut() {
-                            focus_model_selector_list(&mut model_input_focus, pending);
                             sync_pending_filter(pending, &model_filter.read());
                             pending.apply_scope_nav(delta);
                             model_provider_index.set(pending.provider_index);
                             model_selected_index.set(pending.model_index);
+                            if model_input_focus.get() == ModelSelectorFocus::List {
+                                focus_model_selector_list(&mut model_input_focus, pending);
+                            }
                         }
                         return;
                     }
@@ -1788,6 +1802,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     let next = agent_mode.get().next();
                     agent_mode.set(next);
                     persist_session_prefs(&paths, next, thinking_level.get());
+                    messages.set({
+                        let mut list = messages.read().clone();
+                        show_agent_mode_notice(&mut list, next);
+                        list
+                    });
+                    agent_mode_notice_deadline.set(Some(next_agent_mode_notice_deadline()));
+                    publish_transcript_now(
+                        &mut messages_revision,
+                        &mut transcript_pending,
+                        &mut last_transcript_publish,
+                    );
                     if let Some(session) = agent_session.as_ref() {
                         let session = Arc::clone(session);
                         let mode = next;

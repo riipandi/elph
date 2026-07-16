@@ -151,6 +151,7 @@ pub fn ModelSelectorBar(props: &mut ModelSelectorBarProps, _hooks: Hooks) -> imp
                     show_placeholder_when_focused: true,
                     dialog_chrome: true,
                     compact: true,
+                    blocked_chars: vec!['[', ']'],
                     on_submit: props.on_filter_submit.take(),
                     on_cancel: props.on_cancel.take(),
                 )

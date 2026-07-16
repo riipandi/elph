@@ -82,14 +82,14 @@ pub const EDITOR_CURSOR: Color = Color::White;
 pub const PROMPT_PREFIX_FG: Color = Color::White;
 pub const PROMPT_BORDER_DEFAULT: Color = BORDER_MUTED;
 pub const PROMPT_BORDER_SHELL: Color = Color::Rgb { r: 34, g: 197, b: 94 };
-/// Soft cyan border for Plan agent mode — matches [`AgentMode::Plan`] label color.
-pub const PROMPT_BORDER_PLAN: Color = Color::Rgb { r: 6, g: 182, b: 212 };
 
 /// Border color for the prompt editor from input prefix kind and agent mode.
 pub fn prompt_border_color(kind: InputPrefixKind, agent_mode: AgentMode, has_focus: bool) -> Color {
     let base = match kind {
         InputPrefixKind::ShellWithContext | InputPrefixKind::ShellNoContext => PROMPT_BORDER_SHELL,
-        InputPrefixKind::Default | InputPrefixKind::Slash if agent_mode == AgentMode::Plan => PROMPT_BORDER_PLAN,
+        InputPrefixKind::Default | InputPrefixKind::Slash if agent_mode == AgentMode::Plan => {
+            rgb_color(agent_mode.label_rgb())
+        }
         InputPrefixKind::Default | InputPrefixKind::Slash => PROMPT_BORDER_DEFAULT,
     };
     if has_focus { base } else { dim_border_color(base) }
@@ -117,15 +117,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plan_mode_prompt_border_is_soft_blue() {
+    fn plan_mode_prompt_border_matches_dark_green_label_rgb() {
+        assert_eq!(AgentMode::Plan.label_rgb(), (22, 101, 52));
+        let plan_border = rgb_color(AgentMode::Plan.label_rgb());
         assert_eq!(
             prompt_border_color(InputPrefixKind::Default, AgentMode::Plan, true),
-            PROMPT_BORDER_PLAN
+            plan_border
         );
-        assert_eq!(
-            prompt_border_color(InputPrefixKind::Slash, AgentMode::Plan, true),
-            PROMPT_BORDER_PLAN
-        );
+        assert_eq!(prompt_border_color(InputPrefixKind::Slash, AgentMode::Plan, true), plan_border);
         assert_eq!(
             prompt_border_color(InputPrefixKind::Default, AgentMode::Build, true),
             PROMPT_BORDER_DEFAULT

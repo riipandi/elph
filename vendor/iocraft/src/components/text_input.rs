@@ -109,6 +109,9 @@ pub struct TextInputProps {
 
     /// When `Some(false)`, plain `Enter` is not handled here (parent handles submit / wire newline).
     pub plain_enter_inserts_newline: Option<bool>,
+
+    /// Characters that must not be inserted (parent handles them as shortcuts).
+    pub blocked_chars: Vec<char>,
 }
 
 trait UseSize<'a> {
@@ -339,6 +342,7 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
     let multiline = props.multiline;
     let plain_enter_inserts_newline = props.plain_enter_inserts_newline.unwrap_or(true);
     let has_focus = props.has_focus;
+    let blocked_chars = props.blocked_chars.clone();
     let wrap = if multiline { TextWrap::Wrap } else { TextWrap::NoWrap };
 
     let mut prev_value = hooks.use_state(|| "".to_string());
@@ -432,7 +436,7 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
     hooks.use_terminal_events({
         let buffer = buffer.clone();
         let mut latest_value = latest_value;
-        let mut value = props.value.clone();
+        let blocked_chars = blocked_chars.clone();
         let mut on_change = props.on_change.take();
         move |event| {
             if !has_focus {
@@ -459,12 +463,14 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
                     && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
                 {
                     let mut clear_vertical_movement_col_preference = true;
+                    let mut value = latest_value.read().clone();
 
                     match code {
+                        KeyCode::Char(c) if blocked_chars.contains(&c) => {}
                         KeyCode::Char(c) => {
                             // CRITICAL: Navigation updates `cursor_offset` only — resync before edits so batched
                             // events (e.g. Up then stale Backspace) do not mutate at the old offset.
-                            let mut offset = cursor_offset.get();
+                            let mut offset = clamp_cursor_offset(&value, cursor_offset.get());
                             value.insert(offset, c);
                             offset += c.len_utf8();
                             // CRITICAL: Update cursor before `on_change` so controlled parents read the live offset.
@@ -473,8 +479,7 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
                             latest_value.set(value.clone());
                         }
                         KeyCode::Backspace => {
-                            value = latest_value.read().clone();
-                            let mut offset = cursor_offset.get();
+                            let mut offset = clamp_cursor_offset(&value, cursor_offset.get());
                             if offset > 0 {
                                 offset -= value[..offset].chars().last().unwrap().len_utf8();
                                 value.remove(offset);
@@ -484,8 +489,7 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
                             new_cursor_offset_hint.set(NewCursorOffsetHint::Backspace);
                         }
                         KeyCode::Delete => {
-                            value = latest_value.read().clone();
-                            let offset = cursor_offset.get();
+                            let offset = clamp_cursor_offset(&value, cursor_offset.get());
                             if offset < value.len() {
                                 value.remove(offset);
                             }
@@ -497,8 +501,7 @@ pub fn TextInput(mut hooks: Hooks, props: &mut TextInputProps) -> impl Into<AnyE
                         KeyCode::Enter
                             if multiline && plain_enter_inserts_newline && !modifiers.contains(KeyModifiers::SHIFT) =>
                         {
-                            value = latest_value.read().clone();
-                            let mut offset = cursor_offset.get();
+                            let mut offset = clamp_cursor_offset(&value, cursor_offset.get());
                             value.insert(offset, '\n');
                             offset += 1;
                             cursor_offset.set(offset);
@@ -580,9 +583,17 @@ enum NewCursorOffsetHint {
     Deletion,
 }
 
+fn clamp_cursor_offset(text: &str, offset: usize) -> usize {
+    let mut offset = offset.min(text.len());
+    while offset > 0 && !text.is_char_boundary(offset) {
+        offset -= 1;
+    }
+    offset
+}
+
 fn new_cursor_offset(prev_value: &str, cursor_offset: usize, value: &str, hint: NewCursorOffsetHint) -> usize {
     // Batched key events can advance the live cursor before `prev_value` catches up on render.
-    let cursor_offset = cursor_offset.min(prev_value.len());
+    let cursor_offset = clamp_cursor_offset(prev_value, cursor_offset.min(prev_value.len()));
     let has_same_head =
         value.len() >= cursor_offset && value.as_bytes()[..cursor_offset] == prev_value.as_bytes()[..cursor_offset];
 
@@ -590,7 +601,7 @@ fn new_cursor_offset(prev_value: &str, cursor_offset: usize, value: &str, hint: 
     let has_same_tail =
         value.len() >= tail_len && value.as_bytes()[value.len() - tail_len..] == prev_value.as_bytes()[cursor_offset..];
 
-    if value.len() >= prev_value.len() && has_same_head && has_same_tail {
+    let next = if value.len() >= prev_value.len() && has_same_head && has_same_tail {
         // insertion (or no change)
         cursor_offset + (value.len() - prev_value.len())
     } else if value.len() < prev_value.len() && has_same_tail && has_same_head {
@@ -610,7 +621,8 @@ fn new_cursor_offset(prev_value: &str, cursor_offset: usize, value: &str, hint: 
     } else {
         // unknown, put the cursor at the end
         value.len()
-    }
+    };
+    clamp_cursor_offset(value, next)
 }
 
 #[cfg(test)]
@@ -620,6 +632,23 @@ mod tests {
     use futures::stream::StreamExt;
     use macro_rules_attribute::apply;
     use smol_macros::test;
+
+    #[test]
+    fn new_cursor_offset_clamps_after_external_sanitize() {
+        let prev = "big[pickle]";
+        let next = "bigpickle";
+        let offset = new_cursor_offset(prev, prev.len(), next, NewCursorOffsetHint::None);
+        assert!(next.is_char_boundary(offset));
+        assert_eq!(offset, next.len());
+    }
+
+    #[test]
+    fn clamp_cursor_offset_handles_multibyte_boundary() {
+        let text = "café";
+        assert_eq!(clamp_cursor_offset(text, 4), 4);
+        assert_eq!(clamp_cursor_offset(text, 3), 3);
+        assert_eq!(clamp_cursor_offset(text, 2), 2);
+    }
 
     #[derive(Default, Props)]
     struct MyComponentProps {

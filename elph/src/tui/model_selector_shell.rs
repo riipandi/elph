@@ -80,6 +80,7 @@ pub fn model_selector_sanitize_filter(filter: &str) -> String {
 }
 
 /// `[` / `]` cycle scope tabs — reserved for list navigation, not filter text.
+#[cfg(test)]
 pub fn model_selector_filter_reserved_key(modifiers: KeyModifiers, code: KeyCode) -> bool {
     modifiers.is_empty() && matches!(code, KeyCode::Char('[') | KeyCode::Char(']'))
 }
@@ -230,6 +231,7 @@ pub fn spawn_runtime_model_switch(session: Arc<CodingAgentSession>, value: Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tui::model_selector::ModelScopeMode;
 
     #[test]
     fn filter_seed_accepts_alphabet_digits_space_and_slash() {
@@ -308,5 +310,14 @@ mod tests {
         assert_eq!(model_selector_scope_delta(KeyModifiers::empty(), KeyCode::Char('[')), Some(-1));
         assert_eq!(model_selector_scope_delta(KeyModifiers::empty(), KeyCode::Char(']')), Some(1));
         assert_eq!(model_selector_scope_delta(KeyModifiers::empty(), KeyCode::Left), None);
+    }
+
+    #[test]
+    fn scope_nav_from_all_moves_to_scoped() {
+        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        pending.input_focus = ModelSelectorFocus::Search;
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
+        assert_eq!(pending.input_focus, ModelSelectorFocus::Search);
     }
 }

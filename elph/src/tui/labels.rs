@@ -1,7 +1,12 @@
 //! Footer and header label formatting.
 
 use crate::platform::Paths;
-use crate::types::ThinkingLevel;
+use crate::types::{AgentMode, ThinkingLevel};
+
+/// Transcript line when the user switches agent mode (Tab / footer).
+pub fn agent_mode_change_notice(mode: AgentMode) -> String {
+    format!("Agent mode: {}.", mode.footer_label())
+}
 
 pub fn session_header_segments(session_id: &str, mcp_connected: usize, skills_count: usize) -> [String; 3] {
     [
@@ -108,6 +113,12 @@ pub fn model_display_label(provider_id: &str, model_id: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn agent_mode_change_notice_uses_footer_label() {
+        assert_eq!(agent_mode_change_notice(AgentMode::Plan), "Agent mode: plan.");
+        assert_eq!(agent_mode_change_notice(AgentMode::Brave), "Agent mode: brave.");
+    }
 
     #[test]
     fn model_footer_label_shows_unselected_when_missing() {

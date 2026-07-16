@@ -32,7 +32,7 @@ impl AgentMode {
     /// Label color in the TUI (see `docs/tui.md` agent mode palette).
     pub const fn label_rgb(self) -> (u8, u8, u8) {
         match self {
-            Self::Plan => (6, 182, 212),
+            Self::Plan => (22, 101, 52),
             Self::Ask => (59, 130, 246),
             Self::Brave => (239, 68, 68),
             Self::Build => (107, 114, 128),
