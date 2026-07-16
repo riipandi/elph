@@ -22,6 +22,17 @@ pub fn format_tokens_k(n: u64) -> String {
     format!("{}k", n / 1000)
 }
 
+pub fn context_usage_label(tokens_used: u64, context_pct: f64, context_limit: u64, display: &str) -> String {
+    let used = format_tokens_k(tokens_used);
+    let limit = format_tokens_k(context_limit);
+    let pct = format!("{context_pct:.1}%");
+    match display {
+        "percentage" => format!("{pct} ({limit})"),
+        "count" => format!("{used} ({limit})"),
+        _ => format!("{used} | {pct} ({limit})"),
+    }
+}
+
 pub fn header_stats_label(
     cost_usd: f64,
     tokens_used: u64,
@@ -30,14 +41,10 @@ pub fn header_stats_label(
     display: &str,
 ) -> String {
     let cost = format!("${cost_usd:.2}");
-    let used = format_tokens_k(tokens_used);
-    let limit = format_tokens_k(context_limit);
-    let pct = format!("{context_pct:.1}%");
-    match display {
-        "percentage" => format!("{cost} | {pct} ({limit})"),
-        "count" => format!("{cost} | {used} ({limit})"),
-        _ => format!("{cost} | {used} | {pct} ({limit})"),
-    }
+    format!(
+        "{cost} | {}",
+        context_usage_label(tokens_used, context_pct, context_limit, display)
+    )
 }
 
 pub fn footer_right_label(model_label: &str, thinking_level: ThinkingLevel, supports_images: bool) -> String {
@@ -92,6 +99,13 @@ mod tests {
     #[test]
     fn footer_left_appends_turn_count() {
         assert_eq!(footer_left_label("~ elph [main]", 0), "~ elph [main] | turn: 0");
+    }
+
+    #[test]
+    fn context_usage_label_respects_display_mode() {
+        assert_eq!(context_usage_label(131_000, 48.2, 272_000, "both"), "131k | 48.2% (272k)");
+        assert_eq!(context_usage_label(131_000, 48.2, 272_000, "percentage"), "48.2% (272k)");
+        assert_eq!(context_usage_label(131_000, 48.2, 272_000, "count"), "131k (272k)");
     }
 
     #[test]

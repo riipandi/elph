@@ -21,6 +21,13 @@ const TIPS: &[&str] = &[
 
 const BUSY_CANCEL_HINT: &str = "Ctrl+C cancel";
 
+fn format_busy_right_line(token_info: Option<&str>) -> String {
+    match token_info {
+        Some(info) if !info.is_empty() => format!("{info} | {BUSY_CANCEL_HINT}"),
+        _ => BUSY_CANCEL_HINT.to_string(),
+    }
+}
+
 /// Props for [`StatusRow`].
 #[derive(Props)]
 pub struct StatusRowProps {
@@ -34,6 +41,8 @@ pub struct StatusRowProps {
     pub elapsed_secs: f64,
     /// Replaces the idle tip briefly after a turn completes (e.g. `Turn complete · 1.2s`).
     pub idle_notice: Option<String>,
+    /// Turn stream delta + throughput while busy (e.g. `+240 · 12 t/s`).
+    pub busy_token_info: Option<String>,
 }
 
 impl Default for StatusRowProps {
@@ -46,6 +55,7 @@ impl Default for StatusRowProps {
             spinner_tick: 0,
             elapsed_secs: 0.0,
             idle_notice: None,
+            busy_token_info: None,
         }
     }
 }
@@ -88,6 +98,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         .clone()
         .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
     let activity_line = format_activity_line(&props.activity_label, props.elapsed_secs);
+    let busy_right_line = format_busy_right_line(props.busy_token_info.as_deref());
     let _spinner_frame = props.spinner_tick;
     let spinner_glyph = if props.busy {
         braille_spinner_glyph(props.spinner_tick)
@@ -149,7 +160,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                 #(if props.busy {
                     element! {
                         View(align_items: AlignItems::Center, justify_content: JustifyContent::End) {
-                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: BUSY_CANCEL_HINT)
+                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: busy_right_line)
                         }
                     }
                 } else {
@@ -190,6 +201,15 @@ mod tests {
         let next = random_tip_index(2, TIPS.len());
         assert_ne!(next, 2);
         assert!(next < TIPS.len());
+    }
+
+    #[test]
+    fn format_busy_right_line_includes_token_info_and_cancel_hint() {
+        assert_eq!(
+            format_busy_right_line(Some("+240 · 12 t/s")),
+            "+240 · 12 t/s | Ctrl+C cancel"
+        );
+        assert_eq!(format_busy_right_line(None), "Ctrl+C cancel");
     }
 
     #[test]

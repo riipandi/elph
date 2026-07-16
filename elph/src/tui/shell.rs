@@ -14,7 +14,9 @@ use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, PromptInterrupt, handle_prompt_interrupt_text};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel, is_quit_command};
 
-use crate::tui::activity::{activity_label_for_event, format_turn_complete_notice};
+use crate::tui::activity::{
+    TurnTokenTracker, activity_label_for_event, format_busy_token_info, format_turn_complete_notice,
+};
 use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatcher};
 use crate::tui::chrome::{ChromeStats, Header, StatusRow};
 use crate::tui::chrome::{format_elapsed_secs, header_stats_from_chrome, read_git_branch, refresh_chrome_stats};
@@ -119,6 +121,10 @@ fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool) {
     });
 }
 
+fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracker>>, chrome: &ChromeStats) {
+    tracker.set(Some(TurnTokenTracker::new(chrome.tokens_used)));
+}
+
 fn push_transcript_message(
     messages: &mut State<Vec<TranscriptMessage>>,
     messages_revision: &mut State<u64>,
@@ -196,6 +202,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut transcript_pending = hooks.use_ref(|| false);
     let mut last_transcript_publish = hooks.use_ref(|| Instant::now() - Duration::from_millis(TRANSCRIPT_PUBLISH_MS));
     let mut turn_complete_notice = hooks.use_ref(|| None::<TurnCompleteNotice>);
+    let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
 
     hooks.use_future(async move {
         loop {
@@ -230,7 +237,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         fallback_supports_images,
                     )
                     .await;
-                    chrome_stats.set(stats);
+                    chrome_stats.set(stats.clone());
+                    if busy.get()
+                        && let Some(tracker) = turn_token_tracker.write().as_mut()
+                    {
+                        tracker.sync_baseline(stats.tokens_used);
+                    }
                 }
             }
 
@@ -268,6 +280,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
                         run_completed = true;
                         run_completed_elapsed = Some(*elapsed_secs);
+                    }
+
+                    match &event {
+                        AgentUiEvent::TextDelta(delta) => {
+                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                                tracker.record_delta(delta);
+                            }
+                        }
+                        AgentUiEvent::ThinkingDelta(delta) if show_thinking => {
+                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                                tracker.record_delta(delta);
+                            }
+                        }
+                        _ => {}
                     }
 
                     if let AgentUiEvent::Status(ref message) = event
@@ -328,6 +354,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 busy_started_at.set(None);
                 elapsed_secs.set(0.0);
                 activity_label.set("Thinking".to_string());
+                turn_token_tracker.set(None);
                 chrome_refresh_pending.set(true);
 
                 if let Some(next) = prompt_queue.write().pop_front() {
@@ -342,6 +369,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         },
                         false,
                     );
+                    begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                     if let Some(session) = agent_session_for_loop.as_ref() {
                         chrome_refresh_pending.set(true);
                         TurnDispatcher::spawn_turn(Arc::clone(session), next, false);
@@ -502,6 +530,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         busy.set(false);
                         busy_started_at.set(None);
                         elapsed_secs.set(0.0);
+                        turn_token_tracker.set(None);
                     }
                 }
                 (m, KeyCode::Char('c'))
@@ -544,6 +573,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let supports_images = chrome.supports_images;
     let prompt_focused = shell_focus.get() == ShellFocus::Prompt;
     let transcript_focused = shell_focus.get() == ShellFocus::Transcript;
+    let busy_token_info = if busy.get() {
+        turn_token_tracker.read().as_ref().map(|tracker| {
+            format_busy_token_info(tracker.stream_tokens, tracker.tokens_per_sec(elapsed_secs.get()))
+        })
+    } else {
+        None
+    };
 
     let draft_for_palette = live_draft.read().clone();
     let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
@@ -591,6 +627,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 spinner_tick: spinner_tick.get(),
                 elapsed_secs: elapsed_secs.get(),
                 idle_notice: turn_complete_notice.read().as_ref().map(|notice| notice.text.clone()),
+                busy_token_info: busy_token_info.clone(),
             )
             #(if let Some(pending) = pending_tool_approval.read().as_ref() {
                 element! {
@@ -756,6 +793,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     },
                                     false,
                                 );
+                                begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                             }
                         }
                         SlashOutcome::SpawnAgentTurn => {
@@ -773,6 +811,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     },
                                     false,
                                 );
+                                begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                 TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
                             } else {
                                 push_transcript_message(
