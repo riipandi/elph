@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/elph-*", "elph"]
+members = ["crates/elph-*", "crates/floppy", "elph"]
 exclude = ["extensions/say-hello"]
 
 [workspace.package]

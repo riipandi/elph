@@ -3489,6 +3489,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "floppy"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "memorable-ids",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "fluent-uri"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
