@@ -150,19 +150,19 @@ Multi-agent coordination. Early stage — minimal public API.
 
 ## Key architectural decisions (from git history)
 
-| Decision                  | Commit              | Rationale                                                                       |
-| ------------------------- | ------------------- | ------------------------------------------------------------------------------- |
-| Layered crate layout      | `95ff396`           | Restructure from monolithic to `elph-agent`, `elph-ai`, `elph-core`, `elph-tui` |
-| Migrate TUI to `iocraft`  | `b06c134`           | Replace `superlighttui` with richer widget framework                            |
-| MCP client integration    | `810f72a`–`c15ac90` | Add streamable HTTP, session pool, OAuth, encrypted creds, validation           |
-| TOON prompt encoding      | `0a0753c`           | Optional structured-data encoding for tool results to reduce tokens             |
-| Auto session naming       | `2e0297f`           | Model-generated thread titles for session resumption UX                         |
-| Goal system               | `db12bfb`           | Persisted session objectives with auto-steering                                 |
-| Prompt module restructure | `97158ee`           | Split `prompt_templates/` into `prompt/{builtin,external,invoke}`               |
-| STRICT SQLite tables      | `cc72e6b`           | Correct column types for Turso/SQLite compatibility                             |
-| Subagent orchestration    | `1384531`           | Rename goal tools to snake_case, refactor ask_user                              |
-| Prompt template engine       | `fdbede4`           | Replace ad-hoc string formatting with MiniJinja-based layered templates (`base.md`, `coding_base.md`, mode-specific appendixes) |
-| Session tree persistence  | `95ff396`           | Tree-structured sessions with fork/branch/resume                                |
+| Decision                  | Commit              | Rationale                                                                                                                       |
+| ------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Layered crate layout      | `95ff396`           | Restructure from monolithic to `elph-agent`, `elph-ai`, `elph-core`, `elph-tui`                                                 |
+| Migrate TUI to `iocraft`  | `b06c134`           | Replace `superlighttui` with richer widget framework                                                                            |
+| MCP client integration    | `810f72a`–`c15ac90` | Add streamable HTTP, session pool, OAuth, encrypted creds, validation                                                           |
+| TOON prompt encoding      | `0a0753c`           | Optional structured-data encoding for tool results to reduce tokens                                                             |
+| Auto session naming       | `2e0297f`           | Model-generated thread titles for session resumption UX                                                                         |
+| Goal system               | `db12bfb`           | Persisted session objectives with auto-steering                                                                                 |
+| Prompt module restructure | `97158ee`           | Split `prompt_templates/` into `prompt/{builtin,external,invoke}`                                                               |
+| STRICT SQLite tables      | `cc72e6b`           | Correct column types for Turso/SQLite compatibility                                                                             |
+| Subagent orchestration    | `1384531`           | Rename goal tools to snake_case, refactor ask_user                                                                              |
+| Prompt template engine    | `fdbede4`           | Replace ad-hoc string formatting with MiniJinja-based layered templates (`base.md`, `coding_base.md`, mode-specific appendixes) |
+| Session tree persistence  | `95ff396`           | Tree-structured sessions with fork/branch/resume                                                                                |
 
 ## Path resolution
 

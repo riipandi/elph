@@ -13,7 +13,7 @@ pub struct ToolNamesContext {
     pub list_dir: String,
     pub edit_file: String,
     pub write_file: String,
-    pub bash: String,
+    pub shell_exec: String,
     pub web_fetch: String,
     pub web_search: String,
     pub diagnostics: String,
@@ -27,7 +27,7 @@ pub struct ToolNamesContext {
 pub struct ToolByKindContext {
     pub read: String,
     pub edit: String,
-    pub bash: String,
+    pub shell_exec: String,
 }
 
 /// Variables available to generic and domain system prompt templates.
@@ -109,7 +109,7 @@ pub fn tool_names_context(names: &[String]) -> ToolNamesContext {
         list_dir: name("list_dir"),
         edit_file: name("edit_file"),
         write_file: name("write_file"),
-        bash: name("bash"),
+        shell_exec: name("shell_exec"),
         web_fetch: name("web_fetch"),
         web_search: name("web_search"),
         diagnostics: name("diagnostics"),
@@ -118,7 +118,7 @@ pub fn tool_names_context(names: &[String]) -> ToolNamesContext {
         by_kind: ToolByKindContext {
             read: first(&["read_file"]),
             edit: first(&["edit_file", "write_file"]),
-            bash: name("bash"),
+            shell_exec: name("shell_exec"),
         },
     }
 }

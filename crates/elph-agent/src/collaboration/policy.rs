@@ -29,7 +29,7 @@ fn default_mutating_tools() -> Vec<String> {
     vec![
         "write_file".into(),
         "edit_file".into(),
-        "bash".into(),
+        "shell_exec".into(),
         "create_dir".into(),
         "copy_path".into(),
         "delete_path".into(),
@@ -163,15 +163,20 @@ mod tests {
 
     #[test]
     fn plan_mode_filters_mutating_tools() {
-        let all = vec!["read_file".into(), "bash".into(), "write_file".into(), "grep".into()];
+        let all = vec![
+            "read_file".into(),
+            "shell_exec".into(),
+            "write_file".into(),
+            "grep".into(),
+        ];
         let filtered = filter_active_tools(CollaborationMode::Plan, &all, None);
         assert_eq!(filtered, vec!["read_file".to_string(), "grep".to_string()]);
     }
 
     #[test]
-    fn blocks_bash_in_plan_mode() {
-        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "bash", None));
-        assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "bash", None));
+    fn blocks_shell_exec_in_plan_mode() {
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "shell_exec", None));
     }
 
     #[test]

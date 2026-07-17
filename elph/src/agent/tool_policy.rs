@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn ask_mode_includes_coding_exploration_tools() {
         let mut all = coding_tool_exposure_policy().exploration_tools.clone();
-        all.extend(["write_file".to_string(), "bash".to_string()]);
+        all.extend(["write_file".to_string(), "shell_exec".to_string()]);
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Ask, &all, None);
         assert!(active.contains(&"read_file".to_string()));
         assert!(active.contains(&"diagnostics".to_string()));

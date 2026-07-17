@@ -75,21 +75,21 @@ Dispatch order:
 
 ### Built-in commands
 
-| Command                     | Aliases                                | Description                                 |
-| --------------------------- | -------------------------------------- | ------------------------------------------- |
-| `/help`                     | —                                      | List all commands                           |
-| `/model`                    | —                                      | Open model selector                         |
-| `/goal`                     | `/goals`                               | Manage session goals                        |
-| `/tools`                    | —                                      | Show active tools (json/list/table)         |
-| `/exit`                     | `/quit`, `/q`                          | Quit                                        |
-| `/commit`                   | —                                      | Generate commit message from staged changes |
-| `/compact`                  | `/c`                                   | Compact history                             |
-| `/reload`                   | —                                      | Reload extensions + resources               |
-| `/system-prompt`            | `/prompt`, `/systemprompt`             | Show assembled system prompt in a dialog    |
-| `/diagnostic:list-tools`    | —                                      | List available tools                        |
-| `/diagnostic:system-prompt` | —                                      | (Legacy — use `/system-prompt`)             |
-| `/diagnostic:open-log`      | —                                      | Open session log                            |
-| `/confetti`                 | `/conffety`, `/confetty` (hidden)      | Easter egg — rain or firework confetti      |
+| Command                     | Aliases                           | Description                                 |
+| --------------------------- | --------------------------------- | ------------------------------------------- |
+| `/help`                     | —                                 | List all commands                           |
+| `/model`                    | —                                 | Open model selector                         |
+| `/goal`                     | `/goals`                          | Manage session goals                        |
+| `/tools`                    | —                                 | Show active tools (json/list/table)         |
+| `/exit`                     | `/quit`, `/q`                     | Quit                                        |
+| `/commit`                   | —                                 | Generate commit message from staged changes |
+| `/compact`                  | `/c`                              | Compact history                             |
+| `/reload`                   | —                                 | Reload extensions + resources               |
+| `/system-prompt`            | `/prompt`, `/systemprompt`        | Show assembled system prompt in a dialog    |
+| `/diagnostic:list-tools`    | —                                 | List available tools                        |
+| `/diagnostic:system-prompt` | —                                 | (Legacy — use `/system-prompt`)             |
+| `/diagnostic:open-log`      | —                                 | Open session log                            |
+| `/confetti`                 | `/conffety`, `/confetty` (hidden) | Easter egg — rain or firework confetti      |
 
 ## TOON Prompt Encoding
 
@@ -321,15 +321,15 @@ Renders GitHub-Flavored Markdown tables as a box-drawing grid in the markdown ou
 
 An animated particle overlay that produces full-screen confetti effects. Hidden from the slash palette and `/help`, triggered only by manually typing `/confetti`.
 
-| Module          | Purpose                                                          |
-| --------------- | ---------------------------------------------------------------- |
-| `mod.rs`        | Re-exports `ConfettiOverlay`, `ConfettiRuntime`, entry helpers   |
+| Module          | Purpose                                                         |
+| --------------- | --------------------------------------------------------------- |
+| `mod.rs`        | Re-exports `ConfettiOverlay`, `ConfettiRuntime`, entry helpers  |
 | `physics.rs`    | Tuning constants: `SIMULATION_FPS = 60.0`, `GRAVITY = 95.0`     |
-| `simulation.rs` | Particle engine core — `System`, `Particle`, `Point`, `Vector`   |
-| `rain.rs`       | Rain mode: 140 particles from random top positions, 10 colors    |
-| `fireworks.rs`  | Firework mode: 3 rockets per salvo, 72-pellet circular burst     |
-| `overlay.rs`    | iocraft `ConfettiOverlay` component, full-screen absolutely-pos   |
-| `array.rs`      | `sample()` utility for random selection                          |
+| `simulation.rs` | Particle engine core — `System`, `Particle`, `Point`, `Vector`  |
+| `rain.rs`       | Rain mode: 140 particles from random top positions, 10 colors   |
+| `fireworks.rs`  | Firework mode: 3 rockets per salvo, 72-pellet circular burst    |
+| `overlay.rs`    | iocraft `ConfettiOverlay` component, full-screen absolutely-pos |
+| `array.rs`      | `sample()` utility for random selection                         |
 
 - **Modes**: `/confetti` (default rain), `/confetti firework` / `/confetti fireworks`
 - **Behavior**: Auto-closes after 2–5 seconds once particles settle; restores the prompt draft and focus on close.
@@ -350,33 +350,33 @@ Opened by `/system-prompt` (aliases: `/prompt`, `/systemprompt`). Renders the co
 
 ## Key source files
 
-| Concern                            | Path                                                                                                                                 |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Concern                            | Path                                                                                                                                            |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | TUI (current)                      | `/elph/src/tui/` (shell.rs, focus.rs, tool_approval.rs, activity.rs, agent_bridge.rs, chrome/, confetti/, prompt/, transcript/, slash_palette/) |
-| Shell implementation               | `/elph/src/tui/shell.rs`                                                                                                             |
-| Focus switching                    | `/elph/src/tui/focus.rs`                                                                                                             |
-| Model selector                     | `/elph/src/tui/model_selector.rs`, `model_selector_bar.rs`, `model_selector_shell.rs`, `model_option_list.rs`                        |
-| @-mention file picker              | `/elph/src/tui/file_picker/`                                                                                                         |
-| Inline dialogs                     | `/elph/src/tui/inline_dialog.rs`, `/elph/src/tui/status_dialog.rs`, `/elph/src/tui/tool_params.rs`                                   |
-| Tool approval modal                | `/elph/src/tui/tool_approval.rs`                                                                                                     |
-| User question prompts              | `/elph/src/tui/user_question.rs`                                                                                                     |
-| Activity + token tracking          | `/elph/src/tui/activity.rs`                                                                                                          |
-| Slash palette                      | `/elph/src/tui/slash_palette/`                                                                                                       |
-| Isomorphic text editor             | `/elph/src/tui/prompt/editor.rs`                                                                                                     |
-| Transcript cards + markdown        | `/elph/src/tui/transcript/`                                                                                                          |
-| Startup UI / MCP bootstrap         | `/elph/src/tui/startup.rs`, `/elph/src/agent/mcp_bootstrap.rs`                                                                       |
-| Confetti overlay                   | `/elph/src/tui/confetti/`                                                                                                            |
-| System prompt dialog               | `/elph/src/tui/system_prompt_dialog.rs`                                                                                              |
-| Chrome (header, stats, status_row) | `/elph/src/tui/chrome/`                                                                                                              |
-| Agent interaction                  | `/elph/src/agent/`                                                                                                                   |
-| Diagnostics tool                   | `/elph/src/agent/diagnostics.rs`                                                                                                     |
-| Skills load + slash parse          | `/elph/src/agent/skills_load.rs`                                                                                                     |
-| Tools catalog reconciliation       | `/elph/src/agent/tools_catalog.rs`                                                                                                   |
-| ui-components                      | `/crates/elph-tui/src/components/`                                                                                                   |
-| TUI examples                       | `/crates/elph-tui/examples/`                                                                                                         |
-| Prompt encoding                    | `/crates/elph-agent/src/prompt/encoding/`                                                                                            |
-| Slash commands                     | `/elph/src/agent/slash_commands.rs`                                                                                                  |
-| Agent runtime                      | `/elph/src/agent/runtime.rs`                                                                                                         |
+| Shell implementation               | `/elph/src/tui/shell.rs`                                                                                                                        |
+| Focus switching                    | `/elph/src/tui/focus.rs`                                                                                                                        |
+| Model selector                     | `/elph/src/tui/model_selector.rs`, `model_selector_bar.rs`, `model_selector_shell.rs`, `model_option_list.rs`                                   |
+| @-mention file picker              | `/elph/src/tui/file_picker/`                                                                                                                    |
+| Inline dialogs                     | `/elph/src/tui/inline_dialog.rs`, `/elph/src/tui/status_dialog.rs`, `/elph/src/tui/tool_params.rs`                                              |
+| Tool approval modal                | `/elph/src/tui/tool_approval.rs`                                                                                                                |
+| User question prompts              | `/elph/src/tui/user_question.rs`                                                                                                                |
+| Activity + token tracking          | `/elph/src/tui/activity.rs`                                                                                                                     |
+| Slash palette                      | `/elph/src/tui/slash_palette/`                                                                                                                  |
+| Isomorphic text editor             | `/elph/src/tui/prompt/editor.rs`                                                                                                                |
+| Transcript cards + markdown        | `/elph/src/tui/transcript/`                                                                                                                     |
+| Startup UI / MCP bootstrap         | `/elph/src/tui/startup.rs`, `/elph/src/agent/mcp_bootstrap.rs`                                                                                  |
+| Confetti overlay                   | `/elph/src/tui/confetti/`                                                                                                                       |
+| System prompt dialog               | `/elph/src/tui/system_prompt_dialog.rs`                                                                                                         |
+| Chrome (header, stats, status_row) | `/elph/src/tui/chrome/`                                                                                                                         |
+| Agent interaction                  | `/elph/src/agent/`                                                                                                                              |
+| Diagnostics tool                   | `/elph/src/agent/diagnostics.rs`                                                                                                                |
+| Skills load + slash parse          | `/elph/src/agent/skills_load.rs`                                                                                                                |
+| Tools catalog reconciliation       | `/elph/src/agent/tools_catalog.rs`                                                                                                              |
+| ui-components                      | `/crates/elph-tui/src/components/`                                                                                                              |
+| TUI examples                       | `/crates/elph-tui/examples/`                                                                                                                    |
+| Prompt encoding                    | `/crates/elph-agent/src/prompt/encoding/`                                                                                                       |
+| Slash commands                     | `/elph/src/agent/slash_commands.rs`                                                                                                             |
+| Agent runtime                      | `/elph/src/agent/runtime.rs`                                                                                                                    |
 
 ## Change guidance
 

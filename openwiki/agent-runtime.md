@@ -130,12 +130,12 @@ The prompt module provides a MiniJinja-based template engine for assembling syst
 
 `SystemPromptBuilder` (`system_builder.rs`) uses a builder pattern to assemble prompts from layered sources:
 
-| Layer | Source | Description |
-|---|---|---|
-| **Base** | `templates/base.md` | Persona, working directory, date, OS, shell, skills |
-| **Domain** | Domain-specific (e.g. `coding_base.md`) | Action safety, tool calling, output formatting |
-| **Mode** | Mode-specific appendix (`mode_ask.md`, etc.) | Per-mode guidance and tool restrictions |
-| **Project** | AGENTS.md | Pi-style XML `<project_context>` wrapper |
+| Layer       | Source                                       | Description                                         |
+| ----------- | -------------------------------------------- | --------------------------------------------------- |
+| **Base**    | `templates/base.md`                          | Persona, working directory, date, OS, shell, skills |
+| **Domain**  | Domain-specific (e.g. `coding_base.md`)      | Action safety, tool calling, output formatting      |
+| **Mode**    | Mode-specific appendix (`mode_ask.md`, etc.) | Per-mode guidance and tool restrictions             |
+| **Project** | AGENTS.md                                    | Pi-style XML `<project_context>` wrapper            |
 
 Assembly modes: `Extend` (base + domain + mode + project context) or `Full` (domain-only with dedup checks).
 
@@ -146,7 +146,7 @@ Assembly modes: `Extend` (base + domain + mode + project context) or `Full` (dom
 - `persona`, `working_directory`, `current_date`, `os_name`, `shell_path`
 - `agent_mode` — slugs: `build`, `plan`, `ask`, `brave`
 - `active_tool_names` — per-turn `Vec<String>` for `<available_tools>` listing
-- `tools` — `ToolNamesContext` (per-tool name resolution) and `ToolByKindContext` (category aliases for read, edit, bash)
+- `tools` — `ToolNamesContext` (per-tool name resolution) and `ToolByKindContext` (category aliases for read, edit, shell_exec)
 - `skills_section`, `mode_section`, `agents_md`
 
 ### Feature gate
@@ -154,6 +154,7 @@ Assembly modes: `Extend` (base + domain + mode + project context) or `Full` (dom
 The template engine is gated behind the `prompt-templates` Cargo feature (default-on via the `full` feature meta-flag), requiring the `minijinja` dependency with `custom_syntax`.
 
 Key files:
+
 - `/crates/elph-agent/src/prompt/template.rs` — `PromptTemplateEngine`
 - `/crates/elph-agent/src/prompt/system_builder.rs` — `SystemPromptBuilder`, `PromptAssemblyMode`
 - `/crates/elph-agent/src/prompt/context.rs` — Context types and builder
@@ -164,6 +165,7 @@ Key files:
 ### Binary crate integration
 
 `elph/src/agent/prompt/builder.rs` provides `build_coding_system_prompt()` which layers:
+
 1. `base.md` — generic persona + env + skills
 2. `coding_base.md` — Grok-style sections (`<action_safety>`, `<tool_calling>`, `<output_efficiency>`, `<formatting>`)
 3. Mode section from `modes.rs` — `<mode_context>` with per-mode guidance + mode appendix template
@@ -171,12 +173,12 @@ Key files:
 
 Mode-specific appendix templates live in `elph/templates/agent/`:
 
-| Template | Mode | Behavior |
-|---|---|---|
-| `mode_build.md` | Build | Full tool access, approval may be required |
-| `mode_brave.md` | Brave | Full autonomy, no approval prompts |
-| `mode_plan.md` | Plan | Read-only, requires `<proposed_plan>` wrapper |
-| `mode_ask.md` | Ask | Read-only Q&A, no mutating tools |
+| Template        | Mode  | Behavior                                      |
+| --------------- | ----- | --------------------------------------------- |
+| `mode_build.md` | Build | Full tool access, approval may be required    |
+| `mode_brave.md` | Brave | Full autonomy, no approval prompts            |
+| `mode_plan.md`  | Plan  | Read-only, requires `<proposed_plan>` wrapper |
+| `mode_ask.md`   | Ask   | Read-only Q&A, no mutating tools              |
 
 ### /system-prompt slash command
 
@@ -322,29 +324,29 @@ This enables the agent to dynamically adapt its tool set based on collaboration 
 
 ## Key source files
 
-| Concern                   | Path                                             |
-| ------------------------- | ------------------------------------------------ |
-| Agent harness             | `/crates/elph-agent/src/agent/harness/mod.rs`    |
-| Agent harness run loop    | `/crates/elph-agent/src/agent/harness/run_loop/` |
-| Agent harness hook system | `/crates/elph-agent/src/agent/harness/hooks.rs`  |
-| Agent harness types       | `/crates/elph-agent/src/agent/harness/types/`    |
-| Session tree              | `/crates/elph-agent/src/session/tree.rs`         |
-| Session backends          | `/crates/elph-agent/src/session/backends/`       |
-| Compaction                | `/crates/elph-agent/src/compaction/`             |
-| Goals                     | `/crates/elph-agent/src/goals/`                  |
-| Subagents                 | `/crates/elph-agent/src/agent/subagent/`         |
-| Skills                    | `/crates/elph-agent/src/skills/`                 |
-| Built-in tools            | `/crates/elph-agent/src/tools/`                  |
-| Collaboration modes       | `/crates/elph-agent/src/collaboration/`          |
-| Agent loop / runtime      | `/crates/elph-agent/src/runtime/`                |
-| Types                     | `/crates/elph-agent/src/types/`                  |
-| Execution env             | `/crates/elph-agent/src/runtime/local_env/`      |
-| Messages                  | `/crates/elph-agent/src/messages/`               |
-| Event stream              | `/crates/elph-agent/src/runtime/event_stream.rs` |
-| Plugin/WASM host          | `/crates/elph-agent/src/plugins/`                |
-| Prompt template engine       | `/crates/elph-agent/src/prompt/` (template.rs, system_builder.rs, context.rs, defaults.rs) |
-| Embedded templates           | `/crates/elph-agent/templates/base.md`                                                    |
-| MCP client                | `/crates/elph-agent/src/tools/mcp/`              |
+| Concern                   | Path                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------ |
+| Agent harness             | `/crates/elph-agent/src/agent/harness/mod.rs`                                              |
+| Agent harness run loop    | `/crates/elph-agent/src/agent/harness/run_loop/`                                           |
+| Agent harness hook system | `/crates/elph-agent/src/agent/harness/hooks.rs`                                            |
+| Agent harness types       | `/crates/elph-agent/src/agent/harness/types/`                                              |
+| Session tree              | `/crates/elph-agent/src/session/tree.rs`                                                   |
+| Session backends          | `/crates/elph-agent/src/session/backends/`                                                 |
+| Compaction                | `/crates/elph-agent/src/compaction/`                                                       |
+| Goals                     | `/crates/elph-agent/src/goals/`                                                            |
+| Subagents                 | `/crates/elph-agent/src/agent/subagent/`                                                   |
+| Skills                    | `/crates/elph-agent/src/skills/`                                                           |
+| Built-in tools            | `/crates/elph-agent/src/tools/`                                                            |
+| Collaboration modes       | `/crates/elph-agent/src/collaboration/`                                                    |
+| Agent loop / runtime      | `/crates/elph-agent/src/runtime/`                                                          |
+| Types                     | `/crates/elph-agent/src/types/`                                                            |
+| Execution env             | `/crates/elph-agent/src/runtime/local_env/`                                                |
+| Messages                  | `/crates/elph-agent/src/messages/`                                                         |
+| Event stream              | `/crates/elph-agent/src/runtime/event_stream.rs`                                           |
+| Plugin/WASM host          | `/crates/elph-agent/src/plugins/`                                                          |
+| Prompt template engine    | `/crates/elph-agent/src/prompt/` (template.rs, system_builder.rs, context.rs, defaults.rs) |
+| Embedded templates        | `/crates/elph-agent/templates/base.md`                                                     |
+| MCP client                | `/crates/elph-agent/src/tools/mcp/`                                                        |
 
 ## Change guidance
 
