@@ -2841,15 +2841,18 @@ dependencies = [
  "crossterm",
  "elph-agent",
  "elph-ai",
- "elph-core",
  "elph-tui",
+ "floppy",
  "futures-util",
+ "git2 0.21.0",
  "iocraft",
  "libc",
  "log",
+ "logforth",
  "parking_lot",
  "rand 0.10.2",
  "regex",
+ "rustc-hash 2.1.3",
  "serde",
  "serde_json",
  "tempfile",
@@ -2868,7 +2871,6 @@ dependencies = [
  "bytes",
  "crossbeam-channel",
  "elph-ai",
- "elph-core",
  "elph-exec",
  "elph-tui",
  "fastrace",
@@ -2882,6 +2884,7 @@ dependencies = [
  "jsonschema",
  "kalid",
  "log",
+ "memchr",
  "memorable-ids",
  "minijinja",
  "obscura",
@@ -2919,7 +2922,6 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
- "elph-core",
  "elph-tui",
  "eventsource-stream",
  "fastrace",
@@ -2929,6 +2931,7 @@ dependencies = [
  "http 1.4.2",
  "image",
  "jsonschema",
+ "log",
  "memchr",
  "parking_lot",
  "rand 0.10.2",
@@ -2948,31 +2951,6 @@ dependencies = [
  "url",
  "webpki-roots 1.0.8",
  "zstd",
-]
-
-[[package]]
-name = "elph-core"
-version = "0.0.16"
-dependencies = [
- "anyhow",
- "chrono",
- "embed_anything",
- "fastrace",
- "fastrace-reqwest",
- "git2 0.21.0",
- "kalid",
- "log",
- "logforth",
- "memchr",
- "parking_lot",
- "rand 0.10.2",
- "rustc-hash 2.1.3",
- "serde",
- "serde_json",
- "tempfile",
- "time",
- "tokio",
- "turso",
 ]
 
 [[package]]
@@ -3493,10 +3471,14 @@ name = "floppy"
 version = "0.0.1"
 dependencies = [
  "anyhow",
- "memorable-ids",
+ "embed_anything",
+ "kalid",
+ "rand 0.10.2",
  "serde",
  "serde_json",
  "tempfile",
+ "tokio",
+ "turso",
 ]
 
 [[package]]

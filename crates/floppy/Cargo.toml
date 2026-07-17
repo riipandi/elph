@@ -13,14 +13,23 @@ publish = true
 name = "floppy"
 path = "src/lib.rs"
 
+[features]
+default = []
+embed = ["dep:embed_anything"]
+
 [dependencies]
 anyhow.workspace = true
-memorable-ids.workspace = true
+embed_anything = { workspace = true, optional = true }
+kalid.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "rt", "rt-multi-thread", "sync", "time"] }
+turso.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints.rust]
 linker_messages = "allow"

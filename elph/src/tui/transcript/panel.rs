@@ -126,8 +126,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                     min_height: 0,
                     overflow: Overflow::Hidden,
                 )
-            }
-            .into();
+            };
         }
     };
     let row_layouts = &cached.row_layouts;

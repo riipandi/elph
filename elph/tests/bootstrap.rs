@@ -1,7 +1,7 @@
 //! Integration tests for home/platform bootstrap.
 
 use elph::platform::{self, Paths};
-use elph_core::utils::path::AppPaths;
+use elph::utils::path::AppPaths;
 
 #[tokio::test]
 async fn ensure_creates_full_home() {

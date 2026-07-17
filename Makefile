@@ -5,7 +5,7 @@ CARGO      := $$(which cargo)
 CROSS      := $$(which cross)
 UNAME_S    := $(shell uname -s)
 
-_ELPH_PKGS   := elph elph-core elph-agent elph-ai
+_ELPH_PKGS   := elph floppy elph-agent elph-ai
 ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')
 BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS      := $(ELPH_BIN)
@@ -117,14 +117,14 @@ test: ## Run all workspace tests
 	@$(CARGO) nextest run --no-fail-fast $(or $(_RESIDUAL_),$(ARGS))
 
 test-elph: ## Run tests for elph and its workspace deps
-	@$(CARGO) nextest run --no-fail-fast -p elph-ai -p elph-core -p elph $(ARGS)
+	@$(CARGO) nextest run --no-fail-fast -p elph-ai -p floppy -p elph $(ARGS)
 	@$(CARGO) nextest run --no-fail-fast -p elph-agent --features full $(ARGS)
 
 test-elph-tui: ## Run elph-tui tests
 	@$(CARGO) nextest run --no-fail-fast -p elph-tui $(ARGS)
 
 check-elph: ## Check elph and its workspace deps compile
-	@$(CARGO) check -p elph-ai -p elph-core -p elph 2>&1
+	@$(CARGO) check -p elph-ai -p floppy -p elph 2>&1
 	@$(CARGO) check -p elph-agent --features full --all-targets 2>&1
 
 check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
@@ -173,7 +173,7 @@ release-windows: ## Build Windows release (x86_64 + arm64; APP=elph)
 lint: lint-elph ## Run clippy linter
 
 lint-elph: ## Run clippy for elph and its workspace deps
-	@$(CARGO) clippy -p elph -p elph-core -p elph-agent -p elph-ai --all-targets -- -D warnings
+	@$(CARGO) clippy -p elph -p floppy -p elph-agent -p elph-ai --all-targets -- -D warnings
 
 lint-elph-tui: ## Run clippy for elph-tui
 	@$(CARGO) clippy -p elph-tui --all-targets -- -D warnings
@@ -247,7 +247,7 @@ endif
 _BUMP_LEVEL := $(firstword $(_RESIDUAL_))
 _BUMP_PY    := python3 -c "import sys;m,M,p=sys.argv[1].split('.');l=sys.argv[2];print(f'{m}.{M}.{int(p)+1}' if l=='patch' else f'{m}.{int(M)+1}.0' if l=='minor' else f'{int(m)+1}.0.0')"
 
-_LIBS := elph-core elph-ai elph-agent elph-swarm
+_LIBS := floppy elph-ai elph-agent elph-swarm
 
 define _require_bump_level
 	@case "$(1)" in patch|minor|major) ;; *) \
@@ -302,10 +302,10 @@ _sync_lib_pin:
 
 .PHONY: _bump_lib _sync_lib_pin
 
-publish: ## Publish to crates.io (elph-core first, then libs, then apps)
+publish: ## Publish to crates.io (first, then libs, then apps)
 	@CARGO="$(CARGO)" ./scripts/publish-crates.sh
 
-publish-dry-run: ## Dry-run publish checks (elph-core first)
+publish-dry-run: ## Dry-run publish checks (first)
 	@DRY_RUN=1 CARGO="$(CARGO)" ./scripts/publish-crates.sh
 
 # ─── Help ───────────────────────────────────────────────────────────────────

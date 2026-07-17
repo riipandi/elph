@@ -99,7 +99,7 @@ name: elph-expert
 description: Expert knowledge about Elph agent runtime. Use for elph-specific questions.
 compatibility: Designed for Elph coding assistant
 metadata:
-  author: elph-core
+  author: elph-agent
   internal: "true"
 allowed-tools: read grep
 ---

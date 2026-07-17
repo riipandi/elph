@@ -6,8 +6,8 @@
 //!
 //! Never returns partial lines (except bash tail truncation edge case).
 
-use elph_core::utils::lines::SplitLines;
-use elph_core::utils::lines::{count_lines, line_starts};
+use crate::utils::lines::SplitLines;
+use crate::utils::lines::{count_lines, line_starts};
 
 /// Default maximum number of lines before truncation.
 pub const DEFAULT_MAX_LINES: usize = 2000;

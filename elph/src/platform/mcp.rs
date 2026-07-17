@@ -11,10 +11,10 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::{McpConfig, McpServerConfig};
 use elph_agent::{parse_and_validate_mcp_config, parse_and_validate_server_config_json, write_json_file};
-use elph_core::utils::path::AppPaths;
 
 use super::paths::Paths;
 
@@ -198,7 +198,7 @@ pub fn parse_server_config(raw: &str) -> Result<McpServerConfig> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use elph_core::utils::path::AppPaths;
+    use crate::utils::path::AppPaths;
     use tempfile::tempdir;
 
     fn test_paths(tmp: &tempfile::TempDir) -> Paths {

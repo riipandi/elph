@@ -2480,7 +2480,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             live_turn_elapsed_secs(busy.get(), &busy_started_at.read()),
         );
         let wall_duration_secs = session_wall_started_at.read().elapsed().as_secs_f64();
-        let (lines_added, lines_removed) = elph_core::utils::git::read_worktree_stats(paths.read().project_dir())
+        let (lines_added, lines_removed) = crate::utils::git::read_worktree_stats(paths.read().project_dir())
             .map(|stats| (stats.lines_added, stats.lines_deleted))
             .unwrap_or((0, 0));
         record_if_active(
@@ -2953,8 +2953,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 busy: busy.get(),
                 activity_label: activity_label.read().clone(),
                 accent: scanner_accent,
-                activity_started_at: activity_started_at.read().clone(),
-                busy_started_at: busy_started_at.read().clone(),
+                activity_started_at: *activity_started_at.read(),
+                busy_started_at: *busy_started_at.read(),
                 session_elapsed_secs: session_elapsed_secs.get(),
                 idle_notice: idle_status_notice.read().as_ref().map(|notice| notice.text.clone()),
                 ephemeral_banner: ephemeral_banner

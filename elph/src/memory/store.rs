@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 
-use elph_core::floppy::{DEFAULT_EMBEDDING_DIMS, EmbedOptions, FloppyBuilder, MemoryStore};
-use elph_core::floppy::{embedding_dims, resolve_embedding_model};
-use elph_core::utils::path::AppPaths;
+use crate::utils::path::AppPaths;
+use floppy::{DEFAULT_EMBEDDING_DIMS, EmbedOptions, FloppyBuilder, MemoryStore};
+use floppy::{embedding_dims, resolve_embedding_model};
 
 use crate::platform::{Paths, Settings};
 

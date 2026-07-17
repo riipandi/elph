@@ -36,9 +36,9 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::write_json_file;
-use elph_core::utils::path::AppPaths;
 use elph_tui::{ThemeConfig, ThemeMode, ThemePalettes};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};
@@ -233,7 +233,7 @@ impl Default for ProviderHttpSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MemorySettings {
-    /// Embedding model catalog name or Hugging Face repo id (see `elph_core::floppy::resolve_embedding_model`).
+    /// Embedding model catalog name or Hugging Face repo id (see `floppy::resolve_embedding_model`).
     #[serde(default = "default_embed_model")]
     pub embed_model: String,
     /// Prefer quantized model weights when a `*Q` variant exists (default: true).
@@ -444,7 +444,7 @@ fn parse_duration_ms(input: &str) -> Option<u64> {
 }
 
 fn default_embed_model() -> String {
-    elph_core::floppy::DEFAULT_EMBED_MODEL.to_string()
+    floppy::DEFAULT_EMBED_MODEL.to_string()
 }
 
 fn default_embed_quantized() -> bool {

@@ -1,12 +1,12 @@
 //! Factory for coding-agent sessions.
 
+use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::create_goal_tools;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
     GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
 };
-use elph_core::utils::path::AppPaths;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;

@@ -148,6 +148,10 @@ fn delete_word_forward_no_op_at_eof_of_line() {
 
 #[test]
 fn color_rejects_short_hex() {
-    use elph_tui::color::from_hex;
-    assert_eq!(from_hex("#abc"), None);
+    use elph_tui::color::{from_hex, rgb};
+    // `#RGB` is a valid CSS-style short form (expanded to RRGGBB).
+    assert_eq!(from_hex("#abc"), Some(rgb(0xaa, 0xbb, 0xcc)));
+    // Odd lengths that are not 3/6/8 remain invalid.
+    assert_eq!(from_hex("#ab"), None);
+    assert_eq!(from_hex("#abcd"), None);
 }

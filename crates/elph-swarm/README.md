@@ -1,4 +1,4 @@
-# elph-core
+# elph-swarm
 
 `elph-swarm` is the Rust backend that makes Elph's orchestration commands work.
 It lets you programmatically start multiple agent sessions, keep them in sync,

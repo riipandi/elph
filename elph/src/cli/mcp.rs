@@ -5,9 +5,9 @@ use crate::platform::ensure_home_blocking;
 use crate::platform::mcp as mcp_runtime;
 use crate::platform::mcp::{McpConfigScope, McpServerSource};
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
+use crate::utils::path::AppPaths;
 use elph_agent::{McpAuthSourceReport, McpOAuthFlowOptions, McpServerConfig};
 use elph_agent::{clear_credentials, has_stored_credentials, probe_server_with_auth, run_oauth_flow};
-use elph_core::utils::path::AppPaths;
 
 #[derive(Parser, Default)]
 #[command(

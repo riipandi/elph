@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
+pub use crate::utils::path::AppPaths;
+use crate::utils::path::{PathResolver, ResolvedPaths};
+use crate::utils::project_key;
 use anyhow::Result;
-pub use elph_core::utils::path::AppPaths;
-use elph_core::utils::path::{PathResolver, ResolvedPaths};
-use elph_core::utils::project_key;
 
 const PROJECT_DIR_NAME: &str = ".elph";
 

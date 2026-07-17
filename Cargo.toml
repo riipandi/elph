@@ -32,9 +32,9 @@ crossbeam-channel = "0.5.16"
 crossterm = { version = "0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 elph-agent = { path = "crates/elph-agent", version = "0.0.28" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.27" }
-elph-core = { path = "crates/elph-core", version = "0.0.16" }
 elph-exec = { path = "crates/elph-exec", version = "0.0.1" }
 elph-tui = { path = "crates/elph-tui", version = "0.0.26" }
+floppy = { path = "crates/floppy", version = "0.0.1" }
 embed_anything = { version = "0.7.1", default-features = true }
 eventsource-stream = "0.2.3"
 fastrace = "0.7.18"

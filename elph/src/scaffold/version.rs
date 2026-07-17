@@ -1,7 +1,7 @@
-use crate::fs::write_json_file;
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 use chrono::{SecondsFormat, Utc};
+use elph_agent::write_json_file;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

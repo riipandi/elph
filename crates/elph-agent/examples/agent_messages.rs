@@ -104,7 +104,7 @@ fn main() {
     // Full output, success
     let shell_exec_success = AgentMessage::Custom(CustomAgentMessage::ShellExecExecution {
         command: "cargo check".into(),
-        output: Some("    Checking elph-core v0.0.15\n    Finished".into()),
+        output: Some("    Checking elph-agent v0.0.15\n    Finished".into()),
         exit_code: Some(0),
         cancelled: false,
         truncated: false,

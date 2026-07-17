@@ -258,6 +258,8 @@ fn response_phase_header(
     .into()
 }
 
+// Header assembly takes several independent layout/status fields; keep flat args for call-site clarity.
+#[allow(clippy::too_many_arguments)]
 fn tool_phase_header(
     inner_width: u16,
     task: String,

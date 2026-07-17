@@ -1,8 +1,7 @@
 #![cfg(feature = "tracing")]
 
 use elph_ai::trace::with_trace_headers;
-use elph_core::trace::JsonlReporter;
-use elph_core::trace::set_reporter;
+use elph_ai::trace::{JsonlReporter, set_reporter};
 use fastrace::collector::{Config, SpanContext};
 use fastrace::prelude::Span;
 

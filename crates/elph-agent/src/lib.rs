@@ -3,26 +3,23 @@
 //! Rust port of [@earendil-works/pi-agent](https://github.com/earendil-works/pi/tree/main/packages/agent).
 pub mod agent;
 pub mod builder;
+pub mod collaboration;
 pub mod compaction;
 pub mod datastore;
-
+pub mod fs;
 pub mod goals;
-
+pub mod logger_options;
 pub mod messages;
-
-pub mod collaboration;
 #[cfg(feature = "extensions")]
 pub mod plugins;
 pub mod prompt;
-
 pub mod runtime;
-
 pub mod session;
 pub mod skills;
-
 pub mod tools;
 pub mod trace;
 pub mod types;
+pub mod utils;
 
 pub use agent::default_model;
 pub use agent::harness::AfterProviderResponseEvent;
@@ -186,13 +183,13 @@ pub use datastore::DatabaseSpec;
 pub use datastore::Migration;
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
-pub use elph_core::logger::{LogRotation, LoggingOptions};
-pub use elph_core::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use elph_exec::{ExecError, ExecErrorCode, ShellConfig, exec_shell_command, resolve_shell};
 #[cfg(unix)]
 pub use elph_exec::{PtySize, open_pty};
+pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use goals::create_goal_tools;
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
+pub use logger_options::{LogRotation, LoggingOptions};
 pub use messages::CustomMessageContent;
 pub use messages::create_branch_summary_message;
 pub use messages::create_compaction_summary_message;

@@ -10,9 +10,9 @@ CARGO="${CARGO:-cargo}"
 ALLOW_DIRTY="${ALLOW_DIRTY:---allow-dirty}"
 DRY_RUN="${DRY_RUN:-0}"
 
-# elph-core is published first (no internal workspace deps).
+# Leaf crates first (no internal workspace deps), then dependents.
 PACKAGES=(
-    elph-core
+    floppy
     elph-ai
     elph-exec
     elph-agent

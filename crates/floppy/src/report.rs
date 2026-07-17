@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn user_input_builds_correctly() {
-        let input = MemoryReportInput::user_input("hello", crate::floppy::types::UserInputSource::UserInput);
+        let input = MemoryReportInput::user_input("hello", crate::types::UserInputSource::UserInput);
         assert_eq!(input.lesson, "hello");
     }
 }

@@ -40,10 +40,9 @@ pub fn from_rgb_fn(input: &str) -> Option<Color> {
     let lower = s.to_ascii_lowercase();
     let body = if let Some(rest) = lower.strip_prefix("rgba(") {
         rest.strip_suffix(')')?
-    } else if let Some(rest) = lower.strip_prefix("rgb(") {
-        rest.strip_suffix(')')?
     } else {
-        return None;
+        let rest = lower.strip_prefix("rgb(")?;
+        rest.strip_suffix(')')?
     };
     let parts: Vec<&str> = body.split(',').map(str::trim).collect();
     if parts.len() < 3 {
@@ -107,15 +106,15 @@ pub fn parse_color(input: &str) -> Option<Color> {
     if let Some(c) = from_named(s) {
         return Some(c);
     }
-    if s.starts_with('#') || (s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())) {
-        if let Some(c) = from_hex(s) {
-            return Some(c);
-        }
+    if (s.starts_with('#') || (s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())))
+        && let Some(c) = from_hex(s)
+    {
+        return Some(c);
     }
-    if s.to_ascii_lowercase().starts_with("rgb") {
-        if let Some(c) = from_rgb_fn(s) {
-            return Some(c);
-        }
+    if s.to_ascii_lowercase().starts_with("rgb")
+        && let Some(c) = from_rgb_fn(s)
+    {
+        return Some(c);
     }
     if s.contains(',') {
         if let Some(c) = from_csv_rgb(s) {

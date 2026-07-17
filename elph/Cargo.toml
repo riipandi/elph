@@ -29,14 +29,17 @@ clap_complete.workspace = true
 crossterm.workspace = true
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
 elph-ai = { workspace = true, features = ["tracing"] }
-elph-core = { workspace = true, features = ["embed", "git", "tracing"] }
 elph-tui = { workspace = true }
+floppy = { workspace = true, features = ["embed"] }
 futures-util.workspace = true
+git2.workspace = true
 iocraft.workspace = true
 log.workspace = true
+logforth.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
+rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
@@ -47,7 +50,6 @@ libc.workspace = true
 
 [dev-dependencies]
 elph-agent = { workspace = true, features = ["full"] }
-elph-core.workspace = true
 libc.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
