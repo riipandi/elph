@@ -9,6 +9,7 @@ pub struct BuiltinSlashCommand {
     pub name: &'static str,
     pub description: &'static str,
     pub args_hint: Option<&'static str>,
+    pub hidden: bool,
 }
 
 fn builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
@@ -16,6 +17,7 @@ fn builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand
         name,
         description,
         args_hint: None,
+        hidden: false,
     }
 }
 
@@ -24,6 +26,20 @@ fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &
         name,
         description,
         args_hint: Some(args_hint),
+        hidden: false,
+    }
+}
+
+fn hidden_builtin_with_args(
+    name: &'static str,
+    description: &'static str,
+    args_hint: &'static str,
+) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: Some(args_hint),
+        hidden: true,
     }
 }
 
@@ -53,6 +69,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals", "<subcommand>"),
+        hidden_builtin_with_args("confetti", "Confetti celebration", "[confetti|firework]"),
     ]
 }
 
@@ -63,6 +80,7 @@ pub fn slash_commands_for_palette(
 ) -> Vec<SlashCommand> {
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
+        .filter(|cmd| !cmd.hidden)
         .map(|cmd| {
             let mut entry = SlashCommand::new(cmd.name, cmd.description);
             if let Some(hint) = cmd.args_hint {
@@ -114,6 +132,7 @@ pub enum SlashDispatch {
     Help,
     Tools { args: String },
     SystemPrompt,
+    Confetti { args: String },
     Reload,
     Extension { name: String, args: String },
     PromptTemplate { name: String, args: String },
@@ -167,6 +186,17 @@ const TOOLS_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
+const CONFETTI_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "confetti",
+        description: "Rain confetti from the top",
+    },
+    SlashArgCompletion {
+        value: "firework",
+        description: "Fireworks from the bottom",
+    },
+];
+
 const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "status",
@@ -199,7 +229,16 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
     match command_name {
         "tools" => Some(TOOLS_ARG_COMPLETIONS),
         "goal" | "goals" => Some(GOAL_ARG_COMPLETIONS),
+        "confetti" | "conffety" | "confetty" => Some(CONFETTI_ARG_COMPLETIONS),
         _ => None,
+    }
+}
+
+/// Parse `/confetti` mode argument (default: confetti rain).
+pub fn confetti_mode_from_args(args: &str) -> &'static str {
+    match args.trim().to_ascii_lowercase().as_str() {
+        "firework" | "fireworks" => "firework",
+        _ => "confetti",
     }
 }
 
@@ -216,6 +255,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "help" | "h" | "?" => Some(SlashDispatch::Help),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
+        "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),
         "reload" => Some(SlashDispatch::Reload),
         "model" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: args })),
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
@@ -418,6 +458,35 @@ mod tests {
         let names: Vec<_> = builtin_slash_commands().into_iter().map(|cmd| cmd.name).collect();
         assert!(names.contains(&"goal"));
         assert!(names.contains(&"provider"));
+    }
+
+    #[test]
+    fn hidden_commands_dispatch_but_skip_palette() {
+        assert_eq!(
+            dispatch_slash_command("/confetti", None, None, None),
+            Some(SlashDispatch::Confetti { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/confetti firework", None, None, None),
+            Some(SlashDispatch::Confetti {
+                args: "firework".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/conffety", None, None, None),
+            Some(SlashDispatch::Confetti { args: String::new() })
+        );
+        assert_eq!(confetti_mode_from_args(""), "confetti");
+        assert_eq!(confetti_mode_from_args("fireworks"), "firework");
+
+        let names: Vec<_> = slash_commands_for_palette(None, None, None)
+            .into_iter()
+            .map(|cmd| cmd.name)
+            .collect();
+        assert!(!names.iter().any(|name| name == "confetti"));
+
+        let help = format_help_message(None, None, None);
+        assert!(!help.contains("/confetti"));
     }
 
     #[test]

@@ -150,6 +150,14 @@ impl CodingAgentSession {
         )
     }
 
+    pub fn model_provider(&self) -> &str {
+        &self.selection.provider
+    }
+
+    pub fn model_id(&self) -> &str {
+        &self.selection.model_id
+    }
+
     pub fn session_id(&self) -> &str {
         &self.session_id
     }

@@ -27,6 +27,8 @@ pub struct DialogChrome {
     pub background: Color,
     pub esc_hint: String,
     pub show_divider: bool,
+    /// Minimal vertical padding, no header divider — for read-only viewers (e.g. system prompt).
+    pub slim_header: bool,
 }
 
 impl Default for DialogChrome {
@@ -52,6 +54,7 @@ impl DialogChrome {
             background: Color::Reset,
             esc_hint: "[esc]".to_string(),
             show_divider: true,
+            slim_header: false,
         }
     }
 
@@ -61,15 +64,28 @@ impl DialogChrome {
     }
 
     pub fn with_theme(mut self, theme: UiTheme) -> Self {
-        self.padding_vertical = theme.dialog_shell_inset_vertical();
+        if self.slim_header {
+            self.padding_vertical = 0;
+            self.header_gap = 0;
+            self.body_gap = 0;
+            self.show_divider = false;
+        } else {
+            self.padding_vertical = theme.dialog_shell_inset_vertical();
+            self.header_gap = theme.dialog_header_gap();
+            self.body_gap = theme.dialog_section_gap();
+            self.show_divider = true;
+        }
         self.padding_horizontal = theme.dialog_shell_inset_horizontal();
-        self.header_gap = theme.dialog_header_gap();
-        self.body_gap = theme.dialog_section_gap();
         self.row_gap = theme.dialog_row_gap();
         self.border_color = theme.shell_zone_border_color(true);
         self.title_color = theme.text_primary;
         self.muted_color = theme.text_muted;
         self.background = Color::Reset;
+        self
+    }
+
+    pub fn with_slim_header(mut self, slim: bool) -> Self {
+        self.slim_header = slim;
         self
     }
 
@@ -282,6 +298,19 @@ mod tests {
     fn chrome_rows_match_frame_layout() {
         let chrome = DialogChrome::default();
         assert_eq!(dialog_shell_chrome_rows(&chrome), 3);
+    }
+
+    #[test]
+    fn slim_header_omits_divider_and_gaps() {
+        let chrome = DialogChrome {
+            slim_header: true,
+            ..Default::default()
+        };
+        let themed = chrome.with_theme(UiTheme::default());
+        assert_eq!(dialog_shell_chrome_rows(&themed), 1);
+        assert!(!themed.show_divider);
+        assert_eq!(themed.padding_vertical, 0);
+        assert_eq!(themed.header_gap, 0);
     }
 
     #[test]

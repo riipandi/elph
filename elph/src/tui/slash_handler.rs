@@ -7,11 +7,12 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
-    dispatch_slash_command, format_help_message, slash_unimplemented_message, system_prompt_slash_message,
-    tools_slash_message,
+    confetti_mode_from_args, dispatch_slash_command, format_help_message, slash_unimplemented_message,
+    system_prompt_slash_message, tools_slash_message,
 };
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
+use crate::tui::confetti::confetti_mode_from_slash_args;
 
 use super::agent_bridge::SlashDispatcher;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +25,7 @@ pub enum SlashOutcome {
     OverlayDeferred(OverlayCommand),
     OpenModelSelector { filter: String },
     OpenSystemPromptDialog { text: String },
+    PlayConfetti { mode: crate::tui::confetti::ConfettiMode },
 }
 
 pub struct SlashContext<'a> {
@@ -54,6 +56,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::SystemPrompt => match system_prompt_slash_message(ctx.agent_session.as_deref()) {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
+        },
+        SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
+            mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
@@ -158,6 +163,9 @@ mod tests {
         assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::OpenSystemPromptDialog {
             text: String::new()
         }));
+        assert!(!slash_echoes_prompt_in_transcript(&SlashOutcome::PlayConfetti {
+            mode: crate::tui::confetti::ConfettiMode::Confetti
+        }));
         assert!(slash_echoes_prompt_in_transcript(&SlashOutcome::SpawnAgentTurn));
     }
 
@@ -237,6 +245,42 @@ mod tests {
         assert!(matches!(
             outcome,
             SlashOutcome::Status(message) if message == "Agent session required for this command."
+        ));
+    }
+
+    #[test]
+    fn confetti_opens_rain_overlay() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/confetti",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::PlayConfetti { mode } if mode == crate::tui::confetti::ConfettiMode::Confetti
+        ));
+    }
+
+    #[test]
+    fn confetti_firework_mode() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/confetti firework",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::PlayConfetti { mode } if mode == crate::tui::confetti::ConfettiMode::Firework
         ));
     }
 

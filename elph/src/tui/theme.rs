@@ -35,6 +35,9 @@ pub const SKILL_FG: Color = Color::Rgb { r: 149, g: 117, b: 205 };
 /// Dim status lines in the transcript (model changes, slash echoes, agent status).
 pub const META_FG: Color = Color::DarkGrey;
 
+/// Quit-while-busy confirmation — warm orange (`#fab373`), matches status spinner accent.
+pub const QUIT_BUSY_NOTICE_FG: Color = Color::Rgb { r: 250, g: 179, b: 115 };
+
 /// Thinking blocks: no tinted card — foreground only (Pi `dim` / `thinkingText`).
 pub const THINKING_BG: Color = Color::Reset;
 pub const THINKING_FG: Color = Color::DarkGrey;

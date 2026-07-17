@@ -118,6 +118,7 @@ impl SlashDispatcher {
                 | SlashDispatch::Help
                 | SlashDispatch::Tools { .. }
                 | SlashDispatch::SystemPrompt
+                | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_) => {}
             }

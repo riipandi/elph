@@ -157,6 +157,7 @@ pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom:
 
 pub fn meta_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {
     let mut chrome = TranscriptCardChrome::from_style(screen_width, message.style, margin_bottom);
+    chrome.foreground = message.transcript_foreground();
     chrome.padding_top = message.transcript_padding_top();
     chrome.padding_bottom = message.transcript_padding_bottom();
     render_flush_card(&chrome, message)

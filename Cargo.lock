@@ -2848,6 +2848,7 @@ dependencies = [
  "libc",
  "log",
  "parking_lot",
+ "rand 0.10.2",
  "regex",
  "serde",
  "serde_json",

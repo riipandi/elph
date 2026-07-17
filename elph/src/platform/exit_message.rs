@@ -72,9 +72,9 @@ pub fn print_and_clear() {
 }
 
 pub fn print_exit_summary(snapshot: &ExitSnapshot) {
-    println_orange(pick_goodbye_message(&snapshot.session_id));
-    println_white(format!("Resume this session: elph --resume {}", snapshot.session_id));
-    println_dim(format!("Total cost            : ${:.4}", snapshot.cost_usd));
+    println_orange(format!("\n{}", pick_goodbye_message(&snapshot.session_id)));
+    println_white(format!("\nResume this session: elph --resume {}", snapshot.session_id));
+    println_dim(format!("\nTotal cost            : ${:.4}", snapshot.cost_usd));
     println_dim(format!(
         "Total duration (API)  : {}",
         format_duration_secs(snapshot.api_duration_secs)
@@ -84,7 +84,7 @@ pub fn print_exit_summary(snapshot: &ExitSnapshot) {
         format_duration_secs(snapshot.wall_duration_secs)
     ));
     println_dim(format!(
-        "Total code changes    : {} lines added, {} lines removed",
+        "Total code changes    : {} lines added, {} lines removed\n",
         snapshot.lines_added, snapshot.lines_removed
     ));
 }

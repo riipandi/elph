@@ -26,7 +26,7 @@ pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, U
 pub use mcp_bootstrap::{discover_mcp_registry, wire_mcp_into_session};
 pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};
 pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
-pub use provider::{provider_api_key_env, provider_config};
+pub use provider::{provider_api_key_env, provider_config, resolve_provider_and_model};
 pub use resource_loader::LoadResourcesResult;
 pub use resource_loader::load_resources;
 pub use run_mode::RunModeOptions;
@@ -43,7 +43,7 @@ pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
     slash_unimplemented_message,
 };
-pub use slash_commands::{dispatch_slash_command, format_help_message};
+pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;
 pub use tools_slash::tools_slash_message;

@@ -187,6 +187,8 @@ pub struct SlashCommand {
     pub name: String,
     pub description: String,
     pub args_hint: Option<String>,
+    /// When true, omitted from the slash palette but still dispatchable when typed.
+    pub hidden: bool,
 }
 
 impl SlashCommand {
@@ -195,11 +197,17 @@ impl SlashCommand {
             name: name.into(),
             description: description.into(),
             args_hint: None,
+            hidden: false,
         }
     }
 
     pub fn with_args_hint(mut self, hint: impl Into<String>) -> Self {
         self.args_hint = Some(hint.into());
+        self
+    }
+
+    pub fn with_hidden(mut self, hidden: bool) -> Self {
+        self.hidden = hidden;
         self
     }
 

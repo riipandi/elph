@@ -71,20 +71,38 @@ pub fn read_git_footer_info(project_dir: &Path) -> Option<GitFooterInfo> {
     })
 }
 
+/// Immediate footer/header model metadata from the live session selection (no branch I/O).
+pub fn chrome_stats_from_session(session: &CodingAgentSession, fallback_context_limit: u64) -> ChromeStats {
+    let context_limit = session.context_window().max(1) as u64;
+    ChromeStats {
+        context_limit: if context_limit > 0 {
+            context_limit
+        } else {
+            fallback_context_limit
+        },
+        model_label: model_footer_label(Some(session.model_provider()), Some(session.model_id())),
+        supports_images: session.supports_image_input(),
+        ..ChromeStats::default()
+    }
+}
+
 pub async fn refresh_chrome_stats(
     session: Arc<CodingAgentSession>,
     fallback_context_limit: u64,
     fallback_model_label: &str,
     fallback_supports_images: bool,
 ) -> ChromeStats {
+    let live_provider = session.model_provider();
+    let live_model_id = session.model_id();
+
     let entries = match session.branch_entries().await {
         Ok(entries) => entries,
         Err(err) => {
             log::debug!("chrome stats: branch entries unavailable: {err}");
             return ChromeStats {
-                context_limit: fallback_context_limit,
-                model_label: fallback_model_label.to_string(),
-                supports_images: fallback_supports_images,
+                context_limit: session.context_window() as u64,
+                model_label: model_footer_label(Some(live_provider), Some(live_model_id)),
+                supports_images: session.supports_image_input(),
                 ..ChromeStats::default()
             };
         }
@@ -94,8 +112,14 @@ pub async fn refresh_chrome_stats(
     let context = build_session_context(&entries);
     let estimate = estimate_context_tokens(&context.messages);
 
-    let (context_limit, model_label, supports_images) =
-        resolve_model_chrome(&context, fallback_context_limit, fallback_model_label, fallback_supports_images);
+    let (context_limit, model_label, supports_images) = resolve_model_chrome(
+        &context,
+        live_provider,
+        live_model_id,
+        fallback_context_limit,
+        fallback_model_label,
+        fallback_supports_images,
+    );
 
     let tokens_used = estimate.tokens;
     let context_pct = if context_limit > 0 {
@@ -116,22 +140,30 @@ pub async fn refresh_chrome_stats(
     }
 }
 
+fn effective_model_ids<'a>(
+    context_model: Option<&'a elph_agent::SessionModelRef>,
+    live_provider: &'a str,
+    live_model_id: &'a str,
+) -> (&'a str, &'a str) {
+    if let Some(model_ref) = context_model {
+        (model_ref.provider.as_str(), model_ref.model_id.as_str())
+    } else {
+        (live_provider, live_model_id)
+    }
+}
+
 fn resolve_model_chrome(
     context: &elph_agent::SessionContext,
+    live_provider: &str,
+    live_model_id: &str,
     fallback_context_limit: u64,
-    fallback_model_label: &str,
+    _fallback_model_label: &str,
     fallback_supports_images: bool,
 ) -> (u64, String, bool) {
-    let Some(model_ref) = context.model.as_ref() else {
-        return (
-            fallback_context_limit,
-            fallback_model_label.to_string(),
-            fallback_supports_images,
-        );
-    };
+    let (provider, model_id) = effective_model_ids(context.model.as_ref(), live_provider, live_model_id);
 
-    let model_label = model_footer_label(Some(&model_ref.provider), Some(&model_ref.model_id));
-    let Some(model) = get_builtin_model(&model_ref.provider, &model_ref.model_id) else {
+    let model_label = model_footer_label(Some(provider), Some(model_id));
+    let Some(model) = get_builtin_model(provider, model_id) else {
         return (fallback_context_limit, model_label, fallback_supports_images);
     };
 
@@ -189,6 +221,21 @@ mod tests {
             user_entry("u2", "again"),
         ];
         assert_eq!(count_user_turns(&entries), 2);
+    }
+
+    #[test]
+    fn effective_model_ids_prefers_context_then_live_selection() {
+        use elph_agent::SessionModelRef;
+
+        let context_model = SessionModelRef {
+            provider: "anthropic".to_string(),
+            model_id: "claude-sonnet-4".to_string(),
+        };
+        assert_eq!(
+            effective_model_ids(Some(&context_model), "opencode", "big-pickle"),
+            ("anthropic", "claude-sonnet-4")
+        );
+        assert_eq!(effective_model_ids(None, "opencode", "big-pickle"), ("opencode", "big-pickle"));
     }
 
     #[test]

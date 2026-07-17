@@ -20,11 +20,13 @@ pub struct PromptChromeProps {
     pub agent_mode: AgentMode,
     pub thinking_level: ThinkingLevel,
     pub has_focus: bool,
+    pub project_line: String,
     pub project_name: String,
     pub git: Option<GitFooterInfo>,
     pub turn: u32,
     pub model_label: String,
     pub supports_images: bool,
+    pub chrome_revision: u64,
     pub draft: Option<State<String>>,
     pub live_draft: Option<Ref<String>>,
     pub input_prefix_kind: Option<Ref<InputPrefixKind>>,
@@ -140,12 +142,14 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
             }
             Footer(
                 screen_width: props.screen_width,
+                project_line: props.project_line.clone(),
                 project_name: props.project_name.clone(),
                 git: props.git.clone(),
                 turn: props.turn,
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
                 supports_images: props.supports_images,
+                chrome_revision: props.chrome_revision,
             )
         }
     }

@@ -4,8 +4,8 @@ use chrono::{DateTime, Utc};
 use iocraft::prelude::Color;
 
 use crate::tui::theme::{
-    META_FG, SKILL_FG, TEXT_FG, THINKING_BG, THINKING_FG, TOOL_FAILED_BG, TOOL_FAILED_FG, TOOL_RUNNING_BG,
-    TOOL_RUNNING_FG, TOOL_SUCCESS_BG, TOOL_SUCCESS_FG, USER_INPUT_BG,
+    META_FG, QUIT_BUSY_NOTICE_FG, SKILL_FG, TEXT_FG, THINKING_BG, THINKING_FG, TOOL_FAILED_BG, TOOL_FAILED_FG,
+    TOOL_RUNNING_BG, TOOL_RUNNING_FG, TOOL_SUCCESS_BG, TOOL_SUCCESS_FG, USER_INPUT_BG,
 };
 
 use super::card::{
@@ -18,6 +18,12 @@ use super::markdown::AssistantMarkdownBuffer;
 
 /// Extra scroll-row padding above ephemeral transcript notices (`transient:*` keys).
 pub const EPHEMERAL_NOTICE_EXTRA_PAD_TOP: u16 = 1;
+
+/// Startup key for the quit-while-busy confirmation line in the transcript.
+pub const QUIT_BUSY_NOTICE_KEY: &str = "transient:quit_busy";
+
+/// Vertical breathing room above and below [`QUIT_BUSY_NOTICE_KEY`] rows.
+pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 
 /// Structured payload for tool invocation cards in the transcript.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -63,6 +69,22 @@ impl TranscriptMessage {
         message
     }
 
+    pub fn quit_busy_notice(content: impl Into<String>) -> Self {
+        Self::startup_status(QUIT_BUSY_NOTICE_KEY, content, TranscriptStyle::Meta)
+    }
+
+    pub fn is_quit_busy_notice(&self) -> bool {
+        self.startup_key.as_deref() == Some(QUIT_BUSY_NOTICE_KEY)
+    }
+
+    pub fn transcript_foreground(&self) -> Color {
+        if self.is_quit_busy_notice() {
+            QUIT_BUSY_NOTICE_FG
+        } else {
+            self.style.text_color()
+        }
+    }
+
     pub fn is_startup_status(&self) -> bool {
         self.startup_key.is_some() || self.style.is_status_line()
     }
@@ -104,28 +126,43 @@ impl TranscriptMessage {
     }
 
     pub fn transcript_margin_bottom(&self, next_style: Option<TranscriptStyle>) -> u16 {
-        if self.local_slash_response {
+        let base = if self.local_slash_response {
             COLORED_CARD_GAP
         } else if self.is_startup_status() {
             self.style.transcript_margin_bottom_startup(next_style)
         } else {
             self.style.entry_gap_after(next_style)
+        };
+        if self.is_quit_busy_notice() {
+            base.saturating_add(QUIT_BUSY_NOTICE_PAD)
+        } else {
+            base
         }
     }
 
-    pub fn transcript_padding_top(&self) -> u16 {
-        let base = if self.local_slash_response {
+    fn transcript_extra_vertical_pad(&self) -> u16 {
+        if self.is_quit_busy_notice() {
+            QUIT_BUSY_NOTICE_PAD
+        } else if self.is_ephemeral_notice() {
+            EPHEMERAL_NOTICE_EXTRA_PAD_TOP
+        } else {
+            0
+        }
+    }
+
+    fn transcript_flush_padding_base(&self) -> u16 {
+        if self.local_slash_response {
             COLORED_CARD_PAD
         } else if self.style.is_flush_text() {
             FLUSH_CARD_PAD
         } else {
             COLORED_CARD_PAD
-        };
-        if self.is_ephemeral_notice() {
-            base.saturating_add(EPHEMERAL_NOTICE_EXTRA_PAD_TOP)
-        } else {
-            base
         }
+    }
+
+    pub fn transcript_padding_top(&self) -> u16 {
+        self.transcript_flush_padding_base()
+            .saturating_add(self.transcript_extra_vertical_pad())
     }
 
     pub fn transcript_padding_bottom(&self) -> u16 {
@@ -342,6 +379,8 @@ impl TranscriptStyle {
 
 #[cfg(test)]
 mod tests {
+    use crate::tui::activity::format_quit_while_busy_transcript;
+
     use super::*;
     use crate::tui::theme::{
         META_FG, THINKING_BG, TOOL_FAILED_BG, TOOL_FAILED_FG, TOOL_RUNNING_BG, TOOL_RUNNING_FG, TOOL_SUCCESS_BG,
@@ -451,6 +490,24 @@ mod tests {
             TranscriptMessage::startup_status("transient:agent_mode", "Agent mode: plan.", TranscriptStyle::Meta);
         assert!(notice.is_ephemeral_notice());
         assert_eq!(notice.transcript_padding_top(), FLUSH_CARD_PAD + EPHEMERAL_NOTICE_EXTRA_PAD_TOP);
+    }
+
+    #[test]
+    fn quit_busy_notice_uses_orange_foreground() {
+        let notice = TranscriptMessage::quit_busy_notice(format_quit_while_busy_transcript());
+        assert_eq!(notice.transcript_foreground(), QUIT_BUSY_NOTICE_FG);
+    }
+
+    #[test]
+    fn quit_busy_notice_adds_vertical_gap() {
+        let notice = TranscriptMessage::quit_busy_notice(format_quit_while_busy_transcript());
+        assert!(notice.is_quit_busy_notice());
+        assert_eq!(notice.transcript_padding_top(), FLUSH_CARD_PAD + QUIT_BUSY_NOTICE_PAD);
+        assert_eq!(notice.transcript_padding_bottom(), FLUSH_CARD_PAD + QUIT_BUSY_NOTICE_PAD);
+        assert_eq!(
+            notice.transcript_margin_bottom(Some(TranscriptStyle::Assistant)),
+            FLUSH_CARD_GAP + QUIT_BUSY_NOTICE_PAD
+        );
     }
 
     #[test]

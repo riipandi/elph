@@ -96,6 +96,15 @@ pub fn fit_header_stats(
     pick_fitting_label(&[full, percentage, count, cost, pct_only], max_width)
 }
 
+/// Footer left from a preformatted project line (`project_footer_label`).
+pub fn fit_footer_left_from_line(project_line: &str, turn: u32, max_width: usize) -> String {
+    if max_width == 0 {
+        return String::new();
+    }
+    let candidates = vec![footer_left_label(project_line, turn), project_line.to_string()];
+    pick_fitting_label(&candidates, max_width)
+}
+
 /// Footer left: turn → git stats → branch → truncate project name.
 pub fn fit_footer_left(project_name: &str, git: Option<&GitFooterInfo>, turn: u32, max_width: usize) -> String {
     let project = format!("~ {project_name}");
@@ -170,6 +179,14 @@ mod tests {
         assert!(wide.contains("131k"));
         let narrow = fit_header_stats(0.12, 131_000, 48.2, 272_000, "both", 8);
         assert!(display_width(&narrow) <= 8);
+    }
+
+    #[test]
+    fn fit_footer_left_from_line_uses_preformatted_project() {
+        let line = "~ elph [main] [+3/42 -1/07]";
+        let wide = fit_footer_left_from_line(line, 2, 80);
+        assert!(wide.contains("turn: 2"));
+        assert!(wide.contains("elph"));
     }
 
     #[test]

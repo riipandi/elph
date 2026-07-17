@@ -6,6 +6,7 @@ mod activity;
 mod agent_bridge;
 mod ask_user_tool_card;
 mod chrome;
+mod confetti;
 mod file_picker;
 mod focus;
 mod inline_dialog;
@@ -38,8 +39,10 @@ use iocraft::prelude::*;
 
 use elph_agent::LocalExecutionEnv;
 
+use elph_ai::get_builtin_model;
+
 use crate::agent::agent_mode_from_setting;
-use crate::agent::{load_resources, slash_commands_for_palette};
+use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
 use crate::types::ThinkingLevel;
@@ -79,7 +82,21 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
-    let context_limit = 200_000u64;
+    let (boot_provider, boot_model_id) = resolve_provider_and_model(
+        None,
+        None,
+        settings.session.provider_id.as_deref(),
+        settings.session.model_id.as_deref(),
+    )?;
+    let boot_model = get_builtin_model(&boot_provider, &boot_model_id);
+    let context_limit = boot_model
+        .as_ref()
+        .map(|model| model.context_window as u64)
+        .unwrap_or(200_000);
+    let supports_images = boot_model
+        .as_ref()
+        .map(|model| model.input.iter().any(|cap| cap == "image"))
+        .unwrap_or(false);
     let bootstrap_config = TuiBootstrapConfig {
         paths: paths.clone(),
         settings: settings.clone(),
@@ -88,7 +105,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     };
     let startup_messages = initial_startup_messages(&skill_conflicts);
 
-    let model_label = model_footer_label(settings.session.provider_id.as_deref(), settings.session.model_id.as_deref());
+    let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));
     let git_footer = read_git_footer_info(paths.project_dir());
     let project_label = project_footer_label(&paths, git_footer.as_ref());
 
@@ -101,7 +118,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         model_label: model_label,
         project_label: project_label,
         context_limit: context_limit,
-        supports_images: false,
+        supports_images: supports_images,
         footer_token_display: settings.footer_token_display.clone(),
         sticky_scroll: settings.sticky_scroll,
         show_thinking: settings.show_thinking,
