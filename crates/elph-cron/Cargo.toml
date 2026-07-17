@@ -1,8 +1,8 @@
 [package]
-name = "elph-sandbox"
+name = "elph-cron"
 version = "0.0.1"
 license = "MIT"
-description = "Sandbox library for Elph, powered by zerobox"
+description = "Cron scheduled task tools for Elph"
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
@@ -10,7 +10,7 @@ edition.workspace = true
 publish = true
 
 [lib]
-name = "elph_sandbox"
+name = "elph_cron"
 path = "src/lib.rs"
 
 [dependencies]
