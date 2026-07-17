@@ -11,8 +11,8 @@
 /[Tt]emp/
 /[Tt]mp/
 /storage/
-/target/
 # /vendor/
+target/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
