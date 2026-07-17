@@ -2,7 +2,7 @@
 
 The TUI system currently lives directly in the `elph` binary crate while the iocraft-based shell is being rebuilt iteratively.
 
-The `elph-tui` library crate provides iocraft component modules (17+ modules) and 21 examples, with integration tests. Once the public API stabilises, the reusable widget library will be extracted back into `elph-tui` and published to crates.io.
+The `elph-tui` library crate provides iocraft component modules (20+ component modules + 10+ crate-level modules) and 26+ examples, with integration tests. Once the public API stabilises, the reusable widget library will be extracted back into `elph-tui` and published to crates.io.
 
 **TUI source**: `/elph/src/tui/` — Modular iocraft-based shell: `shell.rs`, `focus.rs`, `tool_approval.rs`, `user_question.rs`, `activity.rs`, `agent_bridge.rs`, `labels.rs`, `theme.rs`, and the subdirectories `chrome/`, `prompt/`, `transcript/`, `slash_palette/`.
 **Shell**: `elph/src/tui/shell.rs` is the main interactive shell orchestrating all TUI components. Focus switching (`focus.rs`), tool approval modal (`tool_approval.rs`), user question prompts (`user_question.rs`), activity tracking (`activity.rs`), and the slash palette (`slash_palette/`) are all standalone modules.
@@ -11,40 +11,46 @@ The `elph-tui` library crate provides iocraft component modules (17+ modules) an
 
 **Path**: `/crates/elph-tui/`
 
-The crate provides `lib.rs` with 17+ component modules under `components/` (most are implemented, not stubs):
+The crate provides `lib.rs` with 20+ component modules under `components/` (most are implemented, not stubs):
 
-- `ascii_font`, `card`, `code`, `diff`, `frame_buffer`, `input`, `line_numbers`
-- `markdown`, `progress_indicator`, `qr_code`, `scroll_bar`, `scroll_box`, `select`, `slider`, `tab_select`, `text`, `textarea`
+- `ascii_font`, `card`, `code`, `dialog_shell`, `diff`, `frame_buffer`, `input`, `line_numbers`
+- `markdown`, `progress_indicator`, `qr_code`, `scroll_bar`, `scroll_box`, `select`, `slider`, `status_indicator`, `tab_select`, `text`, `textarea`, `theme`
 
-`textarea` is a directory containing `component.rs`, `input/` (paste, submit, wire_edit sub-modules), `layout.rs`, and `state.rs`. `markdown` is now a full directory with 10 sub-modules: `blocks.rs`, `colors.rs`, `highlight.rs`, `layout.rs`, `linkify.rs`, `model.rs`, `parse.rs`, `parser_config.rs`, `render.rs`, `syntax.rs`, `theme.rs` — providing syntax-highlighted code blocks (via `syntect`) and auto-linked URLs. Additional modules live at the crate root: `text_editing/` (actions, input, line, submit, wire), `transcript_layout.rs`, `text_input_layout.rs`, `loader.rs`, `paste.rs`, and `utils.rs`.
+`textarea` is a directory containing `component.rs`, `input/` (paste, submit, wire_edit sub-modules), `layout.rs`, and `state.rs`. `markdown` is now a full directory with 11+ sub-modules: `blocks.rs`, `colors.rs`, `highlight.rs`, `layout.rs`, `linkify.rs`, `model.rs`, `parse.rs`, `parser_config.rs`, `render.rs`, `syntax.rs`, `table.rs`, `theme.rs` — providing syntax-highlighted code blocks (via `syntect`), GFM table grid rendering, and auto-linked URLs. `dialog_shell` provides modal-like dialog panels for confirm, multi-choice, user input, todo list, and progress displays. Additional modules live at the crate root: `input_prefix`, `slash_palette/` (fuzzy, keyboard, layout, model, state), `text_editing/` (actions, input, line, submit, wire), `transcript_layout.rs`, `text_input_layout.rs`, `loader.rs`, `paste.rs`, `utils.rs`, `cli_progress.rs`, and `color.rs`.
 
 In the `elph` binary TUI (`/elph/src/tui/transcript/message.rs`), the transcript now renders structured tool invocation cards via `ToolCardDetail` (name, args summary, output body), replacing inline text formatting. Theme constants `TOOL_ARGS_FG` and `TOOL_OUTPUT_FG` control card colors. The previous `format_tool_card_content` / `format_tool_card_result` public helpers have been removed in favor of the structured `tool_call()` constructor on `TranscriptMessage`.
 
-### Examples (21 total in `crates/elph-tui/examples/`)
+### Examples (26+ total in `crates/elph-tui/examples/`)
 
-| Example           | Description                                            |
-| ----------------- | ------------------------------------------------------ |
-| `weather`         | Async data loading from remote APIs with iocraft       |
-| `calculator`      | Calculator app with iocraft UI                         |
-| `chat_layout`     | Chat layout with scrollable content, input, tool cards |
-| `progress_bar`    | Animated progress bar demo                             |
-| `basic_context`   | Context API usage example                              |
-| `basic_counter`   | Simple counter with state management                   |
-| `basic_form`      | Form with input validation                             |
-| `basic_input`     | Text input handling demo                               |
-| `basic_layout`    | Layout composition demo                                |
-| `basic_output`    | Text output display                                    |
-| `basic_overlap`   | Overlapping elements demo                              |
-| `basic_scrolling` | Scrollable content                                     |
-| `basic_table`     | Table layout demo                                      |
-| `demo_code`       | Code block rendering                                   |
-| `demo_diff`       | Diff output rendering                                  |
-| `demo_input`      | Input widget demo                                      |
-| `demo_markdown`   | Markdown rendering                                     |
-| `demo_scroll`     | Scroll container demo                                  |
-| `demo_select`     | Select widget demo                                     |
-| `demo_special`    | Special elements demo                                  |
-| `demo_text_card`  | Text card rendering                                    |
+| Example                   | Description                                            |
+| ------------------------- | ------------------------------------------------------ |
+| `weather`                 | Async data loading from remote APIs with iocraft       |
+| `calculator`              | Calculator app with iocraft UI                         |
+| `chat_layout`             | Chat layout with scrollable content, input, tool cards |
+| `progress_bar`            | Animated progress bar demo                             |
+| `basic_context`           | Context API usage example                              |
+| `basic_counter`           | Simple counter with state management                   |
+| `basic_form`              | Form with input validation                             |
+| `basic_input`             | Text input handling demo                               |
+| `basic_layout`            | Layout composition demo                                |
+| `basic_output`            | Text output display                                    |
+| `basic_overlap`           | Overlapping elements demo                              |
+| `basic_scrolling`         | Scrollable content                                     |
+| `basic_table`             | Table layout demo                                      |
+| `codeing_agent`           | Full coding agent app with overlays and shell          |
+| `demo_code`               | Code block rendering                                   |
+| `demo_diff`               | Diff output rendering                                  |
+| `demo_dialog_choices`     | Dialog shell with choice widgets                       |
+| `demo_dialog_shell`       | Dialog shell component demo                            |
+| `demo_input`              | Input widget demo                                      |
+| `demo_markdown`           | Markdown rendering                                     |
+| `demo_scroll`             | Scroll container demo                                  |
+| `demo_select`             | Select widget demo                                     |
+| `demo_special`            | Special elements demo                                  |
+| `demo_text_card`          | Text card rendering                                    |
+| `demo_theme`              | Theme system demo                                      |
+| `demo_loading_indicator`  | Loading indicator demo                                 |
+| `demo_progress_indicator` | Progress indicator demo                                |
 
 Run examples with: `cargo run -p elph-tui --example <name>`
 
@@ -66,6 +72,7 @@ Dispatch order:
 | `/help`                     | —             | List all commands                           |
 | `/model`                    | —             | Open model selector                         |
 | `/goal`                     | `/goals`      | Manage session goals                        |
+| `/tools`                    | —             | Show active tools (json/list/table)         |
 | `/exit`                     | `/quit`, `/q` | Quit                                        |
 | `/commit`                   | —             | Generate commit message from staged changes |
 | `/compact`                  | `/c`          | Compact history                             |
@@ -203,6 +210,101 @@ When the user issues a quit command (`/exit`, `:q`, `Ctrl+D`) while a turn is in
 - **Ctrl+C while idle**: Clears the prompt draft
 - Status row right segment appends `" | y quit · n stay"` when quit confirmation is pending
 
+## Model Selector
+
+**Source**: `/elph/src/tui/model_selector.rs`, `/elph/src/tui/model_selector_bar.rs`, `/elph/src/tui/model_selector_shell.rs`, `/elph/src/tui/model_option_list.rs`
+
+A multi-tab model picker that replaces the simple model list. It renders as an inline dialog above the status row.
+
+- **Three scope tabs**: All (every known model), Scoped (settings-restricted subset), and Provider (per-provider tab with paging — 4 providers per page)
+- **Fuzzy filtering**: Weighted scoring (name > id > description) with real-time filtering as the user types
+- **Compact layout**: Two-column rows (name + hint), `‹ N` / `N ›` paging indicators for provider tabs
+- **Persistence**: Selected model is saved to `SessionPrefs`
+- **Data source**: Uses `elph_ai::get_builtin_models/providers` for the catalog
+
+## @-mention File Picker
+
+**Source**: `/elph/src/tui/file_picker/`
+
+An inline fuzzy file picker triggered by typing `@` in the prompt editor. Searches the workspace via `fff-search` (fast filesystem search).
+
+| Module               | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `model.rs`           | `FilePickerOption`, `ActiveMention`, `FilePickerSnapshot` |
+| `component.rs`       | `FilePickerPalette` iocraft component                     |
+| `fuzzy_highlight.rs` | ANSI-highlighted fuzzy match rendering                    |
+| `keyboard.rs`        | Key-to-action mapping                                     |
+| `apply.rs`           | File picker apply logic                                   |
+| `state.rs`           | Selection state                                           |
+| `highlight.rs`       | File path display formatting                              |
+
+- **Trigger**: When `@` is typed, an `ActiveMention` token is tracked at the cursor
+- **Search**: `build_snapshot` fires `fff-search` with `SEARCH_LIMIT = 200`, results shown in a floating palette anchored above the editor
+- **Navigation**: Keyboard arrows, `FAST_SCROLL_STEP = 5`, enter to select
+- **Insertion**: Selecting an entry inserts the file path and closes the picker
+- **Max visible**: `MAX_VISIBLE_ROWS = 8` in the floating palette
+
+## Inline Dialogs
+
+**Source**: `/elph/src/tui/inline_dialog.rs`, `/elph/src/tui/status_dialog.rs`, `/elph/src/tui/tool_params.rs`
+
+Full-width inline dialog pattern that sits within the TUI shell chrome (not floating overlays). Shared by the model picker, tool-approval prompts, and user-question steps.
+
+- `InlineDialogShell` — Renders a sectioned dialog with tab states (`Current`/`Answered`/`Upcoming`)
+- `StatusDialog` — Tool-approval dialog below the status row. Shows a compact params summary (`ToolApprovalLayoutPlan` with `args_viewport` and `list_height`) followed by selectable actions
+- `ToolParams` — Structured tool-call parameter preview with priority-key highlighting (top keys: `command`, `path`, `file`, `query`). Constants: `MAX_PARAM_VALUE_CHARS = 240`, `APPROVAL_MAX_PARAM_ROWS = 3`, `APPROVAL_VALUE_MAX_CHARS = 72`
+- All dialogs share `inline_body_width()` (same as the shell editor) for consistent sizing
+
+## Deferred MCP Loading / Startup UI
+
+**Source**: `/elph/src/tui/startup.rs`, `/elph/src/agent/mcp_bootstrap.rs`
+
+Agent session creation is split into stages so the TUI appears immediately while MCP server discovery runs asynchronously.
+
+- `TuiBootstrapConfig` — Paths, settings, resume ID, preloaded resources
+- `BootstrapPhase` — `Pending → Running → AgentReady → McpLoading → Done → Failed`
+- **Transient startup rows**: Each MCP server gets a keyed transcript row (`startup_key: "startup:mcp:{name}"`) showing live progress (loading spinner → checkmark `✓` or error `✕`)
+- **Config warnings**: Warnings from malformed MCP configs are surfaced as startup rows
+- `discover_mcp_registry_with_progress()` — Calls `McpToolRegistry::load_with_options()` best-effort, emits `McpServerLoadProgress` events per server
+- `wire_mcp_into_session()` — Binds the loaded registry to a running `CodingAgentSession`
+- Formatting constants: `STARTUP_SEP`, `STARTUP_ELLIPSIS`, `STARTUP_MCP_INDENT`, `STARTUP_WARN_INDENT`
+
+## Ephemeral Notices (Self-Expiring Transcript Messages)
+
+**Source**: `/elph/src/tui/transcript/ephemeral.rs`, `/elph/src/tui/transcript/types.rs`
+
+A keyed upsert mechanism for transient notices in the transcript. Instead of stacking repeated messages, a single row with a stable key is updated in place and auto-expires after a TTL.
+
+- `upsert_ephemeral_notice()` — Finds existing message by `startup_key` and replaces content/style, or pushes a new one
+- `remove_ephemeral_notice()` — Removes by key
+- `show_agent_mode_notice()` — Upserts `transient:agent_mode` with `AGENT_MODE_NOTICE_TTL = 3s`
+- `TranscriptMessage::is_ephemeral_notice()` — True when `startup_key` starts with `"transient:"`
+- Layout system adds `EPHEMERAL_NOTICE_EXTRA_PAD_TOP = 1` extra scroll padding for ephemeral rows
+- Periodic cleanup: TUI render loop calls `remove_expired_ephemeral_notices()` each frame
+
+## Transcript Timestamps
+
+**Source**: `/elph/src/tui/transcript/card/timestamp_layout.rs`
+
+Each user-submitted transcript message (input card) shows a dimmed right-rail label with the wall-clock processing duration and submission timestamp.
+
+- `user_input_right_rail(submitted_at, duration_secs)` → builds `"1.2s 14:32"`
+- `layout_user_input_lines()` — Wraps content, measures `display_width(rail)`, subtracts it from the first-line budget
+- Uses `unicode-width` for display-width calculations
+- `TranscriptMessage` fields: `duration_secs: Option<f64>`, `submitted_at: Option<DateTime<Utc>>`
+
+## GFM Table Rendering
+
+**Source**: `/crates/elph-tui/src/components/markdown/table.rs`
+
+Renders GitHub-Flavored Markdown tables as a box-drawing grid in the markdown output.
+
+- `TableLayout` — Column widths (`MIN_COL_WIDTH = 4`), row heights, grid computation
+- `TableLine` — `Rule` (separator rows) or `Row` (cell segments with header flag)
+- `CELL_PAD_X = 1` — Single space padding inside each cell
+- `grid_vertical_bar_count()` — Total vertical rules for layout measurement
+- `cell_display_width()` — Uses `unicode-width` for correct CJK/emoji column widths
+
 ## Key source files
 
 | Concern                            | Path                                                                                                                                 |
@@ -210,12 +312,16 @@ When the user issues a quit command (`/exit`, `:q`, `Ctrl+D`) while a turn is in
 | TUI (current)                      | `/elph/src/tui/` (shell.rs, focus.rs, tool_approval.rs, activity.rs, agent_bridge.rs, chrome/, prompt/, transcript/, slash_palette/) |
 | Shell implementation               | `/elph/src/tui/shell.rs`                                                                                                             |
 | Focus switching                    | `/elph/src/tui/focus.rs`                                                                                                             |
+| Model selector                     | `/elph/src/tui/model_selector.rs`, `model_selector_bar.rs`, `model_selector_shell.rs`, `model_option_list.rs`                        |
+| @-mention file picker              | `/elph/src/tui/file_picker/`                                                                                                         |
+| Inline dialogs                     | `/elph/src/tui/inline_dialog.rs`, `/elph/src/tui/status_dialog.rs`, `/elph/src/tui/tool_params.rs`                                   |
 | Tool approval modal                | `/elph/src/tui/tool_approval.rs`                                                                                                     |
 | User question prompts              | `/elph/src/tui/user_question.rs`                                                                                                     |
 | Activity + token tracking          | `/elph/src/tui/activity.rs`                                                                                                          |
 | Slash palette                      | `/elph/src/tui/slash_palette/`                                                                                                       |
 | Isomorphic text editor             | `/elph/src/tui/prompt/editor.rs`                                                                                                     |
 | Transcript cards + markdown        | `/elph/src/tui/transcript/`                                                                                                          |
+| Startup UI / MCP bootstrap         | `/elph/src/tui/startup.rs`, `/elph/src/agent/mcp_bootstrap.rs`                                                                       |
 | Chrome (header, stats, status_row) | `/elph/src/tui/chrome/`                                                                                                              |
 | Agent interaction                  | `/elph/src/agent/`                                                                                                                   |
 | Diagnostics tool                   | `/elph/src/agent/diagnostics.rs`                                                                                                     |

@@ -10,7 +10,8 @@
 | **Runtime** | `crates/elph-agent` | App-agnostic agent runtime: turn loop, session persistence, compaction, goals, subagents, skills, MCP client, WASM plugins |
 | **AI**      | `crates/elph-ai`    | Unified LLM provider layer: model catalog, provider abstraction, OAuth, image generation, web tools                        |
 | **Core**    | `crates/elph-core`  | Shared primitives: `floppy` memory store (Turso vector DB), logger, path resolution, filesystem helpers                    |
-| **TUI**     | `crates/elph-tui`   | iocraft component stubs + examples; primary TUI in `elph` binary (`tui.rs`)                                                |
+| **Exec**    | `crates/elph-exec`  | PTY-based shell execution with configurable timeout, abort, streaming output, and sanitization                             |
+| **TUI**     | `crates/elph-tui`   | iocraft component library + examples; primary TUI in `elph` binary (`tui.rs`)                                              |
 | **Swarm**   | `crates/elph-swarm` | Multi-agent coordination (early stage)                                                                                     |
 
 ## Key concepts
@@ -27,21 +28,21 @@
 - **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).
 - **Extensions** — WASM-based dynamic plugins compiled with `wasmtime`.
 
-## Project state (HEAD `fbdfa1e`)
+## Project state (HEAD `227c389`)
 
 This repository is under **active development**. Recent milestones:
 
-- **TUI rich markdown rendering** — Full markdown-to-terminal pipeline in `crates/elph-tui/src/components/markdown/`: syntax-highlighted code blocks (syntect with Tokyo Night theme), auto-linked URLs, streaming tail rendering (`aa0aa69`, `a80a7f6`).
-- **Slash palette** — Autocomplete overlay with fuzzy search, keyboard navigation, and skill command registration (`75f5b21`, `3995657`).
-- **Focus switching** — `ShellFocus::Prompt` / `Transcript` with Esc-to-prompt, scroll keys, and auto-refocus on character input (`96fa4f7`).
-- **Tool approval modal** — Key-driven approval (`y`/`a`/`n`) in a bordered panel replacing the editor during tool confirmation (`55485b2`).
-- **Stream token tracking** — Real-time `+<delta> · <t/s>` display in the status row, turn count in chrome stats (`c90341f`, `384f9f8`).
-- **Quit confirmation during active turn** — Two-step quit flow: transcript notice + `y quit / n stay` key binding, force-quit with `/exit!` (`fbdfa1e`).
-- **Skills argument hints** — `SKILL.md` frontmatter now supports `argument-hint` for validating user-provided arguments and registering `/skill:<name>` slash invocations (`3995657`).
-- **Subagent abort** — Improved control channel for aborting subagents mid-execution (`a80a7f6`).
-- **elph-tui progress indicators** — Replaced `indicatif` with native `cli_progress.rs` component (`55485b2`).
-- **TUI overhaul** — Replaced single-file `tui.rs` with a modular `tui/` directory (shell, focus, tool_approval, user_question, activity, agent_bridge, chrome, prompt, transcript, slash_palette). elph-tui crate now has 17+ implemented component modules, markdown sub-modules, textarea/ directory with sub-modules, and 14 integration tests.
-- **Session IDs migrated from TSID to Kalid** — Time-sortable 16-char IDs with no prefix, replacing 13-char TSID. Floppy memory store also migrated (`066dd00`).
+- **Model selector** — Multi-tab catalog picker (All / Scoped / Provider) with fuzzy filtering and weighted scoring, rendered as an inline dialog above the status row (`b127f6c`).
+- **@-mention file picker** — Inline fuzzy file picker triggered by `@` in the prompt editor; searches workspace via `fff-search` with keyboard navigation and path insertion (`7a0ab91`).
+- **Inline dialogs** — Full-width inline dialog pattern shared by tool approval, model picker, and user questions. Structured tool-parameter previews with priority-key highlighting (`594c5c8`, `3e6763a`).
+- **Transcript timestamps** — Right-rail `duration + HH:MM` label on user input cards, dimmed to avoid visual clutter (`46b1990`).
+- **GFM table rendering** — Box-drawing char table grid with proper column-width measurement in markdown output (`299339f`).
+- **Deferred MCP loading** — Agent session starts immediately; MCP tool discovery runs in background with per-server progress/error rows in the transcript (`6e3e0d3`).
+- **Ephemeral notices** — Keyed upsert mechanism for transient transcript messages (e.g. agent mode changes) with automatic TTL expiry (`0188ecf`).
+- **elph-exec crate** — Dedicated PTY-based shell execution extracted to a separate crate with configurable timeout, abort token, streaming output callbacks, and output sanitization (`d4e86c2`).
+- **MCP compat layer** — Normalizes editor-style JSON configs (Cursor, VS Code, Claude Code) via `mcpServers`→`servers` renaming and type inference (`b127f6c`).
+- **Dialog shell + theme system** — elph-tui adds `dialog_shell/`, `input_prefix`, `slash_palette/`, `status_indicator`, and `theme` component modules (`9c03b90`).
+- **elph-tui growth** — 20+ component modules, 10+ crate-level modules, 26+ examples, 14 integration tests, plus `dialog_shell`, `markdown/`, and `textarea/` sub-directories with sub-modules.
 
 ## Documentation map
 
@@ -65,7 +66,7 @@ For new contributors or future agents:
 3. **elph/src/cli/mod.rs** — CLI subcommand definitions
 4. **crates/elph-agent/src/lib.rs** — agent runtime public API surface
 5. **crates/elph-ai/src/lib.rs** — AI provider layer public API
-6. **crates/elph-tui/src/lib.rs** — TUI component stubs (16 component modules); examples in `crates/elph-tui/examples/`
+6. **crates/elph-tui/src/lib.rs** — TUI component library (20+ component modules, dialog_shell, slash_palette); examples in `crates/elph-tui/examples/`
 7. **crates/elph-core/src/lib.rs** — core library surface
 
 ## Quick build & test

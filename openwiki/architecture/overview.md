@@ -25,6 +25,10 @@ Elph is a Rust workspace of layered crates designed for building AI agent applic
 │                 elph-core (crate)                    │
 │  Floppy (Turso vector store) · Logger · Scaffold    │
 │  Path resolution · Filesystem utilities             │
+├─────────────────────────────────────────────────────┤
+│                 elph-exec (crate)                    │
+│  PTY shell execution · Configurable timeouts ·      │
+│  Abort tokens · Streaming output · Sanitization     │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -115,7 +119,21 @@ Path: `/crates/elph-tui/`
 
 > **Note**: The elph-tui crate provides iocraft-based component modules (17+ modules) and 13+ examples with integration tests. The primary TUI implementation lives in the `elph` binary crate (`elph/src/tui/`). Once the widget library stabilises, reusable widgets will be extracted back into this crate and published to crates.io.
 
-Key modules (current — `/crates/elph-tui/src/`): `lib.rs` with 17+ component modules under `components/` (`ascii_font`, `card`, `code`, `diff`, `frame_buffer`, `input`, `line_numbers`, `markdown` — now a full subdirectory with syntax-highlighted code blocks and auto-linked URLs, `progress_indicator`, `qr_code`, `scroll_bar`, `scroll_box`, `select`, `slider`, `tab_select`, `text`, `textarea`). `textarea` is a subdirectory with `component.rs`, `input/` (paste, submit, wire_edit), `layout.rs`, `state.rs`. `markdown/` has 10 sub-modules: `blocks`, `colors`, `highlight`, `layout`, `linkify`, `model`, `parse`, `parser_config`, `render`, `syntax`, `theme`. Additional crate-level modules: `text_editing/` (actions, input, line, submit, wire), `transcript_layout.rs`, `text_input_layout.rs`, `cli_progress.rs`, `loader.rs`, `paste.rs`, `utils.rs`. Examples in `examples/` (21 examples: weather, calculator, chat_layout, progress_bar, basic__, demo__). Tests in `tests/` (14 files).
+Key modules (current — `/crates/elph-tui/src/`): `lib.rs` with 20+ component modules under `components/` (`ascii_font`, `card`, `code`, `dialog_shell/`, `diff`, `frame_buffer`, `input`, `line_numbers`, `markdown/`, `progress_indicator`, `qr_code`, `scroll_bar`, `scroll_box`, `select`, `slider`, `status_indicator`, `tab_select`, `text`, `textarea/`, `theme`). `textarea/` has `component.rs`, `input/` (paste, submit, wire_edit), `layout.rs`, `state.rs`. `markdown/` has 11+ sub-modules including `blocks`, `colors`, `highlight`, `layout`, `linkify`, `model`, `parse`, `parser_config`, `render`, `syntax`, `table`, `theme`. `dialog_shell/` provides modal-like dialog panels (confirm, multi_choice, user_input, todo_list, etc.). Additional crate-level modules: `input_prefix`, `slash_palette/` (fuzzy, keyboard, layout, model, state), `text_editing/` (actions, input, line, submit, wire), `transcript_layout.rs`, `text_input_layout.rs`, `cli_progress.rs`, `loader.rs`, `paste.rs`, `utils.rs`. Examples in `examples/` (26+ examples: weather, calculator, chat_layout, coding_agent app, demo_dialog_shell, demo_theme, etc.). Tests in `tests/` (14 files).
+
+### `elph-exec` (library crate)
+
+Path: `/crates/elph-exec/`
+
+PTY-based shell execution extracted from `elph-agent`. Provides a configurable shell runner with automatic PTY-on-Unix-then-piped-fallback strategy (`prefer_pty`), configurable timeouts, abort tokens via `tokio::select!`, streaming `on_stdout`/`on_stderr` callbacks, and output sanitization (strips control chars and Unicode annotations).
+
+Key modules:
+
+- `shell.rs` — `resolve_shell()` (finds `/bin/bash` → `bash` on `$PATH` → `/bin/sh`), `exec_shell_command()` (PTY path with `AsyncFd` + tokio fallback)
+- `pty/` — Unix raw PTY allocation via `rustix::pty` (`PtyMaster`, `Pts` with session leader pre-exec)
+- `types.rs` — `ShellConfig`, `ShellExecOptions`, `ShellExecResult`
+- `output.rs` — `sanitize_binary_output()` (strips ≤0x1f except tab/newline/cr, strips U+FFF9–FFFB)
+- `error.rs` — `ExecError` enum: `Aborted`, `Timeout`, `ShellUnavailable`, `SpawnError`, `CallbackError`, `Unknown`
 
 ### `elph-swarm` (library crate)
 

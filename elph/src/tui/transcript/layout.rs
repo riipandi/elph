@@ -22,6 +22,10 @@ pub fn layout_transcript_rows(messages: &[TranscriptMessage], screen_width: u16)
         } else {
             wrapped_transcript_row_count(&message.layout_text(), wrap_width) as u32
         };
+        let vertical_pad = message
+            .transcript_padding_top()
+            .saturating_add(message.transcript_padding_bottom()) as u32;
+        let row_count = row_count.saturating_add(vertical_pad);
         layouts.push(TranscriptRowLayout {
             start_row: cursor,
             row_count,
@@ -33,4 +37,25 @@ pub fn layout_transcript_rows(messages: &[TranscriptMessage], screen_width: u16)
         }
     }
     layouts
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::transcript::card::FLUSH_CARD_PAD;
+    use crate::tui::transcript::types::{EPHEMERAL_NOTICE_EXTRA_PAD_TOP, TranscriptMessage, TranscriptStyle};
+
+    #[test]
+    fn ephemeral_notice_row_layout_includes_extra_top_padding() {
+        let messages = vec![
+            TranscriptMessage::assistant_markdown("reply"),
+            TranscriptMessage::startup_status("transient:agent_mode", "Agent mode: plan.", TranscriptStyle::Meta),
+        ];
+        let layouts = layout_transcript_rows(&messages, 80);
+        let notice = &layouts[1];
+        let reply = &layouts[0];
+        let notice_pad = (FLUSH_CARD_PAD + EPHEMERAL_NOTICE_EXTRA_PAD_TOP) as u32 * 2;
+        assert_eq!(notice.start_row, reply.start_row.saturating_add(reply.row_count));
+        assert!(notice.row_count >= notice_pad);
+    }
 }

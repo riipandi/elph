@@ -179,7 +179,8 @@ Publishing order (workspace crates):
 2. `elph-ai`
 3. `elph-agent`
 4. `elph-tui`
-5. `elph` (binary — published for library users)
+5. `elph-exec`
+6. `elph` (binary — published for library users)
 
 `make publish-dry-run` — Dry run publish to verify.
 

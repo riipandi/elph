@@ -108,6 +108,29 @@ Key types:
 | `McpSessionPool` — Reuse MCP connections across tool calls                                     |         |
 | `McpServerSession` — Per-server session state including capabilities and notification handlers |         |
 
+## Deferred MCP Loading
+
+**Source**: `/elph/src/agent/mcp_bootstrap.rs`, `/elph/src/tui/startup.rs`
+
+MCP server discovery is now deferred: the agent session starts immediately, and `McpToolRegistry::load_with_options()` runs in the background. The TUI shows per-server progress/error rows in the transcript as each server is discovered.
+
+- `discover_mcp_registry_with_progress()` — Loads MCP config best-effort, emits `McpServerLoadProgress` events
+- `wire_mcp_into_session()` — Binds the loaded registry to a running `CodingAgentSession`
+- Startup transcript rows use stable keys (`startup:mcp:{name}`) for upsert semantics
+- Config warnings are surfaced inline alongside server status
+
+## Config Compat Layer
+
+**File**: `/crates/elph-agent/src/tools/mcp/compat.rs`
+
+Normalizes editor-style MCP JSON configurations (Cursor, VS Code, Claude Code) into Elph's canonical shape before schema validation:
+
+- Renames `mcpServers` → `servers` when the `servers` key is absent
+- Infers `type: "http"` when a server has `url` but no `type`
+- Infers `type: "stdio"` when a server has `command` but no `type`
+
+This allows users to share MCP configs across tools without manual reformatting.
+
 ## Authentication & Encryption
 
 ### OAuth 2.1
