@@ -81,9 +81,14 @@ pub struct ToolApprovalRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolApprovalChoice {
+    /// Run this tool call only; ask again next time.
     Approve,
+    /// Deny this tool call; ask again next time.
     Reject,
+    /// Allow this tool name for the rest of the session.
     AllowSession,
+    /// Allow every tool that requires approval for the rest of the session.
+    AllowAllTools,
 }
 
 /// One step in a single- or multi-step ask-user flow.

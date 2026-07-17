@@ -65,9 +65,7 @@ pub fn transcript_message_bubble(
         TranscriptStyle::User => user_prompt_card(screen_width, message, margin_bottom),
         TranscriptStyle::SkillPrompt => skill_prompt_card(screen_width, message, margin_bottom),
         TranscriptStyle::Thinking => thinking_card(screen_width, message, margin_bottom, message_index, toggle),
-        TranscriptStyle::Assistant => {
-            chat_response_card(screen_width, message, margin_bottom, message_index, toggle)
-        }
+        TranscriptStyle::Assistant => chat_response_card(screen_width, message, margin_bottom, message_index, toggle),
         TranscriptStyle::ToolRunning | TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed => {
             tool_call_card(screen_width, message, margin_bottom, message_index, toggle)
         }

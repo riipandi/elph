@@ -18,14 +18,12 @@ use crate::tui::theme::{
     TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG,
     TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
 };
-use crate::tui::tool_params::{
-    ToolParamsView, format_collapsed_tool_parts, parse_tool_params, tool_display_verb,
-};
+use crate::tui::tool_params::{ToolParamsView, format_collapsed_tool_parts, parse_tool_params, tool_display_verb};
 
 use super::super::types::{TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at};
 use super::chrome::{
-    ASK_USER_ANSWER_SECTION_GAP, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP, TOOL_OUTPUT_SECTION_GAP,
-    TranscriptCardChrome,
+    ASK_USER_ANSWER_SECTION_GAP, COLORED_CARD_PAD, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP,
+    TOOL_OUTPUT_SECTION_GAP, TranscriptCardChrome,
 };
 use super::frame::{
     assistant_message_elements, render_flush_card, render_invisible_tinted_card, render_tinted_card,
@@ -490,15 +488,18 @@ pub fn tool_call_card(
 ) -> AnyElement<'static> {
     let style = message.style;
     let mut chrome = TranscriptCardChrome::tinted(screen_width, style, margin_bottom);
-    // Process-log tools: flush vertical, compact horizontal (align with status/subagent rows).
-    // Collapsed finished tools also drop the full-width tint bar (header-only row).
-    // Expanded / running keep the status-tinted card for detail context.
+    // Collapsed finished tools: flush single-line row (no tint, no vertical pad).
+    // Running / expanded: tinted card with vertical pad so long-lived rows (e.g. Wait Agent)
+    // do not sit flush against neighbors.
     let collapsed = message.is_tool_collapsed();
-    chrome.padding_top = FLUSH_CARD_PAD;
-    chrome.padding_bottom = FLUSH_CARD_PAD;
     chrome.padding_h = PROCESS_LOG_PAD_H;
     if collapsed {
+        chrome.padding_top = FLUSH_CARD_PAD;
+        chrome.padding_bottom = FLUSH_CARD_PAD;
         chrome.background = Color::Reset;
+    } else {
+        chrome.padding_top = COLORED_CARD_PAD;
+        chrome.padding_bottom = COLORED_CARD_PAD;
     }
 
     if let Some(tool) = &message.tool {

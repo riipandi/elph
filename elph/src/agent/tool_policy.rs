@@ -63,7 +63,10 @@ fn is_ask_mode_tool(name: &str, mcp_registry: Option<&McpToolRegistry>, policy: 
 pub struct AgentModePolicy {
     pub mode: AgentMode,
     brave: bool,
+    /// Tool names the user allowed for the rest of this session (per-tool).
     session_allowed: Mutex<HashSet<String>>,
+    /// When true, skip approval for all tools until the process exits / policy resets.
+    session_allow_all: Mutex<bool>,
     /// Optional MCP registry for fine-grained MCP tool approval.
     mcp_registry: Option<Arc<McpToolRegistry>>,
 }
@@ -74,6 +77,7 @@ impl AgentModePolicy {
             mode,
             brave: mode == AgentMode::Brave,
             session_allowed: Mutex::new(HashSet::new()),
+            session_allow_all: Mutex::new(false),
             mcp_registry: None,
         }
     }
@@ -139,6 +143,9 @@ impl AgentModePolicy {
         args_summary: String,
         ui_tx: &tokio::sync::mpsc::UnboundedSender<AgentUiEvent>,
     ) -> Result<bool, String> {
+        if *self.session_allow_all.lock().await {
+            return Ok(true);
+        }
         if self.session_allowed.lock().await.contains(&tool_name) {
             return Ok(true);
         }
@@ -155,9 +162,19 @@ impl AgentModePolicy {
                 self.session_allowed.lock().await.insert(tool_name);
                 Ok(true)
             }
+            Ok(ToolApprovalChoice::AllowAllTools) => {
+                *self.session_allow_all.lock().await = true;
+                Ok(true)
+            }
             Ok(ToolApprovalChoice::Reject) => Ok(false),
             Err(_) => Err("Tool approval channel closed".into()),
         }
+    }
+
+    /// Whether the user chose "Allow all tools" for this session.
+    #[cfg(test)]
+    pub async fn session_allows_all_tools(&self) -> bool {
+        *self.session_allow_all.lock().await
     }
 }
 
@@ -232,5 +249,78 @@ mod tests {
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Plan, &all, None);
         assert!(active.contains(&"web_search".to_string()));
         assert!(!active.contains(&"edit_file".to_string()));
+    }
+
+    #[tokio::test]
+    async fn allow_all_tools_skips_further_approval_prompts() {
+        let policy = Arc::new(AgentModePolicy::new(AgentMode::Build));
+        let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        // First call still prompts (we answer AllowAllTools).
+        let policy_task = Arc::clone(&policy);
+        let ui_tx_clone = ui_tx.clone();
+        let approve = tokio::spawn(async move {
+            policy_task
+                .request_approval("c1".into(), "write_file".into(), r#"{"path":"a.rs"}"#.into(), &ui_tx_clone)
+                .await
+        });
+        let req = match ui_rx.recv().await {
+            Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
+            other => panic!("expected ToolApprovalRequired, got {other:?}"),
+        };
+        let _ = req.response_tx.send(ToolApprovalChoice::AllowAllTools);
+        assert_eq!(approve.await.expect("join"), Ok(true));
+        assert!(policy.session_allows_all_tools().await);
+
+        // Second call for a different tool must not prompt.
+        let ok = policy
+            .request_approval("c2".into(), "shell_exec".into(), r#"{"command":"ls"}"#.into(), &ui_tx)
+            .await
+            .expect("approval");
+        assert!(ok);
+        assert!(ui_rx.try_recv().is_err(), "no second approval dialog expected");
+    }
+
+    #[tokio::test]
+    async fn allow_session_only_skips_same_tool() {
+        let policy = Arc::new(AgentModePolicy::new(AgentMode::Build));
+        let (ui_tx, mut ui_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let policy_task = Arc::clone(&policy);
+        let ui_tx_clone = ui_tx.clone();
+        let approve = tokio::spawn(async move {
+            policy_task
+                .request_approval("c1".into(), "write_file".into(), r#"{"path":"a.rs"}"#.into(), &ui_tx_clone)
+                .await
+        });
+        let req = match ui_rx.recv().await {
+            Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
+            other => panic!("expected ToolApprovalRequired, got {other:?}"),
+        };
+        let _ = req.response_tx.send(ToolApprovalChoice::AllowSession);
+        assert_eq!(approve.await.expect("join"), Ok(true));
+
+        // Same tool: no prompt.
+        let ok = policy
+            .request_approval("c2".into(), "write_file".into(), "{}".into(), &ui_tx)
+            .await
+            .expect("approval");
+        assert!(ok);
+        assert!(ui_rx.try_recv().is_err());
+
+        // Different tool: still prompts.
+        let policy_task = Arc::clone(&policy);
+        let ui_tx_clone = ui_tx.clone();
+        let approve2 = tokio::spawn(async move {
+            policy_task
+                .request_approval("c3".into(), "shell_exec".into(), "{}".into(), &ui_tx_clone)
+                .await
+        });
+        let req2 = match ui_rx.recv().await {
+            Some(AgentUiEvent::ToolApprovalRequired(req)) => req,
+            other => panic!("expected second ToolApprovalRequired, got {other:?}"),
+        };
+        let _ = req2.response_tx.send(ToolApprovalChoice::Approve);
+        assert_eq!(approve2.await.expect("join"), Ok(true));
     }
 }

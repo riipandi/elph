@@ -958,9 +958,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let mut msgs = messages.write();
                             // Process status line (colored, consistent gaps) — not a flush Meta dump.
                             let key = tool_approval_transcript_key(&tool_call_id);
-                            if let Some(existing) = msgs
-                                .iter_mut()
-                                .find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                            if let Some(existing) =
+                                msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                             {
                                 existing.content = "Tool approval".to_string();
                                 existing.status_detail = Some(verb.clone());
@@ -1640,15 +1639,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             ToolApprovalChoice::AllowSession => {
                                 (TranscriptStyle::StatusSuccess, format!("{verb} · allowed session"))
                             }
-                            ToolApprovalChoice::Reject => {
-                                (TranscriptStyle::StatusFailed, format!("{verb} · denied"))
+                            ToolApprovalChoice::AllowAllTools => {
+                                (TranscriptStyle::StatusSuccess, "all tools · session".to_string())
                             }
+                            ToolApprovalChoice::Reject => (TranscriptStyle::StatusFailed, format!("{verb} · denied")),
                         };
                         {
                             let mut msgs = messages.write();
-                            if let Some(row) = msgs
-                                .iter_mut()
-                                .find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                            if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
                             {
                                 row.content = "Tool approval".to_string();
                                 row.status_detail = Some(detail);
@@ -1662,6 +1660,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     activity_label.set(match choice {
                         ToolApprovalChoice::Approve => "Running approved tool…".to_string(),
                         ToolApprovalChoice::AllowSession => "Running tool (session allow)…".to_string(),
+                        ToolApprovalChoice::AllowAllTools => {
+                            "Running tool (all tools allowed this session)…".to_string()
+                        }
                         ToolApprovalChoice::Reject => "Tool denied".to_string(),
                     });
                     return;
@@ -2184,9 +2185,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
                 // Ctrl+O: expand/collapse the most recent finished thinking / tool / response block.
                 // Click a process header to toggle that specific older result (iocraft Button hit-test).
-                (m, KeyCode::Char(c))
-                    if m.contains(KeyModifiers::CONTROL) && matches!(c, 'o' | 'O') =>
-                {
+                (m, KeyCode::Char(c)) if m.contains(KeyModifiers::CONTROL) && matches!(c, 'o' | 'O') => {
                     let mut msgs = messages.write();
                     if toggle_latest_collapsible_detail(&mut msgs) {
                         drop(msgs);

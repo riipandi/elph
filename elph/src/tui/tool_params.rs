@@ -900,10 +900,7 @@ mod tests {
 
     #[test]
     fn format_collapsed_tool_label_uses_verb_and_target() {
-        let label = format_collapsed_tool_label(
-            "edit_file",
-            r#"{"path":"/Users/ariss/Developer/elph/nama-file.ext"}"#,
-        );
+        let label = format_collapsed_tool_label("edit_file", r#"{"path":"/Users/ariss/Developer/elph/nama-file.ext"}"#);
         assert!(label.starts_with("Edit "), "{label}");
         assert!(label.contains("nama-file.ext"), "{label}");
         assert!(!label.contains("edit_file"), "{label}");

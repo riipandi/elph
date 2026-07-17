@@ -77,10 +77,7 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
             message,
             ..
         } => Some(crate::tui::subagent_display::format_subagent_activity_label(
-            task_name,
-            agent_path,
-            agent_id,
-            message,
+            task_name, agent_path, agent_id, message,
         )),
         AgentUiEvent::PlanConfirmationRequired(_) => Some("Awaiting plan approval".to_string()),
         AgentUiEvent::ToolApprovalRequired(_) => Some("Awaiting tool approval".to_string()),

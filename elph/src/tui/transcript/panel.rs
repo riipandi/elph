@@ -88,11 +88,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let messages = messages_state.read();
     let _scroll_generation = scroll_generation.get();
     let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
-    let cache_key = (
-        messages_revision_value,
-        markdown_layout_revision.get(),
-        props.screen_width,
-    );
+    let cache_key = (messages_revision_value, markdown_layout_revision.get(), props.screen_width);
 
     if render_cache.read().as_ref().is_none_or(|c| {
         c.messages_revision != cache_key.0 || c.markdown_layout_revision != cache_key.1 || c.screen_width != cache_key.2

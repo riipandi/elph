@@ -172,9 +172,7 @@ impl TranscriptMessage {
         if self.style == TranscriptStyle::Thinking && self.duration_secs.is_some() {
             return true;
         }
-        if self.tool.is_some()
-            && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed)
-        {
+        if self.tool.is_some() && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed) {
             return true;
         }
         // Settled AI replies can be folded so older turns stay compact.
@@ -218,8 +216,7 @@ impl TranscriptMessage {
                 || (self.duration_secs.is_some() && self.detail_expanded && !self.content.is_empty());
         }
         if self.style == TranscriptStyle::Assistant && !self.local_slash_response {
-            return self.duration_secs.is_none()
-                || (self.detail_expanded && !self.content.is_empty());
+            return self.duration_secs.is_none() || (self.detail_expanded && !self.content.is_empty());
         }
         false
     }
@@ -269,10 +266,14 @@ impl TranscriptMessage {
         if self.local_slash_response {
             COLORED_CARD_PAD
         } else if self.is_tool_style() {
-            // Process-log tools always flush vertically so inter-row density is controlled
-            // only by [`transcript_margin_bottom`] (collapsed/expanded pad would stack with
-            // margin and break "both collapsed" vs "both expanded" consistency).
-            FLUSH_CARD_PAD
+            // Collapsed finished tools stay flush (header-only process log).
+            // Running / expanded keep vertical pad so tinted cards (Wait Agent, live tools)
+            // breathe against neighbors.
+            if self.is_tool_collapsed() {
+                FLUSH_CARD_PAD
+            } else {
+                COLORED_CARD_PAD
+            }
         } else if self.style.is_flush_text() {
             FLUSH_CARD_PAD
         } else {
@@ -898,37 +899,43 @@ mod tests {
         assert_eq!(mcp.transcript_margin_bottom(Some(&server)), FLUSH_CARD_GAP);
 
         // Status → tool keeps a single process-log cell of air.
-        let mut tool =
-            TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut tool = TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
         tool.detail_expanded = false;
         assert_eq!(server.transcript_margin_bottom(Some(&tool)), LOG_ROW_GAP);
     }
 
     #[test]
     fn process_log_gaps_are_stable_across_collapse() {
-        let mut a =
-            TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut a = TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
         a.detail_expanded = false;
-        let mut b =
-            TranscriptMessage::tool_call("edit_file", r#"{"path":"b.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut b = TranscriptMessage::tool_call("edit_file", r#"{"path":"b.rs"}"#, TranscriptStyle::ToolSuccess);
         b.detail_expanded = false;
-        // Vertical pad is always flush so margin alone owns the inter-row rhythm.
+        // Collapsed tools are flush; margin alone owns the inter-row rhythm.
         assert_eq!(a.transcript_padding_top(), FLUSH_CARD_PAD);
         assert_eq!(a.transcript_padding_bottom(), FLUSH_CARD_PAD);
 
-        // Both collapsed, expand only second, both expanded — same gap (no density shrink).
+        // Both collapsed, expand only second, both expanded — same margin (no density shrink).
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
         b.detail_expanded = true;
         assert!(b.is_expanded_process_row());
+        assert_eq!(b.transcript_padding_top(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
         a.detail_expanded = true;
+        assert_eq!(a.transcript_padding_bottom(), COLORED_CARD_PAD);
         assert_eq!(a.transcript_margin_bottom(Some(&b)), LOG_ROW_GAP);
     }
 
     #[test]
+    fn running_tool_card_has_vertical_breathing_room() {
+        let wait = TranscriptMessage::tool_call("wait_agent", r#"{"agent_id":"x"}"#, TranscriptStyle::ToolRunning);
+        assert!(!wait.is_tool_collapsed());
+        assert_eq!(wait.transcript_padding_top(), COLORED_CARD_PAD);
+        assert_eq!(wait.transcript_padding_bottom(), COLORED_CARD_PAD);
+    }
+
+    #[test]
     fn tool_before_assistant_has_response_breathing_room() {
-        let mut tool =
-            TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
+        let mut tool = TranscriptMessage::tool_call("read_file", r#"{"path":"a.rs"}"#, TranscriptStyle::ToolSuccess);
         tool.detail_expanded = false;
         assert!(tool.is_tool_collapsed());
 
@@ -938,17 +945,11 @@ mod tests {
         // Collapsed tool → expanded response keeps the same process-log rhythm.
         assert_eq!(tool.transcript_margin_bottom(Some(&reply)), LOG_ROW_GAP);
 
-        let mut ask = TranscriptMessage::tool_call(
-            "ask_user_question",
-            r#"{"question":"Name?"}"#,
-            TranscriptStyle::ToolSuccess,
-        );
+        let mut ask =
+            TranscriptMessage::tool_call("ask_user_question", r#"{"question":"Name?"}"#, TranscriptStyle::ToolSuccess);
         ask.detail_expanded = true;
         assert!(ask.is_ask_user_tool());
-        assert_eq!(
-            ask.transcript_margin_bottom(Some(&reply)),
-            TOOL_TO_RESPONSE_GAP
-        );
+        assert_eq!(ask.transcript_margin_bottom(Some(&reply)), TOOL_TO_RESPONSE_GAP);
     }
 
     #[test]
@@ -1040,8 +1041,7 @@ mod tests {
                 m
             },
             {
-                let mut m =
-                    TranscriptMessage::tool_call("grep", r#"{"pattern":"x"}"#, TranscriptStyle::ToolSuccess);
+                let mut m = TranscriptMessage::tool_call("grep", r#"{"pattern":"x"}"#, TranscriptStyle::ToolSuccess);
                 m.duration_secs = Some(0.8);
                 m.detail_expanded = false;
                 m

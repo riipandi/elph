@@ -99,12 +99,7 @@ pub fn format_subagent_status_label(
 }
 
 /// Busy footer label (no indent; keep short).
-pub fn format_subagent_activity_label(
-    task_name: &str,
-    agent_path: &str,
-    agent_id: &str,
-    action: &str,
-) -> String {
+pub fn format_subagent_activity_label(task_name: &str, agent_path: &str, agent_id: &str, action: &str) -> String {
     let name = subagent_short_name(task_name, agent_path, agent_id);
     let action = subagent_action_label(action);
     if action.is_empty() {
@@ -135,14 +130,8 @@ mod tests {
             subagent_short_name("summarize-docs", "main/worker-1", "agent_long_id"),
             "summarize-docs"
         );
-        assert_eq!(
-            subagent_short_name("", "main/worker-1", "agent_long_id"),
-            "worker-1"
-        );
-        assert_eq!(
-            subagent_short_name("default", "main/nested/leaf", "agent_long_id"),
-            "leaf"
-        );
+        assert_eq!(subagent_short_name("", "main/worker-1", "agent_long_id"), "worker-1");
+        assert_eq!(subagent_short_name("default", "main/nested/leaf", "agent_long_id"), "leaf");
     }
 
     #[test]

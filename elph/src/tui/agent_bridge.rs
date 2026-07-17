@@ -574,7 +574,11 @@ mod tests {
         assert_eq!(messages[0].style, TranscriptStyle::StatusRunning);
         assert_eq!(messages[0].startup_key.as_deref(), Some("subagent:agent_01"));
         assert!(messages[0].content.contains("Subagent worker-1"), "{}", messages[0].content);
-        assert!(!messages[0].content.contains("Read"), "task title only: {}", messages[0].content);
+        assert!(
+            !messages[0].content.contains("Read"),
+            "task title only: {}",
+            messages[0].content
+        );
         assert_eq!(
             messages[0].status_detail.as_deref(),
             Some("Read · running"),
