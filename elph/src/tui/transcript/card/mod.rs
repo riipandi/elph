@@ -9,7 +9,8 @@ pub(crate) mod timestamp_layout;
 mod toggle_ctx;
 mod tool_format;
 
-pub use builder::build_transcript_bubbles;
+#[allow(unused_imports)] // full rebuild kept for tests/callers that need every bubble
+pub use builder::{build_transcript_bubbles, build_transcript_bubbles_windowed};
 pub use sticky::transcript_sticky_overlay;
 pub use toggle_ctx::CollapsibleToggleCtx;
 
@@ -18,4 +19,7 @@ pub(crate) use chrome::{
     THINKING_RESPONSE_GAP, TOOL_TO_RESPONSE_GAP,
 };
 pub(crate) use kinds::tool_status_marker;
-pub(crate) use tool_format::{format_tool_args_display, format_tool_output_display};
+pub(crate) use tool_format::{
+    format_assistant_stream_body_display, format_thinking_body_display, format_tool_args_display,
+    format_tool_output_display,
+};

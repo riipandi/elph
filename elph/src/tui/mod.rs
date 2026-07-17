@@ -4,6 +4,7 @@
 
 mod activity;
 mod agent_bridge;
+pub(crate) mod api_error_display;
 mod ask_user_tool_card;
 mod chrome;
 mod confetti;

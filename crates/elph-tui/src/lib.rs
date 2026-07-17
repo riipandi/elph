@@ -28,7 +28,7 @@ pub use input_prefix::{
     list_selection_row_prefix, prefix_symbol, resolve_submit_draft, strip_body_triggers, strip_submit_trigger,
     try_consume_trigger,
 };
-pub use loader::{KittScanner, KittScannerConfig, LoaderCell, SpinnerLoader};
+pub use loader::{KittScanner, KittScannerConfig, LoaderCell, SPINNER_FRAME_MS, SpinnerLoader};
 pub use slash_palette::{
     PaletteSnapshot, SlashCommand, SlashPaletteKeyAction, build_snapshot, complete_command, filter_commands,
     open_palette_draft, palette_anchor_bottom, palette_list_height, palette_query, palette_visible,

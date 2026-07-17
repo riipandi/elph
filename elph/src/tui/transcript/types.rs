@@ -5,7 +5,8 @@ use iocraft::prelude::Color;
 
 use crate::tui::theme::{
     EPHEMERAL_NOTICE_FG, META_FG, QUIT_BUSY_NOTICE_FG, SKILL_FG, TEXT_FG, THINKING_BG, THINKING_FG, TOOL_FAILED_BG,
-    TOOL_FAILED_FG, TOOL_RUNNING_BG, TOOL_RUNNING_FG, TOOL_SUCCESS_BG, TOOL_SUCCESS_FG, USER_INPUT_BG,
+    STATUS_FAILED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TOOL_FAILED_FG, TOOL_RUNNING_BG, TOOL_RUNNING_FG,
+    TOOL_SUCCESS_BG, TOOL_SUCCESS_FG, USER_INPUT_BG,
 };
 
 use super::card::{
@@ -14,7 +15,10 @@ use super::card::{
 };
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
-use super::card::{format_tool_args_display, format_tool_output_display, tool_status_marker};
+use super::card::{
+    format_assistant_stream_body_display, format_thinking_body_display, format_tool_args_display,
+    format_tool_output_display, tool_status_marker,
+};
 use super::markdown::AssistantMarkdownBuffer;
 
 /// Extra scroll-row padding above ephemeral transcript notices (`transient:*` keys).
@@ -156,7 +160,12 @@ impl TranscriptMessage {
     }
 
     /// Finished tool call with args/output folded into a single status header.
+    ///
+    /// `wait_agent` is always header-first (status-style); body only when expanded + has output.
     pub fn is_tool_collapsed(&self) -> bool {
+        if self.is_wait_agent_tool() {
+            return !self.detail_expanded || !self.wait_agent_has_body();
+        }
         self.tool.is_some()
             && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed)
             && !self.detail_expanded
@@ -172,6 +181,11 @@ impl TranscriptMessage {
         if self.style == TranscriptStyle::Thinking && self.duration_secs.is_some() {
             return true;
         }
+        // Wait Agent: only toggle when there is result text (idle summary).
+        if self.is_wait_agent_tool() {
+            return self.wait_agent_has_body()
+                && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed);
+        }
         if self.tool.is_some() && matches!(self.style, TranscriptStyle::ToolSuccess | TranscriptStyle::ToolFailed) {
             return true;
         }
@@ -185,6 +199,19 @@ impl TranscriptMessage {
             let base = tool.name.rsplit("__").next().unwrap_or(tool.name.as_str());
             base == "ask_user_question" || base == "ask_user"
         })
+    }
+
+    /// `wait_agent` collaboration tool — status-style process row (not a tinted args card).
+    pub fn is_wait_agent_tool(&self) -> bool {
+        self.tool.as_ref().is_some_and(|tool| {
+            let base = tool.name.rsplit("__").next().unwrap_or(tool.name.as_str());
+            base == "wait_agent"
+        })
+    }
+
+    /// Whether this wait_agent row has expandable result body text.
+    pub fn wait_agent_has_body(&self) -> bool {
+        self.is_wait_agent_tool() && self.tool.as_ref().is_some_and(|tool| !tool.output.trim().is_empty())
     }
 
     fn is_tool_style(&self) -> bool {
@@ -265,10 +292,12 @@ impl TranscriptMessage {
     fn transcript_flush_padding_base(&self) -> u16 {
         if self.local_slash_response {
             COLORED_CARD_PAD
+        } else if self.is_wait_agent_tool() {
+            // Status-style process row — flush like subagent status lines.
+            FLUSH_CARD_PAD
         } else if self.is_tool_style() {
             // Collapsed finished tools stay flush (header-only process log).
-            // Running / expanded keep vertical pad so tinted cards (Wait Agent, live tools)
-            // breathe against neighbors.
+            // Running / expanded keep vertical pad so tinted cards breathe against neighbors.
             if self.is_tool_collapsed() {
                 FLUSH_CARD_PAD
             } else {
@@ -321,13 +350,19 @@ impl TranscriptMessage {
 
     /// Header (+ optional body) for thinking / response phases (glyph matches process indicator).
     fn process_phase_layout_text(&self, label: &str) -> String {
+        use elph_tui::{GLYPH_META_SEP, ProcessStatus, process_status_glyph, process_status_word};
         let streaming = self.duration_secs.is_none();
-        let glyph = if streaming { "◌" } else { "✓" };
+        let status = if streaming {
+            ProcessStatus::Running
+        } else {
+            ProcessStatus::Done
+        };
+        let glyph = process_status_glyph(status);
         let mut header = format!("{glyph} {label}");
         if let Some(secs) = self.duration_secs {
             header.push_str(&crate::tui::activity::format_duration_label_suffix(secs));
         } else {
-            header.push_str(" · running");
+            header.push_str(&format!(" {GLYPH_META_SEP} {}", process_status_word(status)));
         }
         let show_body = match self.style {
             TranscriptStyle::Thinking => streaming || (self.detail_expanded && !self.content.is_empty()),
@@ -335,7 +370,13 @@ impl TranscriptMessage {
             _ => !self.content.is_empty(),
         };
         if show_body {
-            format!("{header}\n{}", self.content)
+            let body = match self.style {
+                TranscriptStyle::Thinking => format_thinking_body_display(&self.content),
+                // Streaming assistant: layout only needs the recent tail (full text stays in memory).
+                TranscriptStyle::Assistant if streaming => format_assistant_stream_body_display(&self.content),
+                _ => self.content.clone(),
+            };
+            format!("{header}\n{body}")
         } else {
             header
         }
@@ -461,7 +502,6 @@ pub enum TranscriptStyle {
     Assistant,
     SkillPrompt,
     Meta,
-    #[expect(dead_code)]
     Error,
     ToolRunning,
     ToolSuccess,
@@ -588,9 +628,12 @@ impl TranscriptStyle {
             Self::Meta => META_FG,
             Self::User | Self::Assistant => TEXT_FG,
             Self::Error => TOOL_FAILED_FG,
-            Self::ToolRunning | Self::StatusRunning => TOOL_RUNNING_FG,
-            Self::ToolSuccess | Self::StatusSuccess => TOOL_SUCCESS_FG,
-            Self::ToolFailed | Self::StatusFailed => TOOL_FAILED_FG,
+            Self::ToolRunning => TOOL_RUNNING_FG,
+            Self::StatusRunning => STATUS_RUNNING_FG,
+            Self::ToolSuccess => TOOL_SUCCESS_FG,
+            Self::StatusSuccess => STATUS_SUCCESS_FG,
+            Self::ToolFailed => TOOL_FAILED_FG,
+            Self::StatusFailed => STATUS_FAILED_FG,
         }
     }
 
@@ -686,8 +729,9 @@ mod tests {
 
     #[test]
     fn status_notification_fg_uses_soft_green_and_clearer_red() {
-        assert_eq!(TranscriptStyle::StatusSuccess.text_color(), TOOL_SUCCESS_FG);
-        assert_eq!(TranscriptStyle::StatusFailed.text_color(), TOOL_FAILED_FG);
+        assert_eq!(TranscriptStyle::StatusSuccess.text_color(), STATUS_SUCCESS_FG);
+        assert_eq!(TranscriptStyle::StatusFailed.text_color(), STATUS_FAILED_FG);
+        assert_eq!(TranscriptStyle::StatusRunning.text_color(), STATUS_RUNNING_FG);
         assert_eq!(TranscriptStyle::ToolSuccess.text_color(), TOOL_SUCCESS_FG);
         assert_eq!(TranscriptStyle::ToolFailed.text_color(), TOOL_FAILED_FG);
         // Success reads green (g dominant over r); failed reads red (r dominant over g).
@@ -926,11 +970,34 @@ mod tests {
     }
 
     #[test]
-    fn running_tool_card_has_vertical_breathing_room() {
-        let wait = TranscriptMessage::tool_call("wait_agent", r#"{"agent_id":"x"}"#, TranscriptStyle::ToolRunning);
-        assert!(!wait.is_tool_collapsed());
-        assert_eq!(wait.transcript_padding_top(), COLORED_CARD_PAD);
-        assert_eq!(wait.transcript_padding_bottom(), COLORED_CARD_PAD);
+    fn wait_agent_is_flush_status_style_row() {
+        let wait =
+            TranscriptMessage::tool_call("wait_agent", r#"{"agent_id":"worker-1"}"#, TranscriptStyle::ToolRunning);
+        assert!(wait.is_wait_agent_tool());
+        // Running wait is compact (no tinted body chrome).
+        assert!(wait.is_tool_collapsed());
+        assert_eq!(wait.transcript_padding_top(), FLUSH_CARD_PAD);
+        assert_eq!(wait.transcript_padding_bottom(), FLUSH_CARD_PAD);
+        let layout = wait.layout_text();
+        assert!(layout.contains("Wait"), "{layout}");
+        assert!(layout.contains("worker-1"), "{layout}");
+        assert!(!layout.contains("wait_agent"), "{layout}");
+    }
+
+    #[test]
+    fn wait_agent_collapsible_only_with_result_body() {
+        let mut wait = TranscriptMessage::tool_call("wait_agent", r#"{"agent_id":"a"}"#, TranscriptStyle::ToolSuccess);
+        wait.detail_expanded = false;
+        assert!(!wait.is_collapsible_detail());
+        wait.tool.as_mut().expect("tool").output = "a is idle".into();
+        assert!(wait.is_collapsible_detail());
+    }
+
+    #[test]
+    fn other_running_tools_keep_vertical_pad() {
+        let shell = TranscriptMessage::tool_call("shell_exec", r#"{"command":"ls"}"#, TranscriptStyle::ToolRunning);
+        assert!(!shell.is_tool_collapsed());
+        assert_eq!(shell.transcript_padding_top(), COLORED_CARD_PAD);
     }
 
     #[test]

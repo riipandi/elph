@@ -1,5 +1,7 @@
+mod crash;
 mod options;
 
+pub use crash::{CRASH_LOG_FILE, crash_log_path, install_panic_hook};
 pub use options::{LogRotation, LoggingOptions};
 
 use std::num::NonZeroUsize;

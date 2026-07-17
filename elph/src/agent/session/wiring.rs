@@ -152,6 +152,9 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
             AssistantMessageEvent::ThinkingDelta { delta, .. } if show_thinking => {
                 let _ = ui_tx.send(AgentUiEvent::ThinkingDelta(delta.clone()));
             }
+            AssistantMessageEvent::Error { .. } => {
+                // Final error text is on MessageEnd / TurnEnd via assistant.error_message.
+            }
             _ => {}
         },
         AgentEvent::ToolExecutionStart {
@@ -192,6 +195,13 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
                 output: summarize_tool_result(&result),
             });
         }
+        AgentEvent::MessageEnd { message } => {
+            emit_assistant_api_error(ui_tx, &message);
+        }
+        AgentEvent::TurnEnd { message, .. } => {
+            // Backup path if MessageEnd was skipped; emit_assistant_api_error is idempotent-friendly.
+            emit_assistant_api_error(ui_tx, &message);
+        }
         AgentEvent::PlanConfirmationRequired { plan_id, plan_text } => {
             let _ = ui_tx.send(AgentUiEvent::PlanConfirmationRequired(PlanConfirmationRequest {
                 plan_id,
@@ -200,6 +210,29 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
         }
         _ => {}
     }
+}
+
+/// Surface stream/API failures (401, 409, …) as a clear Status line for the TUI.
+fn emit_assistant_api_error(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, message: &elph_agent::AgentMessage) {
+    use crate::tui::api_error_display::format_user_facing_api_error;
+    use elph_ai::Message;
+
+    let Some(llm) = message.as_llm() else {
+        return;
+    };
+    let Message::Assistant(assistant) = llm else {
+        return;
+    };
+    let Some(raw) = assistant
+        .error_message
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    else {
+        return;
+    };
+    let text = format_user_facing_api_error(raw);
+    let _ = ui_tx.send(AgentUiEvent::Status(text));
 }
 
 fn summarize_tool_result(result: &elph_agent::AgentToolResult) -> String {

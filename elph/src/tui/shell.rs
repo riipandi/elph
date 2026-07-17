@@ -73,11 +73,13 @@ use crate::tui::system_prompt_dialog::{
     open_system_prompt_dialog, system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::PendingToolApproval;
-use crate::tui::tool_approval::{choice_at_index, pick_tool_approval_index_from_key, tool_approval_transcript_key};
+use crate::tui::tool_approval::{
+    TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, pick_tool_approval_index_from_key, tool_approval_transcript_key,
+};
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
     EphemeralBanner, EphemeralBannerGeneration, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
-    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, clear_ephemeral_banner,
+    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
     clear_ephemeral_banner_if_generation, expire_ephemeral_banner, publish_ephemeral_banner, quit_busy_banner,
     toggle_latest_collapsible_detail,
 };
@@ -95,11 +97,14 @@ use elph_tui::components::ConfirmButtonFocus;
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
-/// Cap transcript repaints during streaming so the prompt editor stays responsive.
-const TRANSCRIPT_PUBLISH_MS: u64 = 66;
+/// Base transcript publish interval while streaming (~10 Hz). Status spinner ticks in StatusRow.
+const TRANSCRIPT_PUBLISH_MS: u64 = 100;
 /// Faster transcript refresh while startup status lines are updating.
-const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 16;
-const MAX_UI_EVENTS_PER_TICK: usize = 64;
+const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 33;
+/// Back off publish rate under heavy event bursts (CPU/memory headroom for input + scroll).
+const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
+const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
+const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.
 const TURN_COMPLETE_NOTICE_MS: u64 = 5_000;
@@ -255,9 +260,6 @@ struct BusyActivation<'a> {
     busy: &'a mut State<bool>,
     busy_started_at: &'a mut Ref<Option<Instant>>,
     activity_started_at: &'a mut Ref<Option<Instant>>,
-    elapsed_secs: &'a mut State<f64>,
-    activity_elapsed_secs: &'a mut State<f64>,
-    spinner_tick: &'a mut State<u32>,
     activity_label: &'a mut State<String>,
     last_activity_label: &'a mut Ref<String>,
 }
@@ -274,9 +276,6 @@ fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool, activity_label: Option<&
     ctx.busy.set(true);
     ctx.busy_started_at.set(Some(now));
     ctx.activity_started_at.set(Some(now));
-    ctx.elapsed_secs.set(0.0);
-    ctx.activity_elapsed_secs.set(0.0);
-    ctx.spinner_tick.set(0);
     ctx.activity_label.set(label.clone());
     ctx.last_activity_label.set(label);
 }
@@ -454,9 +453,15 @@ fn publish_transcript_now(
     last_transcript_publish.set(Instant::now());
 }
 
-fn transcript_publish_interval_ms(bootstrap_active: bool) -> u64 {
+/// Adaptive publish interval: slower under large event bursts to keep UI input responsive.
+fn transcript_publish_interval_ms(bootstrap_active: bool, event_burst: usize) -> u64 {
     if bootstrap_active {
-        STARTUP_TRANSCRIPT_PUBLISH_MS
+        return STARTUP_TRANSCRIPT_PUBLISH_MS;
+    }
+    if event_burst >= 32 {
+        TRANSCRIPT_PUBLISH_BURST_MS
+    } else if event_burst >= 16 {
+        TRANSCRIPT_PUBLISH_HEAVY_MS
     } else {
         TRANSCRIPT_PUBLISH_MS
     }
@@ -497,7 +502,13 @@ fn apply_bootstrap_ui_event(
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
             {
                 let mut msgs = messages.write();
-                mark_agent_startup_ready(&mut msgs);
+                let provider = bootstrap.session.model_provider();
+                let model = bootstrap.session.model_id();
+                mark_agent_startup_ready(
+                    &mut msgs,
+                    (!provider.trim().is_empty()).then_some(provider),
+                    (!model.trim().is_empty()).then_some(model),
+                );
             }
             bootstrap_phase.set(BootstrapPhase::AgentReady);
             activity_label.set(bootstrap_activity_label(BootstrapPhase::AgentReady, None));
@@ -581,11 +592,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
-    let mut elapsed_secs = hooks.use_state(|| 0.0f64);
-    let mut activity_elapsed_secs = hooks.use_state(|| 0.0f64);
     let mut session_elapsed_secs = hooks.use_state(|| 0.0f64);
     let session_wall_started_at = hooks.use_ref(Instant::now);
-    let mut spinner_tick = hooks.use_state(|| 0u32);
     let show_thinking = props.show_thinking;
     let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
     let mut activity_started_at = hooks.use_ref(|| None::<Instant>);
@@ -680,6 +688,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let session_id = live_session_id.read().clone();
     let mut transcript_pending = hooks.use_ref(|| false);
     let mut last_transcript_publish = hooks.use_ref(|| Instant::now() - Duration::from_millis(TRANSCRIPT_PUBLISH_MS));
+    let mut last_event_burst = hooks.use_ref(|| 0usize);
     let mut idle_status_notice = hooks.use_ref(|| None::<IdleStatusNotice>);
     let mut turn_cancel_requested = hooks.use_ref(|| false);
     let mut pending_quit_confirm = hooks.use_ref(|| false);
@@ -830,31 +839,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
             }
 
+            // Phase-timer reset only — spinner/elapsed animate inside StatusRow (no shell re-render).
             if busy.get() {
                 let current_label = activity_label.read().clone();
                 if current_label != *last_activity_label.read() {
                     last_activity_label.set(current_label);
                     activity_started_at.set(Some(Instant::now()));
-                    activity_elapsed_secs.set(0.0);
                 }
-                if let Some(started) = busy_started_at.read().as_ref() {
-                    let next = format_elapsed_secs(*started);
-                    if (elapsed_secs.get() - next).abs() > f64::EPSILON {
-                        elapsed_secs.set(next);
-                    }
-                }
-                if let Some(started) = activity_started_at.read().as_ref() {
-                    let next = format_elapsed_secs(*started);
-                    if (activity_elapsed_secs.get() - next).abs() > f64::EPSILON {
-                        activity_elapsed_secs.set(next);
-                    }
-                }
-                let spinner_step = if bootstrap_is_active(bootstrap_phase.get()) {
-                    2
-                } else {
-                    1
-                };
-                spinner_tick.set(spinner_tick.get().wrapping_add(spinner_step));
             }
 
             let idle_notice_expired = idle_status_notice
@@ -899,21 +890,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             if let Some(rx) = ui_events.as_ref()
                 && let Ok(mut guard) = rx.lock()
             {
-                let mut events_processed = 0usize;
-                while events_processed < MAX_UI_EVENTS_PER_TICK {
+                // Drain + coalesce stream deltas so one tick applies O(1) text/tool appends
+                // instead of dozens of tiny mutations that each rebuild layout.
+                let mut raw_events = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
+                while raw_events.len() < MAX_UI_EVENTS_PER_TICK {
                     let Ok(event) = guard.try_recv() else {
                         break;
                     };
-                    events_processed += 1;
+                    raw_events.push(event);
+                }
+                last_event_burst.set(raw_events.len());
+                let events = crate::tui::agent_bridge::coalesce_agent_ui_events(raw_events);
+                for event in events {
                     if !busy.get() && agent_event_keeps_busy(&event) {
                         mark_busy(
                             &mut BusyActivation {
                                 busy: &mut busy,
                                 busy_started_at: &mut busy_started_at,
                                 activity_started_at: &mut activity_started_at,
-                                elapsed_secs: &mut elapsed_secs,
-                                activity_elapsed_secs: &mut activity_elapsed_secs,
-                                spinner_tick: &mut spinner_tick,
                                 activity_label: &mut activity_label,
                                 last_activity_label: &mut last_activity_label,
                             },
@@ -940,10 +934,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         _ => {}
                     }
 
-                    if let AgentUiEvent::Status(ref message) = event
-                        && message.to_ascii_lowercase().contains("reloaded")
-                    {
-                        palette_refresh_pending.set(true);
+                    if let AgentUiEvent::Status(ref message) = event {
+                        if message.to_ascii_lowercase().contains("reloaded") {
+                            palette_refresh_pending.set(true);
+                        }
+                        // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
+                        if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
+                            let toast =
+                                crate::tui::api_error_display::format_ephemeral_api_error(message);
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &ephemeral_expire.read().tx,
+                                api_error_banner(toast),
+                            );
+                        }
                     }
 
                     if let AgentUiEvent::ToolApprovalRequired(req) = event {
@@ -951,7 +956,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let tool_call_id = req.tool_call_id.clone();
                         let verb = tool_display_verb(&tool_name);
                         activity_label.set(format!("Approve: {verb}"));
-                        approval_selected.set(0);
+                        approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
                         {
@@ -1044,13 +1049,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             .read()
                             .as_ref()
                             .map(|started| format_elapsed_secs(*started))
-                            .unwrap_or(activity_elapsed_secs.get());
+                            .unwrap_or(0.0);
                         user_shell_abort.set(None);
                         turn_cancel_requested.set(false);
                         busy.set(false);
                         busy_started_at.set(None);
                         activity_started_at.set(None);
-                        activity_elapsed_secs.set(0.0);
                         activity_label.set(String::new());
                         if cancelled {
                             idle_status_notice.set(Some(IdleStatusNotice {
@@ -1069,9 +1073,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     busy: &mut busy,
                                     busy_started_at: &mut busy_started_at,
                                     activity_started_at: &mut activity_started_at,
-                                    elapsed_secs: &mut elapsed_secs,
-                                    activity_elapsed_secs: &mut activity_elapsed_secs,
-                                    spinner_tick: &mut spinner_tick,
                                     activity_label: &mut activity_label,
                                     last_activity_label: &mut last_activity_label,
                                 },
@@ -1087,7 +1088,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 transcript_pending.set(true);
             }
 
-            let transcript_publish_ms = transcript_publish_interval_ms(bootstrap_is_active(bootstrap_phase.get()));
+            let transcript_publish_ms =
+                transcript_publish_interval_ms(bootstrap_is_active(bootstrap_phase.get()), last_event_burst.get());
             if transcript_pending.get()
                 && (run_completed
                     || last_transcript_publish.get().elapsed().as_millis() >= transcript_publish_ms as u128)
@@ -1106,8 +1108,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 busy.set(false);
                 busy_started_at.set(None);
                 activity_started_at.set(None);
-                elapsed_secs.set(0.0);
-                activity_elapsed_secs.set(0.0);
                 activity_label.set("Thinking".to_string());
                 turn_token_tracker.set(None);
                 chrome_refresh_pending.set(true);
@@ -1120,9 +1120,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             busy: &mut busy,
                             busy_started_at: &mut busy_started_at,
                             activity_started_at: &mut activity_started_at,
-                            elapsed_secs: &mut elapsed_secs,
-                            activity_elapsed_secs: &mut activity_elapsed_secs,
-                            spinner_tick: &mut spinner_tick,
                             activity_label: &mut activity_label,
                             last_activity_label: &mut last_activity_label,
                         },
@@ -1136,7 +1133,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 } else if turn_cancel_requested.get() {
                     turn_cancel_requested.set(false);
-                    let elapsed = run_completed_elapsed.unwrap_or_else(|| elapsed_secs.get());
+                    let elapsed = run_completed_elapsed.unwrap_or(0.0);
                     idle_status_notice.set(Some(IdleStatusNotice {
                         text: format_turn_canceled_notice(elapsed),
                         since: Instant::now(),
@@ -2234,14 +2231,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             .read()
                             .as_ref()
                             .map(|started| format_elapsed_secs(*started))
-                            .unwrap_or(elapsed_secs.get());
+                            .unwrap_or(0.0);
                         session_elapsed_secs
                             .set(accumulate_session_elapsed(session_elapsed_secs.get(), canceled_elapsed));
                         busy.set(false);
                         busy_started_at.set(None);
                         activity_started_at.set(None);
-                        elapsed_secs.set(0.0);
-                        activity_elapsed_secs.set(0.0);
                         turn_token_tracker.set(None);
                         turn_cancel_requested.set(false);
                         idle_status_notice.set(Some(IdleStatusNotice {
@@ -2695,9 +2690,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 busy: busy.get(),
                 activity_label: activity_label.read().clone(),
                 accent: scanner_accent,
-                spinner_tick: spinner_tick.get(),
-                activity_elapsed_secs: activity_elapsed_secs.get(),
-                turn_elapsed_secs: live_turn_elapsed_secs(busy.get(), &busy_started_at.read()),
+                activity_started_at: activity_started_at.read().clone(),
+                busy_started_at: busy_started_at.read().clone(),
                 session_elapsed_secs: session_elapsed_secs.get(),
                 idle_notice: idle_status_notice.read().as_ref().map(|notice| notice.text.clone()),
                 ephemeral_banner: ephemeral_banner
@@ -2858,15 +2852,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let shell_activity = user_shell_activity_label(&body);
                             mark_busy(
                                 &mut BusyActivation {
-                                    busy: &mut busy,
-                                    busy_started_at: &mut busy_started_at,
-                                    activity_started_at: &mut activity_started_at,
-                                    elapsed_secs: &mut elapsed_secs,
-                                    activity_elapsed_secs: &mut activity_elapsed_secs,
-                                    spinner_tick: &mut spinner_tick,
-                                    activity_label: &mut activity_label,
-                                    last_activity_label: &mut last_activity_label,
-                                },
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
                                 false,
                                 Some(&shell_activity),
                             );
@@ -3022,15 +3013,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     turn_cancel_requested.set(false);
                                     mark_busy(
                                         &mut BusyActivation {
-                                            busy: &mut busy,
-                                            busy_started_at: &mut busy_started_at,
-                                            activity_started_at: &mut activity_started_at,
-                                            elapsed_secs: &mut elapsed_secs,
-                                            activity_elapsed_secs: &mut activity_elapsed_secs,
-                                            spinner_tick: &mut spinner_tick,
-                                            activity_label: &mut activity_label,
-                                            last_activity_label: &mut last_activity_label,
-                                        },
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
                                         false,
                                         None,
                                     );
@@ -3046,15 +3034,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     turn_cancel_requested.set(false);
                                     mark_busy(
                                         &mut BusyActivation {
-                                            busy: &mut busy,
-                                            busy_started_at: &mut busy_started_at,
-                                            activity_started_at: &mut activity_started_at,
-                                            elapsed_secs: &mut elapsed_secs,
-                                            activity_elapsed_secs: &mut activity_elapsed_secs,
-                                            spinner_tick: &mut spinner_tick,
-                                            activity_label: &mut activity_label,
-                                            last_activity_label: &mut last_activity_label,
-                                        },
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
                                         false,
                                         None,
                                     );

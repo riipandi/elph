@@ -21,14 +21,15 @@ pub fn format_submitted_timestamp_suffix(at: DateTime<Utc>) -> String {
     format_submitted_timestamp(at)
 }
 
-/// Braille spinner glyph for the given animation tick (parent-driven, non-blocking).
+/// Braille spinner for a paint counter (each step ≈ one frame). Prefer [`braille_spinner_glyph_now`].
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn braille_spinner_glyph(tick: u32) -> &'static str {
-    let mut spinner = SpinnerLoader::new();
-    let frames = 10usize;
-    for _ in 0..(tick as usize % frames) {
-        spinner.tick();
-    }
-    spinner.glyph()
+    SpinnerLoader::glyph_for_elapsed_ms(u64::from(tick).saturating_mul(80))
+}
+
+/// Live braille frame from wall clock — skips frames under load (no slow-mo / fake freeze).
+pub fn braille_spinner_glyph_now() -> &'static str {
+    SpinnerLoader::glyph_now()
 }
 
 /// Normalize free-form agent status strings into short UI labels.
@@ -50,8 +51,15 @@ pub fn normalize_agent_status(line: &str) -> String {
     if lower.starts_with("steering") {
         return "Steering".to_string();
     }
-    if lower.starts_with("error") {
-        return truncate_status(line, 40);
+    if lower.starts_with("error")
+        || lower.starts_with("authentication failed")
+        || lower.starts_with("permission denied")
+        || lower.starts_with("rate limited")
+        || lower.starts_with("request conflict")
+        || lower.starts_with("api request failed")
+        || lower.starts_with("provider server error")
+    {
+        return truncate_status(line, 48);
     }
     if lower.starts_with("running ") {
         return truncate_status(line, 40);
@@ -68,7 +76,16 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         }
         AgentUiEvent::TextDelta(_) => Some("Responding".to_string()),
         AgentUiEvent::ThinkingDelta(_) if show_thinking => Some("Thinking".to_string()),
-        AgentUiEvent::ToolStart { name, .. } => Some(format!("Running {name}")),
+        AgentUiEvent::ToolStart { name, .. } => {
+            let base = name.rsplit("__").next().unwrap_or(name.as_str());
+            if base == "wait_agent" {
+                // Match process-row wording (status + agent id in transcript).
+                Some("Waiting for subagent".to_string())
+            } else {
+                let verb = crate::tui::tool_params::tool_display_verb(name);
+                Some(format!("Running {verb}"))
+            }
+        }
         AgentUiEvent::ToolEnd { .. } => Some("Thinking".to_string()),
         AgentUiEvent::SubagentStatus {
             agent_id,
@@ -87,16 +104,41 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
     }
 }
 
-/// Compact elapsed time: `12.4s` under a minute, then `1m50s`, `1h2m5s`.
+/// Compact, auto-scaled duration for transcript / log / activity chrome.
+///
+/// | Range        | Format   | Example        |
+/// |--------------|----------|----------------|
+/// | &lt; 1s      | ms       | `45ms`, `850ms`|
+/// | 1s – &lt;10s | tenths s | `1.2s`, `9.9s` |
+/// | 10s – &lt;1m | whole s  | `12s`, `59s`   |
+/// | 1m – &lt;1h  | m[+s]    | `1m`, `1m30s`  |
+/// | ≥ 1h         | h[+m][+s]| `1h`, `1h2m5s` |
 pub fn format_duration_secs(elapsed_secs: f64) -> String {
-    let secs = elapsed_secs.max(0.0);
-    if secs < 60.0 {
+    let secs = if elapsed_secs.is_finite() {
+        elapsed_secs.max(0.0)
+    } else {
+        0.0
+    };
+
+    // Sub-second: integer milliseconds (readable for fast tool calls).
+    if secs < 1.0 {
+        let ms = (secs * 1000.0).round() as u64;
+        return format!("{ms}ms");
+    }
+
+    // Under 10s: one decimal second (drops trailing `.0`).
+    if secs < 10.0 {
         let rounded_tenth = (secs * 10.0).round() / 10.0;
         let whole = rounded_tenth.floor();
         if (rounded_tenth - whole).abs() < 0.05 {
             return format!("{}s", whole as u64);
         }
         return format!("{rounded_tenth:.1}s");
+    }
+
+    // 10s–59s: whole seconds.
+    if secs < 60.0 {
+        return format!("{}s", secs.round() as u64);
     }
 
     let total = secs.round() as u64;
@@ -119,9 +161,10 @@ pub fn format_duration_secs(elapsed_secs: f64) -> String {
     }
 }
 
-/// Dimmed suffix for completed process rows in the transcript (` · 1.2s`).
+/// Dimmed suffix for completed process rows in the transcript (` · 1.2s` / ` · 45ms`).
 pub fn format_duration_label_suffix(elapsed_secs: f64) -> String {
-    format!(" · {}", format_duration_secs(elapsed_secs))
+    // U+00B7 MIDDLE DOT — same separator as process status meta chips.
+    format!(" \u{00B7} {}", format_duration_secs(elapsed_secs))
 }
 
 /// Busy left segment: activity label and current phase timer only.
@@ -317,7 +360,18 @@ mod tests {
                 },
                 false
             ),
-            Some("Running read_file".to_string())
+            Some("Running Read".to_string())
+        );
+        assert_eq!(
+            activity_label_for_event(
+                &AgentUiEvent::ToolStart {
+                    id: "2".into(),
+                    name: "wait_agent".into(),
+                    args_summary: "{}".into(),
+                },
+                false
+            ),
+            Some("Waiting for subagent".to_string())
         );
     }
 
@@ -325,6 +379,9 @@ mod tests {
     fn braille_spinner_cycles() {
         assert_eq!(braille_spinner_glyph(0), "⠋");
         assert_eq!(braille_spinner_glyph(1), "⠙");
+        // Wall-clock helper always returns a known braille frame.
+        let now = braille_spinner_glyph_now();
+        assert!(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"].contains(&now));
     }
 
     #[test]
@@ -348,11 +405,26 @@ mod tests {
     }
 
     #[test]
-    fn format_duration_secs_uses_seconds_under_one_minute() {
+    fn format_duration_secs_uses_ms_under_one_second() {
+        assert_eq!(format_duration_secs(0.0), "0ms");
+        assert_eq!(format_duration_secs(0.045), "45ms");
+        assert_eq!(format_duration_secs(0.5), "500ms");
+        assert_eq!(format_duration_secs(0.999), "999ms");
+    }
+
+    #[test]
+    fn format_duration_secs_uses_tenths_under_ten_seconds() {
+        assert_eq!(format_duration_secs(1.0), "1s");
         assert_eq!(format_duration_secs(1.24), "1.2s");
-        assert_eq!(format_duration_secs(12.0), "12s");
+        assert_eq!(format_duration_secs(9.95), "10s"); // rounds into whole-second band
+    }
+
+    #[test]
+    fn format_duration_secs_uses_whole_seconds_under_one_minute() {
+        assert_eq!(format_duration_secs(10.0), "10s");
+        assert_eq!(format_duration_secs(12.4), "12s");
         assert_eq!(format_duration_secs(45.0), "45s");
-        assert_eq!(format_duration_secs(59.9), "59.9s");
+        assert_eq!(format_duration_secs(59.4), "59s");
     }
 
     #[test]
@@ -370,6 +442,7 @@ mod tests {
 
     #[test]
     fn format_duration_label_suffix_matches_duration_format() {
+        assert_eq!(format_duration_label_suffix(0.045), " · 45ms");
         assert_eq!(format_duration_label_suffix(1.2), " · 1.2s");
         assert_eq!(format_duration_label_suffix(110.0), " · 1m50s");
     }
@@ -377,6 +450,7 @@ mod tests {
     #[test]
     fn format_activity_busy_line_includes_elapsed() {
         assert_eq!(format_activity_busy_line("Thinking", 1.2), "Thinking · 1.2s");
+        assert_eq!(format_activity_busy_line("Wait Agent", 0.08), "Wait Agent · 80ms");
     }
 
     #[test]

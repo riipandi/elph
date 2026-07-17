@@ -167,6 +167,8 @@ pub enum StatusDialogKind {
 }
 
 /// Props for [`StatusZone`] — optional fixed toast, status row, tool-approval dialog.
+///
+/// Spinner/elapsed tick inside [`StatusRow`]; pass wall-clock start instants only.
 #[derive(Props)]
 pub struct StatusZoneProps {
     pub screen_width: u16,
@@ -174,9 +176,8 @@ pub struct StatusZoneProps {
     pub busy: bool,
     pub activity_label: String,
     pub accent: Color,
-    pub spinner_tick: u32,
-    pub activity_elapsed_secs: f64,
-    pub turn_elapsed_secs: f64,
+    pub activity_started_at: Option<std::time::Instant>,
+    pub busy_started_at: Option<std::time::Instant>,
     pub session_elapsed_secs: f64,
     pub idle_notice: Option<String>,
     /// Fixed toast above the status row (agent mode, quit-busy, …).
@@ -195,9 +196,8 @@ impl Default for StatusZoneProps {
             busy: false,
             activity_label: String::new(),
             accent: Color::White,
-            spinner_tick: 0,
-            activity_elapsed_secs: 0.0,
-            turn_elapsed_secs: 0.0,
+            activity_started_at: None,
+            busy_started_at: None,
             session_elapsed_secs: 0.0,
             idle_notice: None,
             ephemeral_banner: None,
@@ -264,9 +264,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                 busy: props.busy,
                 activity_label: props.activity_label.clone(),
                 accent: props.accent,
-                spinner_tick: props.spinner_tick,
-                activity_elapsed_secs: props.activity_elapsed_secs,
-                turn_elapsed_secs: props.turn_elapsed_secs,
+                activity_started_at: props.activity_started_at,
+                busy_started_at: props.busy_started_at,
                 session_elapsed_secs: props.session_elapsed_secs,
                 idle_notice: props.idle_notice.clone(),
                 quit_confirm_pending: props.quit_confirm_pending,

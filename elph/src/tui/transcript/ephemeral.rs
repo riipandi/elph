@@ -9,7 +9,7 @@ use iocraft::prelude::Color;
 
 use crate::tui::activity::format_quit_while_busy_transcript;
 use crate::tui::labels::{agent_mode_busy_notice, agent_mode_change_notice};
-use crate::tui::theme::{EPHEMERAL_NOTICE_FG, QUIT_BUSY_NOTICE_FG};
+use crate::tui::theme::{EPHEMERAL_NOTICE_FG, QUIT_BUSY_NOTICE_FG, TOOL_FAILED_FG};
 use crate::types::AgentMode;
 
 use super::types::QUIT_BUSY_NOTICE_KEY;
@@ -23,6 +23,22 @@ pub const AGENT_MODE_BUSY_NOTICE_KEY: &str = "transient:agent_mode_busy";
 /// How long an agent-mode (or blocked-toggle) banner stays visible.
 pub const AGENT_MODE_NOTICE_TTL: Duration = Duration::from_secs(3);
 
+/// How long an API/provider error banner stays visible above the status row.
+pub const API_ERROR_NOTICE_TTL: Duration = Duration::from_secs(10);
+
+/// Stable key for API / provider error toasts.
+pub const API_ERROR_NOTICE_KEY: &str = "transient:api_error";
+
+/// Banner for HTTP/provider failures (401, 409, rate limit, …).
+pub fn api_error_banner(text: impl Into<String>) -> EphemeralBanner {
+    EphemeralBanner {
+        key: API_ERROR_NOTICE_KEY,
+        text: text.into(),
+        kind: EphemeralBannerKind::Error,
+        expires_at: Some(Instant::now() + API_ERROR_NOTICE_TTL),
+    }
+}
+
 /// Visual weight for a pinned ephemeral banner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EphemeralBannerKind {
@@ -30,6 +46,8 @@ pub enum EphemeralBannerKind {
     Notice,
     /// Warm orange — quit-while-busy confirmation.
     Warning,
+    /// Error red — API / provider failures (401, 409, …).
+    Error,
 }
 
 /// Fixed banner shown above the status row until expiry or explicit clear.
@@ -47,6 +65,7 @@ impl EphemeralBanner {
         match self.kind {
             EphemeralBannerKind::Notice => EPHEMERAL_NOTICE_FG,
             EphemeralBannerKind::Warning => QUIT_BUSY_NOTICE_FG,
+            EphemeralBannerKind::Error => TOOL_FAILED_FG,
         }
     }
 

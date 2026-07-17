@@ -253,11 +253,28 @@ fn apply_fade(color: Color, fade: f64) -> Color {
 }
 
 // ---------------------------------------------------------------------------
-// Braille spinner frames (classic TUI activity indicator).
+// Braille spinner frames — Unicode Braille Patterns (U+280B…), one cell each.
+// Pairs with static process glyph `◌` (U+25CC) when animation is off.
 // ---------------------------------------------------------------------------
-const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const FRAMES: &[&str] = &[
+    "\u{280B}", // ⠋
+    "\u{2819}", // ⠙
+    "\u{2839}", // ⠹
+    "\u{2838}", // ⠸
+    "\u{283C}", // ⠼
+    "\u{2834}", // ⠴
+    "\u{2826}", // ⠦
+    "\u{2827}", // ⠧
+    "\u{2807}", // ⠇
+    "\u{280F}", // ⠏
+];
 
-/// Cycling braille spinner (one glyph per tick).
+/// Wall-clock duration per braille frame. Missed paints skip frames (stay real-time),
+/// instead of advancing one step per late tick (which looks like a freeze/slow-mo).
+pub const SPINNER_FRAME_MS: u64 = 80;
+
+/// Cycling braille spinner. Prefer [`Self::glyph_now`] / [`Self::glyph_for_elapsed_ms`]
+/// under load so animation does not appear to drag when the UI thread is busy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SpinnerLoader {
     frame_index: usize,
@@ -268,12 +285,36 @@ impl SpinnerLoader {
         Self::default()
     }
 
+    pub fn frame_count() -> usize {
+        FRAMES.len()
+    }
+
     pub fn tick(&mut self) {
         self.frame_index = (self.frame_index + 1) % FRAMES.len();
     }
 
     pub fn glyph(&self) -> &'static str {
-        FRAMES[self.frame_index]
+        FRAMES[self.frame_index % FRAMES.len()]
+    }
+
+    /// Frame index for a monotonic millisecond clock (wall or epoch).
+    pub fn index_for_elapsed_ms(elapsed_ms: u64) -> usize {
+        ((elapsed_ms / SPINNER_FRAME_MS) as usize) % FRAMES.len()
+    }
+
+    /// Glyph for a monotonic millisecond clock — skips frames when updates lag.
+    pub fn glyph_for_elapsed_ms(elapsed_ms: u64) -> &'static str {
+        FRAMES[Self::index_for_elapsed_ms(elapsed_ms)]
+    }
+
+    /// Glyph for wall clock now (shared phase across all spinners in the process).
+    pub fn glyph_now() -> &'static str {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        Self::glyph_for_elapsed_ms(ms)
     }
 }
 
@@ -324,5 +365,15 @@ mod tests {
             spinner.tick();
         }
         assert_eq!(spinner.frame_index, 0);
+    }
+
+    #[test]
+    fn wall_clock_frames_skip_under_lag() {
+        // 0ms → frame 0, 800ms → frame 0 again (10 * 80ms), 240ms → frame 3.
+        assert_eq!(SpinnerLoader::index_for_elapsed_ms(0), 0);
+        assert_eq!(SpinnerLoader::index_for_elapsed_ms(SPINNER_FRAME_MS * 3), 3);
+        assert_eq!(SpinnerLoader::index_for_elapsed_ms(SPINNER_FRAME_MS * FRAMES.len() as u64), 0);
+        // Late paint after 5 frames should jump, not crawl through intermediates.
+        assert_eq!(SpinnerLoader::glyph_for_elapsed_ms(SPINNER_FRAME_MS * 5), FRAMES[5]);
     }
 }

@@ -1,11 +1,17 @@
 //! Status row between transcript and editor.
+//!
+//! Spinner and elapsed timers tick **inside this component** so shell / transcript / prompt
+//! do not re-render on every animation frame (CPU isolation).
 
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use elph_tui::rgb;
 use iocraft::prelude::*;
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
+
+/// Paint refresh while busy (ms). Frame *phase* is wall-clock; this only schedules redraws.
+const STATUS_TICK_MS: u64 = 80;
 
 const TIPS: &[&str] = &[
     "Tab toggles prompt / transcript focus",
@@ -27,25 +33,26 @@ const TIPS: &[&str] = &[
 ];
 
 use crate::tui::activity::{
-    braille_spinner_glyph, format_activity_busy_line, format_session_busy_right_line, format_session_idle_right_line,
+    braille_spinner_glyph_now, format_activity_busy_line, format_session_busy_right_line,
+    format_session_idle_right_line,
 };
 
 /// Props for [`StatusRow`].
+///
+/// Pass wall-clock start instants; this component owns spinner frames and elapsed display.
 #[derive(Props)]
 pub struct StatusRowProps {
     pub screen_width: u16,
     pub busy: bool,
     pub activity_label: String,
     pub accent: Color,
-    /// Drives braille spinner animation from the shell tick (no local timer).
-    pub spinner_tick: u32,
-    /// Elapsed seconds for the current activity phase (left segment).
-    pub activity_elapsed_secs: f64,
-    /// Elapsed seconds for the in-flight turn (added to session total on the right).
-    pub turn_elapsed_secs: f64,
-    /// Accumulated elapsed seconds across completed turns (right segment adds in-flight turn).
+    /// When the current activity label phase started (left timer).
+    pub activity_started_at: Option<Instant>,
+    /// When the in-flight turn started (right session timer includes this).
+    pub busy_started_at: Option<Instant>,
+    /// Accumulated elapsed seconds across completed turns (right segment).
     pub session_elapsed_secs: f64,
-    /// Replaces the idle tip briefly after a turn completes (e.g. `Turn complete · 1.2s`).
+    /// Replaces the idle tip briefly after a turn completes.
     pub idle_notice: Option<String>,
     /// When true, append quit-confirm keys to the busy right segment.
     pub quit_confirm_pending: bool,
@@ -58,9 +65,8 @@ impl Default for StatusRowProps {
             busy: false,
             activity_label: String::new(),
             accent: default_spinner_accent(),
-            spinner_tick: 0,
-            activity_elapsed_secs: 0.0,
-            turn_elapsed_secs: 0.0,
+            activity_started_at: None,
+            busy_started_at: None,
             session_elapsed_secs: 0.0,
             idle_notice: None,
             quit_confirm_pending: false,
@@ -92,6 +98,10 @@ fn random_tip_index(current: usize, tip_count: usize) -> usize {
 pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut tip_index = hooks.use_ref(initial_tip_index);
     let mut was_busy = hooks.use_ref(|| false);
+    // Local frame counter — only this component re-renders on tick (not shell/transcript).
+    let status_frame = hooks.use_state(|| 0u32);
+    let mut busy_flag = hooks.use_ref(|| false);
+    busy_flag.set(props.busy);
 
     if props.busy && !was_busy.get() {
         was_busy.set(true);
@@ -100,21 +110,35 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         tip_index.set(random_tip_index(tip_index.get(), TIPS.len()));
     }
 
+    hooks.use_future({
+        let busy_flag = busy_flag;
+        let mut status_frame = status_frame;
+        async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(STATUS_TICK_MS)).await;
+                if busy_flag.get() {
+                    status_frame.set(status_frame.get().wrapping_add(1));
+                }
+            }
+        }
+    });
+
+    // Depend on local paint token so we re-draw; glyph phase is wall-clock (skips lag).
+    let _paint = status_frame.get();
+    let spinner_glyph = if props.busy { braille_spinner_glyph_now() } else { " " };
+
+    let activity_elapsed_secs = props.activity_started_at.map(format_elapsed_secs).unwrap_or(0.0);
+    let turn_elapsed_secs = props.busy_started_at.map(format_elapsed_secs).unwrap_or(0.0);
+
     let right_half = props.screen_width / 2;
     let idle_line = props
         .idle_notice
         .clone()
         .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
-    let activity_line = format_activity_busy_line(&props.activity_label, props.activity_elapsed_secs);
+    let activity_line = format_activity_busy_line(&props.activity_label, activity_elapsed_secs);
     let busy_right_line =
-        format_session_busy_right_line(props.session_elapsed_secs, props.turn_elapsed_secs, props.quit_confirm_pending);
+        format_session_busy_right_line(props.session_elapsed_secs, turn_elapsed_secs, props.quit_confirm_pending);
     let idle_right_line = format_session_idle_right_line(IDLE_ACTION_HINT);
-    let _spinner_frame = props.spinner_tick;
-    let spinner_glyph = if props.busy {
-        braille_spinner_glyph(props.spinner_tick)
-    } else {
-        " "
-    };
 
     element! {
         View(
@@ -190,10 +214,9 @@ pub fn default_spinner_accent() -> Color {
     rgb(0xfa, 0xb2, 0x83)
 }
 
-/// Elapsed seconds rounded to one decimal (50ms tick granularity).
+/// Elapsed seconds at full timer resolution (display scales to ms/s/m/h).
 pub fn format_elapsed_secs(started: Instant) -> f64 {
-    let tenths = started.elapsed().as_millis() / 100;
-    tenths as f64 / 10.0
+    started.elapsed().as_secs_f64()
 }
 
 #[cfg(test)]
@@ -214,10 +237,13 @@ mod tests {
     }
 
     #[test]
-    fn format_elapsed_rounds_to_tenths() {
+    fn format_elapsed_preserves_subsecond_precision() {
         let started = Instant::now();
         std::thread::sleep(std::time::Duration::from_millis(250));
         let elapsed = format_elapsed_secs(started);
-        assert!((0.2..=0.4).contains(&elapsed));
+        assert!(
+            (0.2..=0.5).contains(&elapsed),
+            "expected ~0.25s with ms precision, got {elapsed}"
+        );
     }
 }

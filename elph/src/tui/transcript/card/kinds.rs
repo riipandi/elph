@@ -15,8 +15,8 @@ use iocraft::prelude::*;
 use crate::tui::activity::format_duration_secs;
 use crate::tui::ask_user_tool_card::{AskUserToolCardView, parse_ask_user_tool_rows};
 use crate::tui::theme::{
-    TEXT_FG, THINKING_FG, TOOL_ARGS_FG, TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG,
-    TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
+    STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG, TOOL_ARGS_FG,
+    TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
 };
 use crate::tui::tool_params::{ToolParamsView, format_collapsed_tool_parts, parse_tool_params, tool_display_verb};
 
@@ -30,7 +30,9 @@ use super::frame::{
     render_user_input_card,
 };
 use super::toggle_ctx::CollapsibleToggleCtx;
-use super::tool_format::format_tool_output_display;
+use super::tool_format::{
+    format_assistant_stream_body_display, format_thinking_body_display, format_tool_output_display,
+};
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
     process_status_glyph(tool_process_status(style))
@@ -57,13 +59,14 @@ fn status_indicator_color(status: ProcessStatus) -> Color {
 
 /// Meta chip packed next to the label (`· 0.3s` / `· running`) — always dim grey.
 fn process_meta_chip(status: ProcessStatus, duration_secs: Option<f64>) -> Option<String> {
+    use elph_tui::GLYPH_META_SEP;
     if let Some(secs) = duration_secs {
-        return Some(format!("· {}", format_duration_secs(secs)));
+        return Some(format!("{GLYPH_META_SEP} {}", format_duration_secs(secs)));
     }
     match status {
-        ProcessStatus::Running => Some(format!("· {}", process_status_word(ProcessStatus::Running))),
-        ProcessStatus::Failed => Some(format!("· {}", process_status_word(ProcessStatus::Failed))),
-        ProcessStatus::Queued => Some(format!("· {}", process_status_word(ProcessStatus::Queued))),
+        ProcessStatus::Running => Some(format!("{GLYPH_META_SEP} {}", process_status_word(ProcessStatus::Running))),
+        ProcessStatus::Failed => Some(format!("{GLYPH_META_SEP} {}", process_status_word(ProcessStatus::Failed))),
+        ProcessStatus::Queued => Some(format!("{GLYPH_META_SEP} {}", process_status_word(ProcessStatus::Queued))),
         ProcessStatus::Done => None,
     }
 }
@@ -128,7 +131,6 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
     let inner_width = props.inner_width.max(1);
     let status = props.status;
     let indicator_color = status_indicator_color(status);
-    let running = status == ProcessStatus::Running;
     // Finished process rows: bold **task** only (running stays regular).
     let task_weight = match status {
         ProcessStatus::Done | ProcessStatus::Failed => Weight::Bold,
@@ -153,7 +155,9 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
             ProcessStatusIndicator(
                 status: status,
                 color: Some(indicator_color),
-                animate_running: running,
+                // Live spin only on StatusRow — per-row timers lag under load and look like freeze.
+                // Static ◌ + "running" word still encode state without color alone (a11y).
+                animate_running: false,
             )
             Text(
                 content: label,
@@ -337,9 +341,11 @@ pub fn thinking_card(
         toggle,
     )];
     if show_body {
+        // Cap long thinking streams so wrap/layout stays bounded during live turns.
+        let body = format_thinking_body_display(&message.content);
         children.push(
             element! {
-                Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: message.content.as_str())
+                Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: body)
             }
             .into(),
         );
@@ -369,10 +375,19 @@ pub fn chat_response_card(
     };
     let inner_width = chrome_inner_width(&chrome);
     let show_body = streaming || (!message.is_response_collapsed() && !message.content.is_empty());
+    // Stream display uses a capped tail so paint stays O(recent content), not O(full reply).
+    let stream_plain = streaming.then(|| format_assistant_stream_body_display(&message.content));
     let body = if !show_body {
         Vec::new()
     } else if message.markdown.is_some() {
         assistant_message_elements(message, TEXT_FG, inner_width)
+    } else if let Some(text) = stream_plain.filter(|t| !t.is_empty()) {
+        vec![
+            element! {
+                Text(color: TEXT_FG, wrap: TextWrap::Wrap, content: text)
+            }
+            .into(),
+        ]
     } else if !message.content.is_empty() {
         vec![
             element! {
@@ -441,12 +456,11 @@ pub fn status_line_card(screen_width: u16, message: &TranscriptMessage, margin_b
         return render_flush_card(&chrome, message);
     };
 
-    let animate_running = status == ProcessStatus::Running;
     // Nested subagents indent the whole row (glyph + label) so the task title stays flush
     // to the marker — never pad the label string with leading spaces.
     let pad_left = chrome.padding_h.saturating_add(message.status_indent);
-    // Startup / MCP / subagent status lines keep status-colored labels (running / success / failed).
-    // Tool/thinking/response headers use white task titles separately in ProcessHeaderToggle.
+    // Startup / MCP / subagent: normal weight + calmer status hues (not tool-card punch).
+    // Glyph + label share soft status color; detail/meta stay muted grey.
     element! {
         View(
             width: chrome.outer_width,
@@ -463,16 +477,16 @@ pub fn status_line_card(screen_width: u16, message: &TranscriptMessage, margin_b
                 label: message.content.clone(),
                 detail: message.status_detail.clone().unwrap_or_default(),
                 duration_secs: None,
-                running_color: Some(TOOL_RUNNING_FG),
-                done_color: Some(TOOL_SUCCESS_FG),
-                failed_color: Some(TOOL_FAILED_FG),
-                queued_color: Some(TOOL_ARGS_FG),
+                running_color: Some(STATUS_RUNNING_FG),
+                done_color: Some(STATUS_SUCCESS_FG),
+                failed_color: Some(STATUS_FAILED_FG),
+                queued_color: Some(STATUS_QUEUED_FG),
                 duration_color: Some(TOOL_ARGS_FG),
-                // Phase/action meta (`running`, `done`, tool counts) — dim grey, not param accent.
                 detail_color: Some(TOOL_ARGS_FG),
                 emphasize_running: false,
-                emphasize_finished: true,
-                animate_running: animate_running,
+                // Startup lines stay regular weight — bold is reserved for finished tool tasks.
+                emphasize_finished: false,
+                animate_running: false,
             )
         }
     }
@@ -488,12 +502,13 @@ pub fn tool_call_card(
 ) -> AnyElement<'static> {
     let style = message.style;
     let mut chrome = TranscriptCardChrome::tinted(screen_width, style, margin_bottom);
+    let wait_agent = message.is_wait_agent_tool();
     // Collapsed finished tools: flush single-line row (no tint, no vertical pad).
-    // Running / expanded: tinted card with vertical pad so long-lived rows (e.g. Wait Agent)
-    // do not sit flush against neighbors.
+    // Wait Agent: always status-style process row (flush) — never a heavy tinted empty card.
+    // Other running / expanded tools: tinted card with vertical pad for detail context.
     let collapsed = message.is_tool_collapsed();
     chrome.padding_h = PROCESS_LOG_PAD_H;
-    if collapsed {
+    if wait_agent || collapsed {
         chrome.padding_top = FLUSH_CARD_PAD;
         chrome.padding_bottom = FLUSH_CARD_PAD;
         chrome.background = Color::Reset;
@@ -518,14 +533,18 @@ pub fn tool_call_card(
                     .flatten()
             })
             .flatten();
+        // Wait Agent: agent id lives in the header detail (a11y) — no args dump.
         let has_generic_args =
-            show_detail && ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
-        // Collapsed: white bold verb + highlighted path; expanded/running: white verb (args below).
-        let (header_task, header_detail) = if collapsed {
+            show_detail && !wait_agent && ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
+        // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
+        // Expanded generic tools: verb only (args/output below).
+        let (header_task, header_detail) = if wait_agent || collapsed {
             format_collapsed_tool_parts(&tool.name, &tool.args_summary)
         } else {
             (tool_display_verb(&tool.name), String::new())
         };
+        // Wait: click only when finished and there is result body text.
+        let clickable = message.is_collapsible_detail();
         return element! {
             View(
                 width: chrome.outer_width,
@@ -546,7 +565,7 @@ pub fn tool_call_card(
                     message.duration_secs,
                     status,
                     message_index,
-                    message.is_collapsible_detail(),
+                    clickable,
                     toggle,
                 ))
                 #(if ask_user_rows.is_some() {
@@ -574,6 +593,9 @@ pub fn tool_call_card(
                     // Extra air before ask-user answers so reply text does not crowd the prompt rows.
                     let output_gap = if message.is_ask_user_tool() {
                         ASK_USER_ANSWER_SECTION_GAP
+                    } else if wait_agent {
+                        // Compact result under wait header (one line usually).
+                        1
                     } else {
                         TOOL_OUTPUT_SECTION_GAP
                     };

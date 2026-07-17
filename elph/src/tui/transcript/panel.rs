@@ -8,8 +8,8 @@ use elph_tui::{
 };
 use iocraft::prelude::*;
 
-use super::card::{CollapsibleToggleCtx, build_transcript_bubbles, transcript_sticky_overlay};
-use super::layout::layout_transcript_rows;
+use super::card::{CollapsibleToggleCtx, build_transcript_bubbles_windowed, transcript_sticky_overlay};
+use super::layout::{IncrementalLayoutCache, layout_transcript_rows_cached};
 use super::markdown::{
     apply_markdown_parse_result, collect_markdown_parse_jobs, parse_markdown_on_worker, partition_assistant_markdown,
 };
@@ -20,8 +20,9 @@ use crate::tui::theme::{BORDER_MUTED, SCROLLBAR_THUMB, SCROLLBAR_TRACK, TRANSCRI
 const TRANSCRIPT_SCROLL_STEP: i32 = 3;
 /// Minimum scrollable lines below a sticky user prompt.
 const STICKY_MIN_SCROLL_ROWS: u16 = 3;
-const MARKDOWN_DEBOUNCE_MS: u64 = 80;
-const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 2;
+/// Markdown partition/parse tick — stay off the hot path of shell chrome ticks.
+const MARKDOWN_DEBOUNCE_MS: u64 = 120;
+const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 1;
 
 #[derive(Clone, Default, Props)]
 pub struct TranscriptPanelProps {
@@ -40,6 +41,8 @@ struct TranscriptRenderCache {
     screen_width: u16,
     row_layouts: Vec<elph_tui::TranscriptRowLayout>,
     is_sticky_prompt: Vec<bool>,
+    /// Fingerprinted row-count slots — survives revision bumps for unchanged prefix messages.
+    layout_cache: IncrementalLayoutCache,
 }
 
 #[component]
@@ -93,7 +96,12 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     if render_cache.read().as_ref().is_none_or(|c| {
         c.messages_revision != cache_key.0 || c.markdown_layout_revision != cache_key.1 || c.screen_width != cache_key.2
     }) {
-        let row_layouts = layout_transcript_rows(&messages, props.screen_width);
+        let mut layout_cache = render_cache
+            .read()
+            .as_ref()
+            .map(|c| c.layout_cache.clone())
+            .unwrap_or_default();
+        let row_layouts = layout_transcript_rows_cached(&messages, props.screen_width, &mut layout_cache);
         let is_sticky_prompt: Vec<_> = messages.iter().map(|m| m.style.is_sticky_prompt()).collect();
         render_cache.set(Some(TranscriptRenderCache {
             messages_revision: cache_key.0,
@@ -101,17 +109,52 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             screen_width: cache_key.2,
             row_layouts,
             is_sticky_prompt,
+            layout_cache,
         }));
     }
 
     let cache = render_cache.read();
-    let cached = cache.as_ref().expect("transcript render cache");
+    let cached = match cache.as_ref() {
+        Some(c) => c,
+        None => {
+            // Should be populated above; avoid panicking the whole TUI on a cache miss.
+            return element! {
+                View(
+                    width: props.screen_width,
+                    flex_grow: 1f32,
+                    flex_shrink: 1f32,
+                    min_height: 0,
+                    overflow: Overflow::Hidden,
+                )
+            }
+            .into();
+        }
+    };
     let row_layouts = &cached.row_layouts;
     let is_sticky_prompt = &cached.is_sticky_prompt;
 
     let handle = scroll_handle.read();
     let scroll_zone = handle.viewport_height().max(1);
-    let panel_viewport = scroll_zone.saturating_add(*last_sticky_rows.read());
+    // Layout-measured content height (stable across frames). Prefer this over ScrollView's
+    // previous-frame content_height so windowing/sticky don't thrash while streaming.
+    let layout_content_rows = row_layouts
+        .last()
+        .map(|layout| layout.start_row.saturating_add(layout.row_count))
+        .unwrap_or(0);
+    let layout_content_u16 = layout_content_rows.min(u16::MAX as u32) as u16;
+
+    let auto_pinned = handle.is_auto_scroll_pinned();
+    // Near-bottom follow: treat as pinned even if the handle briefly unpins when height grows.
+    let near_bottom = {
+        let max_off = scroll_view_max_offset(layout_content_u16, scroll_zone);
+        let offset = handle.scroll_offset();
+        auto_pinned || offset >= max_off.saturating_sub(2)
+    };
+
+    // Sticky inset uses last frame's height only when sticky is actually active (manual scroll).
+    let sticky_inset = if near_bottom { 0 } else { *last_sticky_rows.read() };
+    let panel_viewport = scroll_zone.saturating_add(sticky_inset);
+
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
@@ -119,18 +162,21 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                 row_layouts,
                 is_sticky_prompt,
                 handle.scroll_offset(),
-                handle.is_auto_scroll_pinned(),
+                near_bottom,
                 panel_viewport,
             )
         })
-        .flatten();
-    let effective_scroll_offset = if handle.is_auto_scroll_pinned() {
-        scroll_view_max_offset(handle.content_height(), scroll_zone)
+        .flatten()
+        .filter(|&idx| idx < messages.len() && is_sticky_prompt.get(idx).copied().unwrap_or(false));
+
+    let effective_scroll_offset = if near_bottom {
+        // Align window to layout total, not lagging ScrollView metrics.
+        layout_content_rows.saturating_sub(scroll_zone as u32)
     } else {
-        handle.scroll_offset()
+        handle.scroll_offset().max(0) as u32
     };
     let suppress_sticky_source =
-        sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset, scroll_zone);
+        sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset as i32, scroll_zone);
     let toggle = match (props.messages, props.messages_revision) {
         (Some(messages), Some(messages_revision)) => Some(CollapsibleToggleCtx {
             messages,
@@ -138,15 +184,26 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         }),
         _ => None,
     };
-    let bubbles = build_transcript_bubbles(props.screen_width, &messages, suppress_sticky_source, toggle);
+    // Only mount bubbles that can affect the viewport (+ overscan/tail). Off-screen history
+    // becomes fixed-height spacers so spinner/chrome re-renders stay cheap on long logs.
+    let bubbles = build_transcript_bubbles_windowed(
+        props.screen_width,
+        &messages,
+        row_layouts,
+        effective_scroll_offset,
+        scroll_zone as u32,
+        suppress_sticky_source,
+        toggle,
+    );
     let panel_height = panel_viewport;
     let sticky_header = sticky_idx.and_then(|idx| {
-        if !messages[idx].style.is_sticky_prompt() {
+        let message = messages.get(idx)?;
+        if !message.style.is_sticky_prompt() {
             return None;
         }
-        let style = messages[idx].style;
+        let style = message.style;
         layout_sticky_header(
-            &messages[idx].content,
+            &message.content,
             transcript_bubble_inner_width(props.screen_width, style.horizontal_padding())
                 .saturating_sub(style.content_chrome_cols())
                 .max(1),
@@ -157,12 +214,18 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     });
     let sticky_rows = sticky_header.as_ref().map(|header| header.height).unwrap_or(0);
     last_sticky_rows.set(sticky_rows);
-    let sticky_overlay = sticky_idx.zip(sticky_header.as_ref()).map(|(idx, header)| {
-        let style = messages[idx].style;
+    let sticky_overlay = sticky_idx.zip(sticky_header.as_ref()).and_then(|(idx, header)| {
+        let message = messages.get(idx)?;
+        let style = message.style;
         let inner_width = transcript_bubble_inner_width(props.screen_width, style.horizontal_padding())
             .saturating_sub(style.content_chrome_cols())
             .max(1);
-        transcript_sticky_overlay(header.height, inner_width, &messages[idx], &header.display_text)
+        Some(transcript_sticky_overlay(
+            header.height,
+            inner_width,
+            message,
+            &header.display_text,
+        ))
     });
     let min_content_height = scroll_zone;
 

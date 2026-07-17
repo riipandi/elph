@@ -27,19 +27,39 @@ impl From<DialogTodoProgress> for ProcessStatus {
     }
 }
 
+// ── Process / status indicator glyphs (Unicode, typically one terminal cell) ─
+//
+// Keep this set geometric + paired so transcript, todo, and dialog rows match.
+// Running live UI prefers braille spinner frames (`⠋⠙…`); static uses RUNNING.
+
+/// Queued / pending — U+25CB WHITE CIRCLE.
+pub const GLYPH_QUEUED: &str = "\u{25CB}"; // ○
+/// Running (static) — U+25CC DOTTED CIRCLE (live rows use braille spinner).
+pub const GLYPH_RUNNING: &str = "\u{25CC}"; // ◌
+/// Success / done — U+2713 CHECK MARK.
+pub const GLYPH_DONE: &str = "\u{2713}"; // ✓
+/// Failed / error — U+2717 BALLOT X (pairs with check mark).
+pub const GLYPH_FAILED: &str = "\u{2717}"; // ✗
+/// Meta separator between label and detail/duration — U+00B7 MIDDLE DOT.
+pub const GLYPH_META_SEP: &str = "\u{00B7}"; // ·
+/// Horizontal ellipsis for truncation / path collapse — U+2026.
+pub const GLYPH_ELLIPSIS: &str = "\u{2026}"; // …
+/// Rightwards arrow (copy/move, flow) — U+2192.
+pub const GLYPH_ARROW_RIGHT: &str = "\u{2192}"; // →
+
 /// Static glyph when animation is off (or for non-running states).
 ///
 /// Shapes encode lifecycle without relying on color alone (a11y):
 /// - `○` queued / pending
 /// - `◌` running (static fallback; live UI prefers the braille spinner)
 /// - `✓` success / done
-/// - `✕` failed / error
+/// - `✗` failed / error
 pub fn process_status_glyph(status: ProcessStatus) -> &'static str {
     match status {
-        ProcessStatus::Queued => "○",
-        ProcessStatus::Running => "◌",
-        ProcessStatus::Done => "✓",
-        ProcessStatus::Failed => "✕",
+        ProcessStatus::Queued => GLYPH_QUEUED,
+        ProcessStatus::Running => GLYPH_RUNNING,
+        ProcessStatus::Done => GLYPH_DONE,
+        ProcessStatus::Failed => GLYPH_FAILED,
     }
 }
 
@@ -104,7 +124,7 @@ impl Default for ProcessStatusIndicatorProps {
 /// Single-character (or braille spinner) status marker.
 ///
 /// Running + `animate_running` uses a braille spinner; terminal-only readers still get a
-/// distinct static glyph (`◌` / `✓` / `✕`) when animation is off.
+/// distinct static glyph (`◌` / `✓` / `✗`) when animation is off.
 #[component]
 pub fn ProcessStatusIndicator(props: &ProcessStatusIndicatorProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = resolve_ui_theme(&hooks, props.theme);
@@ -192,34 +212,41 @@ impl Default for ProcessStatusRowProps {
     }
 }
 
+/// Auto-scaled duration suffix (` · 45ms` / ` · 1.2s` / ` · 1m30s` / ` · 1h2m`).
 fn format_row_duration_secs(secs: f64) -> String {
-    let secs = secs.max(0.0);
-    if secs < 60.0 {
+    let secs = if secs.is_finite() { secs.max(0.0) } else { 0.0 };
+    let body = if secs < 1.0 {
+        format!("{}ms", (secs * 1000.0).round() as u64)
+    } else if secs < 10.0 {
         let rounded_tenth = (secs * 10.0).round() / 10.0;
         let whole = rounded_tenth.floor();
         if (rounded_tenth - whole).abs() < 0.05 {
-            return format!(" · {whole}s");
-        }
-        return format!(" · {rounded_tenth:.1}s");
-    }
-    let total = secs.round() as u64;
-    let hours = total / 3600;
-    let minutes = (total % 3600) / 60;
-    let seconds = total % 60;
-    let body = if hours > 0 {
-        if seconds > 0 {
-            format!("{hours}h{minutes}m{seconds}s")
-        } else if minutes > 0 {
-            format!("{hours}h{minutes}m")
+            format!("{}s", whole as u64)
         } else {
-            format!("{hours}h")
+            format!("{rounded_tenth:.1}s")
         }
-    } else if seconds > 0 {
-        format!("{minutes}m{seconds}s")
+    } else if secs < 60.0 {
+        format!("{}s", secs.round() as u64)
     } else {
-        format!("{minutes}m")
+        let total = secs.round() as u64;
+        let hours = total / 3600;
+        let minutes = (total % 3600) / 60;
+        let seconds = total % 60;
+        if hours > 0 {
+            if seconds > 0 {
+                format!("{hours}h{minutes}m{seconds}s")
+            } else if minutes > 0 {
+                format!("{hours}h{minutes}m")
+            } else {
+                format!("{hours}h")
+            }
+        } else if seconds > 0 {
+            format!("{minutes}m{seconds}s")
+        } else {
+            format!("{minutes}m")
+        }
     };
-    format!(" · {body}")
+    format!(" {GLYPH_META_SEP} {body}")
 }
 
 /// One status line: animated marker + label.
@@ -329,11 +356,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn glyphs_match_lifecycle() {
-        assert_eq!(process_status_glyph(ProcessStatus::Queued), "○");
-        assert_eq!(process_status_glyph(ProcessStatus::Running), "◌");
-        assert_eq!(process_status_glyph(ProcessStatus::Done), "✓");
-        assert_eq!(process_status_glyph(ProcessStatus::Failed), "✕");
+    fn glyphs_match_lifecycle_unicode_set() {
+        assert_eq!(process_status_glyph(ProcessStatus::Queued), GLYPH_QUEUED);
+        assert_eq!(process_status_glyph(ProcessStatus::Running), GLYPH_RUNNING);
+        assert_eq!(process_status_glyph(ProcessStatus::Done), GLYPH_DONE);
+        assert_eq!(process_status_glyph(ProcessStatus::Failed), GLYPH_FAILED);
+        // Explicit code points for a11y / font audit.
+        assert_eq!(GLYPH_QUEUED, "\u{25CB}");
+        assert_eq!(GLYPH_RUNNING, "\u{25CC}");
+        assert_eq!(GLYPH_DONE, "\u{2713}");
+        assert_eq!(GLYPH_FAILED, "\u{2717}");
+        assert_eq!(GLYPH_META_SEP, "\u{00B7}");
+        assert_eq!(GLYPH_ELLIPSIS, "\u{2026}");
+        assert_eq!(GLYPH_ARROW_RIGHT, "\u{2192}");
     }
 
     #[test]
@@ -347,5 +382,14 @@ mod tests {
     fn dialog_progress_maps_to_process_status() {
         assert_eq!(ProcessStatus::from(DialogTodoProgress::Running), ProcessStatus::Running);
         assert_eq!(ProcessStatus::from(DialogTodoProgress::Queued), ProcessStatus::Queued);
+    }
+
+    #[test]
+    fn row_duration_auto_scales_ms_and_seconds() {
+        assert_eq!(format_row_duration_secs(0.045), " · 45ms");
+        assert_eq!(format_row_duration_secs(1.2), " · 1.2s");
+        assert_eq!(format_row_duration_secs(12.0), " · 12s");
+        assert_eq!(format_row_duration_secs(90.0), " · 1m30s");
+        assert!(format_row_duration_secs(1.0).contains(GLYPH_META_SEP));
     }
 }

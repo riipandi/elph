@@ -82,6 +82,7 @@ pub use select::{
 };
 pub use slider::{Slider, SliderProps};
 pub use status_indicator::{
+    GLYPH_ARROW_RIGHT, GLYPH_DONE, GLYPH_ELLIPSIS, GLYPH_FAILED, GLYPH_META_SEP, GLYPH_QUEUED, GLYPH_RUNNING,
     ProcessActivityTrail, ProcessActivityTrailProps, ProcessStatus, ProcessStatusIndicator,
     ProcessStatusIndicatorProps, ProcessStatusRow, ProcessStatusRowProps, process_status_color, process_status_glyph,
     process_status_word,

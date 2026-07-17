@@ -151,6 +151,45 @@ impl PromptQueue {
     }
 }
 
+/// Merge adjacent high-frequency stream events so one UI tick applies fewer mutations.
+///
+/// Preserves ordering relative to non-stream events (tool start/end, status, …).
+pub fn coalesce_agent_ui_events(events: Vec<AgentUiEvent>) -> Vec<AgentUiEvent> {
+    let mut out = Vec::with_capacity(events.len());
+    for event in events {
+        match event {
+            AgentUiEvent::TextDelta(delta) if !delta.is_empty() => {
+                if let Some(AgentUiEvent::TextDelta(buf)) = out.last_mut() {
+                    buf.push_str(&delta);
+                } else {
+                    out.push(AgentUiEvent::TextDelta(delta));
+                }
+            }
+            AgentUiEvent::ThinkingDelta(delta) if !delta.is_empty() => {
+                if let Some(AgentUiEvent::ThinkingDelta(buf)) = out.last_mut() {
+                    buf.push_str(&delta);
+                } else {
+                    out.push(AgentUiEvent::ThinkingDelta(delta));
+                }
+            }
+            AgentUiEvent::ToolUpdate { id, output } if !output.is_empty() => {
+                if let Some(AgentUiEvent::ToolUpdate {
+                    id: last_id,
+                    output: buf,
+                }) = out.last_mut()
+                    && last_id == &id
+                {
+                    buf.push_str(&output);
+                } else {
+                    out.push(AgentUiEvent::ToolUpdate { id, output });
+                }
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 /// Applies streaming agent events to transcript messages.
 pub struct TranscriptEventApplier {
     live_tool_indexes: HashMap<String, usize>,
@@ -261,6 +300,10 @@ impl TranscriptEventApplier {
         if normalize_agent_status(line) == "Thinking" {
             return false;
         }
+        // API / provider failures → dedicated error chrome (not a dim meta line).
+        if crate::tui::api_error_display::is_user_facing_api_error_line(line) {
+            return self.push_api_error(messages, line);
+        }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Meta
         {
@@ -269,6 +312,27 @@ impl TranscriptEventApplier {
         }
         self.begin_meta(messages);
         messages.push(TranscriptMessage::text(line, TranscriptStyle::Meta));
+        true
+    }
+
+    /// Provider/API failure card — red error style, replaces last error if still open.
+    fn push_api_error(&mut self, messages: &mut Vec<TranscriptMessage>, line: &str) -> bool {
+        use crate::tui::api_error_display::format_user_facing_api_error;
+        let line = format_user_facing_api_error(line);
+        if line.is_empty() {
+            return false;
+        }
+        // Upsert consecutive API error so MessageEnd + TurnEnd do not double-stack.
+        if let Some(last) = messages.last_mut()
+            && last.style == TranscriptStyle::Error
+        {
+            last.content = line;
+            return true;
+        }
+        self.finalize_thinking(messages);
+        self.finalize_assistant(messages);
+        self.finalize_meta(messages);
+        messages.push(TranscriptMessage::text(line, TranscriptStyle::Error));
         true
     }
 
@@ -722,5 +786,42 @@ mod tests {
         queue.push("two".into());
         queue.clear();
         assert!(queue.pop_front().is_none());
+    }
+
+    #[test]
+    fn coalesce_merges_adjacent_stream_deltas() {
+        let events = vec![
+            AgentUiEvent::TextDelta("Hel".into()),
+            AgentUiEvent::TextDelta("lo".into()),
+            AgentUiEvent::ToolStart {
+                id: "t".into(),
+                name: "read_file".into(),
+                args_summary: "{}".into(),
+            },
+            AgentUiEvent::ToolUpdate {
+                id: "t".into(),
+                output: "a".into(),
+            },
+            AgentUiEvent::ToolUpdate {
+                id: "t".into(),
+                output: "b".into(),
+            },
+            AgentUiEvent::ThinkingDelta("x".into()),
+            AgentUiEvent::ThinkingDelta("y".into()),
+        ];
+        let coalesced = coalesce_agent_ui_events(events);
+        assert_eq!(coalesced.len(), 4);
+        match &coalesced[0] {
+            AgentUiEvent::TextDelta(s) => assert_eq!(s, "Hello"),
+            other => panic!("expected TextDelta, got {other:?}"),
+        }
+        match &coalesced[2] {
+            AgentUiEvent::ToolUpdate { output, .. } => assert_eq!(output, "ab"),
+            other => panic!("expected ToolUpdate, got {other:?}"),
+        }
+        match &coalesced[3] {
+            AgentUiEvent::ThinkingDelta(s) => assert_eq!(s, "xy"),
+            other => panic!("expected ThinkingDelta, got {other:?}"),
+        }
     }
 }

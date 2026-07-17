@@ -163,23 +163,10 @@ fn collapse_whitespace(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn shorten_path(path: &str) -> String {
-    let path = path.trim();
-    if path.is_empty() {
-        return String::new();
-    }
-    if path.chars().count() <= 48 {
-        return path.to_string();
-    }
-    let basename = path.rsplit(['/', '\\']).next().unwrap_or(path);
-    if basename.chars().count() <= 44 {
-        return format!("…/{basename}");
-    }
-    truncate_chars(basename, 44)
-}
-
 /// Max display width for collapsed path / target segments.
-const COLLAPSED_TARGET_MAX_CHARS: usize = 40;
+const COLLAPSED_TARGET_MAX_CHARS: usize = 44;
+/// Approval / summary path budget (slightly wider than collapsed headers).
+const SUMMARY_PATH_MAX_CHARS: usize = 52;
 
 /// Human-readable verb for transcript tool headers (`read_file` → `Read`).
 pub fn tool_display_verb(tool_name: &str) -> String {
@@ -198,9 +185,24 @@ pub fn tool_display_verb(tool_name: &str) -> String {
         "web_search" => "Search".to_string(),
         "web_fetch" => "Fetch".to_string(),
         "spawn_agent" => "Agent".to_string(),
+        "wait_agent" => "Wait".to_string(),
+        "send_message" => "Message".to_string(),
+        "followup_task" => "Follow-up".to_string(),
+        "list_agents" => "Agents".to_string(),
         "ask_user" | "ask_user_question" => "Ask".to_string(),
         other => title_case_snake(other),
     }
+}
+
+/// Short, scannable subagent id for Wait / collaboration tool headers.
+pub fn short_agent_display(agent_id: &str) -> String {
+    let id = agent_id.trim();
+    if id.is_empty() {
+        return String::new();
+    }
+    // Prefer last path segment (`main/worker-1` → `worker-1`).
+    let tail = id.rsplit(['/', ':']).find(|part| !part.is_empty()).unwrap_or(id);
+    truncate_chars(tail, 28)
 }
 
 fn title_case_snake(name: &str) -> String {
@@ -217,55 +219,220 @@ fn title_case_snake(name: &str) -> String {
         .join(" ")
 }
 
-/// Compact path for collapsed headers: `/Users/ariss/Dev/elph/src/main.rs` → `/U/a/D/elph/src/main.rs`.
+/// Compact path for collapsed headers and summaries.
 ///
-/// Intermediate directories become a single character; basename stays full. Caps total length.
+/// - `$HOME` → `~`
+/// - Intermediate folders → **single-character initial**
+/// - **Last folder before the file stays full** (e.g. `src`, `tui`)
+/// - File name stays full (truncated only if the whole path still exceeds `max_chars`)
+///
+/// Examples:
+/// - `/Users/me/dev/elph/src/main.rs` → `~/d/e/src/main.rs`
+/// - `crates/elph/src/tui/tool_params.rs` → `c/e/s/tui/tool_params.rs`
 pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
-    let max_chars = max_chars.max(8);
+    let max_chars = max_chars.max(12);
+    let normalized = normalize_display_path(path);
+    if normalized.is_empty() {
+        return String::new();
+    }
+    // Short paths stay fully readable.
+    if char_len(&normalized) <= max_chars {
+        return normalized;
+    }
+
+    let (prefix, segments) = split_display_path(&normalized);
+    if segments.is_empty() {
+        return truncate_filename(&normalized, max_chars);
+    }
+    if segments.len() == 1 {
+        return match prefix {
+            PathPrefix::Home => format!("~/{}", truncate_filename(segments[0], max_chars.saturating_sub(2))),
+            PathPrefix::Root => format!("/{}", truncate_filename(segments[0], max_chars.saturating_sub(1))),
+            PathPrefix::Relative => truncate_filename(segments[0], max_chars),
+        };
+    }
+
+    let file = segments[segments.len() - 1];
+    let dirs = &segments[..segments.len() - 1];
+
+    // Primary form: initials for all but last dir; last dir + file full.
+    let primary = build_initials_path(prefix, dirs, file, /*truncate_file*/ false);
+    if char_len(&primary) <= max_chars {
+        return primary;
+    }
+
+    // Still long: keep structure, truncate only the file name (preserve extension).
+    let with_short_file = build_initials_path(prefix, dirs, file, /*truncate_file*/ true);
+    // Budget the file so the full string fits.
+    if char_len(&with_short_file) <= max_chars {
+        return with_short_file;
+    }
+    let fixed_prefix_len = char_len(&with_short_file).saturating_sub(char_len(file));
+    let file_budget = max_chars.saturating_sub(fixed_prefix_len).max(6);
+    let truncated_file = truncate_filename(file, file_budget);
+    let candidate = build_initials_path(prefix, dirs, &truncated_file, false);
+    if char_len(&candidate) <= max_chars {
+        return candidate;
+    }
+
+    // Last resort: last folder + file, or file alone.
+    if let Some(last_dir) = dirs.last() {
+        let tail = format!("{last_dir}/{file}");
+        let ellipsis_tail = format!("…/{tail}");
+        if char_len(&ellipsis_tail) <= max_chars {
+            return ellipsis_tail;
+        }
+        let file_only_budget = max_chars.saturating_sub(char_len(last_dir) + 3).max(6);
+        let short_file = truncate_filename(file, file_only_budget);
+        let compact = format!("…/{last_dir}/{short_file}");
+        if char_len(&compact) <= max_chars {
+            return compact;
+        }
+    }
+    format!("…/{}", truncate_filename(file, max_chars.saturating_sub(2).max(6)))
+}
+
+/// Build `~/D/g/r/elph/src/main.rs`-style path (last dir full, earlier dirs initials).
+fn build_initials_path(prefix: PathPrefix, dirs: &[&str], file: &str, truncate_file: bool) -> String {
+    let file = if truncate_file {
+        // Soft cap for the first overflow pass; final budget applied by caller when needed.
+        truncate_filename(file, 28)
+    } else {
+        file.to_string()
+    };
+
+    let mut body = String::new();
+    if dirs.is_empty() {
+        body.push_str(&file);
+    } else if dirs.len() == 1 {
+        body.push_str(dirs[0]);
+        body.push('/');
+        body.push_str(&file);
+    } else {
+        let last_dir = dirs[dirs.len() - 1];
+        let early = &dirs[..dirs.len() - 1];
+        for (index, dir) in early.iter().enumerate() {
+            if index > 0 {
+                body.push('/');
+            }
+            if let Some(ch) = dir.chars().next() {
+                body.push(ch);
+            }
+        }
+        body.push('/');
+        body.push_str(last_dir);
+        body.push('/');
+        body.push_str(&file);
+    }
+
+    match prefix {
+        PathPrefix::Home => format!("~/{body}"),
+        PathPrefix::Root => format!("/{body}"),
+        PathPrefix::Relative => body,
+    }
+}
+
+fn shorten_path(path: &str) -> String {
+    abbreviate_path(path, SUMMARY_PATH_MAX_CHARS)
+}
+
+fn char_len(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn normalize_display_path(path: &str) -> String {
     let path = path.trim().replace('\\', "/");
     if path.is_empty() {
         return String::new();
     }
-    // Short relative paths stay readable as-is.
-    if !path.contains('/') && path.chars().count() <= max_chars {
-        return path;
-    }
-    if path.chars().count() <= 24 && path.matches('/').count() <= 2 {
-        return truncate_chars(&path, max_chars);
-    }
-
-    let absolute = path.starts_with('/');
-    let parts: Vec<&str> = path.split('/').filter(|part| !part.is_empty()).collect();
-    if parts.is_empty() {
-        return truncate_chars(&path, max_chars);
-    }
-    if parts.len() == 1 {
-        return truncate_chars(parts[0], max_chars);
-    }
-
-    let file = parts[parts.len() - 1];
-    let dirs = &parts[..parts.len() - 1];
-    let mut out = String::new();
-    if absolute {
-        out.push('/');
-    }
-    for (index, dir) in dirs.iter().enumerate() {
-        if index > 0 {
+    // Collapse repeated slashes.
+    let mut out = String::with_capacity(path.len());
+    let mut prev_slash = false;
+    for ch in path.chars() {
+        if ch == '/' {
+            if prev_slash {
+                continue;
+            }
+            prev_slash = true;
             out.push('/');
-        }
-        if let Some(ch) = dir.chars().next() {
+        } else {
+            prev_slash = false;
             out.push(ch);
         }
     }
-    out.push('/');
-    out.push_str(file);
+    replace_home_with_tilde(&out)
+}
 
-    if out.chars().count() <= max_chars {
-        return out;
+/// `/Users/name/...` or `$HOME/...` → `~/...`.
+fn replace_home_with_tilde(path: &str) -> String {
+    if path == "~" || path.starts_with("~/") {
+        return path.to_string();
     }
-    // Fall back: ellipsis + basename so the file identity survives.
-    let file_budget = max_chars.saturating_sub(2).max(4);
-    format!("…/{}", truncate_chars(file, file_budget))
+    if let Ok(home) = std::env::var("HOME") {
+        let home = home.trim_end_matches('/').replace('\\', "/");
+        if !home.is_empty() {
+            if path == home {
+                return "~".to_string();
+            }
+            if let Some(rest) = path.strip_prefix(&home)
+                && (rest.is_empty() || rest.starts_with('/'))
+            {
+                return if rest.is_empty() {
+                    "~".to_string()
+                } else {
+                    format!("~{rest}")
+                };
+            }
+        }
+    }
+    path.to_string()
+}
+
+/// Split into optional leading marker (`~` or absolute root) and path segments.
+fn split_display_path(path: &str) -> (PathPrefix, Vec<&str>) {
+    if path == "~" {
+        return (PathPrefix::Home, Vec::new());
+    }
+    if let Some(rest) = path.strip_prefix("~/") {
+        let segments: Vec<&str> = rest.split('/').filter(|s| !s.is_empty()).collect();
+        return (PathPrefix::Home, segments);
+    }
+    if path.starts_with('/') {
+        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+        return (PathPrefix::Root, segments);
+    }
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    (PathPrefix::Relative, segments)
+}
+
+#[derive(Clone, Copy)]
+enum PathPrefix {
+    Home,
+    Root,
+    Relative,
+}
+
+/// Truncate a file name, keeping the extension when possible (`very-long-name….rs`).
+fn truncate_filename(name: &str, max_chars: usize) -> String {
+    let max_chars = max_chars.max(4);
+    if char_len(name) <= max_chars {
+        return name.to_string();
+    }
+    if let Some((stem, ext)) = name.rsplit_once('.')
+        && !stem.is_empty()
+        && !ext.is_empty()
+        && !ext.contains('/')
+        && char_len(ext) <= 8
+    {
+        let ext_len = char_len(ext);
+        let overhead = 1 + 1 + ext_len; // … + . + ext
+        if max_chars > overhead + 3 {
+            let stem_budget = max_chars - overhead;
+            let stem_part: String = stem.chars().take(stem_budget).collect();
+            return format!("{stem_part}….{ext}");
+        }
+    }
+    truncate_chars(name, max_chars)
 }
 
 fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
@@ -315,7 +482,8 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
             } else if from.is_empty() {
                 to
             } else {
-                format!("{from} → {to}")
+                // U+2192 RIGHTWARDS ARROW — same flow glyph as process indicators.
+                format!("{from} \u{2192} {to}")
             }
         }
         "web_search" => find_param(params, &["query", "q", "search"])
@@ -324,7 +492,21 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
         "web_fetch" => find_param(params, &["url", "uri"])
             .map(|url| truncate_chars(url, COLLAPSED_TARGET_MAX_CHARS))
             .unwrap_or_default(),
-        "spawn_agent" => find_param(params, &["prompt", "task", "message", "goal"])
+        "wait_agent" => find_param(params, &["agent_id", "agent", "id"])
+            .map(short_agent_display)
+            .unwrap_or_default(),
+        "send_message" | "followup_task" => {
+            let agent = find_param(params, &["agent_id", "agent", "id"]).map(short_agent_display);
+            let msg = find_param(params, &["message", "prompt", "task"])
+                .map(|text| truncate_chars(&collapse_whitespace(text), 28));
+            match (agent, msg) {
+                (Some(agent), Some(msg)) => format!("{agent} · {msg}"),
+                (Some(agent), None) => agent,
+                (None, Some(msg)) => msg,
+                (None, None) => String::new(),
+            }
+        }
+        "spawn_agent" => find_param(params, &["task_name", "prompt", "task", "message", "goal"])
             .map(|text| truncate_chars(&collapse_whitespace(text), COLLAPSED_TARGET_MAX_CHARS))
             .unwrap_or_default(),
         "ask_user" | "ask_user_question" => find_param(params, &["question", "questions"])
@@ -884,26 +1066,75 @@ mod tests {
         assert_eq!(tool_display_verb("read_file"), "Read");
         assert_eq!(tool_display_verb("edit_file"), "Edit");
         assert_eq!(tool_display_verb("shell_exec"), "Shell");
+        assert_eq!(tool_display_verb("wait_agent"), "Wait");
         assert_eq!(tool_display_verb("mcp__ctx__read_file"), "Read");
         assert_eq!(tool_display_verb("custom_thing"), "Custom Thing");
     }
 
     #[test]
-    fn abbreviate_path_shortens_intermediate_dirs() {
-        let path = "/Users/ariss/Developer/github.com/riipandi/elph/src/main.rs";
-        let short = abbreviate_path(path, 40);
-        assert!(short.ends_with("/main.rs"), "{short}");
-        assert!(short.starts_with("/U/"), "{short}");
-        assert!(short.chars().count() <= 40, "{short}");
-        assert!(!short.contains("Users"), "{short}");
+    fn wait_agent_collapsed_label_shows_short_agent_id() {
+        let label = format_collapsed_tool_label("wait_agent", r#"{"agent_id":"main/worker-web-search"}"#);
+        assert_eq!(label, "Wait worker-web-search");
+        assert!(!label.contains("main/"));
+    }
+
+    #[test]
+    fn abbreviate_path_initials_keep_last_folder_full() {
+        // Force compression with a tight budget so initials form is used.
+        let path = "/opt/workspace/riipandi/elph/src/main.rs";
+        let short = abbreviate_path(path, 28);
+        assert_eq!(short, "/o/w/r/e/src/main.rs", "{short}");
+    }
+
+    #[test]
+    fn abbreviate_path_uses_tilde_and_initials() {
+        if let Ok(home) = std::env::var("HOME") {
+            let path = format!("{home}/projects/demo/elph/src/lib.rs");
+            let short = abbreviate_path(&path, 28);
+            assert!(short.starts_with("~/"), "{short}");
+            assert!(short.ends_with("/src/lib.rs"), "{short}");
+            assert!(!short.contains(&home), "{short}");
+            // Intermediate dirs → initials; last folder (`src`) stays full.
+            assert!(!short.contains("projects"), "{short}");
+            assert!(!short.contains("demo"), "{short}");
+            assert!(!short.contains("/elph/"), "{short}");
+        }
+    }
+
+    #[test]
+    fn abbreviate_path_relative_keeps_last_folder_full() {
+        let short = abbreviate_path("crates/elph/src/tui/tool_params.rs", 28);
+        assert_eq!(short, "c/e/s/tui/tool_params.rs", "{short}");
+    }
+
+    #[test]
+    fn abbreviate_path_leaves_short_paths_intact() {
+        assert_eq!(abbreviate_path("src/main.rs", 40), "src/main.rs");
+        assert_eq!(abbreviate_path("main.rs", 40), "main.rs");
+    }
+
+    #[test]
+    fn truncate_filename_preserves_extension() {
+        let name = "very-long-component-name-that-overflows.rs";
+        let short = truncate_filename(name, 24);
+        assert!(short.ends_with(".rs"), "{short}");
+        assert!(short.contains('…'), "{short}");
+        assert!(short.chars().count() <= 24, "{short}");
     }
 
     #[test]
     fn format_collapsed_tool_label_uses_verb_and_target() {
-        let label = format_collapsed_tool_label("edit_file", r#"{"path":"/Users/ariss/Developer/elph/nama-file.ext"}"#);
+        // Long absolute path forces initials + full parent folder.
+        let label = format_collapsed_tool_label(
+            "edit_file",
+            r#"{"path":"/opt/workspace/riipandi/elph/crates/elph/src/nama-file.ext"}"#,
+        );
         assert!(label.starts_with("Edit "), "{label}");
         assert!(label.contains("nama-file.ext"), "{label}");
+        assert!(label.ends_with("/src/nama-file.ext") || label.contains("/src/"), "{label}");
         assert!(!label.contains("edit_file"), "{label}");
+        assert!(!label.contains("workspace"), "{label}");
+        assert!(!label.contains("riipandi"), "{label}");
 
         let shell = format_collapsed_tool_label("shell_exec", r#"{"command":"cargo test -p elph"}"#);
         assert_eq!(shell, "Shell cargo test -p elph");
@@ -947,10 +1178,12 @@ mod tests {
     fn approval_summary_read_file_shortens_path() {
         let summary = format_tool_approval_summary(
             "read_file",
-            r#"{"path":"/Users/dev/workspace/my-project/crates/elph/src/main.rs"}"#,
+            r#"{"path":"/opt/workspace/my-project/vendor/packages/crates/elph/src/main.rs"}"#,
         );
-        assert!(summary.ends_with("main.rs"));
-        assert!(summary.starts_with('…'));
+        assert!(summary.ends_with("/src/main.rs"), "{summary}");
+        assert!(!summary.contains("workspace"), "{summary}");
+        assert!(!summary.contains("packages"), "{summary}");
+        assert!(summary.chars().count() <= SUMMARY_PATH_MAX_CHARS + 4, "{summary}");
     }
 
     #[test]

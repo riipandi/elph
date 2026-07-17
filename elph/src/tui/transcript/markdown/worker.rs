@@ -15,11 +15,22 @@ pub struct MarkdownParseJob {
     pub source_hash: u64,
 }
 
-/// Partition-only refresh for all assistant messages.
+/// How many trailing assistant messages to re-partition each tick (streaming + recent).
+const PARTITION_TAIL_ASSISTANTS: usize = 3;
+
+/// Partition-only refresh for recent assistant messages (full history is stable once complete).
 pub fn partition_assistant_markdown(messages: &mut [TranscriptMessage], screen_width: u16) -> bool {
     let mut changed = false;
-    for message in messages.iter_mut() {
+    let mut seen_assistants = 0usize;
+    for message in messages.iter_mut().rev() {
         if message.style != TranscriptStyle::Assistant {
+            continue;
+        }
+        seen_assistants += 1;
+        // Always refresh incomplete streams; only the last few completed replies need touch-ups.
+        let streaming =
+            message.duration_secs.is_none() || message.markdown.as_ref().is_some_and(|buffer| !buffer.stream_complete);
+        if !streaming && seen_assistants > PARTITION_TAIL_ASSISTANTS {
             continue;
         }
         let wrap_width = elph_tui::transcript_bubble_inner_width(screen_width, message.style.horizontal_padding());
@@ -31,14 +42,17 @@ pub fn partition_assistant_markdown(messages: &mut [TranscriptMessage], screen_w
         {
             changed = true;
         }
+        if !streaming && seen_assistants >= PARTITION_TAIL_ASSISTANTS {
+            break;
+        }
     }
     changed
 }
 
-/// Collect parse jobs for stable slices that lack a cached document.
+/// Collect parse jobs for stable slices that lack a cached document (newest first).
 pub fn collect_markdown_parse_jobs(messages: &[TranscriptMessage]) -> Vec<MarkdownParseJob> {
     let mut jobs = Vec::new();
-    for (index, message) in messages.iter().enumerate() {
+    for (index, message) in messages.iter().enumerate().rev() {
         if message.style != TranscriptStyle::Assistant {
             continue;
         }
@@ -51,12 +65,18 @@ pub fn collect_markdown_parse_jobs(messages: &[TranscriptMessage]) -> Vec<Markdo
         let Some(part) = buffer.parts.first() else {
             continue;
         };
-        let source = message.content[..part.source_end].to_string();
+        // Char-safe slice: never panic on multi-byte content if source_end drifts.
+        let Some(source) = message.content.get(..part.source_end).map(str::to_string) else {
+            continue;
+        };
         jobs.push(MarkdownParseJob {
             message_index: index,
             source,
             source_hash: part.source_hash,
         });
+        if jobs.len() >= PARTITION_TAIL_ASSISTANTS {
+            break;
+        }
     }
     jobs
 }

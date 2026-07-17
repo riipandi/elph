@@ -55,7 +55,7 @@ pub fn bootstrap_activity_label(phase: BootstrapPhase, detail: Option<&str>) -> 
     match phase {
         BootstrapPhase::Pending => String::new(),
         BootstrapPhase::Running => detail.unwrap_or("Preparing agent").to_string(),
-        BootstrapPhase::AgentReady => "Agent ready".to_string(),
+        BootstrapPhase::AgentReady => "Agent ready".to_string(), // detail lives on the transcript line
         BootstrapPhase::McpLoading => "Loading MCP".to_string(),
         BootstrapPhase::Done => String::new(),
         BootstrapPhase::Failed => "Startup failed".to_string(),
@@ -129,11 +129,30 @@ pub fn begin_agent_startup(messages: &mut Vec<TranscriptMessage>) {
     );
 }
 
-pub fn mark_agent_startup_ready(messages: &mut Vec<TranscriptMessage>) {
+/// Startup line when the agent session is ready, including the active model label.
+///
+/// - With model: `Agent ready (active model: provider/model-id)`
+/// - Without: `Agent ready (active model: none)`
+pub fn format_agent_ready_line(provider_id: Option<&str>, model_id: Option<&str>) -> String {
+    let active = match (
+        provider_id.map(str::trim).filter(|s| !s.is_empty()),
+        model_id.map(str::trim).filter(|s| !s.is_empty()),
+    ) {
+        (Some(provider), Some(model)) => format!("{provider}/{model}"),
+        _ => "none".to_string(),
+    };
+    format!("Agent ready (active model: {active})")
+}
+
+pub fn mark_agent_startup_ready(
+    messages: &mut Vec<TranscriptMessage>,
+    provider_id: Option<&str>,
+    model_id: Option<&str>,
+) {
     upsert_startup_line(
         messages,
         STARTUP_KEY_PHASE,
-        "Agent ready".to_string(),
+        format_agent_ready_line(provider_id, model_id),
         TranscriptStyle::StatusSuccess,
     );
 }
@@ -517,8 +536,29 @@ mod tests {
         begin_agent_startup(&mut messages);
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].content, "Preparing agent…");
-        mark_agent_startup_ready(&mut messages);
-        assert_eq!(messages[0].content, "Agent ready");
+        mark_agent_startup_ready(&mut messages, Some("anthropic"), Some("claude-sonnet-4"));
+        assert_eq!(
+            messages[0].content,
+            "Agent ready (active model: anthropic/claude-sonnet-4)"
+        );
         assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
+
+        mark_agent_startup_ready(&mut messages, None, None);
+        assert_eq!(messages[0].content, "Agent ready (active model: none)");
+        mark_agent_startup_ready(&mut messages, Some(""), Some("  "));
+        assert_eq!(messages[0].content, "Agent ready (active model: none)");
+    }
+
+    #[test]
+    fn format_agent_ready_line_handles_missing_model() {
+        assert_eq!(
+            format_agent_ready_line(Some("openai"), Some("gpt-5")),
+            "Agent ready (active model: openai/gpt-5)"
+        );
+        assert_eq!(
+            format_agent_ready_line(Some("openai"), None),
+            "Agent ready (active model: none)"
+        );
+        assert_eq!(format_agent_ready_line(None, None), "Agent ready (active model: none)");
     }
 }

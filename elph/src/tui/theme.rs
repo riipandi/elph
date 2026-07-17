@@ -88,6 +88,21 @@ pub const TOOL_FAILED_BG: Color = Color::Rgb { r: 52, g: 36, b: 38 };
 /// Failed status / tool error — soft red with clearer contrast on dark bg.
 pub const TOOL_FAILED_FG: Color = Color::Rgb { r: 220, g: 118, b: 118 };
 
+// ── Startup / MCP / subagent status-line palette (calmer than tool cards) ──
+// Long scan lines (Agent ready, MCP servers) read better with lower chroma + normal weight.
+
+/// In-progress status line (loading MCP, connecting) — soft amber, not warning-loud.
+pub const STATUS_RUNNING_FG: Color = Color::Rgb { r: 196, g: 170, b: 120 };
+
+/// Success status line (Agent ready, MCP connected) — muted sage green.
+pub const STATUS_SUCCESS_FG: Color = Color::Rgb { r: 132, g: 168, b: 140 };
+
+/// Failed status line — muted rose (clear but less aggressive than tool-fail red).
+pub const STATUS_FAILED_FG: Color = Color::Rgb { r: 196, g: 128, b: 128 };
+
+/// Queued / idle status line — dim grey.
+pub const STATUS_QUEUED_FG: Color = TOOL_ARGS_FG;
+
 pub const EDITOR_TEXT_FOCUSED: Color = Color::Grey;
 pub const EDITOR_TEXT_DIMMED: Color = Color::DarkGrey;
 pub const EDITOR_CURSOR: Color = Color::White;
