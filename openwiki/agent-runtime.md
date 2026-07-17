@@ -1,3 +1,10 @@
+---
+type: Reference
+title: Agent Runtime
+description: App-agnostic AI agent runtime — AgentHarness, sessions, turn loop, compaction, goals, subagents, skills, prompt template engine, and built-in tools.
+tags: [agent, runtime, elph-agent, harness, sessions, prompt, templates]
+---
+
 # Agent Runtime
 
 The agent runtime module (`crates/elph-agent`) is the core of Elph's AI interaction engine. It provides an app-agnostic runtime with session persistence, tool execution, context compaction, goals, and subagent orchestration.
@@ -108,6 +115,72 @@ Key files:
 - `/crates/elph-agent/src/runtime/run_loop/` — The core loop implementation
 - `/crates/elph-agent/src/runtime/stream.rs` — Event stream types
 - `/crates/elph-agent/src/runtime/exec/` — Tool call dispatch, execution, and failure handling
+
+## Prompt System
+
+**File**: `/crates/elph-agent/src/prompt/`
+
+The prompt module provides a MiniJinja-based template engine for assembling system prompts, replacing ad-hoc string formatting.
+
+### Template engine
+
+`PromptTemplateEngine` (`template.rs`) wraps a MiniJinja `Environment` with custom delimiters (`${{ }}` for variables, `${% %}` for blocks) to avoid collisions with Markdown and code. Templates are embedded at compile time via `include_str!()`.
+
+### SystemPromptBuilder
+
+`SystemPromptBuilder` (`system_builder.rs`) uses a builder pattern to assemble prompts from layered sources:
+
+| Layer | Source | Description |
+|---|---|---|
+| **Base** | `templates/base.md` | Persona, working directory, date, OS, shell, skills |
+| **Domain** | Domain-specific (e.g. `coding_base.md`) | Action safety, tool calling, output formatting |
+| **Mode** | Mode-specific appendix (`mode_ask.md`, etc.) | Per-mode guidance and tool restrictions |
+| **Project** | AGENTS.md | Pi-style XML `<project_context>` wrapper |
+
+Assembly modes: `Extend` (base + domain + mode + project context) or `Full` (domain-only with dedup checks).
+
+### Context variables
+
+`SystemPromptTemplateContext` (`context.rs`) provides serializable template variables:
+
+- `persona`, `working_directory`, `current_date`, `os_name`, `shell_path`
+- `agent_mode` — slugs: `build`, `plan`, `ask`, `brave`
+- `active_tool_names` — per-turn `Vec<String>` for `<available_tools>` listing
+- `tools` — `ToolNamesContext` (per-tool name resolution) and `ToolByKindContext` (category aliases for read, edit, bash)
+- `skills_section`, `mode_section`, `agents_md`
+
+### Feature gate
+
+The template engine is gated behind the `prompt-templates` Cargo feature (default-on via the `full` feature meta-flag), requiring the `minijinja` dependency with `custom_syntax`.
+
+Key files:
+- `/crates/elph-agent/src/prompt/template.rs` — `PromptTemplateEngine`
+- `/crates/elph-agent/src/prompt/system_builder.rs` — `SystemPromptBuilder`, `PromptAssemblyMode`
+- `/crates/elph-agent/src/prompt/context.rs` — Context types and builder
+- `/crates/elph-agent/src/prompt/defaults.rs` — Default persona and resolve helpers
+- `/crates/elph-agent/templates/base.md` — Embedded base template
+- `/crates/elph-agent/tests/prompt_template.rs` — Template engine tests (requires `prompt-templates`)
+
+### Binary crate integration
+
+`elph/src/agent/prompt/builder.rs` provides `build_coding_system_prompt()` which layers:
+1. `base.md` — generic persona + env + skills
+2. `coding_base.md` — Grok-style sections (`<action_safety>`, `<tool_calling>`, `<output_efficiency>`, `<formatting>`)
+3. Mode section from `modes.rs` — `<mode_context>` with per-mode guidance + mode appendix template
+4. Project context — AGENTS.md in `<project_context>` wrapper
+
+Mode-specific appendix templates live in `elph/templates/agent/`:
+
+| Template | Mode | Behavior |
+|---|---|---|
+| `mode_build.md` | Build | Full tool access, approval may be required |
+| `mode_brave.md` | Brave | Full autonomy, no approval prompts |
+| `mode_plan.md` | Plan | Read-only, requires `<proposed_plan>` wrapper |
+| `mode_ask.md` | Ask | Read-only Q&A, no mutating tools |
+
+### /system-prompt slash command
+
+The `system_prompt_slash.rs` module provides a diagnostic command (`/system-prompt`, `/prompt`) that assembles and displays the current compiled system prompt in a TUI dialog. The prompt is rebuilt live from session state each time it is opened.
 
 ## Compaction
 
@@ -269,6 +342,8 @@ This enables the agent to dynamically adapt its tool set based on collaboration 
 | Messages                  | `/crates/elph-agent/src/messages/`               |
 | Event stream              | `/crates/elph-agent/src/runtime/event_stream.rs` |
 | Plugin/WASM host          | `/crates/elph-agent/src/plugins/`                |
+| Prompt template engine       | `/crates/elph-agent/src/prompt/` (template.rs, system_builder.rs, context.rs, defaults.rs) |
+| Embedded templates           | `/crates/elph-agent/templates/base.md`                                                    |
 | MCP client                | `/crates/elph-agent/src/tools/mcp/`              |
 
 ## Change guidance
@@ -280,5 +355,7 @@ This enables the agent to dynamically adapt its tool set based on collaboration 
 - **Subagent changes**: Test in `crates/elph-agent/tests/subagent.rs`
 - **Tool changes**: Test in `crates/elph-agent/tests/tools_fff.rs` and `tests/web_tools.rs`
 - **Skills changes**: Test in `crates/elph-agent/tests/skills.rs`
+- **Prompt template changes**: Modify templates in `/crates/elph-agent/templates/` and `/elph/templates/agent/`; test in `crates/elph-agent/tests/prompt_template.rs` (requires `prompt-templates` feature)
+- **System prompt builder**: Modify `/crates/elph-agent/src/prompt/system_builder.rs` for assembly logic or `/elph/src/agent/prompt/builder.rs` for coding-domain prompts
 - **Configuration**: Check `HarnessOptions`, `CompactionSettings`, `SessionStorage` generics
   nStorage` generics

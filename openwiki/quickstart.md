@@ -1,3 +1,10 @@
+---
+type: Reference
+title: Elph — OpenWiki Quickstart
+description: Entrypoint for the Elph AI agent code wiki — overview, key concepts, project state, documentation map, and build instructions.
+tags: [quickstart, overview, navigation, elph]
+---
+
 # Elph — OpenWiki Quickstart
 
 **Elph** is a Rust workspace for AI agent applications: a coding agent CLI, shared agent runtime libraries, and terminal UI components. It is a port of the [pi](https://pi.dev) TypeScript ecosystem to Rust, with additional MCP (Model Context Protocol) support, WASM extensions, and an iocraft-based interactive TUI.
@@ -28,10 +35,14 @@
 - **TOON Encoding** — Optional structured-data encoding for tool results (reduces token usage on tabular payloads).
 - **Extensions** — WASM-based dynamic plugins compiled with `wasmtime`.
 
-## Project state (HEAD `227c389`)
+## Project state (HEAD `d7a82cb`)
 
 This repository is under **active development**. Recent milestones:
 
+- **Prompt template engine** — Layered MiniJinja-based prompt assembly replaces ad-hoc string formatting. Ships `base.md` + `coding_base.md` + 4 mode-specific templates (`ask`, `brave`, `build`, `plan`). `SystemPromptBuilder` in `elph-agent` provides reusable infrastructure; `build_coding_system_prompt()` in the binary crate adds coding-domain context (`fdbede4`).
+- **Confetti overlay** — Hidden Easter egg: `/confetti` triggers a full-screen animated particle effect (rain or fireworks) at ~60 FPS with auto-close after 2–5 seconds (`d7a82cb`).
+- **System prompt dialog** — `/system-prompt` opens a scrollable dialog showing the compiled system prompt, rebuilt live from current session state (`fdbede4`).
+- **Chrome stats improvements** — Turn count in footer stats, fallback to live model info when branch I/O fails; more reliable terminal size polling (`d7a82cb`).
 - **Model selector** — Multi-tab catalog picker (All / Scoped / Provider) with fuzzy filtering and weighted scoring, rendered as an inline dialog above the status row (`b127f6c`).
 - **@-mention file picker** — Inline fuzzy file picker triggered by `@` in the prompt editor; searches workspace via `fff-search` with keyboard navigation and path insertion (`7a0ab91`).
 - **Inline dialogs** — Full-width inline dialog pattern shared by tool approval, model picker, and user questions. Structured tool-parameter previews with priority-key highlighting (`594c5c8`, `3e6763a`).

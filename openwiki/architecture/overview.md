@@ -1,3 +1,10 @@
+---
+type: Reference
+title: Architecture Overview
+description: Layered crate architecture for the Elph AI agent workspace — module map, design principles, and key architectural decisions.
+tags: [architecture, elph, crate-layout, design]
+---
+
 # Architecture Overview
 
 Elph is a Rust workspace of layered crates designed for building AI agent applications. The primary product is a coding agent CLI + TUI, but the runtime libraries are app-agnostic.
@@ -53,7 +60,7 @@ Key modules:
 
 - `src/cli/` — Subcommands: `run`, `acp`, `codegraph`, `completions`, `doctor`, `export`, `import`, `mcp`, `memory`, `models`, `provider`, `server`, `session`, `stats`, `update`, `worktree` (`/elph/src/cli/mod.rs`)
 - `src/tui/` — Modular iocraft-based interactive shell: `shell.rs`, `focus.rs`, `tool_approval.rs`, `user_question.rs`, `activity.rs`, `agent_bridge.rs`, `chrome/`, `prompt/`, `transcript/`, `slash_palette/`, `theme.rs`, and more (`/elph/src/tui/mod.rs`)
-- `src/agent/` — Pi coding-agent equivalent: session orchestration, runtime wiring, diagnostics tool, ask_user tool, slash commands, tool policy, run mode, skills loading (`skills_load.rs`), tools catalog reconciliation (`tools_catalog.rs`) (`/elph/src/agent/mod.rs`)
+- `src/agent/` — Pi coding-agent equivalent: session orchestration, runtime wiring, diagnostics tool, ask_user tool, slash commands, tool policy, run mode, skills loading (`skills_load.rs`), tools catalog reconciliation (`tools_catalog.rs`), system prompt rendering (`system_prompt_slash.rs`), and the `prompt/` subdirectory (`agents_md.rs`, `builder.rs`, `modes.rs`) (`/elph/src/agent/mod.rs`)
 - `src/platform/` — Host environment: paths, settings, bootstrap, datastore, MCP config, migrations, hooks, interrupt handling (`/elph/src/platform/mod.rs`)
 - `src/extensions/` — WASM extension host (`/elph/src/extensions/mod.rs`)
 
@@ -75,12 +82,12 @@ Key modules:
 - `goals/` — Session goal persistence, auto-steering, accounting (`/crates/elph-agent/src/goals/mod.rs`)
 - `skills/` — Skill discovery from `SKILL.md` files, argument hint parsing and validation (`args.rs`) (`/crates/elph-agent/src/skills/mod.rs`)
 - `tools/` — Built-in tools: `read_file`, `bash`, `edit_file`, `write_file`, `grep`, `find_path`, `list_dir`, `create_dir`, `copy_path`, `delete_path`, `move_path`, `web_search`, `web_fetch`, collaboration tools; MCP client lives under `tools/mcp/` (`/crates/elph-agent/src/tools/mod.rs`)
-- `prompt/` — Builtin prompts, external prompt templates, session naming, and TOON encoding (`/crates/elph-agent/src/prompt/`)
+- `prompt/` — MiniJinja-based template engine (`template.rs`, `system_builder.rs`, `context.rs`), builtin prompts, external prompt templates, session naming, defaults, and TOON encoding (`/crates/elph-agent/src/prompt/`)
 - `plugins/` — WASM extension host (optional, feature `extensions`) (`/crates/elph-agent/src/plugins/mod.rs`)
 - `messages/` — Message conversion helpers (`/crates/elph-agent/src/messages/mod.rs`)
 - `types/` — Core agent types: loop config, messages, tools, enums (`/crates/elph-agent/src/types/mod.rs`)
 
-Features: `mcp` (default), `extensions` (default), `obscura` (optional), `tracing` (optional — fastrace spans), plus individual tool feature flags (`tools-read-file`, `tools-bash`, `tools-edit-file`, `tools-write-file`, `tools-grep`, `tools-find-path`, `tools-list-dir`, `tools-create-dir`, `tools-copy-path`, `tools-delete-path`, `tools-move-path`, `tools-web`, `tools-collaboration`) and convenience groups (`tools-search`, `tools-edit-tools`, `builtin-tools`).
+Features: `mcp` (default), `extensions` (default), `prompt-templates` (default via `full`), `obscura` (optional), `tracing` (optional — fastrace spans), plus individual tool feature flags (`tools-read-file`, `tools-bash`, `tools-edit-file`, `tools-write-file`, `tools-grep`, `tools-find-path`, `tools-list-dir`, `tools-create-dir`, `tools-copy-path`, `tools-delete-path`, `tools-move-path`, `tools-web`, `tools-collaboration`) and convenience groups (`tools-search`, `tools-edit-tools`, `builtin-tools`).
 
 ### `elph-ai` (library crate)
 
@@ -154,6 +161,7 @@ Multi-agent coordination. Early stage — minimal public API.
 | Prompt module restructure | `97158ee`           | Split `prompt_templates/` into `prompt/{builtin,external,invoke}`               |
 | STRICT SQLite tables      | `cc72e6b`           | Correct column types for Turso/SQLite compatibility                             |
 | Subagent orchestration    | `1384531`           | Rename goal tools to snake_case, refactor ask_user                              |
+| Prompt template engine       | `fdbede4`           | Replace ad-hoc string formatting with MiniJinja-based layered templates (`base.md`, `coding_base.md`, mode-specific appendixes) |
 | Session tree persistence  | `95ff396`           | Tree-structured sessions with fork/branch/resume                                |
 
 ## Path resolution

@@ -1,10 +1,18 @@
+---
+type: Component Guide
+title: TUI & Shell
+description: Interactive terminal UI built with iocraft — shell, chrome, confetti overlay, slash commands, markdown rendering, focus switching, tool approval, and inline dialogs.
+tags: [tui, shell, iocraft, elph-tui, confetti]
+resource: /elph/src/tui/
+---
+
 # TUI & Shell
 
 The TUI system currently lives directly in the `elph` binary crate while the iocraft-based shell is being rebuilt iteratively.
 
 The `elph-tui` library crate provides iocraft component modules (20+ component modules + 10+ crate-level modules) and 26+ examples, with integration tests. Once the public API stabilises, the reusable widget library will be extracted back into `elph-tui` and published to crates.io.
 
-**TUI source**: `/elph/src/tui/` — Modular iocraft-based shell: `shell.rs`, `focus.rs`, `tool_approval.rs`, `user_question.rs`, `activity.rs`, `agent_bridge.rs`, `labels.rs`, `theme.rs`, and the subdirectories `chrome/`, `prompt/`, `transcript/`, `slash_palette/`.
+**TUI source**: `/elph/src/tui/` — Modular iocraft-based shell: `shell.rs`, `focus.rs`, `tool_approval.rs`, `user_question.rs`, `activity.rs`, `agent_bridge.rs`, `labels.rs`, `theme.rs`, and the subdirectories `chrome/`, `confetti/`, `prompt/`, `transcript/`, `slash_palette/`.
 **Shell**: `elph/src/tui/shell.rs` is the main interactive shell orchestrating all TUI components. Focus switching (`focus.rs`), tool approval modal (`tool_approval.rs`), user question prompts (`user_question.rs`), activity tracking (`activity.rs`), and the slash palette (`slash_palette/`) are all standalone modules.
 
 ## elph-tui (Widget Library — Component Stubs)
@@ -67,19 +75,21 @@ Dispatch order:
 
 ### Built-in commands
 
-| Command                     | Aliases       | Description                                 |
-| --------------------------- | ------------- | ------------------------------------------- |
-| `/help`                     | —             | List all commands                           |
-| `/model`                    | —             | Open model selector                         |
-| `/goal`                     | `/goals`      | Manage session goals                        |
-| `/tools`                    | —             | Show active tools (json/list/table)         |
-| `/exit`                     | `/quit`, `/q` | Quit                                        |
-| `/commit`                   | —             | Generate commit message from staged changes |
-| `/compact`                  | `/c`          | Compact history                             |
-| `/reload`                   | —             | Reload extensions + resources               |
-| `/diagnostic:list-tools`    | —             | List available tools                        |
-| `/diagnostic:system-prompt` | —             | Show assembled system prompt                |
-| `/diagnostic:open-log`      | —             | Open session log                            |
+| Command                     | Aliases                                | Description                                 |
+| --------------------------- | -------------------------------------- | ------------------------------------------- |
+| `/help`                     | —                                      | List all commands                           |
+| `/model`                    | —                                      | Open model selector                         |
+| `/goal`                     | `/goals`                               | Manage session goals                        |
+| `/tools`                    | —                                      | Show active tools (json/list/table)         |
+| `/exit`                     | `/quit`, `/q`                          | Quit                                        |
+| `/commit`                   | —                                      | Generate commit message from staged changes |
+| `/compact`                  | `/c`                                   | Compact history                             |
+| `/reload`                   | —                                      | Reload extensions + resources               |
+| `/system-prompt`            | `/prompt`, `/systemprompt`             | Show assembled system prompt in a dialog    |
+| `/diagnostic:list-tools`    | —                                      | List available tools                        |
+| `/diagnostic:system-prompt` | —                                      | (Legacy — use `/system-prompt`)             |
+| `/diagnostic:open-log`      | —                                      | Open session log                            |
+| `/confetti`                 | `/conffety`, `/confetty` (hidden)      | Easter egg — rain or firework confetti      |
 
 ## TOON Prompt Encoding
 
@@ -203,7 +213,7 @@ The status row displays real-time token consumption during model streaming.
 
 When the user issues a quit command (`/exit`, `:q`, `Ctrl+D`) while a turn is in progress, the shell does not exit immediately — it confirms first.
 
-- **First quit attempt while busy**: Posts "Agent is still responding. Press y to quit (cancels the turn), n to keep waiting, or repeat /exit, :q, or Ctrl+D to confirm." to the transcript. Arms pending quit state.
+- **First quit attempt while busy**: Posts a transcript notice in warm orange (`QUIT_BUSY_NOTICE_FG: #fab373`) with extra vertical padding. Arms pending quit state.
 - **Confirmation**: `y`/`Y` → confirm quit (cancels turn, rejects pending approvals/questions, aborts session); `n`/`N`/`Esc` → dismiss
 - **Force quit**: `/exit!` or repeat quit command while pending confirm → immediate exit
 - **Ctrl+C while busy**: Cancels the current turn (aborts, clears queue, rejects approvals)
@@ -305,11 +315,44 @@ Renders GitHub-Flavored Markdown tables as a box-drawing grid in the markdown ou
 - `grid_vertical_bar_count()` — Total vertical rules for layout measurement
 - `cell_display_width()` — Uses `unicode-width` for correct CJK/emoji column widths
 
+## Confetti Overlay (Easter Egg)
+
+**Source**: `/elph/src/tui/confetti/`
+
+An animated particle overlay that produces full-screen confetti effects. Hidden from the slash palette and `/help`, triggered only by manually typing `/confetti`.
+
+| Module          | Purpose                                                          |
+| --------------- | ---------------------------------------------------------------- |
+| `mod.rs`        | Re-exports `ConfettiOverlay`, `ConfettiRuntime`, entry helpers   |
+| `physics.rs`    | Tuning constants: `SIMULATION_FPS = 60.0`, `GRAVITY = 95.0`     |
+| `simulation.rs` | Particle engine core — `System`, `Particle`, `Point`, `Vector`   |
+| `rain.rs`       | Rain mode: 140 particles from random top positions, 10 colors    |
+| `fireworks.rs`  | Firework mode: 3 rockets per salvo, 72-pellet circular burst     |
+| `overlay.rs`    | iocraft `ConfettiOverlay` component, full-screen absolutely-pos   |
+| `array.rs`      | `sample()` utility for random selection                          |
+
+- **Modes**: `/confetti` (default rain), `/confetti firework` / `/confetti fireworks`
+- **Behavior**: Auto-closes after 2–5 seconds once particles settle; restores the prompt draft and focus on close.
+- **Rendering**: Updates at ~60 FPS. Uses `crossterm::terminal::size()` polling for reliable full-screen dimensions during resize.
+- **Keyboard**: While confetti is open, all other keyboard handlers are skipped (early return).
+
+## System Prompt Dialog
+
+**Source**: `/elph/src/tui/system_prompt_dialog.rs`
+
+Opened by `/system-prompt` (aliases: `/prompt`, `/systemprompt`). Renders the compiled system prompt in a scrollable iocraft dialog overlay.
+
+- `SystemPromptDialogOverlay` — Scrollable dialog using `ScrollBox` + `DialogChrome` + `DialogShellOverlay` from elph-tui.
+- `open_system_prompt_dialog()` — Stashes any in-progress prompt draft, opens the dialog.
+- `close_system_prompt_dialog()` — Clears the editor (no draft restore) and returns focus.
+- Dynamic sizing: `MIN_DIALOG_WIDTH = 72`, `MAX_DIALOG_WIDTH = 120`, respects screen margins.
+- The compiled prompt is rebuilt live via `session.compiled_system_prompt()` which calls `build_coding_system_prompt()` with current resources, tools, mode, and AGENTS.md content.
+
 ## Key source files
 
 | Concern                            | Path                                                                                                                                 |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| TUI (current)                      | `/elph/src/tui/` (shell.rs, focus.rs, tool_approval.rs, activity.rs, agent_bridge.rs, chrome/, prompt/, transcript/, slash_palette/) |
+| TUI (current)                      | `/elph/src/tui/` (shell.rs, focus.rs, tool_approval.rs, activity.rs, agent_bridge.rs, chrome/, confetti/, prompt/, transcript/, slash_palette/) |
 | Shell implementation               | `/elph/src/tui/shell.rs`                                                                                                             |
 | Focus switching                    | `/elph/src/tui/focus.rs`                                                                                                             |
 | Model selector                     | `/elph/src/tui/model_selector.rs`, `model_selector_bar.rs`, `model_selector_shell.rs`, `model_option_list.rs`                        |
@@ -322,6 +365,8 @@ Renders GitHub-Flavored Markdown tables as a box-drawing grid in the markdown ou
 | Isomorphic text editor             | `/elph/src/tui/prompt/editor.rs`                                                                                                     |
 | Transcript cards + markdown        | `/elph/src/tui/transcript/`                                                                                                          |
 | Startup UI / MCP bootstrap         | `/elph/src/tui/startup.rs`, `/elph/src/agent/mcp_bootstrap.rs`                                                                       |
+| Confetti overlay                   | `/elph/src/tui/confetti/`                                                                                                            |
+| System prompt dialog               | `/elph/src/tui/system_prompt_dialog.rs`                                                                                              |
 | Chrome (header, stats, status_row) | `/elph/src/tui/chrome/`                                                                                                              |
 | Agent interaction                  | `/elph/src/agent/`                                                                                                                   |
 | Diagnostics tool                   | `/elph/src/agent/diagnostics.rs`                                                                                                     |
@@ -342,6 +387,8 @@ Renders GitHub-Flavored Markdown tables as a box-drawing grid in the markdown ou
 - **Focus behavior**: `/elph/src/tui/focus.rs` — `ShellFocus` enum, `prompt_focus_char`, `transcript_nav_key`
 - **Tool approval**: `/elph/src/tui/tool_approval.rs` — key bindings, `PendingToolApproval`
 - **Token tracking**: `/elph/src/tui/activity.rs` — `TurnTokenTracker`, `format_busy_token_info`
+- **Confetti overlay**: Add new particle effect in `/elph/src/tui/confetti/{rain,fireworks}.rs` and register in `simulation.rs`; register hidden slash command in `/elph/src/agent/slash_commands.rs` with `hidden: true`
+- **System prompt dialog**: Modify `/elph/src/tui/system_prompt_dialog.rs` for layout/behavior changes; slash dispatch in `/elph/src/tui/slash_handler.rs`
 - **Chrome / status row**: `/elph/src/tui/chrome/status_row.rs` — `busy_token_info`, `idle_notice` props
 - **New TUI example**: Add to `/crates/elph-tui/examples/` and register in the crate's `Cargo.toml`
 - **New component stub**: Add module to `/crates/elph-tui/src/components/` and register in `mod.rs`
