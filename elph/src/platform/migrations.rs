@@ -1,5 +1,5 @@
 use elph_agent::Migration;
-use floppy::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
+use elph_core::floppy::migrations::{V1_NAME, V1_UP, V2_NAME, V2_UP, V3_NAME, V3_UP};
 
 pub fn metadata_migrations() -> &'static [Migration] {
     &[
@@ -142,7 +142,7 @@ pub fn memory_migrations() -> &'static [Migration] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use floppy::migrations;
+    use elph_core::floppy::migrations;
 
     #[test]
     fn memory_migrations_track_floppy_versions() {

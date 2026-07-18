@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use floppy::category_str;
-use floppy::{
+use elph_core::floppy::category_str;
+use elph_core::floppy::{
     EmbeddingStatus, MemoryCategory, MemoryRecord, StoreStatus, TaskRecord, TaskStatus, TimelineEvent,
     TimelineEventKind,
 };
@@ -161,7 +161,7 @@ pub fn print_timeline(events: &[TimelineEvent]) {
     }
 }
 
-pub fn print_search_results(query: &str, memories: &[floppy::Memory]) {
+pub fn print_search_results(query: &str, memories: &[elph_core::floppy::Memory]) {
     if memories.is_empty() {
         println!("No relevant memories found.");
         return;

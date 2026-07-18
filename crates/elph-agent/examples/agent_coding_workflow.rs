@@ -27,7 +27,7 @@ const MODEL_ID: &str = "big-pickle";
 
 const DEFAULT_TASK: &str = concat!(
     "Perform a code review of this workspace:\n",
-    "1. Read `crates/elph-agent/src/lib.rs` to understand the core module\n",
+    "1. Read `crates/elph-core/src/lib.rs` to understand the core module\n",
     "2. Run `git status` to check current changes\n",
     "3. Run `cargo check` to verify compilation\n",
     "4. Read `Cargo.toml` to understand dependencies\n",

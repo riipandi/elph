@@ -215,10 +215,9 @@ fn extract_detail_body(raw: &str, status: Option<u16>) -> String {
         }
         let lower = s.to_ascii_lowercase();
         // Provider placeholders with no useful body.
-        if (lower.contains("status code") && lower.contains("no body"))
-            || lower == "status code"
-            || lower.starts_with("status code ")
-        {
+        if lower.contains("status code") && lower.contains("no body") {
+            s = "";
+        } else if lower == "status code" || lower.starts_with("status code ") {
             s = "";
         } else {
             let status_phrase = format!("{code} status code");

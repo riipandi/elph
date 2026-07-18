@@ -5,7 +5,7 @@
 **Upstream commit:** `4c18610` (2026-07-11)
 **Local clone:** `/Users/ariss/Developer/github.com/earendil-works/pi`
 **Elph crate:** `elph/` (binary + library; product shell)
-**Depends on:** `elph-agent`, `elph-ai`, `elph-tui`, `floppy` — see [pi-ai.md](./pi-ai.md), [pi-agent.md](./pi-agent.md)
+**Depends on:** `elph-agent`, `elph-ai`, `elph-tui`, `elph-core` — see [pi-ai.md](./pi-ai.md), [pi-agent.md](./pi-agent.md)
 
 ---
 

@@ -17,7 +17,7 @@ name = "elph_ai"
 path = "src/lib.rs"
 
 [features]
-tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable"]
+tracing = ["dep:elph-core", "dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-core/tracing"]
 
 [dependencies]
 anyhow.workspace = true
@@ -29,6 +29,7 @@ axum = { workspace = true, features = ["query"] }
 base64.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+elph-core = { workspace = true, optional = true, features = [] }
 eventsource-stream.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
@@ -37,7 +38,6 @@ futures.workspace = true
 http.workspace = true
 image.workspace = true
 jsonschema.workspace = true
-log.workspace = true
 memchr.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
@@ -90,6 +90,7 @@ name = "auth_custom"
 path = "examples/auth_custom.rs"
 
 [dev-dependencies]
+elph-core = { workspace = true, features = ["tracing"] }
 elph-tui.workspace = true
 parking_lot.workspace = true
 tempfile.workspace = true

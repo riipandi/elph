@@ -48,7 +48,7 @@ pub struct FloppyConfig {
     /// Daily decay rate for unused memories (default: 0.995)
     pub decay_rate: Option<f64>,
     /// Run floppy migrations in [`MemoryStore::init`] (default: true). Set `false` when the host
-    /// already applied [`crate::migrations::MIGRATIONS`].
+    /// already applied [`crate::floppy::migrations::MIGRATIONS`].
     pub apply_migrations: Option<bool>,
 }
 

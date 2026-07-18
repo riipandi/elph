@@ -47,7 +47,7 @@ tools-read-file = []
 tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-dir"]
 tools-web = []
 tools-write-file = []
-tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing", "elph-core/tracing"]
 # obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
 [dependencies]
@@ -58,11 +58,11 @@ base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
+elph-core = { workspace = true, default-features = true }
 elph-exec.workspace = true
 elph-tui.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
-memchr.workspace = true
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
 htmd.workspace = true
@@ -254,6 +254,7 @@ path = "examples/agent_collaboration.rs"
 
 [dev-dependencies]
 elph-ai = { workspace = true }
+elph-core = { workspace = true, features = ["tracing"] }
 httpmock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

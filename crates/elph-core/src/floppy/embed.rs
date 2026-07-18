@@ -185,9 +185,6 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
 #[cfg(feature = "embed")]
 fn set_hf_home(dir: &std::path::Path) {
     let value = dir.to_string_lossy().into_owned();
-    // SAFETY: called only during embedder construction before concurrent use of the
-    // process env for Hugging Face downloads; Rust 2024 requires an explicit unsafe
-    // block around set_var (edition guidance / RFC env mutability).
     unsafe {
         std::env::set_var("HF_HOME", value);
     }

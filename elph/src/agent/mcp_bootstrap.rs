@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::{McpLoadOptions, McpServerLoadProgress, McpToolRegistry};
+use elph_core::utils::path::AppPaths;
 use tokio::sync::mpsc;
 
 use super::events::AgentUiEvent;

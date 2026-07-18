@@ -4,8 +4,8 @@ use turso::params;
 use super::EMBED_PENDING_BATCH;
 use super::MemoryStore;
 use super::{new_id, now_secs};
-use crate::types::MemoryCategory;
-use crate::util::{category_str, drain_rows, vec_buf};
+use crate::floppy::types::MemoryCategory;
+use crate::floppy::util::{category_str, drain_rows, vec_buf};
 
 impl MemoryStore {
     pub async fn insert_raw_memory(&self, content: &str, category: MemoryCategory, weight: f64) -> Result<String> {

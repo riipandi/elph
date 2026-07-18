@@ -1,7 +1,8 @@
 mod crash;
+mod options;
 
 pub use crash::{CRASH_LOG_FILE, crash_log_path, install_panic_hook};
-pub use elph_agent::{LogRotation, LoggingOptions};
+pub use options::{LogRotation, LoggingOptions};
 
 use std::num::NonZeroUsize;
 use std::sync::Arc;
@@ -26,7 +27,7 @@ pub struct LogGuard {
 impl Drop for LogGuard {
     fn drop(&mut self) {
         self.bridge.flush();
-        elph_ai::trace::flush();
+        crate::trace::flush();
     }
 }
 
@@ -40,7 +41,7 @@ pub fn init(options: LoggingOptions) -> Option<LogGuard> {
     }
 
     let trace_enabled = options.trace_enabled;
-    elph_ai::trace::init(&options.logs_dir, options.app_name, trace_enabled);
+    crate::trace::init(&options);
     install_logger(&options, trace_enabled)
 }
 
@@ -73,7 +74,6 @@ fn file_appender(options: &LoggingOptions) -> append::Async {
         builder = builder.max_log_files(max_files);
     }
 
-    // INVARIANT: FileBuilder only fails on invalid path/config; app logs_dir is ensured at startup.
     let file = builder.build().expect("failed to initialize rolling log writer");
 
     AsyncBuilder::new(format!("{}-log-writer", options.app_name))
@@ -83,6 +83,7 @@ fn file_appender(options: &LoggingOptions) -> append::Async {
         .build()
 }
 
+#[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
 fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGuard> {
     let filter = level_filter(&options.level);
     let mut starter = logforth::starter_log::builder();
@@ -99,16 +100,18 @@ fn install_logger(options: &LoggingOptions, trace_enabled: bool) -> Option<LogGu
         starter = starter.dispatch(|d| d.filter(console_filter).append(stdout));
     }
 
+    #[cfg(feature = "tracing")]
     if trace_enabled {
         let fastrace = append::FastraceEvent::default();
         starter = starter.dispatch(|d| d.filter(filter).append(fastrace));
     } else {
         let _ = filter;
     }
+    #[cfg(not(feature = "tracing"))]
+    let _ = filter;
 
     let logger = starter.build();
     let bridge = Arc::new(LogBridge::new(logger));
-    // INVARIANT: process installs the logger once at startup; a second set is a programming error.
     log::set_boxed_logger(Box::new(bridge.clone())).expect("failed to set global logger");
     log::set_max_level(parse_max_level(&options.level));
 
@@ -140,6 +143,7 @@ mod tests {
         let bridge = Arc::new(LogBridge::new(logforth::starter_log::builder().build()));
         let guard = LogGuard { bridge: bridge.clone() };
         drop(guard);
+        // No panic = flush succeeded
     }
 
     #[test]

@@ -30,16 +30,16 @@ pub fn install_panic_hook(logs_dir: impl Into<PathBuf>) {
 
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        if let Some(dir) = CRASH_LOG_DIR.get()
-            && let Err(err) = write_crash_report(dir, info)
-        {
-            // Last-resort stderr if disk write fails (TUI may already be torn down).
-            let _ = writeln!(
-                io::stderr(),
-                "elph: failed to write crash log to {}/{}: {err}",
-                dir.display(),
-                CRASH_LOG_FILE
-            );
+        if let Some(dir) = CRASH_LOG_DIR.get() {
+            if let Err(err) = write_crash_report(dir, info) {
+                // Last-resort stderr if disk write fails (TUI may already be torn down).
+                let _ = writeln!(
+                    io::stderr(),
+                    "elph: failed to write crash log to {}/{}: {err}",
+                    dir.display(),
+                    CRASH_LOG_FILE
+                );
+            }
         }
         previous(info);
     }));

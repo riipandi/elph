@@ -1,7 +1,7 @@
-use crate::{BundledManifest, TrustStore, VersionFile};
 use anyhow::Result;
 use elph_agent::InitProgress;
 use elph_agent::{ensure_dirs, try_block_on};
+use elph_core::{BundledManifest, TrustStore, VersionFile};
 
 use super::paths::Paths;
 

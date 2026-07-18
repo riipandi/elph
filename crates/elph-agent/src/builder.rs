@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::logger_options::LoggingOptions;
+use elph_core::logger::LoggingOptions;
+
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::types::AgentTool;
 

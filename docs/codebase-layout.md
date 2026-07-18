@@ -18,10 +18,10 @@ Implementation detail lives in [openwiki](../openwiki/quickstart.md); this docum
 | Crate / binary | Layout intent                                                                                   |
 | -------------- | ----------------------------------------------------------------------------------------------- |
 | `elph-agent`   | Generic runtime: harness, agent loop, optional MCP/skills, `SystemPromptBuilder` (MiniJinja)    |
-| `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`, optional fastrace `trace/`  |
-| `floppy`       | Standalone AI memory: Turso vector search, scoring, task lifecycle (`query/`, `store/`)         |
+| `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`                              |
+| `elph-core`    | Shared primitives: `floppy/` (`query/`, `store/`), `logger/`, `scaffold/`, `utils/`             |
 | `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/`                                       |
-| `elph`         | Coding agent product: `agent/`, `logger/`, `scaffold/`, `utils/`, `shell/`, `cli/`, `platform/` |
+| `elph`         | Coding agent product: `agent/` (prompts, modes, session factory), `shell/`, `cli/`, `platform/` |
 
 ## `elph` module map
 
@@ -109,13 +109,13 @@ crates/elph-agent/src/
 ├── compaction/, session/, goals/, skills/, plugins/, datastore/, trace/
 └── lib.rs                   # Crate root (module declarations + re-exports)
 
-## `floppy` layout
+## `elph-core` floppy layout
 
 ```
 
-crates/floppy/src/
-├── lib.rs
-├── query/ # Task start, memory search, retrieval SQL
+crates/elph-core/src/floppy/
+├── mod.rs
+├── query.rs # Task start, memory search, retrieval SQL
 ├── store/ # Turso-backed MemoryStore (split submodules)
 │ ├── mod.rs
 │ ├── read.rs
@@ -123,7 +123,7 @@ crates/floppy/src/
 │ ├── embed.rs
 │ └── tasks.rs
 ├── scoring.rs, migrations.rs, builder.rs, …
-└── (unit tests colocated in src/)
+└── (unit tests colocated in src/; no integration tests/ yet)
 
 ```
 
@@ -132,10 +132,9 @@ crates/floppy/src/
 | Crate        | Responsibility                                                                                                       |
 | ------------ | -------------------------------------------------------------------------------------------------------------------- |
 | `elph-agent` | Agent + AgentHarness, optional built-in tools (`builtin-tools`), goals, subagents, MCP (`tools/mcp/`), **WASM extension host** (`plugins/`) |
-| `elph-ai`    | LLM providers, streaming, optional fastrace reporter                                                                 |
-| `floppy`     | Standalone AI memory store (Turso vector search)                                                                     |
+| `elph-ai`    | LLM providers, streaming                                                                                             |
 | `elph-tui`   | Reusable TUI components, chrome, diff engine                                                                         |
-| `elph`       | Product binary: CLI + shell + platform glue + logger/scaffold                                                        |
+| `elph`       | Product binary: CLI + shell + platform glue                                                                          |
 
 ## Test placement rules
 
@@ -148,7 +147,7 @@ crates/floppy/src/
 
 Each crate's integration tests exercise that crate's public API. `elph/tests/` covers only the `elph` binary and library glue (`cli.rs`, `bootstrap.rs`, `sigint.rs`).
 
-`floppy` and `elph-swarm` currently have no top-level `tests/` directory; coverage lives in `#[cfg(test)]` modules next to the code under `src/`.
+`elph-core` and `elph-swarm` currently have no `tests/` directory; coverage lives in `#[cfg(test)]` modules next to the code under `src/`.
 
 ## Naming conventions
 

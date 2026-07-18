@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::types::{MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource};
+use crate::floppy::types::{MemoryCategory, MemoryReportInput, ReportCorrectionInput, TaskEndInput, UserInputSource};
 use std::sync::Arc;
 
 fn mock_embed() -> EmbedFn {
@@ -39,7 +39,7 @@ impl TestCtx {
 async fn get_status_includes_categories() {
     let ctx = TestCtx::new();
     ctx.store
-        .report_user_input(crate::ReportUserInput {
+        .report_user_input(crate::floppy::ReportUserInput {
             lesson: "use pnpm".into(),
             source: UserInputSource::UserInput,
         })
@@ -60,7 +60,7 @@ async fn list_memories_filters_category() {
         .await
         .expect("insight");
     ctx.store
-        .report_user_input(crate::ReportUserInput {
+        .report_user_input(crate::floppy::ReportUserInput {
             lesson: "user note".into(),
             source: UserInputSource::UserInput,
         })
@@ -84,7 +84,7 @@ async fn search_memories_is_read_only() {
     let ctx = TestCtx::new();
     let mem_id = ctx
         .store
-        .report_user_input(crate::ReportUserInput {
+        .report_user_input(crate::floppy::ReportUserInput {
             lesson: "auth middleware path".into(),
             source: UserInputSource::UserCorrection,
         })

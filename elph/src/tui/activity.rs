@@ -487,16 +487,14 @@ mod tests {
 
     #[test]
     fn format_activity_busy_line_shows_label_and_phase_only() {
-        // Sub-second phases use integer ms (see format_duration_secs).
-        assert_eq!(format_activity_busy_line("Running grep", 0.8), "Running grep · 800ms");
+        assert_eq!(format_activity_busy_line("Running grep", 0.8), "Running grep · 0.8s");
         assert_eq!(format_activity_busy_line("Thinking", 1.2), "Thinking · 1.2s");
         assert_eq!(format_activity_busy_line("", 2.5), "2.5s");
     }
 
     #[test]
     fn format_session_busy_right_line_shows_total_and_cancel() {
-        // 40 + 18.1 = 58.1s rounds to whole seconds in the 10s–59s band.
-        assert_eq!(format_session_busy_right_line(40.0, 18.1, false), "58s total · Ctrl+C cancel");
+        assert_eq!(format_session_busy_right_line(40.0, 18.1, false), "58.1s total · Ctrl+C cancel");
         assert_eq!(format_session_busy_right_line(0.0, 110.0, false), "1m50s total · Ctrl+C cancel");
         assert_eq!(
             format_session_busy_right_line(10.0, 3.0, true),

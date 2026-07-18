@@ -3,7 +3,7 @@ use turso::params;
 
 use super::MemoryStore;
 use super::delete_orphan_retrievals;
-use crate::types::DecayResult;
+use crate::floppy::types::DecayResult;
 
 impl MemoryStore {
     pub async fn decay(&self) -> Result<DecayResult> {
