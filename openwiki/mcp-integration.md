@@ -1,267 +1,102 @@
+---
+type: Guide
+title: MCP Integration
+description: Model Context Protocol (MCP) server configuration, authentication, tool registration, and credential management in Elph.
+tags: [mcp, integration, tools, auth, configuration]
+resource: /crates/elph-agent/src/tools/mcp/
+---
+
 # MCP Integration
 
-Elph embeds an MCP **client** (via [rmcp](https://crates.io/crates/rmcp)) so the agent can call tools exposed by external MCP servers. The MCP module is feature-gated behind `mcp` (enabled by default).
+Elph connects to [Model Context Protocol](https://modelcontextprotocol.io/) servers and exposes their tools to the agent loop. MCP is the primary extension mechanism for adding domain-specific capabilities.
 
-**Source**: `/crates/elph-agent/src/tools/mcp/`
+**Schema:** `/schemas/mcp-schema.json`
 
-## Architecture
+## Configuration layers
 
+| Layer       | Path                       | Role                                              |
+| ----------- | -------------------------- | ------------------------------------------------- |
+| **Home**    | `~/.elph/mcp.json`         | Global servers; default target for `elph mcp add` |
+| **Project** | `<project>/.elph/mcp.json` | Per-project overrides / extras                    |
+
+Runtime loads **home** first, then deep-merges **project** on top. Same server name → project wins. Policy maps are merged the same way.
+
+**Source:** `crates/elph-agent/src/tools/mcp/config.rs`
+
+```sh
+# Add a project-only DeepWiki server
+elph mcp add --project deepwiki '{"type":"http","url":"https://mcp.deepwiki.com/mcp"}'
+
+# List merged view with layer tags
+elph mcp list
+
+# List project layer only
+elph mcp list --project
+
+# Remove from specific or all layers
+elph mcp remove --project deepwiki
+elph mcp remove --all name
 ```
-Agent Tool Registry
-       ↓
-McpToolRegistry
-       ↓
-McpClient ──→ Transport (stdio / HTTP / SSE)
-       ↓
-McpSessionPool (connection reuse)
-       ↓
-McpServerSession (per-server state)
-```
 
-## Configuration
+## Transports
 
-**File**: `/crates/elph-agent/src/tools/mcp/config.rs`
+| Transport             | Type config                                       | Use case                                  |
+| --------------------- | ------------------------------------------------- | ----------------------------------------- |
+| **stdio**             | `{"type":"stdio","command":"npx","args":["..."]}` | Local servers (filesystem, git, etc.)     |
+| **HTTP** (Streamable) | `{"type":"http","url":"..."}`                     | Remote servers with SSE or streaming HTTP |
+| **SSE**               | `{"type":"http","url":"...","transport":"sse"}`   | Remote servers using server-sent events   |
 
-MCP servers are configured via JSON (the Elph product uses `~/.elph/mcp.json`):
+**Source:** `crates/elph-agent/src/tools/mcp/client.rs`, `crates/elph-agent/src/tools/mcp/sse.rs`
+
+## Authentication
+
+| Method                | Config field                | Auth storage                              |
+| --------------------- | --------------------------- | ----------------------------------------- |
+| Bearer token (env)    | `authTokenEnv: "MCP_TOKEN"` | Environment variable                      |
+| Bearer token (inline) | `authToken: "sk-..."`       | Config file (not recommended for secrets) |
+| OAuth 2.1 + PKCE      | `oauth: true`               | Encrypted `auth.json` under home config   |
+
+**Credential conflict resolution** — if both a static bearer and OAuth entry exist:
+
+| `authConflict`    | Behavior                                  |
+| ----------------- | ----------------------------------------- |
+| `error` (default) | Fail with clear message                   |
+| `preferEnv`       | Use env/inline bearer; warn OAuth ignored |
+| `preferOauth`     | Use OAuth (refreshable); warn env ignored |
+
+OAuth tokens live in encrypted `auth.json` (`enc:...`). The CLI never prints secret values. `elph mcp doctor` reports `auth=... CONFLICT(policy=...)` without secrets.
+
+**Source:** `crates/elph-agent/src/tools/mcp/mod.rs`, `/elph/src/cli/mcp.rs`
+
+## Policy engine
+
+Per-server tool policies control which tools the agent can call and whether they need approval:
 
 ```json
 {
-    "servers": {
-        "filesystem": {
-            "type": "stdio",
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-            "timeoutMs": 60000
-        },
-        "remote": {
-            "type": "http",
-            "url": "https://mcp.example.com/mcp",
-            "authTokenEnv": "MCP_REMOTE_TOKEN",
-            "headers": { "X-App": "elph" },
-            "timeoutMs": 45000
-        }
+    "policy": {
+        "deepwiki__search": "allow",
+        "deepwiki__read": "allow",
+        "filesystem__write": "approve"
     }
 }
 ```
 
-| Config field                               | Transports | Description                         |
-| ------------------------------------------ | ---------- | ----------------------------------- |
-| `type`                                     | both       | `stdio` or `http`                   |
-| `command`/`args`/`env`/`cwd`               | stdio      | Child process configuration         |
-| `url`/`headers`/`authToken`/`authTokenEnv` | http       | Streamable HTTP endpoint            |
-| `timeoutMs`                                | both       | Per list/call timeout (default 60s) |
-| `disabled`                                 | both       | Skip during discovery and calls     |
+Policy values: `allow` (auto-execute), `approve` (require user approval), `deny` (block).
 
-Key config types:
+## Tool registry
 
-- `McpConfig` — Top-level config (servers map)
-- `McpServerConfig` — Single server configuration (enum over `Stdio` / `Http`)
-- `McpStdioConfig` — Stdio transport configuration
-- `McpHttpConfig` — HTTP transport configuration
-- `McpLoadOptions` — Options for loading servers (include/exclude patterns)
+During session bootstrap, the [`mcp_bootstrap`](../architecture/source-map.md#elph-binary--library-crate--elph) module discovers MCP servers from config, connects to each, and auto-registers tools with prefixed names: `{server}__{tool}`.
 
-## Transports
+**Source:** `/elph/src/agent/mcp_bootstrap.rs`
 
-**File**: `/crates/elph-agent/src/tools/mcp/client.rs`
+## Tool result handling
 
-Three transport types are supported:
+- Text blocks are truncated (~32k chars) before entering agent context
+- Optional [TOON encoding](agent-runtime.md#toon-prompt-encoding) further compresses large `structured_content` payloads
+- Notifications are sent back to `elph mcp` listening mode when enabled
 
-| Transport | File        | Description                    |
-| --------- | ----------- | ------------------------------ |
-| `stdio`   | `client.rs` | Child process with stdio       |
-| `http`    | `client.rs` | Streamable HTTP                |
-| `sse`     | `sse.rs`    | HTTP+SSE (2024-11-05 protocol) |
+## Bypassing MCP
 
-Connection functions:
-
-- `connect()` — Auto-detect transport from config
-- `connect_stdio()` — Connect to a stdio-based server
-- `connect_http()` — Connect to an HTTP-based server
-- `connect_with_context()` — Connect with OAuth context
-
-## Tool Registry
-
-**File**: `/crates/elph-agent/src/tools/mcp/registry.rs`
-
-The `McpToolRegistry` manages:
-
-- **Tool discovery** — List tools from connected servers
-- **Tool naming** — `mcp_{server}__{tool}` for the model tool surface
-- **Tool execution** — Route tool calls to the right server
-- **Hot reload** — `tools/list_changed`, `resources/list_changed`, `prompts/list_changed`
-- **Result formatting** — `mcp_result_to_agent()` / `mcp_result_to_agent_with_limit()`
-
-Key types:
-
-- `McpToolDescriptor` — Tool metadata from a server
-- `McpResourceDescriptor` — Resource metadata
-- `McpPromptDescriptor` — Prompt metadata
-- `McpToolRegistry` — Aggregated registry across servers
-- `McpLoadReport` / `McpServerLoadReport` — Load results
-
-## Sessions & Connection Pool
-
-**File**: `/crates/elph-agent/src/tools/mcp/session.rs`
-
-| Type                                                                                           | Purpose |
-| ---------------------------------------------------------------------------------------------- | ------- |
-| `McpSessionPool` — Reuse MCP connections across tool calls                                     |         |
-| `McpServerSession` — Per-server session state including capabilities and notification handlers |         |
-
-## Deferred MCP Loading
-
-**Source**: `/elph/src/agent/mcp_bootstrap.rs`, `/elph/src/tui/startup.rs`
-
-MCP server discovery is now deferred: the agent session starts immediately, and `McpToolRegistry::load_with_options()` runs in the background. The TUI shows per-server progress/error rows in the transcript as each server is discovered.
-
-- `discover_mcp_registry_with_progress()` — Loads MCP config best-effort, emits `McpServerLoadProgress` events
-- `wire_mcp_into_session()` — Binds the loaded registry to a running `CodingAgentSession`
-- Startup transcript rows use stable keys (`startup:mcp:{name}`) for upsert semantics
-- Config warnings are surfaced inline alongside server status
-
-## Config Compat Layer
-
-**File**: `/crates/elph-agent/src/tools/mcp/compat.rs`
-
-Normalizes editor-style MCP JSON configurations (Cursor, VS Code, Claude Code) into Elph's canonical shape before schema validation:
-
-- Renames `mcpServers` → `servers` when the `servers` key is absent
-- Infers `type: "http"` when a server has `url` but no `type`
-- Infers `type: "stdio"` when a server has `command` but no `type`
-
-This allows users to share MCP configs across tools without manual reformatting.
-
-## Authentication & Encryption
-
-### OAuth 2.1
-
-**File**: `/crates/elph-agent/src/tools/mcp/auth.rs`
-
-Supports OAuth 2.1 with PKCE for remote MCP servers:
-
-| Function                       | Purpose                      |
-| ------------------------------ | ---------------------------- |
-| `run_oauth_flow()`             | Run OAuth 2.1 PKCE flow      |
-| `run_oauth_flow_with_scopes()` | Run with custom scopes       |
-| `resolve_oauth_access_token()` | Resolve/refresh stored token |
-| `clear_credentials()`          | Clear stored credentials     |
-
-### Auth Store
-
-**File**: `/crates/elph-agent/src/tools/mcp/auth.rs` (within)
-
-- `FileCredentialStore` — Encrypted file-based credential storage
-- `FileCredentialStoreBuilder` — Builder with key path, auth file path
-- `AuthStoreFile` — Represents stored auth data
-- Default files: `auth.json` (encrypted credentials), `auth.key` (encryption key)
-
-### Credential Encryption
-
-**File**: `/crates/elph-agent/src/tools/mcp/crypto.rs`
-
-- `Aes256Key` — AES-256-GCM encryption key
-- `encrypt_async()` / `encrypt_string_async()` — Encrypt data
-- `decrypt_async()` / `decrypt_string_async()` — Decrypt data
-- `ENCRYPTED_PREFIX` — Values starting with `enc:` are encrypted
-
-### Auth Resolution
-
-**File**: `/crates/elph-agent/src/tools/mcp/auth_resolve.rs`
-
-- `McpAuthSource` — Auth source enum (none, env, oauth, encrypted)
-- `McpAuthSourceReport` — Report of all auth sources
-- `resolve_remote_auth()` — Resolve auth for a remote server
-
-### Auth Conflict Policy
-
-**File**: `/crates/elph-agent/src/tools/mcp/config.rs`
-
-`McpAuthConflictPolicy` — How to handle auth conflicts:
-
-- `PreferNew` — Prefer new auth configuration
-- `PreferStored` — Prefer stored credentials
-- `Error` — Error on conflict
-
-## Tool Policy
-
-**File**: `/crates/elph-agent/src/tools/mcp/policy.rs`
-
-| Type                                                                | Purpose |
-| ------------------------------------------------------------------- | ------- |
-| `McpPolicyConfig` — Policy configuration for all servers            |         |
-| `McpPolicyAction` — Action to take (Allow / Deny / RequireApproval) |         |
-| `mcp_tool_requires_approval()` — Check if a tool requires approval  |         |
-| `pattern_matches()` — Pattern matching for tool names               |         |
-
-## Validation
-
-**File**: `/crates/elph-agent/src/tools/mcp/validate.rs`
-
-- `McpConfigValidationError` — Validation error types
-- `validate_mcp_config()` — Validate MCP config structure
-- `validate_mcp_config_semantic()` — Semantic validation
-- `validate_mcp_config_value()` — Value-level validation
-- `validate_server_config()` — Validate single server config
-
-## Events
-
-**File**: `/crates/elph-agent/src/tools/mcp/events.rs`
-
-- `McpEventBus` — Event bus for MCP server events
-- `McpClientService` — Service wrapper around MCP client
-- `McpServerEvent` — Event types (connected, disconnected, error, tool_list_changed, etc.)
-
-## Store Lock
-
-**File**: `/crates/elph-agent/src/tools/mcp/store_lock.rs`
-
-Filesystem locking for the credential store to prevent concurrent access.
-
-## Truncation
-
-**File**: `/crates/elph-agent/src/tools/mcp/truncate.rs`
-
-Result truncation to prevent oversized tool results from consuming too much context.
-
-## CLI Commands
-
-**File**: `/elph/src/cli/mcp.rs`
-
-The `elph mcp` subcommand manages MCP server configurations:
-
-- `elph mcp list` — List configured servers
-- `elph mcp add` — Add a server configuration
-- `elph mcp remove` — Remove a server
-- `elph mcp test` — Test connection to a server
-- `elph mcp auth` — Manage OAuth credentials
-
-## Key source files
-
-| Concern          | Path                                               |
-| ---------------- | -------------------------------------------------- |
-| Module root      | `/crates/elph-agent/src/tools/mcp/mod.rs`          |
-| Auth & OAuth     | `/crates/elph-agent/src/tools/mcp/auth.rs`         |
-| Auth resolution  | `/crates/elph-agent/src/tools/mcp/auth_resolve.rs` |
-| Client & connect | `/crates/elph-agent/src/tools/mcp/client.rs`       |
-| Config types     | `/crates/elph-agent/src/tools/mcp/config.rs`       |
-| Crypto           | `/crates/elph-agent/src/tools/mcp/crypto.rs`       |
-| Events           | `/crates/elph-agent/src/tools/mcp/events.rs`       |
-| Policy           | `/crates/elph-agent/src/tools/mcp/policy.rs`       |
-| Tool registry    | `/crates/elph-agent/src/tools/mcp/registry.rs`     |
-| Sessions         | `/crates/elph-agent/src/tools/mcp/session.rs`      |
-| SSE transport    | `/crates/elph-agent/src/tools/mcp/sse.rs`          |
-| Store lock       | `/crates/elph-agent/src/tools/mcp/store_lock.rs`   |
-| Truncation       | `/crates/elph-agent/src/tools/mcp/truncate.rs`     |
-| Validation       | `/crates/elph-agent/src/tools/mcp/validate.rs`     |
-| CLI commands     | `/elph/src/cli/mcp.rs`                             |
-| Platform MCP     | `/elph/src/platform/mcp.rs`                        |
-
-## Change guidance
-
-- **New transport**: Add transport variant in `client.rs`, update `McpServerConfig` in `config.rs`
-- **Auth changes**: Update `auth.rs` and `auth_resolve.rs` — verify encryption in `crypto.rs`
-- **Tool registry**: Changes affect tool naming in `registry.rs` — `mcp_{server}__{tool}` convention
-- **Tests**: `/crates/elph-agent/tests/mcp_deepwiki.rs`, `tests/encrypt_string.rs`
-- **Example**: `/crates/elph-agent/examples/mcp_deepwiki.rs`
-- **Schema**: `/schemas/mcp-schema.json`
-- **Docs**: `/crates/elph-agent/docs/mcp.md`
+Set `ELPH_MCP_DISABLED=1` or use `elph run --no-mcp` to skip all MCP discovery.
+Use `ELPH_MCP_FETCH_TIMEOUT_SECS` to configure the per-server connection timeout.
