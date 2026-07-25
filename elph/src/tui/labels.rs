@@ -86,13 +86,28 @@ pub fn footer_status_left_label(
     }
 }
 
+/// Compact badge when native text-selection mode is active (`Ctrl+S`).
+pub const FOOTER_SELECT_MODE_BADGE: &str = "sel";
+
 /// Status footer right: `turn: N | [+A/B -C/D]` (single-digit counts).
 /// When fitting is tight, git yields before turn (see `fit_footer_status_right`).
+///
+/// With select mode: `sel | turn: N | [+A/B -C/D]`.
 pub fn footer_status_right_label(turn: u32, git: Option<&GitFooterInfo>) -> String {
+    footer_status_right_label_with_select(turn, git, false)
+}
+
+/// Like [`footer_status_right_label`], optionally prefixing the select-mode badge.
+pub fn footer_status_right_label_with_select(turn: u32, git: Option<&GitFooterInfo>, select_mode: bool) -> String {
     let turn_s = format!("turn: {turn}");
-    match footer_git_stats_label(git) {
+    let base = match footer_git_stats_label(git) {
         Some(stats) => format!("{turn_s} | {stats}"),
         None => turn_s,
+    };
+    if select_mode {
+        format!("{FOOTER_SELECT_MODE_BADGE} | {base}")
+    } else {
+        base
     }
 }
 
@@ -246,6 +261,11 @@ mod tests {
         assert_eq!(footer_status_right_label(0, Some(&git)), "turn: 0 | [+0/0 -0/0]");
         assert_eq!(footer_status_right_label(3, None), "turn: 3");
         assert_eq!(footer_status_right_label(12, Some(&git)), "turn: 12 | [+0/0 -0/0]");
+        assert_eq!(
+            footer_status_right_label_with_select(0, Some(&git), true),
+            "sel | turn: 0 | [+0/0 -0/0]"
+        );
+        assert_eq!(footer_status_right_label_with_select(3, None, true), "sel | turn: 3");
     }
 
     #[test]

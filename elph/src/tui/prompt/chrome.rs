@@ -156,6 +156,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                 turn: props.turn,
                 git: props.git.clone(),
                 colored_status_footer: props.colored_status_footer,
+                select_mode: props.text_select_mode,
                 chrome_revision: props.chrome_revision,
             )
         }

@@ -10,12 +10,6 @@ use iocraft::prelude::*;
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
 
-/// Persistent left status while mouse capture is off (native text selection).
-pub const SELECT_MODE_STATUS_LEFT: &str = "SELECT · drag to select text";
-
-/// Persistent right status while mouse capture is off — how to restore capture.
-pub const SELECT_MODE_STATUS_RIGHT: &str = "Ctrl+S re-enable capture";
-
 /// Paint refresh while busy (ms). Frame *phase* is wall-clock; this only schedules redraws.
 const STATUS_TICK_MS: u64 = 80;
 
@@ -44,8 +38,6 @@ use crate::tui::activity::{
     braille_spinner_glyph_now, format_activity_busy_line, format_session_busy_right_line,
     format_session_idle_right_line,
 };
-use crate::tui::theme::QUIT_BUSY_NOTICE_FG;
-
 /// Props for [`StatusRow`].
 ///
 /// Pass wall-clock start instants; this component owns spinner frames and elapsed display.
@@ -65,7 +57,7 @@ pub struct StatusRowProps {
     pub idle_notice: Option<String>,
     /// When true, append quit-confirm keys to the busy right segment.
     pub quit_confirm_pending: bool,
-    /// Mouse capture off — sticky status (not color-only; text + warm accent).
+    /// Mouse capture off — select mode is indicated in the footer (`sel | …`), not here.
     pub select_mode: bool,
 }
 
@@ -152,32 +144,13 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         format_session_busy_right_line(props.session_elapsed_secs, turn_elapsed_secs, props.quit_confirm_pending);
     let idle_right_line = format_session_idle_right_line(IDLE_ACTION_HINT);
 
-    // Sticky select-mode chrome: always visible until user re-enables capture (not toast-only).
-    let left_fg = if props.select_mode {
-        QUIT_BUSY_NOTICE_FG
-    } else {
-        Color::DarkGrey
-    };
-    let right_fg = if props.select_mode {
-        QUIT_BUSY_NOTICE_FG
-    } else {
-        Color::DarkGrey
-    };
-    let left_line = if props.select_mode {
-        SELECT_MODE_STATUS_LEFT.to_string()
-    } else if props.busy {
-        activity_line
-    } else {
-        idle_line
-    };
-    let right_line = if props.select_mode {
-        SELECT_MODE_STATUS_RIGHT.to_string()
-    } else if props.busy {
-        busy_right_line
-    } else {
-        idle_right_line
-    };
-    let show_busy_spinner = props.busy && !props.select_mode;
+    // Select mode no longer hijacks this row — badge lives in the footer right cluster.
+    let _select_mode = props.select_mode;
+    let left_fg = Color::DarkGrey;
+    let right_fg = Color::DarkGrey;
+    let left_line = if props.busy { activity_line } else { idle_line };
+    let right_line = if props.busy { busy_right_line } else { idle_right_line };
+    let show_busy_spinner = props.busy;
 
     element! {
         View(
@@ -271,14 +244,6 @@ mod tests {
         assert!(joined.contains("Ctrl+Y"));
         assert!(joined.contains("Ctrl+S"));
         assert!(joined.contains("text selection"));
-    }
-
-    #[test]
-    fn select_mode_status_copy_is_self_describing() {
-        assert!(SELECT_MODE_STATUS_LEFT.contains("SELECT"));
-        assert!(SELECT_MODE_STATUS_LEFT.contains("select"));
-        assert!(SELECT_MODE_STATUS_RIGHT.contains("Ctrl+S"));
-        assert!(SELECT_MODE_STATUS_RIGHT.contains("re-enable"));
     }
 
     #[test]

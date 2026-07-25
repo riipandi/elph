@@ -1,9 +1,9 @@
 //! Progressive chrome fitting — drops or truncates rightmost segments first.
 
 use crate::tui::labels::{
-    GitFooterInfo, context_pct_limit_label, editor_border_project_label, footer_mode_label, footer_model_name,
-    footer_model_thinking_label, footer_status_left_label, footer_status_right_label, format_token_count,
-    session_header_segments, session_label,
+    FOOTER_SELECT_MODE_BADGE, GitFooterInfo, context_pct_limit_label, editor_border_project_label, footer_mode_label,
+    footer_model_name, footer_model_thinking_label, footer_status_left_label, footer_status_right_label,
+    footer_status_right_label_with_select, format_token_count, session_header_segments, session_label,
 };
 use crate::types::{AgentMode, ThinkingLevel};
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
@@ -196,8 +196,29 @@ pub fn fit_footer_status_right(turn: u32, git: Option<&GitFooterInfo>, max_width
     }
     let turn_s = format!("turn: {turn}");
     let full = footer_status_right_label(turn, git);
-    // Prefer full, then drop git (keep turn). Never prefer git-only over turn.
     let candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
+    pick_fitting_label(&candidates, max_width)
+}
+
+/// Like [`fit_footer_status_right`], with optional select-mode badge on the left of the right cluster.
+///
+/// Drop order: full (`sel | turn | git`) → `sel | turn` → `sel` → empty/truncated.
+pub fn fit_footer_status_right_with_select(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    max_width: usize,
+    select_mode: bool,
+) -> String {
+    if !select_mode {
+        return fit_footer_status_right(turn, git, max_width);
+    }
+    if max_width == 0 {
+        return String::new();
+    }
+    let turn_s = format!("{FOOTER_SELECT_MODE_BADGE} | turn: {turn}");
+    let full = footer_status_right_label_with_select(turn, git, true);
+    let mut candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
+    candidates.push(FOOTER_SELECT_MODE_BADGE.to_string());
     pick_fitting_label(&candidates, max_width)
 }
 
@@ -305,6 +326,11 @@ mod tests {
         let tight = fit_footer_status_right(2, Some(&git), 4);
         assert!(display_width(&tight) <= 4);
         assert!(!tight.contains('['));
+
+        let sel_wide = fit_footer_status_right_with_select(0, Some(&git), 48, true);
+        assert_eq!(sel_wide, "sel | turn: 0 | [+3/42 -1/7]");
+        let sel_mid = fit_footer_status_right_with_select(0, Some(&git), 18, true);
+        assert_eq!(sel_mid, "sel | turn: 0");
     }
 
     #[test]

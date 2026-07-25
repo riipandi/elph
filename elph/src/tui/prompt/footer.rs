@@ -3,11 +3,12 @@
 use iocraft::prelude::*;
 
 use crate::tui::chrome::{
-    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right, footer_mode_model_width,
+    chrome_footer_widths, fit_footer_status_left, fit_footer_status_right, fit_footer_status_right_with_select,
+    footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
-use crate::tui::labels::footer_mode_label;
-use crate::tui::theme::{FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, rgb_color};
+use crate::tui::labels::{FOOTER_SELECT_MODE_BADGE, footer_mode_label};
+use crate::tui::theme::{FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, QUIT_BUSY_NOTICE_FG, rgb_color};
 use crate::types::{AgentMode, ThinkingLevel};
 
 #[derive(Clone, Default, Props)]
@@ -21,6 +22,8 @@ pub struct FooterProps {
     pub git: Option<GitFooterInfo>,
     /// When true, mode/thinking/git accents are colored; otherwise dimmed grey.
     pub colored_status_footer: bool,
+    /// Native text-selection mode (`Ctrl+S`) — shows `sel |` on the right cluster.
+    pub select_mode: bool,
     /// Bumped when chrome stats/git refresh so footer repaints eagerly.
     pub chrome_revision: u64,
 }
@@ -39,6 +42,10 @@ struct FooterLeftParts {
 /// Colored segments for the right status footer (git stats).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct FooterRightParts {
+    /// Select-mode badge (`sel`) — warm accent when active.
+    select_badge: String,
+    /// Separator after the badge (` | `) when select mode is on.
+    select_sep: String,
     /// Dimmed prefix (`turn: N | ` or empty).
     prefix: String,
     /// `[` — dimmed.
@@ -65,32 +72,61 @@ fn parse_git_stats_body(stats: &str) -> Option<(String, String)> {
     Some((added.to_string(), deleted.to_string()))
 }
 
-/// Split a fitted right footer line into turn / git add / git del for coloring.
+/// Split a fitted right footer line into optional `sel` / turn / git add / git del for coloring.
 fn split_footer_status_right(right: &str) -> FooterRightParts {
     if right.is_empty() {
         return FooterRightParts::default();
     }
 
-    let (prefix, stats) = if let Some((turn, rest)) = right.split_once(" | ") {
-        if rest.starts_with('[') {
-            (format!("{turn} | "), rest)
+    let (select_badge, select_sep, rest) = if right == FOOTER_SELECT_MODE_BADGE {
+        return FooterRightParts {
+            select_badge: FOOTER_SELECT_MODE_BADGE.to_string(),
+            ..FooterRightParts::default()
+        };
+    } else if let Some(after_sel) = right.strip_prefix(&format!("{FOOTER_SELECT_MODE_BADGE} | ")) {
+        (
+            FOOTER_SELECT_MODE_BADGE.to_string(),
+            " | ".to_string(),
+            after_sel,
+        )
+    } else {
+        (String::new(), String::new(), right)
+    };
+
+    if rest.is_empty() {
+        return FooterRightParts {
+            select_badge,
+            select_sep,
+            ..FooterRightParts::default()
+        };
+    }
+
+    let (prefix, stats) = if let Some((turn, after_turn)) = rest.split_once(" | ") {
+        if after_turn.starts_with('[') {
+            (format!("{turn} | "), after_turn)
         } else {
             return FooterRightParts {
-                plain: right.to_string(),
+                select_badge,
+                select_sep,
+                plain: rest.to_string(),
                 ..FooterRightParts::default()
             };
         }
-    } else if right.starts_with('[') {
-        (String::new(), right)
+    } else if rest.starts_with('[') {
+        (String::new(), rest)
     } else {
         return FooterRightParts {
-            plain: right.to_string(),
+            select_badge,
+            select_sep,
+            plain: rest.to_string(),
             ..FooterRightParts::default()
         };
     };
 
     if let Some((added, deleted)) = parse_git_stats_body(stats) {
         FooterRightParts {
+            select_badge,
+            select_sep,
             prefix,
             open: "[".to_string(),
             added,
@@ -101,7 +137,9 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
         }
     } else {
         FooterRightParts {
-            plain: right.to_string(),
+            select_badge,
+            select_sep,
+            plain: rest.to_string(),
             ..FooterRightParts::default()
         }
     }
@@ -187,7 +225,11 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
         props.supports_images,
         left_w.max(1),
     );
-    let right = fit_footer_status_right(props.turn, props.git.as_ref(), right_w);
+    let right = if props.select_mode {
+        fit_footer_status_right_with_select(props.turn, props.git.as_ref(), right_w, true)
+    } else {
+        fit_footer_status_right(props.turn, props.git.as_ref(), right_w)
+    };
     let parts = split_footer_status_left(props.agent_mode, &left);
     let right_parts = split_footer_status_right(&right);
     let colored = props.colored_status_footer;
@@ -203,6 +245,12 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
     };
     let git_add_color = if colored { FOOTER_GIT_ADD_FG } else { FOOTER_DIM_FG };
     let git_del_color = if colored { FOOTER_GIT_DEL_FG } else { FOOTER_DIM_FG };
+    // Select badge always uses the warm accent so it stays visible even with dimmed footers.
+    let select_badge_color = if props.select_mode {
+        QUIT_BUSY_NOTICE_FG
+    } else {
+        FOOTER_DIM_FG
+    };
 
     element! {
         View(
@@ -256,6 +304,23 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                 justify_content: JustifyContent::End,
                 padding: 0,
             ) {
+                #( (!right_parts.select_badge.is_empty()).then(|| -> AnyElement<'static> {
+                    element! {
+                        Text(
+                            color: select_badge_color,
+                            weight: Weight::Bold,
+                            wrap: TextWrap::NoWrap,
+                            content: right_parts.select_badge.clone(),
+                        )
+                    }
+                    .into()
+                }))
+                #( (!right_parts.select_sep.is_empty()).then(|| -> AnyElement<'static> {
+                    element! {
+                        Text(color: FOOTER_DIM_FG, wrap: TextWrap::NoWrap, content: right_parts.select_sep.clone())
+                    }
+                    .into()
+                }))
                 #( (!right_parts.plain.is_empty()).then(|| -> AnyElement<'static> {
                     element! {
                         Text(color: FOOTER_DIM_FG, wrap: TextWrap::NoWrap, content: right_parts.plain.clone())
@@ -335,6 +400,7 @@ mod tests {
         assert_eq!(full.deleted, "-1/7");
         assert_eq!(full.close, "]");
         assert!(full.plain.is_empty());
+        assert!(full.select_badge.is_empty());
 
         let stats_only = split_footer_status_right("[+0/0 -0/0]");
         assert!(stats_only.prefix.is_empty());
@@ -344,6 +410,13 @@ mod tests {
         let turn_only = split_footer_status_right("turn: 3");
         assert_eq!(turn_only.plain, "turn: 3");
         assert!(turn_only.added.is_empty());
+
+        let with_sel = split_footer_status_right("sel | turn: 0 | [+0/0 -0/0]");
+        assert_eq!(with_sel.select_badge, "sel");
+        assert_eq!(with_sel.select_sep, " | ");
+        assert_eq!(with_sel.prefix, "turn: 0 | ");
+        assert_eq!(with_sel.added, "+0/0");
+        assert_eq!(with_sel.deleted, "-0/0");
     }
 
     #[test]
@@ -358,6 +431,7 @@ mod tests {
                 turn: 0u32,
                 git: None,
                 colored_status_footer: true,
+                select_mode: false,
                 chrome_revision: 1u64,
             )
         }
@@ -389,12 +463,41 @@ mod tests {
                 turn: 3u32,
                 git: Some(git),
                 colored_status_footer: true,
+                select_mode: false,
                 chrome_revision: 2u64,
             )
         }
         .to_string();
         assert!(rendered.contains("turn: 3") || rendered.contains("turn:"), "{rendered:?}");
         assert!(rendered.contains("[+") || rendered.contains("Build"), "{rendered:?}");
+    }
+
+    #[test]
+    fn footer_render_shows_sel_badge_in_select_mode() {
+        let git = GitFooterInfo {
+            branch: "main".to_string(),
+            files_added: 0,
+            lines_added: 0,
+            files_deleted: 0,
+            lines_deleted: 0,
+        };
+        let rendered = element! {
+            Footer(
+                screen_width: 100u16,
+                agent_mode: AgentMode::Build,
+                model_label: "opencode/big-pickle".to_string(),
+                thinking_level: ThinkingLevel::High,
+                supports_images: false,
+                turn: 0u32,
+                git: Some(git),
+                colored_status_footer: true,
+                select_mode: true,
+                chrome_revision: 1u64,
+            )
+        }
+        .to_string();
+        assert!(rendered.contains("sel"), "select badge missing: {rendered:?}");
+        assert!(rendered.contains("turn:"), "{rendered:?}");
     }
 
     #[test]
@@ -409,6 +512,7 @@ mod tests {
                 turn: 1u32,
                 git: None,
                 colored_status_footer: false,
+                select_mode: false,
                 chrome_revision: 1u64,
             )
         }

@@ -155,7 +155,8 @@ pub fn prompt_copy_failed_banner() -> EphemeralBanner {
 
 /// Banner when mouse capture is turned off (native drag-select enabled).
 ///
-/// StatusRow also shows a sticky SELECT line until capture is re-enabled — toast is transitional only.
+/// The footer right cluster shows a sticky `sel |` badge while select mode is on;
+/// this toast is transitional only.
 pub fn select_mode_on_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
