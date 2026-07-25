@@ -336,13 +336,14 @@ mod tests {
     }
 
     #[test]
-    fn rapid_paste_stream_coalesces_until_idle() {
+    fn rapid_paste_stream_stays_visible_while_bursting() {
         let paste = "# Elph — OpenWiki Quickstart";
         let mut state = TextareaState::default();
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
         let mut on_escape = HandlerMut::default();
+        let mut expected = String::new();
 
         for (i, ch) in paste.chars().enumerate() {
             let ctx = TextareaInputContext {
@@ -358,12 +359,10 @@ mod tests {
                 on_escape: &mut on_escape,
             };
             let result = handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
-            if i == 0 {
-                assert_eq!(result, TextareaInputResult::Changed);
-                assert_eq!(state.text, "#");
-            } else {
-                assert_eq!(result, TextareaInputResult::Consumed, "char {i}: {ch}");
-            }
+            expected.push(ch);
+            // Short/normal streams live-sync into the editor so chars never "vanish".
+            assert_eq!(result, TextareaInputResult::Changed, "char {i}: {ch}");
+            assert_eq!(state.text, expected, "char {i}: {ch}");
         }
 
         thread::sleep(Duration::from_millis(110));
@@ -385,6 +384,55 @@ mod tests {
         );
         assert_eq!(state.text, format!("{paste}!"));
         assert!(!burst.active);
+    }
+
+    #[test]
+    fn rapid_short_word_does_not_lose_characters() {
+        // Regression: first char applied normally, subsequent rapid keys used to buffer
+        // invisibly until the *next* key — empty-prompt typing looked like auto-delete.
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        for ch in ['h', 'i', '!', '?'] {
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+            assert_eq!(
+                handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx),
+                TextareaInputResult::Changed
+            );
+        }
+        assert_eq!(state.text, "hi!?");
+        assert_eq!(state.cursor, 4);
+    }
+
+    #[test]
+    fn shift_at_then_letter_keeps_both_characters() {
+        // Regression: Shift+@ for mentions left a sticky selection_anchor; the next
+        // keystroke replaced `@` (e.g. `@` then `k` became just `k`).
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press_mod(KeyCode::Char('@'), KeyModifiers::SHIFT), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "@");
+        assert!(!state.has_selection());
+        assert!(state.selection_anchor.is_none());
+
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('k')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "@k");
+        assert_eq!(state.cursor, 2);
     }
 
     fn shift_key_press(code: KeyCode) -> TerminalEvent {

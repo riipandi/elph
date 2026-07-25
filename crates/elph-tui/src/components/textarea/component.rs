@@ -1,6 +1,7 @@
 //! iocraft [`Textarea`] — thin shell around [`TextareaState`] + direct render.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use super::TextareaProps;
 use super::input::handle_textarea_terminal_event;
@@ -251,6 +252,58 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let file_picker_key_handled = props.file_picker_key_handled;
     let prompt_editor_mirror = props.prompt_editor_mirror;
 
+    // Flush raw paste-burst buffers after a typing gap so rapid keys are not lost when the
+    // user stops (merge used to run only on the *next* keypress).
+    {
+        let mut editor = editor;
+        let mut paste_burst = paste_burst;
+        let last_key_at = last_key_at;
+        let mut value = value;
+        let live_draft = live_draft;
+        let live_cursor = live_cursor;
+        let prompt_editor_mirror = prompt_editor_mirror;
+        let mut generation = generation;
+        let mut layout_cache = layout_cache;
+        let mut viewport_cache = viewport_cache;
+        hooks.use_future(async move {
+            use crate::text_editing::PASTE_BURST_WINDOW;
+            loop {
+                tokio::time::sleep(Duration::from_millis(32)).await;
+                if !paste_burst.read().active {
+                    continue;
+                }
+                let Some(last) = last_key_at.read().clone() else {
+                    continue;
+                };
+                if last.elapsed() < PASTE_BURST_WINDOW {
+                    continue;
+                }
+                let mut ed = editor.write();
+                let mut burst = paste_burst.write();
+                if !super::input::flush_idle_burst(&mut ed, &mut burst) {
+                    continue;
+                }
+                let text = ed.text.clone();
+                let cursor = ed.cursor;
+                drop(burst);
+                drop(ed);
+                if let Some(mut live) = live_draft {
+                    live.set(text.clone());
+                }
+                if let Some(mut cursor_ref) = live_cursor {
+                    cursor_ref.set(cursor);
+                }
+                if let Some(mut mirror) = prompt_editor_mirror {
+                    mirror.set((text.clone(), cursor));
+                }
+                value.set(text);
+                layout_cache.set(None);
+                viewport_cache.set(None);
+                generation.set(generation.get().wrapping_add(1));
+            }
+        });
+    }
+
     if !has_focus {
         pending_esc.set(false);
     }
@@ -489,7 +542,9 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     generation.set(generation.get().wrapping_add(1));
                 }
                 TextareaInputResult::Changed => {
-                    if !paste_burst.read().active {
+                    // Always mirror parent draft — including during short raw-burst typing so
+                    // shell palette / chrome never re-sync from a stale empty draft.
+                    {
                         let ed = editor.read();
                         let text = ed.text.clone();
                         sync_live_draft(&text, ed.cursor);
@@ -507,8 +562,11 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     generation.set(generation.get().wrapping_add(1));
                 }
                 TextareaInputResult::Consumed => {
+                    // Bulk raw-burst (long paste): keep parent draft at least as long as the
+                    // visible editor so an idle flush cannot race with an empty parent value.
                     if file_picker_active.is_some_and(|active| active.get())
                         || slash_palette_active.is_some_and(|active| active.get())
+                        || paste_burst.read().active
                     {
                         let ed = editor.read();
                         sync_live_draft(&ed.text, ed.cursor);

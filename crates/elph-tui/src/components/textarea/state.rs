@@ -147,7 +147,11 @@ impl TextareaState {
             self.insert_newline();
             return;
         }
-        self.delete_selection();
+        // Replace an active range, then drop any zero-width leftover anchor so Shifted
+        // character keys never leave a sticky selection for the next keystroke.
+        if !self.delete_selection() {
+            self.clear_selection();
+        }
         let cursor = self.cursor.min(self.text.len());
         self.text.insert(cursor, c);
         self.cursor = cursor + c.len_utf8();
@@ -238,7 +242,17 @@ impl TextareaState {
     }
 
     /// Arrow / Home / End with Shift extends the selection (vim visual-ish).
+    ///
+    /// Only navigation keys may start a selection. Shifted *characters* (e.g. `@` via
+    /// Shift+2) must not set [`Self::selection_anchor`] — otherwise the next keystroke
+    /// replaces the just-typed char via [`Self::delete_selection`].
     pub fn move_with_shift(&mut self, code: KeyCode, input_width: u16) -> bool {
+        match code {
+            KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down | KeyCode::Home | KeyCode::End => {}
+            // Char / Tab / Enter with Shift held are typing, not selection.
+            _ => return false,
+        }
+
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         if self.selection_anchor.is_none() {
             self.selection_anchor = Some(self.cursor);
@@ -523,5 +537,33 @@ mod tests {
     fn focused_sync_rejects_stale_parent_after_deletion() {
         assert!(!TextareaState::should_sync_focused_external("/goal", "/goal "));
         assert!(!TextareaState::should_sync_focused_external("/goal pause", "/goal "));
+    }
+
+    #[test]
+    fn shift_char_does_not_start_selection_or_replace_previous() {
+        // Regression: Shift+@ (mention) then `k` used to replace `@` because
+        // `move_with_shift` set selection_anchor before rejecting non-nav keys.
+        let mut state = TextareaState::default();
+        assert!(!state.move_with_shift(KeyCode::Char('@'), 40));
+        assert!(state.selection_anchor.is_none());
+        state.insert_char('@');
+        assert_eq!(state.text, "@");
+        assert!(state.selection_anchor.is_none());
+
+        assert!(!state.move_with_shift(KeyCode::Char('k'), 40));
+        state.insert_char('k');
+        assert_eq!(state.text, "@k");
+        assert_eq!(state.cursor, 2);
+        assert!(!state.has_selection());
+    }
+
+    #[test]
+    fn shift_arrow_still_starts_selection() {
+        let mut state = TextareaState::from_text("hello".into());
+        state.cursor = 5;
+        assert!(state.move_with_shift(KeyCode::Left, 40));
+        assert_eq!(state.selection_anchor, Some(5));
+        assert_eq!(state.cursor, 4);
+        assert!(state.has_selection());
     }
 }
