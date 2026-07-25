@@ -147,7 +147,10 @@ fn delete_word_forward_no_op_at_eof_of_line() {
 }
 
 #[test]
-fn color_rejects_short_hex() {
+fn color_rejects_invalid_hex_lengths() {
     use elph_tui::color::from_hex;
-    assert_eq!(from_hex("#abc"), None);
+    // `#RGB` / `#RRGGBB` / `#RRGGBBAA` are valid; other lengths are rejected.
+    assert_eq!(from_hex("#ab"), None);
+    assert_eq!(from_hex("#abcd"), None);
+    assert_eq!(from_hex("#abcde"), None);
 }

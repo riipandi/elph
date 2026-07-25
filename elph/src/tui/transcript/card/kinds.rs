@@ -258,31 +258,6 @@ fn response_phase_header(
     .into()
 }
 
-fn tool_phase_header(
-    inner_width: u16,
-    task: String,
-    detail: String,
-    duration_secs: Option<f64>,
-    status: ProcessStatus,
-    message_index: usize,
-    clickable: bool,
-    toggle: Option<CollapsibleToggleCtx>,
-) -> AnyElement<'static> {
-    element! {
-        ProcessHeaderToggle(
-            inner_width: inner_width,
-            label: task,
-            detail: detail,
-            duration_secs: duration_secs,
-            status: status,
-            message_index: message_index,
-            clickable: clickable,
-            toggle: toggle,
-        )
-    }
-    .into()
-}
-
 fn chrome_inner_width(chrome: &TranscriptCardChrome) -> u16 {
     chrome
         .outer_width
@@ -558,16 +533,16 @@ pub fn tool_call_card(
                 flex_direction: FlexDirection::Column,
                 gap: 0,
             ) {
-                #(tool_phase_header(
-                    inner_width,
-                    header_task,
-                    header_detail,
-                    message.duration_secs,
-                    status,
-                    message_index,
-                    clickable,
-                    toggle,
-                ))
+                ProcessHeaderToggle(
+                    inner_width: inner_width,
+                    label: header_task,
+                    detail: header_detail,
+                    duration_secs: message.duration_secs,
+                    status: status,
+                    message_index: message_index,
+                    clickable: clickable,
+                    toggle: toggle,
+                )
                 #(if ask_user_rows.is_some() {
                     Some(element! {
                         View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {

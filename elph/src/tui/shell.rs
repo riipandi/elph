@@ -3004,8 +3004,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 busy: busy.get(),
                 activity_label: activity_label.read().clone(),
                 accent: scanner_accent,
-                activity_started_at: activity_started_at.read().clone(),
-                busy_started_at: busy_started_at.read().clone(),
+                activity_started_at: *activity_started_at.read(),
+                busy_started_at: *busy_started_at.read(),
                 session_elapsed_secs: session_elapsed_secs.get(),
                 idle_notice: idle_status_notice.read().as_ref().map(|notice| notice.text.clone()),
                 ephemeral_banner: ephemeral_banner
