@@ -1,8 +1,8 @@
-use crate::platform::{self, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode};
+use crate::platform::{self, EXIT_INTERRUPTED, ExitCode};
 
 /// Launch the TUI (default, no subcommand).
 pub fn handle(resume_id: Option<String>) -> ExitCode {
-    platform::run(resume_id);
+    let code = platform::run(resume_id);
 
     use std::sync::atomic::Ordering;
     if platform::WAS_INTERRUPTED.load(Ordering::Relaxed) {
@@ -13,5 +13,5 @@ pub fn handle(resume_id: Option<String>) -> ExitCode {
         return EXIT_INTERRUPTED;
     }
 
-    EXIT_SUCCESS
+    code
 }

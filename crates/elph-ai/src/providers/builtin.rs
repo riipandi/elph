@@ -445,6 +445,15 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["OPENCODE_API_KEY"], "OpenCode API key")
         ),
+        // Gitlawb OpenGateway — OpenAI-compatible proxy (https://gitlawb.com/opengateway).
+        // Base URL: https://opengateway.gitlawb.com/v1 · keys: OGW_API_KEY | OPENGATEWAY_API_KEY
+        simple_provider!(
+            "opengateway",
+            "OpenGateway",
+            OPENGATEWAY_MODELS,
+            openai_completions_api,
+            (vec!["OGW_API_KEY", "OPENGATEWAY_API_KEY"], "OpenGateway API key")
+        ),
         simple_provider!(
             "openrouter",
             "OpenRouter",

@@ -130,6 +130,11 @@
         "count": 13
     },
     {
+        "providerId": "opengateway",
+        "rustMod": "opengateway",
+        "count": 10
+    },
+    {
         "providerId": "openrouter",
         "rustMod": "openrouter",
         "count": 270

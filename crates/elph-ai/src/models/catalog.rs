@@ -154,6 +154,7 @@ define_catalog!(OPENAI_CODEX_MODELS, "openai_codex.json");
 define_catalog!(OPENAI_MODELS, "openai.json");
 define_catalog!(OPENCODE_GO_MODELS, "opencode_go.json");
 define_catalog!(OPENCODE_MODELS, "opencode.json");
+define_catalog!(OPENGATEWAY_MODELS, "opengateway.json");
 define_catalog!(OPENROUTER_MODELS, "openrouter.json");
 define_catalog!(TOGETHER_MODELS, "together.json");
 define_catalog!(VERCEL_AI_GATEWAY_MODELS, "vercel_ai_gateway.json");
@@ -193,6 +194,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("openai-codex", OPENAI_CODEX_MODELS.as_slice()),
         ("opencode", OPENCODE_MODELS.as_slice()),
         ("opencode-go", OPENCODE_GO_MODELS.as_slice()),
+        ("opengateway", OPENGATEWAY_MODELS.as_slice()),
         ("openrouter", OPENROUTER_MODELS.as_slice()),
         ("together", TOGETHER_MODELS.as_slice()),
         ("vercel-ai-gateway", VERCEL_AI_GATEWAY_MODELS.as_slice()),

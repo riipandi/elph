@@ -1,0 +1,212 @@
+{
+    "auto": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "auto",
+        "input": ["text"],
+        "maxTokens": 32000,
+        "name": "Auto (smart routing)",
+        "provider": "opengateway",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0036,
+            "cacheWrite": 0,
+            "input": 0.435,
+            "output": 0.87
+        },
+        "id": "xiaomi/mimo-v2.5-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiMo V2.5-Pro",
+        "provider": "opengateway",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "xiaomi/mimo-v2.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "MiMo V2.5",
+        "provider": "opengateway",
+        "reasoning": true
+    },
+    "google/gemini-3.1-flash-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "google/gemini-3.1-flash-lite",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Flash Lite",
+        "provider": "opengateway",
+        "reasoning": false
+    },
+    "minimax/minimax-m3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "id": "minimax/minimax-m3",
+        "input": ["text"],
+        "maxTokens": 51200,
+        "name": "MiniMax M3",
+        "provider": "opengateway",
+        "reasoning": true
+    },
+    "qwen/qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 3.75
+        },
+        "id": "qwen/qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.7 Max",
+        "provider": "opengateway",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "moonshotai/kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Kimi K3",
+        "provider": "opengateway",
+        "reasoning": false
+    },
+    "z-ai/glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "id": "z-ai/glm-5.2",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 5.2",
+        "provider": "opengateway",
+        "reasoning": false
+    },
+    "nvidia/nemotron-3-ultra-550b-a55b:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "Nemotron 3 Ultra",
+        "provider": "opengateway",
+        "reasoning": false
+    },
+    "tencent/hy3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0,
+            "input": 0.2,
+            "output": 0.8
+        },
+        "id": "tencent/hy3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Tencent HY3",
+        "provider": "opengateway",
+        "reasoning": false
+    }
+}

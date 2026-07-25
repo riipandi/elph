@@ -38,6 +38,12 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OPENROUTER_API_KEY",
             default_model: "anthropic/claude-sonnet-4",
         }),
+        // Gitlawb OpenGateway — https://gitlawb.com/opengateway (OGW_API_KEY | OPENGATEWAY_API_KEY).
+        "opengateway" => Some(ProviderConfig {
+            label: "OpenGateway",
+            api_key_env_key: "OGW_API_KEY",
+            default_model: "auto",
+        }),
         "google" => Some(ProviderConfig {
             label: "Google",
             api_key_env_key: "GOOGLE_API_KEY",
@@ -95,4 +101,33 @@ pub fn resolve_provider_and_model(
         .unwrap_or_else(|| resolve_model_id_for_provider(&provider));
 
     Ok((provider, model_id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opengateway_is_a_known_provider() {
+        let cfg = provider_config("opengateway").expect("opengateway config");
+        assert_eq!(cfg.label, "OpenGateway");
+        assert_eq!(cfg.api_key_env_key, "OGW_API_KEY");
+        assert_eq!(cfg.default_model, "auto");
+    }
+
+    #[test]
+    fn resolve_opengateway_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("opengateway"), Some("nvidia/nemotron-3-ultra-550b-a55b:free"))
+                .expect("resolve");
+        assert_eq!(provider, "opengateway");
+        assert_eq!(model, "nvidia/nemotron-3-ultra-550b-a55b:free");
+    }
+
+    #[test]
+    fn parse_opengateway_slash_model_override() {
+        let (provider, model) = parse_model_override("opengateway/xiaomi/mimo-v2.5-pro").expect("parse");
+        assert_eq!(provider, "opengateway");
+        assert_eq!(model, "xiaomi/mimo-v2.5-pro");
+    }
 }
