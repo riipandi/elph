@@ -1,12 +1,16 @@
 //! Regenerate embedded model catalogs from [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai).
 //!
+//! Catalog source path is fixed: `../../earendil-works/pi/packages/ai` relative to the elph
+//! workspace root (see [`common::default_catalog_dir`]). No `--catalog-dir` flag.
+//!
 //! Usage:
 //!   make generate-models
-//!   make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
-//!   cargo run -p elph-ai --bin generate-models -- chat --catalog-dir /path/to/catalog/packages/ai
-//!   cargo run -p elph-ai --bin generate-models -- image --catalog-dir /path/to/catalog/packages/ai
+//!   make generate-models ARGS="--skip-scripts"
+//!   cargo run -p elph-ai --bin generate-models -- chat
+//!   cargo run -p elph-ai --bin generate-models -- image
 //!   cargo run -p elph-ai --bin generate-models -- test-image
-//!   cargo run -p elph-ai --bin generate-models -- all --catalog-dir /path/to/catalog/packages/ai
+//!   cargo run -p elph-ai --bin generate-models -- all
+//!   cargo run -p elph-ai --bin generate-models -- all --skip-scripts
 
 mod chat;
 mod common;
@@ -20,6 +24,7 @@ use clap::{Parser, Subcommand};
 
 use chat::ChatOptions;
 use chat::generate_chat;
+use common::default_catalog_dir;
 use image::ImageOptions;
 use image::generate_image;
 use test_image::TestImageOptions;
@@ -28,7 +33,7 @@ use test_image::generate_test_image;
 #[derive(Parser, Debug)]
 #[command(
     name = "generate-models",
-    about = "Regenerate elph-ai model catalogs from catalog source scripts"
+    about = "Regenerate elph-ai model catalogs from the fixed catalog source (earendil-works/pi/packages/ai)"
 )]
 struct Args {
     #[command(subcommand)]
@@ -48,11 +53,7 @@ enum Command {
 }
 
 #[derive(Parser, Debug)]
-struct CatalogSource {
-    /// Path to catalog source package root (packages/ai)
-    #[arg(long, env = "ELPH_AI_CATALOG_DIR")]
-    catalog_dir: PathBuf,
-
+struct SkipScripts {
     /// Skip running catalog source npm scripts and only convert existing generated files
     #[arg(long)]
     skip_scripts: bool,
@@ -61,7 +62,7 @@ struct CatalogSource {
 #[derive(Parser, Debug)]
 struct ChatCmd {
     #[command(flatten)]
-    catalog: CatalogSource,
+    skip: SkipScripts,
 
     /// Output directory for JSON catalogs (default: crates/elph-ai/models)
     #[arg(long)]
@@ -75,7 +76,7 @@ struct ChatCmd {
 #[derive(Parser, Debug)]
 struct ImageCmd {
     #[command(flatten)]
-    catalog: CatalogSource,
+    skip: SkipScripts,
 
     /// Output directory for image JSON catalogs (default: crates/elph-ai/models/images)
     #[arg(long)]
@@ -96,7 +97,7 @@ struct TestImageCmd {
 #[derive(Parser, Debug)]
 struct AllCmd {
     #[command(flatten)]
-    catalog: CatalogSource,
+    skip: SkipScripts,
 
     #[arg(long)]
     models_dir: Option<PathBuf>,
@@ -114,18 +115,19 @@ struct AllCmd {
 fn main() -> Result<()> {
     let args = Args::parse();
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let catalog_dir = default_catalog_dir(&crate_root);
 
     match args.command {
         Command::Chat(cmd) => generate_chat(ChatOptions {
-            catalog_dir: cmd.catalog.catalog_dir,
-            skip_scripts: cmd.catalog.skip_scripts,
+            catalog_dir,
+            skip_scripts: cmd.skip.skip_scripts,
             models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
             catalog_rs: crate_root.join("src/models/catalog.rs"),
             no_regenerate_catalog: cmd.no_regenerate_catalog,
         }),
         Command::Image(cmd) => generate_image(ImageOptions {
-            catalog_dir: cmd.catalog.catalog_dir,
-            skip_scripts: cmd.catalog.skip_scripts,
+            catalog_dir,
+            skip_scripts: cmd.skip.skip_scripts,
             images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
             models_rs: crate_root.join("src/images/models.rs"),
             no_regenerate_catalog: cmd.no_regenerate_catalog,
@@ -137,15 +139,15 @@ fn main() -> Result<()> {
         }),
         Command::All(cmd) => {
             generate_chat(ChatOptions {
-                catalog_dir: cmd.catalog.catalog_dir.clone(),
-                skip_scripts: cmd.catalog.skip_scripts,
+                catalog_dir: catalog_dir.clone(),
+                skip_scripts: cmd.skip.skip_scripts,
                 models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
                 catalog_rs: crate_root.join("src/models/catalog.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
             })?;
             generate_image(ImageOptions {
-                catalog_dir: cmd.catalog.catalog_dir,
-                skip_scripts: cmd.catalog.skip_scripts,
+                catalog_dir,
+                skip_scripts: cmd.skip.skip_scripts,
                 images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
                 models_rs: crate_root.join("src/images/models.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,

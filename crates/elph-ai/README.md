@@ -983,17 +983,19 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 
 ### Regenerating Model Catalogs
 
-Chat and image model catalogs are generated from [pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai) scripts:
+Chat and image model catalogs are generated from [pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai) scripts.
+
+Catalog source path is **fixed**: `../../earendil-works/pi/packages/ai` relative to the elph workspace root (local pi clone). No `--catalog-dir` flag.
 
 ```sh
-# From the repo root (requires upstream catalog checkout and npm deps)
-make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai
+# From the repo root (requires earendil-works/pi checkout + npm deps in packages/ai)
+make generate-models
 
 # Or directly:
-cargo run -p elph-ai --bin generate-models -- all --catalog-dir /path/to/catalog/packages/ai
+cargo run -p elph-ai --bin generate-models -- all
 
 # Convert existing catalog output without re-running npm scripts:
-make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
+make generate-models ARGS="--skip-scripts"
 ```
 
 Subcommands:

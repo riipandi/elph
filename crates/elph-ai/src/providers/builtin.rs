@@ -386,6 +386,15 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["HF_TOKEN"], "Hugging Face token")
         ),
         hyper_provider(),
+        // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
+        // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
+        simple_provider!(
+            "kilo",
+            "Kilo Gateway",
+            KILO_MODELS,
+            openai_completions_api,
+            (vec!["KILO_API_KEY"], "Kilo API key")
+        ),
         kimi_coding_provider(),
         simple_provider!(
             "minimax",

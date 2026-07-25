@@ -203,6 +203,7 @@ fn render_image_catalog_rs(provider_ids: &[String]) -> String {
                      output: raw.cost.output,\n\
                      cache_read: raw.cost.cache_read,\n\
                      cache_write: raw.cost.cache_write,\n\
+                     tiers: None,\n\
                  },\n\
                  headers: None,\n\
              }\n\

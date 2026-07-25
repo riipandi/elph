@@ -30,8 +30,9 @@ pub struct ChatOptions {
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
     if !options.catalog_dir.join(CATALOG_CHAT_SCRIPT).is_file() {
         bail!(
-            "catalog source package not found at {} (expected npm catalog scripts)",
-            options.catalog_dir.display()
+            "catalog source package not found at {}\n  expected {} under earendil-works/pi (see docs/porting/README.md)",
+            options.catalog_dir.display(),
+            CATALOG_CHAT_SCRIPT
         );
     }
 
@@ -83,6 +84,9 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         });
     }
 
+    // Keep Elph-only catalogs that live only under models/*.json (not in upstream pi).
+    merge_local_only_catalogs(&options.models_dir, &mut index)?;
+
     let index_path = options.models_dir.join("index.json");
     let index_json = serde_json::to_string_pretty(&index).context("serialize index.json")?;
     fs::write(&index_path, format!("{index_json}\n")).context("write index.json")?;
@@ -90,7 +94,7 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     if options.no_regenerate_catalog {
         println!(
             "\nWrote {} chat catalogs to {} (skipped catalog.rs regeneration)",
-            catalogs.len(),
+            index.len(),
             options.models_dir.display()
         );
     } else {
@@ -98,12 +102,57 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         fs::write(&options.catalog_rs, catalog_source).context("write src/models/catalog.rs")?;
         println!(
             "\nWrote {} chat catalogs to {} and regenerated {}",
-            catalogs.len(),
+            index.len(),
             options.models_dir.display(),
             options.catalog_rs.display()
         );
     }
 
+    Ok(())
+}
+
+/// Merge local-only `models/*.json` catalogs (Hyper, Kilo, OpenGateway, …) into the index.
+///
+/// Upstream pi regen only writes providers from the catalog TypeScript tree; Elph-only JSON
+/// files already on disk must stay registered in `index.json` / `catalog.rs`.
+fn merge_local_only_catalogs(models_dir: &std::path::Path, index: &mut Vec<CatalogIndexEntry>) -> Result<()> {
+    let known: std::collections::HashSet<String> = index.iter().map(|e| e.rust_mod.clone()).collect();
+    let mut added = 0usize;
+    for entry in fs::read_dir(models_dir).with_context(|| format!("read {}", models_dir.display()))? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        let Some(rust_mod) = name.strip_suffix(".json") else {
+            continue;
+        };
+        if rust_mod == "index" || known.contains(rust_mod) {
+            continue;
+        }
+        // Skip non-catalog helpers (e.g. nested dirs are already filtered by is_file).
+        let raw = fs::read_to_string(&path).with_context(|| format!("read local catalog {}", path.display()))?;
+        let json: Value =
+            serde_json::from_str(&raw).with_context(|| format!("parse local catalog {}", path.display()))?;
+        let count = json.as_object().map(|m| m.len()).unwrap_or(0);
+        if count == 0 {
+            continue;
+        }
+        let provider_id = rust_mod.replace('_', "-");
+        println!("Preserved local-only catalog {provider_id}: {count} models");
+        index.push(CatalogIndexEntry {
+            provider_id,
+            rust_mod: rust_mod.to_string(),
+            count,
+        });
+        added += 1;
+    }
+    if added > 0 {
+        index.sort_by(|a, b| a.provider_id.cmp(&b.provider_id));
+    }
     Ok(())
 }
 

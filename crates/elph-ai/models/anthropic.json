@@ -199,6 +199,23 @@
             "xhigh": "xhigh"
         }
     },
+    "claude-opus-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.anthropic.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "anthropic",
+        "reasoning": true
+    },
     "claude-sonnet-4-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.anthropic.com",

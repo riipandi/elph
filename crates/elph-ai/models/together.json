@@ -87,63 +87,6 @@
         "provider": "together",
         "reasoning": false
     },
-    "Qwen/Qwen3-235B-A22B-Instruct-2507-tput": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.together.ai/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false,
-            "thinkingFormat": "together"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.2,
-            "output": 0.6
-        },
-        "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-tput",
-        "input": ["text"],
-        "maxTokens": 262144,
-        "name": "Qwen3 235B A22B Instruct 2507 FP8",
-        "provider": "together",
-        "reasoning": false
-    },
-    "Qwen/Qwen3.5-397B-A17B": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.together.ai/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false,
-            "thinkingFormat": "together"
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.6,
-            "output": 3.6
-        },
-        "id": "Qwen/Qwen3.5-397B-A17B",
-        "input": ["text", "image"],
-        "maxTokens": 130000,
-        "name": "Qwen3.5 397B A17B",
-        "provider": "together",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "low": null,
-            "medium": null,
-            "minimal": null
-        }
-    },
     "Qwen/Qwen3.5-9B": {
         "api": "openai-completions",
         "baseUrl": "https://api.together.ai/v1",
@@ -264,32 +207,6 @@
             "minimal": null,
             "xhigh": null
         }
-    },
-    "essentialai/Rnj-1-Instruct": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.together.ai/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false,
-            "thinkingFormat": "together"
-        },
-        "contextWindow": 32768,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0.15,
-            "output": 0.15
-        },
-        "id": "essentialai/Rnj-1-Instruct",
-        "input": ["text"],
-        "maxTokens": 32768,
-        "name": "Rnj-1 Instruct",
-        "provider": "together",
-        "reasoning": false
     },
     "google/gemma-4-31B-it": {
         "api": "openai-completions",
@@ -501,7 +418,7 @@
             "off": null
         }
     },
-    "zai-org/GLM-5": {
+    "thinkingmachines/Inkling": {
         "api": "openai-completions",
         "baseUrl": "https://api.together.ai/v1",
         "compat": {
@@ -513,48 +430,17 @@
             "supportsStrictMode": false,
             "thinkingFormat": "together"
         },
-        "contextWindow": 202752,
+        "contextWindow": 524288,
         "cost": {
-            "cacheRead": 0,
+            "cacheRead": 0.17,
             "cacheWrite": 0,
             "input": 1,
-            "output": 3.2
+            "output": 4.05
         },
-        "id": "zai-org/GLM-5",
-        "input": ["text"],
+        "id": "thinkingmachines/Inkling",
+        "input": ["text", "image"],
         "maxTokens": 131072,
-        "name": "GLM-5",
-        "provider": "together",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "low": null,
-            "medium": null,
-            "minimal": null
-        }
-    },
-    "zai-org/GLM-5.1": {
-        "api": "openai-completions",
-        "baseUrl": "https://api.together.ai/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false,
-            "thinkingFormat": "together"
-        },
-        "contextWindow": 202752,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "id": "zai-org/GLM-5.1",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM-5.1",
+        "name": "Inkling",
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {

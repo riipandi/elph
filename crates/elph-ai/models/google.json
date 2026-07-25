@@ -1,4 +1,38 @@
 {
+    "deep-research-max-preview-04-2026": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 12
+        },
+        "id": "deep-research-max-preview-04-2026",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Deep Research Max Preview (Apr-21-2026)",
+        "provider": "google",
+        "reasoning": true
+    },
+    "deep-research-preview-04-2026": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 12
+        },
+        "id": "deep-research-preview-04-2026",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Deep Research Preview (Apr-21-2026)",
+        "provider": "google",
+        "reasoning": true
+    },
     "gemini-2.0-flash": {
         "api": "google-generative-ai",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
@@ -32,6 +66,23 @@
         "name": "Gemini 2.0 Flash-Lite",
         "provider": "google",
         "reasoning": false
+    },
+    "gemini-2.5-computer-use-preview-10-2025": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10
+        },
+        "id": "gemini-2.5-computer-use-preview-10-2025",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 2.5 Computer Use Preview 10-2025",
+        "provider": "google",
+        "reasoning": true
     },
     "gemini-2.5-flash": {
         "api": "google-generative-ai",
@@ -148,6 +199,26 @@
             "off": null
         }
     },
+    "gemini-3.1-flash-lite-image": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 65536,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 30
+        },
+        "id": "gemini-3.1-flash-lite-image",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Nano Banana 2 Lite",
+        "provider": "google",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
     "gemini-3.1-flash-lite-preview": {
         "api": "google-generative-ai",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
@@ -162,6 +233,26 @@
         "input": ["text", "image"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite Preview",
+        "provider": "google",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gemini-3.1-flash-live-preview": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0.75,
+            "output": 4.5
+        },
+        "id": "gemini-3.1-flash-live-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Flash Live Preview",
         "provider": "google",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -236,6 +327,46 @@
             "off": null
         }
     },
+    "gemini-3.5-flash-lite": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0,
+            "input": 0.3,
+            "output": 2.5
+        },
+        "id": "gemini-3.5-flash-lite",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.5 Flash Lite",
+        "provider": "google",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
+    "gemini-3.6-flash": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.5,
+            "output": 7.5
+        },
+        "id": "gemini-3.6-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.6 Flash",
+        "provider": "google",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "off": null
+        }
+    },
     "gemini-flash-latest": {
         "api": "google-generative-ai",
         "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
@@ -275,6 +406,23 @@
         "thinkingLevelMap": {
             "off": null
         }
+    },
+    "gemini-robotics-er-1.6-preview": {
+        "api": "google-generative-ai",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 1,
+            "output": 5
+        },
+        "id": "gemini-robotics-er-1.6-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Gemini Robotics-ER 1.6 Preview",
+        "provider": "google",
+        "reasoning": true
     },
     "gemma-4-26b-a4b-it": {
         "api": "google-generative-ai",

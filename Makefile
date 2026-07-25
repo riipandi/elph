@@ -25,8 +25,9 @@ endif
 # ─── Args ───────────────────────────────────────────────────────────────────
 
 # Named args:  make run ARGS="-- --nocapture"  /  make test PKG=foo
-# catalog:    make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
-ELPH_AI_CATALOG_DIR  ?= ../catalog/packages/ai
+# catalog:    make generate-models ARGS="--skip-scripts"
+# Catalog source path is fixed in generate-models
+# (../../earendil-works/pi/packages/ai from workspace root).
 ARGS       :=
 _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
@@ -138,13 +139,8 @@ check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
 build-elph-tui-examples: ## Build all elph-tui examples
 	@$(CARGO) build -p elph-tui --examples 2>&1
 
-generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_AI_CATALOG_DIR, ARGS=--skip-scripts)
-	@test -f "$(ELPH_AI_CATALOG_DIR)/scripts/generate-models.ts" || { \
-	  echo "catalog source not found at: $(ELPH_AI_CATALOG_DIR)" >&2; \
-	  echo "Set ELPH_AI_CATALOG_DIR to the packages/ai root, e.g. ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai" >&2; \
-	  exit 1; \
-	}
-	@$(CARGO) run -p elph-ai --bin generate-models -- all --catalog-dir "$(ELPH_AI_CATALOG_DIR)" $(ARGS)
+generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
+	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)

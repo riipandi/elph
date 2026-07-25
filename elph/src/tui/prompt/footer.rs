@@ -84,11 +84,7 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
             ..FooterRightParts::default()
         };
     } else if let Some(after_sel) = right.strip_prefix(&format!("{FOOTER_SELECT_MODE_BADGE} | ")) {
-        (
-            FOOTER_SELECT_MODE_BADGE.to_string(),
-            " | ".to_string(),
-            after_sel,
-        )
+        (FOOTER_SELECT_MODE_BADGE.to_string(), " | ".to_string(), after_sel)
     } else {
         (String::new(), String::new(), right)
     };

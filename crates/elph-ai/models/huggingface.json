@@ -419,6 +419,26 @@
         "provider": "huggingface",
         "reasoning": true
     },
+    "XiaomiMiMo/MiMo-V2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "compat": {
+            "supportsDeveloperRole": false
+        },
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0.4,
+            "output": 2
+        },
+        "id": "XiaomiMiMo/MiMo-V2.5",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiMo-V2.5",
+        "provider": "huggingface",
+        "reasoning": true
+    },
     "XiaomiMiMo/MiMo-V2.5-Pro": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",

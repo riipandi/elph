@@ -167,34 +167,6 @@
         "provider": "nvidia",
         "reasoning": true
     },
-    "mistralai/mistral-large-3-675b-instruct-2512": {
-        "api": "openai-completions",
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
-        },
-        "headers": {
-            "NVCF-POLL-SECONDS": "3600"
-        },
-        "id": "mistralai/mistral-large-3-675b-instruct-2512",
-        "input": ["text", "image"],
-        "maxTokens": 262144,
-        "name": "Mistral Large 3 675B Instruct 2512",
-        "provider": "nvidia",
-        "reasoning": false
-    },
     "mistralai/mistral-small-4-119b-2603": {
         "api": "openai-completions",
         "baseUrl": "https://integrate.api.nvidia.com/v1",
@@ -444,34 +416,6 @@
         "input": ["text"],
         "maxTokens": 32768,
         "name": "GPT OSS 20B",
-        "provider": "nvidia",
-        "reasoning": true
-    },
-    "qwen/qwen3.5-122b-a10b": {
-        "api": "openai-completions",
-        "baseUrl": "https://integrate.api.nvidia.com/v1",
-        "compat": {
-            "maxTokensField": "max_tokens",
-            "supportsDeveloperRole": false,
-            "supportsLongCacheRetention": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "supportsStrictMode": false
-        },
-        "contextWindow": 262144,
-        "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
-        },
-        "headers": {
-            "NVCF-POLL-SECONDS": "3600"
-        },
-        "id": "qwen/qwen3.5-122b-a10b",
-        "input": ["text", "image"],
-        "maxTokens": 65536,
-        "name": "Qwen3.5 122B-A10B",
         "provider": "nvidia",
         "reasoning": true
     },

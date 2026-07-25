@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::bail;
@@ -10,6 +10,28 @@ pub const CATALOG_CHAT_SCRIPT: &str = "scripts/generate-models.ts";
 pub const CATALOG_IMAGE_SCRIPT: &str = "scripts/generate-image-models.ts";
 pub const CATALOG_MODELS_SUFFIX: &str = ".models.ts";
 pub const CATALOG_IMAGE_GENERATED: &str = "src/image-models.generated.ts";
+
+/// Permanent catalog source package root relative to the **elph workspace root**.
+///
+/// Layout (see `docs/porting/README.md` — local pi clone):
+/// ```text
+/// github.com/
+///   earendil-works/pi/packages/ai/   ← this path
+///   riipandi/elph/                   ← this repo
+///     crates/elph-ai/
+/// ```
+pub const DEFAULT_CATALOG_DIR_FROM_WORKSPACE: &str = "../../earendil-works/pi/packages/ai";
+
+/// Resolve the fixed catalog source directory from `CARGO_MANIFEST_DIR` (`crates/elph-ai`).
+pub fn default_catalog_dir(crate_root: &Path) -> PathBuf {
+    let workspace_root = crate_root
+        .parent()
+        .and_then(|crates| crates.parent())
+        .unwrap_or(crate_root);
+    let raw = workspace_root.join(DEFAULT_CATALOG_DIR_FROM_WORKSPACE);
+    // Prefer a cleaned absolute path for error messages; fall back to raw if missing.
+    raw.canonicalize().unwrap_or(raw)
+}
 
 pub fn find_matching_brace(text: &str, open_index: usize) -> Option<usize> {
     let mut depth = 0usize;

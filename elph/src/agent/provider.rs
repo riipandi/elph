@@ -44,6 +44,12 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OGW_API_KEY",
             default_model: "auto",
         }),
+        // Kilo AI Gateway — https://kilo.ai/docs/gateway (KILO_API_KEY).
+        "kilo" => Some(ProviderConfig {
+            label: "Kilo Gateway",
+            api_key_env_key: "KILO_API_KEY",
+            default_model: "kilo-auto/free",
+        }),
         "google" => Some(ProviderConfig {
             label: "Google",
             api_key_env_key: "GOOGLE_API_KEY",
@@ -129,5 +135,28 @@ mod tests {
         let (provider, model) = parse_model_override("opengateway/xiaomi/mimo-v2.5-pro").expect("parse");
         assert_eq!(provider, "opengateway");
         assert_eq!(model, "xiaomi/mimo-v2.5-pro");
+    }
+
+    #[test]
+    fn kilo_is_a_known_provider() {
+        let cfg = provider_config("kilo").expect("kilo config");
+        assert_eq!(cfg.label, "Kilo Gateway");
+        assert_eq!(cfg.api_key_env_key, "KILO_API_KEY");
+        assert_eq!(cfg.default_model, "kilo-auto/free");
+    }
+
+    #[test]
+    fn resolve_kilo_from_settings() {
+        let (provider, model) =
+            resolve_provider_and_model(None, None, Some("kilo"), Some("kilo-auto/frontier")).expect("resolve");
+        assert_eq!(provider, "kilo");
+        assert_eq!(model, "kilo-auto/frontier");
+    }
+
+    #[test]
+    fn parse_kilo_slash_model_override() {
+        let (provider, model) = parse_model_override("kilo/anthropic/claude-sonnet-4.6").expect("parse");
+        assert_eq!(provider, "kilo");
+        assert_eq!(model, "anthropic/claude-sonnet-4.6");
     }
 }
