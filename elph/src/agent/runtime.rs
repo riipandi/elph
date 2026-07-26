@@ -74,12 +74,18 @@ pub async fn create_coding_session_with_events(
 
     let thinking = to_agent_thinking(thinking_level_from_setting(&options.settings.session.thinking_level));
     let agent_graph = Arc::new(AgentGraphStore::new(options.paths.metadata_db_path()));
+    // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
+    let stream_options = AgentHarnessStreamOptions {
+        timeout_ms: options.settings.provider_timeout_ms(),
+        max_retries: Some(options.settings.provider.max_retries),
+        ..AgentHarnessStreamOptions::default()
+    };
     let subagent_bootstrap = SubagentBootstrap {
         project_key: session_manager.project_key().to_string(),
         cwd: options.cwd.display().to_string(),
         sessions_root: options.paths.sessions_dir().to_string_lossy().to_string(),
         resources: resources.clone(),
-        stream_options: AgentHarnessStreamOptions::default(),
+        stream_options: stream_options.clone(),
         thinking_level: thinking,
         agent_graph: Some(agent_graph),
     };
@@ -115,7 +121,7 @@ pub async fn create_coding_session_with_events(
         tools,
         resources,
         system_prompt,
-        stream_options: AgentHarnessStreamOptions::default(),
+        stream_options,
         model,
         thinking_level: thinking,
         active_tool_names: vec![],
@@ -137,7 +143,7 @@ pub async fn create_coding_session_with_events(
         selection,
         agent_mode,
         mode_state: Arc::clone(&mode_state),
-        show_thinking: options.settings.show_thinking,
+        show_thinking: options.settings.ui.show_thinking,
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),

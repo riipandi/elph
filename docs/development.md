@@ -42,16 +42,16 @@ Output directory: `target/release/`.
 
 ### Other common targets
 
-| Target         | Behavior                               |
-| -------------- | -------------------------------------- |
-| `make check`   | `cargo check --workspace`              |
-| `make test`    | `cargo nextest run`                    |
-| `make lint`    | `cargo clippy --workspace -D warnings` |
-| `make fmt`     | `cargo fmt` (edition 2024 style)       |
-| `make run`     | `cargo run --bin elph`                 |
-| `make watch`   | `cargo watch` + `cargo run --bin elph` |
-| `make install` | Copy `elph-next` to `~/.local/bin`     |
-| `make help`    | List all targets                       |
+| Target         | Behavior                                                           |
+| -------------- | ------------------------------------------------------------------ |
+| `make check`   | `cargo check --workspace`                                          |
+| `make test`    | `cargo nextest run`                                                |
+| `make lint`    | `cargo clippy --workspace -D warnings`                             |
+| `make fmt`     | `cargo fmt` (edition 2024 style)                                   |
+| `make run`     | `cargo run --bin elph`                                             |
+| `make watch`   | `cargo watch` + `cargo run --bin elph`                             |
+| `make install` | Copy `elph-dev` (debug) or `elph-next` (release) to `~/.local/bin` |
+| `make help`    | List all targets                                                   |
 
 ## Extension development loop
 

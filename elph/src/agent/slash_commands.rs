@@ -47,6 +47,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
     vec![
         builtin("settings", "Open settings menu"),
         builtin_with_args("model", "Select model", "[filter]"),
+        builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
         builtin("copy", "Copy last agent message"),
@@ -120,6 +121,7 @@ pub fn slash_commands_for_palette(
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OverlayCommand {
     Model { filter: String },
+    ScopedModels,
     Tree,
     Resume,
 }
@@ -244,7 +246,7 @@ pub fn confetti_mode_from_args(args: &str) -> &'static str {
 
 /// Overlay slash commands that run immediately when confirmed from the palette.
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
-    matches!(command_name, "model" | "tree" | "resume")
+    matches!(command_name, "model" | "scoped-models" | "tree" | "resume")
 }
 
 fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
@@ -258,6 +260,9 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),
         "reload" => Some(SlashDispatch::Reload),
         "model" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: args })),
+        "scoped-models" | "scoped_models" | "scopedmodels" => {
+            Some(SlashDispatch::OverlayNeeded(OverlayCommand::ScopedModels))
+        }
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
         "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
         "settings" | "export" | "import" | "copy" | "name" | "session" | "changelog" | "hotkeys" | "fork" | "clone"

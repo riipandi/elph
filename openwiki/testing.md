@@ -1,212 +1,201 @@
+---
+type: Guide
+title: Testing
+description: Test organization, running tests, key test areas for each crate, and testing patterns used in the Elph workspace.
+tags: [testing, ci, coverage, cargo-nextest]
+resource: /
+---
+
 # Testing
 
-Elph uses **cargo nextest** as the primary test runner with a mix of unit tests (colocated), integration tests (per-crate `tests/`), and E2E tests.
+Elph uses `cargo nextest` for test execution (run with `make test` or `cargo nextest run`). Unit tests are colocated with source code; integration tests live in each crate's `tests/` directory.
 
 ## Running tests
 
 ```sh
-# All workspace tests
-make test
+# All tests
+make test                    # cargo nextest run
 
-# Specific crate
-make test ARGS="-p elph-agent"
-cargo nextest run -p elph-agent
+# Specific package
+cargo nextest run -p elph-agent  # agent tests
+cargo nextest run -p elph-ai     # AI model tests
+cargo nextest run -p elph-tui    # TUI tests
+cargo nextest run -p elph        # binary integration tests
 
-# Single test
-cargo nextest run -p elph-agent test_name
+# With output (for debugging)
+cargo nextest run --nocapture
 
-# With output
-make test ARGS="-- --nocapture"
+# Specific test
+cargo nextest run -p elph-ai --test anthropic_thinking
 
-# Coverage (if installed)
-make coverage
+# Check compilation only (fast)
+make check
 ```
 
-## Test suite by crate
+## Test layout by crate
 
-### `elph-agent` (28 test files)
+### `elph-agent` tests — `/crates/elph-agent/tests/`
 
-**Path**: `/crates/elph-agent/tests/`
+The largest test suite (30+ test files). Key areas:
 
-| Test file                | What it covers                                      |
-| ------------------------ | --------------------------------------------------- |
-| `agent_loop.rs`          | Core agent turn loop, streaming, tool call cycle    |
-| `agent.rs`               | Agent construction, event subscription              |
-| `compaction.rs`          | Context compaction, summarization, token estimation |
-| `e2e.rs`                 | End-to-end agent sessions                           |
-| `encrypt_string.rs`      | MCP credential encryption/decryption                |
-| `env.rs`                 | Local execution environment                         |
-| `goals.rs`               | Goal creation, persistence, steering                |
-| `harness_stream.rs`      | Harness streaming behavior                          |
-| `harness.rs`             | AgentHarness construction and basic operation       |
-| `mcp_deepwiki.rs`        | MCP deep integration test                           |
-| `messages.rs`            | Message conversion utilities                        |
-| `plan_mode.rs`           | Plan mode behavior                                  |
-| `plugins.rs`             | WASM extension loading                              |
-| `prompt_encoding.rs`     | TOON encoding/decoding                              |
-| `prompt.rs`              | Prompt template loading and invocation              |
-| `repo.rs`                | Session repository operations                       |
-| `resource_formatting.rs` | Resource formatting for system prompt               |
-| `serde_roundtrip.rs`     | Serialization round-trips                           |
-| `session_kalid.rs`       | Kalid session ID generation and validation          |
-| `session.rs`             | Session persistence and lifecycle                   |
-| `skills.rs`              | Skill discovery, parsing, validation                |
-| `storage.rs`             | Session storage backends                            |
-| `subagent.rs`            | Subagent orchestration                              |
-| `system_prompt.rs`       | System prompt assembly                              |
-| `tools_fff.rs`           | fff-based file search tools                         |
-| `tracing_http.rs`        | W3C traceparent header propagation                  |
-| `truncate.rs`            | Result truncation                                   |
-| `web_tools.rs`           | Web search and fetch tools                          |
+| Test file                         | Covers                                                         |
+| --------------------------------- | -------------------------------------------------------------- |
+| `harness.rs`                      | Agent harness: creation, configuration, basic turn cycles      |
+| `harness_stream.rs`               | Stream API: event emits during harness execution               |
+| `agent.rs`                        | Agent struct: queue, run, state transitions                    |
+| `agent_loop.rs`                   | Runtime loop: turn iteration, tool calls                       |
+| `session.rs`, `session_kalid.rs`  | Session storage: create, resume, metadata                      |
+| `storage.rs`                      | SessionDirStorage, InMemorySessionStorage, TursoSessionStorage |
+| `compaction.rs`                   | History compaction: triggers, summarization, branch merge      |
+| `goals.rs`                        | Goal lifecycle: create, complete, fail, budgets                |
+| `subagent.rs`                     | Subagent spawning, depth limits, shared registry               |
+| `skills.rs`                       | Skill loading and system prompt formatting                     |
+| `prompt.rs`, `prompt_template.rs` | Prompt assembly, MiniJinja templates                           |
+| `prompt_encoding.rs`              | TOON encoding: compression, delimiter config                   |
+| `plan_mode.rs`                    | Collaboration: plan mode restrictions                          |
+| `mcp_deepwiki.rs`                 | MCP client connectivity with DeepWiki server                   |
+| `tools_fff.rs`                    | FFF search tool                                                |
+| `web_tools.rs`                    | Web fetch and search tools                                     |
+| `messages.rs`                     | Message types, shell output formatting                         |
+| `serde_roundtrip.rs`              | Serialization roundtrip for all agent types                    |
+| `truncate.rs`                     | Text truncation utility                                        |
+| `tracing_http.rs`                 | HTTP trace header propagation                                  |
+| `env.rs`                          | Local execution environment                                    |
+| `e2e.rs`                          | End-to-end: full agent execution                               |
+| `plugins.rs`                      | WASM plugins                                                   |
+| `defaults.rs`                     | Default configuration                                          |
+| `resource_formatting.rs`          | Resource formatting                                            |
+| `system_prompt.rs`                | System prompt building                                         |
+| `repo.rs`                         | Repository tool operations                                     |
+| `encrypt_string.rs`               | MCP OAuth encryption                                           |
+| `common/mod.rs`                   | Shared test utilities                                          |
 
-> Tracing tests require the `tracing` feature: `cargo test -p elph-agent --features tracing`
+### `elph-ai` tests — `/crates/elph-ai/tests/`
 
-### `elph-ai` (~12 test files)
+Provider-specific and protocol-level tests (40+ test files). Key areas:
 
-**Path**: `/crates/elph-ai/tests/`
+| Test file                               | Covers                                            |
+| --------------------------------------- | ------------------------------------------------- |
+| `providers.rs`                          | Provider resolution and configuration             |
+| `api_registry.rs`                       | API registry and routing                          |
+| `faux_provider.rs`                      | Mock provider (used by other tests)               |
+| `anthropic_thinking.rs`                 | Anthropic extended thinking                       |
+| `anthropic_temperature.rs`              | Anthropic temperature parameter                   |
+| `anthropic_sse_parsing.rs`              | Anthropic SSE response parsing                    |
+| `anthropic_empty_thinking_signature.rs` | Edge case: empty thinking blocks                  |
+| `bedrock_convert_messages.rs`           | AWS Bedrock message conversion                    |
+| `bedrock_thinking_payload.rs`           | Bedrock thinking payload format                   |
+| `bedrock_endpoint_resolution.rs`        | Bedrock endpoint resolution                       |
+| `bedrock_custom_headers.rs`             | Bedrock custom HTTP headers                       |
+| `google_shared_gemini3.rs`              | Google Gemini 3 integration                       |
+| `google_shared_thinking.rs`             | Google thinking/thinking                          |
+| `google_shared_convert_tools.rs`        | Google tool format conversion                     |
+| `openai_compat.rs`                      | OpenAI-compatible API testing                     |
+| `openai_responses_convert.rs`           | OpenAI Responses API conversion                   |
+| `openai_responses_empty_tool_result.rs` | Empty tool results handling                       |
+| `openai_responses_partial_json.rs`      | Partial JSON parsing                              |
+| `openai_responses_terminal_event.rs`    | Terminal events                                   |
+| `openai_completions_*.rs`               | Various OpenAI completion tests                   |
+| `mistral_reasoning_mode.rs`             | Mistral reasoning mode                            |
+| `mistral_tool_schema.rs`                | Mistral tool schema format                        |
+| `codex_websocket.rs`                    | OpenAI Codex WebSocket transport                  |
+| `codex_websocket_proxy.rs`              | Codex proxy support                               |
+| `github_copilot_headers.rs`             | GitHub Copilot auth headers                       |
+| `oauth_auth.rs`                         | OAuth 2.1 + PKCE flow                             |
+| `cache_retention.rs`                    | Prompt cache control                              |
+| `images_models.rs`                      | Image generation models                           |
+| `http_proxy.rs`                         | HTTP proxy support                                |
+| `retry.rs`                              | Retry logic                                       |
+| `overflow.rs`                           | Overflow handling                                 |
+| `validation.rs`                         | Input validation                                  |
+| `abort.rs`, `abort_live.rs`             | Request cancellation                              |
+| `sse_abort.rs`                          | SSE stream cancellation                           |
+| `e2e_live.rs`                           | Live provider E2E (requires credentials)          |
+| `cross_provider_handoff_live.rs`        | Cross-provider handoff (requires credentials)     |
+| `tool_call_id_normalization_live.rs`    | Tool call ID normalization (requires credentials) |
+| `openrouter_cache_write_live.rs`        | OpenRouter cache (requires credentials)           |
+| `openrouter_images.rs`                  | OpenRouter image support                          |
+| `tracing_http.rs`                       | HTTP trace propagation                            |
+| `error_body.rs`                         | Error response body parsing                       |
+| `transform_messages.rs`                 | Message transformation                            |
+| `unicode_surrogate.rs`                  | Unicode surrogate handling                        |
+| `stream_without_api_key.rs`             | Error handling without API key                    |
+| `azure_openai_base_url.rs`              | Azure base URL configuration                      |
+| `common/mod.rs`                         | Shared test utilities (includes `FauxProvider`)   |
 
-| Test file                        | What it covers                                   |
-| -------------------------------- | ------------------------------------------------ |
-| `bedrock_*.rs`                   | AWS Bedrock payload format, streaming, thinking  |
-| `codex_websocket.rs`             | OpenAI Codex WebSocket transport                 |
-| `cross_provider_handoff_live.rs` | Cross-provider session handoff                   |
-| `faux_provider.rs`               | Faux provider behavior                           |
-| `google_shared_thinking.rs`      | Google AI shared thinking                        |
-| `http_proxy.rs`                  | HTTP proxy transport                             |
-| `images_models.rs`               | Image generation models                          |
-| `mistral_tool_schema.rs`         | Mistral tool schema format                       |
-| `oauth_auth.rs`                  | OAuth authentication flows                       |
-| `openai_*.rs`                    | OpenAI completions, tool choice, response images |
-| `sse_abort.rs`                   | SSE abort handling                               |
-| `tracing_http.rs`                | fastrace traceparent header injection            |
+### `elph-tui` tests — `/crates/elph-tui/tests/`
 
-> Tracing tests require the `tracing` feature: `cargo test -p elph-ai --features tracing`
+Component-level tests (14 test files):
 
-### `elph-core` (~4 test files)
+| Test file               | Covers                       |
+| ----------------------- | ---------------------------- |
+| `color.rs`              | Color parsing and conversion |
+| `text_input_layout.rs`  | Text input layout            |
+| `transcript_layout.rs`  | Transcript layout rendering  |
+| `textarea.rs`           | Textarea component           |
+| `text_editing.rs`       | Text editing operations      |
+| `scroll.rs`             | Scroll behavior              |
+| `types.rs`              | Shared types serialization   |
+| `utils.rs`              | Utility functions            |
+| `components_render.rs`  | Component rendering          |
+| `components_props.rs`   | Component props handling     |
+| `components_mock.rs`    | Component mock rendering     |
+| `components_helpers.rs` | Component test helpers       |
+| `coverage_gaps.rs`      | Coverage gap detection       |
+| `coverage_helpers.rs`   | Coverage utility helpers     |
 
-**Path**: `/crates/elph-core/tests/`
+### `elph-core` tests — `/crates/elph-core/tests/`
 
-Core utility tests — path resolution, logger, floppy memory store, tracing.
+| Test file                | Covers                          |
+| ------------------------ | ------------------------------- |
+| `tracing_integration.rs` | Distributed tracing integration |
 
-| Test file                | What it covers                                        |
-| ------------------------ | ----------------------------------------------------- |
-| `tracing_integration.rs` | `JsonlReporter`, `root_span`, init skip when disabled |
+### `elph-exec` tests — `/crates/elph-exec/tests/`
 
-> Tracing tests require the `tracing` feature: `cargo test -p elph-core --features tracing`
+| Test file  | Covers              |
+| ---------- | ------------------- |
+| `shell.rs` | Shell/PTY execution |
 
-### `elph-tui` (14 test files)
+### `elph` (binary) tests — `/elph/tests/`
 
-**Path**: `/crates/elph-tui/tests/`
+| Test file      | Covers                                       |
+| -------------- | -------------------------------------------- |
+| `bootstrap.rs` | Full app bootstrap, TUI initialization       |
+| `cli.rs`       | CLI argument parsing and subcommand dispatch |
 
-| Test file               | What it covers                                    |
-| ----------------------- | ------------------------------------------------- |
-| `transcript_layout.rs`  | Transcript layout, sticky header, scroll behavior |
-| `textarea.rs`           | Textarea component rendering and layout           |
-| `text_editing.rs`       | Text editing actions, input modes, wire edit      |
-| `text_input_layout.rs`  | Text input layout calculations                    |
-| `scroll.rs`             | Scroll bar and scroll view behavior               |
-| `color.rs`              | Color type conversions and styling                |
-| `components_props.rs`   | Component prop types and defaults                 |
-| `components_render.rs`  | Component rendering output                        |
-| `components_helpers.rs` | Shared test helpers for component tests           |
-| `components_mock.rs`    | Mock component implementations                    |
-| `coverage_gaps.rs`      | Identified coverage gaps in component tests       |
-| `coverage_helpers.rs`   | Helpers for measuring test coverage               |
-| `utils.rs`              | Utility function tests                            |
-| `types.rs`              | Type conversion and validation                    |
+## Testing patterns
 
-### `elph` (2 test files)
+### Mock providers
 
-**Path**: `/elph/tests/`
+The `FauxProvider` (`crates/elph-ai/src/providers/faux.rs`) provides a deterministic mock LLM provider for testing agent loops without real API calls.
 
-| Test file      | What it covers                        |
-| -------------- | ------------------------------------- |
-| `cli.rs`       | CLI subcommand parsing and execution  |
-| `bootstrap.rs` | Platform bootstrap (paths, datastore) |
+### Live tests
 
-## Test patterns
+Tests with `_live` suffix require real provider credentials. These are typically gated with `#[cfg(feature = "full")]` or `#[ignore]` annotations.
 
-### Faux provider
+### Test organization principles
 
-For testing agent behavior without real API calls, use the `faux_provider`:
+Per `/docs/codebase-layout.md`:
 
-```rust
-use elph_ai::{faux_provider, faux_assistant_message, faux_text, faux_tool_call, FauxResponseStep};
+- **Unit tests**: colocated with the code they cover
+- **Integration tests**: in each crate's `tests/` directory
+- **File size**: prefer modules under ~400 lines; split by concern
 
-let handle = faux_provider(RegisterFauxProviderOptions {
-    model_id: "test-model".into(),
-    responses: vec![
-        FauxResponseStep::Delta(faux_assistant_message("Hello")),
-        FauxResponseStep::Delta(faux_tool_call("read", json!({"path": "foo.txt"}))),
-    ],
-});
-let models = elph_ai::builtin_models(Some(vec![handle]));
-```
+### CI pipeline
 
-Source: `/crates/elph-ai/src/providers/faux.rs`
+GitHub Actions runs in `.github/workflows/`:
 
-### In-memory session storage
+1. **Format check** — `cargo fmt --check`
+2. **Lint** — `cargo clippy --workspace -D warnings`
+3. **Test** — `cargo nextest run --workspace`
+4. **Build** — `cargo build --workspace`
 
-For tests that don't need persistent sessions:
+Uses `sccache` for compilation caching across CI runs.
 
-```rust
-use elph_agent::session::InMemorySessionStorage;
+## Tips for writing tests
 
-let storage = InMemorySessionStorage::default();
-```
-
-### Tempfile environments
-
-Use `tempfile` for sandboxed filesystem tests:
-
-```rust
-use tempfile::TempDir;
-
-let dir = TempDir::new()?;
-let env = Arc::new(LocalExecutionEnv::new(dir.path()));
-```
-
-## CI integration
-
-**Source**: `/.github/workflows/_ci-app.yml`
-
-CI runs:
-
-1. `cargo check --workspace`
-2. `cargo nextest run --no-fail-fast`
-3. `cargo clippy --workspace -D warnings`
-
-## Writing tests
-
-### Guidelines
-
-1. **Unit tests** — Colocated with the code they cover (standard Rust `#[cfg(test)]` pattern)
-2. **Integration tests** — In each crate's `tests/` directory
-3. **E2E tests** — In `crates/elph-agent/tests/e2e.rs` for agent runtime
-4. **Use faux provider** — Never require real API keys for core tests
-5. **Session tests** — Use `InMemorySessionStorage` to avoid filesystem dependencies
-6. **Tool tests** — Use `tempfile::TempDir` environments
-7. **Prompt encoding tests** — Test encoding/decoding round-trips
-
-### What to test
-
-| Area            | What to cover                                            |
-| --------------- | -------------------------------------------------------- |
-| Agent loop      | Turn lifecycle, tool iteration limit, streaming          |
-| Session         | Create, fork, branch, resume, persistence                |
-| Compaction      | Token estimation, summarization, cut-point detection     |
-| MCP             | Connection, tool list, tool call, encryption, auth       |
-| Skills          | Discovery, parsing, validation, system prompt formatting |
-| Tools           | Each tool: execution, error handling, path resolution    |
-| Prompt encoding | Encode/decode round-trip, heuristic detection            |
-| CLI             | Subcommand parsing, flag handling, error output          |
-| TUI             | Shell event loop, overlay state, transcript rendering    |
-
-## Debugging
-
-- **Session logs** — Sessions store events in `~/.elph/sessions/` — inspect with `elph session view`
-- **MCP debug** — `RUST_LOG=debug` to see MCP protocol traffic
-- **Prompt encoding** — Check `RUST_LOG=debug` for encoding decisions and savings ratios
-- **Settings** — `elph doctor` shows resolved configuration
-  ebug` for encoding decisions and savings ratios
-- **Settings** — `elph doctor` shows resolved configuration
+- Use `FauxProvider` for agent loop tests without real API calls
+- Session tests work with `InMemorySessionStorage` or a temp directory
+- MCP tests use a local stdio-based test server or mock
+- For TUI component tests, use the mock rendering context from `elph-tui/tests/components_mock.rs`
+- To test a specific feature, check the Cargo feature flags in `crates/elph-agent/Cargo.toml`

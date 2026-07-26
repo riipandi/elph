@@ -104,6 +104,11 @@ impl Paths {
         self.project_elph_dir().join("mcp.json")
     }
 
+    /// Project settings override: `<project>/.elph/settings.json` (merged over home settings).
+    pub fn project_settings_path(&self) -> PathBuf {
+        self.project_elph_dir().join("settings.json")
+    }
+
     pub fn project_layout_dirs_for(&self, project_path: &Path) -> Result<Vec<PathBuf>> {
         let key = project_key::from_path(project_path)?;
         let base = self.projects_dir().join(key);
@@ -142,6 +147,8 @@ mod tests {
         assert_eq!(paths.metadata_db_path(), data.join("metadata.db"));
         assert_eq!(paths.memory_db_path(), project.join(".elph/store.db"));
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));
+        assert_eq!(paths.project_settings_path(), project.join(".elph/settings.json"));
+        assert_eq!(paths.project_mcp_config_path(), project.join(".elph/mcp.json"));
         assert_eq!(paths.bundled_manifest_path(), config.join("bundled/manifest.json"));
         assert_eq!(paths.models_dir(), data.join("models"));
         // 15 standard + config/data + global/project extensions + project_elph + 3 layout dirs

@@ -202,6 +202,23 @@
             "xhigh": "xhigh"
         }
     },
+    "anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "amazon-bedrock",
+        "reasoning": true
+    },
     "anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
@@ -317,6 +334,23 @@
             "max": "max",
             "xhigh": "xhigh"
         }
+    },
+    "au.anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "au.anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5 (AU)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
     },
     "au.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -545,6 +579,23 @@
             "xhigh": "xhigh"
         }
     },
+    "eu.anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.55,
+            "cacheWrite": 6.875,
+            "input": 5.5,
+            "output": 27.5
+        },
+        "id": "eu.anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5 (EU)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
+    },
     "eu.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
@@ -721,6 +772,23 @@
             "xhigh": "xhigh"
         }
     },
+    "global.anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "global.anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5 (Global)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
+    },
     "global.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
@@ -871,6 +939,23 @@
             "max": "max",
             "xhigh": "xhigh"
         }
+    },
+    "jp.anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "jp.anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5 (JP)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
     },
     "jp.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1361,6 +1446,66 @@
             "xhigh": "xhigh"
         }
     },
+    "openai.gpt-5.6-luna": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1,
+            "output": 6
+        },
+        "id": "openai.gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Luna",
+        "provider": "amazon-bedrock",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
+    "openai.gpt-5.6-sol": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 30
+        },
+        "id": "openai.gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Sol",
+        "provider": "amazon-bedrock",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
+    "openai.gpt-5.6-terra": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 15
+        },
+        "id": "openai.gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "GPT-5.6 Terra",
+        "provider": "amazon-bedrock",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "xhigh": "xhigh"
+        }
+    },
     "openai.gpt-oss-120b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
@@ -1716,6 +1861,23 @@
             "max": "max",
             "xhigh": "xhigh"
         }
+    },
+    "us.anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "us.anthropic.claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5 (US)",
+        "provider": "amazon-bedrock",
+        "reasoning": true
     },
     "us.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",

@@ -93,7 +93,7 @@ pub struct ModelCatalogSnapshot {
     pub models_by_provider: HashMap<String, Vec<ModelRow>>,
     /// Every model across providers (tab [`ALL_PROVIDERS_TAB_INDEX`]).
     pub all_models: Vec<ModelRow>,
-    /// Models from [`crate::platform::Settings::scoped_model_items`] (tab [`SCOPED_PROVIDERS_TAB_INDEX`]).
+    /// Models from [`crate::platform::Settings`] `models.scoped` (tab [`SCOPED_PROVIDERS_TAB_INDEX`]).
     pub scoped_models: Vec<ModelRow>,
     pub total_providers: usize,
     pub total_models: usize,

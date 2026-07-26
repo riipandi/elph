@@ -218,7 +218,8 @@ impl CodingAgentSession {
             }
             Err(err) => {
                 self.finish_ui_turn(started).await;
-                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Error: {err}")));
+                let text = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
+                let _ = self.ui_tx.send(AgentUiEvent::Status(text));
             }
         }
         result.map_err(|err| anyhow::anyhow!("{err}"))

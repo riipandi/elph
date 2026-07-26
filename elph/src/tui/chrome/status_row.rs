@@ -1,45 +1,65 @@
 //! Status row between transcript and editor.
+//!
+//! Spinner and elapsed timers tick **inside this component** so shell / transcript / prompt
+//! do not re-render on every animation frame (CPU isolation).
 
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use elph_tui::rgb;
 use iocraft::prelude::*;
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
 
+/// Paint refresh while busy (ms). Frame *phase* is wall-clock; this only schedules redraws.
+const STATUS_TICK_MS: u64 = 80;
+
 const TIPS: &[&str] = &[
-    "Esc scrolls transcript · type to edit",
+    "Tab toggles prompt / transcript focus",
+    "Shift+Tab cycles agent mode (Build · Plan · Ask · Brave)",
+    "Ctrl+~ cycles thinking level (Ctrl+` works too)",
+    "Ctrl+L opens the model picker · /model filters too",
     "Shift+↑↓ scrolls the transcript",
-    "Tab cycles agent mode",
-    "Shift+Tab cycles thinking level",
-    "Ctrl+L opens the model picker",
-    "Shift+Enter inserts a newline",
-    "Click footer labels to change mode",
+    "Esc returns to the prompt · type while reading to jump back",
+    "Shift+Enter or Ctrl+J inserts a newline",
+    "Type / for commands · /help lists them all",
+    "/compact shortens long conversation history",
+    "! runs a shell command with session context",
+    "!! runs a shell command without context",
+    "@ opens the file picker to insert paths",
+    "Ctrl+V pastes an image when the model supports vision",
+    "y copies selection · Ctrl+Y copies the full prompt",
+    "Shift+←/→ selects in the prompt · Esc clears the selection",
+    "Ctrl+S toggles native text select (prompt stays usable) · Ctrl+C clears or cancels",
+    "Brave mode skips tool-approval prompts",
+    "Plan mode is for read-only exploration and planning",
+    "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",
 ];
 
 use crate::tui::activity::{
-    braille_spinner_glyph, format_activity_busy_line, format_session_busy_right_line, format_session_idle_right_line,
+    braille_spinner_glyph_now, format_activity_busy_line, format_session_busy_right_line,
+    format_session_idle_right_line,
 };
-
 /// Props for [`StatusRow`].
+///
+/// Pass wall-clock start instants; this component owns spinner frames and elapsed display.
 #[derive(Props)]
 pub struct StatusRowProps {
     pub screen_width: u16,
     pub busy: bool,
     pub activity_label: String,
     pub accent: Color,
-    /// Drives braille spinner animation from the shell tick (no local timer).
-    pub spinner_tick: u32,
-    /// Elapsed seconds for the current activity phase (left segment).
-    pub activity_elapsed_secs: f64,
-    /// Elapsed seconds for the in-flight turn (added to session total on the right).
-    pub turn_elapsed_secs: f64,
-    /// Accumulated elapsed seconds across completed turns (right segment adds in-flight turn).
+    /// When the current activity label phase started (left timer).
+    pub activity_started_at: Option<Instant>,
+    /// When the in-flight turn started (right session timer includes this).
+    pub busy_started_at: Option<Instant>,
+    /// Accumulated elapsed seconds across completed turns (right segment).
     pub session_elapsed_secs: f64,
-    /// Replaces the idle tip briefly after a turn completes (e.g. `Turn complete · 1.2s`).
+    /// Replaces the idle tip briefly after a turn completes.
     pub idle_notice: Option<String>,
     /// When true, append quit-confirm keys to the busy right segment.
     pub quit_confirm_pending: bool,
+    /// Mouse capture off — select mode is indicated in the footer (`sel | …`), not here.
+    pub select_mode: bool,
 }
 
 impl Default for StatusRowProps {
@@ -49,12 +69,12 @@ impl Default for StatusRowProps {
             busy: false,
             activity_label: String::new(),
             accent: default_spinner_accent(),
-            spinner_tick: 0,
-            activity_elapsed_secs: 0.0,
-            turn_elapsed_secs: 0.0,
+            activity_started_at: None,
+            busy_started_at: None,
             session_elapsed_secs: 0.0,
             idle_notice: None,
             quit_confirm_pending: false,
+            select_mode: false,
         }
     }
 }
@@ -83,6 +103,10 @@ fn random_tip_index(current: usize, tip_count: usize) -> usize {
 pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut tip_index = hooks.use_ref(initial_tip_index);
     let mut was_busy = hooks.use_ref(|| false);
+    // Local frame counter — only this component re-renders on tick (not shell/transcript).
+    let status_frame = hooks.use_state(|| 0u32);
+    let mut busy_flag = hooks.use_ref(|| false);
+    busy_flag.set(props.busy);
 
     if props.busy && !was_busy.get() {
         was_busy.set(true);
@@ -91,21 +115,43 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         tip_index.set(random_tip_index(tip_index.get(), TIPS.len()));
     }
 
+    hooks.use_future({
+        let busy_flag = busy_flag;
+        let mut status_frame = status_frame;
+        async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(STATUS_TICK_MS)).await;
+                if busy_flag.get() {
+                    status_frame.set(status_frame.get().wrapping_add(1));
+                }
+            }
+        }
+    });
+
+    // Depend on local paint token so we re-draw; glyph phase is wall-clock (skips lag).
+    let _paint = status_frame.get();
+    let spinner_glyph = if props.busy { braille_spinner_glyph_now() } else { " " };
+
+    let activity_elapsed_secs = props.activity_started_at.map(format_elapsed_secs).unwrap_or(0.0);
+    let turn_elapsed_secs = props.busy_started_at.map(format_elapsed_secs).unwrap_or(0.0);
+
     let right_half = props.screen_width / 2;
     let idle_line = props
         .idle_notice
         .clone()
         .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
-    let activity_line = format_activity_busy_line(&props.activity_label, props.activity_elapsed_secs);
+    let activity_line = format_activity_busy_line(&props.activity_label, activity_elapsed_secs);
     let busy_right_line =
-        format_session_busy_right_line(props.session_elapsed_secs, props.turn_elapsed_secs, props.quit_confirm_pending);
+        format_session_busy_right_line(props.session_elapsed_secs, turn_elapsed_secs, props.quit_confirm_pending);
     let idle_right_line = format_session_idle_right_line(IDLE_ACTION_HINT);
-    let _spinner_frame = props.spinner_tick;
-    let spinner_glyph = if props.busy {
-        braille_spinner_glyph(props.spinner_tick)
-    } else {
-        " "
-    };
+
+    // Select mode no longer hijacks this row — badge lives in the footer right cluster.
+    let _select_mode = props.select_mode;
+    let left_fg = Color::DarkGrey;
+    let right_fg = Color::DarkGrey;
+    let left_line = if props.busy { activity_line } else { idle_line };
+    let right_line = if props.busy { busy_right_line } else { idle_right_line };
+    let show_busy_spinner = props.busy;
 
     element! {
         View(
@@ -122,7 +168,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                 justify_content: JustifyContent::Start,
                 padding: 0,
             ) {
-                #(if props.busy {
+                #(if show_busy_spinner {
                     element! {
                         View(
                             flex_direction: FlexDirection::Row,
@@ -138,16 +184,16 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                                 content: spinner_glyph.to_string(),
                             )
                             Text(
-                                color: Color::DarkGrey,
+                                color: left_fg,
                                 wrap: TextWrap::NoWrap,
-                                content: activity_line,
+                                content: left_line,
                             )
                         }
                     }
                 } else {
                     element! {
                         View(align_items: AlignItems::Center, justify_content: JustifyContent::Start) {
-                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: idle_line)
+                            Text(color: left_fg, wrap: TextWrap::NoWrap, content: left_line)
                         }
                     }
                 })
@@ -158,19 +204,9 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                 justify_content: JustifyContent::End,
                 padding: 0,
             ) {
-                #(if props.busy {
-                    element! {
-                        View(align_items: AlignItems::Center, justify_content: JustifyContent::End) {
-                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: busy_right_line)
-                        }
-                    }
-                } else {
-                    element! {
-                        View(align_items: AlignItems::Center, justify_content: JustifyContent::End) {
-                            Text(color: Color::DarkGrey, wrap: TextWrap::NoWrap, content: idle_right_line)
-                        }
-                    }
-                })
+                View(align_items: AlignItems::Center, justify_content: JustifyContent::End) {
+                    Text(color: right_fg, wrap: TextWrap::NoWrap, content: right_line)
+                }
             }
         }
     }
@@ -181,10 +217,9 @@ pub fn default_spinner_accent() -> Color {
     rgb(0xfa, 0xb2, 0x83)
 }
 
-/// Elapsed seconds rounded to one decimal (50ms tick granularity).
+/// Elapsed seconds at full timer resolution (display scales to ms/s/m/h).
 pub fn format_elapsed_secs(started: Instant) -> f64 {
-    let tenths = started.elapsed().as_millis() / 100;
-    tenths as f64 / 10.0
+    started.elapsed().as_secs_f64()
 }
 
 #[cfg(test)]
@@ -205,10 +240,23 @@ mod tests {
     }
 
     #[test]
-    fn format_elapsed_rounds_to_tenths() {
+    fn tips_document_select_and_copy_shortcuts() {
+        let joined = TIPS.join("\n");
+        assert!(joined.contains("Ctrl+Y"));
+        assert!(joined.contains("Ctrl+S"));
+        assert!(joined.contains("Shift+←/→") || joined.contains("selects in the prompt"));
+        assert!(joined.contains("Ctrl+C"));
+        assert!(!joined.to_ascii_lowercase().contains("ctrl+c yanks"));
+    }
+
+    #[test]
+    fn format_elapsed_preserves_subsecond_precision() {
         let started = Instant::now();
         std::thread::sleep(std::time::Duration::from_millis(250));
         let elapsed = format_elapsed_secs(started);
-        assert!((0.2..=0.4).contains(&elapsed));
+        assert!(
+            (0.2..=0.5).contains(&elapsed),
+            "expected ~0.25s with ms precision, got {elapsed}"
+        );
     }
 }

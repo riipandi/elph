@@ -7,12 +7,15 @@ use std::time::Instant;
 
 use crate::agent::format_skill_conflict_notice;
 use crate::agent::goal_slash::handle_goal_slash;
-use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch};
+use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch, SubagentUiPhase};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
+use super::subagent_display::{
+    format_subagent_status_detail, format_subagent_task_label, subagent_status_indent, subagent_status_key,
+};
 use super::transcript::markdown::AssistantMarkdownBuffer;
 use super::transcript::{TranscriptMessage, TranscriptStyle};
 
@@ -148,6 +151,45 @@ impl PromptQueue {
     }
 }
 
+/// Merge adjacent high-frequency stream events so one UI tick applies fewer mutations.
+///
+/// Preserves ordering relative to non-stream events (tool start/end, status, …).
+pub fn coalesce_agent_ui_events(events: Vec<AgentUiEvent>) -> Vec<AgentUiEvent> {
+    let mut out = Vec::with_capacity(events.len());
+    for event in events {
+        match event {
+            AgentUiEvent::TextDelta(delta) if !delta.is_empty() => {
+                if let Some(AgentUiEvent::TextDelta(buf)) = out.last_mut() {
+                    buf.push_str(&delta);
+                } else {
+                    out.push(AgentUiEvent::TextDelta(delta));
+                }
+            }
+            AgentUiEvent::ThinkingDelta(delta) if !delta.is_empty() => {
+                if let Some(AgentUiEvent::ThinkingDelta(buf)) = out.last_mut() {
+                    buf.push_str(&delta);
+                } else {
+                    out.push(AgentUiEvent::ThinkingDelta(delta));
+                }
+            }
+            AgentUiEvent::ToolUpdate { id, output } if !output.is_empty() => {
+                if let Some(AgentUiEvent::ToolUpdate {
+                    id: last_id,
+                    output: buf,
+                }) = out.last_mut()
+                    && last_id == &id
+                {
+                    buf.push_str(&output);
+                } else {
+                    out.push(AgentUiEvent::ToolUpdate { id, output });
+                }
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 /// Applies streaming agent events to transcript messages.
 pub struct TranscriptEventApplier {
     live_tool_indexes: HashMap<String, usize>,
@@ -156,10 +198,11 @@ pub struct TranscriptEventApplier {
     assistant_started_at: Option<Instant>,
     meta_started_at: Option<Instant>,
     show_thinking: bool,
+    auto_expand_thinking: bool,
 }
 
 impl TranscriptEventApplier {
-    pub fn new(show_thinking: bool) -> Self {
+    pub fn new(show_thinking: bool, auto_expand_thinking: bool) -> Self {
         Self {
             live_tool_indexes: HashMap::new(),
             tool_started_at: HashMap::new(),
@@ -167,6 +210,7 @@ impl TranscriptEventApplier {
             assistant_started_at: None,
             meta_started_at: None,
             show_thinking,
+            auto_expand_thinking,
         }
     }
 
@@ -176,6 +220,8 @@ impl TranscriptEventApplier {
         };
         if let Some(index) = last_message_index(messages, TranscriptStyle::Thinking) {
             messages[index].duration_secs = Some(format_elapsed_secs(started));
+            // Collapse by default so the transcript stays compact after the stream ends.
+            messages[index].detail_expanded = self.auto_expand_thinking;
         }
     }
 
@@ -225,8 +271,10 @@ impl TranscriptEventApplier {
             AgentUiEvent::SubagentStatus {
                 agent_id,
                 agent_path,
+                task_name,
+                phase,
                 message,
-            } => self.push_status(messages, &format!("[{agent_path} ({agent_id})] {message}")),
+            } => self.upsert_subagent_status(messages, &agent_id, &agent_path, &task_name, phase, &message),
             AgentUiEvent::GoalUpdated { objective, status } => {
                 if let (Some(objective), Some(status)) = (objective, status) {
                     self.push_status(messages, &format!("Goal ({status}): {objective}"))
@@ -252,6 +300,10 @@ impl TranscriptEventApplier {
         if normalize_agent_status(line) == "Thinking" {
             return false;
         }
+        // API / provider failures → dedicated error chrome (not a dim meta line).
+        if crate::tui::api_error_display::is_user_facing_api_error_line(line) {
+            return self.push_api_error(messages, line);
+        }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Meta
         {
@@ -260,6 +312,65 @@ impl TranscriptEventApplier {
         }
         self.begin_meta(messages);
         messages.push(TranscriptMessage::text(line, TranscriptStyle::Meta));
+        true
+    }
+
+    /// Provider/API failure card — red error style, replaces last error if still open.
+    fn push_api_error(&mut self, messages: &mut Vec<TranscriptMessage>, line: &str) -> bool {
+        use crate::tui::api_error_display::format_user_facing_api_error;
+        let line = format_user_facing_api_error(line);
+        if line.is_empty() {
+            return false;
+        }
+        // Upsert consecutive API error so MessageEnd + TurnEnd do not double-stack.
+        if let Some(last) = messages.last_mut()
+            && last.style == TranscriptStyle::Error
+        {
+            last.content = line;
+            return true;
+        }
+        self.finalize_thinking(messages);
+        self.finalize_assistant(messages);
+        self.finalize_meta(messages);
+        messages.push(TranscriptMessage::text(line, TranscriptStyle::Error));
+        true
+    }
+
+    /// Upsert one process-status row per subagent (glyph + role + short name + action + phase word).
+    fn upsert_subagent_status(
+        &mut self,
+        messages: &mut Vec<TranscriptMessage>,
+        agent_id: &str,
+        agent_path: &str,
+        task_name: &str,
+        phase: SubagentUiPhase,
+        message: &str,
+    ) -> bool {
+        let key = subagent_status_key(agent_id);
+        // Task title (bold when finished) vs action/phase detail (always normal weight).
+        // Nesting indents the whole glyph+label row — not leading spaces in the title.
+        let content = format_subagent_task_label(task_name, agent_path, agent_id);
+        let status_detail = format_subagent_status_detail(message, phase);
+        let status_indent = subagent_status_indent(agent_path);
+        let style = match phase {
+            SubagentUiPhase::Pending | SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
+            SubagentUiPhase::Idle | SubagentUiPhase::Done => TranscriptStyle::StatusSuccess,
+            SubagentUiPhase::Error => TranscriptStyle::StatusFailed,
+        };
+        if let Some(existing) = messages
+            .iter_mut()
+            .find(|message| message.startup_key.as_deref() == Some(key.as_str()))
+        {
+            existing.content = content;
+            existing.status_detail = Some(status_detail);
+            existing.status_indent = status_indent;
+            existing.style = style;
+            return true;
+        }
+        let mut row = TranscriptMessage::startup_status(key, content, style);
+        row.status_detail = Some(status_detail);
+        row.status_indent = status_indent;
+        messages.push(row);
         true
     }
 
@@ -352,6 +463,8 @@ impl TranscriptEventApplier {
             if let Some(started) = self.tool_started_at.remove(id) {
                 message.duration_secs = Some(format_elapsed_secs(started));
             }
+            // Collapse args/output so the transcript stays compact after the tool finishes.
+            message.detail_expanded = false;
             return true;
         }
         false
@@ -397,7 +510,7 @@ mod tests {
     #[test]
     fn text_deltas_append_to_streaming_assistant() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         assert!(applier.apply(&mut messages, AgentUiEvent::TextDelta("Hel".into())));
         assert!(applier.apply(&mut messages, AgentUiEvent::TextDelta("lo".into())));
         assert_eq!(messages.len(), 1);
@@ -408,7 +521,7 @@ mod tests {
     #[test]
     fn run_completed_marks_assistant_markdown_stream_complete() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Hi\n\n".into()));
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done.".into()));
         assert!(applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 0.0 }));
@@ -419,7 +532,7 @@ mod tests {
     #[test]
     fn tool_card_transitions_running_to_success() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(
             &mut messages,
             AgentUiEvent::ToolStart {
@@ -444,7 +557,7 @@ mod tests {
     #[test]
     fn tool_card_transitions_running_to_failed() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(
             &mut messages,
             AgentUiEvent::ToolStart {
@@ -468,7 +581,7 @@ mod tests {
     #[test]
     fn tool_update_streams_output_into_card_body() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(
             &mut messages,
             AgentUiEvent::ToolStart {
@@ -490,7 +603,7 @@ mod tests {
     #[test]
     fn status_events_become_meta_lines() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         assert!(applier.apply(&mut messages, AgentUiEvent::Status("History compacted.".into())));
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].style, TranscriptStyle::Meta);
@@ -500,15 +613,97 @@ mod tests {
     #[test]
     fn thinking_status_stays_out_of_transcript() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         assert!(!applier.apply(&mut messages, AgentUiEvent::Status("Thinking…".into())));
         assert!(messages.is_empty());
     }
 
     #[test]
+    fn subagent_status_upserts_process_row_with_accessible_label() {
+        use crate::agent::SubagentUiPhase;
+
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::SubagentStatus {
+                agent_id: "agent_01".into(),
+                agent_path: "main/worker-1".into(),
+                task_name: "worker-1".into(),
+                phase: SubagentUiPhase::Running,
+                message: "tool:read_file".into(),
+            },
+        ));
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].style, TranscriptStyle::StatusRunning);
+        assert_eq!(messages[0].startup_key.as_deref(), Some("subagent:agent_01"));
+        assert!(messages[0].content.contains("Subagent worker-1"), "{}", messages[0].content);
+        assert!(
+            !messages[0].content.contains("Read"),
+            "task title only: {}",
+            messages[0].content
+        );
+        assert_eq!(
+            messages[0].status_detail.as_deref(),
+            Some("Read · running"),
+            "detail holds action/phase"
+        );
+
+        // Same agent tool update upserts in place (low noise).
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::SubagentStatus {
+                agent_id: "agent_01".into(),
+                agent_path: "main/worker-1".into(),
+                task_name: "worker-1".into(),
+                phase: SubagentUiPhase::Running,
+                message: "tool:shell_exec".into(),
+            },
+        ));
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].status_detail.as_deref(), Some("Shell · running"));
+
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::SubagentStatus {
+                agent_id: "agent_01".into(),
+                agent_path: "main/worker-1".into(),
+                task_name: "worker-1".into(),
+                phase: SubagentUiPhase::Done,
+                message: String::new(),
+            },
+        ));
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
+        assert_eq!(messages[0].status_detail.as_deref(), Some("done"));
+    }
+
+    #[test]
+    fn nested_subagent_gets_indented_status_label() {
+        use crate::agent::SubagentUiPhase;
+
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::SubagentStatus {
+                agent_id: "child".into(),
+                agent_path: "main/a/b".into(),
+                task_name: String::new(),
+                phase: SubagentUiPhase::Running,
+                message: String::new(),
+            },
+        );
+        // Nesting pads the whole row (glyph+label); the title itself stays flush for tight glyph gap.
+        assert!(!messages[0].content.starts_with(' '), "{}", messages[0].content);
+        assert!(messages[0].content.starts_with("Subagent"), "{}", messages[0].content);
+        assert_eq!(messages[0].status_indent, 2); // depth 2 → one nest past main children
+    }
+
+    #[test]
     fn tool_end_records_duration_secs() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(
             &mut messages,
             AgentUiEvent::ToolStart {
@@ -527,23 +722,38 @@ mod tests {
             },
         );
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));
+        assert!(!messages[0].detail_expanded);
+        assert!(messages[0].is_tool_collapsed());
     }
 
     #[test]
     fn thinking_records_duration_when_response_starts() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(true);
+        let mut applier = TranscriptEventApplier::new(true, false);
         applier.apply(&mut messages, AgentUiEvent::ThinkingDelta("plan".into()));
         std::thread::sleep(std::time::Duration::from_millis(120));
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Hi".into()));
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));
+        assert!(!messages[0].detail_expanded);
+        assert!(messages[0].is_thinking_collapsed());
         assert!(messages[1].duration_secs.is_none());
+    }
+
+    #[test]
+    fn thinking_stays_expanded_when_auto_expand_enabled() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(true, true);
+        applier.apply(&mut messages, AgentUiEvent::ThinkingDelta("plan".into()));
+        applier.apply(&mut messages, AgentUiEvent::TextDelta("Hi".into()));
+        assert!(messages[0].duration_secs.is_some());
+        assert!(messages[0].detail_expanded);
+        assert!(!messages[0].is_thinking_collapsed());
     }
 
     #[test]
     fn assistant_records_duration_on_run_completed() {
         let mut messages = Vec::new();
-        let mut applier = TranscriptEventApplier::new(false);
+        let mut applier = TranscriptEventApplier::new(false, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Done".into()));
         std::thread::sleep(std::time::Duration::from_millis(120));
         applier.apply(&mut messages, AgentUiEvent::RunCompleted { elapsed_secs: 1.0 });
@@ -553,7 +763,7 @@ mod tests {
     #[test]
     fn assistant_start_trims_trailing_whitespace_from_thinking() {
         let mut messages = vec![TranscriptMessage::text("thinking line\n\n", TranscriptStyle::Thinking)];
-        let mut applier = TranscriptEventApplier::new(true);
+        let mut applier = TranscriptEventApplier::new(true, false);
         applier.apply(&mut messages, AgentUiEvent::TextDelta("Hello".into()));
         assert_eq!(messages.len(), 2);
         assert_eq!(messages[0].content, "thinking line");
@@ -576,5 +786,42 @@ mod tests {
         queue.push("two".into());
         queue.clear();
         assert!(queue.pop_front().is_none());
+    }
+
+    #[test]
+    fn coalesce_merges_adjacent_stream_deltas() {
+        let events = vec![
+            AgentUiEvent::TextDelta("Hel".into()),
+            AgentUiEvent::TextDelta("lo".into()),
+            AgentUiEvent::ToolStart {
+                id: "t".into(),
+                name: "read_file".into(),
+                args_summary: "{}".into(),
+            },
+            AgentUiEvent::ToolUpdate {
+                id: "t".into(),
+                output: "a".into(),
+            },
+            AgentUiEvent::ToolUpdate {
+                id: "t".into(),
+                output: "b".into(),
+            },
+            AgentUiEvent::ThinkingDelta("x".into()),
+            AgentUiEvent::ThinkingDelta("y".into()),
+        ];
+        let coalesced = coalesce_agent_ui_events(events);
+        assert_eq!(coalesced.len(), 4);
+        match &coalesced[0] {
+            AgentUiEvent::TextDelta(s) => assert_eq!(s, "Hello"),
+            other => panic!("expected TextDelta, got {other:?}"),
+        }
+        match &coalesced[2] {
+            AgentUiEvent::ToolUpdate { output, .. } => assert_eq!(output, "ab"),
+            other => panic!("expected ToolUpdate, got {other:?}"),
+        }
+        match &coalesced[3] {
+            AgentUiEvent::ThinkingDelta(s) => assert_eq!(s, "xy"),
+            other => panic!("expected ThinkingDelta, got {other:?}"),
+        }
     }
 }

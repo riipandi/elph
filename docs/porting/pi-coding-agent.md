@@ -117,7 +117,8 @@ elph built-in **names** largely mirror pi, plus `/provider`, `/help`, `/exit`. D
 - Dispatch / handlers — **[Gap]** in behavior (mostly `slash_stub_message`)
 - `/model`, `/tree`, selectors — **[Partial]** (overlays partially stubbed)
 - `/login` / `/logout` — **[Partial]** (CLI `provider` + oauth infra)
-- `/scoped-models`, `/share` — **[Gap]**
+- `/scoped-models` — **[Partial]** (editor + Ctrl+P cycle; no keybinding remaps / null=all semantics)
+- `/share` — **[Gap]**
 - `/goal` — **[Elph delta]** / **[Partial]** in elph (design + goal_slash)
 - Extension commands — **[Partial]** (JS vs WASM model)
 - Prompt templates as `/name` — **[Partial]** (planned)
@@ -132,7 +133,7 @@ pi ships a large interactive component set under `modes/interactive/components/`
 - Model / session / tree selectors — **[Partial]** (`overlays.rs`)
 - Thinking selector — **[Partial]**
 - Login / OAuth dialogs — **[Gap]**
-- Theme selector — **[Partial]** (settings `theme` string); settings selector — **[Gap]**
+- Theme selector — **[Gap]** (no settings field; fixed dark palette); settings selector — **[Gap]**
 - Diff view — **[Gap]** (planned slash)
 - Extension UI (editor/input/selector) — **[Partial]** (WASM slash only, phase 1)
 - Image show / clipboard paste — **[Partial]**

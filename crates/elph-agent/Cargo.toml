@@ -18,7 +18,7 @@ path = "src/lib.rs"
 [features]
 default = []
 full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
-builtin-tools = ["tools-edit-tools", "tools-search", "tools-web", "tools-collaboration"]
+builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
 extensions = ["dep:wasmtime", "dep:walkdir"]
 mcp = ["dep:rmcp"]
 prompt-templates = ["dep:minijinja"]
@@ -29,7 +29,7 @@ tools-copy-path = []
 tools-create-dir = []
 tools-delete-path = []
 tools-edit-file = []
-tools-edit-tools = [
+tools-edit = [
   "tools-edit-file",
   "tools-write-file",
   "tools-shell-exec",
@@ -175,7 +175,7 @@ path = "examples/agent_compaction.rs"
 [[example]]
 name = "agent_coding_workflow"
 path = "examples/agent_coding_workflow.rs"
-required-features = ["tools-edit-tools"]
+required-features = ["tools-edit"]
 
 [[example]]
 name = "agent_skills"

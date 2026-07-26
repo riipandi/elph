@@ -17,8 +17,9 @@ use crate::tui::transcript::{TranscriptMessage, TranscriptStyle};
 pub const STARTUP_SEP: &str = " · ";
 /// Unicode ellipsis for in-progress startup lines.
 pub const STARTUP_ELLIPSIS: &str = "…";
-/// Indent for per-server MCP rows under the section header.
-pub const STARTUP_MCP_INDENT: &str = "  ";
+/// Nest indent (cells) for per-server MCP rows under the section header.
+/// Applied as whole-row `status_indent` so the status glyph stays tight to the label.
+pub const STARTUP_MCP_INDENT_CELLS: u16 = 2;
 /// Indent for dimmed configuration warnings under MCP summary.
 pub const STARTUP_WARN_INDENT: &str = "    ";
 
@@ -54,7 +55,7 @@ pub fn bootstrap_activity_label(phase: BootstrapPhase, detail: Option<&str>) -> 
     match phase {
         BootstrapPhase::Pending => String::new(),
         BootstrapPhase::Running => detail.unwrap_or("Preparing agent").to_string(),
-        BootstrapPhase::AgentReady => "Agent ready".to_string(),
+        BootstrapPhase::AgentReady => "Agent ready".to_string(), // detail lives on the transcript line
         BootstrapPhase::McpLoading => "Loading MCP".to_string(),
         BootstrapPhase::Done => String::new(),
         BootstrapPhase::Failed => "Startup failed".to_string(),
@@ -128,11 +129,30 @@ pub fn begin_agent_startup(messages: &mut Vec<TranscriptMessage>) {
     );
 }
 
-pub fn mark_agent_startup_ready(messages: &mut Vec<TranscriptMessage>) {
+/// Startup line when the agent session is ready, including the active model label.
+///
+/// - With model: `Agent ready (active model: provider/model-id)`
+/// - Without: `Agent ready (active model: none)`
+pub fn format_agent_ready_line(provider_id: Option<&str>, model_id: Option<&str>) -> String {
+    let active = match (
+        provider_id.map(str::trim).filter(|s| !s.is_empty()),
+        model_id.map(str::trim).filter(|s| !s.is_empty()),
+    ) {
+        (Some(provider), Some(model)) => format!("{provider}/{model}"),
+        _ => "none".to_string(),
+    };
+    format!("Agent ready (active model: {active})")
+}
+
+pub fn mark_agent_startup_ready(
+    messages: &mut Vec<TranscriptMessage>,
+    provider_id: Option<&str>,
+    model_id: Option<&str>,
+) {
     upsert_startup_line(
         messages,
         STARTUP_KEY_PHASE,
-        "Agent ready".to_string(),
+        format_agent_ready_line(provider_id, model_id),
         TranscriptStyle::StatusSuccess,
     );
 }
@@ -191,7 +211,8 @@ pub fn format_mcp_loading_header(enabled_servers: usize) -> String {
 }
 
 fn format_mcp_server_line(name: &str, detail: &str) -> String {
-    format!("{STARTUP_MCP_INDENT}MCP server \"{name}\"{STARTUP_SEP}{detail}")
+    // No leading spaces — nesting is `status_indent` on the transcript row.
+    format!("MCP server \"{name}\"{STARTUP_SEP}{detail}")
 }
 
 /// Transcript text for one MCP server progress event.
@@ -268,6 +289,13 @@ pub fn apply_mcp_server_progress(messages: &mut Vec<TranscriptMessage>, progress
     let content = format_mcp_server_transcript(progress);
     let style = mcp_server_transcript_style(progress);
     upsert_startup_line(messages, &key, content, style);
+    if let Some(row) = messages
+        .iter_mut()
+        .find(|message| message.startup_key.as_deref() == Some(key.as_str()))
+    {
+        // Indent glyph+label together under the MCP summary header.
+        row.status_indent = STARTUP_MCP_INDENT_CELLS;
+    }
 }
 
 /// Classify a line emitted from [`format_mcp_load_footer`] after the summary row.
@@ -447,7 +475,7 @@ mod tests {
             index: 1,
             total: 3,
         });
-        assert_eq!(started, "  MCP server \"code-review-graph\" · connecting…");
+        assert_eq!(started, "MCP server \"code-review-graph\" · connecting…");
 
         let ok = format_mcp_server_transcript(&McpServerLoadProgress::Finished {
             name: "deepwiki".into(),
@@ -456,7 +484,7 @@ mod tests {
             tool_count: 3,
             message: "discovered 3 tools".into(),
         });
-        assert_eq!(ok, "  MCP server \"deepwiki\" · 3 tools · http");
+        assert_eq!(ok, "MCP server \"deepwiki\" · 3 tools · http");
 
         let fail = format_mcp_server_transcript(&McpServerLoadProgress::Finished {
             name: "lightpanda".into(),
@@ -465,7 +493,7 @@ mod tests {
             tool_count: 0,
             message: "MCP error - Connection closed".into(),
         });
-        assert_eq!(fail, "  MCP server \"lightpanda\" · MCP error - Connection closed");
+        assert_eq!(fail, "MCP server \"lightpanda\" · MCP error - Connection closed");
     }
 
     #[test]
@@ -482,6 +510,8 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].style, TranscriptStyle::StatusRunning);
         assert_eq!(messages[0].startup_key.as_deref(), Some("startup:mcp:context7"));
+        assert_eq!(messages[0].status_indent, STARTUP_MCP_INDENT_CELLS);
+        assert!(!messages[0].content.starts_with(' '));
 
         apply_mcp_server_progress(
             &mut messages,
@@ -495,7 +525,8 @@ mod tests {
         );
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
-        assert_eq!(messages[0].content, "  MCP server \"context7\" · 2 tools · http");
+        assert_eq!(messages[0].content, "MCP server \"context7\" · 2 tools · http");
+        assert_eq!(messages[0].status_indent, STARTUP_MCP_INDENT_CELLS);
     }
 
     #[test]
@@ -505,8 +536,26 @@ mod tests {
         begin_agent_startup(&mut messages);
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].content, "Preparing agent…");
-        mark_agent_startup_ready(&mut messages);
-        assert_eq!(messages[0].content, "Agent ready");
+        mark_agent_startup_ready(&mut messages, Some("anthropic"), Some("claude-sonnet-4"));
+        assert_eq!(messages[0].content, "Agent ready (active model: anthropic/claude-sonnet-4)");
         assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
+
+        mark_agent_startup_ready(&mut messages, None, None);
+        assert_eq!(messages[0].content, "Agent ready (active model: none)");
+        mark_agent_startup_ready(&mut messages, Some(""), Some("  "));
+        assert_eq!(messages[0].content, "Agent ready (active model: none)");
+    }
+
+    #[test]
+    fn format_agent_ready_line_handles_missing_model() {
+        assert_eq!(
+            format_agent_ready_line(Some("openai"), Some("gpt-5")),
+            "Agent ready (active model: openai/gpt-5)"
+        );
+        assert_eq!(
+            format_agent_ready_line(Some("openai"), None),
+            "Agent ready (active model: none)"
+        );
+        assert_eq!(format_agent_ready_line(None, None), "Agent ready (active model: none)");
     }
 }

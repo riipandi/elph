@@ -129,6 +129,18 @@ fn command_needs_datastore(cmd: &Commands) -> bool {
     )
 }
 
+/// Best-effort logs directory when full [`Paths::resolve`] fails.
+fn fallback_logs_dir() -> Option<std::path::PathBuf> {
+    use std::path::PathBuf;
+    if let Some(data) = std::env::var_os("ELPH_DATA_DIR") {
+        return Some(PathBuf::from(data).join("logs"));
+    }
+    if let Some(xdg) = std::env::var_os("XDG_DATA_HOME") {
+        return Some(PathBuf::from(xdg).join("elph").join("logs"));
+    }
+    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share/elph/logs"))
+}
+
 pub fn run(cli: &Cli) -> ExitCode {
     if let Some(Commands::Completions(args)) = &cli.command {
         return completions::handle(args);
@@ -143,10 +155,16 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
+            // Panic → ~/.local/share/elph/logs/crash.log (or $ELPH_DATA_DIR/logs/crash.log).
+            elph_core::logger::install_panic_hook(paths.logs_dir());
             let init = agent_builder.logs_dir(paths.logs_dir()).build();
             elph_core::logger::init(init.logging)
         }
         Err(_) => {
+            // Best-effort crash path if full path resolution failed.
+            if let Some(logs) = fallback_logs_dir() {
+                elph_core::logger::install_panic_hook(logs);
+            }
             let init = agent_builder.build();
             elph_core::logger::init(init.logging)
         }

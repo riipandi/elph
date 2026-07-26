@@ -33,11 +33,22 @@ pub const EXIT_CONNECTION_ERROR: ExitCode = 6;
 pub const EXIT_SERVER_ERROR: ExitCode = 7;
 pub const EXIT_INTERRUPTED: ExitCode = 130;
 
-/// Launch the TUI app.
-pub fn run(resume_id: Option<String>) {
+/// Launch the TUI app. Returns a process exit code.
+pub fn run(resume_id: Option<String>) -> ExitCode {
+    // `try_block_on` wraps the future result: outer = runtime errors, inner = TUI errors.
     let result = elph_agent::try_block_on(crate::tui::run_tui(crate::tui::TuiOptions { resume_id }));
     exit_message::print_and_clear();
-    if let Err(e) = result {
-        log::error!("app error: {e}");
+    match result {
+        Ok(Ok(())) => EXIT_SUCCESS,
+        Ok(Err(e)) => {
+            log::error!("app error: {e:#}");
+            eprintln!("elph: {e:#}");
+            EXIT_ERROR
+        }
+        Err(e) => {
+            log::error!("runtime error: {e:#}");
+            eprintln!("elph: failed to start runtime: {e:#}");
+            EXIT_ERROR
+        }
     }
 }

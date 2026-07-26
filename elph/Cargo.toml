@@ -1,6 +1,6 @@
 [package]
 name = "elph"
-version = "0.0.27"
+version = "0.0.1"
 license = "Apache-2.0"
 description = "Minimalist AI agent companion for coding"
 keywords = ["ai", "agent", "cli", "coding", "llm"]

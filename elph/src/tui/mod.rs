@@ -1,9 +1,10 @@
 //! iocraft-based TUI for Elph.
 //!
-//! Zones (top → bottom): Header, Transcript, status row (+ inline dialogs), prompt chrome (editor + footer).
+//! Zones (top → bottom): Header, Transcript, ephemeral banner + status row (+ inline dialogs), prompt chrome.
 
 mod activity;
 mod agent_bridge;
+pub(crate) mod api_error_display;
 mod ask_user_tool_card;
 mod chrome;
 mod confetti;
@@ -16,6 +17,9 @@ mod model_selector;
 mod model_selector_bar;
 mod model_selector_shell;
 mod prompt;
+mod scoped_models;
+mod scoped_models_bar;
+mod scoped_models_shell;
 mod session_prefs;
 mod shell;
 mod shell_submit;
@@ -23,6 +27,7 @@ mod slash_handler;
 mod slash_palette;
 mod startup;
 mod status_dialog;
+mod subagent_display;
 mod system_prompt_dialog;
 mod theme;
 mod tool_approval;
@@ -40,6 +45,7 @@ use iocraft::prelude::*;
 use elph_agent::LocalExecutionEnv;
 
 use elph_ai::get_builtin_model;
+use elph_tui::install_theme_config;
 
 use crate::agent::agent_mode_from_setting;
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
@@ -48,7 +54,7 @@ use crate::platform::{Paths, Settings};
 use crate::types::ThinkingLevel;
 
 use chrome::read_git_footer_info;
-use labels::{model_footer_label, project_footer_label};
+use labels::model_footer_label;
 use shell::MainShell;
 use startup::{TuiBootstrapConfig, initial_startup_messages};
 
@@ -107,7 +113,10 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));
     let git_footer = read_git_footer_info(paths.project_dir());
-    let project_label = project_footer_label(&paths, git_footer.as_ref());
+
+    // Resolve ui.theme (auto|dark|light) + ui.themes overrides into the process theme.
+    // Do not wrap MainShell in ContextProvider — root layout must stay fullscreen.
+    let _ui_theme = install_theme_config(&settings.ui.theme_config());
 
     element!(MainShell(
         session_id: session_id,
@@ -116,12 +125,13 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         initial_agent_mode: agent_mode_from_setting(&settings.session.agent_mode),
         initial_thinking_level: ThinkingLevel::from_setting(&settings.session.thinking_level),
         model_label: model_label,
-        project_label: project_label,
         context_limit: context_limit,
         supports_images: supports_images,
-        footer_token_display: settings.footer_token_display.clone(),
-        sticky_scroll: settings.sticky_scroll,
-        show_thinking: settings.show_thinking,
+        footer_token_display: settings.ui.footer_token_display.clone(),
+        colored_status_footer: settings.ui.colored_status_footer,
+        sticky_scroll: settings.ui.sticky_scroll,
+        show_thinking: settings.ui.show_thinking,
+        auto_expand_thinking: settings.ui.auto_expand_thinking,
         agent_session: None,
         ui_events: None,
         extension_host: extension_host,
@@ -131,7 +141,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         cwd: cwd,
         execution_env: execution_env,
         paths: paths,
-        file_picker_show_hidden: settings.file_picker.show_hidden_files,
+        file_picker_show_hidden: settings.ui.file_picker.show_hidden_files,
         initial_git_footer: git_footer,
     ))
     .render_loop()

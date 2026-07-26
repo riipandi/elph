@@ -65,12 +65,20 @@ impl AssistantMarkdownBuffer {
         self.wrap_width = wrap_width;
 
         let force = self.stream_complete;
-        let new_end = find_stable_boundary(raw, force);
+        let mut new_end = find_stable_boundary(raw, force);
+        // Clamp to a char boundary so multi-byte stream text never panics on slice.
+        if new_end > raw.len() {
+            new_end = raw.len();
+        } else if new_end < raw.len() && !raw.is_char_boundary(new_end) {
+            new_end = raw.floor_char_boundary(new_end);
+        }
         if new_end <= self.stable_end {
             return false;
         }
 
-        let stable = &raw[..new_end];
+        let Some(stable) = raw.get(..new_end) else {
+            return false;
+        };
         let hash = stable_source_hash(stable);
         let preserved_doc = self
             .parts

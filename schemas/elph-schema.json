@@ -1,8 +1,223 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://github.com/riipandi/elph/schemas/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences at ~/.elph/settings.json (or settings.jsonc). Optional project overrides live at <workDir>/.elph/settings.json — same shape; merged on load, saved to home only.",
+    "description": "User preferences for the Elph coding agent, grouped by domain (ui, session, models, provider, memory). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults ← home ← project (project wins per nested key). Runtime saves write the home layer only. Flat legacy keys are migrated on load; unknown keys are ignored.",
     "type": "object",
-    "properties": {},
-    "additionalProperties": false
+    "additionalProperties": false,
+    "properties": {
+        "ui": {
+            "$ref": "#/definitions/ui"
+        },
+        "session": {
+            "$ref": "#/definitions/session"
+        },
+        "models": {
+            "$ref": "#/definitions/models"
+        },
+        "provider": {
+            "$ref": "#/definitions/provider"
+        },
+        "memory": {
+            "$ref": "#/definitions/memory"
+        }
+    },
+    "definitions": {
+        "ui": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Transcript, chrome, and picker presentation.",
+            "properties": {
+                "theme": {
+                    "type": "string",
+                    "default": "auto",
+                    "enum": ["auto", "dark", "light"],
+                    "description": "Appearance: auto follows terminal via COLORFGBG; dark/light force a base palette."
+                },
+                "themes": {
+                    "$ref": "#/definitions/themePalettes",
+                    "description": "Optional per-appearance color token overrides (partial maps)."
+                },
+                "showThinking": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Stream model reasoning / thinking blocks in the TUI."
+                },
+                "autoExpandThinking": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, thinking blocks start expanded in the transcript."
+                },
+                "stickyScroll": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Pin the latest user prompt while scrolling assistant replies."
+                },
+                "footerTokenDisplay": {
+                    "type": "string",
+                    "default": "both",
+                    "enum": ["both", "percentage", "count"],
+                    "description": "How context token usage is shown in the status footer."
+                },
+                "coloredStatusFooter": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, footer status uses mode/thinking/git accent colors; otherwise dimmed grey."
+                },
+                "filePicker": {
+                    "$ref": "#/definitions/filePicker"
+                }
+            }
+        },
+        "themePalettes": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Dark and light token maps. Each map is a partial UiTheme color override.",
+            "properties": {
+                "dark": { "$ref": "#/definitions/themeTokens" },
+                "light": { "$ref": "#/definitions/themeTokens" }
+            }
+        },
+        "themeTokens": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Partial color overrides. Values: #RGB/#RRGGBB, rgb(r,g,b), 'r,g,b', or named colors (white, reset, …).",
+            "properties": {
+                "textPrimary": { "$ref": "#/definitions/colorValue" },
+                "textSecondary": { "$ref": "#/definitions/colorValue" },
+                "textMuted": { "$ref": "#/definitions/colorValue" },
+                "textHint": { "$ref": "#/definitions/colorValue" },
+                "accent": { "$ref": "#/definitions/colorValue" },
+                "accentSoft": { "$ref": "#/definitions/colorValue" },
+                "border": { "$ref": "#/definitions/colorValue" },
+                "borderFocus": { "$ref": "#/definitions/colorValue" },
+                "borderSubtle": { "$ref": "#/definitions/colorValue" },
+                "shellBorder": { "$ref": "#/definitions/colorValue" },
+                "shellBorderDimmed": { "$ref": "#/definitions/colorValue" },
+                "surface": { "$ref": "#/definitions/colorValue" },
+                "codeBlockBg": { "$ref": "#/definitions/colorValue" },
+                "selectionBg": { "$ref": "#/definitions/colorValue" },
+                "dialogSelectionBg": { "$ref": "#/definitions/colorValue" },
+                "success": { "$ref": "#/definitions/colorValue" },
+                "warning": { "$ref": "#/definitions/colorValue" },
+                "error": { "$ref": "#/definitions/colorValue" }
+            }
+        },
+        "colorValue": {
+            "description": "iocraft Color as hex (#RRGGBB), rgb()/rgba(), r,g,b CSV, named color, [r,g,b], or {r,g,b}.",
+            "oneOf": [
+                { "type": "string", "minLength": 1 },
+                {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 4,
+                    "items": { "type": "number" }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["r", "g", "b"],
+                    "properties": {
+                        "r": { "type": "number" },
+                        "g": { "type": "number" },
+                        "b": { "type": "number" }
+                    }
+                }
+            ]
+        },
+        "filePicker": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "@-mention file picker preferences.",
+            "properties": {
+                "showHiddenFiles": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, @ file search includes dotfiles and dot-directories."
+                }
+            }
+        },
+        "session": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Last / preferred session state restored on launch.",
+            "properties": {
+                "providerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Last selected provider id (e.g. opencode, anthropic)."
+                },
+                "modelId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Last selected model id within the provider."
+                },
+                "agentMode": {
+                    "type": "string",
+                    "default": "build",
+                    "enum": ["build", "plan", "ask", "brave"],
+                    "description": "Default agent permission / interaction mode."
+                },
+                "thinkingLevel": {
+                    "type": "string",
+                    "default": "high",
+                    "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
+                    "description": "Default reasoning / thinking budget level."
+                }
+            }
+        },
+        "models": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Model catalog preferences (picker Scoped tab and Ctrl+P cycle).",
+            "properties": {
+                "scoped": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "provider/model_id entry (e.g. opencode/big-pickle)."
+                    },
+                    "description": "Models enabled for Ctrl+P cycling and the Scoped tab (`settings.models.scoped`). Edit via /scoped-models."
+                }
+            }
+        },
+        "provider": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "HTTP transport defaults for LLM provider calls. Mapped by the Elph host into agnostic stream options (not read by elph-ai/elph-agent).",
+            "properties": {
+                "maxRetries": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 2,
+                    "description": "Retries on 5xx / network errors."
+                },
+                "defaultTimeout": {
+                    "type": "string",
+                    "default": "120s",
+                    "description": "Inactivity and SSE stall limit (e.g. 120s, 2m, 1h, or milliseconds as digits)."
+                }
+            }
+        },
+        "memory": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Local embedding / floppy memory preferences.",
+            "properties": {
+                "embedModel": {
+                    "type": "string",
+                    "default": "AllMiniLML6V2",
+                    "minLength": 1,
+                    "description": "Embedding model catalog name or Hugging Face repo id."
+                },
+                "embedQuantized": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Prefer quantized ONNX weights when a *Q variant exists."
+                }
+            }
+        }
+    }
 }

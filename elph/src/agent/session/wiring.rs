@@ -82,12 +82,51 @@ impl CodingAgentSession {
         let forwarder: SubagentEventForwarder = Arc::new({
             let ui_tx = ui_tx.clone();
             move |event, info: &SubagentInfo| {
-                if let AgentEvent::ToolExecutionStart { tool_name, .. } = &event {
-                    let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
-                        agent_id: info.id.clone(),
-                        agent_path: info.agent_path.clone(),
-                        message: format!("tool: {tool_name}"),
-                    });
+                use crate::agent::SubagentUiPhase;
+                match event {
+                    // Lifecycle: clear status words (not every token/tool delta).
+                    AgentEvent::AgentStart => {
+                        let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
+                            agent_id: info.id.clone(),
+                            agent_path: info.agent_path.clone(),
+                            task_name: info.task_name.clone(),
+                            phase: SubagentUiPhase::Running,
+                            message: String::new(),
+                        });
+                    }
+                    AgentEvent::AgentEnd { .. } => {
+                        let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
+                            agent_id: info.id.clone(),
+                            agent_path: info.agent_path.clone(),
+                            task_name: info.task_name.clone(),
+                            phase: SubagentUiPhase::Done,
+                            message: String::new(),
+                        });
+                    }
+                    // Tool activity: upsert running row with human verb (low noise via upsert).
+                    AgentEvent::ToolExecutionStart { tool_name, .. } => {
+                        let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
+                            agent_id: info.id.clone(),
+                            agent_path: info.agent_path.clone(),
+                            task_name: info.task_name.clone(),
+                            phase: SubagentUiPhase::Running,
+                            message: format!("tool:{tool_name}"),
+                        });
+                    }
+                    AgentEvent::ToolExecutionEnd {
+                        tool_name,
+                        is_error: true,
+                        ..
+                    } => {
+                        let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
+                            agent_id: info.id.clone(),
+                            agent_path: info.agent_path.clone(),
+                            task_name: info.task_name.clone(),
+                            phase: SubagentUiPhase::Error,
+                            message: format!("tool:{tool_name}"),
+                        });
+                    }
+                    _ => {}
                 }
             }
         });
@@ -112,6 +151,9 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
             }
             AssistantMessageEvent::ThinkingDelta { delta, .. } if show_thinking => {
                 let _ = ui_tx.send(AgentUiEvent::ThinkingDelta(delta.clone()));
+            }
+            AssistantMessageEvent::Error { .. } => {
+                // Final error text is on MessageEnd / TurnEnd via assistant.error_message.
             }
             _ => {}
         },
@@ -153,6 +195,13 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
                 output: summarize_tool_result(&result),
             });
         }
+        AgentEvent::MessageEnd { message } => {
+            emit_assistant_api_error(ui_tx, &message);
+        }
+        AgentEvent::TurnEnd { message, .. } => {
+            // Backup path if MessageEnd was skipped; emit_assistant_api_error is idempotent-friendly.
+            emit_assistant_api_error(ui_tx, &message);
+        }
         AgentEvent::PlanConfirmationRequired { plan_id, plan_text } => {
             let _ = ui_tx.send(AgentUiEvent::PlanConfirmationRequired(PlanConfirmationRequest {
                 plan_id,
@@ -161,6 +210,29 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
         }
         _ => {}
     }
+}
+
+/// Surface stream/API failures (401, 409, …) as a clear Status line for the TUI.
+fn emit_assistant_api_error(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, message: &elph_agent::AgentMessage) {
+    use crate::tui::api_error_display::format_user_facing_api_error;
+    use elph_ai::Message;
+
+    let Some(llm) = message.as_llm() else {
+        return;
+    };
+    let Message::Assistant(assistant) = llm else {
+        return;
+    };
+    let Some(raw) = assistant
+        .error_message
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    else {
+        return;
+    };
+    let text = format_user_facing_api_error(raw);
+    let _ = ui_tx.send(AgentUiEvent::Status(text));
 }
 
 fn summarize_tool_result(result: &elph_agent::AgentToolResult) -> String {

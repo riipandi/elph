@@ -4,7 +4,7 @@ description: Expert mathematician for basic arithmetic. Use when asked to calcul
 license: MIT
 compatibility: No special requirements
 metadata:
-    author: elph-examples
+    author: Aris Ripandi
     version: "1.0"
     category: education
 allowed-tools: none

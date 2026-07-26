@@ -9,10 +9,16 @@ use super::TextareaInputResult;
 use crate::paste::PasteBurstState;
 use crate::paste::{
     extend_paste_submit_guard, paste_burst_append_key, paste_burst_begin_with_rewind, paste_burst_finish,
-    paste_burst_reset,
+    paste_burst_live_document, paste_burst_reset,
 };
 use crate::text_editing::PASTE_SUBMIT_GUARD_WINDOW;
 use crate::text_editing::paste_echo_guard_duration;
+
+/// Keep the editor buffer in sync with the burst for short/normal typing streams.
+///
+/// Beyond this many buffered characters we skip per-key layout (true bulk paste) and
+/// rely on idle merge to commit — but still flush on the idle timer so text is not lost.
+const RAW_BURST_LIVE_SYNC_MAX_CHARS: usize = 48;
 
 /// Commit an idle raw burst (gap since last key) before normal key dispatch.
 pub(crate) fn merge_idle_burst(burst: &mut PasteBurstState, state: &mut TextareaState) -> bool {
@@ -31,6 +37,20 @@ fn merge_burst_into_state(burst: &mut PasteBurstState, state: &mut TextareaState
         state.text = text;
         state.cursor = cursor;
     }
+    state.vertical_col_preference = None;
+    true
+}
+
+/// Apply the live burst document into the editor so rapid typing stays visible.
+fn apply_live_burst_document(burst: &PasteBurstState, state: &mut TextareaState) -> bool {
+    let Some((text, cursor)) = paste_burst_live_document(burst) else {
+        return false;
+    };
+    if state.text == text && state.cursor == cursor {
+        return false;
+    }
+    state.text = text;
+    state.cursor = cursor.min(state.text.len());
     state.vertical_col_preference = None;
     true
 }
@@ -68,6 +88,9 @@ pub(crate) struct RawBurstKey<'a> {
 /// Raw paste burst from rapid key events (terminals without bracketed paste).
 ///
 /// Returns `Some` when the key was fully handled; `None` to continue normal dispatch.
+///
+/// Short rapid streams (normal typing) keep the editor buffer live so characters never
+/// disappear when the user pauses. Long streams skip per-key layout until idle merge.
 pub(crate) fn handle_raw_burst_key(key: RawBurstKey<'_>) -> Option<TextareaInputResult> {
     if !key.in_burst {
         return None;
@@ -83,7 +106,12 @@ pub(crate) fn handle_raw_burst_key(key: RawBurstKey<'_>) -> Option<TextareaInput
     }
     if paste_burst_append_key(key.burst, key.code, key.kind, key.modifiers, true) {
         *key.last_key_at = Some(key.now);
-        // Buffer keys only; commit on idle merge. No per-key state/layout work.
+        let live_sync = key.burst.buffer.chars().count() <= RAW_BURST_LIVE_SYNC_MAX_CHARS;
+        if live_sync {
+            apply_live_burst_document(key.burst, key.state);
+            return Some(TextareaInputResult::Changed);
+        }
+        // Bulk paste: buffer only; idle timer / next non-burst key commits.
         return Some(TextareaInputResult::Consumed);
     }
     if merge_burst_into_state(key.burst, key.state) {

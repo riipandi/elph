@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use crate::types::{AnthropicMessagesCompat, Model, ModelCost, ModelCostTier};
+
 use crate::types::{OpenAICompletionsCompat, OpenAIResponsesCompat, ThinkingLevelMap};
 
 #[derive(Debug, Deserialize)]
@@ -129,8 +130,8 @@ macro_rules! define_catalog {
 }
 
 define_catalog!(AMAZON_BEDROCK_MODELS, "amazon_bedrock.json");
-define_catalog!(ANTHROPIC_MODELS, "anthropic.json");
 define_catalog!(ANT_LING_MODELS, "ant_ling.json");
+define_catalog!(ANTHROPIC_MODELS, "anthropic.json");
 define_catalog!(AZURE_OPENAI_RESPONSES_MODELS, "azure_openai_responses.json");
 define_catalog!(CEREBRAS_MODELS, "cerebras.json");
 define_catalog!(CLOUDFLARE_AI_GATEWAY_MODELS, "cloudflare_ai_gateway.json");
@@ -143,17 +144,19 @@ define_catalog!(GOOGLE_VERTEX_MODELS, "google_vertex.json");
 define_catalog!(GROQ_MODELS, "groq.json");
 define_catalog!(HUGGINGFACE_MODELS, "huggingface.json");
 define_catalog!(HYPER_MODELS, "hyper.json");
+define_catalog!(KILO_MODELS, "kilo.json");
 define_catalog!(KIMI_CODING_MODELS, "kimi_coding.json");
-define_catalog!(MINIMAX_CN_MODELS, "minimax_cn.json");
 define_catalog!(MINIMAX_MODELS, "minimax.json");
+define_catalog!(MINIMAX_CN_MODELS, "minimax_cn.json");
 define_catalog!(MISTRAL_MODELS, "mistral.json");
-define_catalog!(MOONSHOTAI_CN_MODELS, "moonshotai_cn.json");
 define_catalog!(MOONSHOTAI_MODELS, "moonshotai.json");
+define_catalog!(MOONSHOTAI_CN_MODELS, "moonshotai_cn.json");
 define_catalog!(NVIDIA_MODELS, "nvidia.json");
-define_catalog!(OPENAI_CODEX_MODELS, "openai_codex.json");
 define_catalog!(OPENAI_MODELS, "openai.json");
-define_catalog!(OPENCODE_GO_MODELS, "opencode_go.json");
+define_catalog!(OPENAI_CODEX_MODELS, "openai_codex.json");
 define_catalog!(OPENCODE_MODELS, "opencode.json");
+define_catalog!(OPENCODE_GO_MODELS, "opencode_go.json");
+define_catalog!(OPENGATEWAY_MODELS, "opengateway.json");
 define_catalog!(OPENROUTER_MODELS, "openrouter.json");
 define_catalog!(TOGETHER_MODELS, "together.json");
 define_catalog!(VERCEL_AI_GATEWAY_MODELS, "vercel_ai_gateway.json");
@@ -162,8 +165,8 @@ define_catalog!(XIAOMI_MODELS, "xiaomi.json");
 define_catalog!(XIAOMI_TOKEN_PLAN_AMS_MODELS, "xiaomi_token_plan_ams.json");
 define_catalog!(XIAOMI_TOKEN_PLAN_CN_MODELS, "xiaomi_token_plan_cn.json");
 define_catalog!(XIAOMI_TOKEN_PLAN_SGP_MODELS, "xiaomi_token_plan_sgp.json");
-define_catalog!(ZAI_CODING_CN_MODELS, "zai_coding_cn.json");
 define_catalog!(ZAI_MODELS, "zai.json");
+define_catalog!(ZAI_CODING_CN_MODELS, "zai_coding_cn.json");
 
 pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
     HashMap::from([
@@ -182,6 +185,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("groq", GROQ_MODELS.as_slice()),
         ("huggingface", HUGGINGFACE_MODELS.as_slice()),
         ("hyper", HYPER_MODELS.as_slice()),
+        ("kilo", KILO_MODELS.as_slice()),
         ("kimi-coding", KIMI_CODING_MODELS.as_slice()),
         ("minimax", MINIMAX_MODELS.as_slice()),
         ("minimax-cn", MINIMAX_CN_MODELS.as_slice()),
@@ -193,6 +197,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("openai-codex", OPENAI_CODEX_MODELS.as_slice()),
         ("opencode", OPENCODE_MODELS.as_slice()),
         ("opencode-go", OPENCODE_GO_MODELS.as_slice()),
+        ("opengateway", OPENGATEWAY_MODELS.as_slice()),
         ("openrouter", OPENROUTER_MODELS.as_slice()),
         ("together", TOGETHER_MODELS.as_slice()),
         ("vercel-ai-gateway", VERCEL_AI_GATEWAY_MODELS.as_slice()),

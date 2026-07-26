@@ -24,6 +24,8 @@ pub fn write_json_file<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 }
 
 /// Write a private file with mode `0600` on Unix.
+///
+/// Overwrites the destination when it already exists (create + truncate).
 pub fn write_private_file(path: &Path, contents: &[u8]) -> Result<()> {
     #[cfg(unix)]
     {
@@ -33,7 +35,8 @@ pub fn write_private_file(path: &Path, contents: &[u8]) -> Result<()> {
 
         let mut file = OpenOptions::new()
             .write(true)
-            .create_new(true)
+            .create(true)
+            .truncate(true)
             .mode(0o600)
             .open(path)
             .with_context(|| format!("failed to write {}", path.display()))?;
@@ -92,6 +95,25 @@ mod tests {
         let path = tmp.path().join("private.txt");
         write_private_file(&path, b"secret").expect("write_private_file");
         assert_eq!(fs::read_to_string(&path).expect("read"), "secret");
+    }
+
+    #[test]
+    fn write_private_file_overwrites_existing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("private.txt");
+        write_private_file(&path, b"first").expect("first write");
+        write_private_file(&path, b"second").expect("second write");
+        assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+    }
+
+    #[test]
+    fn write_json_file_overwrites_existing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("settings.json");
+        write_json_file(&path, &serde_json::json!({"a": 1})).expect("first");
+        write_json_file(&path, &serde_json::json!({"a": 2})).expect("second");
+        let parsed: serde_json::Value = serde_json::from_str(&fs::read_to_string(&path).expect("read")).expect("parse");
+        assert_eq!(parsed["a"], 2);
     }
 }
 

@@ -8,7 +8,7 @@ Default config: `~/.elph/` | Default data: `~/.local/share/elph/`
 
 ```
 ~/.elph/                                    # XDG_CONFIG_HOME
-├── settings.json          # UI and session prefs (or settings.jsonc)
+├── settings.json          # UI and session prefs
 ├── providers/
 │   ├── openai.json
 │   ├── anthropic.json
@@ -79,62 +79,91 @@ Common keys: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEE
 
 `--env-file .env.local` loads variables before any subcommand runs.
 
-## JSON and JSONC
+## JSON
 
-Settings and providers accept standard JSON and JSONC (`//`, `/* */`, trailing commas).
-
-- Settings: prefer `settings.json` when both `.json` and `.jsonc` exist; saves go to the active file.
-- Providers: one file per id; `.json` wins over `.jsonc`.
+Settings and providers use standard JSON (pretty-printed on save).
 
 ## `settings.json`
 
 Schema: [schemas/elph-schema.json](../schemas/elph-schema.json).
 
+Fields are grouped by **domain**. Unknown keys are ignored on load; flat legacy keys (`showThinking`, `scopedModelItems`, …) are migrated into groups on load and rewritten nested on the next save.
+
 ### Layered settings
 
 Merge order:
 
-1. Defaults
+1. Defaults (serde field defaults)
 2. `~/.elph/settings.json` (home)
 3. `<workDir>/.elph/settings.json` (project), when present
 
-Project overrides **per field** for UI preferences.
+Project overrides **per nested key** (deep merge). Runtime saves write **home only**.
 
-**Exceptions:**
+### Domain groups
 
-- `session.providerId` / `session.modelId` from **home always win** when set
-- Runtime saves write **home only**
+```json
+{
+  "ui": {
+    "theme": "auto",
+    "themes": {
+      "dark": { "accent": "#6699ff", "textPrimary": "#d4d5d9" },
+      "light": { "accent": "rgb(51, 111, 241)", "codeBlockBg": "#e8eaed" }
+    },
+    "showThinking": true,
+    "autoExpandThinking": false,
+    "stickyScroll": true,
+    "footerTokenDisplay": "both",
+    "coloredStatusFooter": true,
+    "filePicker": { "showHiddenFiles": false }
+  },
+  "session": {
+    "agentMode": "build",
+    "thinkingLevel": "high"
+  },
+  "models": {
+    "scoped": []
+  },
+  "provider": {
+    "maxRetries": 2,
+    "defaultTimeout": "120s"
+  },
+  "memory": {
+    "embedModel": "AllMiniLML6V2",
+    "embedQuantized": true
+  }
+}
+```
 
-### Main fields
+| Group | Fields | Role |
+| ----- | ------ | ---- |
+| **`ui`** | `theme`, `themes`, `showThinking`, …, `filePicker.*` | Appearance + transcript / chrome |
+| **`session`** | `providerId`, `modelId`, `agentMode`, `thinkingLevel` | Last / preferred session state |
+| **`models`** | `scoped` | Ctrl+P cycle + model picker Scoped tab (`/scoped-models`) |
+| **`provider`** | `maxRetries`, `defaultTimeout` | LLM HTTP transport defaults |
+| **`memory`** | `embedModel`, `embedQuantized` | Floppy / local embeddings |
 
-| Field                      | Default         | Description                              |
-| -------------------------- | --------------- | ---------------------------------------- |
-| `syncInterval`             | `24h`           | models.dev check interval at TUI startup |
-| `theme`                    | `auto`          | `auto` / `dark` / `light`                |
-| `showThinking`             | `true`          | Stream reasoning in TUI                  |
-| `autoExpandThinking`       | `false`         | Thinking blocks start expanded           |
-| `useRawPaste`              | `false`         | Collapse long paste in input             |
-| `stickyScroll`             | `true`          | Pin user prompt while scrolling replies  |
-| `preferedResponseLanguage` | `inherit`       | Reply language hint                      |
-| `maxToolIterations`        | `0` (25)        | Max tool rounds per turn                 |
-| `autoCompactContext`       | `true`          | Auto-compact on context overflow         |
-| `autoCompactLimit`         | `80`            | Compaction target % of history budget    |
-| `footerTokenDisplay`       | `both`          | `both` / `percentage` / `count`          |
-| `session.providerId`       | —               | Last provider                            |
-| `session.modelId`          | —               | Last model                               |
-| `session.agentMode`        | `build`         | `build` / `plan` / `ask` / `brave`       |
-| `session.thinkingLevel`    | `high`          | `off` … `xhigh`                          |
-| `database.url`             | —               | Turso URL (default: local metadata.db)   |
-| `database.token`           | —               | Turso cloud token                        |
-| `memory.embedModel`        | `AllMiniLML6V2` | Embedding model for floppy               |
-| `memory.embedQuantized`    | `true`          | Prefer quantized ONNX variant            |
+### Theme (`ui.theme` / `ui.themes`)
 
-### Provider HTTP
+| Mode | Behavior |
+| ---- | -------- |
+| `auto` (default) | Detect terminal via `COLORFGBG` (dark if background ANSI index &lt; 8) |
+| `dark` | Built-in Ghostty dark base |
+| `light` | Built-in light base |
 
-| Setting                   | Default | Description                     |
-| ------------------------- | ------- | ------------------------------- |
-| `provider.maxRetries`     | `2`     | Retries on 5xx / network errors |
-| `provider.defaultTimeout` | `120s`  | Inactivity and SSE stall limit  |
+In the TUI, **Ctrl+Shift+T** rolls `Auto` → `Light` → `Dark` → `Auto`, persists `ui.theme` to home settings, and reinstalls the palette (project `ui.themes.*` overrides still apply).
+
+`ui.themes.dark` / `ui.themes.light` are **partial** token maps. Unset keys keep the base palette.
+
+Supported color forms (→ iocraft `Color::Rgb` / named):
+
+| Form | Example |
+| ---- | ------- |
+| Hex | `#d4d5d9`, `#fff`, `#6699ffff` |
+| CSS | `rgb(102, 153, 255)`, `rgba(255,107,102,0.5)` |
+| CSV | `18, 26, 29` |
+| Named | `white`, `reset`, `darkgrey`, … |
+
+Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`, `accent`, `accentSoft`, `border`, `borderFocus`, `borderSubtle`, `shellBorder`, `shellBorderDimmed`, `surface`, `codeBlockBg`, `selectionBg`, `dialogSelectionBg`, `success`, `warning`, `error`.
 
 ## Provider JSON
 
@@ -153,10 +182,10 @@ Per-model: `reasoning`, `thinkingLevelMap`, `compat` overrides.
 Priority:
 
 1. `ELPH_PROVIDER` + `ELPH_MODEL`
-2. Saved `session.*` (home wins over project)
+2. Merged `session.providerId` / `session.modelId` (project overrides home when set)
 3. `ELPH_MODEL` matched across providers
 
-**No automatic default model** — TUI shows "No model selected" until the user picks one.
+Fresh bootstrap leaves `session.providerId` / `session.modelId` and `models.scoped` **empty** — the TUI shows “No model selected” until the user picks one (`Ctrl+L` / `/model`).
 
 ## Project context
 
@@ -168,16 +197,9 @@ Priority:
 
 Live inspection: `/diagnostic:system-prompt`, `/diagnostic:list-tools`.
 
-## Models.dev sync (TUI)
+## Provider catalog refresh
 
-When `syncInterval` has elapsed since `version.json` → `lastSyncProviders`:
-
-1. One check at TUI startup (not a background timer)
-2. Dry-run preview
-3. Confirm dialog: Update / Skip
-4. Skip or no changes → still advance timestamp
-
-Immediate refresh: `elph provider update`.
+Manual refresh: `elph provider update`.
 
 ## Related
 

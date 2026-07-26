@@ -2,7 +2,7 @@
 name = "elph-swarm"
 version = "0.0.10"
 license = "MIT"
-description = "Orchestration library for elph AI coding agents."
+description = "Orchestration library for elph AI coding agents"
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true

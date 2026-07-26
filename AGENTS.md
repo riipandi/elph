@@ -60,7 +60,6 @@ Follow these rules strictly.
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_example() {
         assert_eq!(example_fn(), expected);
@@ -76,8 +75,8 @@ mod tests {
 
 ```
 tests/
-  user_flow.rs
   api_contract.rs
+  user_flow.rs
 ```
 
 ### General Rules

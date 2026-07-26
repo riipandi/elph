@@ -115,22 +115,36 @@ pub fn KittScannerView(props: &KittScannerViewProps, mut hooks: Hooks) -> impl I
 }
 
 /// Renders a cycling braille spinner (`⠋⠙⠹…`).
+///
+/// Frame is **wall-clock based** so laggy event loops skip frames instead of slowing the spin
+/// (avoids “about to freeze” UX). Paint is refreshed on a fixed timer only while `active`.
 #[component]
 pub fn SpinnerLoaderView(props: &SpinnerLoaderViewProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+    use crate::loader::SPINNER_FRAME_MS;
+
     let theme = resolve_ui_theme(&hooks, props.theme);
     let color = props.color.unwrap_or(theme.warning);
-    let mut spinner = hooks.use_state(SpinnerLoader::new);
+    // Paint token only — does not advance animation phase (phase comes from wall clock).
+    let paint = hooks.use_state(|| 0u32);
+    let mut active_flag = hooks.use_ref(|| false);
+    active_flag.set(props.active);
 
-    hooks.use_future(async move {
-        loop {
-            tokio::time::sleep(Duration::from_millis(80)).await;
-            let mut state = spinner.get();
-            state.tick();
-            spinner.set(state);
+    hooks.use_future({
+        let active_flag = active_flag;
+        let mut paint = paint;
+        async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(SPINNER_FRAME_MS)).await;
+                if active_flag.get() {
+                    paint.set(paint.get().wrapping_add(1));
+                }
+            }
         }
     });
 
-    let glyph = if props.active { spinner.get().glyph() } else { " " };
+    // Touch paint so re-renders pick a fresh wall-clock glyph.
+    let _ = paint.get();
+    let glyph = if props.active { SpinnerLoader::glyph_now() } else { " " };
 
     element! {
         Text(color: color, wrap: TextWrap::NoWrap, content: glyph.to_string())

@@ -1,6 +1,7 @@
 //! Self-contained multiline editor buffer (tui-textarea style).
 
 use iocraft::prelude::*;
+use iocraft::prelude::{KeyCode, KeyModifiers};
 
 use super::layout::layout_cursor_for_viewport;
 use crate::paste::apply_paste_at_cursor;
@@ -12,6 +13,8 @@ use crate::text_input_layout::WrappedTextLayout;
 pub struct TextareaState {
     pub text: String,
     pub cursor: usize,
+    /// Visual selection anchor (byte index). Selection is `[min(anchor,cursor), max(...))`.
+    pub selection_anchor: Option<usize>,
     pub(crate) vertical_col_preference: Option<u16>,
 }
 
@@ -22,6 +25,56 @@ impl TextareaState {
             text,
             ..Self::default()
         }
+    }
+
+    /// Inclusive-exclusive byte range of the active selection, if any.
+    pub fn selection_range(&self) -> Option<(usize, usize)> {
+        let anchor = self.selection_anchor?;
+        let a = anchor.min(self.cursor).min(self.text.len());
+        let b = anchor.max(self.cursor).min(self.text.len());
+        if a == b { None } else { Some((a, b)) }
+    }
+
+    pub fn has_selection(&self) -> bool {
+        self.selection_range().is_some()
+    }
+
+    pub fn selected_text(&self) -> Option<&str> {
+        let (a, b) = self.selection_range()?;
+        Some(&self.text[a..b])
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.selection_anchor = None;
+    }
+
+    /// Begin or restart a selection with the anchor at `offset` (cursor becomes the head).
+    pub fn begin_selection_at(&mut self, offset: usize) {
+        let offset = offset.min(self.text.len());
+        self.selection_anchor = Some(offset);
+        self.cursor = offset;
+        self.vertical_col_preference = None;
+    }
+
+    /// Move the selection head (cursor) without moving the anchor.
+    pub fn extend_selection_to(&mut self, offset: usize) {
+        let offset = offset.min(self.text.len());
+        if self.selection_anchor.is_none() {
+            self.selection_anchor = Some(self.cursor);
+        }
+        self.cursor = offset;
+    }
+
+    /// Delete the selected range (if any) and place the cursor at the start. Returns true if deleted.
+    pub fn delete_selection(&mut self) -> bool {
+        let Some((a, b)) = self.selection_range() else {
+            return false;
+        };
+        self.text.drain(a..b);
+        self.cursor = a;
+        self.clear_selection();
+        self.vertical_col_preference = None;
+        true
     }
 
     /// Whether a focused editor should accept a parent draft update.
@@ -78,6 +131,9 @@ impl TextareaState {
             }
         });
         self.cursor = self.cursor.min(self.text.len());
+        if let Some(anchor) = self.selection_anchor {
+            self.selection_anchor = Some(anchor.min(self.text.len()));
+        }
         self.vertical_col_preference = None;
     }
 
@@ -91,6 +147,11 @@ impl TextareaState {
             self.insert_newline();
             return;
         }
+        // Replace an active range, then drop any zero-width leftover anchor so Shifted
+        // character keys never leave a sticky selection for the next keystroke.
+        if !self.delete_selection() {
+            self.clear_selection();
+        }
         let cursor = self.cursor.min(self.text.len());
         self.text.insert(cursor, c);
         self.cursor = cursor + c.len_utf8();
@@ -98,6 +159,7 @@ impl TextareaState {
     }
 
     pub fn insert_newline(&mut self) {
+        self.delete_selection();
         let (text, cursor) = wire_insert_newline(&self.text, self.cursor);
         self.text = text;
         self.cursor = cursor;
@@ -105,6 +167,9 @@ impl TextareaState {
     }
 
     pub fn delete_char_back(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
         let cursor = self.cursor.min(self.text.len());
         if cursor == 0 {
             return;
@@ -116,6 +181,9 @@ impl TextareaState {
     }
 
     pub fn delete_char_forward(&mut self) {
+        if self.delete_selection() {
+            return;
+        }
         let cursor = self.cursor.min(self.text.len());
         if cursor >= self.text.len() {
             return;
@@ -126,18 +194,21 @@ impl TextareaState {
     }
 
     pub fn move_left(&mut self, input_width: u16) {
+        let _ = input_width;
+        self.clear_selection();
         self.cursor = WrappedTextLayout::left_of_offset(&self.text, self.cursor);
         self.vertical_col_preference = None;
-        let _ = input_width;
     }
 
     pub fn move_right(&mut self, input_width: u16) {
+        let _ = input_width;
+        self.clear_selection();
         self.cursor = WrappedTextLayout::right_of_offset(&self.text, self.cursor);
         self.vertical_col_preference = None;
-        let _ = input_width;
     }
 
     pub fn move_up(&mut self, input_width: u16) {
+        self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         if self.vertical_col_preference.is_none() {
             let (_, col) = layout.row_column_for_offset(&self.text, self.cursor);
@@ -147,6 +218,7 @@ impl TextareaState {
     }
 
     pub fn move_down(&mut self, input_width: u16) {
+        self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         if self.vertical_col_preference.is_none() {
             let (_, col) = layout.row_column_for_offset(&self.text, self.cursor);
@@ -156,15 +228,74 @@ impl TextareaState {
     }
 
     pub fn move_home(&mut self, input_width: u16) {
+        self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         self.cursor = layout.row_start_offset(&self.text, self.cursor);
         self.vertical_col_preference = None;
     }
 
     pub fn move_end(&mut self, input_width: u16) {
+        self.clear_selection();
         let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
         self.cursor = layout.row_end_offset(&self.text, self.cursor);
         self.vertical_col_preference = None;
+    }
+
+    /// Arrow / Home / End with Shift extends the selection (vim visual-ish).
+    ///
+    /// Only navigation keys may start a selection. Shifted *characters* (e.g. `@` via
+    /// Shift+2) must not set [`Self::selection_anchor`] — otherwise the next keystroke
+    /// replaces the just-typed char via [`Self::delete_selection`].
+    pub fn move_with_shift(&mut self, code: KeyCode, input_width: u16) -> bool {
+        match code {
+            KeyCode::Left | KeyCode::Right | KeyCode::Up | KeyCode::Down | KeyCode::Home | KeyCode::End => {}
+            // Char / Tab / Enter with Shift held are typing, not selection.
+            _ => return false,
+        }
+
+        let layout = WrappedTextLayout::new_for_overlay_editor(&self.text, input_width);
+        if self.selection_anchor.is_none() {
+            self.selection_anchor = Some(self.cursor);
+        }
+        match code {
+            KeyCode::Left => {
+                self.cursor = WrappedTextLayout::left_of_offset(&self.text, self.cursor);
+                self.vertical_col_preference = None;
+                true
+            }
+            KeyCode::Right => {
+                self.cursor = WrappedTextLayout::right_of_offset(&self.text, self.cursor);
+                self.vertical_col_preference = None;
+                true
+            }
+            KeyCode::Up => {
+                if self.vertical_col_preference.is_none() {
+                    let (_, col) = layout.row_column_for_offset(&self.text, self.cursor);
+                    self.vertical_col_preference = Some(col);
+                }
+                self.cursor = layout.above_offset(&self.text, self.cursor, self.vertical_col_preference);
+                true
+            }
+            KeyCode::Down => {
+                if self.vertical_col_preference.is_none() {
+                    let (_, col) = layout.row_column_for_offset(&self.text, self.cursor);
+                    self.vertical_col_preference = Some(col);
+                }
+                self.cursor = layout.below_offset(&self.text, self.cursor, self.vertical_col_preference);
+                true
+            }
+            KeyCode::Home => {
+                self.cursor = layout.row_start_offset(&self.text, self.cursor);
+                self.vertical_col_preference = None;
+                true
+            }
+            KeyCode::End => {
+                self.cursor = layout.row_end_offset(&self.text, self.cursor);
+                self.vertical_col_preference = None;
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn input_basic_key(
@@ -232,6 +363,7 @@ impl TextareaState {
     }
 
     pub fn apply_paste(&mut self, data: &str) {
+        self.delete_selection();
         let cursor = self.cursor.min(self.text.len());
         let (text, cursor) = apply_paste_at_cursor(&self.text, cursor, data);
         self.text = text;
@@ -242,8 +374,64 @@ impl TextareaState {
     pub fn clear_after_submit(&mut self) {
         self.text.clear();
         self.cursor = 0;
+        self.clear_selection();
         self.vertical_col_preference = None;
     }
+}
+
+/// Build per-row text segments for selection highlighting (buffer offsets only — no borders).
+///
+/// Each row is a list of `(text, selected)` segments for mixed-style rendering.
+pub fn selection_display_rows(
+    text: &str,
+    layout: &WrappedTextLayout,
+    selection: Option<(usize, usize)>,
+    scroll_row: u16,
+    viewport_rows: u16,
+) -> Vec<Vec<(String, bool)>> {
+    let lines = layout.wrapped_line_strings(text);
+    let start = scroll_row as usize;
+    let end = (start + viewport_rows as usize).min(lines.len().max(1));
+    let mut out = Vec::with_capacity(end.saturating_sub(start).max(1));
+    if lines.is_empty() {
+        out.push(vec![(String::new(), false)]);
+        return out;
+    }
+    for (i, line) in lines.iter().enumerate().take(end).skip(start) {
+        let row = &layout.rows.get(i);
+        let Some(row) = row else {
+            out.push(vec![(line.clone(), false)]);
+            continue;
+        };
+        let row_start = row.offset;
+        let row_end = row.offset + row.len;
+        let Some((sel_a, sel_b)) = selection else {
+            out.push(vec![(line.clone(), false)]);
+            continue;
+        };
+        let a = sel_a.max(row_start).min(row_end);
+        let b = sel_b.max(row_start).min(row_end);
+        if a >= b {
+            out.push(vec![(line.clone(), false)]);
+            continue;
+        }
+        let mut segs = Vec::new();
+        if a > row_start {
+            segs.push((text[row_start..a].to_string(), false));
+        }
+        segs.push((text[a..b].to_string(), true));
+        if b < row_end {
+            segs.push((text[b..row_end].to_string(), false));
+        }
+        if segs.is_empty() {
+            segs.push((String::new(), false));
+        }
+        out.push(segs);
+    }
+    if out.is_empty() {
+        out.push(vec![(String::new(), false)]);
+    }
+    out
 }
 
 fn mention_completion_replaces_query(before: &str, after: &str) -> bool {
@@ -350,5 +538,33 @@ mod tests {
     fn focused_sync_rejects_stale_parent_after_deletion() {
         assert!(!TextareaState::should_sync_focused_external("/goal", "/goal "));
         assert!(!TextareaState::should_sync_focused_external("/goal pause", "/goal "));
+    }
+
+    #[test]
+    fn shift_char_does_not_start_selection_or_replace_previous() {
+        // Regression: Shift+@ (mention) then `k` used to replace `@` because
+        // `move_with_shift` set selection_anchor before rejecting non-nav keys.
+        let mut state = TextareaState::default();
+        assert!(!state.move_with_shift(KeyCode::Char('@'), 40));
+        assert!(state.selection_anchor.is_none());
+        state.insert_char('@');
+        assert_eq!(state.text, "@");
+        assert!(state.selection_anchor.is_none());
+
+        assert!(!state.move_with_shift(KeyCode::Char('k'), 40));
+        state.insert_char('k');
+        assert_eq!(state.text, "@k");
+        assert_eq!(state.cursor, 2);
+        assert!(!state.has_selection());
+    }
+
+    #[test]
+    fn shift_arrow_still_starts_selection() {
+        let mut state = TextareaState::from_text("hello".into());
+        state.cursor = 5;
+        assert!(state.move_with_shift(KeyCode::Left, 40));
+        assert_eq!(state.selection_anchor, Some(5));
+        assert_eq!(state.cursor, 4);
+        assert!(state.has_selection());
     }
 }

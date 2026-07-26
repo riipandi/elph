@@ -5,14 +5,14 @@ Register them with [`BuiltinToolsBuilder`](../src/builder.rs), group helpers, or
 
 ## Tool groups
 
-| Group            | Feature               | Tools                                                                                    |
-| ---------------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                             |
-| Edit             | `tools-edit-tools`    | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                |
-| Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`              |
-| Meta             | —                     | `list_available_tools` (auto-included by `BuiltinToolsBuilder`)                          |
-| All of the above | `builtin-tools`       | meta feature                                                                             |
+| Group            | Feature               | Tools                                                                                          |
+| ---------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
+| Edit             | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                      |
+| Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`                    |
+| Meta             | —                     | `list_available_tools` (auto-included by `BuiltinToolsBuilder`)                                |
+| All of the above | `builtin-tools`       | meta feature                                                                                   |
 
 The `elph` binary adds two additional tools not in `elph-agent`: `diagnostics` and `ask_user_question`.
 
@@ -51,28 +51,28 @@ Other Tools
 
 ## Cargo features
 
-| Feature               | Default | Tools / behavior                                                                         |
-| --------------------- | ------- | ---------------------------------------------------------------------------------------- |
-| `builtin-tools`       | no      | Meta — enables all groups below                                                          |
-| `tools-edit-tools`    | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                             |
-| `tools-web`           | no      | `web_search`, `web_fetch`                                                                |
-| `tools-collaboration` | no      | `spawn_agent`, `send_message`, … (harness injection)                                     |
-| `tools-read-file`     | no      | `read_file` only                                                                         |
-| `tools-shell-exec`          | no      | `shell_exec` only                                                                              |
-| `tools-edit-file`     | no      | `edit_file` only                                                                         |
-| `tools-write-file`    | no      | `write_file` only                                                                        |
-| `tools-create-dir`    | no      | `create_dir` only                                                                        |
-| `tools-copy-path`     | no      | `copy_path` only                                                                         |
-| `tools-delete-path`   | no      | `delete_path` only                                                                       |
-| `tools-move-path`     | no      | `move_path` only                                                                         |
-| `tools-grep`          | no      | `grep` only (pulls in `fff-search`)                                                      |
-| `tools-find-path`     | no      | `find_path` only (pulls in `fff-search`)                                                 |
-| `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                     |
-| `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                      |
-| `extensions`          | yes     | WASM extension host                                                                      |
-| `obscura`             | no      | Obscura browser fallback for web tools                                                   |
-| `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)   |
+| Feature               | Default | Tools / behavior                                                                               |
+| --------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `builtin-tools`       | no      | Meta — enables all groups below                                                                |
+| `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
+| `tools-web`           | no      | `web_search`, `web_fetch`                                                                      |
+| `tools-collaboration` | no      | `spawn_agent`, `send_message`, … (harness injection)                                           |
+| `tools-read-file`     | no      | `read_file` only                                                                               |
+| `tools-shell-exec`    | no      | `shell_exec` only                                                                              |
+| `tools-edit-file`     | no      | `edit_file` only                                                                               |
+| `tools-write-file`    | no      | `write_file` only                                                                              |
+| `tools-create-dir`    | no      | `create_dir` only                                                                              |
+| `tools-copy-path`     | no      | `copy_path` only                                                                               |
+| `tools-delete-path`   | no      | `delete_path` only                                                                             |
+| `tools-move-path`     | no      | `move_path` only                                                                               |
+| `tools-grep`          | no      | `grep` only (pulls in `fff-search`)                                                            |
+| `tools-find-path`     | no      | `find_path` only (pulls in `fff-search`)                                                       |
+| `tools-list-dir`      | no      | `list_dir` only (pulls in `walkdir`)                                                           |
+| `mcp`                 | yes     | MCP client — see [mcp.md](./mcp.md)                                                            |
+| `extensions`          | yes     | WASM extension host                                                                            |
+| `obscura`             | no      | Obscura browser fallback for web tools                                                         |
+| `tracing`             | no      | `fastrace` spans + HTTP trace propagation — see [observability.md](./observability.md)         |
 
 The `elph` binary enables `builtin-tools` (and `tracing`) by default:
 
@@ -90,7 +90,7 @@ cargo build -p elph-agent --no-default-features
 Filesystem + web only:
 
 ```sh
-cargo build -p elph-agent --no-default-features --features "tools-edit-tools,tools-search,tools-web"
+cargo build -p elph-agent --no-default-features --features "tools-edit,tools-search,tools-web"
 ```
 
 ## Registration
@@ -118,14 +118,14 @@ let fs_tools = BuiltinToolsBuilder::new(env).without_web().build();
 
 ### Group helpers
 
-| Helper                       | Feature gate          | Tools                                                                                    |
-| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| `create_edit_tools`          | `tools-edit-tools`    | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| `create_search_tools`        | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                             |
-| `create_all_tools`           | edit-tools/search     | all filesystem tools                                                                     |
-| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`                                                                |
-| `create_all_tools_with_web`  | edit-tools/search/web | filesystem + web tools                                                                   |
-| `create_collaboration_tools` | `tools-collaboration` | harness-only collaboration tools                                                         |
+| Helper                       | Feature gate          | Tools                                                                                          |
+| ---------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| `create_edit_tools`          | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `create_search_tools`        | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
+| `create_all_tools`           | edit-tools/search     | all filesystem tools                                                                           |
+| `create_web_tools`           | `tools-web`           | `web_search`, `web_fetch`                                                                      |
+| `create_all_tools_with_web`  | edit-tools/search/web | filesystem + web tools                                                                         |
+| `create_collaboration_tools` | `tools-collaboration` | harness-only collaboration tools                                                               |
 
 ```rust
 use elph_agent::{BuiltinToolsBuilder, LocalExecutionEnv};

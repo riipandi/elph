@@ -33,6 +33,21 @@ pub fn shell_global_shortcut(modifiers: KeyModifiers, code: KeyCode) -> bool {
         )
 }
 
+/// Toggle native text selection (mouse capture off/on).
+///
+/// **Ctrl+S** is the primary chord (reliable in raw mode). **Ctrl+Shift+S** is also
+/// accepted when the host delivers it. Callers must skip this while the scoped-models
+/// editor is open — there Ctrl+S means save.
+pub fn is_text_select_toggle_key(modifiers: KeyModifiers, code: KeyCode) -> bool {
+    if !modifiers.contains(KeyModifiers::CONTROL) {
+        return false;
+    }
+    if modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META) {
+        return false;
+    }
+    matches!(code, KeyCode::Char('s') | KeyCode::Char('S'))
+}
+
 /// Keys that scroll the transcript when it has focus (plain arrows and Shift+arrows).
 pub fn transcript_nav_key(code: KeyCode, kind: KeyEventKind, modifiers: KeyModifiers) -> bool {
     if kind == KeyEventKind::Release {
@@ -68,6 +83,22 @@ mod tests {
         assert!(shell_global_shortcut(KeyModifiers::CONTROL, KeyCode::Char('D')));
         assert!(!shell_global_shortcut(KeyModifiers::empty(), KeyCode::Char('c')));
         assert!(!shell_global_shortcut(KeyModifiers::CONTROL, KeyCode::Char('q')));
+    }
+
+    #[test]
+    fn text_select_toggle_accepts_ctrl_s_with_or_without_shift() {
+        assert!(is_text_select_toggle_key(KeyModifiers::CONTROL, KeyCode::Char('s')));
+        assert!(is_text_select_toggle_key(KeyModifiers::CONTROL, KeyCode::Char('S')));
+        assert!(is_text_select_toggle_key(
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+            KeyCode::Char('s')
+        ));
+        assert!(!is_text_select_toggle_key(KeyModifiers::empty(), KeyCode::Char('s')));
+        assert!(!is_text_select_toggle_key(
+            KeyModifiers::CONTROL | KeyModifiers::ALT,
+            KeyCode::Char('s')
+        ));
+        assert!(!is_text_select_toggle_key(KeyModifiers::CONTROL, KeyCode::Char('t')));
     }
 
     #[test]

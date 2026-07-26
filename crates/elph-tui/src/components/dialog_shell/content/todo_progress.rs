@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn glyphs_match_state() {
         assert_eq!(progress_row_glyph(DialogTodoProgress::Queued), "○");
-        assert_eq!(progress_row_glyph(DialogTodoProgress::Done), "●");
-        assert_eq!(progress_row_glyph(DialogTodoProgress::Failed), "✕");
+        assert_eq!(progress_row_glyph(DialogTodoProgress::Done), "✓");
+        assert_eq!(progress_row_glyph(DialogTodoProgress::Failed), "✗");
     }
 }

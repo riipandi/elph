@@ -125,16 +125,18 @@ fn transcript_supports_sticky_scroll_requires_overflow() {
 }
 
 #[test]
-fn active_sticky_uses_latest_when_auto_scroll_pinned() {
+fn active_sticky_disabled_when_auto_scroll_pinned() {
     let texts = ["sys", "user one", "assistant", "user two"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
     let is_sticky_prompt = [false, true, false, true];
     let viewport = 5;
     let bottom_offset = 50;
+    // Pinned to bottom after submit: no sticky overlay — in-flow user bubble keeps its card bg.
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, bottom_offset, true, viewport),
-        Some(3)
+        None
     );
+    // Manual scroll past the latest prompt: sticky engages.
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, 6, false, viewport),
         Some(3)
@@ -263,12 +265,13 @@ fn layout_sticky_header_line_clamps_tall_prompt() {
 }
 
 #[test]
-fn pinned_bottom_offset_activates_latest_sticky_when_auto_scroll_pinned() {
+fn pinned_auto_scroll_never_activates_sticky_even_when_content_overflows() {
     let texts = ["user paste"];
     let layouts = layout_transcript_rows(&texts, 40, 0);
     let is_sticky_prompt = [true];
     let pinned_offset = 80;
     assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset), Some(0));
+    // Short content (fits viewport) — already None.
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true, 20),
         None
@@ -278,8 +281,14 @@ fn pinned_bottom_offset_activates_latest_sticky_when_auto_scroll_pinned() {
     let long_layouts = layout_transcript_rows(&[long.trim()], 12, 0);
     let long_rows = transcript_content_row_count(&long_layouts) as u16;
     assert!(transcript_supports_sticky_scroll(&long_layouts, long_rows - 1));
+    // Overflow + auto-scroll pinned: still None so the submitted bubble paints its background.
     assert_eq!(
         active_sticky_user_message_index(&long_layouts, &[true], pinned_offset, true, long_rows - 1),
+        None
+    );
+    // Manual scroll past the prompt: sticky can engage.
+    assert_eq!(
+        active_sticky_user_message_index(&long_layouts, &[true], 2, false, long_rows - 1),
         Some(0)
     );
 }

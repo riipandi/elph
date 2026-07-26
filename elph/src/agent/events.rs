@@ -1,5 +1,28 @@
 //! Agent → TUI event bridge.
 
+/// Lifecycle phase for subagent UI (maps to process glyphs / status colors).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SubagentUiPhase {
+    Pending,
+    Running,
+    Idle,
+    Error,
+    Done,
+}
+
+impl SubagentUiPhase {
+    /// Plain-language status word for a11y (not color-only).
+    pub fn as_word(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Running => "running",
+            Self::Idle => "idle",
+            Self::Error => "error",
+            Self::Done => "done",
+        }
+    }
+}
+
 /// Live UI events emitted while an agent run is in progress.
 #[derive(Debug)]
 pub enum AgentUiEvent {
@@ -25,9 +48,14 @@ pub enum AgentUiEvent {
     },
     PlanConfirmationRequired(PlanConfirmationRequest),
     ToolApprovalRequired(ToolApprovalRequest),
+    /// Live subagent lifecycle / tool activity (upserted per agent in the transcript).
     SubagentStatus {
         agent_id: String,
         agent_path: String,
+        /// Human task label when available (prefer over raw id).
+        task_name: String,
+        phase: SubagentUiPhase,
+        /// Short action (tool name, "done", error detail, …).
         message: String,
     },
     GoalUpdated {
@@ -53,9 +81,14 @@ pub struct ToolApprovalRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolApprovalChoice {
+    /// Run this tool call only; ask again next time.
     Approve,
+    /// Deny this tool call; ask again next time.
     Reject,
+    /// Allow this tool name for the rest of the session.
     AllowSession,
+    /// Allow every tool that requires approval for the rest of the session.
+    AllowAllTools,
 }
 
 /// One step in a single- or multi-step ask-user flow.

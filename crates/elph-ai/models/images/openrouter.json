@@ -93,7 +93,7 @@
         "api": "openrouter-images",
         "baseUrl": "https://openrouter.ai/api/v1",
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.19999999999999998,
             "cacheWrite": 0.375,
             "input": 2,
             "output": 12
@@ -108,7 +108,7 @@
         "api": "openrouter-images",
         "baseUrl": "https://openrouter.ai/api/v1",
         "cost": {
-            "cacheRead": 0.2,
+            "cacheRead": 0.19999999999999998,
             "cacheWrite": 0.375,
             "input": 2,
             "output": 12
@@ -164,6 +164,51 @@
         "output": ["image", "text"],
         "provider": "openrouter"
     },
+    "krea/krea-2-large": {
+        "api": "openrouter-images",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "krea/krea-2-large",
+        "input": ["text", "image"],
+        "name": "Krea: Krea 2 Large",
+        "output": ["image"],
+        "provider": "openrouter"
+    },
+    "krea/krea-2-medium": {
+        "api": "openrouter-images",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "krea/krea-2-medium",
+        "input": ["text", "image"],
+        "name": "Krea: Krea 2 Medium",
+        "output": ["image"],
+        "provider": "openrouter"
+    },
+    "krea/krea-2-medium-turbo": {
+        "api": "openrouter-images",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "krea/krea-2-medium-turbo",
+        "input": ["text", "image"],
+        "name": "Krea: Krea 2 Medium Turbo",
+        "output": ["image"],
+        "provider": "openrouter"
+    },
     "microsoft/mai-image-2.5": {
         "api": "openrouter-images",
         "baseUrl": "https://openrouter.ai/api/v1",
@@ -176,6 +221,21 @@
         "id": "microsoft/mai-image-2.5",
         "input": ["text", "image"],
         "name": "Microsoft: MAI-Image-2.5",
+        "output": ["image"],
+        "provider": "openrouter"
+    },
+    "microsoft/mai-image-2.5-pro": {
+        "api": "openrouter-images",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 5,
+            "output": 0
+        },
+        "id": "microsoft/mai-image-2.5-pro",
+        "input": ["text", "image"],
+        "name": "Microsoft: MAI-Image-2.5 Pro",
         "output": ["image"],
         "provider": "openrouter"
     },
@@ -281,6 +341,21 @@
         "id": "openrouter/auto",
         "input": ["text", "image"],
         "name": "Auto Router",
+        "output": ["text", "image"],
+        "provider": "openrouter"
+    },
+    "openrouter/auto-beta": {
+        "api": "openrouter-images",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": -1000000,
+            "output": -1000000
+        },
+        "id": "openrouter/auto-beta",
+        "input": ["text", "image"],
+        "name": "Auto Router (Beta)",
         "output": ["text", "image"],
         "provider": "openrouter"
     },

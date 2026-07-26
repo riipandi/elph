@@ -25,7 +25,7 @@ const GROUPS: &[(&str, &str, &[&str])] = &[
     ),
     (
         "Edit",
-        "tools-edit-tools",
+        "tools-edit",
         &[
             "edit_file",
             "write_file",

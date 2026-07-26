@@ -53,9 +53,9 @@ Use these inline in prose (not table cells):
 4. Port + regenerate catalogs when needed:
 
     ```sh
-    cargo run -p elph-ai --bin generate-models -- chat \
-      --catalog-dir /path/to/pi/packages/ai --skip-scripts
-    # Then re-add Elph-only Hyper define_catalog + index entry if wiped.
+    # Catalog path is fixed: ../../earendil-works/pi/packages/ai (from elph workspace root)
+    cargo run -p elph-ai --bin generate-models -- chat --skip-scripts
+    # Then re-add Elph-only providers (Hyper, OpenGateway, Kilo, …) if wiped.
     ```
 
 5. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).

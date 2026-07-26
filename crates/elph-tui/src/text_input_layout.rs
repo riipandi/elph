@@ -13,16 +13,16 @@ pub fn overlay_editor_wrap_width(viewport_width: u16) -> usize {
 }
 
 #[derive(Debug, Clone)]
-struct TextRow {
-    offset: usize,
-    len: usize,
-    width: usize,
+pub struct TextRow {
+    pub offset: usize,
+    pub len: usize,
+    pub width: usize,
 }
 
 /// Wrapped row index for scroll metrics and cursor tracking (does not own the source text).
 #[derive(Debug, Clone)]
 pub struct WrappedTextLayout {
-    rows: Vec<TextRow>,
+    pub(crate) rows: Vec<TextRow>,
 }
 
 impl WrappedTextLayout {
@@ -216,7 +216,11 @@ impl WrappedTextLayout {
     }
 
     fn offset_for_closest_column_in_row(&self, text: &str, row: u16, col: u16) -> usize {
-        let row = &self.rows[row as usize];
+        if self.rows.is_empty() {
+            return 0;
+        }
+        let row_idx = (row as usize).min(self.rows.len() - 1);
+        let row = &self.rows[row_idx];
         let col = col as usize;
         if col >= row.width {
             return row.offset + row.len;
@@ -229,6 +233,11 @@ impl WrappedTextLayout {
             width += UnicodeWidthChar::width(c).unwrap_or(0);
         }
         row.offset + row.len
+    }
+
+    /// Byte offset for a display row/column (mouse hit-testing).
+    pub fn offset_at_row_col(&self, text: &str, row: u16, col: u16) -> usize {
+        self.offset_for_closest_column_in_row(text, row, col)
     }
 
     pub fn above_offset(&self, text: &str, offset: usize, col_preference: Option<u16>) -> usize {

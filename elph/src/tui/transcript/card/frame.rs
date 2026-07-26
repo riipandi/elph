@@ -74,6 +74,7 @@ pub fn render_flush_card(chrome: &TranscriptCardChrome, message: &TranscriptMess
     render_text_card(chrome, &message.content, Color::Reset, chrome.foreground)
 }
 
+#[allow(dead_code)] // kept for non-process assistant shells / tests
 pub fn render_assistant_card(chrome: &TranscriptCardChrome, message: &TranscriptMessage) -> AnyElement<'static> {
     if message.markdown.is_some() {
         let inner_width = chrome.inner_width(message.style);

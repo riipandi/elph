@@ -229,5 +229,30 @@
         "thinkingLevelMap": {
             "off": null
         }
+    },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.moonshot.ai/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false,
+            "supportsStrictMode": false,
+            "thinkingFormat": "deepseek"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "moonshotai",
+        "reasoning": true
     }
 }

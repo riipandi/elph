@@ -117,7 +117,7 @@ pub fn echo_tool() -> AgentTool {
 }
 
 /// Edit and filesystem mutation tools: edit_file, write_file, shell_exec, create_dir, copy_path, delete_path, move_path.
-#[cfg(feature = "tools-edit-tools")]
+#[cfg(feature = "tools-edit")]
 pub fn create_edit_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     let tools = vec![
         #[cfg(feature = "tools-edit-file")]
@@ -155,13 +155,13 @@ pub fn create_search_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
 }
 
 /// All enabled filesystem built-in tools.
-#[cfg(any(feature = "tools-edit-tools", feature = "tools-search"))]
+#[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub fn create_all_tools(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     crate::builder::BuiltinToolsBuilder::new(env).without_web().build()
 }
 
 /// All enabled built-in tools including web tools when compiled in.
-#[cfg(any(feature = "tools-edit-tools", feature = "tools-search", feature = "tools-web"))]
+#[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
 pub fn create_all_tools_with_web(env: Arc<LocalExecutionEnv>) -> Vec<AgentTool> {
     crate::builder::BuiltinToolsBuilder::all(env).build()
 }

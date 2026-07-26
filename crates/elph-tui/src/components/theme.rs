@@ -1,9 +1,17 @@
-//! Shared visual tokens for elph-tui components (Pi dark–aligned).
+//! Shared visual tokens for elph-tui components.
+//!
+//! Default palette follows a Ghostty-style dark theme (cool charcoal base, soft
+//! ANSI accents). Spacing is a 1:2:3 cell modular scale so borders and gutters
+//! stay aligned across widgets.
 
 use crate::color::rgb;
 use crate::input_prefix::LIST_SELECTION_MARKER;
 use iocraft::hooks::UseContext;
 use iocraft::prelude::*;
+
+// ── Ghostty dark base (canonical hex → RGB) ───────────────────────────────
+// background #181a1d · foreground #d4d5d9 · selection #336ff1
+// ANSI 0–15 from the host Ghostty config (see elph TUI theme docs).
 
 /// Cohesive terminal palette and spacing for interactive components.
 ///
@@ -25,10 +33,10 @@ pub struct UiTheme {
     /// Round shell chrome when another zone has focus.
     pub shell_border_dimmed: Color,
     pub surface: Color,
-    /// Fenced code blocks in markdown (neutral dark grey; avoids syntax-highlight hue clash).
+    /// Fenced code blocks in markdown (near-black charcoal; low chroma).
     pub code_block_bg: Color,
     pub selection_bg: Color,
-    /// Soft yellow highlight for selected inline dialog choices (ask-user, etc.).
+    /// Soft amber highlight for selected inline dialog choices (ask-user, etc.).
     pub dialog_selection_bg: Color,
     pub success: Color,
     pub warning: Color,
@@ -41,27 +49,36 @@ pub struct UiTheme {
     pub padding_lg: u16,
 }
 
-impl Default for UiTheme {
-    fn default() -> Self {
+impl UiTheme {
+    /// Ghostty-style dark palette (default Elph appearance).
+    pub const fn dark() -> Self {
         Self {
-            text_primary: rgb(212, 212, 212),
-            text_secondary: rgb(180, 180, 188),
-            text_muted: rgb(136, 136, 144),
-            text_hint: rgb(108, 108, 116),
-            accent: rgb(129, 161, 193),
-            accent_soft: rgb(6, 182, 212),
-            border: rgb(72, 72, 80),
-            border_focus: rgb(129, 161, 193),
-            border_subtle: rgb(48, 48, 56),
-            shell_border: rgb(80, 80, 80),
-            shell_border_dimmed: rgb(56, 56, 56),
+            // foreground #d4d5d9
+            text_primary: rgb(0xd4, 0xd5, 0xd9),
+            text_secondary: rgb(0xb0, 0xb3, 0xb9),
+            // palette 8 #7a7e85
+            text_muted: rgb(0x7a, 0x7e, 0x85),
+            text_hint: rgb(0x5c, 0x60, 0x66),
+            // palette 4 #6699ff
+            accent: rgb(0x66, 0x99, 0xff),
+            // palette 6 #4dd0e1
+            accent_soft: rgb(0x4d, 0xd0, 0xe1),
+            border: rgb(0x3a, 0x3d, 0x42),
+            border_focus: rgb(0x66, 0x99, 0xff),
+            // palette 0 #191a1c
+            border_subtle: rgb(0x19, 0x1a, 0x1c),
+            shell_border: rgb(0x7a, 0x7e, 0x85),
+            shell_border_dimmed: rgb(0x3a, 0x3d, 0x42),
             surface: Color::Reset,
-            code_block_bg: rgb(32, 32, 32),
-            selection_bg: rgb(40, 44, 52),
-            dialog_selection_bg: rgb(58, 52, 36),
-            success: rgb(152, 195, 121),
-            warning: rgb(240, 198, 116),
-            error: rgb(224, 108, 117),
+            code_block_bg: rgb(0x19, 0x1a, 0x1c),
+            selection_bg: rgb(0x22, 0x28, 0x36),
+            dialog_selection_bg: rgb(0x3a, 0x32, 0x22),
+            // palette 2 #8ed16a
+            success: rgb(0x8e, 0xd1, 0x6a),
+            // palette 3 #ffb347
+            warning: rgb(0xff, 0xb3, 0x47),
+            // palette 1 #ff6b66
+            error: rgb(0xff, 0x6b, 0x66),
             gap_sm: 0,
             gap_md: 1,
             gap_lg: 2,
@@ -69,6 +86,43 @@ impl Default for UiTheme {
             padding_md: 2,
             padding_lg: 3,
         }
+    }
+
+    /// Light palette — cool paper background, charcoal text, same accent family.
+    pub const fn light() -> Self {
+        Self {
+            text_primary: rgb(0x1a, 0x1b, 0x1e),
+            text_secondary: rgb(0x3a, 0x3d, 0x44),
+            text_muted: rgb(0x5c, 0x60, 0x66),
+            text_hint: rgb(0x8a, 0x8e, 0x95),
+            accent: rgb(0x33, 0x6f, 0xf1),
+            accent_soft: rgb(0x0e, 0xa5, 0xb5),
+            border: rgb(0xc8, 0xcb, 0xd1),
+            border_focus: rgb(0x33, 0x6f, 0xf1),
+            border_subtle: rgb(0xe4, 0xe6, 0xea),
+            shell_border: rgb(0x7a, 0x7e, 0x85),
+            shell_border_dimmed: rgb(0xc8, 0xcb, 0xd1),
+            surface: Color::Reset,
+            code_block_bg: rgb(0xe8, 0xea, 0xed),
+            selection_bg: rgb(0xde, 0xe7, 0xfc),
+            dialog_selection_bg: rgb(0xff, 0xf0, 0xd6),
+            success: rgb(0x3d, 0x9a, 0x3a),
+            warning: rgb(0xc4, 0x7d, 0x12),
+            error: rgb(0xd0, 0x3f, 0x3f),
+            gap_sm: 0,
+            gap_md: 1,
+            gap_lg: 2,
+            padding_sm: 1,
+            padding_md: 2,
+            padding_lg: 3,
+        }
+    }
+}
+
+impl Default for UiTheme {
+    /// Process-active theme if set, otherwise [`UiTheme::dark`].
+    fn default() -> Self {
+        crate::theme_config::active_ui_theme()
     }
 }
 
@@ -226,12 +280,12 @@ impl UiTheme {
         if has_focus { self.text_primary } else { self.text_muted }
     }
 
-    /// High-contrast caret block for focused editors.
+    /// High-contrast caret block for focused editors (Ghostty cursor-color #ffffff).
     pub fn input_cursor_color(self) -> Color {
-        self.accent_soft
+        Color::White
     }
 
-    /// Ask-user dialog fields — matches option selection chrome (warm accent, no blue).
+    /// Ask-user dialog fields — warm warning accent when focused.
     pub fn dialog_input_text_color(self, has_focus: bool) -> Color {
         if has_focus {
             self.text_primary
@@ -321,10 +375,11 @@ pub fn tab_styles(theme: UiTheme, active: bool) -> (BorderStyle, Color, Weight) 
     }
 }
 
-/// Resolve the active theme: explicit `theme` prop → [`UiThemeProvider`] context → [`Default`].
+/// Resolve the active theme: prop → process theme (settings / Ctrl+Shift+T) → provider context → dark.
 pub fn resolve_ui_theme(hooks: &Hooks, prop: Option<UiTheme>) -> UiTheme {
-    prop.or_else(|| hooks.try_use_context::<UiTheme>().map(|theme| *theme))
-        .unwrap_or_default()
+    prop.or_else(crate::theme_config::try_active_ui_theme)
+        .or_else(|| hooks.try_use_context::<UiTheme>().map(|theme| *theme))
+        .unwrap_or_else(UiTheme::dark)
 }
 
 /// Props for [`UiThemeProvider`] — app-level theme (React `ThemeProvider` analogue).
@@ -425,14 +480,39 @@ mod tests {
             _ => 128,
         };
         assert!(lum(theme.code_block_bg) < lum(theme.selection_bg));
+        // Ghostty black (palette 0) — near-neutral charcoal, not a tinted wash.
         match theme.code_block_bg {
             Color::Rgb { r, g, b } => {
-                assert_eq!(r, g, "code block card uses neutral grey");
-                assert_eq!(g, b, "code block card uses neutral grey");
+                assert!((r as i16 - g as i16).unsigned_abs() <= 2);
+                assert!((g as i16 - b as i16).unsigned_abs() <= 2);
+                assert!(lum(theme.code_block_bg) < 40);
             }
             _ => panic!("expected rgb code block background"),
         }
-        assert_eq!(theme.code_block_bg, Color::Rgb { r: 32, g: 32, b: 32 });
+    }
+
+    #[test]
+    fn ghostty_canonical_tokens() {
+        let theme = UiTheme::dark();
+        assert_eq!(theme.text_primary, rgb(0xd4, 0xd5, 0xd9));
+        assert_eq!(theme.accent, rgb(0x66, 0x99, 0xff));
+        assert_eq!(theme.accent_soft, rgb(0x4d, 0xd0, 0xe1));
+        assert_eq!(theme.success, rgb(0x8e, 0xd1, 0x6a));
+        assert_eq!(theme.warning, rgb(0xff, 0xb3, 0x47));
+        assert_eq!(theme.error, rgb(0xff, 0x6b, 0x66));
+        assert_eq!(theme.input_cursor_color(), Color::White);
+    }
+
+    #[test]
+    fn light_palette_is_dark_on_light() {
+        let light = UiTheme::light();
+        let dark = UiTheme::dark();
+        let lum = |c: Color| match c {
+            Color::Rgb { r, g, b } => (r as u32 + g as u32 + b as u32) / 3,
+            _ => 128,
+        };
+        assert!(lum(light.text_primary) < lum(dark.text_primary));
+        assert!(lum(light.code_block_bg) > lum(dark.code_block_bg));
     }
 
     #[test]

@@ -209,26 +209,6 @@
             "off": null
         }
     },
-    "gpt-5-codex": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
-            "input": 1.25,
-            "output": 10
-        },
-        "id": "gpt-5-codex",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5-Codex",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null
-        }
-    },
     "gpt-5-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
@@ -309,86 +289,6 @@
             "off": "none"
         }
     },
-    "gpt-5.1-chat-latest": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 128000,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
-            "input": 1.25,
-            "output": 10
-        },
-        "id": "gpt-5.1-chat-latest",
-        "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "GPT-5.1 Chat",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null
-        }
-    },
-    "gpt-5.1-codex": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
-            "input": 1.25,
-            "output": 10
-        },
-        "id": "gpt-5.1-codex",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.1 Codex",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null
-        }
-    },
-    "gpt-5.1-codex-max": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
-            "input": 1.25,
-            "output": 10
-        },
-        "id": "gpt-5.1-codex-max",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.1 Codex Max",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null
-        }
-    },
-    "gpt-5.1-codex-mini": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.025,
-            "cacheWrite": 0,
-            "input": 0.25,
-            "output": 2
-        },
-        "id": "gpt-5.1-codex-mini",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.1 Codex mini",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null
-        }
-    },
     "gpt-5.2": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
@@ -424,27 +324,6 @@
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-5.2 Chat",
-        "provider": "openai",
-        "reasoning": true,
-        "thinkingLevelMap": {
-            "off": null,
-            "xhigh": "xhigh"
-        }
-    },
-    "gpt-5.2-codex": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 400000,
-        "cost": {
-            "cacheRead": 0.175,
-            "cacheWrite": 0,
-            "input": 1.75,
-            "output": 14
-        },
-        "id": "gpt-5.2-codex",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "GPT-5.2 Codex",
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -815,6 +694,23 @@
             "xhigh": "xhigh"
         }
     },
+    "gpt-realtime-2.1": {
+        "api": "openai-responses",
+        "baseUrl": "https://api.openai.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.4,
+            "cacheWrite": 0,
+            "input": 4,
+            "output": 24
+        },
+        "id": "gpt-realtime-2.1",
+        "input": ["text", "image"],
+        "maxTokens": 32000,
+        "name": "GPT-Realtime-2.1",
+        "provider": "openai",
+        "reasoning": true
+    },
     "o1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
@@ -866,23 +762,6 @@
         "provider": "openai",
         "reasoning": true
     },
-    "o3-deep-research": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 2.5,
-            "cacheWrite": 0,
-            "input": 10,
-            "output": 40
-        },
-        "id": "o3-deep-research",
-        "input": ["text", "image"],
-        "maxTokens": 100000,
-        "name": "o3-deep-research",
-        "provider": "openai",
-        "reasoning": true
-    },
     "o3-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
@@ -931,23 +810,6 @@
         "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o4-mini",
-        "provider": "openai",
-        "reasoning": true
-    },
-    "o4-mini-deep-research": {
-        "api": "openai-responses",
-        "baseUrl": "https://api.openai.com/v1",
-        "contextWindow": 200000,
-        "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 8
-        },
-        "id": "o4-mini-deep-research",
-        "input": ["text", "image"],
-        "maxTokens": 100000,
-        "name": "o4-mini-deep-research",
         "provider": "openai",
         "reasoning": true
     }

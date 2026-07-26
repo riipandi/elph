@@ -5,7 +5,10 @@ mod header;
 mod stats;
 mod status_row;
 
-pub use fit::{chrome_half_width, fit_footer_left, fit_footer_left_from_line, fit_footer_right};
+pub use fit::{
+    chrome_footer_widths, chrome_half_width, fit_editor_border_project, fit_footer_status_left,
+    fit_footer_status_right, fit_footer_status_right_with_select, footer_mode_model_width,
+};
 pub use header::Header;
 pub use stats::ChromeStats;
 pub use stats::{chrome_stats_from_session, read_git_footer_info, refresh_chrome_stats};

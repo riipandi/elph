@@ -42,8 +42,7 @@ User message
 
 ### Tool loop limit
 
-- Default **25** rounds per turn (`maxToolIterations`; `0` = default).
-- On limit: stop with a clear message to the user.
+- No host setting yet; the agent loop continues until the model stops calling tools (or errors / aborts).
 
 ## System prompt
 
@@ -53,7 +52,7 @@ Assembly order:
 2. Project context — nearest `AGENTS.md`
 3. Registered skills — metadata in prompt; body read by agent when relevant
 4. Current date, working directory, session mode
-5. Guardrails, thinking instructions, response language (`preferedResponseLanguage`)
+5. Guardrails and thinking instructions
 
 ## Tool loop
 
@@ -99,15 +98,11 @@ A tool is sent to the API only if it is known, has a schema, is executable, and 
 | Max assistant message        | 64 KB        |
 | Max TUI bubble               | 48 KB        |
 
-### Auto-compaction on context overflow
+### Compaction
 
-When the provider returns context-too-large and `autoCompactContext` is true:
+Compaction uses harness defaults (`CompactionSettings` in `elph-agent`); there is no `settings.json` knob yet.
 
-- Up to 3 retries with increasing aggressiveness (2×, 4×, 8× default limits)
-- Floor: 4 messages / 16 KB; 4 KB minimum tool-result truncation
-- Target percentage: `autoCompactLimit` (default 80%)
-
-Manual: `/compact [pct]` (alias `/c`).
+Manual: `/compact` when implemented in the slash surface.
 
 ## Agent events → TUI
 
@@ -180,7 +175,7 @@ TypeID with prefix `sess` — shown in the footer.
 
 | Data                 | Location                                     |
 | -------------------- | -------------------------------------------- |
-| Provider / model     | `~/.elph/settings.json` (home wins)          |
+| Provider / model     | `settings.session` (merged home ← project)   |
 | Mode / thinking      | Merged home + project settings               |
 | Conversation history | In-memory + durable backend                  |
 | Platform metadata    | `metadata.db` in data dir                    |

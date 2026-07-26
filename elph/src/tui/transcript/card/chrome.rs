@@ -7,8 +7,11 @@ use super::super::types::TranscriptStyle;
 
 /// Vertical inset for tinted transcript cards (top/bottom).
 pub const COLORED_CARD_PAD: u16 = 1;
-/// Horizontal inset for all transcript cards (left/right).
+/// Horizontal inset for tinted / user-input transcript cards (left/right).
 pub const COLORED_CARD_PAD_H: u16 = COLORED_CARD_PAD + 1;
+/// Horizontal inset for process-log rows (tool / thinking / response / status / subagent).
+/// One cell tighter than tinted bubbles so glyph columns stay compact.
+pub const PROCESS_LOG_PAD_H: u16 = COLORED_CARD_PAD;
 pub const COLORED_CARD_GAP: u16 = 1;
 pub const FLUSH_CARD_PAD: u16 = 0;
 pub const FLUSH_CARD_GAP: u16 = 0;
@@ -16,6 +19,14 @@ pub const FLUSH_CARD_GAP: u16 = 0;
 pub const THINKING_RESPONSE_GAP: u16 = 1;
 /// Rows between tool header/args and the output body.
 pub const TOOL_OUTPUT_SECTION_GAP: u16 = 1;
+/// Extra rows before the user-answer body on `ask_user_question` tool cards.
+pub const ASK_USER_ANSWER_SECTION_GAP: u16 = 2;
+/// Breathing room after an ask-user tool (or any tool) before an assistant reply.
+pub const TOOL_TO_RESPONSE_GAP: u16 = 2;
+
+/// Consistent gap between process log rows (tool / thinking / response / status).
+/// Independent of collapse state — expanding a neighbor must not change spacing.
+pub const LOG_ROW_GAP: u16 = 1;
 
 /// Precomputed layout + colors for rendering one transcript card.
 #[derive(Debug, Clone, PartialEq, Eq)]

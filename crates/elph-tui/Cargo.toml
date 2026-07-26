@@ -1,6 +1,6 @@
 [package]
 name = "elph-tui"
-version = "0.0.26"
+version = "0.0.27"
 license = "MIT"
 description = "Terminal UI components for Elph agent"
 keywords = ["tui", "terminal", "prompt", "iocraft", "elph"]
@@ -9,7 +9,7 @@ homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
-publish = false
+publish = true
 
 [lib]
 name = "elph_tui"
@@ -20,10 +20,12 @@ anstyle-syntect.workspace = true
 anstyle.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+clipboard-rs.workspace = true
 figlet-rs.workspace = true
 html-escape.workspace = true
 iocraft.workspace = true
 linkify.workspace = true
+log.workspace = true
 memchr.workspace = true
 pulldown-cmark.workspace = true
 qrcode.workspace = true
@@ -39,6 +41,10 @@ two-face.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
 url.workspace = true
+
+# Wayland clipboard backend (Linux). macOS/Windows use platform-native APIs.
+[target.'cfg(target_os = "linux")'.dependencies]
+clipboard-rs = { workspace = true, features = ["wayland"] }
 [dev-dependencies]
 futures.workspace = true
 lipsum = "0.9.1"

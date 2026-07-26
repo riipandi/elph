@@ -24,6 +24,7 @@ pub enum SlashOutcome {
     SpawnAgentTurn,
     OverlayDeferred(OverlayCommand),
     OpenModelSelector { filter: String },
+    OpenScopedModels,
     OpenSystemPromptDialog { text: String },
     PlayConfetti { mode: crate::tui::confetti::ConfettiMode },
 }
@@ -63,6 +64,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
+            OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
         },
         SlashDispatch::Compact
@@ -108,6 +110,7 @@ pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
 pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
     match overlay {
         OverlayCommand::Model { .. } => "/model overlay not yet implemented".into(),
+        OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
         OverlayCommand::Tree => "/tree overlay not yet implemented".into(),
         OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
     }
@@ -133,6 +136,21 @@ mod tests {
             outcome,
             SlashOutcome::OpenModelSelector { filter } if filter.is_empty()
         ));
+    }
+
+    #[test]
+    fn scoped_models_slash_opens_editor() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/scoped-models",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+        });
+        assert!(matches!(outcome, SlashOutcome::OpenScopedModels));
     }
 
     #[test]

@@ -37,12 +37,29 @@ pub fn render_markdown_buffer(
     let mut document = MarkdownDocument::default();
     let mut source_start = 0usize;
     for part in &buffer.parts {
-        let slice = &raw[source_start..part.source_end];
+        let end = part.source_end.min(raw.len());
+        let start = source_start.min(end);
+        // Char-safe: skip invalid ranges instead of panicking the TUI.
+        let Some(slice) = raw.get(start..end) else {
+            source_start = end;
+            continue;
+        };
         let part_doc = render_markdown_part(part.document.as_ref(), slice, tail_foreground, width);
         document = merge_documents(document, part_doc);
-        source_start = part.source_end;
+        source_start = end;
     }
-    let tail = buffer.tail(raw);
+    let mut tail = buffer.tail(raw);
+    // Bound live paint cost: only the recent streaming tail is re-parsed each frame.
+    const TAIL_PAINT_MAX: usize = 4_000;
+    if tail.len() > TAIL_PAINT_MAX {
+        let start = tail
+            .char_indices()
+            .rev()
+            .nth(TAIL_PAINT_MAX.saturating_sub(1))
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+        tail = &tail[start..];
+    }
     if !tail.is_empty() {
         document = merge_documents(document, streaming_tail_document(tail));
     }

@@ -228,7 +228,7 @@
             "output": 1.2
         },
         "id": "accounts/fireworks/models/minimax-m3",
-        "input": ["text"],
+        "input": ["text", "image"],
         "maxTokens": 512000,
         "name": "MiniMax-M3",
         "provider": "fireworks",

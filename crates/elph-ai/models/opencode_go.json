@@ -42,10 +42,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0.0145,
+            "cacheRead": 0.003625,
             "cacheWrite": 0,
-            "input": 1.74,
-            "output": 3.48
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
@@ -113,6 +113,45 @@
             "off": null
         }
     },
+    "grok-4.5": {
+        "api": "openai-responses",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2,
+            "output": 6
+        },
+        "id": "grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 500000,
+        "name": "Grok 4.5",
+        "provider": "opencode-go",
+        "reasoning": true
+    },
+    "hy3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.035,
+            "cacheWrite": 0,
+            "input": 0.14,
+            "output": 0.58
+        },
+        "id": "hy3",
+        "input": ["text"],
+        "maxTokens": 64000,
+        "name": "Hy3",
+        "provider": "opencode-go",
+        "reasoning": true
+    },
     "kimi-k2.6": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/go/v1",
@@ -165,6 +204,28 @@
         "provider": "opencode-go",
         "reasoning": true
     },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/go/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3 (2x usage)",
+        "provider": "opencode-go",
+        "reasoning": true
+    },
     "mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/go/v1",
@@ -197,10 +258,10 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.0145,
+            "cacheRead": 0.003625,
             "cacheWrite": 0,
-            "input": 1.74,
-            "output": 3.48
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "mimo-v2.5-pro",
         "input": ["text"],

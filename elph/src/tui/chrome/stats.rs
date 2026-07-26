@@ -249,8 +249,8 @@ mod tests {
         };
         let label = header_stats_from_chrome(&stats, "both");
         assert!(label.contains("$0.12"));
-        assert!(label.contains("131k"));
+        assert!(label.contains("131K"));
         assert!(label.contains("48.2%"));
-        assert!(label.contains("272k"));
+        assert!(label.contains("272K"));
     }
 }

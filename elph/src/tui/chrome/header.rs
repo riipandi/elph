@@ -2,7 +2,8 @@
 
 use iocraft::prelude::*;
 
-use super::fit::{chrome_half_width, fit_header_stats, fit_session_header_left};
+use super::chrome_half_width;
+use super::fit::{fit_header_stats, fit_session_header_left};
 use crate::tui::theme::BORDER_MUTED;
 
 #[derive(Default, Props)]

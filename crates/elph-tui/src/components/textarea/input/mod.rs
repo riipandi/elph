@@ -30,6 +30,8 @@ pub enum TextareaInputResult {
     Changed,
     /// Plain Enter submit — caller invokes `on_submit` with the draft.
     Submit(String),
+    /// Yank selected text (Ctrl+Y with a non-empty selection). Shell shows the toast.
+    Yank(String),
     /// Event consumed without mutation.
     Consumed,
     /// Not handled.
@@ -71,14 +73,37 @@ pub fn handle_textarea_terminal_event(
         return TextareaInputResult::Ignored;
     };
 
+    if kind != KeyEventKind::Release && code == KeyCode::Esc && modifiers.is_empty() {
+        if state.has_selection() {
+            state.clear_selection();
+            return TextareaInputResult::Changed;
+        }
+        if !*ctx.pending_esc && !ctx.on_escape.is_default() {
+            (ctx.on_escape)(());
+            return TextareaInputResult::Consumed;
+        }
+    }
+
+    // Plain `y` / `Y` yanks the selection only (does not insert). Ctrl+Y is shell-owned full-prompt
+    // copy; Ctrl+C is cancel/clear — never yank.
     if kind != KeyEventKind::Release
-        && code == KeyCode::Esc
         && modifiers.is_empty()
-        && !*ctx.pending_esc
-        && !ctx.on_escape.is_default()
+        && matches!(code, KeyCode::Char('y') | KeyCode::Char('Y'))
+        && let Some(selected) = state.selected_text().map(str::to_string)
     {
-        (ctx.on_escape)(());
-        return TextareaInputResult::Consumed;
+        state.clear_selection();
+        return TextareaInputResult::Yank(selected);
+    }
+
+    // Shift+arrows extend visual selection inside the buffer only.
+    // Shift+Up/Down are reserved for transcript scrolling — only Left/Right/Home/End extend selection.
+    if kind != KeyEventKind::Release
+        && modifiers.contains(KeyModifiers::SHIFT)
+        && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META)
+        && !is_transcript_scroll_key(code, kind, modifiers)
+        && state.move_with_shift(code, ctx.input_width)
+    {
+        return TextareaInputResult::Changed;
     }
 
     let now = Instant::now();
@@ -312,13 +337,14 @@ mod tests {
     }
 
     #[test]
-    fn rapid_paste_stream_coalesces_until_idle() {
+    fn rapid_paste_stream_stays_visible_while_bursting() {
         let paste = "# Elph — OpenWiki Quickstart";
         let mut state = TextareaState::default();
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
         let mut on_escape = HandlerMut::default();
+        let mut expected = String::new();
 
         for (i, ch) in paste.chars().enumerate() {
             let ctx = TextareaInputContext {
@@ -334,12 +360,10 @@ mod tests {
                 on_escape: &mut on_escape,
             };
             let result = handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
-            if i == 0 {
-                assert_eq!(result, TextareaInputResult::Changed);
-                assert_eq!(state.text, "#");
-            } else {
-                assert_eq!(result, TextareaInputResult::Consumed, "char {i}: {ch}");
-            }
+            expected.push(ch);
+            // Short/normal streams live-sync into the editor so chars never "vanish".
+            assert_eq!(result, TextareaInputResult::Changed, "char {i}: {ch}");
+            assert_eq!(state.text, expected, "char {i}: {ch}");
         }
 
         thread::sleep(Duration::from_millis(110));
@@ -361,6 +385,55 @@ mod tests {
         );
         assert_eq!(state.text, format!("{paste}!"));
         assert!(!burst.active);
+    }
+
+    #[test]
+    fn rapid_short_word_does_not_lose_characters() {
+        // Regression: first char applied normally, subsequent rapid keys used to buffer
+        // invisibly until the *next* key — empty-prompt typing looked like auto-delete.
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        for ch in ['h', 'i', '!', '?'] {
+            let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+            assert_eq!(
+                handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx),
+                TextareaInputResult::Changed
+            );
+        }
+        assert_eq!(state.text, "hi!?");
+        assert_eq!(state.cursor, 4);
+    }
+
+    #[test]
+    fn shift_at_then_letter_keeps_both_characters() {
+        // Regression: Shift+@ for mentions left a sticky selection_anchor; the next
+        // keystroke replaced `@` (e.g. `@` then `k` became just `k`).
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press_mod(KeyCode::Char('@'), KeyModifiers::SHIFT), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "@");
+        assert!(!state.has_selection());
+        assert!(state.selection_anchor.is_none());
+
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('k')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "@k");
+        assert_eq!(state.cursor, 2);
     }
 
     fn shift_key_press(code: KeyCode) -> TerminalEvent {
@@ -699,5 +772,80 @@ mod tests {
         }
         assert_eq!(state.text, ELPH_PASTE);
         assert_eq!(state.cursor, ELPH_PASTE.len());
+    }
+
+    #[test]
+    fn plain_y_yanks_selection_without_inserting() {
+        let mut state = TextareaState::from_text("hello".into());
+        state.cursor = 5;
+        assert!(state.move_with_shift(KeyCode::Left, 40));
+        assert!(state.move_with_shift(KeyCode::Left, 40));
+        assert_eq!(state.selected_text(), Some("lo"));
+
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('y')), &mut state, ctx),
+            TextareaInputResult::Yank("lo".into())
+        );
+        assert_eq!(state.text, "hello");
+        assert!(!state.has_selection());
+    }
+
+    #[test]
+    fn ctrl_y_does_not_yank_selection_in_textarea() {
+        // Shell owns Ctrl+Y for full-prompt copy; Textarea must not treat it as selection yank.
+        let mut state = TextareaState::from_text("hello".into());
+        state.cursor = 5;
+        assert!(state.move_with_shift(KeyCode::Left, 40));
+        assert!(state.has_selection());
+
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        let result =
+            handle_textarea_terminal_event(key_press_mod(KeyCode::Char('y'), KeyModifiers::CONTROL), &mut state, ctx);
+        assert_ne!(result, TextareaInputResult::Yank("o".into()));
+        assert_eq!(state.text, "hello");
+    }
+
+    #[test]
+    fn ctrl_c_does_not_yank_selection() {
+        let mut state = TextareaState::from_text("ab".into());
+        state.begin_selection_at(0);
+        state.extend_selection_to(2);
+        assert_eq!(state.selected_text(), Some("ab"));
+
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        // Ctrl+C is cancel/clear in the shell — Textarea must not treat it as yank.
+        let result =
+            handle_textarea_terminal_event(key_press_mod(KeyCode::Char('c'), KeyModifiers::CONTROL), &mut state, ctx);
+        assert_ne!(result, TextareaInputResult::Yank("ab".into()));
+        assert!(state.has_selection() || matches!(result, TextareaInputResult::Ignored | TextareaInputResult::Changed));
+    }
+
+    #[test]
+    fn plain_y_without_selection_inserts_character() {
+        let mut state = TextareaState::from_text("x".into());
+        state.cursor = 1;
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('y')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "xy");
     }
 }

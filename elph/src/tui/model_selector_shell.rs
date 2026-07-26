@@ -29,6 +29,8 @@ pub struct OpenModelSelectorArgs<'a> {
     pub paths: &'a Paths,
     pub provider_id: Option<&'a str>,
     pub model_id: Option<&'a str>,
+    /// Live scoped list (session); when set, used instead of reloading settings.
+    pub session_scoped: Option<&'a [String]>,
 }
 
 pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
@@ -41,13 +43,14 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
         args.live_draft.set(String::new());
     }
 
-    let scoped_model_items = Settings::load(args.paths)
-        .map(|settings| settings.scoped_model_items)
+    let scoped_from_settings = Settings::load(args.paths)
+        .map(|settings| settings.models.scoped)
         .unwrap_or_default();
+    let scoped_model_items = args.session_scoped.unwrap_or(scoped_from_settings.as_slice());
     let selector = PendingModelSelector::open_with_selection(
         args.initial_filter,
         stashed,
-        &scoped_model_items,
+        scoped_model_items,
         args.provider_id,
         args.model_id,
     );

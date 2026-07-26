@@ -6,4 +6,5 @@ description: "Files and subdirectories in Architecture."
 
 # Files
 
-- [Architecture Overview](overview.md) - Layered crate architecture for the Elph AI agent workspace — module map, design principles, and key architectural decisions.
+- [Elph Architecture Overview](overview.md) - High-level architecture, crate dependency graph, and design principles for the Elph AI Agent workspace.
+- [Elph Source Map](source-map.md) - Comprehensive crate-by-crate module map with file paths and responsibilities for the Elph workspace.

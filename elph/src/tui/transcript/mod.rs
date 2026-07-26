@@ -8,8 +8,10 @@ mod panel;
 mod types;
 
 pub use ephemeral::{
-    AGENT_MODE_NOTICE_KEY, agent_mode_notice_expired, next_agent_mode_notice_deadline, remove_ephemeral_notice,
-    show_agent_mode_notice,
+    EphemeralBanner, EphemeralBannerGeneration, agent_mode_banner, agent_mode_busy_banner, api_error_banner,
+    clear_ephemeral_banner, clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
+    prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
+    select_mode_on_banner, theme_mode_banner,
 };
 pub use panel::TranscriptPanel;
-pub use types::{TranscriptMessage, TranscriptStyle};
+pub use types::{QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptStyle, toggle_latest_collapsible_detail};

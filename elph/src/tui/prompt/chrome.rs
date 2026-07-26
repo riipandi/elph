@@ -20,12 +20,13 @@ pub struct PromptChromeProps {
     pub agent_mode: AgentMode,
     pub thinking_level: ThinkingLevel,
     pub has_focus: bool,
-    pub project_line: String,
     pub project_name: String,
     pub git: Option<GitFooterInfo>,
     pub turn: u32,
     pub model_label: String,
     pub supports_images: bool,
+    /// When false, footer accents use dimmed grey only.
+    pub colored_status_footer: bool,
     pub chrome_revision: u64,
     pub draft: Option<State<String>>,
     pub live_draft: Option<Ref<String>>,
@@ -49,7 +50,10 @@ pub struct PromptChromeProps {
     pub on_file_picker_key: HandlerMut<'static, PaletteKeyInput>,
     pub file_picker_key_handled: Option<Ref<bool>>,
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
+    pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
     pub blocked_hint: Option<String>,
+    /// Native terminal text-select mode (mouse capture off). Prompt stays interactive.
+    pub text_select_mode: bool,
 }
 
 #[component]
@@ -86,6 +90,9 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     screen_height: props.screen_height,
                     agent_mode: props.agent_mode,
                     has_focus: props.has_focus,
+                    project_name: props.project_name.clone(),
+                    git_branch: props.git.as_ref().map(|g| g.branch.clone()),
+                    chrome_revision: props.chrome_revision,
                     input_prefix_kind: props.input_prefix_kind,
                     draft: props.draft,
                     live_draft: props.live_draft,
@@ -97,6 +104,8 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     force_palette_sync: props.force_palette_sync,
                     force_clear: props.force_editor_clear,
                     blocked_hint: props.blocked_hint.clone(),
+                    text_select_mode: props.text_select_mode,
+                    clipboard_toast: props.clipboard_toast,
                     on_submit: props.on_submit.take(),
                     on_escape: if props.slash_palette_snapshot.visible || props.file_picker_snapshot.visible {
                         HandlerMut::default()
@@ -142,13 +151,14 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
             }
             Footer(
                 screen_width: props.screen_width,
-                project_line: props.project_line.clone(),
-                project_name: props.project_name.clone(),
-                git: props.git.clone(),
-                turn: props.turn,
+                agent_mode: props.agent_mode,
                 model_label: props.model_label.clone(),
                 thinking_level: props.thinking_level,
                 supports_images: props.supports_images,
+                turn: props.turn,
+                git: props.git.clone(),
+                colored_status_footer: props.colored_status_footer,
+                select_mode: props.text_select_mode,
                 chrome_revision: props.chrome_revision,
             )
         }

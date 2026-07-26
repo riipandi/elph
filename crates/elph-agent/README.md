@@ -461,7 +461,7 @@ let read_file_tool = simple_tool(
 );
 ```
 
-Built-in tools are optional Cargo features. Enable `builtin-tools` for the full catalog, or pick groups (`tools-edit-tools`, `tools-search`, `tools-web`, `tools-collaboration`). See [docs/tools.md](./docs/tools.md).
+Built-in tools are optional Cargo features. Enable `builtin-tools` for the full catalog, or pick groups (`tools-edit`, `tools-search`, `tools-web`, `tools-collaboration`). See [docs/tools.md](./docs/tools.md).
 
 | Helper / builder            | Tools                                                                                          |
 | --------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -499,7 +499,7 @@ Set provider API keys via environment variables (`BRAVE_SEARCH_API_KEY`, `EXA_AP
 | Feature               | Default | Description                                                                                    |
 | --------------------- | ------- | ---------------------------------------------------------------------------------------------- |
 | `builtin-tools`       | no      | All built-in tool groups (enabled by `elph` binary)                                            |
-| `tools-edit-tools`    | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| `tools-edit`          | no      | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
 | `tools-search`        | no      | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
 | `tools-web`           | no      | `web_search`, `web_fetch`                                                                      |
 | `tools-collaboration` | no      | `spawn_agent`, `send_message`, …                                                               |

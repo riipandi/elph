@@ -10,7 +10,6 @@ ELPH_VERSION  := $(shell grep '^version' elph/Cargo.toml | head -1 | sed 's/.*= 
 BUILD_HASH    := $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 APP_BINS      := $(ELPH_BIN)
 INSTALL_DIR   := $(HOME)/.local/bin
-BUILD_DIR     := ./target/release
 APP           ?= elph
 
 # ─── Compiler cache ───────────────────────────────────────────────────────────
@@ -26,14 +25,43 @@ endif
 # ─── Args ───────────────────────────────────────────────────────────────────
 
 # Named args:  make run ARGS="-- --nocapture"  /  make test PKG=foo
-# catalog:    make generate-models ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai ARGS="--skip-scripts"
-ELPH_AI_CATALOG_DIR  ?= ../catalog/packages/ai
+# catalog:    make generate-models ARGS="--skip-scripts"
+# Catalog source path is fixed in generate-models
+# (../../earendil-works/pi/packages/ai from workspace root).
 ARGS       :=
 _RESIDUAL_ := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(foreach a,$(_RESIDUAL_),$(eval .PHONY: $a))
 $(foreach a,$(_RESIDUAL_),$(eval $a: ; @true))
 
-.PHONY: build build-elph run watch test test-elph test-elph-tui check-elph check-elph-tui lint lint-elph lint-elph-tui build-elph-tui-examples fmt clean check coverage help stats generate-models prepare
+# Build profile: debug by default (faster for day-to-day install).
+# Release (any of):
+#   make install RELEASE=1
+#   make install -- --release
+#   make build -- --release
+# Note: `make install --release` is rejected by GNU make (unknown option). Use `-- --release`.
+# Do not use residual goal `release` — it collides with the cross `release` target.
+_RELEASE_REQUESTED :=
+ifneq ($(filter 1 true yes,$(RELEASE)),)
+  _RELEASE_REQUESTED := 1
+endif
+ifneq ($(filter release,$(PROFILE)),)
+  _RELEASE_REQUESTED := 1
+endif
+ifneq ($(filter --release,$(MAKECMDGOALS) $(_RESIDUAL_)),)
+  _RELEASE_REQUESTED := 1
+endif
+
+ifeq ($(_RELEASE_REQUESTED),1)
+  CARGO_BUILD_FLAGS := --release
+  BUILD_PROFILE     := release
+else
+  CARGO_BUILD_FLAGS :=
+  BUILD_PROFILE     := debug
+endif
+BUILD_DIR := ./target/$(BUILD_PROFILE)
+
+.PHONY: build build-elph install run watch test test-elph test-elph-tui check-elph check-elph-tui generate-models prepare
+.PHONY: lint lint-elph lint-elph-tui build-elph-tui-examples fmt clean check coverage help stats
 .PHONY: cross cross-pull release release-linux release-macos release-windows
 .PHONY: bump bump-elph bump-libs publish publish-dry-run version
 
@@ -43,12 +71,12 @@ check: ## Check code compiles (fast, no codegen)
 	@$(CARGO) check --workspace 2>&1
 # 	@$(CARGO) bloat --release -n 50
 
-build: build-elph ## Build elph release binary
+build: build-elph ## Build elph binary (debug default; RELEASE=1 or -- --release)
 
-build-elph: ## Build elph binary
-	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) ($$RUSTC_WRAPPER)"
+build-elph: ## Build elph binary (debug default; RELEASE=1 or -- --release)
+	@echo "Building $(ELPH_BIN) v$(ELPH_VERSION) ($(BUILD_HASH)) [$(BUILD_PROFILE)] ($$RUSTC_WRAPPER)"
 	@_start=$$(python3 -c "import time; print(int(time.time()*1000))"); \
-	$(CARGO) build --release --bin $(ELPH_BIN) 2>&1; \
+	$(CARGO) build $(CARGO_BUILD_FLAGS) --bin $(ELPH_BIN) 2>&1; \
 	_end=$$(python3 -c "import time; print(int(time.time()*1000))"); \
 	_elapsed=$$(( _end - _start )); \
 	echo ""; \
@@ -61,18 +89,23 @@ build-elph: ## Build elph binary
 	    else \
 	      hash=$$(shasum -a 256 "$(BUILD_DIR)/$$bin" | cut -d' ' -f1); \
 	    fi; \
-	    echo "Binary $$bin:$$(du -sh $(BUILD_DIR)/$$bin | cut -f1) ($$hash)"; \
+	    echo "Binary $$bin: $$(du -sh $(BUILD_DIR)/$$bin | cut -f1) ($$hash)"; \
 	  else \
 	    echo "Binary $$bin:(not built)"; \
 	  fi; \
 	done; \
-	printf "Build time: %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
+	printf "Build time:  %d.%03ds\n" $$(( _elapsed / 1000 )) $$(( _elapsed % 1000 ))
 
-install: build ## Install elph-next to $INSTALL_DIR
+install: build ## Install elph (debug -> elph-dev; release -> elph-next)
 	@mkdir -p $(INSTALL_DIR) && echo
 	@for bin in $(APP_BINS); do \
-	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin-next"; \
-	  echo "$$bin-next installed at: $(INSTALL_DIR)/$$bin-next"; \
+	  if [ "$(BUILD_PROFILE)" = "release" ]; then \
+	    _suffix="-next"; \
+	  else \
+	    _suffix="-dev"; \
+	  fi; \
+	  cp "$(BUILD_DIR)/$$bin" "$(INSTALL_DIR)/$$bin$${_suffix}"; \
+	  echo "$$bin$${_suffix} installed at: $(INSTALL_DIR)/$$bin$${_suffix} [$(BUILD_PROFILE)]"; \
 	done
 
 run: ## Run elph coding agent
@@ -106,13 +139,8 @@ check-elph-tui: ## Check elph-tui compiles (lib, tests, examples)
 build-elph-tui-examples: ## Build all elph-tui examples
 	@$(CARGO) build -p elph-tui --examples 2>&1
 
-generate-models: ## Regenerate elph-ai model catalogs from catalog source (ELPH_AI_CATALOG_DIR, ARGS=--skip-scripts)
-	@test -f "$(ELPH_AI_CATALOG_DIR)/scripts/generate-models.ts" || { \
-	  echo "catalog source not found at: $(ELPH_AI_CATALOG_DIR)" >&2; \
-	  echo "Set ELPH_AI_CATALOG_DIR to the packages/ai root, e.g. ELPH_AI_CATALOG_DIR=/path/to/catalog/packages/ai" >&2; \
-	  exit 1; \
-	}
-	@$(CARGO) run -p elph-ai --bin generate-models -- all --catalog-dir "$(ELPH_AI_CATALOG_DIR)" $(ARGS)
+generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
+	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)
@@ -286,3 +314,9 @@ publish-dry-run: ## Dry-run publish checks (elph-core first)
 help: ## Show this help
 	@printf '\033[33mUsage:\033[0m make \033[36m<target>\033[0m\n'
 	@awk -F ':.*## ' '/^[a-zA-Z_-]+:.*## / {printf " \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@printf ' \n\033[33mBuild profile (build / install):\033[0m\n'
+	@printf ' \033[36mmake install\033[0m                  debug -> elph-dev\n'
+	@printf ' \033[36mmake install RELEASE=1\033[0m        release -> elph-next\n'
+	@printf ' \033[36mmake install -- --release\033[0m     release (GNU make end-of-options)\n'
+	@printf ' \033[36mmake build PROFILE=release\033[0m    same as RELEASE=1\n'
+	@printf ' note: \033[36mmake install --release\033[0m  is invalid (make option parse)\n'

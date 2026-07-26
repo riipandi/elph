@@ -45,6 +45,20 @@ MODEL_NAME | PROVIDER | T: high | IMG      $0.00 | 0k | 0.0% (262k)   <- FOOTER 
 PROJECT_DIR [abcd12345]                      turn: 0 | main [-N +N]      (PROJECT_DIR only name, not full path)
 ```
 
+### Alternatives
+
+```
+╭───────────────────────────────────────────────────────────────────────────────╮
+│ PREFIX_SYMBOL                                                                 │
+╰──────────────────────────────────────────────────────────────── PROJECT_DIR ──╯
+Build | PROVIDER/MODEL_NAME (THINKING) | IMG                turn: 0 | [+0/0 -0/0]
+
+╭───────────────────────────────────────────────────────────────────────────────╮
+│ PREFIX                                                                        │
+╰─────────────────────────────────────────── ~ my-app (feat/cool-new-feature) ──╯
+Plan | opencode/deepseek-v4-flash | xhigh | IMG             turn: 0 | [+0/0 -0/0]
+```
+
 ### Prefix Symbol
 
 The prompt character changes based on input content. Always **white**, **bold**.
@@ -217,8 +231,7 @@ sent to the agent.
 | After paste  | Cursor moves to the end of the paste token                               |
 | After editor | Main input cursor restores to the pre-edit line/column                   |
 
-Set `"useRawPaste": true` in `~/.elph/settings.json` to insert pasted text verbatim (no collapse).
-Default is `false`. See [configuration.md](./configuration.md#settingsjson).
+Paste collapse is always applied for long text payloads (no settings toggle).
 
 ---
 
@@ -266,14 +279,17 @@ When no actual token usage data is available (e.g., at startup before the first 
 
 ### Thinking Level → Color
 
-| Level   | Color  | Hex       |
-| ------- | ------ | --------- |
-| off     | gray   | `#6B7280` |
-| minimal | gray   | `#6B7280` |
-| low     | green  | `#22C55E` |
-| medium  | yellow | `#EAB308` |
-| high    | orange | `#F97316` |
-| xhigh   | red    | `#EF4444` |
+Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`):
+
+| Level   | Color         | Hex       |
+| ------- | ------------- | --------- |
+| off     | soft grey     | `#9CA3AF` |
+| minimal | soft cyan     | `#5EC8D4` |
+| low     | periwinkle    | `#7B9FD4` |
+| medium  | soft peach    | `#D4A574` |
+| high    | soft clearer red | `#DC6E76` |
+| xhigh   | soft lavender | `#B49AD9` |
+| max     | soft magenta  | `#C48AD4` |
 
 ### Context Usage → Color
 
@@ -286,12 +302,12 @@ When no actual token usage data is available (e.g., at startup before the first 
 
 ### Agent Mode → Color (border + footer)
 
-| Mode  | Color        | Hex       |
-| ----- | ------------ | --------- |
-| build | neutral gray | `#6B7280` |
-| plan  | cyan         | `#06B6D4` |
-| ask   | blue         | `#3B82F6` |
-| brave | red          | `#EF4444` |
+| Mode  | Color              | Hex       |
+| ----- | ------------------ | --------- |
+| build | soft warm white    | `#ECEAE4` |
+| plan  | darker soft yellow | `#CCA834` |
+| ask   | blue               | `#3B82F6` |
+| brave | orange             | `#F97316` |
 
 ### Git Status → Color
 
@@ -324,17 +340,19 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | `Ctrl+C`            | First press: quit notice; second press: quit (or clear input + attachments if typing)            |
 | `Ctrl+X`            | Cancel / Quit                                                                                    |
 | `Ctrl+D`            | Exit application                                                                                 |
-| `Ctrl+A`            | Switch agent mode                                                                                |
-| `Shift+Tab`         | Cycle thinking level                                                                             |
+| `Tab`               | Toggle focus between prompt textarea and transcript                                              |
+| `Shift+Tab`         | Cycle agent mode                                                                                 |
+| `Ctrl+~`            | Cycle thinking level (`Ctrl+\`` also accepted)                                                   |
 | `Enter`             | Send message; in slash palette, run or complete selected command                                 |
 | `Ctrl+J`            | Insert newline in input                                                                          |
 | `Shift+Enter`       | Insert newline in input                                                                          |
 | `Ctrl+L`            | Open model selector                                                                              |
+| `Ctrl+Shift+T`      | Cycle theme: Auto → Light → Dark (saved to `ui.theme`)                                           |
+| `Ctrl+P` / `Shift+Ctrl+P` | Cycle scoped models forward / backward                                                     |
 | `Ctrl+Y`            | Copy last AI response (raw markdown source)                                                      |
 | Click copy hint     | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting) |
 | `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                        |
 | `Ctrl+O`            | Preview/edit pasted block (input); else expand/collapse newest collapsible block                 |
-| `Ctrl+Shift+T`      | Cycle theme (auto/dark/light)                                                                    |
 | Click header/footer | Expand/collapse that specific block                                                              |
 | `:q` / `:q!`        | Quit (vim-style)                                                                                 |
 
@@ -362,7 +380,24 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 ## Model selector
 
-`Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups.
+`Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models`.
+
+## Scoped models
+
+`/scoped-models` opens the scoped-models editor (pi-compatible UX). Enabled models appear in the model picker's **Scoped** tab and can be cycled with **Ctrl+P** / **Shift+Ctrl+P**.
+
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` (or `k` / `j`) | Move selection |
+| `Enter` | Toggle model for Ctrl+P cycling |
+| `Ctrl+A` | Enable all models (or all matching the filter) |
+| `Ctrl+X` | Clear all (or clear matching the filter) |
+| `Ctrl+P` | Toggle every model for the selected item's provider |
+| `Alt+↑` / `Alt+↓` | Reorder enabled models (cycle order) |
+| `Ctrl+S` | Save to home `settings.models.scoped` |
+| `Esc` | Cancel without saving |
+
+Edits are **session-only** until **Ctrl+S** (footer shows `(unsaved)`). Cancel restores the list from when the editor opened.
 
 ### No model selected
 
@@ -396,14 +431,14 @@ Persisted per session at `<workDir>/.agents/elph/metadata/<sess_id>/todos.jsonl`
 
 ## Shell input
 
-| Prefix                                                                                                 | Meaning                                          |
-| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `!cmd`                                                                                                 | Run shell; output can be queued as agent context |
-| `!!cmd`                                                                                                | Run shell without agent context                  |
+| Prefix                                                                                                       | Meaning                                          |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `!cmd`                                                                                                       | Run shell; output can be queued as agent context |
+| `!!cmd`                                                                                                      | Run shell without agent context                  |
 | Output appears in a collapsible detail box labeled `shell_exec(<command>)` with status colors (running /     |
 | success / error / cancelled). Activity view shows `⡿  Running shell_exec(cmd)`. Stream chunks honor terminal |
-| carriage returns (e.g. ping statistics overwriting one line) while preserving newlines between         |
-| separate lines.                                                                                        |
+| carriage returns (e.g. ping statistics overwriting one line) while preserving newlines between               |
+| separate lines.                                                                                              |
 
 ## Tool approval and AskUser
 

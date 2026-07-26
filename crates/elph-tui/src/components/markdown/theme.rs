@@ -1,9 +1,9 @@
-//! Pi-aligned markdown colors for transcript rendering.
+//! Markdown colors for transcript rendering (Ghostty dark / [`UiTheme`] aligned).
 
 use crate::components::theme::UiTheme;
 use iocraft::prelude::{Color, Weight};
 
-/// Semantic markdown palette (Pi `dark` theme).
+/// Semantic markdown palette derived from [`UiTheme`].
 #[derive(Clone, Copy, Debug)]
 pub struct MarkdownTheme {
     pub ui: UiTheme,

@@ -64,6 +64,8 @@ pub struct TextareaProps {
     pub file_picker_key_handled: Option<Ref<bool>>,
     /// Flushed editor buffer for parent key handlers (updated each render and input event).
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
+    /// One-shot clipboard toast request (plain `y` selection yank). Shell drains into the ephemeral banner.
+    pub clipboard_toast: Option<State<Option<crate::clipboard::ClipboardNotice>>>,
 }
 
 use crate::components::scroll_bar::ScrollbarStyle;

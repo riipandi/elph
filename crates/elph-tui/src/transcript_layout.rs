@@ -261,9 +261,14 @@ pub fn sticky_user_message_index(
 /// Sticky prompt shown for the active transcript turn.
 ///
 /// Returns `None` for an empty transcript or when content still fits the viewport (no scroll).
-/// While `auto_scroll` is pinned to the bottom, use the latest submitted user prompt.
-/// During manual scroll, hide at the top of the transcript (`scroll_offset <= 0`) so the in-flow
-/// cards are shown without a duplicate overlay. Below that, pick the last sticky turn whose start
+///
+/// While `auto_scroll` is pinned to the bottom (normal follow-latest after submit), sticky is
+/// **disabled** so the in-flow user bubble keeps its tinted card background. A bottom-pinned
+/// offset looks like a large scroll and would otherwise pin the latest prompt to the top while
+/// suppressing the source bubble (invisible / no background) in the stream.
+///
+/// During manual scroll: hide at the top of the transcript (`scroll_offset <= 0`) so in-flow
+/// cards show without a duplicate overlay. Below that, pick the last sticky turn whose start
 /// row is at or above the viewport top (the prompt you have scrolled past).
 pub fn active_sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
@@ -275,8 +280,9 @@ pub fn active_sticky_user_message_index(
     if layouts.len() != is_sticky_prompt.len() || !transcript_supports_sticky_scroll(layouts, viewport_rows) {
         return None;
     }
+    // Following the bottom: keep in-flow user cards fully painted (with bubble background).
     if auto_scroll_pinned {
-        return latest_sticky_user_message_index(is_sticky_prompt);
+        return None;
     }
     if scroll_offset <= 0 {
         return None;

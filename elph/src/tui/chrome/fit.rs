@@ -1,10 +1,11 @@
 //! Progressive chrome fitting — drops or truncates rightmost segments first.
 
 use crate::tui::labels::{
-    GitFooterInfo, context_usage_label, footer_left_label, footer_right_label, format_worktree_stats,
-    session_header_segments, session_label,
+    FOOTER_SELECT_MODE_BADGE, GitFooterInfo, context_pct_limit_label, editor_border_project_label, footer_mode_label,
+    footer_model_name, footer_model_thinking_label, footer_status_left_label, footer_status_right_label,
+    footer_status_right_label_with_select, format_token_count, session_header_segments, session_label,
 };
-use crate::types::ThinkingLevel;
+use crate::types::{AgentMode, ThinkingLevel};
 use elph_tui::utils::{display_width, truncate_with_ellipsis};
 
 use super::stats::{ChromeStats, header_stats_from_chrome};
@@ -49,6 +50,22 @@ pub fn chrome_half_width(screen_width: u16) -> usize {
     screen_width.saturating_sub(2).max(1) as usize / 2
 }
 
+/// Footer column budgets: left (mode+model) wins when the row is tight.
+///
+/// `min_left` is the ideal width for `MODE | model` (untruncated). When that
+/// exceeds half the row, left steals from right so git/turn can yield first.
+pub fn chrome_footer_widths(screen_width: u16, min_left: usize) -> (usize, usize) {
+    let total = screen_width.saturating_sub(2).max(1) as usize;
+    let half = (total / 2).max(1);
+    let left = if min_left > half {
+        min_left.min(total).max(1)
+    } else {
+        half.min(total)
+    };
+    let right = total.saturating_sub(left);
+    (left, right)
+}
+
 /// Header left: Skills → MCP → truncate Session (session id kept as long as possible).
 pub fn fit_session_header_left(
     session_id: &str,
@@ -64,7 +81,9 @@ pub fn fit_session_header_left(
     join_segments_fit(&segments, max_width, " | ")
 }
 
-/// Header right: full context → simpler modes → cost only → percent only.
+/// Header right progressive fit. **Context % and context length always preferred.**
+///
+/// Drop order when narrowing: cost → used count → keep `48.2% (272K)`.
 pub fn fit_header_stats(
     cost_usd: f64,
     tokens_used: u64,
@@ -74,6 +93,8 @@ pub fn fit_header_stats(
     max_width: usize,
 ) -> String {
     let cost = format!("${cost_usd:.2}");
+    let used = format_token_count(tokens_used);
+    let pct_limit = context_pct_limit_label(context_pct, context_limit);
     let full = header_stats_from_chrome(
         &ChromeStats {
             cost_usd,
@@ -84,65 +105,120 @@ pub fn fit_header_stats(
         },
         display,
     );
-    let percentage = format!(
-        "{cost} | {}",
-        context_usage_label(tokens_used, context_pct, context_limit, "percentage")
-    );
-    let count = format!(
-        "{cost} | {}",
-        context_usage_label(tokens_used, context_pct, context_limit, "count")
-    );
-    let pct_only = format!("{context_pct:.1}%");
-    pick_fitting_label(&[full, percentage, count, cost, pct_only], max_width)
+    // Most complete → least optional; pct + limit is the last non-truncated candidate.
+    let mut candidates = vec![full];
+    match display {
+        "percentage" => {
+            candidates.push(format!("{cost} | {pct_limit}"));
+            candidates.push(pct_limit.clone());
+        }
+        "count" => {
+            candidates.push(format!("{cost} | {used} | {pct_limit}"));
+            candidates.push(format!("{used} | {pct_limit}"));
+            candidates.push(pct_limit.clone());
+        }
+        _ => {
+            // both: $cost | used | pct (limit)
+            candidates.push(format!("{cost} | {pct_limit}"));
+            candidates.push(format!("{used} | {pct_limit}"));
+            candidates.push(pct_limit.clone());
+        }
+    }
+    pick_fitting_label(&candidates, max_width)
 }
 
-/// Footer left from a preformatted project line (`project_footer_label`).
-pub fn fit_footer_left_from_line(project_line: &str, turn: u32, max_width: usize) -> String {
+/// Editor bottom-border project label: drop branch first, then truncate `~ name`.
+pub fn fit_editor_border_project(project_name: &str, branch: Option<&str>, max_width: usize) -> String {
     if max_width == 0 {
         return String::new();
     }
-    let candidates = vec![footer_left_label(project_line, turn), project_line.to_string()];
-    pick_fitting_label(&candidates, max_width)
+    let full = editor_border_project_label(project_name, branch);
+    let name_only = editor_border_project_label(project_name, None);
+    pick_fitting_label(&[full, name_only, format!("~ {project_name}")], max_width)
 }
 
-/// Footer left: turn → git stats → branch → truncate project name.
-pub fn fit_footer_left(project_name: &str, git: Option<&GitFooterInfo>, turn: u32, max_width: usize) -> String {
-    let project = format!("~ {project_name}");
-    let mut candidates = Vec::new();
-    let mut line = project.clone();
-    if let Some(git) = git {
-        let branch = git.branch.trim();
-        if !branch.is_empty() {
-            line.push_str(&format!(" [{branch}]"));
-        }
-        let with_branch = line.clone();
-        let stats = format_worktree_stats(git.files_added, git.lines_added, git.files_deleted, git.lines_deleted);
-        let with_stats = format!("{with_branch} {stats}");
-        candidates.push(footer_left_label(&with_stats, turn));
-        candidates.push(with_stats);
-        candidates.push(with_branch);
-    } else {
-        candidates.push(footer_left_label(&line, turn));
-    }
-    candidates.push(line);
-    candidates.push(project);
-    pick_fitting_label(&candidates, max_width)
+/// Ideal left width for always-visible `MODE | model` (no thinking / IMG).
+pub fn footer_mode_model_width(mode: AgentMode, model_label: &str) -> usize {
+    let mode_s = footer_mode_label(mode);
+    let model_id = footer_model_name(model_label);
+    display_width(&format!("{mode_s} | {model_id}"))
 }
 
-/// Footer right: thinking level → IMG → truncate model (model id kept as long as possible).
-pub fn fit_footer_right(
+/// Status footer left progressive fit. **Mode and model name always preferred.**
+///
+/// Drop order when narrowing: thinking → IMG → provider → truncate model.
+/// Mode label is never dropped before model truncation.
+pub fn fit_footer_status_left(
+    mode: AgentMode,
     model_label: &str,
     thinking_level: ThinkingLevel,
     supports_images: bool,
     max_width: usize,
 ) -> String {
-    let thinking = thinking_level.label();
-    let mut candidates = vec![footer_right_label(model_label, thinking_level, supports_images)];
-    if supports_images {
-        candidates.push(format!("IMG | {model_label}"));
+    if max_width == 0 {
+        return String::new();
     }
-    candidates.push(format!("{model_label} | {thinking}"));
-    candidates.push(model_label.to_string());
+    let mode_s = footer_mode_label(mode);
+    let model_id = footer_model_name(model_label);
+    let with_thinking = footer_model_thinking_label(model_label, thinking_level);
+    let model_id_thinking = footer_model_thinking_label(model_id, thinking_level);
+
+    // Most complete → least optional; every candidate keeps MODE + model.
+    let mut candidates = Vec::with_capacity(8);
+    // 1. Full: MODE | provider/model (thinking) [| IMG]
+    candidates.push(footer_status_left_label(mode, model_label, thinking_level, supports_images));
+    // 2. Drop IMG, keep thinking + provider
+    candidates.push(format!("{mode_s} | {with_thinking}"));
+    // 3. Drop thinking: MODE | provider/model [| IMG]
+    if supports_images {
+        candidates.push(format!("{mode_s} | {model_label} | IMG"));
+    }
+    candidates.push(format!("{mode_s} | {model_label}"));
+    // 4. Drop provider: MODE | model (thinking) [| IMG]
+    if supports_images {
+        candidates.push(format!("{mode_s} | {model_id_thinking} | IMG"));
+    }
+    candidates.push(format!("{mode_s} | {model_id_thinking}"));
+    // 5. Drop thinking + provider + IMG: MODE | model (always last non-truncated)
+    if supports_images {
+        candidates.push(format!("{mode_s} | {model_id} | IMG"));
+    }
+    candidates.push(format!("{mode_s} | {model_id}"));
+    pick_fitting_label(&candidates, max_width)
+}
+
+/// Status footer right progressive fit. **Git yields first when narrowing.**
+///
+/// Drop order: full (`turn | git`) → turn only → empty/truncated.
+pub fn fit_footer_status_right(turn: u32, git: Option<&GitFooterInfo>, max_width: usize) -> String {
+    if max_width == 0 {
+        return String::new();
+    }
+    let turn_s = format!("turn: {turn}");
+    let full = footer_status_right_label(turn, git);
+    let candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
+    pick_fitting_label(&candidates, max_width)
+}
+
+/// Like [`fit_footer_status_right`], with optional select-mode badge on the left of the right cluster.
+///
+/// Drop order: full (`sel | turn | git`) → `sel | turn` → `sel` → empty/truncated.
+pub fn fit_footer_status_right_with_select(
+    turn: u32,
+    git: Option<&GitFooterInfo>,
+    max_width: usize,
+    select_mode: bool,
+) -> String {
+    if !select_mode {
+        return fit_footer_status_right(turn, git, max_width);
+    }
+    if max_width == 0 {
+        return String::new();
+    }
+    let turn_s = format!("{FOOTER_SELECT_MODE_BADGE} | turn: {turn}");
+    let full = footer_status_right_label_with_select(turn, git, true);
+    let mut candidates = if git.is_some() { vec![full, turn_s] } else { vec![full] };
+    candidates.push(FOOTER_SELECT_MODE_BADGE.to_string());
     pick_fitting_label(&candidates, max_width)
 }
 
@@ -174,23 +250,64 @@ mod tests {
     }
 
     #[test]
-    fn fit_header_stats_drops_context_before_cost() {
+    fn fit_header_stats_keeps_pct_and_context_limit() {
         let wide = fit_header_stats(0.12, 131_000, 48.2, 272_000, "both", 80);
-        assert!(wide.contains("131k"));
-        let narrow = fit_header_stats(0.12, 131_000, 48.2, 272_000, "both", 8);
-        assert!(display_width(&narrow) <= 8);
+        assert!(wide.contains("131K"));
+        assert!(wide.contains("48.2%"));
+        assert!(wide.contains("272K"));
+
+        // Drop cost first; still keep pct + limit.
+        let mid = fit_header_stats(0.12, 131_000, 48.2, 272_000, "both", 22);
+        assert!(mid.contains("48.2%"));
+        assert!(mid.contains("272K"));
+        assert!(!mid.contains('$') || mid.contains("48.2%"));
+
+        // Very tight: still prefers pct + limit over cost-only.
+        let narrow = fit_header_stats(0.12, 131_000, 48.2, 272_000, "both", 16);
+        assert_eq!(narrow, "48.2% (272K)");
     }
 
     #[test]
-    fn fit_footer_left_from_line_uses_preformatted_project() {
-        let line = "~ elph [main] [+3/42 -1/07]";
-        let wide = fit_footer_left_from_line(line, 2, 80);
-        assert!(wide.contains("turn: 2"));
-        assert!(wide.contains("elph"));
+    fn fit_editor_border_project_drops_branch_before_name() {
+        let wide = fit_editor_border_project("my-app", Some("feat/cool-new-feature"), 80);
+        assert_eq!(wide, "~ my-app (feat/cool-new-feature)");
+        let mid = fit_editor_border_project("my-app", Some("feat/cool-new-feature"), 12);
+        assert_eq!(mid, "~ my-app");
+        let tight = fit_editor_border_project("my-app", Some("feat/cool"), 6);
+        assert!(display_width(&tight) <= 6);
     }
 
     #[test]
-    fn fit_footer_left_drops_turn_first() {
+    fn fit_footer_status_left_always_keeps_mode_and_model() {
+        let wide =
+            fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 80);
+        assert!(wide.contains("IMG"));
+        assert!(wide.contains("(xhigh)"));
+        assert!(wide.contains("opencode/deepseek-v4-flash"));
+        assert!(wide.starts_with("Plan"));
+
+        // Drop thinking / optional bits; mode + model remain.
+        let mid = fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 36);
+        assert!(mid.starts_with("Plan"));
+        assert!(mid.contains("deepseek-v4-flash") || mid.contains("opencode"));
+
+        // Narrower: drop provider; still Mode | model.
+        let no_provider =
+            fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 28);
+        assert!(no_provider.starts_with("Plan"));
+        assert!(no_provider.contains("deepseek-v4-flash"));
+        assert!(!no_provider.contains("opencode/"));
+
+        // Very tight: still starts with mode; model may be truncated.
+        let tight =
+            fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 12);
+        assert!(display_width(&tight) <= 12);
+        assert!(tight.starts_with("Plan"), "mode must remain: {tight}");
+        assert!(tight.contains('|') || tight.contains('…'), "model segment: {tight}");
+    }
+
+    #[test]
+    fn fit_footer_status_right_drops_git_before_turn() {
         let git = GitFooterInfo {
             branch: "main".to_string(),
             files_added: 3,
@@ -198,9 +315,34 @@ mod tests {
             files_deleted: 1,
             lines_deleted: 7,
         };
-        let wide = fit_footer_left("elph", Some(&git), 2, 80);
+        let wide = fit_footer_status_right(2, Some(&git), 40);
         assert!(wide.contains("turn: 2"));
-        let narrow = fit_footer_left("elph", Some(&git), 2, 28);
-        assert!(!narrow.contains("turn:"));
+        assert!(wide.contains("[+3/42 -1/7]"));
+        // Git yields first; keep turn.
+        let narrow = fit_footer_status_right(2, Some(&git), 14);
+        assert_eq!(narrow, "turn: 2");
+        assert!(!narrow.contains('['));
+        // Extremely tight: may truncate turn.
+        let tight = fit_footer_status_right(2, Some(&git), 4);
+        assert!(display_width(&tight) <= 4);
+        assert!(!tight.contains('['));
+
+        let sel_wide = fit_footer_status_right_with_select(0, Some(&git), 48, true);
+        assert_eq!(sel_wide, "sel | turn: 0 | [+3/42 -1/7]");
+        let sel_mid = fit_footer_status_right_with_select(0, Some(&git), 18, true);
+        assert_eq!(sel_mid, "sel | turn: 0");
+    }
+
+    #[test]
+    fn chrome_footer_widths_gives_left_priority_when_tight() {
+        let min_left = footer_mode_model_width(AgentMode::Plan, "opencode/deepseek-v4-flash");
+        assert!(min_left > 20);
+        let (left, right) = chrome_footer_widths(50, min_left);
+        // Half of (50-2)=24 each; min_left > 24 so left steals.
+        assert!(left >= min_left.min(48));
+        assert_eq!(left + right, 48);
+        let (left_wide, right_wide) = chrome_footer_widths(120, min_left);
+        assert_eq!(left_wide, 59); // (120-2)/2
+        assert_eq!(right_wide, 59);
     }
 }

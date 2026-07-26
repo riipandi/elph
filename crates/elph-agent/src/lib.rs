@@ -294,9 +294,9 @@ pub use skills::load_sourced_skills;
 pub use skills::load_sourced_skills_with_options;
 pub use skills::skill_args_validation_notice;
 pub use skills::skill_requires_arguments;
-#[cfg(any(feature = "tools-edit-tools", feature = "tools-search"))]
+#[cfg(any(feature = "tools-edit", feature = "tools-search"))]
 pub use tools::create_all_tools;
-#[cfg(any(feature = "tools-edit-tools", feature = "tools-search", feature = "tools-web"))]
+#[cfg(any(feature = "tools-edit", feature = "tools-search", feature = "tools-web"))]
 pub use tools::create_all_tools_with_web;
 #[cfg(feature = "tools-collaboration")]
 pub use tools::create_collaboration_tools;
@@ -308,7 +308,7 @@ pub use tools::create_create_dir_tool;
 pub use tools::create_delete_path_tool;
 #[cfg(feature = "tools-edit-file")]
 pub use tools::create_edit_file_tool;
-#[cfg(feature = "tools-edit-tools")]
+#[cfg(feature = "tools-edit")]
 pub use tools::create_edit_tools;
 #[cfg(feature = "tools-find-path")]
 pub use tools::create_find_path_tool;

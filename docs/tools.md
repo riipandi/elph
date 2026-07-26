@@ -6,14 +6,14 @@ Design for the agent tool catalog — permissions, provider exposure, and execut
 
 Built-in tools live in `elph-agent` and are **optional Cargo features**. The `elph` binary enables the meta feature `builtin-tools` by default so every shipped tool is available.
 
-| Group            | Feature               | Tools                                                                                    |
-| ---------------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                             |
-| Edit             | `tools-edit-tools`    | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
-| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                |
-| Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`              |
-| Meta             | —                     | `list_available_tools` (auto-included)                                                   |
-| All of the above | `builtin-tools`       | meta feature                                                                             |
+| Group            | Feature               | Tools                                                                                          |
+| ---------------- | --------------------- | ---------------------------------------------------------------------------------------------- |
+| Read & Search    | `tools-search`        | `read_file`, `grep`, `find_path`, `list_dir`                                                   |
+| Edit             | `tools-edit`          | `edit_file`, `write_file`, `shell_exec`, `create_dir`, `copy_path`, `delete_path`, `move_path` |
+| Web              | `tools-web`           | `web_search`, `web_fetch`                                                                      |
+| Collaboration    | `tools-collaboration` | `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`                    |
+| Meta             | —                     | `list_available_tools` (auto-included)                                                         |
+| All of the above | `builtin-tools`       | meta feature                                                                                   |
 
 Registration in host apps uses [`BuiltinToolsBuilder`](../crates/elph-agent/src/builder.rs). Elph wires tools in `elph/src/agent/runtime.rs`:
 
@@ -58,7 +58,7 @@ These tools are defined in `elph/src/agent/` and are not available in the `elph-
 | ------------- | ----------------- | ---------------------------------------------------------- |
 | `edit_file`   | Requires approval | Exact string replace; `old_string` must match exactly once |
 | `write_file`  | Requires approval | Create/overwrite; creates parent dirs                      |
-| `shell_exec`        | Requires approval | Shell command in workspace; default timeout 120s, max 300s |
+| `shell_exec`  | Requires approval | Shell command in workspace; default timeout 120s, max 300s |
 | `create_dir`  | Requires approval | Create directory with parents (`mkdir -p`)                 |
 | `copy_path`   | Requires approval | Copy file or directory recursively                         |
 | `delete_path` | Requires approval | Delete file or directory recursively                       |
@@ -128,7 +128,7 @@ Only a catalog subset is sent to the model. Exposure requires:
 | --------------------------------------------- | -------- | --- | ------------------ |
 | read_file, grep, find_path, list_dir          | Auto     | Yes | Yes                |
 | web_search, web_fetch, ask_user_question      | Auto     | Yes | Yes                |
-| edit_file, write_file, shell_exec                   | Requires | Yes | Yes (+ approval)   |
+| edit_file, write_file, shell_exec             | Requires | Yes | Yes (+ approval)   |
 | create_dir, copy_path, delete_path, move_path | Requires | Yes | Yes (+ approval)   |
 | Goal tools                                    | Auto     | Yes | Yes                |
 | Collaboration tools                           | Auto     | Yes | Yes (Default mode) |
