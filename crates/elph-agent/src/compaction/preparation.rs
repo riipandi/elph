@@ -169,6 +169,11 @@ pub fn prepare_compaction(
         }
     }
 
+    // Nothing worth summarizing — skip creating a meaningless Compaction entry.
+    if messages_to_summarize.is_empty() && turn_prefix_messages.is_empty() {
+        return Ok(None);
+    }
+
     let mut file_ops = extract_file_operations(&messages_to_summarize, path_entries, prev_compaction_index);
     for msg in &turn_prefix_messages {
         extract_file_ops_from_message(msg, &mut file_ops);

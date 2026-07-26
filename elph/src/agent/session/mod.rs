@@ -327,12 +327,22 @@ impl CodingAgentSession {
     pub async fn compact(&self) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
-        let result = self.harness.compact(None).await.map(|_| ());
+        let result = self.harness.compact(None).await;
         self.finish_ui_turn(started).await;
-        if let Err(err) = &result {
-            let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
+        match &result {
+            Ok(compact_result) if compact_result.is_noop() => {
+                let _ = self
+                    .ui_tx
+                    .send(AgentUiEvent::Status("History is already up to date.".into()));
+            }
+            Ok(_) => {
+                let _ = self.ui_tx.send(AgentUiEvent::Status("History compacted.".into()));
+            }
+            Err(err) => {
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
+            }
         }
-        result.map_err(|e| anyhow::anyhow!("{e}"))
+        result.map(|_| ()).map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
