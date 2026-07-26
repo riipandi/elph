@@ -6,6 +6,8 @@ use anyhow::Result;
 use elph_agent::{McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use chrono::Utc;
+
 use crate::agent::SkillConflict;
 use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
@@ -385,8 +387,20 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                         .collect::<Vec<_>>()
                         .join("\n"),
                 };
-                if !text.is_empty() {
-                    messages.push(TranscriptMessage::text(text, TranscriptStyle::User));
+                if text.is_empty() {
+                    continue;
+                }
+
+                // Detect skill invocations: `<skill name="...">...</skill>` → SkillPrompt card.
+                if let Some(skill_name) = extract_skill_name(&text) {
+                    let mut msg = TranscriptMessage::text(skill_name, TranscriptStyle::SkillPrompt);
+                    msg.detail_expanded = false;
+                    messages.push(msg);
+                } else {
+                    let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
+                    msg.submitted_at = Some(Utc::now());
+                    msg.detail_expanded = false;
+                    messages.push(msg);
                 }
             }
             Message::Assistant(assistant) => {
@@ -398,29 +412,42 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                         _ => None,
                     })
                     .collect();
-                if !text.is_empty() {
-                    let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
-                    // Pre-render: parse markdown synchronously at bootstrap so the transcript
-                    // shows fully formatted content from the first frame (no worker round-trip).
-                    let mut md = AssistantMarkdownBuffer::new();
-                    md.mark_stream_complete();
-                    // Use a default wrap width (100 cols). Row counts are recomputed at render
-                    // time with the actual terminal width, so this is just for the document tree.
-                    md.refresh_stable(&msg.content, 100);
-                    if let Some(part) = md.parts.first() {
-                        let hash = part.source_hash;
-                        let document = parse_markdown_on_worker(&msg.content);
-                        md.apply_document(hash, document);
-                    }
-                    msg.markdown = Some(md);
-                    msg.detail_expanded = false;
-                    messages.push(msg);
+                if text.is_empty() {
+                    continue;
                 }
+
+                let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
+                // Pre-render: parse markdown synchronously at bootstrap so the transcript
+                // shows fully formatted content from the first frame (no worker round-trip).
+                let mut md = AssistantMarkdownBuffer::new();
+                md.mark_stream_complete();
+                md.refresh_stable(&msg.content, 100);
+                if let Some(part) = md.parts.first() {
+                    let hash = part.source_hash;
+                    let document = parse_markdown_on_worker(&msg.content);
+                    md.apply_document(hash, document);
+                }
+                msg.markdown = Some(md);
+                msg.detail_expanded = false;
+                messages.push(msg);
             }
             _ => {}
         }
     }
     messages
+}
+
+/// Extract skill name from a skill-invocation message.
+/// Matches `<skill name="...">` at the start of the text.
+fn extract_skill_name(text: &str) -> Option<String> {
+    let text = text.trim();
+    if !text.starts_with("<skill name=\"") {
+        return None;
+    }
+    // Extract name attribute value
+    let after_open = text.strip_prefix("<skill name=\"")?;
+    let name = after_open.split('\"').next()?;
+    if name.is_empty() { None } else { Some(name.to_string()) }
 }
 
 /// MCP bootstrap UI update (per-server progress or final transcript line).

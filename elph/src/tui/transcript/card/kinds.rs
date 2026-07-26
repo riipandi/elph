@@ -367,7 +367,7 @@ pub fn chat_response_card(
     } else {
         chrome.padding_h = PROCESS_LOG_PAD_H;
     }
-    let streaming = message.duration_secs.is_none();
+    let streaming = message.duration_secs.is_none() && !message.markdown.as_ref().is_some_and(|md| md.stream_complete);
     let status = if streaming {
         ProcessStatus::Running
     } else {
