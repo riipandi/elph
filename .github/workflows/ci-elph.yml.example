@@ -8,7 +8,6 @@ on:
     tags-ignore: ["*"]
     paths:
       - "elph/**"
-      - "crates/elph-core/**"
       - "crates/elph-agent/**"
       - "crates/elph-ai/**"
       - "crates/elph-tui/**"
@@ -20,7 +19,6 @@ on:
   pull_request:
     paths:
       - "elph/**"
-      - "crates/elph-core/**"
       - "crates/elph-agent/**"
       - "crates/elph-ai/**"
       - "crates/elph-tui/**"

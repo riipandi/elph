@@ -1,4 +1,4 @@
-//! Optional fastrace helpers for the agent runtime.
+//! Optional fastrace helpers for provider HTTP and streaming.
 
 #[cfg(feature = "tracing")]
 mod core_imp;

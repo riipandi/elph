@@ -152,7 +152,7 @@ pub fn scoped_models_reorder_delta(modifiers: KeyModifiers, code: KeyCode) -> Op
 mod tests {
     use super::*;
     use crate::platform::Settings;
-    use elph_core::utils::path::AppPaths;
+    use crate::utils::path::AppPaths;
 
     #[test]
     fn resolve_scoped_cycle_list_loads_settings_when_session_empty() {

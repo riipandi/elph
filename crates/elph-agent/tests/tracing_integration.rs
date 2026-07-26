@@ -4,9 +4,9 @@ use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use elph_core::logger::LoggingOptions;
-use elph_core::trace::JsonlReporter;
-use elph_core::trace::{flush, is_enabled, root_span, set_reporter};
+use elph_agent::logger::LoggingOptions;
+use elph_agent::trace::JsonlReporter;
+use elph_agent::trace::{flush, is_enabled, root_span, set_reporter};
 use fastrace::collector::Config;
 use fastrace::local::LocalSpan;
 
@@ -36,13 +36,13 @@ fn init_skips_reporter_when_trace_disabled() {
         app_name: "elph",
         logs_dir: dir.path().to_path_buf(),
         level: "info".to_string(),
-        rotation: elph_core::logger::LogRotation::Daily,
+        rotation: elph_agent::logger::LogRotation::Daily,
         max_files: None,
         file_enabled: false,
         console_enabled: false,
         trace_enabled: false,
     };
-    elph_core::trace::init(&options);
+    elph_agent::trace::init(&options);
     assert!(!is_enabled());
     assert!(!dir.path().join("elph-traces.jsonl").exists());
 }
@@ -85,7 +85,7 @@ fn span_properties_appear_in_jsonl() {
     set_reporter(reporter, Config::default().report_interval(Duration::from_millis(10)));
 
     {
-        let span = elph_core::trace::Span::root("elph.test.props", elph_core::trace::SpanContext::random());
+        let span = elph_agent::trace::Span::root("elph.test.props", elph_agent::trace::SpanContext::random());
         span.set_local_parent();
     }
     flush();

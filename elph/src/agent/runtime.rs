@@ -6,7 +6,7 @@ use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
     GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
 };
-use elph_core::utils::path::AppPaths;
+use crate::utils::path::AppPaths;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;

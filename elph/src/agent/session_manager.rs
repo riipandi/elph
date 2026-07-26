@@ -5,8 +5,8 @@ use elph_agent::{
     LocalExecutionEnv, Session, SessionDirListOptions, SessionDirMetadata, SessionDirRepo, SessionDirRepoCreateOptions,
     SessionDirStorage,
 };
-use elph_core::utils::path::AppPaths;
-use elph_core::utils::project_key;
+use crate::utils::path::AppPaths;
+use crate::utils::project_key;
 use std::path::Path;
 use std::sync::Arc;
 

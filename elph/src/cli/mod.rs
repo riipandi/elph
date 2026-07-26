@@ -22,7 +22,7 @@ mod worktree;
 
 use clap::{Parser, Subcommand};
 use elph_agent::AgentBuilder;
-use elph_core::utils::path::AppPaths;
+use crate::utils::path::AppPaths;
 
 use crate::platform::ExitCode;
 
@@ -156,17 +156,17 @@ pub fn run(cli: &Cli) -> ExitCode {
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
             // Panic → ~/.local/share/elph/logs/crash.log (or $ELPH_DATA_DIR/logs/crash.log).
-            elph_core::logger::install_panic_hook(paths.logs_dir());
+            elph_agent::logger::install_panic_hook(paths.logs_dir());
             let init = agent_builder.logs_dir(paths.logs_dir()).build();
-            elph_core::logger::init(init.logging)
+            elph_agent::logger::init(init.logging)
         }
         Err(_) => {
             // Best-effort crash path if full path resolution failed.
             if let Some(logs) = fallback_logs_dir() {
-                elph_core::logger::install_panic_hook(logs);
+                elph_agent::logger::install_panic_hook(logs);
             }
             let init = agent_builder.build();
-            elph_core::logger::init(init.logging)
+            elph_agent::logger::init(init.logging)
         }
     };
 

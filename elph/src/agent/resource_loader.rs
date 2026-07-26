@@ -2,7 +2,7 @@
 
 use elph_agent::load_prompt_templates;
 use elph_agent::{AgentHarnessResources, LocalExecutionEnv};
-use elph_core::utils::path::AppPaths;
+use crate::utils::path::AppPaths;
 use std::path::Path;
 
 use super::skills_load::WorkspaceSkills;

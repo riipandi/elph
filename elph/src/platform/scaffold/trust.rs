@@ -1,4 +1,4 @@
-use crate::fs::write_json_file;
+use elph_agent::write_json_file;
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 

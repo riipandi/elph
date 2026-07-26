@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use turso::params;
 
 use super::MemoryStore;
-use crate::floppy::types::{Memory, MemoryStats, TopMemory};
-use crate::floppy::util::{category_from_str, drain_rows};
+use crate::types::{Memory, MemoryStats, TopMemory};
+use crate::util::{category_from_str, drain_rows};
 
 impl MemoryStore {
     pub async fn get_stats(&self) -> Result<MemoryStats> {

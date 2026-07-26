@@ -15,7 +15,7 @@ use elph_agent::agent::harness::types::ShellExecOptions;
 use elph_agent::agent::harness::types::get_or_throw;
 use elph_agent::agent::harness::utils::execute_shell_with_capture;
 use elph_agent::runtime::local_env::LocalExecutionEnv;
-use elph_core::utils::lines::count_lines;
+use elph_agent::utils::lines::count_lines;
 use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
