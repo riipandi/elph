@@ -34,7 +34,9 @@ use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatch
 use crate::tui::chrome::{ChromeStats, Header};
 use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
 use crate::tui::focus::ShellFocus;
-use crate::tui::focus::{is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
+use crate::tui::focus::{
+    is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut,
+};
 use crate::tui::labels::GitFooterInfo;
 
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
@@ -1412,6 +1414,114 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut question_input_focus = question_input_focus;
             let mut question_validation_error = question_validation_error;
             let mut pending_quit_confirm = pending_quit_confirm;
+            // Ctrl+Enter interject — handle early so status dialogs / queue manager do not swallow it.
+            if is_ctrl_enter_interject(modifiers, code)
+                && pending_tool_approval.read().is_none()
+                && pending_user_question.read().is_none()
+                && pending_model_selector.read().is_none()
+                && pending_scoped_models.read().is_none()
+                && pending_system_prompt.read().is_none()
+                && pending_confetti.read().is_none()
+            {
+                // Close queue manager if open; interject still runs.
+                if queue_manager_open.get() {
+                    queue_manager_open.set(false);
+                    queue_manager_selected.set(0);
+                    queue_manager_action.set(PromptQueueAction::SendNow);
+                    shell_focus.set(ShellFocus::Prompt);
+                }
+                let editor_body = {
+                    let live = live_draft.read().clone();
+                    let stored = draft.read().clone();
+                    let (mirror, _) = prompt_editor_mirror.read().clone();
+                    [live, stored, mirror]
+                        .into_iter()
+                        .max_by_key(|s| s.len())
+                        .unwrap_or_default()
+                };
+                let body = editor_body.trim().to_string();
+                // Prefer top queue item when present (one Ctrl+Enter per item).
+                if !prompt_queue.read().is_empty() {
+                    if let Some(item) = prompt_queue.write().pop_front_local() {
+                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                        let mut submitted =
+                            TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        if let Some(session) = agent_session.as_ref() {
+                            if agent_turn_active.get() {
+                                TurnDispatcher::spawn_interject_queued(
+                                    Arc::clone(session),
+                                    item.kind,
+                                    item.kind_index,
+                                    item.text,
+                                );
+                            } else {
+                                agent_turn_active.set(true);
+                                chrome_refresh_pending.set(true);
+                                idle_status_notice.set(None);
+                                turn_cancel_requested.set(false);
+                                mark_busy(
+                                    &mut BusyActivation {
+                                        busy: &mut busy,
+                                        busy_started_at: &mut busy_started_at,
+                                        activity_started_at: &mut activity_started_at,
+                                        activity_label: &mut activity_label,
+                                        last_activity_label: &mut last_activity_label,
+                                    },
+                                    false,
+                                    None,
+                                );
+                                begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                                TurnDispatcher::spawn_turn(Arc::clone(session), item.text, false);
+                            }
+                        }
+                    }
+                    return;
+                }
+                if !body.is_empty() {
+                    if agent_turn_active.get() {
+                        if let Some(session) = agent_session.as_ref() {
+                            let mut submitted =
+                                TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                            submitted.submitted_at = Some(chrono::Utc::now());
+                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
+                        }
+                    } else if let Some(session) = agent_session.as_ref() {
+                        let mut submitted =
+                            TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        agent_turn_active.set(true);
+                        chrome_refresh_pending.set(true);
+                        idle_status_notice.set(None);
+                        turn_cancel_requested.set(false);
+                        mark_busy(
+                            &mut BusyActivation {
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
+                            false,
+                            None,
+                        );
+                        begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                        TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
+                    }
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
+                }
+                return;
+            }
+
             if pending_quit_confirm.get() && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
                 match code {
                     KeyCode::Char('y') | KeyCode::Char('Y') => {
@@ -2847,96 +2957,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         shell_focus.set(ShellFocus::StatusDialog);
                     }
                 }
-                // Ctrl+Enter: with a queue, always send the top item now (interject).
-                // Otherwise interject editor text (busy) or start a turn (idle).
-                (m, KeyCode::Enter)
-                    if m.contains(KeyModifiers::CONTROL)
-                        && !m.contains(KeyModifiers::ALT)
-                        && !m.contains(KeyModifiers::SHIFT)
-                        && pending_tool_approval.read().is_none()
-                        && pending_user_question.read().is_none()
-                        && !queue_manager_open.get() =>
-                {
-                    // Prefer draining the front of the queue (one item per keypress).
-                    if !prompt_queue.read().is_empty() {
-                        if let Some(item) = prompt_queue.write().pop_front_local() {
-                            queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                            let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
-                            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                            if let Some(session) = agent_session.as_ref() {
-                                if agent_turn_active.get() {
-                                    TurnDispatcher::spawn_interject_queued(
-                                        Arc::clone(session),
-                                        item.kind,
-                                        item.kind_index,
-                                        item.text,
-                                    );
-                                } else {
-                                    // No active turn: start a normal turn with that text.
-                                    agent_turn_active.set(true);
-                                    chrome_refresh_pending.set(true);
-                                    idle_status_notice.set(None);
-                                    turn_cancel_requested.set(false);
-                                    mark_busy(
-                                        &mut BusyActivation {
-                                            busy: &mut busy,
-                                            busy_started_at: &mut busy_started_at,
-                                            activity_started_at: &mut activity_started_at,
-                                            activity_label: &mut activity_label,
-                                            last_activity_label: &mut last_activity_label,
-                                        },
-                                        false,
-                                        None,
-                                    );
-                                    begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                                    TurnDispatcher::spawn_turn(Arc::clone(session), item.text, false);
-                                }
-                            }
-                        }
-                    } else {
-                        let editor_text = live_draft.read().clone();
-                        let body = editor_text.trim().to_string();
-                        if !body.is_empty() {
-                            if agent_turn_active.get() {
-                                if let Some(session) = agent_session.as_ref() {
-                                    let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                                    submitted.submitted_at = Some(chrono::Utc::now());
-                                    push_transcript_message(&mut messages, &mut messages_revision, submitted);
-                                    pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                                    TurnDispatcher::spawn_steer(Arc::clone(session), body);
-                                }
-                            } else if let Some(session) = agent_session.as_ref() {
-                                let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                                submitted.submitted_at = Some(chrono::Utc::now());
-                                push_transcript_message(&mut messages, &mut messages_revision, submitted);
-                                pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                                agent_turn_active.set(true);
-                                chrome_refresh_pending.set(true);
-                                idle_status_notice.set(None);
-                                turn_cancel_requested.set(false);
-                                mark_busy(
-                                    &mut BusyActivation {
-                                        busy: &mut busy,
-                                        busy_started_at: &mut busy_started_at,
-                                        activity_started_at: &mut activity_started_at,
-                                        activity_label: &mut activity_label,
-                                        last_activity_label: &mut last_activity_label,
-                                    },
-                                    false,
-                                    None,
-                                );
-                                begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                                TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
-                            }
-                            draft.set(String::new());
-                            live_draft.set(String::new());
-                            force_editor_clear.set(true);
-                            suppress_enter_newline.set(true);
-                        }
-                    }
-                }
+                // Ctrl+Enter is handled early (before status dialogs) — see is_ctrl_enter_interject.
                 (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => {
                     let expire_tx = ephemeral_expire.read().tx.clone();
                     let _ = request_quit(

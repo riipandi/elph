@@ -33,6 +33,27 @@ pub fn shell_global_shortcut(modifiers: KeyModifiers, code: KeyCode) -> bool {
         )
 }
 
+/// Ctrl+Enter interject chord.
+///
+/// Terminals disagree on encoding:
+/// - `CONTROL + Enter` (ideal)
+/// - `CONTROL | SHIFT + Enter` (common on macOS / some emulators)
+/// - `CONTROL + Char('\n')` / `'\r'` (raw mode variants)
+///
+/// Ctrl+J remains newline (handled by the textarea), not interject.
+pub fn is_ctrl_enter_interject(modifiers: KeyModifiers, code: KeyCode) -> bool {
+    if !modifiers.contains(KeyModifiers::CONTROL) {
+        return false;
+    }
+    if modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META) {
+        return false;
+    }
+    matches!(
+        code,
+        KeyCode::Enter | KeyCode::Char('\n') | KeyCode::Char('\r')
+    )
+}
+
 /// Toggle native text selection (mouse capture off/on).
 ///
 /// **Ctrl+S** is the primary chord (reliable in raw mode). **Ctrl+Shift+S** is also
@@ -83,6 +104,21 @@ mod tests {
         assert!(shell_global_shortcut(KeyModifiers::CONTROL, KeyCode::Char('D')));
         assert!(!shell_global_shortcut(KeyModifiers::empty(), KeyCode::Char('c')));
         assert!(!shell_global_shortcut(KeyModifiers::CONTROL, KeyCode::Char('q')));
+    }
+
+    #[test]
+    fn ctrl_enter_interject_accepts_common_terminal_encodings() {
+        assert!(is_ctrl_enter_interject(KeyModifiers::CONTROL, KeyCode::Enter));
+        assert!(is_ctrl_enter_interject(
+            KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+            KeyCode::Enter
+        ));
+        assert!(is_ctrl_enter_interject(KeyModifiers::CONTROL, KeyCode::Char('\n')));
+        assert!(is_ctrl_enter_interject(KeyModifiers::CONTROL, KeyCode::Char('\r')));
+        // Ctrl+J is newline, not interject.
+        assert!(!is_ctrl_enter_interject(KeyModifiers::CONTROL, KeyCode::Char('j')));
+        assert!(!is_ctrl_enter_interject(KeyModifiers::empty(), KeyCode::Enter));
+        assert!(!is_ctrl_enter_interject(KeyModifiers::SHIFT, KeyCode::Enter));
     }
 
     #[test]
