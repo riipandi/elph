@@ -3044,7 +3044,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 screen_height: screen_height,
                 agent_mode: agent_mode.get(),
                 thinking_level: thinking_level.get(),
-                has_focus: prompt_focused && !select_mode.get(),
+                // Select mode only disables mouse capture for native terminal drag-select;
+                // the prompt stays focused and fully interactive.
+                has_focus: prompt_focused,
                 project_name: project_name.clone(),
                 git: git.clone(),
                 turn: chrome.turn_count,

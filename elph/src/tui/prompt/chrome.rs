@@ -52,7 +52,7 @@ pub struct PromptChromeProps {
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
     pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
     pub blocked_hint: Option<String>,
-    /// Hide prompt draft pixels while native text selection is active.
+    /// Native terminal text-select mode (mouse capture off). Prompt stays interactive.
     pub text_select_mode: bool,
 }
 
@@ -89,7 +89,7 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     screen_width: props.screen_width,
                     screen_height: props.screen_height,
                     agent_mode: props.agent_mode,
-                    has_focus: props.has_focus && !props.text_select_mode,
+                    has_focus: props.has_focus,
                     project_name: props.project_name.clone(),
                     git_branch: props.git.as_ref().map(|g| g.branch.clone()),
                     chrome_revision: props.chrome_revision,

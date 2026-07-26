@@ -186,14 +186,14 @@ pub fn prompt_copy_failed_banner() -> EphemeralBanner {
 
 /// Banner when mouse capture is turned off (native drag-select enabled).
 ///
-/// The footer right cluster shows a sticky `sel |` badge while select mode is on;
-/// this toast is transitional only.
+/// Prompt stays interactive; only mouse capture is released so the terminal can
+/// native-select transcript text. Footer shows a sticky `sel |` badge.
 pub fn select_mode_on_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
-        // Warning weight: mode disables wheel/click until the user toggles back.
-        text: "Text select on · drag to select · Ctrl+S to turn off".to_string(),
-        kind: EphemeralBannerKind::Warning,
+        // Notice (not warning): typing/submit still work; only wheel/click on the TUI are off.
+        text: "Text select on · drag to select · prompt still works · Ctrl+S to turn off".to_string(),
+        kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
 }
@@ -389,8 +389,9 @@ mod tests {
     fn select_mode_banners_use_text_not_color_alone() {
         let on = select_mode_on_banner();
         assert_eq!(on.key, SELECT_MODE_NOTICE_KEY);
-        assert_eq!(on.kind, EphemeralBannerKind::Warning);
+        assert_eq!(on.kind, EphemeralBannerKind::Notice);
         assert!(on.text.to_ascii_lowercase().contains("text select on"));
+        assert!(on.text.to_ascii_lowercase().contains("prompt still works"));
         assert!(on.text.contains("Ctrl+S"));
         assert!(!on.text.contains("Esc"));
 

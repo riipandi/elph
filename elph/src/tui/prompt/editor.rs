@@ -53,7 +53,8 @@ pub struct EditorProps {
     pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
-    /// Text-select mode: keep draft visible (dimmed), drop focus so input is paused.
+    /// Native terminal text-select mode (mouse capture off). Prompt stays focused/interactive;
+    /// footer shows a `sel` badge. Kept for chrome parity (no longer dims or steals focus).
     pub text_select_mode: bool,
 }
 
@@ -61,9 +62,8 @@ pub struct EditorProps {
 pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
     let _chrome_revision = props.chrome_revision;
     let theme = UiTheme::default();
-    let text_select_mode = props.text_select_mode;
-    // Keep draft painted; only pause focus so typing does not edit during select mode.
-    let has_focus = props.has_focus && !text_select_mode;
+    let _text_select_mode = props.text_select_mode;
+    let has_focus = props.has_focus;
     let draft_text = props
         .live_draft
         .as_ref()
@@ -85,10 +85,7 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
         0
     };
     let textarea_width = inner_width.saturating_sub(prefix_cols).max(1);
-    // Dim during select mode so the status bar mode cue is the primary focus.
-    let text_color = if text_select_mode {
-        EDITOR_TEXT_DIMMED
-    } else if has_focus {
+    let text_color = if has_focus {
         EDITOR_TEXT_FOCUSED
     } else {
         EDITOR_TEXT_DIMMED
