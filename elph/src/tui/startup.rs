@@ -11,6 +11,8 @@ use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
 use crate::agent::{create_coding_session_with_events, format_skill_conflict_notice};
 use crate::platform::{Paths, Settings};
+use crate::tui::transcript::markdown::AssistantMarkdownBuffer;
+use crate::tui::transcript::markdown::parse_markdown_on_worker;
 use crate::tui::transcript::{TranscriptMessage, TranscriptStyle};
 
 /// Middle-dot separator for startup copy (` · `).
@@ -398,7 +400,20 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                     .collect();
                 if !text.is_empty() {
                     let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
-                    msg.local_slash_response = true;
+                    // Pre-render: parse markdown synchronously at bootstrap so the transcript
+                    // shows fully formatted content from the first frame (no worker round-trip).
+                    let mut md = AssistantMarkdownBuffer::new();
+                    md.mark_stream_complete();
+                    // Use a default wrap width (100 cols). Row counts are recomputed at render
+                    // time with the actual terminal width, so this is just for the document tree.
+                    md.refresh_stable(&msg.content, 100);
+                    if let Some(part) = md.parts.first() {
+                        let hash = part.source_hash;
+                        let document = parse_markdown_on_worker(&msg.content);
+                        md.apply_document(hash, document);
+                    }
+                    msg.markdown = Some(md);
+                    msg.detail_expanded = false;
                     messages.push(msg);
                 }
             }
