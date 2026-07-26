@@ -65,7 +65,9 @@ use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
 };
 use crate::tui::slash_handler::{SlashContext, SlashOutcome};
-use crate::tui::slash_handler::{handle_slash_submit, overlay_deferred_message, slash_echoes_prompt_in_transcript};
+use crate::tui::slash_handler::{
+    handle_slash_submit, overlay_deferred_message, slash_echoes_prompt_in_transcript, slash_outcome_is_ui_only,
+};
 use crate::tui::slash_palette::SlashPaletteKeyAction;
 use crate::tui::slash_palette::{build_snapshot, palette_visible, resolve_snapshot_key_action, sync_selection};
 use crate::tui::startup::{
@@ -2141,6 +2143,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     text,
+                                    width_pct: None,
                                 });
                             }
                             SlashOutcome::PlayConfetti { mode } => {
@@ -2753,7 +2756,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .read()
         .as_ref()
         .map(|pending| -> AnyElement<'static> {
-            let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height);
+            let (chrome, body_height) =
+                system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
             element! {
                 ScrollTextDialogOverlay(
                     screen_width: screen_width,
@@ -3352,6 +3356,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     text,
+                                    width_pct: None,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
@@ -3381,7 +3386,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 );
                             }
                             SlashOutcome::SpawnAgentTurn if is_slash => {
-                                if agent_session.is_some() {
+                                // Agent-backed slash (skill/compact/…) must not start a nested turn mid-stream.
+                                if busy.get() {
+                                    push_transcript_message(
+                                        &mut messages,
+                                        &mut messages_revision,
+                                        TranscriptMessage::text(
+                                            "Agent is busy. Wait for the current turn to finish, then retry this command.",
+                                            TranscriptStyle::Meta,
+                                        ),
+                                    );
+                                } else if agent_session.is_some() {
                                     chrome_refresh_pending.set(true);
                                     idle_status_notice.set(None);
                                     turn_cancel_requested.set(false);
@@ -3400,6 +3415,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                             }
                             SlashOutcome::SpawnAgentTurn => {
+                                debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
                                 if busy.get() {
                                     prompt_queue.write().push(body.clone());
                                 } else if let Some(session) = agent_session.as_ref() {

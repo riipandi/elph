@@ -240,7 +240,7 @@ pub use runtime::local_env::LocalExecutionEnv;
 pub use runtime::proxy::stream_proxy;
 pub use runtime::proxy::{ProxyAssistantMessageEvent, ProxyStreamOptions};
 pub use runtime::{agent_loop, agent_loop_continue, run_agent_loop, run_agent_loop_continue};
-pub use runtime::{block_on, try_block_on};
+pub use runtime::{block_on, try_block_on, try_block_on_detached};
 pub use session::BranchSummaryOptions;
 pub use session::ContextEntryTransform;
 pub use session::CustomEntryContextMessageProjector;

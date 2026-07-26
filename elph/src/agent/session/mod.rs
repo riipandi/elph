@@ -56,6 +56,8 @@ pub struct CodingAgentSession {
     turn_gate: Arc<Mutex<()>>,
     /// Serializes agent-mode reconciliation (Tab rapid cycling).
     mode_gate: Arc<Mutex<()>>,
+    /// Last successfully compiled system prompt for sync slash reads during a busy turn.
+    system_prompt_cache: RwLock<Option<String>>,
 }
 
 impl CodingAgentSession {
@@ -90,10 +92,23 @@ impl CodingAgentSession {
             mcp_registry: mcp_slot,
             turn_gate: Arc::new(Mutex::new(())),
             mode_gate: Arc::new(Mutex::new(())),
+            system_prompt_cache: RwLock::new(None),
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
         Ok(session)
+    }
+
+    /// Sync read of the last compiled system prompt (for `/system-prompt` while busy).
+    pub fn cached_system_prompt(&self) -> Option<String> {
+        self.system_prompt_cache.read().clone()
+    }
+
+    /// Recompile and store the system prompt snapshot used by sync slash handlers.
+    pub async fn refresh_system_prompt_cache(&self) -> Result<()> {
+        let text = self.compiled_system_prompt().await?;
+        *self.system_prompt_cache.write() = Some(text);
+        Ok(())
     }
 
     pub fn mode_state(&self) -> Arc<Mutex<AgentMode>> {
@@ -183,7 +198,9 @@ impl CodingAgentSession {
         let tool_names: Vec<String> = tools.iter().map(|tool| tool.name().to_string()).collect();
         let agents_md = agents_md_for_cwd(cwd);
         let mode = *self.mode_state.lock().await;
-        build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)
+        let text = build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)?;
+        *self.system_prompt_cache.write() = Some(text.clone());
+        Ok(text)
     }
 
     pub async fn set_agent_mode(&self, mode: AgentMode) -> Result<()> {
@@ -333,11 +350,20 @@ impl CodingAgentSession {
     }
 
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
-        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await
+        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
+        // Best-effort cache refresh so `/system-prompt` stays available without nesting
+        // block_on on the UI thread during a busy stream.
+        if let Err(err) = self.refresh_system_prompt_cache().await {
+            log::debug!("system prompt cache refresh after mode change failed: {err:#}");
+        }
+        Ok(())
     }
 
     async fn finish_ui_turn(&self, started: Instant) {
         let _ = self.harness.wait_for_idle().await;
+        if let Err(err) = self.refresh_system_prompt_cache().await {
+            log::debug!("system prompt cache refresh after turn failed: {err:#}");
+        }
         self.emit_run_completed(started).await;
     }
 

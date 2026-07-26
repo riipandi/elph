@@ -172,6 +172,61 @@ where
     run_future(future)
 }
 
+/// Runs a `Send` future on a **dedicated OS thread** with its own current-thread
+/// runtime, optionally bounded by `timeout`.
+///
+/// Use this from TUI / sync input handlers that may already sit inside
+/// `block_in_place` + `Handle::block_on` (the iocraft render loop). Nested
+/// `try_block_on` on the same runtime can panic or deadlock while the agent is
+/// streaming; a detached thread avoids both.
+pub fn try_block_on_detached<F, T>(future: F, timeout: std::time::Duration) -> Result<T>
+where
+    F: Future<Output = T> + Send + 'static,
+    T: Send + 'static,
+{
+    let (tx, rx) = std::sync::mpsc::channel();
+    let worker_timeout = timeout;
+    std::thread::Builder::new()
+        .name("elph-detached-async".into())
+        .spawn(move || {
+            let result = (|| {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()?;
+                if worker_timeout.is_zero() {
+                    Ok(rt.block_on(future))
+                } else {
+                    match rt.block_on(async { tokio::time::timeout(worker_timeout, future).await }) {
+                        Ok(value) => Ok(value),
+                        Err(_elapsed) => Err(anyhow::anyhow!(
+                            "async work timed out after {}ms",
+                            worker_timeout.as_millis()
+                        )),
+                    }
+                }
+            })();
+            let _ = tx.send(result);
+        })
+        .map_err(|err| anyhow::anyhow!("failed to spawn detached async worker: {err}"))?;
+
+    let join_budget = if timeout.is_zero() {
+        std::time::Duration::from_secs(30)
+    } else {
+        timeout.saturating_add(std::time::Duration::from_millis(250))
+    };
+    match rx.recv_timeout(join_budget) {
+        Ok(Ok(value)) => Ok(value),
+        Ok(Err(err)) => Err(err),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(anyhow::anyhow!(
+            "async work timed out after {}ms",
+            timeout.as_millis()
+        )),
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            Err(anyhow::anyhow!("detached async worker exited without a result"))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -186,5 +241,24 @@ mod tests {
     async fn try_block_on_works_inside_runtime() {
         let value = try_block_on(async { 42 }).expect("inside runtime");
         assert_eq!(value, 42);
+    }
+
+    #[test]
+    fn try_block_on_detached_runs_off_caller_thread() {
+        let value = try_block_on_detached(async { 7u32 }, std::time::Duration::from_secs(1)).expect("detached");
+        assert_eq!(value, 7);
+    }
+
+    #[test]
+    fn try_block_on_detached_times_out() {
+        let err = try_block_on_detached(
+            async {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                1u32
+            },
+            std::time::Duration::from_millis(50),
+        )
+        .expect_err("should time out");
+        assert!(err.to_string().contains("timed out"), "{err}");
     }
 }

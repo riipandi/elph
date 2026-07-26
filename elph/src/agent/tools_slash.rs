@@ -313,12 +313,34 @@ pub async fn active_tools_message(session: &CodingAgentSession, format: ToolsOut
     Ok(format_tools_message(mode, &tools, true, format))
 }
 
+const TOOLS_SNAPSHOT_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(400);
+
 /// Resolve `/tools` output for the TUI slash handler (sync).
-pub fn tools_slash_message(session: Option<&CodingAgentSession>, args: &str) -> Result<String, String> {
+///
+/// While the agent is streaming, nested `try_block_on` on the TUI runtime can panic
+/// or hang. Session tools are loaded on a **detached** thread with a short timeout;
+/// on failure we fall back to the built-in catalog (with a note when a session exists).
+pub fn tools_slash_message(session: Option<&std::sync::Arc<CodingAgentSession>>, args: &str) -> Result<String, String> {
     let format = ToolsOutputFormat::parse(args)?;
-    if let Some(session) = session
-        && let Ok(Ok(message)) = elph_agent::try_block_on(active_tools_message(session, format))
-    {
+    if let Some(session) = session {
+        let session = std::sync::Arc::clone(session);
+        match elph_agent::try_block_on_detached(
+            async move { active_tools_message(&session, format).await },
+            TOOLS_SNAPSHOT_TIMEOUT,
+        ) {
+            Ok(Ok(message)) => return Ok(message),
+            Ok(Err(err)) => {
+                log::debug!("/tools session snapshot failed: {err:#}");
+            }
+            Err(err) => {
+                log::debug!("/tools session snapshot unavailable: {err:#}");
+            }
+        }
+        // Live session tools unavailable (busy/timeout/error) — built-in catalog + note.
+        let mut message = format_builtin_tools_message(format);
+        message.push_str(
+            "\n\n_Note: live session tools were unavailable (agent may be busy). Showing the built-in catalog._",
+        );
         return Ok(message);
     }
     Ok(format_builtin_tools_message(format))

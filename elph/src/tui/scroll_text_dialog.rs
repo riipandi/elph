@@ -14,9 +14,14 @@ use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 
-const MIN_DIALOG_WIDTH: u16 = 72;
-const MAX_DIALOG_WIDTH: u16 = 120;
-const SCREEN_WIDTH_MARGIN: u16 = 4;
+/// Default dialog width as a percentage of the terminal width (`80%`).
+pub const DEFAULT_SCROLL_TEXT_WIDTH_PCT: u8 = 80;
+/// Clamp range for width percent (inclusive).
+pub const MIN_SCROLL_TEXT_WIDTH_PCT: u8 = 20;
+pub const MAX_SCROLL_TEXT_WIDTH_PCT: u8 = 100;
+/// Floor width on wide terminals so the dialog stays readable.
+const MIN_DIALOG_WIDTH: u16 = 40;
+const SCREEN_WIDTH_MARGIN: u16 = 2;
 const SCREEN_HEIGHT_MARGIN: u16 = 4;
 const DEFAULT_SCROLL_STEP: u16 = 3;
 
@@ -25,13 +30,20 @@ const DEFAULT_SCROLL_STEP: u16 = 3;
 pub struct PendingScrollTextDialog {
     pub title: String,
     pub text: String,
+    /// Outer width as % of terminal width (default [`DEFAULT_SCROLL_TEXT_WIDTH_PCT`]).
+    pub width_pct: u8,
 }
 
 impl PendingScrollTextDialog {
     pub fn open(title: impl Into<String>, text: impl Into<String>) -> Self {
+        Self::open_with_width(title, text, DEFAULT_SCROLL_TEXT_WIDTH_PCT)
+    }
+
+    pub fn open_with_width(title: impl Into<String>, text: impl Into<String>, width_pct: u8) -> Self {
         Self {
             title: title.into(),
             text: text.into(),
+            width_pct: clamp_scroll_text_width_pct(width_pct),
         }
     }
 }
@@ -42,11 +54,16 @@ pub struct OpenScrollTextDialogArgs<'a> {
     pub shell_focus: &'a mut State<ShellFocus>,
     pub title: String,
     pub text: String,
+    /// Width percent; use [`DEFAULT_SCROLL_TEXT_WIDTH_PCT`] when omitted by callers.
+    pub width_pct: u8,
 }
 
 pub fn open_scroll_text_dialog(args: OpenScrollTextDialogArgs<'_>) {
-    args.pending
-        .set(Some(PendingScrollTextDialog::open(args.title, args.text)));
+    args.pending.set(Some(PendingScrollTextDialog::open_with_width(
+        args.title,
+        args.text,
+        args.width_pct,
+    )));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
 
@@ -82,18 +99,28 @@ pub fn close_scroll_text_dialog(args: CloseScrollTextDialogArgs<'_>) {
     args.shell_focus.set(ShellFocus::Prompt);
 }
 
-/// Responsive outer width: wide on large terminals, still inset on small ones.
-pub fn scroll_text_dialog_width(screen_width: u16) -> u16 {
-    let usable = screen_width.saturating_sub(SCREEN_WIDTH_MARGIN).max(1);
-    if usable <= MIN_DIALOG_WIDTH {
-        return usable;
+/// Clamp a width percent into the supported range.
+pub fn clamp_scroll_text_width_pct(width_pct: u8) -> u8 {
+    width_pct.clamp(MIN_SCROLL_TEXT_WIDTH_PCT, MAX_SCROLL_TEXT_WIDTH_PCT)
+}
+
+/// Outer dialog width from terminal size and a width percent (`20`–`100`).
+pub fn scroll_text_dialog_width(screen_width: u16, width_pct: u8) -> u16 {
+    let pct = clamp_scroll_text_width_pct(width_pct) as u32;
+    let usable = screen_width.saturating_sub(SCREEN_WIDTH_MARGIN).max(1) as u32;
+    let mut width = (usable * pct / 100).max(1) as u16;
+    // Prefer a readable floor when the terminal is wide enough.
+    if usable as u16 >= MIN_DIALOG_WIDTH {
+        width = width.max(MIN_DIALOG_WIDTH).min(usable as u16);
+    } else {
+        width = width.min(usable as u16);
     }
-    usable.min(MAX_DIALOG_WIDTH)
+    width
 }
 
 /// Slim-header chrome and body viewport height for the scroll-text viewer.
-pub fn scroll_text_dialog_chrome(screen_width: u16, screen_height: u16) -> (DialogChrome, u16) {
-    let outer = scroll_text_dialog_width(screen_width);
+pub fn scroll_text_dialog_chrome(screen_width: u16, screen_height: u16, width_pct: u8) -> (DialogChrome, u16) {
+    let outer = scroll_text_dialog_width(screen_width, width_pct);
     let chrome = DialogChrome {
         width: outer,
         slim_header: true,
@@ -234,17 +261,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dialog_width_scales_with_terminal() {
-        assert_eq!(scroll_text_dialog_width(80), 76);
-        assert_eq!(scroll_text_dialog_width(140), 120);
-        assert_eq!(scroll_text_dialog_width(60), 56);
+    fn dialog_width_uses_percent_of_terminal() {
+        // usable = 100 - 2 = 98; 80% → 78, floored up to MIN_DIALOG_WIDTH (40)
+        assert_eq!(scroll_text_dialog_width(100, 80), 78);
+        // 100% of usable
+        assert_eq!(scroll_text_dialog_width(100, 100), 98);
+        // 50% of 98 = 49, still above min floor
+        assert_eq!(scroll_text_dialog_width(100, 50), 49);
+        // Narrow terminal: no floor above usable
+        assert_eq!(scroll_text_dialog_width(30, 80), 22); // usable 28 * 80% = 22
     }
 
     #[test]
     fn chrome_uses_slim_header_and_tall_body() {
-        let (chrome, body_height) = scroll_text_dialog_chrome(100, 40);
+        let (chrome, body_height) = scroll_text_dialog_chrome(100, 40, 80);
         assert!(chrome.slim_header);
-        assert_eq!(chrome.width, 96);
+        assert_eq!(chrome.width, 78);
         assert!(body_height >= 16);
     }
 
@@ -276,9 +308,12 @@ mod tests {
     }
 
     #[test]
-    fn pending_stores_title_and_text() {
+    fn pending_stores_title_text_and_default_width() {
         let pending = PendingScrollTextDialog::open("Help", "body");
         assert_eq!(pending.title, "Help");
         assert_eq!(pending.text, "body");
+        assert_eq!(pending.width_pct, DEFAULT_SCROLL_TEXT_WIDTH_PCT);
+        let wide = PendingScrollTextDialog::open_with_width("Help", "body", 95);
+        assert_eq!(wide.width_pct, 95);
     }
 }

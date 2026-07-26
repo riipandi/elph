@@ -4,8 +4,9 @@ use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::scroll_text_dialog::{
-    CloseScrollTextDialogArgs, OpenScrollTextDialogArgs, PendingScrollTextDialog, ScrollTextClosePrompt,
-    close_scroll_text_dialog, open_scroll_text_dialog,
+    CloseScrollTextDialogArgs, DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, PendingScrollTextDialog,
+    ScrollTextClosePrompt, close_scroll_text_dialog, open_scroll_text_dialog, scroll_text_dialog_chrome,
+    scroll_text_dialog_width, scroll_text_scrollbar_visible,
 };
 
 /// Default header for `/system-prompt`.
@@ -14,16 +15,13 @@ pub const SYSTEM_PROMPT_DIALOG_TITLE: &str = "System prompt";
 /// Open system-prompt session (title is fixed; body is the compiled prompt).
 pub type PendingSystemPromptDialog = PendingScrollTextDialog;
 
-/// Re-export layout helpers under the system-prompt names used by the shell.
-pub use crate::tui::scroll_text_dialog::scroll_text_dialog_chrome as system_prompt_dialog_chrome;
-pub use crate::tui::scroll_text_dialog::scroll_text_dialog_width as system_prompt_dialog_width;
-pub use crate::tui::scroll_text_dialog::scroll_text_scrollbar_visible as system_prompt_scrollbar_visible;
-
 /// Arguments for [`open_system_prompt_dialog`].
 pub struct OpenSystemPromptDialogArgs<'a> {
     pub pending: &'a mut Ref<Option<PendingSystemPromptDialog>>,
     pub shell_focus: &'a mut State<ShellFocus>,
     pub text: String,
+    /// Width as % of terminal. Defaults to [`DEFAULT_SCROLL_TEXT_WIDTH_PCT`] when `None`.
+    pub width_pct: Option<u8>,
 }
 
 pub fn open_system_prompt_dialog(args: OpenSystemPromptDialogArgs<'_>) {
@@ -32,6 +30,7 @@ pub fn open_system_prompt_dialog(args: OpenSystemPromptDialogArgs<'_>) {
         shell_focus: args.shell_focus,
         title: SYSTEM_PROMPT_DIALOG_TITLE.to_string(),
         text: args.text,
+        width_pct: args.width_pct.unwrap_or(DEFAULT_SCROLL_TEXT_WIDTH_PCT),
     });
 }
 
@@ -53,15 +52,33 @@ pub fn close_system_prompt_dialog(
     });
 }
 
+/// Layout helpers (pass `pending.width_pct` from the open session).
+pub fn system_prompt_dialog_width(screen_width: u16, width_pct: u8) -> u16 {
+    scroll_text_dialog_width(screen_width, width_pct)
+}
+
+pub fn system_prompt_dialog_chrome(
+    screen_width: u16,
+    screen_height: u16,
+    width_pct: u8,
+) -> (elph_tui::components::DialogChrome, u16) {
+    scroll_text_dialog_chrome(screen_width, screen_height, width_pct)
+}
+
+pub fn system_prompt_scrollbar_visible(content_height: u16, viewport_height: u16) -> bool {
+    scroll_text_scrollbar_visible(content_height, viewport_height)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn width_and_chrome_delegate_to_scroll_text_dialog() {
-        assert_eq!(system_prompt_dialog_width(80), 76);
-        let (chrome, body_height) = system_prompt_dialog_chrome(100, 40);
+    fn width_and_chrome_use_percent() {
+        assert_eq!(system_prompt_dialog_width(100, DEFAULT_SCROLL_TEXT_WIDTH_PCT), 78);
+        let (chrome, body_height) = system_prompt_dialog_chrome(100, 40, 80);
         assert!(chrome.slim_header);
+        assert_eq!(chrome.width, 78);
         assert!(body_height >= 16);
     }
 
