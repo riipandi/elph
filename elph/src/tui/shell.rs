@@ -318,51 +318,82 @@ struct PromptQueueActionCtx<'a> {
     pre_echoed_user_prompts: &'a mut State<u32>,
     draft: &'a mut State<String>,
     live_draft: &'a mut Ref<String>,
+    live_cursor: &'a mut Ref<usize>,
+    prompt_editor_mirror: &'a mut Ref<(String, usize)>,
+    force_palette_sync: &'a mut Ref<bool>,
     shell_focus: &'a mut State<ShellFocus>,
     queue_manager_open: &'a mut State<bool>,
     queue_manager_selected: &'a mut State<usize>,
     queue_manager_action: &'a mut State<PromptQueueAction>,
 }
 
-/// Apply Send / Edit / Cancel on a queue row; returns true when handled.
+/// Close the queue manager and return focus to the prompt.
+fn close_queue_manager(ctx: &mut PromptQueueActionCtx<'_>) {
+    ctx.queue_manager_open.set(false);
+    ctx.queue_manager_selected.set(0);
+    ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+    ctx.shell_focus.set(ShellFocus::Prompt);
+}
+
+/// Apply Send / Edit / Cancel on a queue row.
+///
+/// - **Send** — drop from queue and interject (steer); when idle, steer falls back to a normal turn.
+/// - **Edit** — drop from queue and load the text into the prompt editor.
+/// - **Cancel** — drop from queue only.
+///
+/// Returns `Some(text)` when the shell should mark a busy idle turn (Send while not already streaming).
 fn apply_prompt_queue_action(
     action: PromptQueueAction,
     display_index: usize,
     ctx: &mut PromptQueueActionCtx<'_>,
-    start_idle_turn: impl FnOnce(String),
-) -> bool {
-    let Some(item) = ctx.prompt_queue.write().remove_at_local(display_index) else {
-        return false;
-    };
+) -> Option<String> {
+    let item = ctx.prompt_queue.read().items().get(display_index).cloned()?;
+    // Optimistic local remove so the row disappears immediately; harness QueueUpdate reconciles.
+    let _ = ctx.prompt_queue.write().remove_at_local(display_index);
     ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
+
     match action {
         PromptQueueAction::SendNow => {
+            // Hide immediately and keep hidden if interject re-queues as steer.
+            ctx.prompt_queue.write().suppress_sent(item.text.clone());
+            ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
             push_transcript_message(
-            ctx.messages,
-            ctx.messages_revision,
-            ctx.prompt_history, submitted);
+                ctx.messages,
+                ctx.messages_revision,
+                ctx.prompt_history,
+                submitted,
+            );
             ctx.pre_echoed_user_prompts
                 .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
+            let need_busy = !ctx.agent_turn_active;
             if let Some(session) = ctx.agent_session.as_ref() {
-                if ctx.agent_turn_active {
-                    TurnDispatcher::spawn_interject_queued(Arc::clone(session), item.kind, item.kind_index, item.text);
-                } else {
-                    start_idle_turn(item.text);
-                }
+                // Always interject: remove from harness queue then steer (idle → normal turn).
+                TurnDispatcher::spawn_interject_queued(
+                    Arc::clone(session),
+                    item.kind,
+                    item.kind_index,
+                    item.text.clone(),
+                );
             }
+            close_queue_manager(ctx);
+            if need_busy { Some(item.text) } else { None }
         }
         PromptQueueAction::Edit => {
             if let Some(session) = ctx.agent_session.as_ref() {
                 TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
             }
-            ctx.draft.set(item.text.clone());
-            ctx.live_draft.set(item.text);
-            ctx.queue_manager_open.set(false);
-            ctx.queue_manager_selected.set(0);
-            ctx.queue_manager_action.set(PromptQueueAction::SendNow);
-            ctx.shell_focus.set(ShellFocus::Prompt);
+            let text = item.text;
+            let cursor = text.len();
+            ctx.draft.set(text.clone());
+            ctx.live_draft.set(text.clone());
+            ctx.live_cursor.set(cursor);
+            ctx.prompt_editor_mirror.set((text, cursor));
+            // Force Textarea to accept the external draft (focused sync is prefix-only).
+            ctx.force_palette_sync.set(true);
+            close_queue_manager(ctx);
+            None
         }
         PromptQueueAction::Cancel => {
             if let Some(session) = ctx.agent_session.as_ref() {
@@ -370,16 +401,13 @@ fn apply_prompt_queue_action(
             }
             let len = ctx.prompt_queue.read().len();
             if len == 0 {
-                ctx.queue_manager_open.set(false);
-                ctx.queue_manager_selected.set(0);
-                ctx.queue_manager_action.set(PromptQueueAction::SendNow);
-                ctx.shell_focus.set(ShellFocus::Prompt);
+                close_queue_manager(ctx);
             } else {
                 ctx.queue_manager_selected.set(display_index.min(len - 1));
             }
+            None
         }
     }
-    true
 }
 
 struct PendingQuitAction<'a> {
@@ -810,6 +838,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut queue_manager_open = hooks.use_state(|| false);
     let mut queue_manager_selected = hooks.use_state(|| 0usize);
     let mut queue_manager_action = hooks.use_state(PromptQueueAction::default);
+    // Mouse clicks on queue action chips (drained each frame in the shell body).
+    let mut pending_queue_click = hooks.use_state(|| None::<(usize, PromptQueueAction)>);
+    let on_queue_action_click = hooks.use_async_handler(move |(idx, action)| {
+        let mut pending_queue_click = pending_queue_click;
+        async move {
+            pending_queue_click.set(Some((idx, action)));
+        }
+    });
     // Bumped on queue mutations so MainShell re-renders (prompt_queue is a Ref).
     let mut queue_ui_revision = hooks.use_state(|| 0u64);
     // Shell already pushed a user card; skip matching `UserPromptCommitted` from the agent loop.
@@ -828,7 +864,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut live_cursor = hooks.use_ref(|| 0usize);
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let mut clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
-    let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
+    let mut prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let mut styled_content = hooks.use_ref(String::new);
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
     let mut mention_index_requested = hooks.use_ref(|| false);
@@ -1635,16 +1671,66 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         .unwrap_or_default()
                 };
                 let body = editor_body.trim().to_string();
-                // Prefer top queue item when present (one Ctrl+Enter per item).
+                // Ctrl+Enter from the textarea always interjects editor text directly —
+                // never enqueue as follow-up and never prefer the prompt-queue list.
+                // (Queue items are sent via the queue [Send] chip or when the editor is empty.)
+                if !body.is_empty() {
+                    if let Some(session) = agent_session.as_ref() {
+                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            submitted,
+                        );
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        if agent_turn_active.get() {
+                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
+                        } else {
+                            // Idle: start a normal turn (steer while idle falls back the same way).
+                            agent_turn_active.set(true);
+                            chrome_refresh_pending.set(true);
+                            idle_status_notice.set(None);
+                            turn_cancel_requested.set(false);
+                            mark_busy(
+                                &mut BusyActivation {
+                                    busy: &mut busy,
+                                    busy_started_at: &mut busy_started_at,
+                                    activity_started_at: &mut activity_started_at,
+                                    activity_label: &mut activity_label,
+                                    last_activity_label: &mut last_activity_label,
+                                },
+                                true,
+                                None,
+                            );
+                            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                            TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
+                        }
+                    }
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
+                    return;
+                }
+                // Empty editor: optional — interject the front queue item (one at a time).
                 if !prompt_queue.read().is_empty() {
-                    if let Some(item) = prompt_queue.write().pop_front_local() {
+                    let popped = {
+                        let mut q = prompt_queue.write();
+                        q.pop_front_local()
+                    };
+                    if let Some(item) = popped {
+                        prompt_queue.write().suppress_sent(item.text.clone());
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                         let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
                         push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history, submitted);
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            submitted,
+                        );
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if let Some(session) = agent_session.as_ref() {
                             if agent_turn_active.get() {
@@ -1667,7 +1753,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         activity_label: &mut activity_label,
                                         last_activity_label: &mut last_activity_label,
                                     },
-                                    false,
+                                    true,
                                     None,
                                 );
                                 begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
@@ -1675,50 +1761,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                     }
-                    return;
-                }
-                if !body.is_empty() {
-                    if agent_turn_active.get() {
-                        if let Some(session) = agent_session.as_ref() {
-                            let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history, submitted);
-                            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
-                        }
-                    } else if let Some(session) = agent_session.as_ref() {
-                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                        submitted.submitted_at = Some(chrono::Utc::now());
-                        push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history, submitted);
-                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                        agent_turn_active.set(true);
-                        chrome_refresh_pending.set(true);
-                        idle_status_notice.set(None);
-                        turn_cancel_requested.set(false);
-                        mark_busy(
-                            &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
-                            false,
-                            None,
-                        );
-                        begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                        TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
-                    }
-                    draft.set(String::new());
-                    live_draft.set(String::new());
-                    force_editor_clear.set(true);
-                    suppress_enter_newline.set(true);
                 }
                 return;
             }
@@ -1836,8 +1878,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let idx = queue_manager_selected.get();
                         let turn_active = agent_turn_active.get();
                         let session = agent_session.clone();
-                        let mut idle_turn: Option<String> = None;
-                        apply_prompt_queue_action(
+                        let mark_busy_for_idle = apply_prompt_queue_action(
                             action,
                             idx,
                             &mut PromptQueueActionCtx {
@@ -1851,16 +1892,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
                                 draft: &mut draft,
                                 live_draft: &mut live_draft,
+                                live_cursor: &mut live_cursor,
+                                prompt_editor_mirror: &mut prompt_editor_mirror,
+                                force_palette_sync: &mut force_palette_sync,
                                 shell_focus: &mut shell_focus,
                                 queue_manager_open: &mut queue_manager_open,
                                 queue_manager_selected: &mut queue_manager_selected,
                                 queue_manager_action: &mut queue_manager_action,
                             },
-                            |text| idle_turn = Some(text),
                         );
-                        if let Some(text) = idle_turn
-                            && let Some(session) = session.as_ref()
-                        {
+                        // Send while idle: interject spawn runs the turn; mark shell busy UI only.
+                        if mark_busy_for_idle.is_some() {
                             agent_turn_active.set(true);
                             chrome_refresh_pending.set(true);
                             idle_status_notice.set(None);
@@ -1877,7 +1919,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 None,
                             );
                             begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                            TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
                         }
                         return;
                     }
@@ -3327,6 +3368,63 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         }
     }
 
+    // Drain mouse clicks on queue [Send]/[Edit]/[Cancel] chips.
+    if let Some((idx, action)) = pending_queue_click.get() {
+        pending_queue_click.set(None);
+        // Ensure chips work even before Ctrl+Q opens "interactive" keyboard mode.
+        if !queue_manager_open.get() {
+            queue_manager_open.set(true);
+            queue_manager_selected.set(idx);
+            shell_focus.set(ShellFocus::StatusDialog);
+        } else {
+            queue_manager_selected.set(idx);
+        }
+        queue_manager_action.set(action);
+        let session = agent_session.clone();
+        let turn_active = agent_turn_active.get();
+        let mark_busy_for_idle = apply_prompt_queue_action(
+            action,
+            idx,
+            &mut PromptQueueActionCtx {
+                prompt_queue: &mut prompt_queue,
+                queue_ui_revision: &mut queue_ui_revision,
+                agent_session: &session,
+                agent_turn_active: turn_active,
+                messages: &mut messages,
+                messages_revision: &mut messages_revision,
+                prompt_history: &mut prompt_history,
+                pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
+                draft: &mut draft,
+                live_draft: &mut live_draft,
+                live_cursor: &mut live_cursor,
+                prompt_editor_mirror: &mut prompt_editor_mirror,
+                force_palette_sync: &mut force_palette_sync,
+                shell_focus: &mut shell_focus,
+                queue_manager_open: &mut queue_manager_open,
+                queue_manager_selected: &mut queue_manager_selected,
+                queue_manager_action: &mut queue_manager_action,
+            },
+        );
+        if mark_busy_for_idle.is_some() {
+            agent_turn_active.set(true);
+            chrome_refresh_pending.set(true);
+            idle_status_notice.set(None);
+            turn_cancel_requested.set(false);
+            mark_busy(
+                &mut BusyActivation {
+                    busy: &mut busy,
+                    busy_started_at: &mut busy_started_at,
+                    activity_started_at: &mut activity_started_at,
+                    activity_label: &mut activity_label,
+                    last_activity_label: &mut last_activity_label,
+                },
+                false,
+                None,
+            );
+            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+        }
+    }
+
     if should_exit.get() {
         let chrome = chrome_stats.read().clone();
         let api_duration_secs = accumulate_session_elapsed(
@@ -3945,6 +4043,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 approval_selected: Some(approval_selected),
                 approval_has_focus: approval_has_focus,
                 queue_count: queue_count,
+                on_queue_action: on_queue_action_click,
             )
             PromptChrome(
                 screen_width: screen_width,

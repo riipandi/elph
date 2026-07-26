@@ -187,11 +187,18 @@ impl SlashDispatcher {
 #[derive(Debug, Default, Clone)]
 pub struct PromptQueueView {
     items: Vec<QueuedPromptItem>,
+    /// Texts removed via **Send** (interject). Hidden until the harness no longer holds them
+    /// (Send re-queues as steer, which would otherwise reappear in the list).
+    suppressed_sent: Vec<String>,
 }
 
 impl PromptQueueView {
     pub fn replace(&mut self, items: Vec<QueuedPromptItem>) {
-        self.items = items;
+        // Drop suppress entries that are no longer in the harness snapshot (drained/consumed).
+        self.suppressed_sent
+            .retain(|text| items.iter().any(|item| item.text == *text));
+        self.items = Self::filter_suppressed(items, &self.suppressed_sent);
+        self.renumber_seq();
     }
 
     pub fn items(&self) -> &[QueuedPromptItem] {
@@ -208,6 +215,7 @@ impl PromptQueueView {
 
     pub fn clear(&mut self) {
         self.items.clear();
+        self.suppressed_sent.clear();
     }
 
     /// Optimistic local append before harness `QueueUpdate` (caller must bump UI revision).
@@ -216,6 +224,8 @@ impl PromptQueueView {
         if text.is_empty() {
             return;
         }
+        // New enqueue should not stay hidden if the same string was previously Sent.
+        self.suppressed_sent.retain(|t| t != &text);
         let kind_index = self
             .items
             .iter()
@@ -241,10 +251,37 @@ impl PromptQueueView {
             return None;
         }
         let removed = self.items.remove(display_index);
+        self.renumber_seq();
+        Some(removed)
+    }
+
+    /// Mark a prompt as Sent/interjected so later `QueueUpdate` snapshots hide it until drained.
+    pub fn suppress_sent(&mut self, text: impl Into<String>) {
+        let text = text.into();
+        if text.is_empty() {
+            return;
+        }
+        if !self.suppressed_sent.iter().any(|t| t == &text) {
+            self.suppressed_sent.push(text);
+        }
+        self.items.retain(|item| !self.suppressed_sent.iter().any(|t| t == &item.text));
+        self.renumber_seq();
+    }
+
+    fn renumber_seq(&mut self) {
         for (i, item) in self.items.iter_mut().enumerate() {
             item.seq = (i as u32).saturating_add(1);
         }
-        Some(removed)
+    }
+
+    fn filter_suppressed(items: Vec<QueuedPromptItem>, suppressed: &[String]) -> Vec<QueuedPromptItem> {
+        if suppressed.is_empty() {
+            return items;
+        }
+        items
+            .into_iter()
+            .filter(|item| !suppressed.iter().any(|t| t == &item.text))
+            .collect()
     }
 
     /// Compact badge text, e.g. `Q:3`, or empty when no queue.
@@ -998,6 +1035,60 @@ mod tests {
         assert_eq!(queue.items().first().map(|i| i.text.as_str()), Some("first"));
         queue.clear();
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn prompt_queue_send_hides_until_harness_drains() {
+        let mut queue = PromptQueueView::default();
+        queue.replace(vec![
+            QueuedPromptItem {
+                seq: 1,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 0,
+                text: "do the thing".into(),
+            },
+            QueuedPromptItem {
+                seq: 2,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 1,
+                text: "other".into(),
+            },
+        ]);
+        let sent = queue.remove_at_local(0).expect("item");
+        queue.suppress_sent(sent.text.clone());
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.items()[0].text, "other");
+
+        // Interject re-queues as steer — must stay hidden.
+        queue.replace(vec![
+            QueuedPromptItem {
+                seq: 1,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 0,
+                text: "other".into(),
+            },
+            QueuedPromptItem {
+                seq: 2,
+                kind: QueuedPromptKind::Steer,
+                kind_index: 0,
+                text: "do the thing".into(),
+            },
+        ]);
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.items()[0].text, "other");
+
+        // After drain, suppress entry is pruned.
+        queue.replace(vec![QueuedPromptItem {
+            seq: 1,
+            kind: QueuedPromptKind::FollowUp,
+            kind_index: 0,
+            text: "other".into(),
+        }]);
+        assert_eq!(queue.len(), 1);
+
+        // Same text re-queued later is visible again.
+        queue.push_follow_up_local("do the thing".into());
+        assert_eq!(queue.len(), 2);
     }
 
     #[test]
