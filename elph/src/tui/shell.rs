@@ -74,9 +74,10 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
+use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
 use crate::tui::system_prompt_dialog::{
-    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, SystemPromptDialogOverlay, close_system_prompt_dialog,
-    open_system_prompt_dialog, system_prompt_dialog_chrome,
+    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
+    system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::PendingToolApproval;
 use crate::tui::tool_approval::{
@@ -2754,9 +2755,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .map(|pending| -> AnyElement<'static> {
             let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height);
             element! {
-                SystemPromptDialogOverlay(
+                ScrollTextDialogOverlay(
                     screen_width: screen_width,
                     screen_height: screen_height,
+                    title: pending.title.clone(),
                     text: pending.text.clone(),
                     body_height: body_height,
                     chrome: chrome,
@@ -2866,6 +2868,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 messages_revision: Some(messages_revision),
                 sticky_scroll: props.sticky_scroll,
                 has_focus: transcript_focused,
+                // Modal dialogs own the wheel; keep the transcript still underneath.
+                mouse_scroll: Some(!status_dialog_open),
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {

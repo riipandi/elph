@@ -235,6 +235,10 @@ pub struct ScrollViewProps<'a> {
     /// the view. Defaults to `true`. The terminal events hook is always
     /// registered to maintain consistent hook ordering.
     pub keyboard_scroll: Option<bool>,
+    /// Whether mouse wheel events scroll the view. Defaults to `true`.
+    /// Set to `false` when a modal owns wheel input so background scroll
+    /// regions (e.g. a transcript) do not move underneath.
+    pub mouse_scroll: Option<bool>,
 }
 
 // Hook that measures the component height in pre_component_draw and writes
@@ -287,6 +291,7 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
     let scroll_step = props.scroll_step.unwrap_or(DEFAULT_SCROLL_STEP) as i32;
     let auto_scroll = props.auto_scroll;
     let keyboard_scroll = props.keyboard_scroll.unwrap_or(true);
+    let mouse_scroll = props.mouse_scroll.unwrap_or(true);
 
     // Sync content height from the ref written by the measurer child.
     let ch = content_height_ref.get();
@@ -336,7 +341,7 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
                         None
                     }
                 }
-                TerminalEvent::FullscreenMouse(mouse) => match mouse.kind {
+                TerminalEvent::FullscreenMouse(mouse) if mouse_scroll => match mouse.kind {
                     MouseEventKind::ScrollUp => Some(-scroll_step),
                     MouseEventKind::ScrollDown => Some(scroll_step),
                     _ => None,

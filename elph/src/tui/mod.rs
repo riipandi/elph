@@ -27,6 +27,7 @@ mod slash_handler;
 mod slash_palette;
 mod startup;
 mod status_dialog;
+mod scroll_text_dialog;
 mod subagent_display;
 mod system_prompt_dialog;
 mod theme;
