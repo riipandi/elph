@@ -39,7 +39,7 @@ pub fn PromptHistoryPalette(props: &PromptHistoryPaletteProps, hooks: Hooks) -> 
     let window_start = palette_window_start(selected, viewport_rows, len);
     let end = window_start.saturating_add(viewport_rows).min(len);
     let visible = &props.snapshot.entries[window_start..end];
-    let title = history_title(props.snapshot.total_count);
+    let title = history_title();
     let title_chip = format!(" {title} ");
     let preview_cols = list_width.saturating_sub(3).max(8) as usize;
 

@@ -17,7 +17,7 @@ pub struct PromptHistoryEntry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PromptHistorySnapshot {
     pub visible: bool,
-    /// Newest first.
+    /// Oldest first (newest at the bottom).
     pub entries: Vec<PromptHistoryEntry>,
     pub list_height: u16,
     /// Total entries in the session history store (not just the viewport).
@@ -45,13 +45,9 @@ impl PromptHistorySnapshot {
     }
 }
 
-/// Title chip: count + label (file-picker / slash-palette style).
-pub fn history_title(total_count: usize) -> String {
-    if total_count == 1 {
-        "01 History · 1 prompt".to_string()
-    } else {
-        format!("{:02} History · {total_count} prompts", total_count.min(99))
-    }
+/// Title chip for the history palette header.
+pub fn history_title() -> String {
+    "Prompt History".to_string()
 }
 
 /// Single-line preview for a history row (truncate long pastes).
@@ -128,7 +124,7 @@ fn normalize_skill_slash(text: &str) -> String {
     }
 }
 
-/// Push a submitted prompt onto the history store (newest first).
+/// Push a submitted prompt onto the history store (oldest first; newest at the bottom).
 ///
 /// Skips empty/whitespace-only lines and consecutive duplicates.
 /// Prefer [`push_history_entry_styled`] when the transcript style is known.
@@ -143,19 +139,19 @@ pub fn push_history_entry_styled(history: &mut Vec<String>, text: &str, style: T
     if normalized.is_empty() {
         return;
     }
-    if history.first().is_some_and(|prev| prev == &normalized) {
+    if history.last().is_some_and(|prev| prev == &normalized) {
         return;
     }
-    history.insert(0, normalized);
+    history.push(normalized);
     if history.len() > MAX_PROMPT_HISTORY {
-        history.truncate(MAX_PROMPT_HISTORY);
+        history.drain(0..history.len() - MAX_PROMPT_HISTORY);
     }
 }
 
 /// Seed history from resumed transcript user / skill prompts.
 ///
-/// Transcript order is oldest-first; `push_history_entry` inserts at front so the
-/// store ends newest-first.
+/// Transcript order is oldest-first; `push_history_entry` appends so the
+/// store ends oldest-first (newest at the bottom).
 pub fn seed_history_from_transcript(history: &mut Vec<String>, messages: &[TranscriptMessage]) {
     for message in messages {
         if !matches!(message.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
@@ -204,7 +200,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn push_history_newest_first_dedupes_consecutive() {
+    fn push_history_oldest_first_dedupes_consecutive() {
         let mut h = Vec::new();
         push_history_entry(&mut h, "one");
         push_history_entry(&mut h, "two");
@@ -214,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn seed_from_transcript_orders_newest_first() {
+    fn seed_from_transcript_orders_oldest_first() {
         let messages = vec![
             TranscriptMessage::text("first", TranscriptStyle::User),
             TranscriptMessage::text("thinking", TranscriptStyle::Thinking),
@@ -223,7 +219,7 @@ mod tests {
         ];
         let mut h = Vec::new();
         seed_history_from_transcript(&mut h, &messages);
-        assert_eq!(h, vec!["/skill:x".to_string(), "second".to_string(), "first".to_string(),]);
+        assert_eq!(h, vec!["first".to_string(), "second".to_string(), "/skill:x".to_string(),]);
     }
 
     #[test]
@@ -264,8 +260,7 @@ mod tests {
     }
 
     #[test]
-    fn title_includes_count() {
-        assert!(history_title(3).contains("3 prompts"));
-        assert!(history_title(1).contains("1 prompt"));
+    fn history_title_is_static() {
+        assert_eq!(history_title(), "Prompt History");
     }
 }

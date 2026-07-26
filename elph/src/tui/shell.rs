@@ -1577,7 +1577,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         && file_picker_open(&draft_body, live_cursor.get().min(draft_body.len()));
                     if can_open_history(true, &draft_body, slash_open, picker_open, prompt_history.read().len()) {
                         prompt_history_open.set(true);
-                        prompt_history_index.set(0);
+                        let history_len = prompt_history.read().len();
+                        prompt_history_index.set(history_len.saturating_sub(1));
                         return;
                     }
                 }

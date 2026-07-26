@@ -85,14 +85,14 @@ mod tests {
 
     #[test]
     fn tab_and_enter_apply_selected() {
-        let s = snap(&["newer", "older"]);
+        let s = snap(&["first", "second"]);
         assert_eq!(
             resolve_key_action(&s, 0, KeyCode::Tab, KeyModifiers::NONE),
-            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "newer".into() })
+            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "first".into() })
         );
         assert_eq!(
             resolve_key_action(&s, 1, KeyCode::Enter, KeyModifiers::NONE),
-            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "older".into() })
+            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "second".into() })
         );
     }
 
