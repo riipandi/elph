@@ -71,6 +71,9 @@ The input area features:
 | `!!`   | Shell without context | Execute locally, output only          |
 
 - **Multiline editing**: Ctrl+J or Shift+Enter for newline; Enter to submit
+- **Context-dependent Enter**: When agent is idle, submits normally. When agent is busy, enqueues as a follow-up prompt.
+- **Interject (Ctrl+Enter)**: When queue is non-empty, sends the top queued item immediately. Otherwise interjects the current editor text as a steer prompt mid-turn.
+- **Queue manager (Ctrl+Q)**: Opens a numbered dialog listing queued prompts. Each row offers **Send** (interject now), **Edit** (pull into editor), or **Cancel** (remove). Navigate with arrow keys.
 - **Fuzzy slash palette**: Ctrl+Space or `/` to trigger
 - **History navigation**: Up/Down arrows
 
@@ -93,15 +96,17 @@ Shows:
 
 ## Interaction modes
 
-| Mode                | Toggle         | Description                                              |
-| ------------------- | -------------- | -------------------------------------------------------- |
-| Agent mode          | `ctrl+m`       | Cycle: Build → Plan → Ask → Brave                        |
-| Thinking level      | `ctrl+t`       | Cycle: Off → Minimal → Low → Medium → High → Xhigh → Max |
-| Model picker        | `ctrl+p`       | Open model selection dialog                              |
-| Theme               | `ctrl+shift+t` | Cycle: Auto → Dark → Light                               |
-| Scoped models       | `ctrl+shift+m` | Open scoped models configuration                         |
-| System prompt       | `ctrl+o`       | Show system prompt editor                                |
-| Session preferences | `ctrl+,`       | Open session settings                                    |
+| Mode                | Toggle         | Description                                                                        |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| Agent mode          | `ctrl+m`       | Cycle: Build → Plan → Ask → Brave                                                  |
+| Thinking level      | `ctrl+t`       | Cycle: Off → Minimal → Low → Medium → High → Xhigh → Max                           |
+| Model picker        | `ctrl+p`       | Open model selection dialog                                                        |
+| Theme               | `ctrl+shift+t` | Cycle: Auto → Dark → Light                                                         |
+| Scoped models       | `ctrl+shift+m` | Open scoped models configuration                                                   |
+| System prompt       | `ctrl+o`       | Show system prompt editor                                                          |
+| Session preferences | `ctrl+,`       | Open session settings                                                              |
+| Queue manager       | `ctrl+q`       | Open/close numbered prompt queue (Send / Edit / Cancel queued items)               |
+| Interject prompt    | `ctrl+enter`   | If queue non-empty: send top item immediately. Else interject editor text mid-turn |
 
 **Source:** `/elph/src/tui/focus.rs`, `/elph/src/tui/model_selector.rs`
 
@@ -153,6 +158,7 @@ The `AgentBridge` (`/elph/src/tui/agent_bridge.rs`) converts agent runtime event
 - `ToolStart` / `ToolOutput` / `ToolDone` → tool cards
 - `TurnDone` → flush transcript, update stats
 - `SubagentUpdate` → subagent display
+- `QueueUpdate` → refresh prompt queue manager dialog
 - `Error` → API error display
 
 ## Reusable components (`elph-tui`)
@@ -182,8 +188,9 @@ The `elph-tui` crate provides reusable widgets used by the main TUI and external
 | -------------------- | ------------------------- | --------------------------------------------------------- |
 | Scroll text dialog   | `scroll_text_dialog.rs`   | Reusable scrollable modal for system prompts, dumps, logs |
 | System prompt dialog | `system_prompt_dialog.rs` | System prompt editor (now built on scroll text dialog)    |
+| Prompt queue manager | `status_dialog.rs`        | Numbered prompt queue with Send/Edit/Cancel actions       |
 
-**Source:** `/elph/src/tui/scroll_text_dialog.rs`, `/elph/src/tui/system_prompt_dialog.rs`
+**Source:** `/elph/src/tui/scroll_text_dialog.rs`, `/elph/src/tui/system_prompt_dialog.rs`, `/elph/src/tui/status_dialog.rs`
 
 ## Changing the TUI
 

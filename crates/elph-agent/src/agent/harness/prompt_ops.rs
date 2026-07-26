@@ -191,8 +191,15 @@ where
 
     /// Move the front follow-up message onto the steer queue (interject one queued prompt).
     ///
-    /// Returns the promoted message text when a follow-up existed.
+    /// Returns the promoted message when a follow-up existed. Rejects while idle without
+    /// temporarily removing the message (avoids a lost-item window under concurrent drain).
     pub async fn promote_follow_up_front_to_steer(&self) -> HarnessOpResult<Option<AgentMessage>> {
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            return Err(AgentHarnessError::new(
+                AgentHarnessErrorCode::InvalidState,
+                "Cannot promote follow-up to steer while idle",
+            ));
+        }
         let message = {
             let mut follow = self.shared.follow_up_queue.lock().await;
             if follow.is_empty() {
@@ -204,8 +211,8 @@ where
         let Some(message) = message else {
             return Ok(None);
         };
+        // Re-check after dequeue: turn may have ended while we held the follow-up lock.
         if self.phase_async().await == AgentHarnessPhase::Idle {
-            // Cannot steer while idle — put the message back.
             self.shared.follow_up_queue.lock().await.insert(0, message);
             return Err(AgentHarnessError::new(
                 AgentHarnessErrorCode::InvalidState,

@@ -48,10 +48,7 @@ pub fn is_ctrl_enter_interject(modifiers: KeyModifiers, code: KeyCode) -> bool {
     if modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META) {
         return false;
     }
-    matches!(
-        code,
-        KeyCode::Enter | KeyCode::Char('\n') | KeyCode::Char('\r')
-    )
+    matches!(code, KeyCode::Enter | KeyCode::Char('\n') | KeyCode::Char('\r'))
 }
 
 /// Toggle native text selection (mouse capture off/on).

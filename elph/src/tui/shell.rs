@@ -34,9 +34,7 @@ use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatch
 use crate::tui::chrome::{ChromeStats, Header};
 use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
 use crate::tui::focus::ShellFocus;
-use crate::tui::focus::{
-    is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut,
-};
+use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
 
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
@@ -298,37 +296,43 @@ fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool, activity_label: Option<&
     ctx.last_activity_label.set(label);
 }
 
-/// Apply Send now / Edit / Cancel on a queue row; returns true when handled.
+/// Mutable UI state for queue manager actions (grouped for clippy::too_many_arguments).
+struct PromptQueueActionCtx<'a> {
+    prompt_queue: &'a mut Ref<PromptQueue>,
+    queue_ui_revision: &'a mut State<u64>,
+    agent_session: &'a Option<Arc<CodingAgentSession>>,
+    agent_turn_active: bool,
+    messages: &'a mut State<Vec<TranscriptMessage>>,
+    messages_revision: &'a mut State<u64>,
+    pre_echoed_user_prompts: &'a mut State<u32>,
+    draft: &'a mut State<String>,
+    live_draft: &'a mut Ref<String>,
+    shell_focus: &'a mut State<ShellFocus>,
+    queue_manager_open: &'a mut State<bool>,
+    queue_manager_selected: &'a mut State<usize>,
+    queue_manager_action: &'a mut State<PromptQueueAction>,
+}
+
+/// Apply Send / Edit / Cancel on a queue row; returns true when handled.
 fn apply_prompt_queue_action(
     action: PromptQueueAction,
     display_index: usize,
-    prompt_queue: &mut Ref<PromptQueue>,
-    queue_ui_revision: &mut State<u64>,
-    agent_session: &Option<Arc<CodingAgentSession>>,
-    agent_turn_active: bool,
-    messages: &mut State<Vec<TranscriptMessage>>,
-    messages_revision: &mut State<u64>,
-    pre_echoed_user_prompts: &mut State<u32>,
-    draft: &mut State<String>,
-    live_draft: &mut Ref<String>,
-    shell_focus: &mut State<ShellFocus>,
-    queue_manager_open: &mut State<bool>,
-    queue_manager_selected: &mut State<usize>,
-    queue_manager_action: &mut State<PromptQueueAction>,
+    ctx: &mut PromptQueueActionCtx<'_>,
     start_idle_turn: impl FnOnce(String),
 ) -> bool {
-    let Some(item) = prompt_queue.write().remove_at_local(display_index) else {
+    let Some(item) = ctx.prompt_queue.write().remove_at_local(display_index) else {
         return false;
     };
-    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+    ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
     match action {
         PromptQueueAction::SendNow => {
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
-            push_transcript_message(messages, messages_revision, submitted);
-            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-            if let Some(session) = agent_session.as_ref() {
-                if agent_turn_active {
+            push_transcript_message(ctx.messages, ctx.messages_revision, submitted);
+            ctx.pre_echoed_user_prompts
+                .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
+            if let Some(session) = ctx.agent_session.as_ref() {
+                if ctx.agent_turn_active {
                     TurnDispatcher::spawn_interject_queued(Arc::clone(session), item.kind, item.kind_index, item.text);
                 } else {
                     start_idle_turn(item.text);
@@ -336,28 +340,28 @@ fn apply_prompt_queue_action(
             }
         }
         PromptQueueAction::Edit => {
-            if let Some(session) = agent_session.as_ref() {
+            if let Some(session) = ctx.agent_session.as_ref() {
                 TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
             }
-            draft.set(item.text.clone());
-            live_draft.set(item.text);
-            queue_manager_open.set(false);
-            queue_manager_selected.set(0);
-            queue_manager_action.set(PromptQueueAction::SendNow);
-            shell_focus.set(ShellFocus::Prompt);
+            ctx.draft.set(item.text.clone());
+            ctx.live_draft.set(item.text);
+            ctx.queue_manager_open.set(false);
+            ctx.queue_manager_selected.set(0);
+            ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+            ctx.shell_focus.set(ShellFocus::Prompt);
         }
         PromptQueueAction::Cancel => {
-            if let Some(session) = agent_session.as_ref() {
+            if let Some(session) = ctx.agent_session.as_ref() {
                 TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
             }
-            let len = prompt_queue.read().len();
+            let len = ctx.prompt_queue.read().len();
             if len == 0 {
-                queue_manager_open.set(false);
-                queue_manager_selected.set(0);
-                queue_manager_action.set(PromptQueueAction::SendNow);
-                shell_focus.set(ShellFocus::Prompt);
+                ctx.queue_manager_open.set(false);
+                ctx.queue_manager_selected.set(0);
+                ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+                ctx.shell_focus.set(ShellFocus::Prompt);
             } else {
-                queue_manager_selected.set(display_index.min(len - 1));
+                ctx.queue_manager_selected.set(display_index.min(len - 1));
             }
         }
     }
@@ -1444,8 +1448,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 if !prompt_queue.read().is_empty() {
                     if let Some(item) = prompt_queue.write().pop_front_local() {
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                        let mut submitted =
-                            TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
+                        let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
                         push_transcript_message(&mut messages, &mut messages_revision, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
@@ -1483,16 +1486,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 if !body.is_empty() {
                     if agent_turn_active.get() {
                         if let Some(session) = agent_session.as_ref() {
-                            let mut submitted =
-                                TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                            let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
                             push_transcript_message(&mut messages, &mut messages_revision, submitted);
                             pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             TurnDispatcher::spawn_steer(Arc::clone(session), body);
                         }
                     } else if let Some(session) = agent_session.as_ref() {
-                        let mut submitted =
-                            TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
                         push_transcript_message(&mut messages, &mut messages_revision, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
@@ -1637,19 +1638,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         apply_prompt_queue_action(
                             action,
                             idx,
-                            &mut prompt_queue,
-                            &mut queue_ui_revision,
-                            &session,
-                            turn_active,
-                            &mut messages,
-                            &mut messages_revision,
-                            &mut pre_echoed_user_prompts,
-                            &mut draft,
-                            &mut live_draft,
-                            &mut shell_focus,
-                            &mut queue_manager_open,
-                            &mut queue_manager_selected,
-                            &mut queue_manager_action,
+                            &mut PromptQueueActionCtx {
+                                prompt_queue: &mut prompt_queue,
+                                queue_ui_revision: &mut queue_ui_revision,
+                                agent_session: &session,
+                                agent_turn_active: turn_active,
+                                messages: &mut messages,
+                                messages_revision: &mut messages_revision,
+                                pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
+                                draft: &mut draft,
+                                live_draft: &mut live_draft,
+                                shell_focus: &mut shell_focus,
+                                queue_manager_open: &mut queue_manager_open,
+                                queue_manager_selected: &mut queue_manager_selected,
+                                queue_manager_action: &mut queue_manager_action,
+                            },
                             |text| idle_turn = Some(text),
                         );
                         if let Some(text) = idle_turn
