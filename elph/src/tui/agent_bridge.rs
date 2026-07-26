@@ -295,6 +295,10 @@ pub fn coalesce_agent_ui_events(events: Vec<AgentUiEvent>) -> Vec<AgentUiEvent> 
     out
 }
 
+/// Max bytes kept in streaming tool output. Older bytes are dropped from the front so the
+/// card renders the tail without slowdown (matches shell_output.rs buffer cap).
+const TOOL_OUTPUT_STREAM_CAP: usize = 100 * 1024;
+
 /// Applies streaming agent events to transcript messages.
 pub struct TranscriptEventApplier {
     live_tool_indexes: HashMap<String, usize>,
@@ -550,11 +554,20 @@ impl TranscriptEventApplier {
         let Some(message) = messages.get_mut(index) else {
             return false;
         };
-        if let Some(tool) = message.tool.as_mut() {
-            tool.output.push_str(output);
-            return true;
+        let target = if let Some(tool) = message.tool.as_mut() {
+            &mut tool.output
+        } else {
+            &mut message.content
+        };
+        // Cap streaming output so the card does not slow down rendering a multi-MB string.
+        let new_len = target.len().saturating_add(output.len());
+        if new_len > TOOL_OUTPUT_STREAM_CAP && !target.is_empty() {
+            // Keep only the last TOOL_OUTPUT_STREAM_CAP - chunk_len bytes, prefixed with a marker.
+            let drop = new_len.saturating_sub(TOOL_OUTPUT_STREAM_CAP).min(target.len());
+            let prefix = "\n[...stream output truncated...]\n";
+            *target = format!("{prefix}{}", &target[drop..]);
         }
-        message.content.push_str(output);
+        target.push_str(output);
         true
     }
 
