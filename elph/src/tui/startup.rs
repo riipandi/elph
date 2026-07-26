@@ -373,7 +373,7 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
         return Vec::new();
     };
 
-    // --- first pass: index tool results by tool_call_id ---
+    // --- first pass: index tool results by tool_call_id (output + details for diffs) ---
     let mut tool_results: HashMap<String, ToolResultInfo> = HashMap::new();
     for entry in &entries {
         let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
@@ -386,6 +386,7 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
             tool_call_id,
             content,
             is_error,
+            details,
             ..
         } = llm
         {
@@ -401,6 +402,7 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                 ToolResultInfo {
                     output,
                     is_error: *is_error,
+                    details: details.clone(),
                 },
             );
         }
@@ -488,17 +490,21 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                                 TranscriptStyle::ToolSuccess,
                             );
 
-                            // Merge matching tool-result output and error state.
+                            // Merge matching tool-result output, error state, and edit_file diff.
                             if let Some(result) = tool_results.get(&tc.id) {
                                 if let Some(tool) = msg.tool.as_mut() {
                                     tool.output = result.output.clone();
+                                    if let Some(details) = &result.details {
+                                        let _ = tool.apply_tool_result_details(details);
+                                    }
                                 }
                                 if result.is_error {
                                     msg.style = TranscriptStyle::ToolFailed;
                                 }
                             }
 
-                            msg.detail_expanded = false;
+                            // Keep edit_file inline diffs expanded on resume (same as live end_tool).
+                            msg.detail_expanded = msg.tool.as_ref().is_some_and(|t| t.has_inline_diff());
                             messages.push(msg);
                         }
                         AssistantContentBlock::Text(t) => {
@@ -556,6 +562,8 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
 struct ToolResultInfo {
     output: String,
     is_error: bool,
+    /// Structured tool details (e.g. edit_file old/new content for DiffView).
+    details: Option<serde_json::Value>,
 }
 
 /// Parse an ISO 8601 / RFC 3339 timestamp string into `DateTime<Utc>`.

@@ -582,21 +582,12 @@ impl TranscriptEventApplier {
         if let Some(index) = self.live_tool_indexes.remove(id)
             && let Some(message) = messages.get_mut(index)
         {
-            if let Some(tool) = message.tool.as_mut()
-                && !output.is_empty()
-            {
-                tool.output = output.to_string();
-                // Extract diff context for edit_file tool
-                if tool.name == "edit_file"
-                    && let (Some(old), Some(new)) = (
-                        details.get("old_content").and_then(|v| v.as_str()),
-                        details.get("new_content").and_then(|v| v.as_str()),
-                    )
-                {
-                    tool.old_text = Some(old.to_string());
-                    tool.new_text = Some(new.to_string());
-                    tool.file_path = details.get("file_path").and_then(|v| v.as_str()).map(|s| s.to_string());
+            if let Some(tool) = message.tool.as_mut() {
+                if !output.is_empty() {
+                    tool.output = output.to_string();
                 }
+                // Install edit_file before/after text for the embedded DiffView (if present).
+                let _ = tool.apply_tool_result_details(details);
             }
             message.style = if is_error {
                 TranscriptStyle::ToolFailed
@@ -606,8 +597,9 @@ impl TranscriptEventApplier {
             if let Some(started) = self.tool_started_at.remove(id) {
                 message.duration_secs = Some(format_elapsed_secs(started));
             }
-            // Collapse args/output so the transcript stays compact after the tool finishes.
-            message.detail_expanded = false;
+            // Collapse finished tools for a compact log — except edit_file with an inline
+            // diff payload, which stays expanded so the change is visible without a click.
+            message.detail_expanded = message.tool.as_ref().is_some_and(|t| t.has_inline_diff());
             return true;
         }
         false
@@ -721,6 +713,67 @@ mod tests {
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolFailed);
         assert_eq!(messages[0].tool.as_ref().unwrap().output, "exit 1");
+    }
+
+    #[test]
+    fn edit_file_tool_end_stores_diff_payload() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "edit1".into(),
+                name: "edit_file".into(),
+                args_summary: r#"{"path":"src/a.rs"}"#.into(),
+            },
+        );
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolEnd {
+                id: "edit1".into(),
+                is_error: false,
+                output: "Edited src/a.rs".into(),
+                details: serde_json::json!({
+                    "old_content": "fn a() {}\n",
+                    "new_content": "fn a() { 1 }\n",
+                    "file_path": "/tmp/src/a.rs",
+                }),
+            },
+        );
+        let tool = messages[0].tool.as_ref().expect("tool");
+        assert_eq!(tool.old_text.as_deref(), Some("fn a() {}\n"));
+        assert_eq!(tool.new_text.as_deref(), Some("fn a() { 1 }\n"));
+        assert_eq!(tool.file_path.as_deref(), Some("/tmp/src/a.rs"));
+        // edit_file with diff stays expanded so the card shows the DiffView immediately.
+        assert!(messages[0].detail_expanded);
+        assert!(tool.has_inline_diff());
+        assert!(messages[0].layout_text().lines().count() > 2);
+        assert!(!messages[0].is_tool_collapsed());
+    }
+
+    #[test]
+    fn read_file_tool_end_stays_collapsed() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "r1".into(),
+                name: "read_file".into(),
+                args_summary: r#"{"path":"a.rs"}"#.into(),
+            },
+        );
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolEnd {
+                id: "r1".into(),
+                is_error: false,
+                output: "fn a() {}".into(),
+                details: serde_json::json!({}),
+            },
+        );
+        assert!(!messages[0].detail_expanded);
+        assert!(messages[0].is_tool_collapsed());
     }
 
     #[test]

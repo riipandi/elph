@@ -76,7 +76,7 @@ fn Demo(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let mut exit = hooks.use_state(|| false);
     let mut mode = hooks.use_state(|| DiffMode::Unified);
     let mut syntax = hooks.use_state(|| true);
-    let mut numbers = hooks.use_state(|| true);
+    let mut line_numbers = hooks.use_state(|| DiffLineNumberStyle::Single);
 
     hooks.use_terminal_events(move |event| {
         let TerminalEvent::Key(KeyEvent { code, kind, .. }) = event else {
@@ -90,7 +90,14 @@ fn Demo(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
             KeyCode::Char('s') => mode.set(DiffMode::SideBySide),
             KeyCode::Char('u') => mode.set(DiffMode::Unified),
             KeyCode::Char('h') => syntax.set(!syntax.get()),
-            KeyCode::Char('n') => numbers.set(!numbers.get()),
+            KeyCode::Char('n') => {
+                // Cycle Single → Dual → None → Single
+                line_numbers.set(match line_numbers.get() {
+                    DiffLineNumberStyle::Single => DiffLineNumberStyle::Dual,
+                    DiffLineNumberStyle::Dual => DiffLineNumberStyle::None,
+                    DiffLineNumberStyle::None => DiffLineNumberStyle::Single,
+                });
+            }
             _ => {}
         }
     });
@@ -99,12 +106,17 @@ fn Demo(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
         system.exit();
     }
 
+    let numbers_label = match line_numbers.get() {
+        DiffLineNumberStyle::Single => "nums:single",
+        DiffLineNumberStyle::Dual => "nums:dual",
+        DiffLineNumberStyle::None => "nums:off",
+    };
     let key_hint = |key: &str, desc: &str| -> String { format!("[{key}] {desc}") };
     let hints = [
         key_hint("u", "unified"),
         key_hint("s", "side-by-side"),
         key_hint("h", if syntax.get() { "plain" } else { "highlight" }),
-        key_hint("n", if numbers.get() { "hide #" } else { "show #" }),
+        key_hint("n", numbers_label),
         key_hint("q", "quit"),
     ];
 
@@ -122,7 +134,7 @@ fn Demo(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 mode: mode.get(),
                 file_path: Some("src/main.rs".to_string()),
                 syntax_highlight: syntax.get(),
-                show_line_numbers: numbers.get(),
+                line_numbers: line_numbers.get(),
                 show_file_header: true,
                 show_hunk_header: true,
                 context_lines: 2usize,

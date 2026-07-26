@@ -7,6 +7,52 @@ use super::highlight::highlight_diff_line;
 use super::types::DiffHunk;
 use crate::components::theme::UiTheme;
 
+// ── Line number gutter style ───────────────────────────────────────────────
+
+/// How line numbers are shown in the unified-diff gutter.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DiffLineNumberStyle {
+    /// No line-number gutter.
+    None,
+    /// One column (default): old # for deletes, new # for inserts/context.
+    #[default]
+    Single,
+    /// Two columns: old and new side-by-side (`   5    6 `).
+    Dual,
+}
+
+impl DiffLineNumberStyle {
+    /// Display width of the gutter including trailing space (0 when [`None`](Self::None)).
+    pub fn gutter_width(self) -> u16 {
+        match self {
+            Self::None => 0,
+            Self::Single => 5, // `1234 `
+            Self::Dual => 10,  // `1234 5678 `
+        }
+    }
+
+    /// Format the gutter text for one hunk line.
+    pub fn format(self, tag: ChangeTag, old_lineno: Option<usize>, new_lineno: Option<usize>) -> String {
+        match self {
+            Self::None => String::new(),
+            Self::Single => {
+                let n = match tag {
+                    ChangeTag::Delete => old_lineno,
+                    ChangeTag::Insert => new_lineno,
+                    ChangeTag::Equal => new_lineno.or(old_lineno),
+                };
+                match n {
+                    Some(n) => format!("{n:>4} "),
+                    None => "     ".to_string(),
+                }
+            }
+            Self::Dual => {
+                format!("{} {} ", lineno_str(old_lineno), lineno_str(new_lineno))
+            }
+        }
+    }
+}
+
 // ── Per-tag styling ────────────────────────────────────────────────────────
 
 /// Color for a single diff line based on its change tag.
@@ -38,26 +84,49 @@ pub fn diff_line_prefix(tag: ChangeTag) -> &'static str {
     }
 }
 
-/// Subtle background tint for changed lines.
+/// Background tint for changed lines (delete = red wash, insert = green wash).
+///
+/// Factor is tuned for dark terminals so status remains readable without washing out text.
 pub fn diff_line_background(theme: UiTheme, tag: ChangeTag) -> Option<Color> {
     match tag {
-        ChangeTag::Delete => Some(dim_color(theme.error, 0.15)),
-        ChangeTag::Insert => Some(dim_color(theme.success, 0.15)),
+        ChangeTag::Delete => Some(dim_color(theme.error, 0.28)),
+        ChangeTag::Insert => Some(dim_color(theme.success, 0.28)),
         ChangeTag::Equal => None,
+    }
+}
+
+/// Gutter (line-number) foreground: status-tinted for changes, muted for context.
+pub fn diff_lineno_color(theme: UiTheme, tag: ChangeTag) -> Color {
+    match tag {
+        ChangeTag::Delete => theme.error,
+        ChangeTag::Insert => theme.success,
+        ChangeTag::Equal => theme.text_hint,
     }
 }
 
 /// Produce a dimmed version of a color by mixing with black (0.0 = full black).
 fn dim_color(color: Color, factor: f64) -> Color {
+    let factor = factor.clamp(0.0, 1.0);
     match color {
         Color::Rgb { r, g, b } => {
-            let mix = |c: u8| (c as f64 * factor) as u8;
+            let mix = |c: u8| ((c as f64) * factor).round() as u8;
             Color::Rgb {
                 r: mix(r),
                 g: mix(g),
                 b: mix(b),
             }
         }
+        // Named ANSI fallbacks so non-RGB themes still get a wash.
+        Color::Red | Color::DarkRed => Color::Rgb {
+            r: (180.0 * factor) as u8,
+            g: (30.0 * factor) as u8,
+            b: (30.0 * factor) as u8,
+        },
+        Color::Green | Color::DarkGreen => Color::Rgb {
+            r: (30.0 * factor) as u8,
+            g: (140.0 * factor) as u8,
+            b: (40.0 * factor) as u8,
+        },
         other => other,
     }
 }
@@ -114,22 +183,52 @@ pub fn format_file_header(side: &str, path: &str) -> String {
 
 // ── Unified hunk rendering ─────────────────────────────────────────────────
 
-/// Render a line number string for display.
+/// Render a line number string for dual-column display (fixed width 4, blank if absent).
 fn lineno_str(lineno: Option<usize>) -> String {
     match lineno {
-        Some(n) => format!("{:>4}", n),
+        Some(n) => format!("{n:>4}"),
         None => "    ".to_string(),
+    }
+}
+
+/// One full-width row so parent flex row (e.g. ScrollView content) cannot
+/// concatenate lines side-by-side into a single unreadable strip.
+fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static>>) -> AnyElement<'static> {
+    let w = width.max(1);
+    if let Some(bg_color) = bg {
+        element! {
+            View(
+                width: w,
+                flex_direction: FlexDirection::Row,
+                flex_shrink: 0f32,
+                background_color: bg_color,
+            ) {
+                #(children)
+            }
+        }
+        .into()
+    } else {
+        element! {
+            View(
+                width: w,
+                flex_direction: FlexDirection::Row,
+                flex_shrink: 0f32,
+            ) {
+                #(children)
+            }
+        }
+        .into()
     }
 }
 
 /// Render one hunk as unified-diff iocraft elements (hunk header, lines).
 ///
-/// Each line is optionally syntax-highlighted and line-numbered.
+/// Each line is a full-width row with optional status background and line numbers.
 pub fn render_unified_hunk(
     hunk: &DiffHunk,
     language: Option<&str>,
     show_hunk_header: bool,
-    show_line_numbers: bool,
+    line_numbers: DiffLineNumberStyle,
     theme: UiTheme,
     width: u16,
 ) -> Vec<AnyElement<'static>> {
@@ -139,29 +238,25 @@ pub fn render_unified_hunk(
     // Hunk header
     if show_hunk_header {
         let header = format_hunk_header(hunk);
-        elements.push(
-            element! {
-                Text(content: header, color: theme.accent, wrap: TextWrap::NoWrap)
-            }
-            .into(),
-        );
+        elements.push(diff_line_row(
+            width,
+            None,
+            vec![
+                element! {
+                    Text(content: header, color: theme.accent, wrap: TextWrap::NoWrap)
+                }
+                .into(),
+            ],
+        ));
     }
 
-    // Line number column width
-    let num_width: u16 = if show_line_numbers { 5 } else { 0 };
-
-    // Content width = total width minus line number gutter
-    let content_width = width.saturating_sub(num_width.saturating_add(1)).max(8) as usize;
+    let num_width = line_numbers.gutter_width();
+    // Content width = total width minus gutter and status prefix.
+    let content_width = width.saturating_sub(num_width.saturating_add(2)).max(8) as usize;
 
     for line in &hunk.lines {
         let tag = line.tag;
-        let num_str = if show_line_numbers {
-            let old = lineno_str(line.old_lineno);
-            let new = lineno_str(line.new_lineno);
-            format!("{old} {new} ")
-        } else {
-            String::new()
-        };
+        let num_str = line_numbers.format(tag, line.old_lineno, line.new_lineno);
 
         // Strip trailing newline for display
         let display_text = line.text.trim_end_matches(['\r', '\n']);
@@ -169,25 +264,29 @@ pub fn render_unified_hunk(
         let prefix = diff_line_prefix(tag);
         let color = diff_line_color(theme, tag);
         let bg = diff_line_background(theme, tag);
+        let lineno_color = diff_lineno_color(theme, tag);
 
         // For syntax-highlighted lines, use MixedText; otherwise plain Text.
         if language.is_some() && !display_text.is_empty() {
             let highlighted = highlight_diff_line(&format!("{prefix}{display_text}"), tag, language, theme);
 
-            let mut row_children: Vec<AnyElement<'static>> =
-                Vec::with_capacity(1 + if show_line_numbers { 1 } else { 0 });
+            let mut row_children: Vec<AnyElement<'static>> = Vec::with_capacity(
+                1 + if line_numbers != DiffLineNumberStyle::None {
+                    1
+                } else {
+                    0
+                },
+            );
 
-            // Line numbers
-            if show_line_numbers {
+            if line_numbers != DiffLineNumberStyle::None {
                 row_children.push(
                     element! {
-                        Text(content: num_str, color: theme.text_hint, wrap: TextWrap::NoWrap)
+                        Text(content: num_str, color: lineno_color, wrap: TextWrap::NoWrap)
                     }
                     .into(),
                 );
             }
 
-            // Highlighted content
             row_children.push(
                 element! {
                     MixedText(contents: highlighted, wrap: TextWrap::NoWrap)
@@ -195,65 +294,37 @@ pub fn render_unified_hunk(
                 .into(),
             );
 
-            if let Some(bg_color) = bg {
-                elements.push(
-                    element! {
-                        View(width: width, background_color: bg_color, flex_direction: FlexDirection::Row) {
-                            #(row_children)
-                        }
-                    }
-                    .into(),
-                );
-            } else {
-                elements.push(
-                    element! {
-                        View(width: width, flex_direction: FlexDirection::Row) {
-                            #(row_children)
-                        }
-                    }
-                    .into(),
-                );
-            }
+            elements.push(diff_line_row(width, bg, row_children));
         } else {
-            // Plain text (no syntax highlighting)
-            let full_line = if show_line_numbers {
-                format!("{num_str}{prefix}{display_text}")
+            // Plain text (no syntax highlighting): gutter + status-colored body.
+            let body = if display_text.is_empty() {
+                format!("{prefix} ")
             } else {
-                format!("{prefix}{display_text}")
+                format!("{prefix}{}", truncate_to_width(display_text, content_width))
             };
 
-            if display_text.is_empty() {
-                elements.push(
+            let mut row_children: Vec<AnyElement<'static>> = Vec::with_capacity(
+                1 + if line_numbers != DiffLineNumberStyle::None {
+                    1
+                } else {
+                    0
+                },
+            );
+            if line_numbers != DiffLineNumberStyle::None {
+                row_children.push(
                     element! {
-                        Text(content: " ", color, wrap: TextWrap::NoWrap)
-                    }
-                    .into(),
-                );
-            } else if let Some(bg_color) = bg {
-                elements.push(
-                    element! {
-                        View(width: width, background_color: bg_color) {
-                            Text(
-                                content: truncate_to_width(&full_line, content_width + num_width as usize + 2),
-                                color,
-                                wrap: TextWrap::NoWrap,
-                            )
-                        }
-                    }
-                    .into(),
-                );
-            } else {
-                elements.push(
-                    element! {
-                        Text(
-                            content: truncate_to_width(&full_line, content_width + num_width as usize + 2),
-                            color,
-                            wrap: TextWrap::NoWrap,
-                        )
+                        Text(content: num_str, color: lineno_color, wrap: TextWrap::NoWrap)
                     }
                     .into(),
                 );
             }
+            row_children.push(
+                element! {
+                    Text(content: body, color, wrap: TextWrap::NoWrap)
+                }
+                .into(),
+            );
+            elements.push(diff_line_row(width, bg, row_children));
         }
     }
 
@@ -329,8 +400,31 @@ mod tests {
     fn unified_diff_non_empty() {
         let result = compute_diff("a\n", "b\n", 3);
         let theme = UiTheme::default();
-        let elements = render_unified_hunk(&result.hunks[0], None, false, false, theme, 40);
+        let elements = render_unified_hunk(&result.hunks[0], None, false, DiffLineNumberStyle::None, theme, 40);
         assert!(!elements.is_empty());
+    }
+
+    #[test]
+    fn single_column_line_numbers_pick_side_by_tag() {
+        assert_eq!(DiffLineNumberStyle::Single.format(ChangeTag::Delete, Some(12), None), "  12 ");
+        assert_eq!(DiffLineNumberStyle::Single.format(ChangeTag::Insert, None, Some(13)), "  13 ");
+        assert_eq!(DiffLineNumberStyle::Single.format(ChangeTag::Equal, Some(1), Some(1)), "   1 ");
+        assert_eq!(DiffLineNumberStyle::Single.gutter_width(), 5);
+        assert_eq!(DiffLineNumberStyle::Dual.gutter_width(), 10);
+        assert_eq!(
+            DiffLineNumberStyle::Dual.format(ChangeTag::Equal, Some(3), Some(4)),
+            "   3    4 "
+        );
+    }
+
+    #[test]
+    fn diff_line_background_tints_changes() {
+        let theme = UiTheme::dark();
+        assert!(diff_line_background(theme, ChangeTag::Delete).is_some());
+        assert!(diff_line_background(theme, ChangeTag::Insert).is_some());
+        assert!(diff_line_background(theme, ChangeTag::Equal).is_none());
+        assert_eq!(diff_lineno_color(theme, ChangeTag::Delete), theme.error);
+        assert_eq!(diff_lineno_color(theme, ChangeTag::Insert), theme.success);
     }
 
     #[test]
@@ -357,7 +451,7 @@ mod tests {
     fn render_unified_hunk_without_highlight_produces_elements() {
         let result = compute_diff("a\nb\nc\n", "a\nx\nc\n", 1);
         let theme = UiTheme::default();
-        let elements = render_unified_hunk(&result.hunks[0], None, true, true, theme, 40);
+        let elements = render_unified_hunk(&result.hunks[0], None, true, DiffLineNumberStyle::Single, theme, 40);
         assert!(!elements.is_empty());
     }
 

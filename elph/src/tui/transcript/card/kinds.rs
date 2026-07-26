@@ -7,8 +7,7 @@
 //! Finished headers are iocraft [`Button`]s — click toggles that block; Ctrl+O toggles the latest.
 //! Collapsed tools use human verbs + compact targets (`Edit /U/a/…/file.rs`).
 
-use elph_tui::components::diff::compute::compute_diff;
-use elph_tui::components::{DiffMode, DiffView};
+use elph_tui::components::{DiffLineNumberStyle, DiffMode, DiffView, EMBEDDED_DIFF_MAX_LINES};
 use elph_tui::components::{
     ProcessStatus, ProcessStatusIndicator, ProcessStatusRow, process_status_glyph, process_status_word,
 };
@@ -24,7 +23,9 @@ use crate::tui::tool_params::{
     ToolParamsView, format_collapsed_tool_parts_linked, parse_tool_params, tool_display_verb,
 };
 
-use super::super::types::{TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at};
+use super::super::types::{
+    TOOL_CARD_DIFF_CONTEXT_LINES, TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at,
+};
 use super::chrome::{
     ASK_USER_ANSWER_SECTION_GAP, COLORED_CARD_PAD, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP,
     TOOL_OUTPUT_SECTION_GAP, TranscriptCardChrome,
@@ -535,8 +536,8 @@ pub fn tool_call_card(
                     .flatten()
             })
             .flatten();
-        // edit_file with diff data: skip generic args, render diff view instead.
-        let has_diff = tool.name == "edit_file" && tool.old_text.is_some() && tool.new_text.is_some() && show_detail;
+        // edit_file with before/after text: skip generic args/output, render embedded DiffView.
+        let has_diff = show_detail && tool.has_inline_diff();
         // Wait Agent: agent id lives in the header detail (a11y) — no args dump.
         let has_generic_args = show_detail
             && !wait_agent
@@ -545,7 +546,11 @@ pub fn tool_call_card(
             && !parse_tool_params(&tool.args_summary).is_empty();
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
+        // Expanded edit_file with diff: verb + short path so the header still identifies the file.
         let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed {
+            let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
+            (parts.verb, parts.detail, parts.detail_href)
+        } else if has_diff {
             let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
             (parts.verb, parts.detail, parts.detail_href)
         } else {
@@ -599,10 +604,10 @@ pub fn tool_call_card(
                     None
                 })
                 #(if has_diff {
-                    // Render inline diff for edit_file — seamless within the tool card.
-                    // Compute actual hunk output rows instead of total old/new lines so the
-                    // viewport matches content (no empty space). Cap at 20 for transcript budget.
-                    let diff_width = inner_width.saturating_sub(1);
+                    // Embedded unified DiffView — props must stay aligned with
+                    // ToolCardDetail::inline_diff_body_rows / layout_text budgets.
+                    // no_border + max_lines: content-sized column (no nested ScrollBox).
+                    let diff_width = inner_width.max(8);
                     let old_text = tool.old_text.clone().unwrap_or_default();
                     let new_text = tool.new_text.clone().unwrap_or_default();
                     let diff_file_path = tool.file_path.clone().or_else(|| {
@@ -611,25 +616,16 @@ pub fn tool_call_card(
                             .find(|p| p.key.as_deref() == Some("path"))
                             .map(|p| p.value.clone())
                     });
-                    let context_lines: usize = 3;
-                    let diff_result = compute_diff(&old_text, &new_text, context_lines);
-                    let diff_rows: u16 = if diff_result.hunks.is_empty() {
-                        1
-                    } else {
-                        // hunk header (1) + lines per hunk, plus gap between hunks
-                        let total: u16 = diff_result.hunks.iter().map(|h| {
-                            1u16 + h.lines.len() as u16
-                        }).sum::<u16>();
-                        total.saturating_add(
-                            diff_result.hunks.len().saturating_sub(1) as u16
-                        )
-                        .clamp(4, 20)
-                    };
                     Some(element! {
-                        View(width: 100pct, padding_top: 1, flex_shrink: 0f32) {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            flex_direction: FlexDirection::Column,
+                            flex_shrink: 0f32,
+                        ) {
                             DiffView(
                                 width: diff_width,
-                                height: diff_rows,
+                                height: 0u16,
                                 old_text: old_text,
                                 new_text: new_text,
                                 mode: DiffMode::Unified,
@@ -637,9 +633,10 @@ pub fn tool_call_card(
                                 syntax_highlight: true,
                                 show_file_header: false,
                                 show_hunk_header: true,
-                                show_line_numbers: true,
-                                context_lines: context_lines,
+                                line_numbers: DiffLineNumberStyle::Single,
+                                context_lines: TOOL_CARD_DIFF_CONTEXT_LINES,
                                 no_border: true,
+                                max_lines: Some(EMBEDDED_DIFF_MAX_LINES),
                             )
                         }
                     })
