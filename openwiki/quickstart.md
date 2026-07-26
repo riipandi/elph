@@ -17,7 +17,7 @@ resource: /
 | Binary CLI + TUI   | `/elph/`              | The `elph` application — interactive TUI, non-interactive `run`, admin subcommands               |
 | Agent runtime      | `/crates/elph-agent/` | App-agnostic agent harness: turn loop, tool execution, MCP, sessions, subagents, compaction      |
 | LLM provider layer | `/crates/elph-ai/`    | Provider-agnostic LLM API: OpenAI-compatible, Anthropic, Bedrock, Gemini, Copilot, Mistral, etc. |
-| Core primitives    | `/crates/elph-core/`  | Shared utilities: `floppy` vector memory, logger, scaffold, git, path resolution, tracing        |
+| Core primitives    | `/crates/floppy/`     | Standalone AI memory crate: vector memory, Turso + ONNX embeddings, query engine                 |
 | TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, diff viewer, themes, transcript layout       |
 | Shell execution    | `/crates/elph-exec/`  | Configurable local shell and PTY execution                                                       |
 
@@ -26,7 +26,6 @@ resource: /
 - `elph-cron` — cron-based scheduled tasks (empty)
 - `elph-sandbox` — sandbox execution (empty)
 - `elph-swarm` — multi-agent swarm orchestration (empty)
-- `floppy` — standalone AI memory crate (empty; implementation lives in `elph-core/src/floppy/`)
 
 ## Installation
 

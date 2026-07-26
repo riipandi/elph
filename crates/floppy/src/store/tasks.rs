@@ -5,9 +5,7 @@ use turso::params;
 use super::{MemoryStore, SelfReportRow, WeightUpdate};
 use super::{batch_set_weights, fetch_weights, new_id, now_secs, touch_retrieved_memories};
 use crate::scoring::{compute_credit, compute_task_score, initial_weight, update_baseline, update_weight};
-use crate::types::{
-    Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput,
-};
+use crate::types::{Memory, MemoryCategory, ReportCorrectionInput, ReportUserInput, StartTaskResult, TaskEndInput};
 use crate::util::{category_from_str, drain_rows, vec_buf};
 
 impl MemoryStore {

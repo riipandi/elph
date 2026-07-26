@@ -11,10 +11,10 @@ pub fn with_trace_headers(request: RequestBuilder) -> RequestBuilder {
 
 // model_stream_span / spawn_stream are AI-side; agent only needs headers.
 // Keep stubs for API stability if referenced.
-use std::future::Future;
 use fastrace::collector::SpanContext;
 use fastrace::future::FutureExt;
 use fastrace::prelude::Span;
+use std::future::Future;
 
 pub fn model_stream_span(name: &'static str) -> Span {
     Span::root(name, SpanContext::random())

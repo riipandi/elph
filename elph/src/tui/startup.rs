@@ -879,8 +879,7 @@ mod tests {
 
     #[test]
     fn prompt_card_from_session_meta_skill_and_template() {
-        let skill =
-            prompt_card_from_session_meta("/skill:tui-design layout", "skill", None).expect("skill");
+        let skill = prompt_card_from_session_meta("/skill:tui-design layout", "skill", None).expect("skill");
         assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
         assert_eq!(skill.content, "/skill:tui-design layout");
         assert!(skill.style.is_user_input_card());

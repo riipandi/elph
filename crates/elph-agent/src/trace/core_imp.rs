@@ -1,12 +1,11 @@
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+pub use super::reporter::JsonlReporter;
 pub use fastrace::collector::SpanContext;
 pub use fastrace::prelude::{LocalSpan, Span};
 pub use fastrace::{flush as fastrace_flush, set_reporter as fastrace_set_reporter};
 pub use fastrace_reqwest::traceparent_headers;
-pub use super::reporter::JsonlReporter;
 
 use crate::logger::LoggingOptions;
 

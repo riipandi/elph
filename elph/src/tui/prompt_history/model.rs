@@ -56,7 +56,12 @@ pub fn history_title(total_count: usize) -> String {
 
 /// Single-line preview for a history row (truncate long pastes).
 pub fn entry_preview(text: &str, max_cols: usize) -> String {
-    let flat: String = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect::<Vec<_>>().join(" ↵ ");
+    let flat: String = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ↵ ");
     let flat = if flat.is_empty() {
         text.replace('\n', " ↵ ").trim().to_string()
     } else {
@@ -68,11 +73,7 @@ pub fn entry_preview(text: &str, max_cols: usize) -> String {
     // Approximate display width by Unicode scalar count (history previews are mostly ASCII).
     let chars: Vec<char> = flat.chars().collect();
     if chars.len() <= max_cols {
-        return if flat.is_empty() {
-            " ".to_string()
-        } else {
-            flat
-        };
+        return if flat.is_empty() { " ".to_string() } else { flat };
     }
     let take = max_cols.saturating_sub(1);
     let mut out: String = chars.into_iter().take(take).collect();
@@ -157,10 +158,7 @@ pub fn push_history_entry_styled(history: &mut Vec<String>, text: &str, style: T
 /// store ends newest-first.
 pub fn seed_history_from_transcript(history: &mut Vec<String>, messages: &[TranscriptMessage]) {
     for message in messages {
-        if !matches!(
-            message.style,
-            TranscriptStyle::User | TranscriptStyle::SkillPrompt
-        ) {
+        if !matches!(message.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
             continue;
         }
         push_history_entry_styled(history, &message.content, message.style);
@@ -181,10 +179,7 @@ pub fn build_snapshot(open: bool, history: &[String], screen_height: u16) -> Pro
         .iter()
         .map(|text| PromptHistoryEntry { text: text.clone() })
         .collect();
-    let list_height = entries
-        .len()
-        .min(list_viewport_cap(screen_height))
-        .max(1) as u16;
+    let list_height = entries.len().min(list_viewport_cap(screen_height)).max(1) as u16;
     PromptHistorySnapshot {
         visible: true,
         total_count: entries.len(),
@@ -201,11 +196,7 @@ pub fn can_open_history(
     file_picker_open: bool,
     history_len: usize,
 ) -> bool {
-    prompt_focused
-        && history_len > 0
-        && !slash_open
-        && !file_picker_open
-        && draft.trim().is_empty()
+    prompt_focused && history_len > 0 && !slash_open && !file_picker_open && draft.trim().is_empty()
 }
 
 #[cfg(test)]
@@ -232,14 +223,7 @@ mod tests {
         ];
         let mut h = Vec::new();
         seed_history_from_transcript(&mut h, &messages);
-        assert_eq!(
-            h,
-            vec![
-                "/skill:x".to_string(),
-                "second".to_string(),
-                "first".to_string(),
-            ]
-        );
+        assert_eq!(h, vec!["/skill:x".to_string(), "second".to_string(), "first".to_string(),]);
     }
 
     #[test]
@@ -252,18 +236,12 @@ mod tests {
             normalize_prompt_history_entry("/skill:tui-design", TranscriptStyle::SkillPrompt),
             "/skill:tui-design"
         );
-        assert_eq!(
-            normalize_prompt_history_entry("skill:foo", TranscriptStyle::User),
-            "/skill:foo"
-        );
+        assert_eq!(normalize_prompt_history_entry("skill:foo", TranscriptStyle::User), "/skill:foo");
     }
 
     #[test]
     fn normalize_slash_command_and_freeform() {
-        assert_eq!(
-            normalize_prompt_history_entry("/compact", TranscriptStyle::User),
-            "/compact"
-        );
+        assert_eq!(normalize_prompt_history_entry("/compact", TranscriptStyle::User), "/compact");
         assert_eq!(
             normalize_prompt_history_entry("/review-pr 42", TranscriptStyle::User),
             "/review-pr 42"
@@ -273,10 +251,7 @@ mod tests {
             normalize_prompt_history_entry("fix this bug please", TranscriptStyle::User),
             "fix this bug please"
         );
-        assert_eq!(
-            normalize_prompt_history_entry("one", TranscriptStyle::User),
-            "one"
-        );
+        assert_eq!(normalize_prompt_history_entry("one", TranscriptStyle::User), "one");
     }
 
     #[test]

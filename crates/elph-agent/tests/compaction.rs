@@ -644,7 +644,11 @@ fn prepare_compaction_uses_previous_summary() {
             ),
         ),
     ];
-    let preparation = prepare_compaction(&entries, DEFAULT_COMPACTION_SETTINGS)
+    let compact_settings = CompactionSettings {
+        keep_recent_tokens: 1,
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    let preparation = prepare_compaction(&entries, compact_settings)
         .unwrap()
         .expect("preparation");
     assert_eq!(preparation.previous_summary.as_deref(), Some("First summary"));
@@ -1126,7 +1130,11 @@ async fn compact_returns_result_with_file_details() {
             ),
         ),
     ];
-    let preparation = prepare_compaction(&entries, DEFAULT_COMPACTION_SETTINGS)
+    let compact_settings = CompactionSettings {
+        keep_recent_tokens: 2,
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    let preparation = prepare_compaction(&entries, compact_settings)
         .unwrap()
         .expect("preparation");
 

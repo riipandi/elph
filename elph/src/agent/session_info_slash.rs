@@ -45,8 +45,6 @@ pub fn format_session_timestamp(raw: &str) -> String {
     let local = utc.with_timezone(&Local);
     if local.timestamp_subsec_millis() == 0 && local.second() == 0 {
         local.format("%Y-%m-%d %H:%M").to_string()
-    } else if local.timestamp_subsec_millis() == 0 {
-        local.format("%Y-%m-%d %H:%M:%S").to_string()
     } else {
         local.format("%Y-%m-%d %H:%M:%S").to_string()
     }
@@ -135,8 +133,7 @@ pub fn session_info_slash_message(session: Option<&Arc<CodingAgentSession>>) -> 
         return Err("Agent session required for this command.".into());
     };
     let session = Arc::clone(session);
-    match elph_agent::try_block_on_detached(async move { format_session_info(&session).await }, SESSION_INFO_TIMEOUT)
-    {
+    match elph_agent::try_block_on_detached(async move { format_session_info(&session).await }, SESSION_INFO_TIMEOUT) {
         Ok(text) => Ok(text),
         Err(err) if err.to_string().contains("timed out") => {
             Err("Agent is busy. Wait for the current stream to finish, then run /session again.".into())
@@ -152,13 +149,7 @@ pub fn session_title_for_rename(session: Option<&Arc<CodingAgentSession>>) -> Re
     };
     let session = Arc::clone(session);
     match elph_agent::try_block_on_detached(
-        async move {
-            session
-                .harness()
-                .session_name()
-                .await
-                .unwrap_or_default()
-        },
+        async move { session.harness().session_name().await.unwrap_or_default() },
         Duration::from_millis(400),
     ) {
         Ok(name) => Ok(name),
@@ -233,14 +224,8 @@ Turn: 15";
 
     #[test]
     fn context_usage_uses_compact_counts() {
-        assert_eq!(
-            format_context_usage_line(75_377, 500_000, 15),
-            "75K / 500K tokens (15%)"
-        );
-        assert_eq!(
-            format_context_usage_line(1_500_000, 2_000_000, 75),
-            "1.5M / 2M tokens (75%)"
-        );
+        assert_eq!(format_context_usage_line(75_377, 500_000, 15), "75K / 500K tokens (15%)");
+        assert_eq!(format_context_usage_line(1_500_000, 2_000_000, 75), "1.5M / 2M tokens (75%)");
         assert_eq!(format_context_usage_line(42, 999, 4), "42 / 999 tokens (4%)");
     }
 

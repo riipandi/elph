@@ -10,10 +10,11 @@ pub mod mcp;
 mod migrations;
 pub mod paths;
 mod project;
-mod session;
 pub mod scaffold;
+mod session;
 mod settings;
 
+pub use crate::utils::path::AppPaths;
 #[cfg(unix)]
 pub use app::SHOULD_KILL_PARENT;
 pub use app::kill_parent;
@@ -21,7 +22,6 @@ pub use app::run;
 pub use app::{EXIT_ERROR, EXIT_INTERRUPTED, EXIT_SUCCESS, ExitCode, WAS_INTERRUPTED};
 pub use bootstrap::ensure_home_blocking;
 pub use datastore::{ensure as ensure_datastore, ensure_blocking as ensure_datastore_blocking};
-pub use crate::utils::path::AppPaths;
 pub use interrupt::PromptInterrupt;
 pub use interrupt::{handle_prompt_interrupt, handle_prompt_interrupt_text};
 pub use paths::Paths;

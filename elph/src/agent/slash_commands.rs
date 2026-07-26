@@ -138,19 +138,36 @@ pub enum SlashDispatch {
     Quit,
     NewSession,
     Compact,
-    Goal { args: String },
+    Goal {
+        args: String,
+    },
     Help,
-    Tools { args: String },
+    Tools {
+        args: String,
+    },
     SystemPrompt,
     /// Show current session metadata (title, id, model, context, …).
     SessionInfo,
     /// Open rename dialog; `args` is optional prefill when non-empty.
-    Rename { args: String },
-    Confetti { args: String },
+    Rename {
+        args: String,
+    },
+    Confetti {
+        args: String,
+    },
     Reload,
-    Extension { name: String, args: String },
-    PromptTemplate { name: String, args: String },
-    Skill { name: String, args: String },
+    Extension {
+        name: String,
+        args: String,
+    },
+    PromptTemplate {
+        name: String,
+        args: String,
+    },
+    Skill {
+        name: String,
+        args: String,
+    },
     OverlayNeeded(OverlayCommand),
     Unimplemented(String),
 }

@@ -383,10 +383,7 @@ mod tests {
         let session = "Title: Fix login\nSession ID: abc\nModel: openai/gpt-4o\nContext: 75K / 500K tokens (15%)";
         assert!(text_looks_like_key_value_lines(session));
         assert!(!text_looks_like_key_value_lines("plain paragraph\nwithout labels"));
-        assert_eq!(
-            split_key_value_line("Title: Fix login"),
-            Some(("Title", "Fix login"))
-        );
+        assert_eq!(split_key_value_line("Title: Fix login"), Some(("Title", "Fix login")));
         assert!(split_key_value_line("http://example.com").is_none());
     }
 

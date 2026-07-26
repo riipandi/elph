@@ -22,14 +22,7 @@ pub async fn generate_session_name(
         return None;
     }
     let user_prompt = build_session_name_prompt(&conversation);
-    generate_session_name_with_prompts(
-        messages,
-        models,
-        model,
-        SESSION_NAME_SYSTEM_PROMPT,
-        &user_prompt,
-    )
-    .await
+    generate_session_name_with_prompts(messages, models, model, SESSION_NAME_SYSTEM_PROMPT, &user_prompt).await
 }
 
 /// Generate a session title using host-supplied system and user prompts.

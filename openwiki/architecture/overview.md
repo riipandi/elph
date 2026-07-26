@@ -23,11 +23,10 @@ tags: [architecture, design, rust, workspace]
         └──────────┘ └───┬───┘ └─┬─────┘ │ └────────────┘
                          │       │       │
                    ┌─────▼───────▼───────▼─┐
-                   │     elph-core         │
-                   │ (fs, logger, utils,   │
-                   │  trace, scaffold,     │
-                   │  floppy memory)       │
-                   └───────────────────────┘
+                   │     floppy              │
+                   │ (vector memory, Turso +  │
+                   │  ONNX embeddings, query) │
+                   └─────────────────────────┘
 ```
 
 **Source:** `/Cargo.toml` workspace members, each crate's `Cargo.toml` dependency declarations.
@@ -74,19 +73,22 @@ Provider-agnostic LLM API (`/crates/elph-ai/`). Supports 30+ providers.
 | `models/`    | Model catalog with capabilities metadata                |
 | `providers/` | Provider definitions + `faux` mock provider for testing |
 
-### Core primitives: `elph-core`
+### Core primitives: `floppy`
 
-Shared foundational utilities (`/crates/elph-core/`).
+Standalone AI memory crate (`/crates/floppy/`). Provides vector memory with Turso + ONNX embeddings, query engine, scoring, and report generation.
 
-| Module        | Responsibility                                      |
-| ------------- | --------------------------------------------------- |
-| `fs/`         | File helpers: ensure_dirs, write_json/private files |
-| `logger/`     | Logging config (logforth + fastrace integration)    |
-| `trace/`      | Distributed tracing spans (fastrace)                |
-| `scaffold/`   | Project initialization, trust store, version file   |
-| `utils/git/`  | Git integration (git2)                              |
-| `utils/path/` | XDG path resolution, AppPaths, PathResolver         |
-| `floppy/`     | Vector memory with Turso + ONNX embeddings          |
+| Module          | Responsibility                                           |
+| --------------- | -------------------------------------------------------- |
+| `store/`        | Storage layer (read/write, embed, tasks)                 |
+| `query/`        | Query engine (memories, search, status, tasks, timeline) |
+| `types/`        | Config, memory, report, task types                       |
+| `embed.rs`      | ONNX embedding integration                               |
+| `scoring.rs`    | Relevance scoring and ranking                            |
+| `report.rs`     | Report generation                                        |
+| `util.rs`       | Utility functions                                        |
+| `builder.rs`    | Floppy builder for initialization                        |
+| `migrations.rs` | Database migration management                            |
+| `paths.rs`      | Path resolution for floppy data files                    |
 
 ### TUI: `elph-tui`
 

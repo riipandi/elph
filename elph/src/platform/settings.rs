@@ -36,9 +36,9 @@
 
 use std::path::{Path, PathBuf};
 
+use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::write_json_file;
-use crate::utils::path::AppPaths;
 use elph_tui::{ThemeConfig, ThemeMode, ThemePalettes};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Map, Value};

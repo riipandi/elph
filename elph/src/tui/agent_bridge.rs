@@ -264,7 +264,8 @@ impl PromptQueueView {
         if !self.suppressed_sent.iter().any(|t| t == &text) {
             self.suppressed_sent.push(text);
         }
-        self.items.retain(|item| !self.suppressed_sent.iter().any(|t| t == &item.text));
+        self.items
+            .retain(|item| !self.suppressed_sent.iter().any(|t| t == &item.text));
         self.renumber_seq();
     }
 

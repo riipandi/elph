@@ -8,8 +8,8 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
     confetti_mode_from_args, dispatch_slash_command, format_help_message, rename_session_title,
-    session_info_slash_message, session_title_for_rename, slash_unimplemented_message,
-    system_prompt_slash_message, tools_slash_message,
+    session_info_slash_message, session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message,
+    tools_slash_message,
 };
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
@@ -26,14 +26,24 @@ pub enum SlashOutcome {
     Unimplemented(String),
     SpawnAgentTurn,
     OverlayDeferred(OverlayCommand),
-    OpenModelSelector { filter: String },
+    OpenModelSelector {
+        filter: String,
+    },
     OpenScopedModels,
-    OpenSystemPromptDialog { text: String },
+    OpenSystemPromptDialog {
+        text: String,
+    },
     /// Session metadata viewer (ScrollTextDialog).
-    OpenSessionInfoDialog { text: String },
+    OpenSessionInfoDialog {
+        text: String,
+    },
     /// Rename session inline text dialog (prefilled title).
-    OpenRenameDialog { initial: String },
-    PlayConfetti { mode: crate::tui::confetti::ConfettiMode },
+    OpenRenameDialog {
+        initial: String,
+    },
+    PlayConfetti {
+        mode: crate::tui::confetti::ConfettiMode,
+    },
 }
 
 pub struct SlashContext<'a> {

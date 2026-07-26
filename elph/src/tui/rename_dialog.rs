@@ -28,11 +28,7 @@ pub struct OpenRenameDialogArgs<'a> {
 pub fn open_rename_dialog(args: OpenRenameDialogArgs<'_>) {
     let stashed = {
         let current = args.live_draft.read().clone();
-        if current.trim().is_empty() {
-            None
-        } else {
-            Some(current)
-        }
+        if current.trim().is_empty() { None } else { Some(current) }
     };
     if stashed.is_some() {
         args.draft.set(String::new());

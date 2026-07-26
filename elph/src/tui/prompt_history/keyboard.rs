@@ -9,7 +9,9 @@ use super::model::PromptHistorySnapshot;
 pub enum PromptHistoryKeyAction {
     MoveSelection(usize),
     /// Insert the selected history text into the prompt (Tab / Enter).
-    ApplyToPrompt { text: String },
+    ApplyToPrompt {
+        text: String,
+    },
     Dismiss,
 }
 
@@ -76,9 +78,7 @@ mod tests {
             list_height: entries.len().max(1) as u16,
             entries: entries
                 .iter()
-                .map(|t| PromptHistoryEntry {
-                    text: (*t).to_string(),
-                })
+                .map(|t| PromptHistoryEntry { text: (*t).to_string() })
                 .collect(),
         }
     }
@@ -88,15 +88,11 @@ mod tests {
         let s = snap(&["newer", "older"]);
         assert_eq!(
             resolve_key_action(&s, 0, KeyCode::Tab, KeyModifiers::NONE),
-            Some(PromptHistoryKeyAction::ApplyToPrompt {
-                text: "newer".into()
-            })
+            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "newer".into() })
         );
         assert_eq!(
             resolve_key_action(&s, 1, KeyCode::Enter, KeyModifiers::NONE),
-            Some(PromptHistoryKeyAction::ApplyToPrompt {
-                text: "older".into()
-            })
+            Some(PromptHistoryKeyAction::ApplyToPrompt { text: "older".into() })
         );
     }
 

@@ -20,9 +20,9 @@ mod update;
 pub mod version;
 mod worktree;
 
+use crate::utils::path::AppPaths;
 use clap::{Parser, Subcommand};
 use elph_agent::AgentBuilder;
-use crate::utils::path::AppPaths;
 
 use crate::platform::ExitCode;
 

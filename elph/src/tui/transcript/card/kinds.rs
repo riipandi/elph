@@ -547,10 +547,7 @@ pub fn tool_call_card(
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
         // Expanded edit_file with diff: verb + short path so the header still identifies the file.
-        let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed {
-            let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
-            (parts.verb, parts.detail, parts.detail_href)
-        } else if has_diff {
+        let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed || has_diff {
             let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
             (parts.verb, parts.detail, parts.detail_href)
         } else {

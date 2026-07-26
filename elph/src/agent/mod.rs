@@ -36,6 +36,7 @@ pub use run_mode::run_non_interactive;
 pub use runtime::CreateSessionOptions;
 pub use runtime::create_coding_session_with_events;
 pub use session::CodingAgentSession;
+pub use session_info_slash::{rename_session_title, session_info_slash_message, session_title_for_rename};
 pub use session_manager::SessionManager;
 pub use skills_load::SkillConflict;
 pub use skills_load::{format_skill_conflict_notice, truncate_palette_description};
@@ -44,9 +45,6 @@ pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
     slash_unimplemented_message,
-};
-pub use session_info_slash::{
-    rename_session_title, session_info_slash_message, session_title_for_rename,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use system_prompt_slash::system_prompt_slash_message;

@@ -296,3 +296,8 @@ linker_messages = "allow"
 name = "tracing_integration"
 path = "tests/tracing_integration.rs"
 required-features = ["tracing"]
+
+[[test]]
+name = "plugins"
+path = "tests/plugins.rs"
+required-features = ["extensions"]

@@ -426,7 +426,12 @@ async fn harness_tool_result_hook_patches_output() {
         .collect::<Vec<_>>()
         .join("\n");
     assert_eq!(text, "patched result");
-    assert_eq!(details, Some(json!({ "patched": true })));
+    let details = details.expect("expected details");
+    assert_eq!(details["patched"], true);
+    assert!(
+        details["_elph_ui"]["duration_secs"].as_f64().is_some_and(|v| v >= 0.0),
+        "expected _elph_ui.duration_secs >= 0, got: {details}",
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1296,7 +1301,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
 
     let mut session = Session::new(InMemorySessionStorage::new(None).expect("session"));
     session
-        .append_message(user_agent_message(&"old ".repeat(200)))
+        .append_message(user_agent_message(&"old ".repeat(10)))
         .await
         .expect("append old user");
     session
@@ -1304,7 +1309,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         .await
         .expect("append old assistant");
     session
-        .append_message(user_agent_message(&"recent ".repeat(200)))
+        .append_message(user_agent_message(&"recent ".repeat(20000)))
         .await
         .expect("append recent user");
     session

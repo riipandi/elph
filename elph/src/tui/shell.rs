@@ -38,6 +38,7 @@ use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
 
+use crate::agent::rename_session_title;
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
 use crate::tui::file_picker::FilePickerKeyAction;
 use crate::tui::file_picker::{
@@ -45,11 +46,6 @@ use crate::tui::file_picker::{
     build_snapshot as build_file_picker_snapshot, file_picker_open, mention_highlight_ansi, mention_picker_visible,
     resolve_key_action as resolve_file_picker_key_action, sync_selection as sync_file_picker_selection,
 };
-use crate::tui::prompt_history::{
-    PromptHistoryKeyAction, build_snapshot as build_prompt_history_snapshot, can_open_history,
-    resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
-};
-use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
 use crate::tui::model_selector::ModelSelectorFocus;
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
 use crate::tui::model_selector_shell::{
@@ -60,18 +56,20 @@ use crate::tui::model_selector_shell::{
     sync_pending_filter,
 };
 use crate::tui::prompt::PromptChrome;
+use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
+use crate::tui::prompt_history::{
+    PromptHistoryKeyAction, build_snapshot as build_prompt_history_snapshot, can_open_history,
+    resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
+};
+use crate::tui::rename_dialog::{OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog};
 use crate::tui::scoped_models::PendingScopedModels;
 use crate::tui::scoped_models_bar::{ScopedModelsBar, ScopedModelsView};
 use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
-use crate::tui::rename_dialog::{
-    OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog,
-};
 use crate::tui::scroll_text_dialog::{OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog};
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
-use crate::agent::rename_session_title;
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
 };
@@ -359,12 +357,7 @@ fn apply_prompt_queue_action(
             ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
-            push_transcript_message(
-                ctx.messages,
-                ctx.messages_revision,
-                ctx.prompt_history,
-                submitted,
-            );
+            push_transcript_message(ctx.messages, ctx.messages_revision, ctx.prompt_history, submitted);
             ctx.pre_echoed_user_prompts
                 .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
             let need_busy = !ctx.agent_turn_active;
@@ -569,10 +562,7 @@ fn push_transcript_message(
 ) {
     // Keep Arrow Up history in sync with user / skill prompt cards.
     // Skills → `/skill:…`; other slash commands keep a leading `/`.
-    if matches!(
-        message.style,
-        TranscriptStyle::User | TranscriptStyle::SkillPrompt
-    ) {
+    if matches!(message.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
         crate::tui::prompt_history::push_history_entry_styled(
             &mut prompt_history.write(),
             &message.content,
@@ -1355,7 +1345,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             push_transcript_message(
                                 &mut messages,
                                 &mut messages_revision,
-                                &mut prompt_history, submitted);
+                                &mut prompt_history,
+                                submitted,
+                            );
                             transcript_changed = true;
                         }
                         continue;
@@ -1541,12 +1533,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     48, // height only affects viewport cap; real height applied at render
                 );
                 if history_open {
-                    if let Some(action) = resolve_prompt_history_key_action(
-                        &history_snap,
-                        prompt_history_index.get(),
-                        code,
-                        modifiers,
-                    ) {
+                    if let Some(action) =
+                        resolve_prompt_history_key_action(&history_snap, prompt_history_index.get(), code, modifiers)
+                    {
                         match action {
                             PromptHistoryKeyAction::MoveSelection(index) => {
                                 prompt_history_index.set(index);
@@ -1573,38 +1562,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         prompt_history_index.set(0);
                         // Fall through so the character reaches the editor.
                     } else if modifiers.is_empty()
-                        && matches!(
-                            code,
-                            KeyCode::Up | KeyCode::Down | KeyCode::Tab | KeyCode::Enter | KeyCode::Esc
-                        )
+                        && matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::Tab | KeyCode::Enter | KeyCode::Esc)
                     {
                         return;
                     }
-                } else if shell_focus.get() == ShellFocus::Prompt
-                    && is_prompt_history_open_key(code, modifiers)
-                {
+                } else if shell_focus.get() == ShellFocus::Prompt && is_prompt_history_open_key(code, modifiers) {
                     let draft_body = {
                         let live = live_draft.read().clone();
                         let stored = draft.read().clone();
-                        if live.len() >= stored.len() {
-                            live
-                        } else {
-                            stored
-                        }
+                        if live.len() >= stored.len() { live } else { stored }
                     };
-                    let slash_open = palette_visible(&compose_palette_draft(
-                        input_prefix_kind.get(),
-                        &draft_body,
-                    ));
+                    let slash_open = palette_visible(&compose_palette_draft(input_prefix_kind.get(), &draft_body));
                     let picker_open = input_prefix_kind.get() == InputPrefixKind::Default
                         && file_picker_open(&draft_body, live_cursor.get().min(draft_body.len()));
-                    if can_open_history(
-                        true,
-                        &draft_body,
-                        slash_open,
-                        picker_open,
-                        prompt_history.read().len(),
-                    ) {
+                    if can_open_history(true, &draft_body, slash_open, picker_open, prompt_history.read().len()) {
                         prompt_history_open.set(true);
                         prompt_history_index.set(0);
                         return;
@@ -1678,12 +1649,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if let Some(session) = agent_session.as_ref() {
                         let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
-                        push_transcript_message(
-                            &mut messages,
-                            &mut messages_revision,
-                            &mut prompt_history,
-                            submitted,
-                        );
+                        push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if agent_turn_active.get() {
                             TurnDispatcher::spawn_steer(Arc::clone(session), body);
@@ -1725,12 +1691,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                         let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
-                        push_transcript_message(
-                            &mut messages,
-                            &mut messages_revision,
-                            &mut prompt_history,
-                            submitted,
-                        );
+                        push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if let Some(session) = agent_session.as_ref() {
                             if agent_turn_active.get() {
@@ -2281,10 +2242,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                                 Err(err) => {
                                     push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
+                                        &mut messages,
+                                        &mut messages_revision,
+                                        &mut prompt_history,
+                                        TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
                                     );
                                 }
                             }
@@ -2464,10 +2425,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         )
                     {
                         push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
                     return;
@@ -2617,10 +2578,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         )
                     {
                         push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
                     return;
@@ -2678,10 +2639,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         )
                     {
                         push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
                     return;
@@ -2813,7 +2774,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             push_transcript_message(
                                 &mut messages,
                                 &mut messages_revision,
-                                &mut prompt_history, submitted);
+                                &mut prompt_history,
+                                submitted,
+                            );
                         }
 
                         match outcome {
@@ -2889,34 +2852,34 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Status(message) => {
                                 push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
                                 push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::assistant_slash_markdown(message),
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::SpawnAgentTurn => {
@@ -3756,12 +3719,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
     slash_palette_active.set(slash_palette_snapshot.visible);
     // Close prompt history when other palettes open or draft is non-empty.
-    let picker_for_history_close = input_prefix_kind.get() == InputPrefixKind::Default
-        && file_picker_open(&draft_body, editor_cursor);
+    let picker_for_history_close =
+        input_prefix_kind.get() == InputPrefixKind::Default && file_picker_open(&draft_body, editor_cursor);
     if prompt_history_open.get()
-        && (slash_palette_snapshot.visible
-            || picker_for_history_close
-            || !live_draft.read().trim().is_empty())
+        && (slash_palette_snapshot.visible || picker_for_history_close || !live_draft.read().trim().is_empty())
     {
         prompt_history_open.set(false);
         prompt_history_index.set(0);
