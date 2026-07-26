@@ -67,8 +67,10 @@ pub use markdown::{
 pub use markdown::{
     markdown_document_row_count, markdown_has_open_container_at, markdown_source_row_count, parse_markdown_document,
 };
+pub use markdown::{
+    path_to_file_url, render_markdown_document, render_markdown_lines, spans_with_links, streaming_tail_document,
+};
 pub use markdown::{plain_text_document, render_linkified_plain_text, render_markdown_block, render_markdown_children};
-pub use markdown::{path_to_file_url, render_markdown_document, render_markdown_lines, spans_with_links, streaming_tail_document};
 pub use progress_indicator::{KittScannerView, KittScannerViewProps, SpinnerLoaderView, SpinnerLoaderViewProps};
 pub use qr_code::{QrCodeView, QrCodeViewProps};
 pub use scroll_bar::scrollbar_track_row_flags;

@@ -259,22 +259,19 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     {
         let mut editor = editor;
         let mut paste_burst = paste_burst;
-        let last_key_at = last_key_at;
         let mut value = value;
-        let live_draft = live_draft;
-        let live_cursor = live_cursor;
-        let prompt_editor_mirror = prompt_editor_mirror;
         let mut generation = generation;
         let mut layout_cache = layout_cache;
         let mut viewport_cache = viewport_cache;
         hooks.use_future(async move {
             use crate::text_editing::PASTE_BURST_WINDOW;
             loop {
-                tokio::time::sleep(Duration::from_millis(32)).await;
+                // smol timer: iocraft polls futures on smol (mock + some hosts lack a Tokio RT).
+                smol::Timer::after(Duration::from_millis(32)).await;
                 if !paste_burst.read().active {
                     continue;
                 }
-                let Some(last) = last_key_at.read().clone() else {
+                let Some(last) = *last_key_at.read() else {
                     continue;
                 };
                 if last.elapsed() < PASTE_BURST_WINDOW {
@@ -445,7 +442,6 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut value = value;
         let mut generation = generation;
         let mut on_submit = on_submit;
-        let clipboard_toast = clipboard_toast;
         let mut on_escape = on_escape;
         let mut on_file_picker_key = on_file_picker_key;
         let mut pending_esc = pending_esc;

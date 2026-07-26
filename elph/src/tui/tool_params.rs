@@ -582,7 +582,7 @@ fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam]) -> (Strin
                 (display, href)
             }
             None => (String::new(), None),
-        }
+        },
         _ => (collapsed_tool_target(tool_name, params), None),
     }
 }
@@ -1196,10 +1196,7 @@ mod tests {
     #[test]
     fn collapsed_tool_parts_href_keeps_original_path_when_abbreviated() {
         let path = "/opt/workspace/riipandi/elph/crates/elph/src/nama-file.ext";
-        let parts = format_collapsed_tool_parts_linked(
-            "edit_file",
-            &format!(r#"{{"path":"{path}"}}"#),
-        );
+        let parts = format_collapsed_tool_parts_linked("edit_file", &format!(r#"{{"path":"{path}"}}"#));
         assert_eq!(parts.verb, "Edit");
         // Display is abbreviated (no full intermediate dirs).
         assert!(!parts.detail.contains("workspace"), "{}", parts.detail);

@@ -190,18 +190,15 @@ where
         .name("elph-detached-async".into())
         .spawn(move || {
             let result = (|| {
-                let rt = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()?;
+                let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
                 if worker_timeout.is_zero() {
                     Ok(rt.block_on(future))
                 } else {
                     match rt.block_on(async { tokio::time::timeout(worker_timeout, future).await }) {
                         Ok(value) => Ok(value),
-                        Err(_elapsed) => Err(anyhow::anyhow!(
-                            "async work timed out after {}ms",
-                            worker_timeout.as_millis()
-                        )),
+                        Err(_elapsed) => {
+                            Err(anyhow::anyhow!("async work timed out after {}ms", worker_timeout.as_millis()))
+                        }
                     }
                 }
             })();
@@ -217,10 +214,9 @@ where
     match rx.recv_timeout(join_budget) {
         Ok(Ok(value)) => Ok(value),
         Ok(Err(err)) => Err(err),
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(anyhow::anyhow!(
-            "async work timed out after {}ms",
-            timeout.as_millis()
-        )),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            Err(anyhow::anyhow!("async work timed out after {}ms", timeout.as_millis()))
+        }
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
             Err(anyhow::anyhow!("detached async worker exited without a result"))
         }

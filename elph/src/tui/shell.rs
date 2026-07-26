@@ -2756,8 +2756,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .read()
         .as_ref()
         .map(|pending| -> AnyElement<'static> {
-            let (chrome, body_height) =
-                system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
+            let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
             let mut pending_system_prompt = pending_system_prompt;
             let mut draft = draft;
             let mut live_draft = live_draft;

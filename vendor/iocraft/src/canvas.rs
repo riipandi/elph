@@ -103,6 +103,13 @@ impl CanvasCell {
             .and_then(|ch| ch.hyperlink.as_deref())
     }
 
+    /// Cloned [`Arc`] handle for the cell hyperlink (cheap share for hit-testing maps).
+    pub fn hyperlink_arc(&self) -> Option<Arc<str>> {
+        self.character
+            .as_ref()
+            .and_then(|ch| ch.hyperlink.clone())
+    }
+
     /// Returns `true` if the cell has no content and no background color.
     pub fn is_empty(&self) -> bool {
         self.background_color.is_none() && self.character.is_none()
@@ -154,12 +161,16 @@ impl Canvas {
 
     /// Sparse map of cells that carry an OSC 8 hyperlink (for click hit-testing
     /// while mouse capture is enabled).
+    ///
+    /// Reuses existing [`Arc`] handles (no URI re-allocation). Full-frame scan is
+    /// O(cells); acceptable for terminal-sized canvases (DeepWiki: rebuild cost
+    /// is fine for small maps / dense short-lived frames).
     pub fn hyperlink_index(&self) -> std::collections::HashMap<(u16, u16), Arc<str>> {
         let mut map = std::collections::HashMap::new();
         for (y, row) in self.cells.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                if let Some(url) = cell.hyperlink() {
-                    map.insert((x as u16, y as u16), Arc::from(url));
+                if let Some(url) = cell.hyperlink_arc() {
+                    map.insert((x as u16, y as u16), url);
                 }
             }
         }

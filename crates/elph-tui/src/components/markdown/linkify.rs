@@ -107,15 +107,15 @@ pub fn path_to_file_url(path: &str) -> Option<String> {
 }
 
 fn expand_home_prefix(path: &str) -> String {
-    if let Some(rest) = path.strip_prefix("~/") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(rest).to_string_lossy().into_owned();
-        }
+    if let Some(rest) = path.strip_prefix("~/")
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        return PathBuf::from(home).join(rest).to_string_lossy().into_owned();
     }
-    if path == "~" {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).to_string_lossy().into_owned();
-        }
+    if path == "~"
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        return PathBuf::from(home).to_string_lossy().into_owned();
     }
     path.to_string()
 }
@@ -243,9 +243,6 @@ mod tests {
 
     #[test]
     fn path_to_file_url_preserves_file_scheme() {
-        assert_eq!(
-            path_to_file_url("file:///tmp/x"),
-            Some("file:///tmp/x".to_string())
-        );
+        assert_eq!(path_to_file_url("file:///tmp/x"), Some("file:///tmp/x".to_string()));
     }
 }

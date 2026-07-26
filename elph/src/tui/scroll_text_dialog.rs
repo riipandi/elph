@@ -59,11 +59,12 @@ pub struct OpenScrollTextDialogArgs<'a> {
 }
 
 pub fn open_scroll_text_dialog(args: OpenScrollTextDialogArgs<'_>) {
-    args.pending.set(Some(PendingScrollTextDialog::open_with_width(
-        args.title,
-        args.text,
-        args.width_pct,
-    )));
+    let pending = if args.width_pct == DEFAULT_SCROLL_TEXT_WIDTH_PCT {
+        PendingScrollTextDialog::open(args.title, args.text)
+    } else {
+        PendingScrollTextDialog::open_with_width(args.title, args.text, args.width_pct)
+    };
+    args.pending.set(Some(pending));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
 

@@ -6,7 +6,6 @@ use crate::tui::focus::ShellFocus;
 use crate::tui::scroll_text_dialog::{
     CloseScrollTextDialogArgs, DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, PendingScrollTextDialog,
     ScrollTextClosePrompt, close_scroll_text_dialog, open_scroll_text_dialog, scroll_text_dialog_chrome,
-    scroll_text_dialog_width, scroll_text_scrollbar_visible,
 };
 
 /// Default header for `/system-prompt`.
@@ -53,10 +52,6 @@ pub fn close_system_prompt_dialog(
 }
 
 /// Layout helpers (pass `pending.width_pct` from the open session).
-pub fn system_prompt_dialog_width(screen_width: u16, width_pct: u8) -> u16 {
-    scroll_text_dialog_width(screen_width, width_pct)
-}
-
 pub fn system_prompt_dialog_chrome(
     screen_width: u16,
     screen_height: u16,
@@ -65,17 +60,14 @@ pub fn system_prompt_dialog_chrome(
     scroll_text_dialog_chrome(screen_width, screen_height, width_pct)
 }
 
-pub fn system_prompt_scrollbar_visible(content_height: u16, viewport_height: u16) -> bool {
-    scroll_text_scrollbar_visible(content_height, viewport_height)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tui::scroll_text_dialog::{scroll_text_dialog_width, scroll_text_scrollbar_visible};
 
     #[test]
     fn width_and_chrome_use_percent() {
-        assert_eq!(system_prompt_dialog_width(100, DEFAULT_SCROLL_TEXT_WIDTH_PCT), 78);
+        assert_eq!(scroll_text_dialog_width(100, DEFAULT_SCROLL_TEXT_WIDTH_PCT), 78);
         let (chrome, body_height) = system_prompt_dialog_chrome(100, 40, 80);
         assert!(chrome.slim_header);
         assert_eq!(chrome.width, 78);
@@ -84,8 +76,8 @@ mod tests {
 
     #[test]
     fn scrollbar_visibility_matches_generic_helper() {
-        assert!(!system_prompt_scrollbar_visible(10, 12));
-        assert!(system_prompt_scrollbar_visible(20, 12));
+        assert!(!scroll_text_scrollbar_visible(10, 12));
+        assert!(scroll_text_scrollbar_visible(20, 12));
     }
 
     #[test]

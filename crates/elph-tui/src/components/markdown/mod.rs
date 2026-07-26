@@ -128,7 +128,10 @@ mod tests {
             .expect("path span");
         assert!(!path_span.underline, "paths must not paint underline");
         assert!(
-            path_span.href.as_deref().is_some_and(|h| h.starts_with("file://") && h.contains("file.rs")),
+            path_span
+                .href
+                .as_deref()
+                .is_some_and(|h| h.starts_with("file://") && h.contains("file.rs")),
             "href={:?}",
             path_span.href
         );

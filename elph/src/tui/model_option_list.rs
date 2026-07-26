@@ -13,9 +13,6 @@ const ROW_PREFIX_CHARS: usize = 2;
 /// Gap between model id column and hint columns (matches slash palette).
 pub const MODEL_ID_HINT_GAP: u16 = 2;
 
-/// Backward-compatible alias for [`MODEL_ID_HINT_GAP`].
-pub const MODEL_NAME_HINT_GAP: u16 = MODEL_ID_HINT_GAP;
-
 /// Two spaces between aligned hint columns.
 const HINT_COL_GAP: &str = "  ";
 
@@ -54,11 +51,6 @@ pub fn model_id_column_width(models: &[ModelRow], list_width: u16) -> u16 {
 
     let max_allowed = list_width.saturating_sub(MODEL_ID_HINT_GAP + MIN_HINT_CHARS).max(1) as usize;
     max_label.min(max_allowed).max(1) as u16
-}
-
-/// Backward-compatible alias for [`model_id_column_width`].
-pub fn model_name_column_width(models: &[ModelRow], list_width: u16) -> u16 {
-    model_id_column_width(models, list_width)
 }
 
 fn model_hint_desc_width(list_width: u16, id_col: u16) -> usize {
@@ -392,6 +384,6 @@ mod tests {
     #[test]
     fn id_hint_gap_matches_slash_palette() {
         assert_eq!(MODEL_ID_HINT_GAP, 2);
-        assert_eq!(MODEL_NAME_HINT_GAP, 2);
+        assert_eq!(MODEL_ID_HINT_GAP, 2);
     }
 }

@@ -35,10 +35,9 @@ pub fn system_prompt_slash_message(session: Option<&Arc<CodingAgentSession>>) ->
     ) {
         Ok(Ok(text)) => Ok(text),
         Ok(Err(err)) => Err(format!("Failed to compile system prompt: {err}")),
-        Err(err) if err.to_string().contains("timed out") => Err(
-            "Agent is busy. Wait for the current stream to finish, then run /system-prompt again."
-                .into(),
-        ),
+        Err(err) if err.to_string().contains("timed out") => {
+            Err("Agent is busy. Wait for the current stream to finish, then run /system-prompt again.".into())
+        }
         Err(err) => Err(format!("Failed to compile system prompt: {err}")),
     }
 }

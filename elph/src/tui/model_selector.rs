@@ -478,11 +478,6 @@ impl PendingModelSelector {
         self.last_builtin_provider_index = target;
         self.set_provider_index(target);
     }
-
-    /// Backward-compatible alias: arrows only move providers (not scope tabs).
-    pub fn apply_horizontal_nav(&mut self, delta: isize) {
-        self.apply_provider_nav(delta);
-    }
 }
 
 pub fn format_provider_label(provider_id: &str) -> String {

@@ -12,9 +12,6 @@ use crate::platform::Paths;
 /// Max display width for slash palette / `/help` descriptions (skills, templates, builtins).
 pub const MAX_PALETTE_DESCRIPTION_CHARS: usize = 72;
 
-/// Backward-compatible alias for [`MAX_PALETTE_DESCRIPTION_CHARS`].
-pub const MAX_SKILL_PALETTE_DESCRIPTION_CHARS: usize = MAX_PALETTE_DESCRIPTION_CHARS;
-
 /// A skill name defined in multiple directories; the later directory wins.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkillConflict {
@@ -149,7 +146,7 @@ mod tests {
     fn truncate_skill_palette_description_caps_length() {
         let long = "a".repeat(120);
         let out = truncate_skill_palette_description(&long);
-        assert!(out.chars().count() <= MAX_SKILL_PALETTE_DESCRIPTION_CHARS);
+        assert!(out.chars().count() <= MAX_PALETTE_DESCRIPTION_CHARS);
         assert!(out.ends_with('…'));
     }
 

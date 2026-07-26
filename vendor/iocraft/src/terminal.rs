@@ -673,9 +673,12 @@ impl<'a> Terminal<'a> {
 
     /// Replace the clickable hyperlink hit-test map from the latest canvas.
     pub fn set_hyperlink_index(&self, index: HashMap<(u16, u16), Arc<str>>) {
-        if let Ok(mut guard) = self.hyperlinks.lock() {
-            *guard = index;
-        }
+        // Recover from poison: a panic while holding this map must not freeze hyperlink opens.
+        let mut guard = match self.hyperlinks.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *guard = index;
     }
 
     pub fn enable_mouse_capture(&mut self) -> io::Result<()> {
@@ -773,11 +776,13 @@ impl<'a> Terminal<'a> {
                     }) = &event
                     {
                         if is_hyperlink_open_click(*modifiers, *kind) {
-                            let url = self
-                                .hyperlinks
-                                .lock()
-                                .ok()
-                                .and_then(|map| map.get(&(*column, *row)).cloned());
+                            let url = {
+                                let map = match self.hyperlinks.lock() {
+                                    Ok(g) => g,
+                                    Err(poisoned) => poisoned.into_inner(),
+                                };
+                                map.get(&(*column, *row)).cloned()
+                            };
                             if let Some(url) = url {
                                 open_hyperlink_url(url.as_ref());
                                 consume_event = true;
