@@ -171,9 +171,29 @@ fn assistant_usage(message: &AgentMessage) -> Option<&Usage> {
 
 pub fn format_duration_secs(secs: f64) -> String {
     if !secs.is_finite() || secs < 0.5 {
-        "0s".to_string()
+        return "0s".to_string();
+    }
+    let total = secs.round() as u64;
+    let hours = total / 3600;
+    let minutes = (total % 3600) / 60;
+    let seconds = total % 60;
+
+    if hours > 0 {
+        if seconds > 0 {
+            format!("{hours}h{minutes}m{seconds}s")
+        } else if minutes > 0 {
+            format!("{hours}h{minutes}m")
+        } else {
+            format!("{hours}h")
+        }
+    } else if minutes > 0 {
+        if seconds > 0 {
+            format!("{minutes}m{seconds}s")
+        } else {
+            format!("{minutes}m")
+        }
     } else {
-        format!("{}s", secs.round() as u64)
+        format!("{seconds}s")
     }
 }
 
@@ -186,6 +206,12 @@ mod tests {
         assert_eq!(format_duration_secs(0.0), "0s");
         assert_eq!(format_duration_secs(0.4), "0s");
         assert_eq!(format_duration_secs(51.2), "51s");
+        assert_eq!(format_duration_secs(60.0), "1m");
+        assert_eq!(format_duration_secs(90.0), "1m30s");
+        assert_eq!(format_duration_secs(3600.0), "1h");
+        assert_eq!(format_duration_secs(3660.0), "1h1m");
+        assert_eq!(format_duration_secs(4690.0), "1h18m10s");
+        assert_eq!(format_duration_secs(17948.0), "4h59m8s");
     }
 
     #[test]
