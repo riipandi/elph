@@ -740,10 +740,7 @@ mod tests {
     fn capability_label_joins_think_and_img() {
         assert_eq!(format_model_capability_label(true, false).as_deref(), Some("(think)"));
         assert_eq!(format_model_capability_label(false, true).as_deref(), Some("(img)"));
-        assert_eq!(
-            format_model_capability_label(true, true).as_deref(),
-            Some("(think|img)")
-        );
+        assert_eq!(format_model_capability_label(true, true).as_deref(), Some("(think|img)"));
         assert_eq!(format_model_capability_label(false, false), None);
     }
 
@@ -924,10 +921,7 @@ mod tests {
         pending.last_builtin_provider_index = SCOPED_PROVIDERS_TAB_INDEX;
         pending.set_scope_mode(ModelScopeMode::Provider);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
-        assert_eq!(
-            pending.provider_index,
-            pending.catalog.first_builtin_provider_index()
-        );
+        assert_eq!(pending.provider_index, pending.catalog.first_builtin_provider_index());
     }
 
     #[test]

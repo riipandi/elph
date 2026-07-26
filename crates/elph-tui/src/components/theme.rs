@@ -312,8 +312,9 @@ impl UiTheme {
 
     pub fn scrollbar_style(self) -> super::scroll_bar::ScrollbarStyle {
         super::scroll_bar::ScrollbarStyle {
-            thumb_color: Some(self.border_focus),
-            track_color: Some(self.border_subtle),
+            // Accent thumb on a muted-but-readable track (border_subtle vanishes on dark bg).
+            thumb_color: Some(self.warning),
+            track_color: Some(self.text_muted),
         }
     }
 }

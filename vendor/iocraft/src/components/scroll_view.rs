@@ -294,13 +294,19 @@ pub fn ScrollView<'a>(mut hooks: Hooks, props: &mut ScrollViewProps<'a>) -> impl
     let mouse_scroll = props.mouse_scroll.unwrap_or(true);
 
     // Sync content height from the ref written by the measurer child.
-    // While scrolled, the absolute `top: -offset` pane can report a clipped
-    // height equal to the remaining visible region — ignore decreases so the
-    // scrollbar/handle keep the true content size.
+    //
+    // The scrolled pane uses `position: absolute; top: -offset`. Once offset > 0,
+    // layout measure often under-reports (remaining visible height ≈ viewport).
+    // That collapses max_offset to 0, clamps scroll back to the top, and freezes
+    // the scrollbar thumb. Keep a peak height for this instance while scrolled.
     let measured = content_height_ref.get();
     let prev = content_height.get();
-    let ch = if scroll_offset.get() > 0 && measured > 0 && measured < prev {
+    let ch = if measured > prev {
+        measured
+    } else if measured == 0 {
         prev
+    } else if scroll_offset.get() > 0 {
+        prev.max(measured)
     } else {
         measured
     };

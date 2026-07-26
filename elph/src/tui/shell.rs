@@ -59,6 +59,7 @@ use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
+use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
@@ -74,7 +75,6 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
-use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,

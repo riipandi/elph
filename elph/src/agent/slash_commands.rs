@@ -95,10 +95,7 @@ pub fn slash_commands_for_palette(
     if let Some(registry) = extensions {
         for cmd in registry.commands() {
             if !builtin_names.contains(&cmd.name) {
-                commands.push(SlashCommand::new(
-                    cmd.name,
-                    truncate_palette_description(&cmd.description),
-                ));
+                commands.push(SlashCommand::new(cmd.name, truncate_palette_description(&cmd.description)));
             }
         }
     }

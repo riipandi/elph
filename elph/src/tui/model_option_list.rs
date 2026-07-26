@@ -52,9 +52,7 @@ pub fn model_id_column_width(models: &[ModelRow], list_width: u16) -> u16 {
     }
     max_label = max_label.min(MODEL_ID_MAX_CHARS);
 
-    let max_allowed = list_width
-        .saturating_sub(MODEL_ID_HINT_GAP + MIN_HINT_CHARS)
-        .max(1) as usize;
+    let max_allowed = list_width.saturating_sub(MODEL_ID_HINT_GAP + MIN_HINT_CHARS).max(1) as usize;
     max_label.min(max_allowed).max(1) as u16
 }
 
@@ -103,7 +101,11 @@ pub fn format_model_hints_tabular(models: &[ModelRow], show_provider: bool) -> V
         .iter()
         .map(|row| format_model_context_label(row.context_k))
         .collect();
-    let context_w = context_labels.iter().map(|label| label.chars().count()).max().unwrap_or(0);
+    let context_w = context_labels
+        .iter()
+        .map(|label| label.chars().count())
+        .max()
+        .unwrap_or(0);
 
     models
         .iter()
@@ -337,7 +339,14 @@ mod tests {
 
     #[test]
     fn provider_tab_hints_omit_provider_column() {
-        let rows = vec![sample_row("anthropic", "claude-opus-4", "Claude Opus 4", 200, true, true)];
+        let rows = vec![sample_row(
+            "anthropic",
+            "claude-opus-4",
+            "Claude Opus 4",
+            200,
+            true,
+            true,
+        )];
         let hints = format_model_hints_tabular(&rows, false);
         assert_eq!(hints[0], "200K  (think|img)");
     }
