@@ -1566,7 +1566,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     {
                         return;
                     }
-                } else if shell_focus.get() == ShellFocus::Prompt && is_prompt_history_open_key(code, modifiers) {
+                } else if shell_focus.get() == ShellFocus::Prompt && !select_mode.get() && is_prompt_history_open_key(code, modifiers) {
                     let draft_body = {
                         let live = live_draft.read().clone();
                         let stored = draft.read().clone();
@@ -4224,11 +4224,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let queue_follow_up = agent_turn_active.get()
                             && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
-                            // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
-                            let echo = if slash_input.trim().starts_with('/') {
-                                slash_input.trim().to_string()
+                            let echo = if is_slash {
+                                // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
+                                if slash_input.trim().starts_with('/') {
+                                    slash_input.trim().to_string()
+                                } else {
+                                    format!("/{}", slash_input.trim())
+                                }
                             } else {
-                                format!("/{}", slash_input.trim())
+                                // Normal prompt — no forced `/` prefix.
+                                body.clone()
                             };
                             let mut submitted = TranscriptMessage::text(
                                 echo,
