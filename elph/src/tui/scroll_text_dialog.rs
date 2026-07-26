@@ -175,6 +175,8 @@ pub struct ScrollTextDialogOverlayProps {
     pub scroll_tick: u32,
     pub has_focus: bool,
     pub theme: Option<UiTheme>,
+    /// Click on header `[esc]` (keyboard Esc is still handled by the shell).
+    pub on_esc: HandlerMut<'static, ()>,
 }
 
 impl Default for ScrollTextDialogOverlayProps {
@@ -190,6 +192,7 @@ impl Default for ScrollTextDialogOverlayProps {
             scroll_tick: 0,
             has_focus: false,
             theme: None,
+            on_esc: HandlerMut::default(),
         }
     }
 }
@@ -209,6 +212,7 @@ pub fn ScrollTextDialogOverlay(
     let body_width = props.chrome.inner_body_width().max(1);
     let header = DialogHeader::title(props.title.clone());
     let needs_scrollbar = scroll_text_needs_scrollbar(&props.text, body_width, props.body_height);
+    let on_esc = props.on_esc.take();
 
     // Shell owns ↑/↓ / PgUp / PgDn via the shared handle (keyboard_scroll off → no double step).
     // Mouse wheel stays on this ScrollView while the dialog has focus.
@@ -226,6 +230,7 @@ pub fn ScrollTextDialogOverlay(
             chrome: props.chrome.clone(),
             header: header,
             theme: Some(theme),
+            on_esc: on_esc,
         ) {
             View(
                 width: body_width,

@@ -2758,6 +2758,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .map(|pending| -> AnyElement<'static> {
             let (chrome, body_height) =
                 system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
+            let mut pending_system_prompt = pending_system_prompt;
+            let mut draft = draft;
+            let mut live_draft = live_draft;
+            let mut shell_focus = shell_focus;
+            let mut force_editor_clear = force_editor_clear;
             element! {
                 ScrollTextDialogOverlay(
                     screen_width: screen_width,
@@ -2769,6 +2774,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     scroll_handle: Some(system_prompt_scroll),
                     scroll_tick: system_prompt_scroll_tick.get(),
                     has_focus: system_prompt_has_focus,
+                    on_esc: move |_| {
+                        close_system_prompt_dialog(
+                            &mut pending_system_prompt,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            &mut force_editor_clear,
+                        );
+                    },
                 )
             }
             .into()

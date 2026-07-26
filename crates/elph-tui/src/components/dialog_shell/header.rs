@@ -171,11 +171,13 @@ pub fn DialogHeaderTabs(props: &DialogHeaderTabsProps, mut hooks: Hooks) -> impl
     }
 }
 
-#[derive(Clone, Props)]
+#[derive(Props)]
 pub struct DialogHeaderRowProps {
     pub chrome: DialogChrome,
     pub header: DialogHeader,
     pub theme: Option<UiTheme>,
+    /// When set, the `[esc]` label is clickable and invokes this handler (mouse down).
+    pub on_esc: HandlerMut<'static, ()>,
 }
 
 impl Default for DialogHeaderRowProps {
@@ -184,13 +186,14 @@ impl Default for DialogHeaderRowProps {
             chrome: DialogChrome::default(),
             header: DialogHeader::title("Dialog"),
             theme: None,
+            on_esc: HandlerMut::default(),
         }
     }
 }
 
-/// Full header row: left variant + esc hint.
+/// Full header row: left variant + clickable esc hint.
 #[component]
-pub fn DialogHeaderRow(props: &DialogHeaderRowProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
+pub fn DialogHeaderRow(props: &mut DialogHeaderRowProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let theme = resolve_ui_theme(&hooks, props.theme);
     let chrome = props.chrome.clone();
     let left: AnyElement<'static> = match &props.header {
@@ -228,6 +231,11 @@ pub fn DialogHeaderRow(props: &DialogHeaderRowProps, hooks: Hooks) -> impl Into<
         .into(),
     };
 
+    let esc_hint = chrome.esc_hint.clone();
+    let esc_color = chrome.muted_color;
+    // Mouse-only: keyboard Esc is still handled by the app shell.
+    let on_esc = props.on_esc.take();
+
     element! {
         View(
             width: chrome.content_width(),
@@ -238,11 +246,13 @@ pub fn DialogHeaderRow(props: &DialogHeaderRowProps, hooks: Hooks) -> impl Into<
             View(flex_grow: 1f32, flex_shrink: 1f32, min_width: 0) {
                 #(left)
             }
-            Text(
-                content: chrome.esc_hint.clone(),
-                color: chrome.muted_color,
-                wrap: TextWrap::NoWrap,
-            )
+            Button(handler: on_esc, has_focus: false) {
+                Text(
+                    content: esc_hint,
+                    color: esc_color,
+                    wrap: TextWrap::NoWrap,
+                )
+            }
         }
     }
 }

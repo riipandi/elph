@@ -12,6 +12,8 @@ pub struct DialogShellProps<'a> {
     pub chrome: DialogChrome,
     pub header: DialogHeader,
     pub theme: Option<UiTheme>,
+    /// Click handler for the header `[esc]` label (keyboard Esc remains app-owned).
+    pub on_esc: HandlerMut<'static, ()>,
     pub children: Vec<AnyElement<'a>>,
 }
 
@@ -21,6 +23,7 @@ impl<'a> Default for DialogShellProps<'a> {
             chrome: DialogChrome::default(),
             header: DialogHeader::title("Dialog"),
             theme: None,
+            on_esc: HandlerMut::default(),
             children: Vec::new(),
         }
     }
@@ -33,6 +36,7 @@ pub fn DialogShell<'a>(props: &mut DialogShellProps<'a>, hooks: Hooks) -> impl I
     let chrome = props.chrome.clone().with_theme(theme);
     let header = props.header.clone();
     let children = std::mem::take(&mut props.children);
+    let on_esc = props.on_esc.take();
     let divider = dialog_divider_line(chrome.content_width());
     let body_height = dialog_shell_body_height(&chrome);
     let chrome_rows = dialog_shell_chrome_rows(&chrome);
@@ -58,7 +62,12 @@ pub fn DialogShell<'a>(props: &mut DialogShellProps<'a>, hooks: Hooks) -> impl I
                 padding_bottom: chrome.header_gap,
                 flex_shrink: 0f32,
             ) {
-                DialogHeaderRow(chrome: chrome.clone(), header: header, theme: Some(theme))
+                DialogHeaderRow(
+                    chrome: chrome.clone(),
+                    header: header,
+                    theme: Some(theme),
+                    on_esc: on_esc,
+                )
             }
             #(if chrome.show_divider {
                 Some(element! {
