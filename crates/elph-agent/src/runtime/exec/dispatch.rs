@@ -41,6 +41,7 @@ pub(super) async fn execute_tool_calls_sequential(
                 tool_call: tool_call.clone(),
                 result,
                 is_error,
+                duration_secs: None,
             },
             Preparation::Prepared(prepared) => {
                 let executed = execute_prepared_tool_call(prepared.as_ref(), signal.clone(), emit).await;
@@ -104,6 +105,7 @@ pub(super) async fn execute_tool_calls_parallel(
                     tool_call: tool_call.clone(),
                     result,
                     is_error,
+                    duration_secs: None,
                 };
                 emit_tool_execution_end(&finalized, emit).await;
                 entries.push(Entry::Immediate(Box::new(finalized)));

@@ -431,6 +431,17 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
+    /// Persist a full TUI transcript snapshot so `--resume` restores live card state
+    /// (thinking, tools, durations, expand flags, edit_file diffs, …).
+    pub async fn save_transcript_snapshot(&self, messages: &[crate::tui::transcript::TranscriptMessage]) -> Result<()> {
+        use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data};
+        let data = build_snapshot_data(messages);
+        self.harness
+            .append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, Some(data))
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
         self.harness
             .resolve_plan_confirmation(choice)

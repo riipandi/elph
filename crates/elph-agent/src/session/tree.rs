@@ -106,25 +106,42 @@ impl<S: SessionStorage> Session<S> {
             parent_id: self.storage.get_leaf_id().await?,
             timestamp: now_iso_timestamp(),
             message,
-            skill_name: String::new(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
         })
         .await
     }
 
-    /// Append a message entry tagged with a skill name (for skill invocations).
-    pub async fn append_message_with_skill(
+    /// Append a message entry tagged with transcript prompt-card metadata (skill / template).
+    ///
+    /// `prompt_title` is the slash body without leading `/` (shown in the user/skill card).
+    /// `prompt_kind` is `"skill"` or `"template"`.
+    pub async fn append_message_with_prompt(
         &mut self,
         message: AgentMessage,
-        skill_name: impl Into<String>,
+        prompt_title: impl Into<String>,
+        prompt_kind: impl Into<String>,
     ) -> Result<String, SessionError> {
         self.append_typed_entry(SessionTreeEntry::Message {
             id: self.storage.create_entry_id().await,
             parent_id: self.storage.get_leaf_id().await?,
             timestamp: now_iso_timestamp(),
             message,
-            skill_name: skill_name.into(),
+            prompt_title: prompt_title.into(),
+            prompt_kind: prompt_kind.into(),
         })
         .await
+    }
+
+    /// Append a message entry tagged with a skill name (legacy helper).
+    pub async fn append_message_with_skill(
+        &mut self,
+        message: AgentMessage,
+        skill_name: impl Into<String>,
+    ) -> Result<String, SessionError> {
+        let name = skill_name.into();
+        self.append_message_with_prompt(message, format!("skill:{name}"), "skill")
+            .await
     }
 
     pub async fn append_thinking_level_change(

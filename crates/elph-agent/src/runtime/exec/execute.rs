@@ -41,12 +41,14 @@ pub(super) async fn execute_prepared_tool_call(
         }) as crate::types::ToolUpdateCallback
     };
 
+    let started = std::time::Instant::now();
     match (prepared.tool.execute)(prepared.tool_call.id.clone(), prepared.args.clone(), signal, Some(on_update)).await {
         Ok(result) => {
             update_tx.store(false, Ordering::Relaxed);
             ExecutedToolCallOutcome {
                 result,
                 is_error: false,
+                duration_secs: Some(started.elapsed().as_secs_f64()),
             }
         }
         Err(error) => {
@@ -54,6 +56,7 @@ pub(super) async fn execute_prepared_tool_call(
             ExecutedToolCallOutcome {
                 result: AgentToolResult::error(error.to_string()),
                 is_error: true,
+                duration_secs: Some(started.elapsed().as_secs_f64()),
             }
         }
     }
@@ -113,6 +116,7 @@ pub(super) async fn finalize_executed_tool_call_with_hook(
         tool_call: prepared.tool_call.clone(),
         result: executed.result,
         is_error: executed.is_error,
+        duration_secs: executed.duration_secs,
     }
 }
 

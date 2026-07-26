@@ -186,7 +186,9 @@ where
     collaboration_mode: Mutex<CollaborationMode>,
     baseline_active_tool_names: Mutex<Vec<String>>,
     pending_plan: Mutex<Option<PendingPlanConfirmation>>,
-    pending_skill_name: Mutex<Option<String>>,
+    /// Slash prompt card metadata for the next user message write: `(kind, title)`.
+    /// kind is `"skill"` or `"template"`; title is slash body without leading `/`.
+    pending_prompt_meta: Mutex<Option<(String, String)>>,
     agent_control: Mutex<Arc<AgentControl>>,
     goal_runtime: Option<Arc<GoalRuntime>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
@@ -306,7 +308,7 @@ where
                 collaboration_mode: Mutex::new(collaboration_mode),
                 baseline_active_tool_names: Mutex::new(baseline_active_tool_names),
                 pending_plan: Mutex::new(None),
-                pending_skill_name: Mutex::new(None),
+                pending_prompt_meta: Mutex::new(None),
                 agent_control: Mutex::new(agent_control),
                 goal_runtime: options.goal_runtime,
                 subagent_bootstrap: options.subagent_bootstrap,

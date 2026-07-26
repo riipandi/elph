@@ -52,8 +52,13 @@ pub enum SessionTreeEntry {
         parent_id: Option<String>,
         timestamp: String,
         message: AgentMessage,
-        #[serde(rename = "skillName", default)]
-        skill_name: String,
+        /// Transcript prompt-card title (slash body without leading `/`).
+        /// e.g. `skill:review fix this` or `my-template arg1`. Empty for free-form prompts.
+        #[serde(default, rename = "promptTitle")]
+        prompt_title: String,
+        /// Prompt card kind: `"skill"`, `"template"`, or empty for free-form user messages.
+        #[serde(default, rename = "promptKind")]
+        prompt_kind: String,
     },
     #[serde(rename = "thinking_level_change")]
     ThinkingLevelChange {

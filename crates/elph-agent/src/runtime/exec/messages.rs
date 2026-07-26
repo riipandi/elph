@@ -32,17 +32,41 @@ pub(super) fn create_tool_result_message(finalized: &FinalizedToolCall) -> Messa
         })
         .collect();
 
+    // Persist wall-clock duration for transcript resume (TUI reads `_elph_ui.duration_secs`).
+    let mut details = finalized.result.details.clone();
+    if let Some(secs) = finalized.duration_secs {
+        merge_elph_ui_duration(&mut details, secs);
+    }
+
     Message::ToolResult {
         tool_call_id: finalized.tool_call.id.clone(),
         tool_name: finalized.tool_call.name.clone(),
         content,
-        details: Some(finalized.result.details.clone()),
+        details: Some(details),
         added_tool_names: finalized.result.added_tool_names.clone(),
         is_error: finalized.is_error,
         timestamp: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0),
+    }
+}
+
+fn merge_elph_ui_duration(details: &mut serde_json::Value, duration_secs: f64) {
+    if !duration_secs.is_finite() || duration_secs < 0.0 {
+        return;
+    }
+    if !details.is_object() {
+        *details = serde_json::json!({});
+    }
+    let Some(obj) = details.as_object_mut() else {
+        return;
+    };
+    let ui = obj
+        .entry("_elph_ui".to_string())
+        .or_insert_with(|| serde_json::json!({}));
+    if let Some(ui_obj) = ui.as_object_mut() {
+        ui_obj.insert("duration_secs".into(), serde_json::json!(duration_secs));
     }
 }
 

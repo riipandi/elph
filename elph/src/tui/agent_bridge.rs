@@ -594,8 +594,11 @@ impl TranscriptEventApplier {
             } else {
                 TranscriptStyle::ToolSuccess
             };
+            // Prefer wall-clock from live Instant; fall back to persisted `_elph_ui.duration_secs`.
             if let Some(started) = self.tool_started_at.remove(id) {
                 message.duration_secs = Some(format_elapsed_secs(started));
+            } else if let Some(secs) = crate::tui::transcript::duration_from_tool_details(details) {
+                message.duration_secs = Some(secs);
             }
             // Collapse finished tools for a compact log — except edit_file with an inline
             // diff payload, which stays expanded so the change is visible without a click.

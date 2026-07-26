@@ -35,7 +35,7 @@ pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 pub const TOOL_CARD_DIFF_CONTEXT_LINES: usize = 3;
 
 /// Structured payload for tool invocation cards in the transcript.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ToolCardDetail {
     pub name: String,
     pub args_summary: String,
@@ -599,7 +599,8 @@ pub enum TranscriptCardKind {
     Meta,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TranscriptStyle {
     User,
     Thinking,

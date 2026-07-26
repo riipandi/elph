@@ -31,11 +31,14 @@ pub(super) struct FinalizedToolCall {
     pub tool_call: ToolCall,
     pub result: AgentToolResult,
     pub is_error: bool,
+    /// Wall-clock seconds spent executing the tool (for transcript resume).
+    pub duration_secs: Option<f64>,
 }
 
 pub(super) struct ExecutedToolCallOutcome {
     pub result: AgentToolResult,
     pub is_error: bool,
+    pub duration_secs: Option<f64>,
 }
 
 pub(super) fn should_terminate_tool_batch(finalized: &[FinalizedToolCall]) -> bool {
@@ -65,6 +68,7 @@ pub async fn fail_tool_calls_from_truncated_message(
             tool_call: tool_call.clone(),
             result: result.clone(),
             is_error: true,
+            duration_secs: None,
         };
         emit_tool_execution_end(&finalized, emit).await;
         let tool_result = create_tool_result_message(&finalized);

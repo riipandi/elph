@@ -21,13 +21,25 @@ where
     ) -> HarnessOpResult<()> {
         match &event {
             AgentEvent::MessageEnd { message } => {
-                self.shared
-                    .session
-                    .lock()
-                    .await
-                    .append_message(message.clone())
-                    .await
-                    .map_err(session_error)?;
+                // Tag the first user message of a skill/template turn with prompt-card metadata.
+                let is_user = message
+                    .as_llm()
+                    .is_some_and(|m| matches!(m, elph_ai::Message::User { .. }));
+                {
+                    let mut session = self.shared.session.lock().await;
+                    if is_user {
+                        if let Some((kind, title)) = self.shared.pending_prompt_meta.lock().await.take() {
+                            session
+                                .append_message_with_prompt(message.clone(), title, kind)
+                                .await
+                                .map_err(session_error)?;
+                        } else {
+                            session.append_message(message.clone()).await.map_err(session_error)?;
+                        }
+                    } else {
+                        session.append_message(message.clone()).await.map_err(session_error)?;
+                    }
+                }
                 self.shared
                     .hooks
                     .emit_subscriber(AgentHarnessEvent::Agent(event.clone()), signal)

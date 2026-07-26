@@ -46,7 +46,12 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
-        *self.shared.pending_skill_name.lock().await = Some(name.to_string());
+        // Transcript card title matches live slash echo (`skill:name [args]`).
+        let prompt_title = match additional_instructions.map(str::trim).filter(|s| !s.is_empty()) {
+            Some(args) => format!("skill:{name} {args}"),
+            None => format!("skill:{name}"),
+        };
+        *self.shared.pending_prompt_meta.lock().await = Some(("skill".into(), prompt_title));
         let result = async {
             let turn_state = self.create_turn_state().await?;
             let skill = turn_state
@@ -61,7 +66,7 @@ where
             self.execute_turn(turn_state, text, None).await
         }
         .await;
-        *self.shared.pending_skill_name.lock().await = None;
+        *self.shared.pending_prompt_meta.lock().await = None;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -75,6 +80,13 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        // Transcript card title matches live slash echo (`name [args…]`).
+        let prompt_title = if args.is_empty() {
+            name.to_string()
+        } else {
+            format!("{name} {}", args.join(" "))
+        };
+        *self.shared.pending_prompt_meta.lock().await = Some(("template".into(), prompt_title));
         let result = async {
             let turn_state = self.create_turn_state().await?;
             let template = turn_state
@@ -92,6 +104,7 @@ where
             self.execute_turn(turn_state, text, None).await
         }
         .await;
+        *self.shared.pending_prompt_meta.lock().await = None;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -263,14 +276,14 @@ where
     }
 
     pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
-        let skill_name = self.shared.pending_skill_name.lock().await.take();
+        let prompt_meta = self.shared.pending_prompt_meta.lock().await.take();
         if self.phase_async().await == AgentHarnessPhase::Idle {
-            if let Some(name) = &skill_name {
+            if let Some((kind, title)) = prompt_meta {
                 self.shared
                     .session
                     .lock()
                     .await
-                    .append_message_with_skill(message, name.clone())
+                    .append_message_with_prompt(message, title, kind)
                     .await
                     .map_err(session_error)?;
             } else {

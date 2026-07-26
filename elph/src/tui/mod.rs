@@ -33,7 +33,7 @@ mod system_prompt_dialog;
 mod theme;
 mod tool_approval;
 pub(crate) mod tool_params;
-mod transcript;
+pub(crate) mod transcript;
 mod user_question;
 mod user_question_bar;
 mod user_question_option_list;

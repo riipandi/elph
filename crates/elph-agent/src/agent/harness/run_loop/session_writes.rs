@@ -16,13 +16,13 @@ where
             let Some(write) = write else { break };
             match write {
                 PendingSessionWrite::Message { message } => {
-                    let skill_name = self.shared.pending_skill_name.lock().await.take();
-                    if let Some(name) = skill_name {
+                    let prompt_meta = self.shared.pending_prompt_meta.lock().await.take();
+                    if let Some((kind, title)) = prompt_meta {
                         self.shared
                             .session
                             .lock()
                             .await
-                            .append_message_with_skill(message, name)
+                            .append_message_with_prompt(message, title, kind)
                             .await
                             .map_err(session_error)?;
                     } else {

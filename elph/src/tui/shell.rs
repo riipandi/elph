@@ -1404,6 +1404,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 chrome_refresh_pending.set(true);
                 // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
 
+                // Persist full transcript (thinking / tools / durations / expand / diffs)
+                // so --resume matches the live session. Non-fatal on failure.
+                if let Some(session) = agent_session_for_loop.as_ref() {
+                    let snapshot = messages.read().clone();
+                    let session = Arc::clone(session);
+                    tokio::spawn(async move {
+                        if let Err(err) = session.save_transcript_snapshot(&snapshot).await {
+                            log::warn!("transcript snapshot save failed: {err:#}");
+                        }
+                    });
+                }
+
                 if turn_cancel_requested.get() {
                     turn_cancel_requested.set(false);
                     let elapsed = run_completed_elapsed.unwrap_or(0.0);
