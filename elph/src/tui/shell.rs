@@ -1,5 +1,6 @@
 //! Root shell: layout zones, global keyboard handling, and session state.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -59,12 +60,15 @@ use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
+use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
 };
 use crate::tui::slash_handler::{SlashContext, SlashOutcome};
-use crate::tui::slash_handler::{handle_slash_submit, overlay_deferred_message, slash_echoes_prompt_in_transcript};
+use crate::tui::slash_handler::{
+    handle_slash_submit, overlay_deferred_message, slash_echoes_prompt_in_transcript, slash_outcome_is_ui_only,
+};
 use crate::tui::slash_palette::SlashPaletteKeyAction;
 use crate::tui::slash_palette::{build_snapshot, palette_visible, resolve_snapshot_key_action, sync_selection};
 use crate::tui::startup::{
@@ -75,8 +79,8 @@ use crate::tui::startup::{
 };
 use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
 use crate::tui::system_prompt_dialog::{
-    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, SystemPromptDialogOverlay, close_system_prompt_dialog,
-    open_system_prompt_dialog, system_prompt_dialog_chrome,
+    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
+    system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::PendingToolApproval;
 use crate::tui::tool_approval::{
@@ -84,11 +88,12 @@ use crate::tui::tool_approval::{
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
-    EphemeralBanner, EphemeralBannerGeneration, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
-    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
-    clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner, prompt_copy_banner,
-    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
-    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
+    AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, FILE_PICKER_HIDDEN_NOTICE_KEY,
+    MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel, TranscriptStyle, agent_mode_banner,
+    agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner, clear_ephemeral_banner_if_generation,
+    clipboard_notice_banner, expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value,
+    model_set_notice_text, prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner,
+    select_mode_off_banner, select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
@@ -451,6 +456,77 @@ fn push_transcript_message(
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
+/// Upsert a `transient:*` notice in the scrollable transcript (subtle grey ephemeral styling).
+fn upsert_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    key: &str,
+    text: impl Into<String>,
+) {
+    let text = text.into();
+    messages.set({
+        let mut list = messages.read().clone();
+        if let Some(row) = list.iter_mut().find(|m| m.startup_key.as_deref() == Some(key)) {
+            row.content = text;
+        } else {
+            list.push(TranscriptMessage::startup_status(key, text, TranscriptStyle::Meta));
+        }
+        list
+    });
+    messages_revision.set(messages_revision.get().wrapping_add(1));
+}
+
+/// Remove a `transient:*` notice from the transcript when its TTL elapses (or it is replaced).
+fn clear_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    key: &str,
+) {
+    let before = messages.read().len();
+    messages.set({
+        let mut list = messages.read().clone();
+        list.retain(|m| m.startup_key.as_deref() != Some(key));
+        list
+    });
+    if messages.read().len() != before {
+        messages_revision.set(messages_revision.get().wrapping_add(1));
+    }
+}
+
+/// Show a timed transcript notice and schedule its auto-clear.
+fn publish_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    expires: &mut Ref<HashMap<&'static str, Instant>>,
+    key: &'static str,
+    text: impl Into<String>,
+) {
+    upsert_ephemeral_transcript_notice(messages, messages_revision, key, text);
+    expires.write().insert(key, Instant::now() + AGENT_MODE_NOTICE_TTL);
+}
+
+/// Drop any transcript notices whose wall-clock TTL has elapsed.
+fn poll_ephemeral_transcript_notices(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    expires: &mut Ref<HashMap<&'static str, Instant>>,
+) {
+    let now = Instant::now();
+    let expired: Vec<&'static str> = expires
+        .read()
+        .iter()
+        .filter(|(_, until)| now >= **until)
+        .map(|(key, _)| *key)
+        .collect();
+    if expired.is_empty() {
+        return;
+    }
+    for key in expired {
+        clear_ephemeral_transcript_notice(messages, messages_revision, key);
+        expires.write().remove(key);
+    }
+}
+
 fn publish_transcript_now(
     messages_revision: &mut State<u64>,
     transcript_pending: &mut Ref<bool>,
@@ -514,8 +590,8 @@ fn apply_bootstrap_ui_event(
                 let model = bootstrap.session.model_id();
                 mark_agent_startup_ready(
                     &mut msgs,
-                    (!provider.trim().is_empty()).then_some(provider),
-                    (!model.trim().is_empty()).then_some(model),
+                    (!provider.trim().is_empty()).then_some(provider.as_str()),
+                    (!model.trim().is_empty()).then_some(model.as_str()),
                 );
             }
             bootstrap_phase.set(BootstrapPhase::AgentReady);
@@ -727,6 +803,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         let (tx, rx) = unbounded_channel();
         EphemeralExpireChannel { tx, rx }
     });
+    // Auto-clear schedule for transcript `transient:*` notices (file-picker, model set, …).
+    let mut pending_transcript_notice_expires = hooks.use_ref(HashMap::<&'static str, Instant>::new);
 
     let cwd_for_mention_index = cwd.clone();
     let mut layout_screen_size_for_loop = layout_screen_size;
@@ -904,6 +982,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 let mut channel = ephemeral_expire.write();
                 poll_ephemeral_banner_expiry(&mut ephemeral_banner, &ephemeral_banner_generation, &mut channel.rx);
             }
+            // Wall-clock expiry for transcript ephemeral notices (independent of status-row toasts).
+            poll_ephemeral_transcript_notices(
+                &mut messages,
+                &mut messages_revision,
+                &mut pending_transcript_notice_expires,
+            );
 
             let mut transcript_changed = false;
             let mut run_completed = false;
@@ -1500,6 +1584,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
+                    // `[` / `]` — All | Scoped | Provider (any focus).
                     if let Some(delta) = model_selector_scope_delta(modifiers, code) {
                         if let Some(pending) = pending_model_selector.write().as_mut() {
                             sync_pending_filter(pending, &model_filter.read());
@@ -1513,18 +1598,31 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
-                    if model_input_focus.get() == ModelSelectorFocus::List {
-                        if let Some(delta) = model_selector_provider_delta(modifiers, code) {
+                    // ←/→ (and h/l on list) — cycle providers only on the Provider scope tab.
+                    // Arrows also work from the filter when it is empty so users need not Tab first.
+                    if let Some(delta) = model_selector_provider_delta(modifiers, code) {
+                        let list_focused = model_input_focus.get() == ModelSelectorFocus::List;
+                        let is_arrow = matches!(code, KeyCode::Left | KeyCode::Right);
+                        let filter_empty = model_filter.read().trim().is_empty();
+                        let wants_provider_nav = list_focused || (is_arrow && filter_empty);
+                        if wants_provider_nav {
                             if let Some(pending) = pending_model_selector.write().as_mut() {
-                                focus_model_selector_list(&mut model_input_focus, pending);
-                                sync_pending_filter(pending, &model_filter.read());
-                                pending.apply_horizontal_nav(delta);
-                                model_provider_index.set(pending.provider_index);
-                                model_selected_index.set(pending.model_index);
+                                // All / Scoped: consume the key but do not switch providers.
+                                if pending.is_provider_scope_mode() {
+                                    if list_focused {
+                                        focus_model_selector_list(&mut model_input_focus, pending);
+                                    }
+                                    sync_pending_filter(pending, &model_filter.read());
+                                    pending.apply_provider_nav(delta);
+                                    model_provider_index.set(pending.provider_index);
+                                    model_selected_index.set(pending.model_index);
+                                }
                             }
                             return;
                         }
+                    }
 
+                    if model_input_focus.get() == ModelSelectorFocus::List {
                         if modifiers.is_empty()
                             && code == KeyCode::Backspace
                             && let Some(pending) = pending_model_selector.write().as_mut()
@@ -1567,10 +1665,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 Ok(label) => {
                                     publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                                     chrome_refresh_pending.set(true);
-                                    push_transcript_message(
+                                    publish_ephemeral_transcript_notice(
                                         &mut messages,
                                         &mut messages_revision,
-                                        TranscriptMessage::text(format!("Model set to {label}"), TranscriptStyle::Meta),
+                                        &mut pending_transcript_notice_expires,
+                                        MODEL_SET_NOTICE_KEY,
+                                        model_set_notice_text(&label),
                                     );
                                     if let Some(session) = agent {
                                         spawn_runtime_model_switch(session, value);
@@ -2129,6 +2229,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     text,
+                                    width_pct: None,
                                 });
                             }
                             SlashOutcome::PlayConfetti { mode } => {
@@ -2140,6 +2241,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     mode,
                                 });
+                                force_editor_clear.set(true);
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
@@ -2212,15 +2314,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     settings.ui.file_picker.show_hidden_files = next;
                     let _ = Settings::save(&paths, &settings);
                 }
-                let message = if next {
-                    "File picker: showing hidden files."
-                } else {
-                    "File picker: hiding hidden files."
-                };
-                push_transcript_message(
+                // Transcript ephemeral notice (subtle grey `transient:*` styling; auto-clears after TTL).
+                publish_ephemeral_transcript_notice(
                     &mut messages,
                     &mut messages_revision,
-                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                    &mut pending_transcript_notice_expires,
+                    FILE_PICKER_HIDDEN_NOTICE_KEY,
+                    file_picker_hidden_notice_text(next),
                 );
                 return;
             }
@@ -2350,24 +2450,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     let agent = agent_session.clone();
                     let (provider, model) = agent
                         .as_ref()
-                        .map(|s| (Some(s.model_provider().to_string()), Some(s.model_id().to_string())))
+                        .map(|s| (Some(s.model_provider()), Some(s.model_id())))
                         .unwrap_or((None, None));
                     let mut stats = chrome_stats.read().clone();
                     match cycle_scoped_model_selection(
                         &paths,
-                        &session_scoped_items.read(),
+                        &mut session_scoped_items.write(),
                         provider.as_deref(),
                         model.as_deref(),
                         reverse,
                         &mut stats,
                     ) {
-                        Ok((label, value)) => {
+                        Ok((_label, value)) => {
                             publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                             chrome_refresh_pending.set(true);
-                            push_transcript_message(
+                            // Scoped cycle: `Model set to MODEL_ID (PROVIDER)`.
+                            publish_ephemeral_transcript_notice(
                                 &mut messages,
                                 &mut messages_revision,
-                                TranscriptMessage::text(format!("Model set to {label}"), TranscriptStyle::Meta),
+                                &mut pending_transcript_notice_expires,
+                                MODEL_SET_NOTICE_KEY,
+                                model_set_notice_from_value(&value),
                             );
                             if let Some(session) = agent {
                                 spawn_runtime_model_switch(session, value);
@@ -2741,17 +2844,32 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .read()
         .as_ref()
         .map(|pending| -> AnyElement<'static> {
-            let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height);
+            let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
+            let mut pending_system_prompt = pending_system_prompt;
+            let mut draft = draft;
+            let mut live_draft = live_draft;
+            let mut shell_focus = shell_focus;
+            let mut force_editor_clear = force_editor_clear;
             element! {
-                SystemPromptDialogOverlay(
+                ScrollTextDialogOverlay(
                     screen_width: screen_width,
                     screen_height: screen_height,
+                    title: pending.title.clone(),
                     text: pending.text.clone(),
                     body_height: body_height,
                     chrome: chrome,
                     scroll_handle: Some(system_prompt_scroll),
                     scroll_tick: system_prompt_scroll_tick.get(),
                     has_focus: system_prompt_has_focus,
+                    on_esc: move |_| {
+                        close_system_prompt_dialog(
+                            &mut pending_system_prompt,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            &mut force_editor_clear,
+                        );
+                    },
                 )
             }
             .into()
@@ -2855,6 +2973,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 messages_revision: Some(messages_revision),
                 sticky_scroll: props.sticky_scroll,
                 has_focus: transcript_focused,
+                // Modal dialogs own the wheel; keep the transcript still underneath.
+                mouse_scroll: Some(!status_dialog_open),
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
@@ -3337,6 +3457,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     text,
+                                    width_pct: None,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
@@ -3355,6 +3476,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
+                                force_editor_clear.set(true);
                                 suppress_enter_newline.set(true);
                                 return;
                             }
@@ -3366,7 +3488,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 );
                             }
                             SlashOutcome::SpawnAgentTurn if is_slash => {
-                                if agent_session.is_some() {
+                                // Agent-backed slash (skill/compact/…) must not start a nested turn mid-stream.
+                                if busy.get() {
+                                    push_transcript_message(
+                                        &mut messages,
+                                        &mut messages_revision,
+                                        TranscriptMessage::text(
+                                            "Agent is busy. Wait for the current turn to finish, then retry this command.",
+                                            TranscriptStyle::Meta,
+                                        ),
+                                    );
+                                } else if agent_session.is_some() {
                                     chrome_refresh_pending.set(true);
                                     idle_status_notice.set(None);
                                     turn_cancel_requested.set(false);
@@ -3385,6 +3517,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                             }
                             SlashOutcome::SpawnAgentTurn => {
+                                debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
                                 if busy.get() {
                                     prompt_queue.write().push(body.clone());
                                 } else if let Some(session) = agent_session.as_ref() {

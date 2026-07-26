@@ -9,8 +9,8 @@ use elph_tui::utils::truncate_with_ellipsis;
 
 use crate::platform::Paths;
 
-/// Max display width for skill descriptions in slash palette and `/help`.
-pub const MAX_SKILL_PALETTE_DESCRIPTION_CHARS: usize = 72;
+/// Max display width for slash palette / `/help` descriptions (skills, templates, builtins).
+pub const MAX_PALETTE_DESCRIPTION_CHARS: usize = 72;
 
 /// A skill name defined in multiple directories; the later directory wins.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,10 +112,15 @@ pub fn skill_slash_name(skill_name: &str) -> String {
     format!("skill:{skill_name}")
 }
 
-/// Shorten a skill description for palette rows (first line, ellipsis).
-pub fn truncate_skill_palette_description(description: &str) -> String {
+/// Shorten a description for palette rows (first line, ellipsis).
+pub fn truncate_palette_description(description: &str) -> String {
     let first_line = description.lines().next().unwrap_or(description).trim();
-    truncate_with_ellipsis(first_line, MAX_SKILL_PALETTE_DESCRIPTION_CHARS)
+    truncate_with_ellipsis(first_line, MAX_PALETTE_DESCRIPTION_CHARS)
+}
+
+/// Backward-compatible alias for [`truncate_palette_description`].
+pub fn truncate_skill_palette_description(description: &str) -> String {
+    truncate_palette_description(description)
 }
 
 #[cfg(test)]
@@ -141,7 +146,7 @@ mod tests {
     fn truncate_skill_palette_description_caps_length() {
         let long = "a".repeat(120);
         let out = truncate_skill_palette_description(&long);
-        assert!(out.chars().count() <= MAX_SKILL_PALETTE_DESCRIPTION_CHARS);
+        assert!(out.chars().count() <= MAX_PALETTE_DESCRIPTION_CHARS);
         assert!(out.ends_with('…'));
     }
 

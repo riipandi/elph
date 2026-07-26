@@ -50,11 +50,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
-        SlashDispatch::Tools { args } => match tools_slash_message(ctx.agent_session.as_deref(), &args) {
+        SlashDispatch::Tools { args } => match tools_slash_message(ctx.agent_session.as_ref(), &args) {
             Ok(message) => SlashOutcome::Assistant(message),
             Err(message) => SlashOutcome::Status(message),
         },
-        SlashDispatch::SystemPrompt => match system_prompt_slash_message(ctx.agent_session.as_deref()) {
+        SlashDispatch::SystemPrompt => match system_prompt_slash_message(ctx.agent_session.as_ref()) {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
@@ -105,6 +105,25 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
 /// Whether the submitted slash line should appear as a user/meta card in the transcript.
 pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
     matches!(outcome, SlashOutcome::SpawnAgentTurn)
+}
+
+/// Outcomes that only touch UI / local state and never start an agent turn.
+///
+/// Safe to apply while `busy` (streaming); they must not call nested `try_block_on`
+/// on the TUI runtime without isolation (see `try_block_on_detached`).
+pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
+    matches!(
+        outcome,
+        SlashOutcome::Status(_)
+            | SlashOutcome::Assistant(_)
+            | SlashOutcome::Unimplemented(_)
+            | SlashOutcome::OpenModelSelector { .. }
+            | SlashOutcome::OpenScopedModels
+            | SlashOutcome::OpenSystemPromptDialog { .. }
+            | SlashOutcome::PlayConfetti { .. }
+            | SlashOutcome::OverlayDeferred(_)
+            | SlashOutcome::Quit
+    )
 }
 
 pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
@@ -262,8 +281,18 @@ mod tests {
         });
         assert!(matches!(
             outcome,
-            SlashOutcome::Status(message) if message == "Agent session required for this command."
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
         ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn ui_only_outcomes_do_not_include_spawn_turn() {
+        assert!(slash_outcome_is_ui_only(&SlashOutcome::OpenSystemPromptDialog {
+            text: "x".into()
+        }));
+        assert!(slash_outcome_is_ui_only(&SlashOutcome::Assistant("tools".into())));
+        assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
     }
 
     #[test]

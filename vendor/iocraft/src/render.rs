@@ -477,6 +477,8 @@ impl<'a> Tree<'a> {
                     };
                     term.write_canvas(prev, &output.canvas)?;
                 }
+                // Hit-test map for Super/Cmd+click when mouse capture blocks native OSC 8.
+                term.set_hyperlink_index(output.canvas.hyperlink_index());
                 prev_canvas = Some(output.canvas);
                 Ok(())
             })?;

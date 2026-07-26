@@ -25,6 +25,8 @@ pub struct DialogShellOverlayProps<'a> {
     pub chrome: DialogChrome,
     pub header: DialogHeader,
     pub theme: Option<UiTheme>,
+    /// Click handler for the header `[esc]` label.
+    pub on_esc: HandlerMut<'static, ()>,
     pub children: Vec<AnyElement<'a>>,
 }
 
@@ -36,6 +38,7 @@ impl<'a> Default for DialogShellOverlayProps<'a> {
             chrome: DialogChrome::default(),
             header: DialogHeader::title("Dialog"),
             theme: None,
+            on_esc: HandlerMut::default(),
             children: Vec::new(),
         }
     }
@@ -50,6 +53,7 @@ pub fn DialogShellOverlay<'a>(props: &mut DialogShellOverlayProps<'a>, hooks: Ho
     let chrome = props.chrome.clone().with_theme(theme);
     let header = props.header.clone();
     let children = std::mem::take(&mut props.children);
+    let on_esc = props.on_esc.take();
     element! {
         View(
             width: props.screen_width,
@@ -64,6 +68,7 @@ pub fn DialogShellOverlay<'a>(props: &mut DialogShellOverlayProps<'a>, hooks: Ho
                 chrome: chrome,
                 header: header,
                 theme: Some(theme),
+                on_esc: on_esc,
             ) {
                 #(children)
             }

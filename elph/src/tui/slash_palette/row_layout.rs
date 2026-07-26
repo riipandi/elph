@@ -83,6 +83,64 @@ pub fn palette_desc_width(list_width: u16, command_column_width: u16) -> usize {
         .max(1) as usize
 }
 
+/// Truncate a single line with a trailing `…` when it exceeds `max_chars`.
+pub fn truncate_line_ellipsis(line: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = line.chars().count();
+    if char_count <= max_chars {
+        return line.to_string();
+    }
+    if max_chars == 1 {
+        return "…".to_string();
+    }
+    let mut out: String = line.chars().take(max_chars.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+/// Truncate command name (and optional args hint) to fit the command column content width.
+///
+/// Returns `(display_name, display_hint)` — hint is `None` when not provided or when there is
+/// no room left after the name.
+pub fn truncate_command_label(
+    command_name: &str,
+    args_hint: Option<&str>,
+    content_max: usize,
+) -> (String, Option<String>) {
+    if content_max == 0 {
+        return (String::new(), None);
+    }
+    let Some(hint) = args_hint.filter(|h| !h.is_empty()) else {
+        return (truncate_line_ellipsis(command_name, content_max), None);
+    };
+
+    let hint_len = hint.chars().count();
+    let name_len = command_name.chars().count();
+    // name + space + hint
+    if name_len.saturating_add(1).saturating_add(hint_len) <= content_max {
+        return (command_name.to_string(), Some(hint.to_string()));
+    }
+
+    // Prefer keeping the full hint when the name can still show a useful prefix.
+    let name_budget = content_max.saturating_sub(1 + hint_len);
+    if name_budget >= 4 {
+        return (truncate_line_ellipsis(command_name, name_budget), Some(hint.to_string()));
+    }
+
+    // Narrow column: share space between name and hint.
+    let name_budget = (content_max * 2 / 3).max(1);
+    let display_name = truncate_line_ellipsis(command_name, name_budget);
+    let used = display_name.chars().count().saturating_add(1);
+    let hint_budget = content_max.saturating_sub(used);
+    if hint_budget == 0 {
+        (display_name, None)
+    } else {
+        (display_name, Some(truncate_line_ellipsis(hint, hint_budget)))
+    }
+}
+
 /// Wrapped description lines for one palette row (capped).
 pub fn wrap_palette_description(description: &str, list_width: u16, command_column_width: u16) -> Vec<String> {
     let width = palette_desc_width(list_width, command_column_width);
@@ -123,22 +181,6 @@ pub fn visible_terminal_rows(
         }
     }
     total.max(1) as u16
-}
-
-fn truncate_line_ellipsis(line: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-    let char_count = line.chars().count();
-    if char_count <= max_chars {
-        return line.to_string();
-    }
-    if max_chars == 1 {
-        return "…".to_string();
-    }
-    let mut out: String = line.chars().take(max_chars.saturating_sub(1)).collect();
-    out.push('…');
-    out
 }
 
 #[cfg(test)]
@@ -191,5 +233,20 @@ mod tests {
         let cmd_col = palette_command_column_width(&options, 50);
         let rows = visible_terminal_rows(&options, 0, 2, 50, cmd_col, 3);
         assert_eq!(rows, 3);
+    }
+
+    #[test]
+    fn truncate_command_label_ellipsizes_long_names() {
+        let (name, hint) = truncate_command_label("/skill:very-long-skill-name-here", None, 18);
+        assert_eq!(hint, None);
+        assert!(name.ends_with('…'));
+        assert!(name.chars().count() <= 18);
+    }
+
+    #[test]
+    fn truncate_command_label_keeps_args_hint_when_possible() {
+        let (name, hint) = truncate_command_label("/tools", Some("[json|list|table]"), 40);
+        assert_eq!(name, "/tools");
+        assert_eq!(hint.as_deref(), Some("[json|list|table]"));
     }
 }

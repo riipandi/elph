@@ -30,6 +30,11 @@ pub struct StyledSpan {
     pub color: Color,
     pub weight: Weight,
     pub italic: bool,
+    /// When true, render with underline (links / clickable paths).
+    pub underline: bool,
+    /// OSC 8 target URI (`https://…`, `file:///…`). Click opens this URL, even when
+    /// [`Self::text`] is an abbreviated path label.
+    pub href: Option<String>,
 }
 
 impl StyledSpan {
@@ -39,6 +44,20 @@ impl StyledSpan {
             color,
             weight: Weight::Normal,
             italic: false,
+            underline: false,
+            href: None,
+        }
+    }
+
+    /// Link-styled span: link color + hyperlink target (no underline).
+    pub fn link(text: impl Into<String>, href: impl Into<String>, color: Color) -> Self {
+        Self {
+            text: text.into(),
+            color,
+            weight: Weight::Normal,
+            italic: false,
+            underline: false,
+            href: Some(href.into()),
         }
     }
 }

@@ -1,23 +1,27 @@
-//! Model list rows — compact name column + tabular hint column.
+//! Model list rows — model id column + tabular hint (provider / context / caps).
 
 use elph_tui::components::theme::{UiTheme, dialog_option_desc_style, dialog_option_name_style, dialog_row_surface};
 use elph_tui::list_selection_row_prefix;
 use iocraft::prelude::*;
 
-use crate::tui::model_selector::ModelRow;
+use crate::tui::model_selector::{ModelRow, format_model_capability_label, format_model_context_label};
 use crate::tui::slash_palette::palette_window_start;
 
 /// Selection marker width (`❯ ` or `  `).
 const ROW_PREFIX_CHARS: usize = 2;
 
-/// Gap between model name and hint (tighter than slash palette).
-pub const MODEL_NAME_HINT_GAP: u16 = 1;
+/// Gap between model id column and hint columns (matches slash palette).
+pub const MODEL_ID_HINT_GAP: u16 = 2;
 
 /// Two spaces between aligned hint columns.
 const HINT_COL_GAP: &str = "  ";
 
-const MODEL_NAME_MIN_CHARS: usize = 10;
-const MODEL_NAME_MAX_CHARS: usize = 30;
+const MODEL_ID_MIN_CHARS: usize = 12;
+/// Fits long provider-style ids (e.g. Bedrock `au.anthropic.claude-…-v1`).
+const MODEL_ID_MAX_CHARS: usize = 52;
+
+/// Reserve enough room for `provider  128K  (think|img)` so the id column cannot crowd it.
+const MIN_HINT_CHARS: u16 = 28;
 
 /// Viewport height and visible row count for a fixed-height model list.
 pub fn model_option_list_viewport(height: u16, option_count: usize) -> (u16, usize) {
@@ -34,26 +38,43 @@ pub fn model_option_list_viewport(height: u16, option_count: usize) -> (u16, usi
     (viewport_height, scroll_cap)
 }
 
-fn model_name_label_width(name: &str) -> usize {
-    ROW_PREFIX_CHARS.saturating_add(name.chars().count())
+fn model_id_label_width(model_id: &str) -> usize {
+    ROW_PREFIX_CHARS.saturating_add(model_id.chars().count())
 }
 
-pub fn model_name_column_width(models: &[ModelRow], list_width: u16) -> u16 {
-    let mut max_label = MODEL_NAME_MIN_CHARS;
+pub fn model_id_column_width(models: &[ModelRow], list_width: u16) -> u16 {
+    let mut max_label = MODEL_ID_MIN_CHARS;
     for row in models {
-        max_label = max_label.max(model_name_label_width(&row.name));
+        max_label = max_label.max(model_id_label_width(&row.model_id));
     }
-    max_label = max_label.min(MODEL_NAME_MAX_CHARS);
+    max_label = max_label.min(MODEL_ID_MAX_CHARS);
 
-    let max_allowed = list_width.saturating_sub(MODEL_NAME_HINT_GAP + 8).max(1) as usize;
+    let max_allowed = list_width.saturating_sub(MODEL_ID_HINT_GAP + MIN_HINT_CHARS).max(1) as usize;
     max_label.min(max_allowed).max(1) as u16
 }
 
-fn model_hint_desc_width(list_width: u16, name_col: u16) -> usize {
-    list_width.saturating_sub(name_col + MODEL_NAME_HINT_GAP).max(1) as usize
+fn model_hint_desc_width(list_width: u16, id_col: u16) -> usize {
+    list_width.saturating_sub(id_col + MODEL_ID_HINT_GAP).max(1) as usize
 }
 
-/// Build single-line tabular hints with aligned provider / model id columns.
+/// Truncate a string to `max_chars`, appending `…` when clipped.
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = text.chars().count();
+    if char_count <= max_chars {
+        return text.to_string();
+    }
+    if max_chars == 1 {
+        return "…".to_string();
+    }
+    let mut out: String = text.chars().take(max_chars.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+/// Build single-line tabular hints: `PROVIDER  CONTEXT (think|img)`.
 pub fn format_model_hints_tabular(models: &[ModelRow], show_provider: bool) -> Vec<String> {
     if models.is_empty() {
         return Vec::new();
@@ -68,54 +89,49 @@ pub fn format_model_hints_tabular(models: &[ModelRow], show_provider: bool) -> V
     } else {
         0
     };
-    let model_w = models.iter().map(|row| row.model_id.chars().count()).max().unwrap_or(0);
+    let context_labels: Vec<String> = models
+        .iter()
+        .map(|row| format_model_context_label(row.context_k))
+        .collect();
+    let context_w = context_labels
+        .iter()
+        .map(|label| label.chars().count())
+        .max()
+        .unwrap_or(0);
 
     models
         .iter()
-        .map(|row| {
+        .zip(context_labels.iter())
+        .map(|(row, context)| {
             let mut parts = Vec::new();
             if show_provider {
                 parts.push(format!("{:<provider_w$}", row.provider_id, provider_w = provider_w));
             }
-            parts.push(format!("{:<model_w$}", row.model_id, model_w = model_w));
-            parts.push(format!("{}k", row.context_k));
-            if row.reasoning {
-                parts.push("think".to_string());
+            parts.push(format!("{:<context_w$}", context, context_w = context_w));
+            if let Some(caps) = format_model_capability_label(row.reasoning, row.images) {
+                parts.push(caps);
             }
             parts.join(HINT_COL_GAP)
         })
         .collect()
 }
 
-fn truncate_hint(hint: &str, max_chars: usize) -> String {
-    if max_chars == 0 {
-        return String::new();
-    }
-    let char_count = hint.chars().count();
-    if char_count <= max_chars {
-        return hint.to_string();
-    }
-    if max_chars == 1 {
-        return "…".to_string();
-    }
-    let mut out: String = hint.chars().take(max_chars.saturating_sub(1)).collect();
-    out.push('…');
-    out
-}
-
 fn model_row(
     theme: UiTheme,
     list_width: u16,
-    name_col: u16,
-    name: &str,
+    id_col: u16,
+    model_id: &str,
     hint: &str,
     selected: bool,
 ) -> AnyElement<'static> {
     let prefix = list_selection_row_prefix(selected);
-    let (name_color, name_weight) = dialog_option_name_style(theme, selected);
+    let (id_color, id_weight) = dialog_option_name_style(theme, selected);
     let desc_color = dialog_option_desc_style(theme, selected);
-    let desc_width = model_hint_desc_width(list_width, name_col);
-    let hint_text = truncate_hint(hint, desc_width);
+    let desc_width = model_hint_desc_width(list_width, id_col);
+    // Keep id text inside the column so long Bedrock-style ids never paint over the provider.
+    let id_content_max = (id_col as usize).saturating_sub(ROW_PREFIX_CHARS);
+    let display_id = truncate_chars(model_id, id_content_max);
+    let hint_text = truncate_chars(hint, desc_width);
     let row_surface = dialog_row_surface(theme, selected);
 
     element! {
@@ -126,19 +142,32 @@ fn model_row(
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::FlexStart,
             justify_content: JustifyContent::FlexStart,
-            gap: MODEL_NAME_HINT_GAP,
+            gap: MODEL_ID_HINT_GAP,
             flex_shrink: 0f32,
+            overflow: Overflow::Hidden,
         ) {
-            View(width: name_col, height: 1, align_items: AlignItems::FlexStart) {
+            View(
+                width: id_col,
+                height: 1,
+                align_items: AlignItems::FlexStart,
+                overflow: Overflow::Hidden,
+                flex_shrink: 0f32,
+            ) {
                 Text(
-                    content: format!("{prefix}{name}"),
-                    color: name_color,
-                    weight: name_weight,
+                    content: format!("{prefix}{display_id}"),
+                    color: id_color,
+                    weight: id_weight,
                     wrap: TextWrap::NoWrap,
                     align: TextAlign::Left,
                 )
             }
-            View(width: desc_width as u16, height: 1, align_items: AlignItems::FlexStart) {
+            View(
+                width: desc_width as u16,
+                height: 1,
+                align_items: AlignItems::FlexStart,
+                overflow: Overflow::Hidden,
+                flex_shrink: 0f32,
+            ) {
                 Text(
                     content: hint_text,
                     color: desc_color,
@@ -207,7 +236,7 @@ pub fn ModelOptionList(props: &mut ModelOptionListProps, mut hooks: Hooks) -> im
 
     let (viewport_height, scroll_cap) = model_option_list_viewport(props.height, option_count);
     let window_start = palette_window_start(index, scroll_cap, option_count);
-    let name_col = model_name_column_width(&models, props.width);
+    let id_col = model_id_column_width(&models, props.width);
     let hints = format_model_hints_tabular(&models, show_provider_hint);
 
     let rows: Vec<AnyElement<'static>> = if models.is_empty() {
@@ -224,7 +253,7 @@ pub fn ModelOptionList(props: &mut ModelOptionListProps, mut hooks: Hooks) -> im
             .enumerate()
             .skip(window_start)
             .take(scroll_cap)
-            .map(|(i, (row, hint))| model_row(theme, props.width, name_col, &row.name, hint, i == index))
+            .map(|(i, (row, hint))| model_row(theme, props.width, id_col, &row.model_id, hint, i == index))
             .collect()
     };
 
@@ -247,7 +276,14 @@ mod tests {
     use super::*;
     use crate::tui::model_selector::ModelRow;
 
-    fn sample_row(provider: &str, model_id: &str, name: &str, context_k: u32, reasoning: bool) -> ModelRow {
+    fn sample_row(
+        provider: &str,
+        model_id: &str,
+        name: &str,
+        context_k: u32,
+        reasoning: bool,
+        images: bool,
+    ) -> ModelRow {
         ModelRow {
             value: format!("{provider}/{model_id}"),
             name: name.to_string(),
@@ -255,6 +291,7 @@ mod tests {
             model_id: model_id.to_string(),
             context_k,
             reasoning,
+            images,
         }
     }
 
@@ -280,27 +317,73 @@ mod tests {
     }
 
     #[test]
-    fn tabular_hints_align_provider_and_model_columns() {
+    fn tabular_hints_align_provider_context_and_caps() {
         let rows = vec![
-            sample_row("anthropic", "claude-sonnet-4", "Claude Sonnet 4", 200, false),
-            sample_row("openai", "gpt-4.1", "GPT-4.1", 128, true),
+            sample_row("opencode", "big-pickle", "Big Pickle", 128, true, false),
+            sample_row("opencode", "kimi-k3", "Kimi K3", 1000, true, true),
+            sample_row("kilo", "kilo-auto/free", "Kilo Auto Free", 256, true, false),
         ];
         let hints = format_model_hints_tabular(&rows, true);
-        assert_eq!(hints[0], "anthropic  claude-sonnet-4  200k");
-        assert_eq!(hints[1], "openai     gpt-4.1          128k  think");
-        assert!(hints[0].contains("claude-sonnet-4"));
-        assert!(hints[1].contains("gpt-4.1"));
+        assert_eq!(hints[0], "opencode  128K  (think)");
+        assert_eq!(hints[1], "opencode  1M    (think|img)");
+        assert_eq!(hints[2], "kilo      256K  (think)");
     }
 
     #[test]
     fn provider_tab_hints_omit_provider_column() {
-        let rows = vec![sample_row("anthropic", "claude-opus-4", "Claude Opus 4", 200, true)];
+        let rows = vec![sample_row(
+            "anthropic",
+            "claude-opus-4",
+            "Claude Opus 4",
+            200,
+            true,
+            true,
+        )];
         let hints = format_model_hints_tabular(&rows, false);
-        assert_eq!(hints[0], "claude-opus-4  200k  think");
+        assert_eq!(hints[0], "200K  (think|img)");
     }
 
     #[test]
-    fn name_hint_gap_is_tighter_than_slash_palette() {
-        assert_eq!(MODEL_NAME_HINT_GAP, 1);
+    fn id_column_width_uses_model_id_not_name() {
+        let rows = vec![sample_row(
+            "opencode",
+            "big-pickle",
+            "A Very Long Display Name That Should Not Drive Width",
+            128,
+            true,
+            false,
+        )];
+        // prefix (2) + "big-pickle" (10) = 12, floored by MODEL_ID_MIN_CHARS.
+        assert_eq!(model_id_column_width(&rows, 80), MODEL_ID_MIN_CHARS as u16);
+    }
+
+    #[test]
+    fn id_column_fits_long_bedrock_style_ids() {
+        let rows = vec![sample_row(
+            "amazon-bedrock",
+            "au.anthropic.claude-opus-4-6-v1",
+            "Claude Opus 4.6",
+            1000,
+            true,
+            true,
+        )];
+        // prefix (2) + id (31) = 33 — well under max, leaves room for provider hint.
+        assert_eq!(model_id_column_width(&rows, 100), 33);
+        // Narrow terminals still reserve MIN_HINT_CHARS for the provider/context side.
+        let narrow = model_id_column_width(&rows, 50);
+        assert!(narrow < 33);
+        assert!(narrow + MODEL_ID_HINT_GAP + MIN_HINT_CHARS <= 50);
+    }
+
+    #[test]
+    fn truncate_chars_adds_ellipsis() {
+        assert_eq!(truncate_chars("au.anthropic.claude-opus-4-6-v1", 20), "au.anthropic.claude…");
+        assert_eq!(truncate_chars("short", 20), "short");
+    }
+
+    #[test]
+    fn id_hint_gap_matches_slash_palette() {
+        assert_eq!(MODEL_ID_HINT_GAP, 2);
+        assert_eq!(MODEL_ID_HINT_GAP, 2);
     }
 }

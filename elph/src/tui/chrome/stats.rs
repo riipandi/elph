@@ -74,13 +74,15 @@ pub fn read_git_footer_info(project_dir: &Path) -> Option<GitFooterInfo> {
 /// Immediate footer/header model metadata from the live session selection (no branch I/O).
 pub fn chrome_stats_from_session(session: &CodingAgentSession, fallback_context_limit: u64) -> ChromeStats {
     let context_limit = session.context_window().max(1) as u64;
+    let provider = session.model_provider();
+    let model_id = session.model_id();
     ChromeStats {
         context_limit: if context_limit > 0 {
             context_limit
         } else {
             fallback_context_limit
         },
-        model_label: model_footer_label(Some(session.model_provider()), Some(session.model_id())),
+        model_label: model_footer_label(Some(&provider), Some(&model_id)),
         supports_images: session.supports_image_input(),
         ..ChromeStats::default()
     }
@@ -101,7 +103,7 @@ pub async fn refresh_chrome_stats(
             log::debug!("chrome stats: branch entries unavailable: {err}");
             return ChromeStats {
                 context_limit: session.context_window() as u64,
-                model_label: model_footer_label(Some(live_provider), Some(live_model_id)),
+                model_label: model_footer_label(Some(&live_provider), Some(&live_model_id)),
                 supports_images: session.supports_image_input(),
                 ..ChromeStats::default()
             };
@@ -114,8 +116,8 @@ pub async fn refresh_chrome_stats(
 
     let (context_limit, model_label, supports_images) = resolve_model_chrome(
         &context,
-        live_provider,
-        live_model_id,
+        &live_provider,
+        &live_model_id,
         fallback_context_limit,
         fallback_model_label,
         fallback_supports_images,

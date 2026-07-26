@@ -18,7 +18,9 @@ use crate::tui::theme::{
     STATUS_FAILED_FG, STATUS_QUEUED_FG, STATUS_RUNNING_FG, STATUS_SUCCESS_FG, TEXT_FG, THINKING_FG, TOOL_ARGS_FG,
     TOOL_FAILED_FG, TOOL_OUTPUT_FG, TOOL_PARAM_HIGHLIGHT_FG, TOOL_RUNNING_FG, TOOL_SUCCESS_FG, TOOL_TASK_LABEL_FG,
 };
-use crate::tui::tool_params::{ToolParamsView, format_collapsed_tool_parts, parse_tool_params, tool_display_verb};
+use crate::tui::tool_params::{
+    ToolParamsView, format_collapsed_tool_parts_linked, parse_tool_params, tool_display_verb,
+};
 
 use super::super::types::{TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at};
 use super::chrome::{
@@ -98,6 +100,8 @@ struct ProcessHeaderToggleProps {
     label: String,
     /// Optional params / target path — highlight color, normal weight.
     detail: String,
+    /// When set, detail is rendered as an OSC 8 hyperlink (e.g. `file://` original path).
+    detail_href: Option<String>,
     duration_secs: Option<f64>,
     status: ProcessStatus,
     message_index: usize,
@@ -111,6 +115,7 @@ impl Default for ProcessHeaderToggleProps {
             inner_width: 0,
             label: String::new(),
             detail: String::new(),
+            detail_href: None,
             duration_secs: None,
             status: ProcessStatus::Queued,
             message_index: 0,
@@ -139,7 +144,34 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
     let meta_chip = process_meta_chip(status, props.duration_secs);
     let label = props.label.clone();
     let detail = props.detail.trim().to_string();
+    let detail_href = props.detail_href.clone();
     let has_detail = !detail.is_empty();
+    let detail_element: Option<AnyElement<'static>> = has_detail.then(|| {
+        if let Some(href) = detail_href {
+            // OSC 8 + Cmd/Super+click (app) so abbreviated paths open the original file/URL.
+            element! {
+                MixedText(
+                    wrap: TextWrap::NoWrap,
+                    contents: vec![
+                        MixedTextContent::new(detail)
+                            .color(TOOL_PARAM_HIGHLIGHT_FG)
+                            .hyperlink(std::sync::Arc::<str>::from(href)),
+                    ],
+                )
+            }
+            .into()
+        } else {
+            element! {
+                Text(
+                    content: detail,
+                    color: TOOL_PARAM_HIGHLIGHT_FG,
+                    weight: Weight::Normal,
+                    wrap: TextWrap::NoWrap,
+                )
+            }
+            .into()
+        }
+    });
 
     // Pack glyph + white task + highlighted params + dim meta.
     let row = element! {
@@ -165,14 +197,7 @@ fn ProcessHeaderToggle(props: &mut ProcessHeaderToggleProps) -> impl Into<AnyEle
                 weight: task_weight,
                 wrap: TextWrap::NoWrap,
             )
-            #(has_detail.then(|| element! {
-                Text(
-                    content: detail,
-                    color: TOOL_PARAM_HIGHLIGHT_FG,
-                    weight: Weight::Normal,
-                    wrap: TextWrap::NoWrap,
-                )
-            }))
+            #(detail_element)
             #(meta_chip.map(|text| {
                 element! {
                     Text(
@@ -513,10 +538,11 @@ pub fn tool_call_card(
             show_detail && !wait_agent && ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
-        let (header_task, header_detail) = if wait_agent || collapsed {
-            format_collapsed_tool_parts(&tool.name, &tool.args_summary)
+        let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed {
+            let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
+            (parts.verb, parts.detail, parts.detail_href)
         } else {
-            (tool_display_verb(&tool.name), String::new())
+            (tool_display_verb(&tool.name), String::new(), None)
         };
         // Wait: click only when finished and there is result body text.
         let clickable = message.is_collapsible_detail();
@@ -537,6 +563,7 @@ pub fn tool_call_card(
                     inner_width: inner_width,
                     label: header_task,
                     detail: header_detail,
+                    detail_href: header_detail_href,
                     duration_secs: message.duration_secs,
                     status: status,
                     message_index: message_index,

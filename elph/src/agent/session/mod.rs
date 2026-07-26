@@ -45,7 +45,8 @@ pub struct CodingAgentSession {
     harness: Arc<AgentHarness<SessionDirStorage>>,
     session_manager: SessionManager,
     session_id: String,
-    selection: ModelSelection,
+    /// Live model selection (updated by [`Self::set_model_from_value`] for Ctrl+P / picker).
+    selection: RwLock<ModelSelection>,
     policy: Arc<Mutex<AgentModePolicy>>,
     mode_state: Arc<Mutex<AgentMode>>,
     ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
@@ -56,6 +57,8 @@ pub struct CodingAgentSession {
     turn_gate: Arc<Mutex<()>>,
     /// Serializes agent-mode reconciliation (Tab rapid cycling).
     mode_gate: Arc<Mutex<()>>,
+    /// Last successfully compiled system prompt for sync slash reads during a busy turn.
+    system_prompt_cache: RwLock<Option<String>>,
 }
 
 impl CodingAgentSession {
@@ -81,7 +84,7 @@ impl CodingAgentSession {
             harness: harness.clone(),
             session_manager,
             session_id,
-            selection,
+            selection: RwLock::new(selection),
             policy: Arc::new(Mutex::new(policy)),
             mode_state,
             ui_tx: ui_tx.clone(),
@@ -90,10 +93,23 @@ impl CodingAgentSession {
             mcp_registry: mcp_slot,
             turn_gate: Arc::new(Mutex::new(())),
             mode_gate: Arc::new(Mutex::new(())),
+            system_prompt_cache: RwLock::new(None),
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
         Ok(session)
+    }
+
+    /// Sync read of the last compiled system prompt (for `/system-prompt` while busy).
+    pub fn cached_system_prompt(&self) -> Option<String> {
+        self.system_prompt_cache.read().clone()
+    }
+
+    /// Recompile and store the system prompt snapshot used by sync slash handlers.
+    pub async fn refresh_system_prompt_cache(&self) -> Result<()> {
+        let text = self.compiled_system_prompt().await?;
+        *self.system_prompt_cache.write() = Some(text);
+        Ok(())
     }
 
     pub fn mode_state(&self) -> Arc<Mutex<AgentMode>> {
@@ -144,18 +160,16 @@ impl CodingAgentSession {
     }
 
     pub fn model_display(&self) -> String {
-        format!(
-            "{} [{}/{}]",
-            self.selection.display_name, self.selection.provider, self.selection.model_id
-        )
+        let selection = self.selection.read();
+        format!("{} [{}/{}]", selection.display_name, selection.provider, selection.model_id)
     }
 
-    pub fn model_provider(&self) -> &str {
-        &self.selection.provider
+    pub fn model_provider(&self) -> String {
+        self.selection.read().provider.clone()
     }
 
-    pub fn model_id(&self) -> &str {
-        &self.selection.model_id
+    pub fn model_id(&self) -> String {
+        self.selection.read().model_id.clone()
     }
 
     pub fn session_id(&self) -> &str {
@@ -163,11 +177,11 @@ impl CodingAgentSession {
     }
 
     pub fn context_window(&self) -> u32 {
-        self.selection.model.context_window
+        self.selection.read().model.context_window
     }
 
     pub fn supports_image_input(&self) -> bool {
-        self.selection.model.input.iter().any(|cap| cap == "image")
+        self.selection.read().model.input.iter().any(|cap| cap == "image")
     }
 
     pub fn goal_runtime(&self) -> Arc<GoalRuntime> {
@@ -183,7 +197,9 @@ impl CodingAgentSession {
         let tool_names: Vec<String> = tools.iter().map(|tool| tool.name().to_string()).collect();
         let agents_md = agents_md_for_cwd(cwd);
         let mode = *self.mode_state.lock().await;
-        build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)
+        let text = build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)?;
+        *self.system_prompt_cache.write() = Some(text.clone());
+        Ok(text)
     }
 
     pub async fn set_agent_mode(&self, mode: AgentMode) -> Result<()> {
@@ -297,7 +313,22 @@ impl CodingAgentSession {
             .set_model(model.clone())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        Ok(format!("{} [{}]", model.name, model.provider))
+        // Keep live selection in sync so Ctrl+P cycle / chrome refresh see the new model.
+        let display_name = model.name.clone();
+        let provider = model.provider.clone();
+        let model_id = model.id.clone();
+        {
+            let mut selection = self.selection.write();
+            let models = Arc::clone(&selection.models);
+            *selection = ModelSelection {
+                provider: provider.clone(),
+                model_id,
+                model,
+                models,
+                display_name: display_name.clone(),
+            };
+        }
+        Ok(format!("{display_name} [{provider}]"))
     }
 
     pub async fn navigate_tree_to(&self, entry_id: &str) -> Result<()> {
@@ -333,11 +364,20 @@ impl CodingAgentSession {
     }
 
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
-        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await
+        reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
+        // Best-effort cache refresh so `/system-prompt` stays available without nesting
+        // block_on on the UI thread during a busy stream.
+        if let Err(err) = self.refresh_system_prompt_cache().await {
+            log::debug!("system prompt cache refresh after mode change failed: {err:#}");
+        }
+        Ok(())
     }
 
     async fn finish_ui_turn(&self, started: Instant) {
         let _ = self.harness.wait_for_idle().await;
+        if let Err(err) = self.refresh_system_prompt_cache().await {
+            log::debug!("system prompt cache refresh after turn failed: {err:#}");
+        }
         self.emit_run_completed(started).await;
     }
 

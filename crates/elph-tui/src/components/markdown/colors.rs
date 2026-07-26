@@ -166,5 +166,7 @@ pub fn syntect_to_styled_span(
             Weight::Normal
         },
         italic: effects.contains(Effects::ITALIC),
+        underline: false,
+        href: None,
     }
 }

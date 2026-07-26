@@ -1,13 +1,16 @@
 //! Flat command list inside the palette card.
 
+use elph_tui::components::theme::{UiTheme, dialog_option_desc_style, dialog_option_name_style, dialog_row_surface};
+use elph_tui::list_selection_row_prefix;
 use iocraft::prelude::*;
 
 use super::super::model::SlashPaletteSnapshot;
 use super::super::model::{list_viewport_cap, palette_window_start};
 use super::super::row_layout::CMD_DESC_GAP_COLS;
-use super::super::row_layout::{visible_terminal_rows, wrap_palette_description};
+use super::super::row_layout::{
+    ROW_PREFIX_CHARS, truncate_command_label, visible_terminal_rows, wrap_palette_description,
+};
 use super::chrome::PaletteCardChrome;
-use elph_tui::list_selection_row_prefix;
 
 #[derive(Clone, Default, Props)]
 pub struct PaletteCardBodyProps {
@@ -15,30 +18,26 @@ pub struct PaletteCardBodyProps {
     pub snapshot: SlashPaletteSnapshot,
     pub selected_index: Option<State<usize>>,
     pub screen_height: u16,
+    pub theme: Option<UiTheme>,
 }
 
 fn palette_command_row(
     chrome: &PaletteCardChrome,
+    theme: UiTheme,
     command_name: &str,
     args_hint: Option<&str>,
     description: &str,
     selected: bool,
 ) -> AnyElement<'static> {
     let prefix = list_selection_row_prefix(selected);
-    let name_color = if selected {
-        chrome.name_active_color
-    } else {
-        chrome.name_idle_color
-    };
-    let name_weight = if selected { Weight::Bold } else { Weight::Normal };
-    let desc_color = if selected {
-        chrome.desc_active_color
-    } else {
-        chrome.desc_idle_color
-    };
+    let (name_color, name_weight) = dialog_option_name_style(theme, selected);
+    let desc_color = dialog_option_desc_style(theme, selected);
+    let row_surface = dialog_row_surface(theme, selected);
 
     let cmd_col = chrome.command_column_width;
     let desc_width = chrome.list_width.saturating_sub(cmd_col + CMD_DESC_GAP_COLS).max(1);
+    let content_max = (cmd_col as usize).saturating_sub(ROW_PREFIX_CHARS);
+    let (display_name, display_hint) = truncate_command_label(command_name, args_hint, content_max);
     let desc_lines = wrap_palette_description(description, chrome.list_width, cmd_col);
     let row_height = desc_lines.len().max(1) as u16;
     let desc_text = desc_lines.join("\n");
@@ -47,7 +46,7 @@ fn palette_command_row(
     name_segments.push(
         element! {
             Text(
-                content: format!("{prefix}{command_name}"),
+                content: format!("{prefix}{display_name}"),
                 color: name_color,
                 weight: name_weight,
                 wrap: TextWrap::NoWrap,
@@ -56,12 +55,12 @@ fn palette_command_row(
         }
         .into(),
     );
-    if let Some(hint) = args_hint {
+    if let Some(hint) = display_hint {
         name_segments.push(
             element! {
                 Text(
                     content: format!(" {hint}"),
-                    color: chrome.args_hint_color,
+                    color: if selected { theme.text_muted } else { chrome.args_hint_color },
                     weight: Weight::Normal,
                     wrap: TextWrap::NoWrap,
                     align: TextAlign::Left,
@@ -75,15 +74,31 @@ fn palette_command_row(
         View(
             width: chrome.list_width,
             height: row_height,
+            background_color: row_surface,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::FlexStart,
             justify_content: JustifyContent::FlexStart,
             gap: CMD_DESC_GAP_COLS,
+            flex_shrink: 0f32,
+            overflow: Overflow::Hidden,
         ) {
-            View(width: cmd_col, height: row_height, align_items: AlignItems::FlexStart, flex_direction: FlexDirection::Row) {
+            View(
+                width: cmd_col,
+                height: row_height,
+                align_items: AlignItems::FlexStart,
+                flex_direction: FlexDirection::Row,
+                overflow: Overflow::Hidden,
+                flex_shrink: 0f32,
+            ) {
                 #(name_segments)
             }
-            View(width: desc_width, height: row_height, align_items: AlignItems::FlexStart) {
+            View(
+                width: desc_width,
+                height: row_height,
+                align_items: AlignItems::FlexStart,
+                overflow: Overflow::Hidden,
+                flex_shrink: 0f32,
+            ) {
                 Text(
                     content: desc_text,
                     color: desc_color,
@@ -96,11 +111,17 @@ fn palette_command_row(
     .into()
 }
 
-fn palette_arg_row(chrome: &PaletteCardChrome, arg: &str, description: &str, selected: bool) -> AnyElement<'static> {
-    palette_command_row(chrome, arg, None, description, selected)
+fn palette_arg_row(
+    chrome: &PaletteCardChrome,
+    theme: UiTheme,
+    arg: &str,
+    description: &str,
+    selected: bool,
+) -> AnyElement<'static> {
+    palette_command_row(chrome, theme, arg, None, description, selected)
 }
 
-fn palette_list_rows(props: &PaletteCardBodyProps) -> Vec<AnyElement<'static>> {
+fn palette_list_rows(props: &PaletteCardBodyProps, theme: UiTheme) -> Vec<AnyElement<'static>> {
     let options = &props.snapshot.options;
     let len = options.len();
     let viewport_cap = list_viewport_cap(props.screen_height).max(1);
@@ -118,7 +139,7 @@ fn palette_list_rows(props: &PaletteCardBodyProps) -> Vec<AnyElement<'static>> {
             .enumerate()
             .skip(window_start)
             .take(scroll_cap)
-            .map(|(i, opt)| palette_arg_row(&props.chrome, &opt.name, &opt.description, i == index))
+            .map(|(i, opt)| palette_arg_row(&props.chrome, theme, &opt.name, &opt.description, i == index))
             .collect();
     }
 
@@ -136,17 +157,25 @@ fn palette_list_rows(props: &PaletteCardBodyProps) -> Vec<AnyElement<'static>> {
                 .take(scroll_cap),
         )
         .map(|((i, opt), cmd)| {
-            palette_command_row(&props.chrome, &opt.name, cmd.args_hint.as_deref(), &opt.description, i == index)
+            palette_command_row(
+                &props.chrome,
+                theme,
+                &opt.name,
+                cmd.args_hint.as_deref(),
+                &opt.description,
+                i == index,
+            )
         })
         .collect()
 }
 
 #[component]
 pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'static>> {
+    let theme = props.theme.unwrap_or_default();
     let fixed_height = props.snapshot.list_height;
 
     if props.snapshot.has_matches() {
-        let rows = palette_list_rows(props);
+        let rows = palette_list_rows(props, theme);
         let options = &props.snapshot.options;
         let len = options.len();
         let viewport_cap = list_viewport_cap(props.screen_height).max(1);
@@ -186,7 +215,7 @@ pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'st
             ) {
                 Text(
                     content: "No matches",
-                    color: props.chrome.desc_idle_color,
+                    color: theme.text_hint,
                     wrap: TextWrap::NoWrap,
                 )
             }

@@ -29,6 +29,12 @@ pub const PROMPT_COPY_NOTICE_KEY: &str = "transient:prompt_copy";
 /// Stable key for text-select mode (Ctrl+S) mouse-capture notices.
 pub const SELECT_MODE_NOTICE_KEY: &str = "transient:select_mode";
 
+/// Stable key for `@` file picker hidden-files toggle (Ctrl+.).
+pub const FILE_PICKER_HIDDEN_NOTICE_KEY: &str = "transient:file_picker_hidden";
+
+/// Stable key for model selection / Ctrl+P cycle notices in the transcript.
+pub const MODEL_SET_NOTICE_KEY: &str = "transient:model_set";
+
 /// How long an agent-mode (or blocked-toggle) banner stays visible.
 pub const AGENT_MODE_NOTICE_TTL: Duration = Duration::from_secs(3);
 
@@ -51,7 +57,7 @@ pub fn api_error_banner(text: impl Into<String>) -> EphemeralBanner {
 /// Visual weight for a pinned ephemeral banner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EphemeralBannerKind {
-    /// Soft amber — mode changes and similar info toasts.
+    /// Subtle grey — mode changes and similar info toasts.
     Notice,
     /// Warm orange — quit-while-busy confirmation.
     Warning,
@@ -188,11 +194,15 @@ pub fn prompt_copy_failed_banner() -> EphemeralBanner {
 ///
 /// Prompt stays interactive; only mouse capture is released so the terminal can
 /// native-select transcript text. Footer shows a sticky `sel |` badge.
+///
+/// **Trade-off:** without mouse capture the app never receives wheel events, so
+/// transcript wheel-scroll is unavailable. Keyboard scroll still works
+/// (`Shift+↑/↓`, and arrow keys when the transcript is focused).
 pub fn select_mode_on_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
-        // Notice (not warning): typing/submit still work; only wheel/click on the TUI are off.
-        text: "Text select on · drag to select · prompt still works · Ctrl+S to turn off".to_string(),
+        // Notice (not warning): typing/submit still work; wheel/click on the TUI are off.
+        text: "Text select on · drag to select · Shift+↑/↓ scrolls · Ctrl+S off".to_string(),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
@@ -202,9 +212,38 @@ pub fn select_mode_on_banner() -> EphemeralBanner {
 pub fn select_mode_off_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
-        text: "Text select off · scroll and click restored · Ctrl+S to enable".to_string(),
+        text: "Text select off · wheel scroll and click restored · Ctrl+S to enable".to_string(),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+    }
+}
+
+/// Transcript text after Ctrl+. toggles hidden files in the `@` file picker.
+pub fn file_picker_hidden_notice_text(showing_hidden: bool) -> String {
+    if showing_hidden {
+        "File picker: showing hidden files.".to_string()
+    } else {
+        "File picker: hiding hidden files.".to_string()
+    }
+}
+
+/// Transcript text after selecting or cycling a model.
+///
+/// Picker may pass a display label (`Claude Sonnet 4 [anthropic]`); scoped cycle
+/// should use [`model_set_notice_from_value`] for `MODEL_ID (PROVIDER)`.
+pub fn model_set_notice_text(label: &str) -> String {
+    format!("Model set to {label}")
+}
+
+/// Scoped cycle / catalog notice: `Model set to MODEL_ID (PROVIDER)`.
+///
+/// `value` is `provider/model_id` (model_id may itself contain `/`, e.g. `kilo/kilo-auto/free`).
+pub fn model_set_notice_from_value(value: &str) -> String {
+    match value.split_once('/') {
+        Some((provider, model_id)) if !provider.is_empty() && !model_id.is_empty() => {
+            format!("Model set to {model_id} ({provider})")
+        }
+        _ => model_set_notice_text(value),
     }
 }
 
@@ -386,12 +425,53 @@ mod tests {
     }
 
     #[test]
+    fn file_picker_hidden_notice_text_matches_toggle() {
+        assert!(
+            file_picker_hidden_notice_text(true)
+                .to_ascii_lowercase()
+                .contains("showing hidden")
+        );
+        assert!(
+            file_picker_hidden_notice_text(false)
+                .to_ascii_lowercase()
+                .contains("hiding hidden")
+        );
+        assert!(FILE_PICKER_HIDDEN_NOTICE_KEY.starts_with("transient:"));
+    }
+
+    #[test]
+    fn model_set_notice_text_includes_label() {
+        let text = model_set_notice_text("Claude Sonnet 4 [anthropic]");
+        assert!(text.starts_with("Model set to "));
+        assert!(text.contains("Claude Sonnet 4"));
+        assert!(text.contains("[anthropic]"));
+        assert!(MODEL_SET_NOTICE_KEY.starts_with("transient:"));
+    }
+
+    #[test]
+    fn model_set_notice_from_value_uses_model_id_and_provider() {
+        assert_eq!(
+            model_set_notice_from_value("opencode/big-pickle"),
+            "Model set to big-pickle (opencode)"
+        );
+        assert_eq!(
+            model_set_notice_from_value("kilo/kilo-auto/free"),
+            "Model set to kilo-auto/free (kilo)"
+        );
+        assert_eq!(model_set_notice_from_value("bare-id"), "Model set to bare-id");
+    }
+
+    #[test]
     fn select_mode_banners_use_text_not_color_alone() {
         let on = select_mode_on_banner();
         assert_eq!(on.key, SELECT_MODE_NOTICE_KEY);
         assert_eq!(on.kind, EphemeralBannerKind::Notice);
         assert!(on.text.to_ascii_lowercase().contains("text select on"));
-        assert!(on.text.to_ascii_lowercase().contains("prompt still works"));
+        assert!(
+            on.text.to_ascii_lowercase().contains("shift") || on.text.contains("↑"),
+            "select-mode banner should mention keyboard scroll: {}",
+            on.text
+        );
         assert!(on.text.contains("Ctrl+S"));
         assert!(!on.text.contains("Esc"));
 

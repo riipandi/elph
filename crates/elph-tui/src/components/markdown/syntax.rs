@@ -23,9 +23,9 @@ impl SyntaxHighlighter {
     }
 
     fn build() -> Self {
-        let theme_bytes = include_bytes!("../../../assets/tokyo-night.tmTheme");
+        let theme_bytes = include_bytes!("../../../assets/tokyo-night.syntect");
         let mut cursor = Cursor::new(theme_bytes.as_slice());
-        let theme = ThemeSet::load_from_reader(&mut cursor).expect("tokyo-night.tmTheme must load");
+        let theme = ThemeSet::load_from_reader(&mut cursor).expect("tokyo-night.syntect must load");
         let syntax_set = two_face::syntax::extra_newlines();
         Self { theme, syntax_set }
     }

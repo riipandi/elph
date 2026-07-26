@@ -11,11 +11,13 @@ use iocraft::prelude::Color;
 pub struct DialogChrome {
     pub width: u16,
     pub min_content_height: u16,
-    /// Vertical inset between the round border and header/body content.
-    pub padding_vertical: u16,
+    /// Top inset between the round border and the header row.
+    pub padding_top: u16,
+    /// Bottom inset between body content and the round border.
+    pub padding_bottom: u16,
     /// Horizontal inset between the round border and header/body content.
     pub padding_horizontal: u16,
-    /// Space below the header row before the divider.
+    /// Space below the header row before the divider / body content.
     pub header_gap: u16,
     /// Space between major body sections (prompt, list, actions).
     pub body_gap: u16,
@@ -27,7 +29,7 @@ pub struct DialogChrome {
     pub background: Color,
     pub esc_hint: String,
     pub show_divider: bool,
-    /// Minimal vertical padding, no header divider — for read-only viewers (e.g. system prompt).
+    /// Minimal chrome — no divider; title stays near the top border (e.g. system prompt).
     pub slim_header: bool,
 }
 
@@ -40,10 +42,12 @@ impl Default for DialogChrome {
 impl DialogChrome {
     /// Build dialog chrome from shared theme tokens and outer width.
     pub fn from_theme(theme: UiTheme, width: u16) -> Self {
+        let v_inset = theme.dialog_shell_inset_vertical();
         Self {
             width: width.max(20),
             min_content_height: 6,
-            padding_vertical: theme.dialog_shell_inset_vertical(),
+            padding_top: v_inset,
+            padding_bottom: v_inset,
             padding_horizontal: theme.dialog_shell_inset_horizontal(),
             header_gap: theme.dialog_header_gap(),
             body_gap: theme.dialog_section_gap(),
@@ -64,13 +68,17 @@ impl DialogChrome {
     }
 
     pub fn with_theme(mut self, theme: UiTheme) -> Self {
+        let v_inset = theme.dialog_shell_inset_vertical().max(1);
         if self.slim_header {
-            self.padding_vertical = 0;
-            self.header_gap = 0;
+            // Title / [esc] sit against the top border; space body content below the title.
+            self.padding_top = 0;
+            self.padding_bottom = v_inset;
+            self.header_gap = 1;
             self.body_gap = 0;
             self.show_divider = false;
         } else {
-            self.padding_vertical = theme.dialog_shell_inset_vertical();
+            self.padding_top = v_inset;
+            self.padding_bottom = v_inset;
             self.header_gap = theme.dialog_header_gap();
             self.body_gap = theme.dialog_section_gap();
             self.show_divider = true;
@@ -87,6 +95,11 @@ impl DialogChrome {
     pub fn with_slim_header(mut self, slim: bool) -> Self {
         self.slim_header = slim;
         self
+    }
+
+    /// Combined top+bottom vertical inset (for height math).
+    pub fn padding_vertical_total(&self) -> u16 {
+        self.padding_top.saturating_add(self.padding_bottom)
     }
 
     pub fn content_width(&self) -> u16 {
@@ -118,7 +131,7 @@ pub fn dialog_shell_body_height(chrome: &DialogChrome) -> u16 {
 pub fn dialog_shell_outer_height(chrome: &DialogChrome) -> u16 {
     dialog_shell_body_height(chrome)
         .saturating_add(dialog_shell_chrome_rows(chrome))
-        .saturating_add(chrome.padding_vertical.saturating_mul(2))
+        .saturating_add(chrome.padding_vertical_total())
         .saturating_add(2)
 }
 
@@ -153,7 +166,7 @@ pub fn dialog_max_content_height(screen_height: u16, chrome: &DialogChrome, vert
     screen_height
         .saturating_sub(vertical_margin)
         .saturating_sub(dialog_shell_chrome_rows(chrome))
-        .saturating_sub(chrome.padding_vertical.saturating_mul(2))
+        .saturating_sub(chrome.padding_vertical_total())
         .saturating_sub(2)
         .max(4)
 }
@@ -287,7 +300,8 @@ mod tests {
     fn default_spacing_uses_theme_rhythm() {
         let theme = UiTheme::default();
         let chrome = DialogChrome::default();
-        assert_eq!(chrome.padding_vertical, theme.dialog_shell_inset_vertical());
+        assert_eq!(chrome.padding_top, theme.dialog_shell_inset_vertical());
+        assert_eq!(chrome.padding_bottom, theme.dialog_shell_inset_vertical());
         assert_eq!(chrome.padding_horizontal, theme.dialog_shell_inset_horizontal());
         assert_eq!(chrome.header_gap, theme.dialog_header_gap());
         assert_eq!(chrome.body_gap, theme.dialog_section_gap());
@@ -301,25 +315,29 @@ mod tests {
     }
 
     #[test]
-    fn slim_header_omits_divider_and_gaps() {
+    fn slim_header_keeps_title_flush_with_gap_below() {
         let chrome = DialogChrome {
             slim_header: true,
             ..Default::default()
         };
         let themed = chrome.with_theme(UiTheme::default());
-        assert_eq!(dialog_shell_chrome_rows(&themed), 1);
+        // header row + 1 gap below title
+        assert_eq!(dialog_shell_chrome_rows(&themed), 2);
         assert!(!themed.show_divider);
-        assert_eq!(themed.padding_vertical, 0);
-        assert_eq!(themed.header_gap, 0);
+        assert_eq!(themed.padding_top, 0);
+        assert_eq!(themed.padding_bottom, 1);
+        assert_eq!(themed.header_gap, 1);
     }
 
     #[test]
     fn outer_height_includes_border_and_padding() {
         let chrome = DialogChrome {
             min_content_height: 8,
-            padding_vertical: 2,
+            padding_top: 2,
+            padding_bottom: 2,
             ..Default::default()
         };
+        // body 8 + chrome rows 3 + padding 4 + border 2
         assert_eq!(dialog_shell_outer_height(&chrome), 8 + 3 + 4 + 2);
     }
 

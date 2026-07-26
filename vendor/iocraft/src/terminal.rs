@@ -10,7 +10,7 @@ use futures::{
     stream::{self, BoxStream, Stream, StreamExt},
 };
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     io::{self, stdin, IsTerminal, Write},
     mem,
     pin::Pin,
@@ -20,8 +20,47 @@ use std::{
 
 // Re-exports for basic types.
 pub use crossterm::event::{
-    KeyCode, KeyEventKind, KeyEventState, KeyModifiers, KeyboardEnhancementFlags, MouseEventKind,
+    KeyCode, KeyEventKind, KeyEventState, KeyModifiers, KeyboardEnhancementFlags, MouseButton,
+    MouseEventKind,
 };
+
+/// True when a mouse click should open an OSC 8 hyperlink (Cmd on macOS, Super/Meta elsewhere).
+fn is_hyperlink_open_click(modifiers: KeyModifiers, kind: MouseEventKind) -> bool {
+    matches!(kind, MouseEventKind::Down(MouseButton::Left))
+        && modifiers.intersects(KeyModifiers::SUPER | KeyModifiers::META)
+}
+
+/// Open a URL / `file://` path with the OS default handler (non-blocking).
+fn open_hyperlink_url(url: &str) {
+    if url.is_empty() {
+        return;
+    }
+    let result = {
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open").arg(url).spawn()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open").arg(url).spawn()
+        }
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("cmd")
+                .args(["/C", "start", "", url])
+                .spawn()
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            let _ = url;
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "open hyperlink not supported on this platform",
+            ))
+        }
+    };
+    let _ = result;
+}
 
 /// Kitty keyboard protocol flags used by Elph (enabled only after raw mode is on).
 const KEYBOARD_ENHANCEMENT_FLAGS: KeyboardEnhancementFlags = KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
@@ -604,6 +643,8 @@ pub(crate) struct Terminal<'a> {
     subscribers: Vec<Weak<Mutex<TerminalEventsInner>>>,
     received_ctrl_c: bool,
     ignore_ctrl_c: bool,
+    /// Sparse hit-test map rebuilt after each frame for Super/Cmd+click while mouse capture is on.
+    hyperlinks: Arc<Mutex<HashMap<(u16, u16), Arc<str>>>>,
 }
 
 impl<'a> Terminal<'a> {
@@ -626,7 +667,18 @@ impl<'a> Terminal<'a> {
             subscribers: Vec::new(),
             received_ctrl_c: false,
             ignore_ctrl_c: false,
+            hyperlinks: Arc::new(Mutex::new(HashMap::new())),
         })
+    }
+
+    /// Replace the clickable hyperlink hit-test map from the latest canvas.
+    pub fn set_hyperlink_index(&self, index: HashMap<(u16, u16), Arc<str>>) {
+        // Recover from poison: a panic while holding this map must not freeze hyperlink opens.
+        let mut guard = match self.hyperlinks.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        *guard = index;
     }
 
     pub fn enable_mouse_capture(&mut self) -> io::Result<()> {
@@ -713,18 +765,44 @@ impl<'a> Terminal<'a> {
                             return;
                         }
                     }
-                    self.subscribers.retain(|subscriber| {
-                        if let Some(subscriber) = subscriber.upgrade() {
-                            let mut subscriber = subscriber.lock().unwrap();
-                            subscriber.pending.push_back(event.clone());
-                            if let Some(waker) = subscriber.waker.take() {
-                                waker.wake();
+                    // Mouse capture steals native OSC 8 Cmd-click; open ourselves and
+                    // swallow the click so Buttons underneath do not also fire.
+                    let mut consume_event = false;
+                    if let TerminalEvent::FullscreenMouse(FullscreenMouseEvent {
+                        modifiers,
+                        column,
+                        row,
+                        kind,
+                    }) = &event
+                    {
+                        if is_hyperlink_open_click(*modifiers, *kind) {
+                            let url = {
+                                let map = match self.hyperlinks.lock() {
+                                    Ok(g) => g,
+                                    Err(poisoned) => poisoned.into_inner(),
+                                };
+                                map.get(&(*column, *row)).cloned()
+                            };
+                            if let Some(url) = url {
+                                open_hyperlink_url(url.as_ref());
+                                consume_event = true;
                             }
-                            true
-                        } else {
-                            false
                         }
-                    });
+                    }
+                    if !consume_event {
+                        self.subscribers.retain(|subscriber| {
+                            if let Some(subscriber) = subscriber.upgrade() {
+                                let mut subscriber = subscriber.lock().unwrap();
+                                subscriber.pending.push_back(event.clone());
+                                if let Some(waker) = subscriber.waker.take() {
+                                    waker.wake();
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        });
+                    }
                 }
             }
             None => pending().await,
@@ -755,6 +833,7 @@ impl Terminal<'static> {
                 subscribers: Vec::new(),
                 received_ctrl_c: false,
                 ignore_ctrl_c: false,
+                hyperlinks: Arc::new(Mutex::new(HashMap::new())),
             },
             output_stream,
         )

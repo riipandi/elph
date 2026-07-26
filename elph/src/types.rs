@@ -207,7 +207,8 @@ pub struct SlashCommand {
     pub name: String,
     pub description: String,
     pub args_hint: Option<String>,
-    /// When true, omitted from the slash palette but still dispatchable when typed.
+    /// When true, omitted from the default `/` palette list and `/help`, but still
+    /// dispatchable when typed and completable via Tab once the query matches.
     pub hidden: bool,
 }
 

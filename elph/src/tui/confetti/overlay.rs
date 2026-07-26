@@ -14,14 +14,12 @@ const SHOW_MIN: Duration = Duration::from_secs(2);
 const SHOW_MAX: Duration = Duration::from_secs(5);
 const EMPTY_GRACE: Duration = Duration::from_millis(350);
 
-#[derive(Debug, Clone)]
-pub struct PendingConfetti {
-    pub stashed_prompt_draft: Option<String>,
-}
+#[derive(Debug, Clone, Default)]
+pub struct PendingConfetti {}
 
 impl PendingConfetti {
-    pub fn open(stashed_prompt_draft: Option<String>) -> Self {
-        Self { stashed_prompt_draft }
+    pub fn open() -> Self {
+        Self {}
     }
 }
 
@@ -35,33 +33,23 @@ pub struct OpenConfettiArgs<'a> {
 }
 
 pub fn open_confetti(args: OpenConfettiArgs<'_>) {
-    let stashed = {
-        let current = args.live_draft.read().clone();
-        if current.trim().is_empty() { None } else { Some(current) }
-    };
-    if stashed.is_some() {
-        args.draft.set(String::new());
-        args.live_draft.set(String::new());
-    }
+    // Slash input is consumed by the effect — never stash/restore it after the overlay.
+    args.draft.set(String::new());
+    args.live_draft.set(String::new());
     args.state.set(Some(ConfettiRuntime::new(args.mode)));
-    args.pending.set(Some(PendingConfetti::open(stashed)));
+    args.pending.set(Some(PendingConfetti::open()));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
 
 pub fn close_confetti(
     pending: &mut Ref<Option<PendingConfetti>>,
     state: &mut Ref<Option<ConfettiRuntime>>,
-    draft: &mut State<String>,
-    live_draft: &mut Ref<String>,
+    _draft: &mut State<String>,
+    _live_draft: &mut Ref<String>,
     shell_focus: &mut State<ShellFocus>,
 ) {
     state.set(None);
-    if let Some(mut overlay) = pending.write().take()
-        && let Some(stashed) = overlay.stashed_prompt_draft.take()
-    {
-        live_draft.set(stashed.clone());
-        draft.set(stashed);
-    }
+    pending.write().take();
     shell_focus.set(ShellFocus::Prompt);
 }
 

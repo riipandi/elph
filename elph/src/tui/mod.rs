@@ -20,6 +20,7 @@ mod prompt;
 mod scoped_models;
 mod scoped_models_bar;
 mod scoped_models_shell;
+mod scroll_text_dialog;
 mod session_prefs;
 mod shell;
 mod shell_submit;

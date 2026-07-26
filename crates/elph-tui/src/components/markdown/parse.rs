@@ -21,6 +21,26 @@ impl SpanStyle {
     }
 }
 
+/// Active markdown link destination (stack of nested links — rare but legal).
+struct LinkHrefStack {
+    stack: Vec<String>,
+}
+
+impl LinkHrefStack {
+    fn new() -> Self {
+        Self { stack: Vec::new() }
+    }
+    fn push(&mut self, href: String) {
+        self.stack.push(href);
+    }
+    fn pop(&mut self) {
+        self.stack.pop();
+    }
+    fn current(&self) -> Option<&str> {
+        self.stack.last().map(String::as_str)
+    }
+}
+
 struct ListFrame {
     ordered: bool,
     next_number: u64,
@@ -46,6 +66,7 @@ struct ParserState<'a> {
     table_cell: String,
     current_line_kind: MarkdownLineKind,
     block_has_content: bool,
+    link_hrefs: LinkHrefStack,
 }
 
 impl<'a> ParserState<'a> {
@@ -70,6 +91,7 @@ impl<'a> ParserState<'a> {
             table_cell: String::new(),
             current_line_kind: MarkdownLineKind::Paragraph,
             block_has_content: false,
+            link_hrefs: LinkHrefStack::new(),
         }
     }
 
@@ -83,6 +105,8 @@ impl<'a> ParserState<'a> {
             color: self.theme.heading,
             weight: self.theme.heading_weight,
             italic: false,
+            underline: false,
+            href: None,
         });
     }
 
@@ -205,6 +229,18 @@ impl<'a> ParserState<'a> {
         self.ensure_list_marker();
         let style = self.current_style();
         let (color, weight, italic) = style.apply(self.theme);
+        // Explicit markdown link: label text uses link dest; do not re-linkify.
+        if let Some(href) = self.link_hrefs.current() {
+            self.push_span(StyledSpan {
+                text: text.to_string(),
+                color: self.theme.link,
+                weight,
+                italic,
+                underline: false,
+                href: Some(href.to_string()),
+            });
+            return;
+        }
         let segments = if linkify {
             spans_with_links(text, color, weight, italic, self.theme.link)
         } else {
@@ -213,6 +249,8 @@ impl<'a> ParserState<'a> {
                 color,
                 weight,
                 italic,
+                underline: false,
+                href: None,
             }]
         };
         for segment in segments {
@@ -225,6 +263,8 @@ impl<'a> ParserState<'a> {
             && last.color == span.color
             && last.weight == span.weight
             && last.italic == span.italic
+            && last.underline == span.underline
+            && last.href == span.href
         {
             last.text.push_str(&span.text);
             return;
@@ -465,14 +505,18 @@ pub fn parse_markdown_document_with_theme(source: &str, theme: &MarkdownTheme) -
                 });
             }
             Event::End(TagEnd::Subscript) => state.pop_style(),
-            Event::Start(Tag::Link { .. }) => {
+            Event::Start(Tag::Link { dest_url, .. }) => {
+                state.link_hrefs.push(dest_url.to_string());
                 state.push_style(SpanStyle {
                     color: Some(theme.link),
                     weight: iocraft::prelude::Weight::Normal,
                     italic: false,
                 });
             }
-            Event::End(TagEnd::Link) => state.pop_style(),
+            Event::End(TagEnd::Link) => {
+                state.pop_style();
+                state.link_hrefs.pop();
+            }
             Event::Start(Tag::Image { dest_url, title, .. }) => {
                 let label = if title.is_empty() {
                     format!("[image]({dest_url})")

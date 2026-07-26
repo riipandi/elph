@@ -110,10 +110,14 @@ fn is_word_boundary(ch: char) -> bool {
 }
 
 /// Filter and rank commands by fuzzy relevance to `query`.
+///
+/// Hidden commands (easter eggs) are omitted when `query` is empty so they do not
+/// appear in the default `/` list, but still match for Tab completion once the user
+/// types a prefix (e.g. `/conf` → `/confetti`).
 pub fn filter_commands(commands: &[SlashCommand], query: &str) -> Vec<SlashCommand> {
     let query = query.trim().to_ascii_lowercase();
     if query.is_empty() {
-        return commands.to_vec();
+        return commands.iter().filter(|cmd| !cmd.hidden).cloned().collect();
     }
 
     let mut scored: Vec<(SlashCommand, i32)> = commands
@@ -137,7 +141,21 @@ mod tests {
             SlashCommand::new("reload", "Reload extensions and prompt templates"),
             SlashCommand::new("skill:rust-verify-harden", "Run make check/lint/test and audit Rust changes"),
             SlashCommand::new("skill:tui-design", "Guide terminal UI development with iocraft"),
+            SlashCommand::new("confetti", "Confetti celebration").with_hidden(true),
         ]
+    }
+
+    #[test]
+    fn empty_query_omits_hidden_commands() {
+        let filtered = filter_commands(&commands(), "");
+        assert!(!filtered.iter().any(|cmd| cmd.name == "confetti"));
+        assert!(filtered.iter().any(|cmd| cmd.name == "model"));
+    }
+
+    #[test]
+    fn non_empty_query_includes_hidden_for_tab_completion() {
+        let filtered = filter_commands(&commands(), "conf");
+        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("confetti"));
     }
 
     #[test]
@@ -171,10 +189,12 @@ mod tests {
     }
 
     #[test]
-    fn empty_query_preserves_input_order() {
+    fn empty_query_preserves_visible_input_order() {
         let input = commands();
+        let visible: Vec<SlashCommand> = input.iter().filter(|cmd| !cmd.hidden).cloned().collect();
         let filtered = filter_commands(&input, "");
-        assert_eq!(filtered, input);
+        // Empty query keeps stable order of non-hidden commands (hidden easter eggs omitted).
+        assert_eq!(filtered, visible);
     }
 
     #[test]

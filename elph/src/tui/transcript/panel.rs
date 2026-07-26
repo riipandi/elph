@@ -33,6 +33,9 @@ pub struct TranscriptPanelProps {
     pub messages_revision: Option<State<u64>>,
     pub sticky_scroll: bool,
     pub has_focus: bool,
+    /// When false, mouse wheel is ignored (e.g. while a modal dialog owns scroll).
+    /// Defaults to `true` so the transcript still scrolls while the prompt has focus.
+    pub mouse_scroll: Option<bool>,
 }
 
 struct TranscriptRenderCache {
@@ -337,6 +340,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                         scrollbar_thumb_color: SCROLLBAR_THUMB,
                         scrollbar_track_color: SCROLLBAR_TRACK,
                         keyboard_scroll: Some(false),
+                        mouse_scroll: Some(props.mouse_scroll.unwrap_or(true)),
                         auto_scroll: true,
                     ) {
                         View(
