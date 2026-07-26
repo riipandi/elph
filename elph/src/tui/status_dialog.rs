@@ -160,13 +160,62 @@ fn render_tool_approval_dialog(
     .into()
 }
 
-/// Tool-approval dialog shown below the status row.
-#[derive(Debug, Clone)]
-pub enum StatusDialogKind {
-    ToolApproval { tool_name: String, args_summary: String },
+/// Which action is highlighted on the selected queue row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PromptQueueAction {
+    #[default]
+    SendNow,
+    Edit,
+    Cancel,
 }
 
-/// Props for [`StatusZone`] — optional fixed toast, status row, tool-approval dialog.
+impl PromptQueueAction {
+    pub const ALL: [Self; 3] = [Self::SendNow, Self::Edit, Self::Cancel];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::SendNow => "Send",
+            Self::Edit => "Edit",
+            Self::Cancel => "Cancel",
+        }
+    }
+
+    pub fn next(self) -> Self {
+        match self {
+            Self::SendNow => Self::Edit,
+            Self::Edit => Self::Cancel,
+            Self::Cancel => Self::SendNow,
+        }
+    }
+
+    pub fn prev(self) -> Self {
+        match self {
+            Self::SendNow => Self::Cancel,
+            Self::Edit => Self::SendNow,
+            Self::Cancel => Self::Edit,
+        }
+    }
+}
+
+/// Dialogs in the status zone (tool approval below StatusRow; prompt queue above it).
+#[derive(Debug, Clone)]
+pub enum StatusDialogKind {
+    ToolApproval {
+        tool_name: String,
+        args_summary: String,
+    },
+    /// Numbered prompt queue — rendered **above** StatusRow.
+    PromptQueue {
+        items: Vec<crate::agent::QueuedPromptItem>,
+        selected: usize,
+        /// Highlighted action on the selected row (Ctrl+Q manager).
+        action: PromptQueueAction,
+        /// When true, show action selection affordance on the focused row.
+        interactive: bool,
+    },
+}
+
+/// Props for [`StatusZone`] — optional fixed toast, status row, tool-approval / queue dialog.
 ///
 /// Spinner/elapsed tick inside [`StatusRow`]; pass wall-clock start instants only.
 #[derive(Props)]
@@ -188,6 +237,8 @@ pub struct StatusZoneProps {
     pub dialog: Option<StatusDialogKind>,
     pub approval_selected: Option<State<usize>>,
     pub approval_has_focus: bool,
+    /// Queued prompt count for StatusRow badge (independent of manager open).
+    pub queue_count: u32,
 }
 
 impl Default for StatusZoneProps {
@@ -208,6 +259,7 @@ impl Default for StatusZoneProps {
             dialog: None,
             approval_selected: None,
             approval_has_focus: false,
+            queue_count: 0,
         }
     }
 }
@@ -241,15 +293,30 @@ fn render_ephemeral_banner(screen_width: u16, text: &str, color: Color) -> AnyEl
 #[component]
 pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let _ = hooks;
-    let tool_approval = props.dialog.as_ref().map(|kind| match kind {
-        StatusDialogKind::ToolApproval {
+    // Prompt queue sits above StatusRow (same vertical band as UserQuestionBar / permission UI).
+    // Tool approval stays below StatusRow (existing layout).
+    let above_status_row = match props.dialog.clone() {
+        Some(StatusDialogKind::PromptQueue {
+            items,
+            selected,
+            action,
+            interactive,
+        }) => Some(render_prompt_queue_dialog(
+            props.screen_width,
+            &items,
+            selected,
+            action,
+            interactive,
+        )),
+        _ => None,
+    };
+    let below_status_row = match props.dialog.clone() {
+        Some(StatusDialogKind::ToolApproval {
             tool_name,
             args_summary,
-        } => (tool_name.clone(), args_summary.clone()),
-    });
-    let dialog_element = tool_approval
-        .as_ref()
-        .map(|(tool_name, args_summary)| render_tool_approval_dialog(props, tool_name, args_summary));
+        }) => Some(render_tool_approval_dialog(props, &tool_name, &args_summary)),
+        _ => None,
+    };
     let banner = props
         .ephemeral_banner
         .as_ref()
@@ -262,6 +329,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             flex_direction: FlexDirection::Column,
         ) {
             #(banner)
+            #(above_status_row)
             StatusRow(
                 screen_width: props.screen_width,
                 busy: props.busy,
@@ -273,8 +341,9 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                 idle_notice: props.idle_notice.clone(),
                 quit_confirm_pending: props.quit_confirm_pending,
                 select_mode: props.select_mode,
+                queue_count: props.queue_count,
             )
-            #(dialog_element)
+            #(below_status_row)
         }
     }
 }
@@ -286,6 +355,139 @@ pub fn build_status_dialog_kind(tool: Option<&PendingToolApproval>) -> Option<St
         tool_name: pending.tool_name.clone(),
         args_summary: pending.args_summary.clone(),
     })
+}
+
+/// Build prompt-queue list when there are items (always visible above StatusRow while queued).
+pub fn build_prompt_queue_dialog_kind(
+    items: &[crate::agent::QueuedPromptItem],
+    selected: usize,
+    action: PromptQueueAction,
+    interactive: bool,
+) -> Option<StatusDialogKind> {
+    if items.is_empty() {
+        return None;
+    }
+    Some(StatusDialogKind::PromptQueue {
+        items: items.to_vec(),
+        selected: selected.min(items.len().saturating_sub(1)),
+        action,
+        interactive,
+    })
+}
+
+/// Single-line queue rows: `#n title…` left, `[Send] [Edit] [Cancel]` right (timestamp-style rail).
+fn render_prompt_queue_dialog(
+    screen_width: u16,
+    items: &[crate::agent::QueuedPromptItem],
+    selected: usize,
+    action: PromptQueueAction,
+    interactive: bool,
+) -> AnyElement<'static> {
+    use crate::tui::theme::{EDITOR_TEXT_FOCUSED, PROMPT_QUEUE_FG};
+    use elph_tui::utils::{display_width, truncate_with_ellipsis};
+
+    const MAX_ITEMS: usize = 5;
+    let inner_w = screen_width.saturating_sub(2).max(12);
+    let selected = selected.min(items.len().saturating_sub(1));
+    let start = if items.len() <= MAX_ITEMS {
+        0
+    } else {
+        selected.saturating_sub(MAX_ITEMS / 2).min(items.len() - MAX_ITEMS)
+    };
+    let end = (start + MAX_ITEMS).min(items.len());
+    let rows: Vec<AnyElement<'static>> = items[start..end]
+        .iter()
+        .enumerate()
+        .map(|(offset, item)| {
+            let idx = start + offset;
+            let row_focused = idx == selected && interactive;
+            let actions_w = queue_actions_rail_width() as u16;
+            // "#1 " + title budget (gap before right rail).
+            let num = format!("#{} ", item.seq);
+            let num_w = display_width(&num) as u16;
+            let title_budget = inner_w
+                .saturating_sub(num_w)
+                .saturating_sub(actions_w)
+                .saturating_sub(1)
+                .max(4) as usize;
+            let one_line = item.text.lines().next().unwrap_or("").trim();
+            let title = truncate_with_ellipsis(one_line, title_budget);
+            let action_chips = render_queue_action_chips(action, row_focused);
+            element! {
+                View(
+                    width: screen_width,
+                    height: 1,
+                    flex_shrink: 0f32,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
+                    padding_left: 1,
+                    padding_right: 1,
+                ) {
+                    View(
+                        flex_direction: FlexDirection::Row,
+                        flex_grow: 1f32,
+                        flex_shrink: 1f32,
+                        overflow: Overflow::Hidden,
+                        align_items: AlignItems::Center,
+                    ) {
+                        Text(color: PROMPT_QUEUE_FG, wrap: TextWrap::NoWrap, content: num)
+                        Text(color: EDITOR_TEXT_FOCUSED, wrap: TextWrap::NoWrap, content: title)
+                    }
+                    View(
+                        flex_direction: FlexDirection::Row,
+                        flex_shrink: 0f32,
+                        align_items: AlignItems::Center,
+                        gap: 1,
+                    ) {
+                        #(action_chips)
+                    }
+                }
+            }
+            .into()
+        })
+        .collect();
+
+    element! {
+        View(
+            width: screen_width,
+            flex_shrink: 0f32,
+            flex_direction: FlexDirection::Column,
+        ) {
+            #(rows)
+            // One blank row under the list before StatusRow.
+            View(width: screen_width, height: 1, flex_shrink: 0f32) {}
+        }
+    }
+    .into()
+}
+
+fn queue_actions_rail_width() -> usize {
+    // "[Send] [Edit] [Cancel]" with single spaces between chips.
+    PromptQueueAction::ALL
+        .iter()
+        .map(|a| a.label().len() + 2) // [label]
+        .sum::<usize>()
+        + PromptQueueAction::ALL.len().saturating_sub(1)
+}
+
+fn render_queue_action_chips(selected: PromptQueueAction, row_focused: bool) -> Vec<AnyElement<'static>> {
+    use crate::tui::theme::{PROMPT_QUEUE_FG, PROMPT_QUEUE_SELECTED_FG};
+    PromptQueueAction::ALL
+        .iter()
+        .map(|a| {
+            let label = format!("[{}]", a.label());
+            let color = if row_focused && *a == selected {
+                PROMPT_QUEUE_SELECTED_FG
+            } else {
+                PROMPT_QUEUE_FG
+            };
+            element! {
+                Text(color: color, wrap: TextWrap::NoWrap, content: label)
+            }
+            .into()
+        })
+        .collect()
 }
 
 #[cfg(test)]

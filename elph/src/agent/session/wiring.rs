@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 
 use super::CodingAgentSession;
 
-use crate::agent::events::{AgentUiEvent, PlanConfirmationRequest};
+use crate::agent::events::{AgentUiEvent, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 
 impl CodingAgentSession {
     pub(super) async fn wire_harness(&self, ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Result<()> {
@@ -62,17 +62,8 @@ impl CodingAgentSession {
                         if let AgentHarnessEvent::Agent(agent_event) = event {
                             map_agent_event(&ui_tx, agent_event, show_thinking);
                         } else if let AgentHarnessEvent::Own(AgentHarnessOwnEvent::QueueUpdate(update)) = event {
-                            let steering: Vec<String> = update
-                                .steer
-                                .iter()
-                                .filter_map(|m| {
-                                    m.as_llm().and_then(|msg| match msg {
-                                        elph_ai::Message::User { content, .. } => Some(format!("{content:?}")),
-                                        _ => None,
-                                    })
-                                })
-                                .collect();
-                            let _ = steering;
+                            let items = map_queue_update(&update);
+                            let _ = ui_tx.send(AgentUiEvent::QueueUpdate { items });
                         }
                     })
                 }
@@ -142,6 +133,16 @@ impl CodingAgentSession {
 
 fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEvent, show_thinking: bool) {
     match event {
+        AgentEvent::MessageStart { message } => {
+            // User messages injected mid-run (drained follow-up / steer). Shell may skip if it
+            // already echoed the prompt (idle submit or Ctrl+Enter interjection).
+            if message.role() == "user" {
+                let text = agent_user_text(&message);
+                if !text.trim().is_empty() {
+                    let _ = ui_tx.send(AgentUiEvent::UserPromptCommitted { text });
+                }
+            }
+        }
         AgentEvent::MessageUpdate {
             assistant_message_event,
             ..
@@ -245,4 +246,62 @@ fn summarize_tool_result(result: &elph_agent::AgentToolResult) -> String {
         })
         .collect::<Vec<_>>()
         .join("")
+}
+
+/// Map harness queue snapshot to numbered UI items (follow-ups first, then steer).
+fn map_queue_update(update: &elph_agent::QueueUpdateEvent) -> Vec<QueuedPromptItem> {
+    let mut items = Vec::with_capacity(update.follow_up.len() + update.steer.len());
+    let mut seq = 1u32;
+    for (kind_index, message) in update.follow_up.iter().enumerate() {
+        let text = agent_user_text(message);
+        if text.trim().is_empty() {
+            continue;
+        }
+        items.push(QueuedPromptItem {
+            seq,
+            kind: QueuedPromptKind::FollowUp,
+            kind_index,
+            text,
+        });
+        seq = seq.saturating_add(1);
+    }
+    for (kind_index, message) in update.steer.iter().enumerate() {
+        let text = agent_user_text(message);
+        if text.trim().is_empty() {
+            continue;
+        }
+        items.push(QueuedPromptItem {
+            seq,
+            kind: QueuedPromptKind::Steer,
+            kind_index,
+            text,
+        });
+        seq = seq.saturating_add(1);
+    }
+    items
+}
+
+pub(super) fn agent_message_preview(message: &elph_agent::AgentMessage) -> String {
+    agent_user_text(message)
+}
+
+fn agent_user_text(message: &elph_agent::AgentMessage) -> String {
+    use elph_ai::{ContentBlock, Message, UserContent};
+    let Some(llm) = message.as_llm() else {
+        return String::new();
+    };
+    match llm {
+        Message::User { content, .. } => match content {
+            UserContent::Text(text) => text.clone(),
+            UserContent::Blocks(blocks) => blocks
+                .iter()
+                .filter_map(|block| match block {
+                    ContentBlock::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join(""),
+        },
+        _ => String::new(),
+    }
 }

@@ -40,8 +40,14 @@ The harness (`agent/harness/`) is the top-level orchestrator that wraps the runt
 - **System prompt management** — prompt assembly with resources and skills
 - **Tree navigation** — branch/fork support for session trees
 - **Plan mode** — read-only collaboration mode
+- **Prompt queues** — three named queues for mid-turn prompt scheduling:
+    - **Steer queue**: interject a prompt during an active turn (immediate next iteration)
+    - **Follow-up queue**: enqueue prompts while agent is busy; promoted to steer on demand
+    - **Next-turn queue**: prompts that run after the current turn completes
+    - Queue operations: `peek_queues`, `remove_steer_at`, `remove_follow_up_at`, `promote_follow_up_front_to_steer`, `clear_prompt_queues`
+    - `TurnDispatcher` in the TUI bridge (`agent_bridge.rs`) spawns the async queue operations
 
-**Source:** `crates/elph-agent/src/agent/harness/mod.rs`
+**Source:** `crates/elph-agent/src/agent/harness/mod.rs`, `crates/elph-agent/src/agent/harness/prompt_ops.rs`
 
 ## Sessions
 

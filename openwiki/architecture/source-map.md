@@ -101,6 +101,7 @@ elph/src/
 │   ├── scoped_models.rs
 │   ├── scoped_models_bar.rs
 │   ├── scoped_models_shell.rs
+│   ├── scroll_text_dialog.rs  # Reusable scrollable text modal
 │   ├── session_prefs.rs
 │   ├── slash_handler.rs
 │   ├── slash_palette.rs
@@ -112,7 +113,6 @@ elph/src/
 │   ├── theme.rs
 │   ├── focus.rs
 │   ├── labels.rs
-│   ├── clipboard.rs
 │   ├── file_picker.rs
 │   ├── api_error_display.rs
 │   ├── ask_user_tool_card.rs
@@ -334,6 +334,7 @@ crates/elph-tui/src/
 ├── text_input_layout.rs  # Text input layout
 ├── input_prefix.rs       # Prompt prefix detection (> / $ #)
 ├── cli_progress.rs       # CLI progress spinners
+├── clipboard.rs          # Native clipboard API (copy/read with status toasts)
 ├── loader.rs             # Loading animations
 ├── paste.rs              # Paste handler
 ├── types.rs              # Shared types

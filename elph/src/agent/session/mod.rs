@@ -220,13 +220,18 @@ impl CodingAgentSession {
     }
 
     pub async fn submit_prompt(&self, text: String, steer: bool) -> Result<()> {
+        if steer {
+            // Mid-turn interjection: enqueue only — never wait_for_idle / RunCompleted.
+            return self.queue_steer(text).await;
+        }
+        self.run_prompt_turn(text).await
+    }
+
+    /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
+    async fn run_prompt_turn(&self, text: String) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
-        let result = if steer {
-            self.harness.steer(text, None).await.map(|_| ())
-        } else {
-            self.harness.prompt(text, None).await.map(|_| ())
-        };
+        let result = self.harness.prompt(text, None).await.map(|_| ());
         match &result {
             Ok(()) => self.finish_ui_turn(started).await,
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
@@ -239,6 +244,76 @@ impl CodingAgentSession {
             }
         }
         result.map_err(|err| anyhow::anyhow!("{err}"))
+    }
+
+    /// Enqueue a follow-up prompt (delivered after current agent work). Does not end the UI turn.
+    ///
+    /// If the harness is idle (UI busy flag desynced, bootstrap, race after turn end), starts a
+    /// normal turn instead of failing with "Cannot follow up while idle".
+    pub async fn queue_follow_up(&self, text: String) -> Result<()> {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return Ok(());
+        }
+        match self.harness.follow_up(trimmed, None).await {
+            Ok(()) => Ok(()),
+            Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
+                log::debug!("follow_up while idle — starting a normal turn");
+                self.run_prompt_turn(trimmed.to_string()).await
+            }
+            Err(err) => Err(anyhow::anyhow!("{err}")),
+        }
+    }
+
+    /// Enqueue a mid-turn steer / interjection. Does not end the UI turn.
+    ///
+    /// If the harness is idle, starts a normal turn instead of failing with "Cannot steer while idle".
+    pub async fn queue_steer(&self, text: String) -> Result<()> {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return Ok(());
+        }
+        match self.harness.steer(trimmed, None).await {
+            Ok(()) => Ok(()),
+            Err(err) if err.code == AgentHarnessErrorCode::InvalidState => {
+                log::debug!("steer while idle — starting a normal turn");
+                self.run_prompt_turn(trimmed.to_string()).await
+            }
+            Err(err) => Err(anyhow::anyhow!("{err}")),
+        }
+    }
+
+    /// Promote the oldest follow-up onto the steer queue (one Ctrl+Enter while queues exist).
+    pub async fn promote_next_follow_up_to_steer(&self) -> Result<Option<String>> {
+        let message = self
+            .harness
+            .promote_follow_up_front_to_steer()
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        Ok(message.map(|m| wiring::agent_message_preview(&m)))
+    }
+
+    /// Remove one queued item by kind and kind-local index. Returns the removed text.
+    pub async fn remove_queued(
+        &self,
+        kind: super::events::QueuedPromptKind,
+        kind_index: usize,
+    ) -> Result<Option<String>> {
+        use super::events::QueuedPromptKind;
+        let message = match kind {
+            QueuedPromptKind::FollowUp => self.harness.remove_follow_up_at(kind_index).await,
+            QueuedPromptKind::Steer => self.harness.remove_steer_at(kind_index).await,
+        }
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+        Ok(message.map(|m| wiring::agent_message_preview(&m)))
+    }
+
+    /// Clear steer + follow-up queues (e.g. Ctrl+C). Emits QueueUpdate via harness.
+    pub async fn clear_prompt_queues(&self) -> Result<()> {
+        self.harness
+            .clear_prompt_queues()
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn abort(&self) -> Result<()> {

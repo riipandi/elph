@@ -343,7 +343,9 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | `Tab`               | Toggle focus between prompt textarea and transcript                                              |
 | `Shift+Tab`         | Cycle agent mode                                                                                 |
 | `Ctrl+~`            | Cycle thinking level (`Ctrl+\`` also accepted)                                                   |
-| `Enter`             | Send message; in slash palette, run or complete selected command                                 |
+| `Enter`             | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command |
+| `Ctrl+Enter`        | If queue non-empty: send top item now (interject). Else interject editor text mid-turn |
+| `Ctrl+Q`            | Open/close numbered prompt queue manager (edit / cancel items)                                   |
 | `Ctrl+J`            | Insert newline in input                                                                          |
 | `Shift+Enter`       | Insert newline in input                                                                          |
 | `Ctrl+L`            | Open model selector                                                                              |

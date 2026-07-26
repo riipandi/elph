@@ -9,6 +9,8 @@ use elph_tui::rgb;
 use iocraft::prelude::*;
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
+/// Shown on the busy right segment while follow-up prompts are waiting.
+const QUEUE_WAITING_HINT: &str = "Ctrl+Enter send queued";
 
 /// Paint refresh while busy (ms). Frame *phase* is wall-clock; this only schedules redraws.
 const STATUS_TICK_MS: u64 = 80;
@@ -33,6 +35,7 @@ const TIPS: &[&str] = &[
     "Brave mode skips tool-approval prompts",
     "Plan mode is for read-only exploration and planning",
     "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",
+    "While busy: Enter queues · Ctrl+Enter sends next queued · Ctrl+Q manages",
 ];
 
 use crate::tui::activity::{
@@ -60,6 +63,8 @@ pub struct StatusRowProps {
     pub quit_confirm_pending: bool,
     /// Mouse capture off — select mode is indicated in the footer (`sel | …`), not here.
     pub select_mode: bool,
+    /// Number of queued follow-up/steer prompts (0 hides badge).
+    pub queue_count: u32,
 }
 
 impl Default for StatusRowProps {
@@ -75,6 +80,7 @@ impl Default for StatusRowProps {
             idle_notice: None,
             quit_confirm_pending: false,
             select_mode: false,
+            queue_count: 0,
         }
     }
 }
@@ -149,8 +155,21 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
     let _select_mode = props.select_mode;
     let left_fg = Color::DarkGrey;
     let right_fg = Color::DarkGrey;
+    // Left: activity / tip only (queue list lives above this row).
     let left_line = if props.busy { activity_line } else { idle_line };
-    let right_line = if props.busy { busy_right_line } else { idle_right_line };
+    // Right: while prompts wait in the queue, surface Ctrl+Enter next to the busy timer.
+    let right_line = if props.busy {
+        if props.queue_count > 0 {
+            format!("{busy_right_line} · {QUEUE_WAITING_HINT}")
+        } else {
+            busy_right_line
+        }
+    } else if props.queue_count > 0 {
+        // Rare leftover queue while chrome is idle.
+        format!("{QUEUE_WAITING_HINT} · {idle_right_line}")
+    } else {
+        idle_right_line
+    };
     let show_busy_spinner = props.busy;
 
     element! {
@@ -246,6 +265,8 @@ mod tests {
         assert!(joined.contains("Ctrl+S"));
         assert!(joined.contains("Shift+←/→") || joined.contains("selects in the prompt"));
         assert!(joined.contains("Ctrl+C"));
+        assert!(joined.contains("Ctrl+Enter") || joined.contains("interject"));
+        assert!(joined.contains("Ctrl+Q") || joined.contains("queue"));
         assert!(!joined.to_ascii_lowercase().contains("ctrl+c yanks"));
     }
 

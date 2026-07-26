@@ -34,7 +34,7 @@ use crate::tui::agent_bridge::{PromptQueue, TranscriptEventApplier, TurnDispatch
 use crate::tui::chrome::{ChromeStats, Header};
 use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_git_footer_info, refresh_chrome_stats};
 use crate::tui::focus::ShellFocus;
-use crate::tui::focus::{is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
+use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
 
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
@@ -77,7 +77,9 @@ use crate::tui::startup::{
     bootstrap_activity_label, bootstrap_is_active, classify_mcp_footer_line, mark_agent_startup_failed,
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
-use crate::tui::status_dialog::{StatusZone, build_status_dialog_kind};
+use crate::tui::status_dialog::{
+    PromptQueueAction, StatusZone, build_prompt_queue_dialog_kind, build_status_dialog_kind,
+};
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
@@ -88,12 +90,13 @@ use crate::tui::tool_approval::{
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
-    AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, FILE_PICKER_HIDDEN_NOTICE_KEY,
-    MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel, TranscriptStyle, agent_mode_banner,
-    agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner, clear_ephemeral_banner_if_generation,
-    clipboard_notice_banner, expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value,
-    model_set_notice_text, prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner,
-    select_mode_off_banner, select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
+    AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, EphemeralBannerKind,
+    FILE_PICKER_HIDDEN_NOTICE_KEY, MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
+    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
+    clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner,
+    file_picker_hidden_notice_text, model_set_notice_from_value, model_set_notice_text, prompt_copy_banner,
+    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
+    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
@@ -293,6 +296,78 @@ fn mark_busy(ctx: &mut BusyActivation<'_>, steer: bool, activity_label: Option<&
     ctx.last_activity_label.set(label);
 }
 
+/// Mutable UI state for queue manager actions (grouped for clippy::too_many_arguments).
+struct PromptQueueActionCtx<'a> {
+    prompt_queue: &'a mut Ref<PromptQueue>,
+    queue_ui_revision: &'a mut State<u64>,
+    agent_session: &'a Option<Arc<CodingAgentSession>>,
+    agent_turn_active: bool,
+    messages: &'a mut State<Vec<TranscriptMessage>>,
+    messages_revision: &'a mut State<u64>,
+    pre_echoed_user_prompts: &'a mut State<u32>,
+    draft: &'a mut State<String>,
+    live_draft: &'a mut Ref<String>,
+    shell_focus: &'a mut State<ShellFocus>,
+    queue_manager_open: &'a mut State<bool>,
+    queue_manager_selected: &'a mut State<usize>,
+    queue_manager_action: &'a mut State<PromptQueueAction>,
+}
+
+/// Apply Send / Edit / Cancel on a queue row; returns true when handled.
+fn apply_prompt_queue_action(
+    action: PromptQueueAction,
+    display_index: usize,
+    ctx: &mut PromptQueueActionCtx<'_>,
+    start_idle_turn: impl FnOnce(String),
+) -> bool {
+    let Some(item) = ctx.prompt_queue.write().remove_at_local(display_index) else {
+        return false;
+    };
+    ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
+    match action {
+        PromptQueueAction::SendNow => {
+            let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
+            submitted.submitted_at = Some(chrono::Utc::now());
+            push_transcript_message(ctx.messages, ctx.messages_revision, submitted);
+            ctx.pre_echoed_user_prompts
+                .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
+            if let Some(session) = ctx.agent_session.as_ref() {
+                if ctx.agent_turn_active {
+                    TurnDispatcher::spawn_interject_queued(Arc::clone(session), item.kind, item.kind_index, item.text);
+                } else {
+                    start_idle_turn(item.text);
+                }
+            }
+        }
+        PromptQueueAction::Edit => {
+            if let Some(session) = ctx.agent_session.as_ref() {
+                TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
+            }
+            ctx.draft.set(item.text.clone());
+            ctx.live_draft.set(item.text);
+            ctx.queue_manager_open.set(false);
+            ctx.queue_manager_selected.set(0);
+            ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+            ctx.shell_focus.set(ShellFocus::Prompt);
+        }
+        PromptQueueAction::Cancel => {
+            if let Some(session) = ctx.agent_session.as_ref() {
+                TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
+            }
+            let len = ctx.prompt_queue.read().len();
+            if len == 0 {
+                ctx.queue_manager_open.set(false);
+                ctx.queue_manager_selected.set(0);
+                ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+                ctx.shell_focus.set(ShellFocus::Prompt);
+            } else {
+                ctx.queue_manager_selected.set(display_index.min(len - 1));
+            }
+        }
+    }
+    true
+}
+
 struct PendingQuitAction<'a> {
     pending_quit_confirm: &'a mut Ref<bool>,
     should_exit: &'a mut State<bool>,
@@ -406,6 +481,7 @@ fn confirm_pending_quit(
             question.respond(String::new());
         }
         if let Some(session) = ctx.agent_session.as_ref() {
+            // Abort clears harness steer/follow-up queues.
             TurnDispatcher::spawn_abort(Arc::clone(session));
         }
     }
@@ -679,6 +755,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut force_palette_sync = hooks.use_ref(|| false);
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
+    // True only while a real agent turn is running (not bootstrap / local shell).
+    // Queue + interject use this — not bare `busy` (bootstrap sets busy while harness is idle).
+    let mut agent_turn_active = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
     let mut session_elapsed_secs = hooks.use_state(|| 0.0f64);
     let session_wall_started_at = hooks.use_ref(Instant::now);
@@ -687,6 +766,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut activity_started_at = hooks.use_ref(|| None::<Instant>);
     let mut last_activity_label = hooks.use_ref(String::new);
     let mut prompt_queue = hooks.use_ref(PromptQueue::default);
+    let mut queue_manager_open = hooks.use_state(|| false);
+    let mut queue_manager_selected = hooks.use_state(|| 0usize);
+    let mut queue_manager_action = hooks.use_state(PromptQueueAction::default);
+    // Bumped on queue mutations so MainShell re-renders (prompt_queue is a Ref).
+    let mut queue_ui_revision = hooks.use_state(|| 0u64);
+    // Shell already pushed a user card; skip matching `UserPromptCommitted` from the agent loop.
+    let mut pre_echoed_user_prompts = hooks.use_state(|| 0u32);
     let mut event_applier =
         hooks.use_ref(|| TranscriptEventApplier::new(props.show_thinking, props.auto_expand_thinking));
     let mut pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
@@ -1008,18 +1094,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 last_event_burst.set(raw_events.len());
                 let events = crate::tui::agent_bridge::coalesce_agent_ui_events(raw_events);
                 for event in events {
-                    if !busy.get() && agent_event_keeps_busy(&event) {
-                        mark_busy(
-                            &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
-                            false,
-                            None,
-                        );
+                    if agent_event_keeps_busy(&event) {
+                        // Stream/tool activity means a real harness turn (not bootstrap chrome).
+                        agent_turn_active.set(true);
+                        if !busy.get() {
+                            mark_busy(
+                                &mut BusyActivation {
+                                    busy: &mut busy,
+                                    busy_started_at: &mut busy_started_at,
+                                    activity_started_at: &mut activity_started_at,
+                                    activity_label: &mut activity_label,
+                                    last_activity_label: &mut last_activity_label,
+                                },
+                                false,
+                                None,
+                            );
+                        }
                     }
                     if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
                         run_completed = true;
@@ -1105,6 +1195,39 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         continue;
                     }
 
+                    if let AgentUiEvent::QueueUpdate { items } = event {
+                        prompt_queue.write().replace(items);
+                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                        if prompt_queue.read().is_empty() {
+                            if queue_manager_open.get() {
+                                queue_manager_open.set(false);
+                                queue_manager_selected.set(0);
+                                if pending_tool_approval.read().is_none() && pending_user_question.read().is_none() {
+                                    shell_focus.set(ShellFocus::Prompt);
+                                }
+                            }
+                        } else {
+                            let len = prompt_queue.read().len();
+                            let idx = queue_manager_selected.get().min(len.saturating_sub(1));
+                            queue_manager_selected.set(idx);
+                        }
+                        continue;
+                    }
+
+                    if let AgentUiEvent::UserPromptCommitted { text } = event {
+                        // Idle submit and Ctrl+Enter already painted the user card.
+                        let pending = pre_echoed_user_prompts.get();
+                        if pending > 0 {
+                            pre_echoed_user_prompts.set(pending.saturating_sub(1));
+                        } else {
+                            let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
+                            submitted.submitted_at = Some(chrono::Utc::now());
+                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            transcript_changed = true;
+                        }
+                        continue;
+                    }
+
                     if let Some(label) = activity_label_for_event(&event, show_thinking) {
                         activity_label.set(label);
                     }
@@ -1172,6 +1295,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             && let Some(session) = agent_session_for_loop.as_ref()
                         {
                             let context = format_shell_agent_context(&command, &output);
+                            agent_turn_active.set(true);
                             TurnDispatcher::spawn_turn(Arc::clone(session), context, false);
                             mark_busy(
                                 &mut BusyActivation {
@@ -1211,32 +1335,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     session_elapsed_secs.set(accumulate_session_elapsed(session_elapsed_secs.get(), turn_elapsed));
                 }
                 busy.set(false);
+                agent_turn_active.set(false);
                 busy_started_at.set(None);
                 activity_started_at.set(None);
                 activity_label.set("Thinking".to_string());
                 turn_token_tracker.set(None);
                 chrome_refresh_pending.set(true);
+                // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
 
-                if let Some(next) = prompt_queue.write().pop_front() {
-                    idle_status_notice.set(None);
-                    turn_cancel_requested.set(false);
-                    mark_busy(
-                        &mut BusyActivation {
-                            busy: &mut busy,
-                            busy_started_at: &mut busy_started_at,
-                            activity_started_at: &mut activity_started_at,
-                            activity_label: &mut activity_label,
-                            last_activity_label: &mut last_activity_label,
-                        },
-                        false,
-                        None,
-                    );
-                    begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                    if let Some(session) = agent_session_for_loop.as_ref() {
-                        chrome_refresh_pending.set(true);
-                        TurnDispatcher::spawn_turn(Arc::clone(session), next, false);
-                    }
-                } else if turn_cancel_requested.get() {
+                if turn_cancel_requested.get() {
                     turn_cancel_requested.set(false);
                     let elapsed = run_completed_elapsed.unwrap_or(0.0);
                     idle_status_notice.set(Some(IdleStatusNotice {
@@ -1311,6 +1418,111 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut question_input_focus = question_input_focus;
             let mut question_validation_error = question_validation_error;
             let mut pending_quit_confirm = pending_quit_confirm;
+            // Ctrl+Enter interject — handle early so status dialogs / queue manager do not swallow it.
+            if is_ctrl_enter_interject(modifiers, code)
+                && pending_tool_approval.read().is_none()
+                && pending_user_question.read().is_none()
+                && pending_model_selector.read().is_none()
+                && pending_scoped_models.read().is_none()
+                && pending_system_prompt.read().is_none()
+                && pending_confetti.read().is_none()
+            {
+                // Close queue manager if open; interject still runs.
+                if queue_manager_open.get() {
+                    queue_manager_open.set(false);
+                    queue_manager_selected.set(0);
+                    queue_manager_action.set(PromptQueueAction::SendNow);
+                    shell_focus.set(ShellFocus::Prompt);
+                }
+                let editor_body = {
+                    let live = live_draft.read().clone();
+                    let stored = draft.read().clone();
+                    let (mirror, _) = prompt_editor_mirror.read().clone();
+                    [live, stored, mirror]
+                        .into_iter()
+                        .max_by_key(|s| s.len())
+                        .unwrap_or_default()
+                };
+                let body = editor_body.trim().to_string();
+                // Prefer top queue item when present (one Ctrl+Enter per item).
+                if !prompt_queue.read().is_empty() {
+                    if let Some(item) = prompt_queue.write().pop_front_local() {
+                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                        let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        if let Some(session) = agent_session.as_ref() {
+                            if agent_turn_active.get() {
+                                TurnDispatcher::spawn_interject_queued(
+                                    Arc::clone(session),
+                                    item.kind,
+                                    item.kind_index,
+                                    item.text,
+                                );
+                            } else {
+                                agent_turn_active.set(true);
+                                chrome_refresh_pending.set(true);
+                                idle_status_notice.set(None);
+                                turn_cancel_requested.set(false);
+                                mark_busy(
+                                    &mut BusyActivation {
+                                        busy: &mut busy,
+                                        busy_started_at: &mut busy_started_at,
+                                        activity_started_at: &mut activity_started_at,
+                                        activity_label: &mut activity_label,
+                                        last_activity_label: &mut last_activity_label,
+                                    },
+                                    false,
+                                    None,
+                                );
+                                begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                                TurnDispatcher::spawn_turn(Arc::clone(session), item.text, false);
+                            }
+                        }
+                    }
+                    return;
+                }
+                if !body.is_empty() {
+                    if agent_turn_active.get() {
+                        if let Some(session) = agent_session.as_ref() {
+                            let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                            submitted.submitted_at = Some(chrono::Utc::now());
+                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
+                        }
+                    } else if let Some(session) = agent_session.as_ref() {
+                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        agent_turn_active.set(true);
+                        chrome_refresh_pending.set(true);
+                        idle_status_notice.set(None);
+                        turn_cancel_requested.set(false);
+                        mark_busy(
+                            &mut BusyActivation {
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
+                            false,
+                            None,
+                        );
+                        begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                        TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
+                    }
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
+                }
+                return;
+            }
+
             if pending_quit_confirm.get() && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) {
                 match code {
                     KeyCode::Char('y') | KeyCode::Char('Y') => {
@@ -1347,15 +1559,137 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let confetti_open = pending_confetti.read().is_some();
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
+            let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
                 || pending_user_question.read().is_some()
                 || model_selector_open
                 || scoped_models_open
                 || system_prompt_open
-                || confetti_open;
+                || confetti_open
+                || queue_manager_is_open;
 
             if status_dialog_open {
                 if confetti_open {
+                    return;
+                }
+
+                // Ctrl+Q queue manager: ↑↓ item · ←→ action · Enter activate · Esc close.
+                if queue_manager_is_open
+                    && pending_tool_approval.read().is_none()
+                    && pending_user_question.read().is_none()
+                    && !model_selector_open
+                    && !scoped_models_open
+                    && !system_prompt_open
+                {
+                    let len = prompt_queue.read().len();
+                    if len == 0 {
+                        queue_manager_open.set(false);
+                        queue_manager_action.set(PromptQueueAction::SendNow);
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        queue_manager_open.set(false);
+                        queue_manager_selected.set(0);
+                        queue_manager_action.set(PromptQueueAction::SendNow);
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    if modifiers.is_empty() && matches!(code, KeyCode::Up | KeyCode::Char('k')) {
+                        let idx = queue_manager_selected.get();
+                        queue_manager_selected.set(idx.saturating_sub(1));
+                        return;
+                    }
+                    if modifiers.is_empty() && matches!(code, KeyCode::Down | KeyCode::Char('j')) {
+                        let idx = queue_manager_selected.get();
+                        queue_manager_selected.set((idx + 1).min(len.saturating_sub(1)));
+                        return;
+                    }
+                    if modifiers.is_empty() && matches!(code, KeyCode::Left | KeyCode::Char('h')) {
+                        queue_manager_action.set(queue_manager_action.get().prev());
+                        return;
+                    }
+                    if modifiers.is_empty() && matches!(code, KeyCode::Right | KeyCode::Char('l') | KeyCode::Tab) {
+                        queue_manager_action.set(queue_manager_action.get().next());
+                        return;
+                    }
+                    let action_hotkey = if modifiers.is_empty() {
+                        match code {
+                            KeyCode::Char('s') | KeyCode::Char('S') => Some(PromptQueueAction::SendNow),
+                            KeyCode::Char('e') | KeyCode::Char('E') => Some(PromptQueueAction::Edit),
+                            KeyCode::Char('c')
+                            | KeyCode::Char('C')
+                            | KeyCode::Backspace
+                            | KeyCode::Delete
+                            | KeyCode::Char('x')
+                            | KeyCode::Char('X') => Some(PromptQueueAction::Cancel),
+                            KeyCode::Enter => Some(queue_manager_action.get()),
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some(action) = action_hotkey {
+                        queue_manager_action.set(action);
+                        let idx = queue_manager_selected.get();
+                        let turn_active = agent_turn_active.get();
+                        let session = agent_session.clone();
+                        let mut idle_turn: Option<String> = None;
+                        apply_prompt_queue_action(
+                            action,
+                            idx,
+                            &mut PromptQueueActionCtx {
+                                prompt_queue: &mut prompt_queue,
+                                queue_ui_revision: &mut queue_ui_revision,
+                                agent_session: &session,
+                                agent_turn_active: turn_active,
+                                messages: &mut messages,
+                                messages_revision: &mut messages_revision,
+                                pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
+                                draft: &mut draft,
+                                live_draft: &mut live_draft,
+                                shell_focus: &mut shell_focus,
+                                queue_manager_open: &mut queue_manager_open,
+                                queue_manager_selected: &mut queue_manager_selected,
+                                queue_manager_action: &mut queue_manager_action,
+                            },
+                            |text| idle_turn = Some(text),
+                        );
+                        if let Some(text) = idle_turn
+                            && let Some(session) = session.as_ref()
+                        {
+                            agent_turn_active.set(true);
+                            chrome_refresh_pending.set(true);
+                            idle_status_notice.set(None);
+                            turn_cancel_requested.set(false);
+                            mark_busy(
+                                &mut BusyActivation {
+                                    busy: &mut busy,
+                                    busy_started_at: &mut busy_started_at,
+                                    activity_started_at: &mut activity_started_at,
+                                    activity_label: &mut activity_label,
+                                    last_activity_label: &mut last_activity_label,
+                                },
+                                false,
+                                None,
+                            );
+                            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                            TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
+                        }
+                        return;
+                    }
+                    // Digit jump 1–9.
+                    if modifiers.is_empty()
+                        && let KeyCode::Char(ch) = code
+                        && ch.is_ascii_digit()
+                        && ch != '0'
+                    {
+                        let n = (ch as u8 - b'0') as usize;
+                        if n >= 1 && n <= len {
+                            queue_manager_selected.set(n - 1);
+                        }
+                        return;
+                    }
                     return;
                 }
 
@@ -2180,15 +2514,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             extension_host: Some(&extension_host_for_keys),
                             paths: Some(&paths),
                             cwd: Some(&cwd_for_keys),
+                            spawn_agent_work: !agent_turn_active.get(),
                         });
 
-                        if slash_echoes_prompt_in_transcript(&outcome) {
+                        // Queue only during a real agent turn — not bootstrap/shell busy.
+                        let queue_follow_up =
+                            agent_turn_active.get() && matches!(outcome, SlashOutcome::SpawnAgentTurn);
+                        if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let mut submitted = TranscriptMessage::text(
                                 body.clone(),
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
+                                pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(&mut messages, &mut messages_revision, submitted);
                         }
@@ -2270,6 +2609,34 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut messages_revision,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::SpawnAgentTurn => {
+                                if agent_turn_active.get() {
+                                    let queued = slash_input.clone();
+                                    prompt_queue.write().push_follow_up_local(queued.clone());
+                                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                                    if let Some(session) = agent_session.as_ref() {
+                                        TurnDispatcher::spawn_follow_up(Arc::clone(session), queued);
+                                    }
+                                } else if agent_session.is_some() {
+                                    // Skill/compact may already be running via spawn_agent_work.
+                                    agent_turn_active.set(true);
+                                    chrome_refresh_pending.set(true);
+                                    idle_status_notice.set(None);
+                                    turn_cancel_requested.set(false);
+                                    mark_busy(
+                                        &mut BusyActivation {
+                                            busy: &mut busy,
+                                            busy_started_at: &mut busy_started_at,
+                                            activity_started_at: &mut activity_started_at,
+                                            activity_label: &mut activity_label,
+                                            last_activity_label: &mut last_activity_label,
+                                        },
+                                        false,
+                                        None,
+                                    );
+                                    begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                                }
                             }
                             _ => {}
                         }
@@ -2557,6 +2924,43 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         messages_revision.set(messages_revision.get().wrapping_add(1));
                     }
                 }
+                // Ctrl+Q: open/close prompt queue manager (cancel / edit numbered items).
+                (m, KeyCode::Char('q')) | (m, KeyCode::Char('Q'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && pending_tool_approval.read().is_none()
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_system_prompt.read().is_none()
+                        && pending_confetti.read().is_none() =>
+                {
+                    if queue_manager_open.get() {
+                        queue_manager_open.set(false);
+                        queue_manager_selected.set(0);
+                        queue_manager_action.set(PromptQueueAction::SendNow);
+                        shell_focus.set(ShellFocus::Prompt);
+                    } else if prompt_queue.read().is_empty() {
+                        let expire_tx = ephemeral_expire.read().tx.clone();
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &expire_tx,
+                            EphemeralBanner {
+                                key: "transient:prompt_queue_empty",
+                                text: "Prompt queue is empty".into(),
+                                kind: EphemeralBannerKind::Notice,
+                                expires_at: Some(std::time::Instant::now() + AGENT_MODE_NOTICE_TTL),
+                            },
+                        );
+                    } else {
+                        queue_manager_selected.set(0);
+                        queue_manager_action.set(PromptQueueAction::SendNow);
+                        queue_manager_open.set(true);
+                        shell_focus.set(ShellFocus::StatusDialog);
+                    }
+                }
+                // Ctrl+Enter is handled early (before status dialogs) — see is_ctrl_enter_interject.
                 (m, KeyCode::Char('d')) if m.contains(KeyModifiers::CONTROL) => {
                     let expire_tx = ephemeral_expire.read().tx.clone();
                     let _ = request_quit(
@@ -2580,6 +2984,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     turn_cancel_requested.set(true);
                     activity_label.set("Cancelling…".to_string());
                     prompt_queue.write().clear();
+                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                    pre_echoed_user_prompts.set(0);
+                    agent_turn_active.set(false);
+                    queue_manager_open.set(false);
+                    queue_manager_selected.set(0);
                     if let Some(pending) = pending_tool_approval.write().take() {
                         pending.respond(ToolApprovalChoice::Reject);
                     }
@@ -2701,12 +3110,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let scoped_models_open = pending_scoped_models.read().is_some();
     let system_prompt_open = pending_system_prompt.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
+    let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || user_question_open
         || model_selector_open
         || scoped_models_open
         || system_prompt_open
-        || confetti_open;
+        || confetti_open
+        || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
@@ -2721,7 +3132,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         && !model_selector_open
         && !scoped_models_open
         && !system_prompt_open
-        && !confetti_open;
+        && !confetti_open
+        && !queue_manager_is_open;
     if let Some(pending) = pending_model_selector.write().as_mut() {
         let next_filter = model_selector_sanitize_filter(&model_filter.read());
         if next_filter != model_filter.read().as_str() {
@@ -2883,7 +3295,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             question_validation_error.read().clone(),
         )
     });
-    let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref());
+    // Depend on queue_ui_revision so Ref-backed queue mutations re-render the list/badge.
+    let _queue_ui_revision = queue_ui_revision.get();
+    // Tool approval takes precedence over the prompt-queue list (visible whenever non-empty).
+    let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref()).or_else(|| {
+        build_prompt_queue_dialog_kind(
+            prompt_queue.read().items(),
+            queue_manager_selected.get(),
+            queue_manager_action.get(),
+            queue_manager_is_open,
+        )
+    });
+    let queue_count = prompt_queue.read().len() as u32;
     let draft_for_palette = compose_palette_draft(input_prefix_kind.get(), &live_draft.read());
     let draft_body = live_draft.read().clone();
     let editor_cursor = live_cursor.get();
@@ -3158,6 +3581,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 dialog: status_dialog,
                 approval_selected: Some(approval_selected),
                 approval_has_focus: approval_has_focus,
+                queue_count: queue_count,
             )
             PromptChrome(
                 screen_width: screen_width,
@@ -3360,15 +3784,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             extension_host: Some(&extension_host),
                             paths: Some(&paths_snapshot),
                             cwd: Some(&cwd),
+                            // Defer skill/compact/etc. only while a real agent turn is active.
+                            spawn_agent_work: !agent_turn_active.get(),
                         });
 
-                        if slash_echoes_prompt_in_transcript(&outcome) {
+                        // Queue only during an active agent turn — never for new session / first prompt.
+                        let queue_follow_up = agent_turn_active.get()
+                            && matches!(outcome, SlashOutcome::SpawnAgentTurn);
+                        if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let mut submitted = TranscriptMessage::text(
                                 body.clone(),
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
+                                pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(&mut messages, &mut messages_revision, submitted);
                         }
@@ -3488,28 +3918,28 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 );
                             }
                             SlashOutcome::SpawnAgentTurn if is_slash => {
-                                // Agent-backed slash (skill/compact/…) must not start a nested turn mid-stream.
-                                if busy.get() {
-                                    push_transcript_message(
-                                        &mut messages,
-                                        &mut messages_revision,
-                                        TranscriptMessage::text(
-                                            "Agent is busy. Wait for the current turn to finish, then retry this command.",
-                                            TranscriptStyle::Meta,
-                                        ),
-                                    );
+                                if agent_turn_active.get() {
+                                    // Queue agent slash for after the current turn (no nested spawn).
+                                    let queued = slash_input.clone();
+                                    prompt_queue.write().push_follow_up_local(queued.clone());
+                                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                                    if let Some(session) = agent_session.as_ref() {
+                                        TurnDispatcher::spawn_follow_up(Arc::clone(session), queued);
+                                    }
                                 } else if agent_session.is_some() {
+                                    // Skill/compact already spawned via spawn_agent_work.
+                                    agent_turn_active.set(true);
                                     chrome_refresh_pending.set(true);
                                     idle_status_notice.set(None);
                                     turn_cancel_requested.set(false);
                                     mark_busy(
                                         &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
+                                            busy: &mut busy,
+                                            busy_started_at: &mut busy_started_at,
+                                            activity_started_at: &mut activity_started_at,
+                                            activity_label: &mut activity_label,
+                                            last_activity_label: &mut last_activity_label,
+                                        },
                                         false,
                                         None,
                                     );
@@ -3518,20 +3948,25 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                             SlashOutcome::SpawnAgentTurn => {
                                 debug_assert!(!slash_outcome_is_ui_only(&SlashOutcome::SpawnAgentTurn));
-                                if busy.get() {
-                                    prompt_queue.write().push(body.clone());
+                                if agent_turn_active.get() {
+                                    prompt_queue.write().push_follow_up_local(body.clone());
+                                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                                    if let Some(session) = agent_session.as_ref() {
+                                        TurnDispatcher::spawn_follow_up(Arc::clone(session), body.clone());
+                                    }
                                 } else if let Some(session) = agent_session.as_ref() {
+                                    agent_turn_active.set(true);
                                     chrome_refresh_pending.set(true);
                                     idle_status_notice.set(None);
                                     turn_cancel_requested.set(false);
                                     mark_busy(
                                         &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
+                                            busy: &mut busy,
+                                            busy_started_at: &mut busy_started_at,
+                                            activity_started_at: &mut activity_started_at,
+                                            activity_label: &mut activity_label,
+                                            last_activity_label: &mut last_activity_label,
+                                        },
                                         false,
                                         None,
                                     );
@@ -3552,6 +3987,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                     draft.set(String::new());
                     live_draft.set(String::new());
+                    // Avoid a stuck Slash/! prefix making the next submit look like a slash command.
+                    input_prefix_kind.set(InputPrefixKind::Default);
                     suppress_enter_newline.set(true);
                 },
             )

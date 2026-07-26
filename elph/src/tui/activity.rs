@@ -100,7 +100,11 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         AgentUiEvent::ToolApprovalRequired(_) => Some("Awaiting tool approval".to_string()),
         AgentUiEvent::UserQuestionRequired(_) => Some("Awaiting your answer".to_string()),
         AgentUiEvent::GoalUpdated { .. } => Some("Updating goal".to_string()),
-        AgentUiEvent::RunCompleted { .. } | AgentUiEvent::ToolUpdate { .. } | AgentUiEvent::ThinkingDelta(_) => None,
+        AgentUiEvent::RunCompleted { .. }
+        | AgentUiEvent::ToolUpdate { .. }
+        | AgentUiEvent::ThinkingDelta(_)
+        | AgentUiEvent::QueueUpdate { .. }
+        | AgentUiEvent::UserPromptCommitted { .. } => None,
     }
 }
 
