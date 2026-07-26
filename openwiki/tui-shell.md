@@ -83,6 +83,7 @@ Shows:
 - Agent mode (Build/Plan/Ask/Brave) with mode-specific color
 - Model name + provider
 - Thinking level with color
+- Select-mode badge (visible when in text selection mode)
 - Token usage and costs
 - Turn counter
 - Git branch info (staged/unstaged changes)
@@ -160,7 +161,7 @@ The `elph-tui` crate provides reusable widgets used by the main TUI and external
 
 | Component          | File                               | Description                                     |
 | ------------------ | ---------------------------------- | ----------------------------------------------- |
-| Markdown           | `components/markdown/`             | Live markdown renderer with syntax highlighting |
+| Markdown           | `components/markdown/`             | Live markdown renderer with syntax highlighting and OSC 8 clickable hyperlinks |
 | Textarea           | `components/textarea/`             | Multi-line text editor                          |
 | Dialog shell       | `components/dialog_shell/`         | Modal dialog framework                          |
 | Progress indicator | `components/progress_indicator.rs` | Progress bar                                    |
@@ -173,6 +174,16 @@ The `elph-tui` crate provides reusable widgets used by the main TUI and external
 | Theme config       | `theme_config.rs`                  | Theme system definition                         |
 | Loader             | `loader.rs`                        | Loading animations                              |
 | CLI progress       | `cli_progress.rs`                  | Terminal progress spinners                      |
+| Clipboard          | `clipboard.rs`                     | Native clipboard copy/read with status toasts   |
+
+### App-level dialogs (`elph/src/tui/`)
+
+| Dialog                   | File                    | Description                                               |
+| ------------------------ | ----------------------- | --------------------------------------------------------- |
+| Scroll text dialog       | `scroll_text_dialog.rs` | Reusable scrollable modal for system prompts, dumps, logs |
+| System prompt dialog     | `system_prompt_dialog.rs` | System prompt editor (now built on scroll text dialog)  |
+
+**Source:** `/elph/src/tui/scroll_text_dialog.rs`, `/elph/src/tui/system_prompt_dialog.rs`
 
 ## Changing the TUI
 

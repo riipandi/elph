@@ -1445,3 +1445,88 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         other => panic!("expected branch summary entry, got {other:?}"),
     }
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_queue_remove_and_promote_follow_up_to_steer() {
+    let (_temp, env) = test_env();
+    let (faux, models) = common::new_faux();
+    let release = Arc::new(AtomicBool::new(false));
+    let started = Arc::new(AtomicBool::new(false));
+
+    faux.set_responses(vec![FauxResponseStep::Factory({
+        let release = release.clone();
+        let started = started.clone();
+        Arc::new(move |_context, options, _, _| {
+            started.store(true, Ordering::SeqCst);
+            let signal = options.and_then(|o| o.signal.clone());
+            loop {
+                if signal.as_ref().is_some_and(|token| token.is_cancelled()) {
+                    return faux_assistant_message(vec![faux_text("aborted")], None);
+                }
+                if release.load(Ordering::SeqCst) {
+                    return faux_assistant_message(vec![faux_text("done")], None);
+                }
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        })
+    })]);
+
+    let harness = Arc::new(make_harness(&faux, models, env, HarnessOptions::default()));
+    let harness_for_prompt = harness.clone();
+    let first_prompt = tokio::spawn(async move { harness_for_prompt.prompt("first", None).await });
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while !started.load(Ordering::SeqCst) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("stream should start");
+
+    harness.follow_up("follow-a", None).await.expect("follow a");
+    harness.follow_up("follow-b", None).await.expect("follow b");
+    harness.steer("steer-1", None).await.expect("steer");
+
+    let peek = harness.peek_queues().await;
+    assert_eq!(peek.follow_up.len(), 2);
+    assert_eq!(peek.steer.len(), 1);
+
+    let removed = harness
+        .remove_follow_up_at(0)
+        .await
+        .expect("remove")
+        .expect("had item");
+    let removed_text = match removed.as_llm() {
+        Some(Message::User {
+            content: UserContent::Text(t),
+            ..
+        }) => t.clone(),
+        _ => panic!("expected user text"),
+    };
+    assert_eq!(removed_text, "follow-a");
+    assert_eq!(harness.peek_queues().await.follow_up.len(), 1);
+
+    let promoted = harness
+        .promote_follow_up_front_to_steer()
+        .await
+        .expect("promote")
+        .expect("had follow-up");
+    let promoted_text = match promoted.as_llm() {
+        Some(Message::User {
+            content: UserContent::Text(t),
+            ..
+        }) => t.clone(),
+        _ => panic!("expected user text"),
+    };
+    assert_eq!(promoted_text, "follow-b");
+    let after = harness.peek_queues().await;
+    assert!(after.follow_up.is_empty());
+    assert_eq!(after.steer.len(), 2);
+
+    harness.clear_prompt_queues().await.expect("clear");
+    let cleared = harness.peek_queues().await;
+    assert!(cleared.steer.is_empty());
+    assert!(cleared.follow_up.is_empty());
+
+    release.store(true, Ordering::SeqCst);
+    let _ = first_prompt.await.expect("join first prompt");
+}

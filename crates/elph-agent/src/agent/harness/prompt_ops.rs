@@ -2,7 +2,7 @@
 
 use elph_ai::AssistantMessage;
 
-use crate::agent::harness::types::{AgentHarnessError, AgentHarnessPromptOptions};
+use crate::agent::harness::types::{AgentHarnessError, AgentHarnessPromptOptions, QueueUpdateEvent};
 use crate::agent::harness::types::{AgentHarnessErrorCode, AgentHarnessPhase, PendingSessionWrite};
 use crate::prompt::format_prompt_template_invocation;
 use crate::session::types::{HasSessionId, SessionStorage};
@@ -145,6 +145,82 @@ where
             .lock()
             .await
             .push(create_user_message(text.into(), options.and_then(|o| o.images)));
+        self.emit_queue_update().await
+    }
+
+    /// Snapshot of steer / follow-up / next-turn queues (read-only).
+    pub async fn peek_queues(&self) -> QueueUpdateEvent {
+        QueueUpdateEvent {
+            steer: self.shared.steer_queue.lock().await.clone(),
+            follow_up: self.shared.follow_up_queue.lock().await.clone(),
+            next_turn: self.shared.next_turn_queue.lock().await.clone(),
+        }
+    }
+
+    /// Remove a steer-queue item by index. Emits [`QueueUpdate`] on success.
+    pub async fn remove_steer_at(&self, index: usize) -> HarnessOpResult<Option<AgentMessage>> {
+        let removed = {
+            let mut guard = self.shared.steer_queue.lock().await;
+            if index >= guard.len() {
+                None
+            } else {
+                Some(guard.remove(index))
+            }
+        };
+        if removed.is_some() {
+            self.emit_queue_update().await?;
+        }
+        Ok(removed)
+    }
+
+    /// Remove a follow-up queue item by index. Emits [`QueueUpdate`] on success.
+    pub async fn remove_follow_up_at(&self, index: usize) -> HarnessOpResult<Option<AgentMessage>> {
+        let removed = {
+            let mut guard = self.shared.follow_up_queue.lock().await;
+            if index >= guard.len() {
+                None
+            } else {
+                Some(guard.remove(index))
+            }
+        };
+        if removed.is_some() {
+            self.emit_queue_update().await?;
+        }
+        Ok(removed)
+    }
+
+    /// Move the front follow-up message onto the steer queue (interject one queued prompt).
+    ///
+    /// Returns the promoted message text when a follow-up existed.
+    pub async fn promote_follow_up_front_to_steer(&self) -> HarnessOpResult<Option<AgentMessage>> {
+        let message = {
+            let mut follow = self.shared.follow_up_queue.lock().await;
+            if follow.is_empty() {
+                None
+            } else {
+                Some(follow.remove(0))
+            }
+        };
+        let Some(message) = message else {
+            return Ok(None);
+        };
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            // Cannot steer while idle — put the message back.
+            self.shared.follow_up_queue.lock().await.insert(0, message);
+            return Err(AgentHarnessError::new(
+                AgentHarnessErrorCode::InvalidState,
+                "Cannot promote follow-up to steer while idle",
+            ));
+        }
+        self.shared.steer_queue.lock().await.push(message.clone());
+        self.emit_queue_update().await?;
+        Ok(Some(message))
+    }
+
+    /// Clear steer and follow-up queues (keeps next-turn). Emits [`QueueUpdate`].
+    pub async fn clear_prompt_queues(&self) -> HarnessOpResult<()> {
+        self.shared.steer_queue.lock().await.clear();
+        self.shared.follow_up_queue.lock().await.clear();
         self.emit_queue_update().await
     }
 

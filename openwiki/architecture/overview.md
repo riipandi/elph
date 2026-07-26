@@ -65,7 +65,7 @@ Key modules:
 
 ### LLM provider layer: `elph-ai`
 
-Provider-agnostic LLM API (`/crates/elph-ai/`). Supports 10+ providers.
+Provider-agnostic LLM API (`/crates/elph-ai/`). Supports 30+ providers.
 
 | Module       | Responsibility                                          |
 | ------------ | ------------------------------------------------------- |
