@@ -126,6 +126,12 @@ impl TranscriptMessage {
     pub fn assistant_slash_markdown(content: impl Into<String>) -> Self {
         let mut message = Self::assistant_markdown(content);
         message.local_slash_response = true;
+        // Local slash output is complete when inserted (not LLM-streamed). Force-flush so
+        // GFM tables and other multi-line blocks freeze into the stable markdown cache
+        // instead of remaining in the streaming tail (plain wrap / no table grid).
+        if let Some(markdown) = message.markdown.as_mut() {
+            markdown.mark_stream_complete();
+        }
         message
     }
 
@@ -865,6 +871,22 @@ mod tests {
             TranscriptMessage::assistant_markdown("reply").transcript_margin_bottom(None),
             FLUSH_CARD_GAP
         );
+    }
+
+    #[test]
+    fn local_slash_markdown_marks_stream_complete() {
+        let message = TranscriptMessage::assistant_slash_markdown(
+            "## Available tools\n\n| Tool | Group |\n| --- | --- |\n| `read_file` | Read |\n",
+        );
+        assert!(message.local_slash_response);
+        let markdown = message.markdown.as_ref().expect("markdown buffer");
+        assert!(
+            markdown.stream_complete,
+            "slash output is final — must force-flush GFM tables out of the streaming tail"
+        );
+        // Streaming (LLM) replies stay incomplete until RunCompleted.
+        let streaming = TranscriptMessage::assistant_markdown("partial");
+        assert!(!streaming.markdown.as_ref().expect("md").stream_complete);
     }
 
     #[test]

@@ -112,3 +112,71 @@ pub fn apply_markdown_parse_result(
 pub fn parse_markdown_on_worker(source: &str) -> MarkdownDocument {
     parse_markdown_document(source)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tui::transcript::types::TranscriptMessage;
+
+    fn large_tools_table_markdown() -> String {
+        let mut lines = vec![
+            "## Available tools (build mode, 40 active)".to_string(),
+            String::new(),
+            "| Tool | Group | Description |".to_string(),
+            "| --- | --- | --- |".to_string(),
+        ];
+        for index in 0..40 {
+            lines.push(format!(
+                "| `tool_{index:02}` | Group | Description text for tool {index:02} that is long enough to bulk the table past the streaming-tail plain-wrap threshold |"
+            ));
+        }
+        lines.join("\n")
+    }
+
+    #[test]
+    fn slash_tools_table_freezes_full_document_for_gfm_parse() {
+        let content = large_tools_table_markdown();
+        assert!(
+            content.len() > 800,
+            "fixture must exceed streaming-tail markdown max so plain wrap would skip tables"
+        );
+
+        let mut messages = vec![TranscriptMessage::assistant_slash_markdown(content.clone())];
+        assert!(partition_assistant_markdown(&mut messages, 100));
+
+        let buffer = messages[0].markdown.as_ref().expect("markdown buffer");
+        assert_eq!(
+            buffer.stable_end,
+            content.len(),
+            "completed slash markdown must freeze the whole table, not leave it in the tail"
+        );
+        assert!(buffer.tail(&content).is_empty());
+
+        let jobs = collect_markdown_parse_jobs(&messages);
+        assert_eq!(jobs.len(), 1);
+        let document = parse_markdown_on_worker(&jobs[0].source);
+        assert!(
+            document.lines.iter().any(|line| line.table.is_some()),
+            "expected a parsed GFM table in the stable document"
+        );
+        assert!(apply_markdown_parse_result(&mut messages, &jobs[0], document));
+        let buffer = messages[0].markdown.as_ref().expect("markdown buffer");
+        assert!(
+            buffer.parts[0]
+                .document
+                .as_ref()
+                .is_some_and(|doc| { doc.lines.iter().any(|line| line.table.is_some()) })
+        );
+    }
+
+    #[test]
+    fn incomplete_assistant_stream_keeps_table_in_tail() {
+        let content = "## Tools\n\n| Tool | Group |\n| --- | --- |\n| `a` | G |\n| `b` | G |";
+        let mut messages = vec![TranscriptMessage::assistant_markdown(content.to_string())];
+        // No stream_complete — only the heading freezes past the first blank line.
+        let _ = partition_assistant_markdown(&mut messages, 100);
+        let buffer = messages[0].markdown.as_ref().expect("markdown buffer");
+        assert!(buffer.stable_end < content.len());
+        assert!(buffer.tail(content).contains("| Tool |"));
+    }
+}
