@@ -104,22 +104,25 @@ pub fn RenameDialogBar(props: &mut RenameDialogBarProps, _hooks: Hooks) -> impl 
             gap: 0,
             flex_shrink: 0f32,
         ) {
-            DialogUserInputContent(
-                width: body_width,
-                question: String::new(),
-                placeholder: "Session title…".to_string(),
-                value: props.value,
-                has_focus: props.has_focus,
-                theme: Some(theme),
-                section_gap: Some(0),
-                show_prompt: false,
-                show_footer_hint: false,
-                show_placeholder_when_focused: true,
-                dialog_chrome: true,
-                compact: true,
-                on_submit: props.on_submit.take(),
-                on_cancel: props.on_cancel.take(),
-            )
+            // One blank row under the header divider so the field is not flush to the title.
+            View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
+                DialogUserInputContent(
+                    width: body_width,
+                    question: String::new(),
+                    placeholder: "Session title…".to_string(),
+                    value: props.value,
+                    has_focus: props.has_focus,
+                    theme: Some(theme),
+                    section_gap: Some(0),
+                    show_prompt: false,
+                    show_footer_hint: false,
+                    show_placeholder_when_focused: true,
+                    dialog_chrome: true,
+                    compact: true,
+                    on_submit: props.on_submit.take(),
+                    on_cancel: props.on_cancel.take(),
+                )
+            }
         }
     };
 

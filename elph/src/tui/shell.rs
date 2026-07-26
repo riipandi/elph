@@ -66,8 +66,12 @@ use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
-use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
+use crate::tui::rename_dialog::{
+    OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog,
+};
+use crate::tui::scroll_text_dialog::{OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog};
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
+use crate::agent::rename_session_title;
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
 };
@@ -854,6 +858,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_system_prompt = hooks.use_ref(|| None::<PendingSystemPromptDialog>);
     let system_prompt_scroll = hooks.use_ref_default::<ScrollViewHandle>();
     let mut system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
+    let mut pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
+    let mut rename_value = hooks.use_state(String::new);
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_ref(|| 0u32);
@@ -1609,6 +1615,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 && pending_model_selector.read().is_none()
                 && pending_scoped_models.read().is_none()
                 && pending_system_prompt.read().is_none()
+                && pending_rename.read().is_none()
                 && pending_confetti.read().is_none()
             {
                 // Close queue manager if open; interject still runs.
@@ -1749,6 +1756,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             let system_prompt_open = pending_system_prompt.read().is_some();
+            let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
@@ -1758,6 +1766,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || model_selector_open
                 || scoped_models_open
                 || system_prompt_open
+                || rename_open
                 || confetti_open
                 || queue_manager_is_open;
 
@@ -1931,6 +1940,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
 
+                    if !shell_global_shortcut(modifiers, code) {
+                        return;
+                    }
+                }
+
+                if rename_open {
+                    let mut pending_rename = pending_rename;
+                    let mut rename_value = rename_value;
+                    let mut draft = draft;
+                    let mut live_draft = live_draft;
+                    let mut shell_focus = shell_focus;
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+                    // Text input owns typing / Enter / Esc via DialogUserInputContent.
                     if !shell_global_shortcut(modifiers, code) {
                         return;
                     }
@@ -2781,6 +2814,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     width_pct: None,
                                 });
                             }
+                            SlashOutcome::OpenSessionInfoDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenRenameDialog { initial } => {
+                                open_rename_dialog(OpenRenameDialogArgs {
+                                    pending: &mut pending_rename,
+                                    value: &mut rename_value,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
+                                force_editor_clear.set(true);
+                            }
                             SlashOutcome::PlayConfetti { mode } => {
                                 open_confetti(OpenConfettiArgs {
                                     pending: &mut pending_confetti,
@@ -3148,6 +3202,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         && pending_model_selector.read().is_none()
                         && pending_scoped_models.read().is_none()
                         && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
                         && pending_confetti.read().is_none() =>
                 {
                     if queue_manager_open.get() {
@@ -3324,6 +3379,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let system_prompt_open = pending_system_prompt.read().is_some();
+    let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
@@ -3331,22 +3387,34 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || model_selector_open
         || scoped_models_open
         || system_prompt_open
+        || rename_open
         || confetti_open
         || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
     let question_has_focus = user_question_open;
-    let model_selector_has_focus =
-        model_selector_open && !user_question_open && !system_prompt_open && !confetti_open && !scoped_models_open;
-    let scoped_models_has_focus =
-        scoped_models_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
-    let system_prompt_has_focus = system_prompt_open && !confetti_open;
+    let model_selector_has_focus = model_selector_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !scoped_models_open;
+    let scoped_models_has_focus = scoped_models_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !model_selector_open;
+    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
+    let rename_has_focus =
+        rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = pending_tool_approval.read().is_some()
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
         && !system_prompt_open
+        && !rename_open
         && !confetti_open
         && !queue_manager_is_open;
     if let Some(pending) = pending_model_selector.write().as_mut() {
@@ -3449,7 +3517,69 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         }
         .into()
     });
-    let editor_overlay = model_selector_overlay.or(scoped_models_overlay);
+    let rename_overlay = if rename_open {
+        let rename_session = agent_session.clone();
+        Some(
+            element! {
+                RenameDialogBar(
+                    screen_width: screen_width,
+                    has_focus: rename_has_focus,
+                    value: Some(rename_value),
+                    on_submit: move |_| {
+                        let title = rename_value.read().clone();
+                        let result = rename_session
+                            .as_ref()
+                            .map(|session| rename_session_title(session, &title))
+                            .unwrap_or_else(|| Err("Agent session required for this command.".into()));
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        match result {
+                            Ok(()) => {
+                                let notice = format!("Session renamed to “{}”.", title.trim());
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(notice, TranscriptStyle::Meta),
+                                );
+                            }
+                            Err(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                            }
+                        }
+                    },
+                    on_cancel: move |_| {
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                    },
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
+    // Same slot as slash palette / model picker: above the editor, below the status row.
+    let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
         let plane = if let Some(runtime) = confetti_runtime.write().as_mut() {
@@ -3856,6 +3986,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     Some("Viewing system prompt — Esc to close".to_string())
                 } else if user_question_open {
                     Some("Answer the question above".to_string())
+                } else if rename_open {
+                    Some("Rename session — Enter save · Esc cancel".to_string())
                 } else if model_selector_open {
                     Some("Select a model above".to_string())
                 } else if scoped_models_open {
@@ -4198,6 +4330,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenSessionInfoDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenRenameDialog { initial } => {
+                                open_rename_dialog(OpenRenameDialogArgs {
+                                    pending: &mut pending_rename,
+                                    value: &mut rename_value,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
                                 force_editor_clear.set(true);
                                 suppress_enter_newline.set(true);
                                 return;

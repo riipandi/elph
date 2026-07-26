@@ -3,10 +3,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use elph_agent::{build_session_context, estimate_context_tokens};
+use chrono::{DateTime, Local, Timelike, Utc};
+use elph_agent::{FileSystem, build_session_context, estimate_context_tokens};
 
 use super::CodingAgentSession;
 use crate::tui::chrome::count_user_turns;
+use crate::tui::labels::format_token_count;
 
 const SESSION_INFO_TIMEOUT: Duration = Duration::from_millis(1_200);
 
@@ -29,6 +31,53 @@ pub fn format_api_backend(api: &str) -> String {
     }
 }
 
+/// Format an ISO / RFC3339 session timestamp for display (local wall clock).
+///
+/// Examples: `2026-07-27 15:42`, `2026-07-27 15:42:03` (seconds kept when non-zero).
+pub fn format_session_timestamp(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return "—".to_string();
+    }
+    let Some(utc) = parse_session_timestamp(trimmed) else {
+        return trimmed.to_string();
+    };
+    let local = utc.with_timezone(&Local);
+    if local.timestamp_subsec_millis() == 0 && local.second() == 0 {
+        local.format("%Y-%m-%d %H:%M").to_string()
+    } else if local.timestamp_subsec_millis() == 0 {
+        local.format("%Y-%m-%d %H:%M:%S").to_string()
+    } else {
+        local.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+}
+
+fn parse_session_timestamp(ts: &str) -> Option<DateTime<Utc>> {
+    DateTime::parse_from_rfc3339(ts)
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok()
+        .or_else(|| {
+            DateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.fZ")
+                .map(|dt| dt.with_timezone(&Utc))
+                .ok()
+        })
+        .or_else(|| {
+            chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.f")
+                .ok()
+                .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
+        })
+}
+
+/// Compact context line: `75K / 500K tokens (15%)`.
+pub fn format_context_usage_line(tokens_used: u64, context_limit: u64, context_pct: u64) -> String {
+    format!(
+        "{} / {} tokens ({}%)",
+        format_token_count(tokens_used),
+        format_token_count(context_limit),
+        context_pct
+    )
+}
+
 /// Build the multi-line session info body shown by `/session`.
 pub async fn format_session_info(session: &CodingAgentSession) -> String {
     let title = session
@@ -44,11 +93,7 @@ pub async fn format_session_info(session: &CodingAgentSession) -> String {
     let api_backend = format_api_backend(&session.model_api());
     let last_activity = {
         let meta = session.harness().session_metadata().await;
-        if meta.updated_at.trim().is_empty() {
-            "—".to_string()
-        } else {
-            meta.updated_at
-        }
+        format_session_timestamp(&meta.updated_at)
     };
 
     let (turn_count, tokens_used, context_limit, context_pct) = match session.branch_entries().await {
@@ -70,6 +115,7 @@ pub async fn format_session_info(session: &CodingAgentSession) -> String {
             (0, 0, limit, 0)
         }
     };
+    let context_line = format_context_usage_line(tokens_used, context_limit, context_pct);
 
     format!(
         "Title: {title}\n\
@@ -78,8 +124,8 @@ pub async fn format_session_info(session: &CodingAgentSession) -> String {
          Model: {provider}/{model_id}\n\
          API Backend: {api_backend}\n\
          Last activity: {last_activity}\n\
-         Turn: {turn_count}\n\
-         Context: {tokens_used} / {context_limit} tokens ({context_pct}%)"
+         Context: {context_line}\n\
+         Turn: {turn_count}"
     )
 }
 
@@ -165,9 +211,9 @@ Session ID: abc\n\
 Working directory: /tmp\n\
 Model: openai/gpt-4o\n\
 API Backend: Responses\n\
-Last activity: 2026-07-27T12:00:00.000Z\n\
-Turn: 15\n\
-Context: 75377 / 500000 tokens (15%)";
+Last activity: 2026-07-27 12:00\n\
+Context: 75K / 500K tokens (15%)\n\
+Turn: 15";
         for key in [
             "Title:",
             "Session ID:",
@@ -175,10 +221,40 @@ Context: 75377 / 500000 tokens (15%)";
             "Model:",
             "API Backend:",
             "Last activity:",
-            "Turn:",
             "Context:",
+            "Turn:",
         ] {
             assert!(sample.contains(key), "missing {key}");
         }
+        let context_pos = sample.find("Context:").expect("context");
+        let turn_pos = sample.find("Turn:").expect("turn");
+        assert!(context_pos < turn_pos, "Turn should be last");
+    }
+
+    #[test]
+    fn context_usage_uses_compact_counts() {
+        assert_eq!(
+            format_context_usage_line(75_377, 500_000, 15),
+            "75K / 500K tokens (15%)"
+        );
+        assert_eq!(
+            format_context_usage_line(1_500_000, 2_000_000, 75),
+            "1.5M / 2M tokens (75%)"
+        );
+        assert_eq!(format_context_usage_line(42, 999, 4), "42 / 999 tokens (4%)");
+    }
+
+    #[test]
+    fn session_timestamp_formats_rfc3339() {
+        let formatted = format_session_timestamp("2026-07-27T12:00:00.000Z");
+        // Local offset may shift the hour; date prefix should remain readable.
+        assert!(
+            formatted.starts_with("2026-07-2"),
+            "unexpected formatted timestamp: {formatted}"
+        );
+        assert!(!formatted.contains('T'));
+        assert!(!formatted.ends_with('Z'));
+        assert_eq!(format_session_timestamp(""), "—");
+        assert_eq!(format_session_timestamp("not-a-date"), "not-a-date");
     }
 }

@@ -51,7 +51,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
         builtin("copy", "Copy last agent message"),
-        builtin("name", "Set session display name"),
+        builtin_with_args("rename", "Rename the current session", "[title]"),
         builtin("session", "Show session info"),
         builtin("changelog", "Show changelog"),
         builtin("hotkeys", "Show keyboard shortcuts"),
@@ -142,6 +142,10 @@ pub enum SlashDispatch {
     Help,
     Tools { args: String },
     SystemPrompt,
+    /// Show current session metadata (title, id, model, context, …).
+    SessionInfo,
+    /// Open rename dialog; `args` is optional prefill when non-empty.
+    Rename { args: String },
     Confetti { args: String },
     Reload,
     Extension { name: String, args: String },
@@ -257,7 +261,10 @@ pub fn confetti_mode_from_args(args: &str) -> &'static str {
 /// Commands with arg completions (e.g. `tools`, `goal`, `confetti`) are **not** listed —
 /// Tab/Enter first complete the name so the args palette can open.
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
-    matches!(command_name, "model" | "scoped-models" | "tree" | "resume")
+    matches!(
+        command_name,
+        "model" | "scoped-models" | "tree" | "resume" | "session" | "rename" | "system-prompt"
+    )
 }
 
 fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
@@ -268,6 +275,8 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "help" | "h" | "?" => Some(SlashDispatch::Help),
         "tools" => Some(SlashDispatch::Tools { args }),
         "system-prompt" | "systemprompt" | "prompt" => Some(SlashDispatch::SystemPrompt),
+        "session" => Some(SlashDispatch::SessionInfo),
+        "rename" | "name" => Some(SlashDispatch::Rename { args }),
         "confetti" | "conffety" | "confetty" => Some(SlashDispatch::Confetti { args }),
         "reload" => Some(SlashDispatch::Reload),
         "model" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Model { filter: args })),
@@ -277,8 +286,8 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
         "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
         "new" => Some(SlashDispatch::NewSession),
-        "settings" | "export" | "import" | "copy" | "name" | "session" | "changelog" | "hotkeys" | "fork" | "clone"
-        | "trust" | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
+        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust"
+        | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
         _ => None,
     }
 }
@@ -479,6 +488,32 @@ mod tests {
         let names: Vec<_> = builtin_slash_commands().into_iter().map(|cmd| cmd.name).collect();
         assert!(names.contains(&"goal"));
         assert!(names.contains(&"provider"));
+        assert!(names.contains(&"session"));
+        assert!(names.contains(&"rename"));
+    }
+
+    #[test]
+    fn session_and_rename_dispatch() {
+        assert_eq!(
+            dispatch_slash_command("/session", None, None, None),
+            Some(SlashDispatch::SessionInfo)
+        );
+        assert_eq!(
+            dispatch_slash_command("/rename", None, None, None),
+            Some(SlashDispatch::Rename { args: String::new() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/rename Fix login", None, None, None),
+            Some(SlashDispatch::Rename {
+                args: "Fix login".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/name My title", None, None, None),
+            Some(SlashDispatch::Rename {
+                args: "My title".into()
+            })
+        );
     }
 
     #[test]

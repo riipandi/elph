@@ -173,6 +173,8 @@ impl SlashDispatcher {
                 | SlashDispatch::Help
                 | SlashDispatch::Tools { .. }
                 | SlashDispatch::SystemPrompt
+                | SlashDispatch::SessionInfo
+                | SlashDispatch::Rename { .. }
                 | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_) => {}

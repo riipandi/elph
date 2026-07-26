@@ -13,6 +13,7 @@ mod resource_loader;
 mod run_mode;
 mod runtime;
 mod session;
+mod session_info_slash;
 mod session_manager;
 mod skills_load;
 mod slash_commands;
@@ -43,6 +44,9 @@ pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
     slash_unimplemented_message,
+};
+pub use session_info_slash::{
+    rename_session_title, session_info_slash_message, session_title_for_rename,
 };
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use system_prompt_slash::system_prompt_slash_message;

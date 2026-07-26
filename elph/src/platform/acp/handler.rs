@@ -68,6 +68,22 @@ async fn handle_acp_slash_command(
             let message = system_prompt_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?;
             send_text_chunks(connection, session_id, &message).await
         }
+        Some(SlashDispatch::SessionInfo) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let message = crate::agent::session_info_slash_message(Some(&session)).map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::Rename { args }) => {
+            let (session, _, _) = lookup_session(state, &key)?;
+            let title = args.trim();
+            if title.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Usage: /rename <title> (interactive rename dialog is TUI-only)."
+                ));
+            }
+            crate::agent::rename_session_title(&session, title).map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &format!("Session renamed to “{title}”.")).await
+        }
 
         // ── Agent-action commands (run through session) ──────────────────────
         Some(SlashDispatch::Compact) => {

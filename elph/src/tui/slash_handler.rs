@@ -7,7 +7,8 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
-    confetti_mode_from_args, dispatch_slash_command, format_help_message, slash_unimplemented_message,
+    confetti_mode_from_args, dispatch_slash_command, format_help_message, rename_session_title,
+    session_info_slash_message, session_title_for_rename, slash_unimplemented_message,
     system_prompt_slash_message, tools_slash_message,
 };
 use crate::extensions::ExtensionHost;
@@ -28,6 +29,10 @@ pub enum SlashOutcome {
     OpenModelSelector { filter: String },
     OpenScopedModels,
     OpenSystemPromptDialog { text: String },
+    /// Session metadata viewer (ScrollTextDialog).
+    OpenSessionInfoDialog { text: String },
+    /// Rename session inline text dialog (prefilled title).
+    OpenRenameDialog { initial: String },
     PlayConfetti { mode: crate::tui::confetti::ConfettiMode },
 }
 
@@ -63,6 +68,25 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
+        SlashDispatch::SessionInfo => match session_info_slash_message(ctx.agent_session.as_ref()) {
+            Ok(text) => SlashOutcome::OpenSessionInfoDialog { text },
+            Err(message) => SlashOutcome::Status(message),
+        },
+        SlashDispatch::Rename { args } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            }
+            // Non-empty args: save immediately without opening the dialog.
+            let trimmed = args.trim();
+            if !trimmed.is_empty() {
+                return match rename_session_title(ctx.agent_session.as_ref().expect("checked"), trimmed) {
+                    Ok(()) => SlashOutcome::Status(format!("Session renamed to “{trimmed}”.")),
+                    Err(message) => SlashOutcome::Status(message),
+                };
+            }
+            let initial = session_title_for_rename(ctx.agent_session.as_ref()).unwrap_or_default();
+            SlashOutcome::OpenRenameDialog { initial }
+        }
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
@@ -140,6 +164,8 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
+            | SlashOutcome::OpenSessionInfoDialog { .. }
+            | SlashOutcome::OpenRenameDialog { .. }
             | SlashOutcome::PlayConfetti { .. }
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
@@ -297,6 +323,46 @@ mod tests {
     fn system_prompt_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/system-prompt",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn session_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/session",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn rename_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/rename",
             extensions: None,
             prompt_templates: None,
             skills: None,
