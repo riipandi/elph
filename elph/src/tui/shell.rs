@@ -1,5 +1,6 @@
 //! Root shell: layout zones, global keyboard handling, and session state.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -87,11 +88,12 @@ use crate::tui::tool_approval::{
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
-    EphemeralBanner, EphemeralBannerGeneration, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
-    TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
-    clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner, prompt_copy_banner,
-    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
-    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
+    AGENT_MODE_NOTICE_TTL, EphemeralBanner, EphemeralBannerGeneration, FILE_PICKER_HIDDEN_NOTICE_KEY,
+    MODEL_SET_NOTICE_KEY, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel, TranscriptStyle, agent_mode_banner,
+    agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner, clear_ephemeral_banner_if_generation,
+    clipboard_notice_banner, expire_ephemeral_banner, file_picker_hidden_notice_text, model_set_notice_from_value,
+    model_set_notice_text, prompt_copy_banner, prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner,
+    select_mode_off_banner, select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
@@ -454,6 +456,77 @@ fn push_transcript_message(
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
+/// Upsert a `transient:*` notice in the scrollable transcript (subtle grey ephemeral styling).
+fn upsert_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    key: &str,
+    text: impl Into<String>,
+) {
+    let text = text.into();
+    messages.set({
+        let mut list = messages.read().clone();
+        if let Some(row) = list.iter_mut().find(|m| m.startup_key.as_deref() == Some(key)) {
+            row.content = text;
+        } else {
+            list.push(TranscriptMessage::startup_status(key, text, TranscriptStyle::Meta));
+        }
+        list
+    });
+    messages_revision.set(messages_revision.get().wrapping_add(1));
+}
+
+/// Remove a `transient:*` notice from the transcript when its TTL elapses (or it is replaced).
+fn clear_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    key: &str,
+) {
+    let before = messages.read().len();
+    messages.set({
+        let mut list = messages.read().clone();
+        list.retain(|m| m.startup_key.as_deref() != Some(key));
+        list
+    });
+    if messages.read().len() != before {
+        messages_revision.set(messages_revision.get().wrapping_add(1));
+    }
+}
+
+/// Show a timed transcript notice and schedule its auto-clear.
+fn publish_ephemeral_transcript_notice(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    expires: &mut Ref<HashMap<&'static str, Instant>>,
+    key: &'static str,
+    text: impl Into<String>,
+) {
+    upsert_ephemeral_transcript_notice(messages, messages_revision, key, text);
+    expires.write().insert(key, Instant::now() + AGENT_MODE_NOTICE_TTL);
+}
+
+/// Drop any transcript notices whose wall-clock TTL has elapsed.
+fn poll_ephemeral_transcript_notices(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_revision: &mut State<u64>,
+    expires: &mut Ref<HashMap<&'static str, Instant>>,
+) {
+    let now = Instant::now();
+    let expired: Vec<&'static str> = expires
+        .read()
+        .iter()
+        .filter(|(_, until)| now >= **until)
+        .map(|(key, _)| *key)
+        .collect();
+    if expired.is_empty() {
+        return;
+    }
+    for key in expired {
+        clear_ephemeral_transcript_notice(messages, messages_revision, key);
+        expires.write().remove(key);
+    }
+}
+
 fn publish_transcript_now(
     messages_revision: &mut State<u64>,
     transcript_pending: &mut Ref<bool>,
@@ -517,8 +590,8 @@ fn apply_bootstrap_ui_event(
                 let model = bootstrap.session.model_id();
                 mark_agent_startup_ready(
                     &mut msgs,
-                    (!provider.trim().is_empty()).then_some(provider),
-                    (!model.trim().is_empty()).then_some(model),
+                    (!provider.trim().is_empty()).then_some(provider.as_str()),
+                    (!model.trim().is_empty()).then_some(model.as_str()),
                 );
             }
             bootstrap_phase.set(BootstrapPhase::AgentReady);
@@ -730,6 +803,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         let (tx, rx) = unbounded_channel();
         EphemeralExpireChannel { tx, rx }
     });
+    // Auto-clear schedule for transcript `transient:*` notices (file-picker, model set, …).
+    let mut pending_transcript_notice_expires = hooks.use_ref(HashMap::<&'static str, Instant>::new);
 
     let cwd_for_mention_index = cwd.clone();
     let mut layout_screen_size_for_loop = layout_screen_size;
@@ -907,6 +982,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 let mut channel = ephemeral_expire.write();
                 poll_ephemeral_banner_expiry(&mut ephemeral_banner, &ephemeral_banner_generation, &mut channel.rx);
             }
+            // Wall-clock expiry for transcript ephemeral notices (independent of status-row toasts).
+            poll_ephemeral_transcript_notices(
+                &mut messages,
+                &mut messages_revision,
+                &mut pending_transcript_notice_expires,
+            );
 
             let mut transcript_changed = false;
             let mut run_completed = false;
@@ -1517,22 +1598,25 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
-                    // ←/→ (and h/l on list) — cycle built-in providers only.
+                    // ←/→ (and h/l on list) — cycle providers only on the Provider scope tab.
                     // Arrows also work from the filter when it is empty so users need not Tab first.
                     if let Some(delta) = model_selector_provider_delta(modifiers, code) {
                         let list_focused = model_input_focus.get() == ModelSelectorFocus::List;
                         let is_arrow = matches!(code, KeyCode::Left | KeyCode::Right);
                         let filter_empty = model_filter.read().trim().is_empty();
-                        let allow_provider_nav = list_focused || (is_arrow && filter_empty);
-                        if allow_provider_nav {
+                        let wants_provider_nav = list_focused || (is_arrow && filter_empty);
+                        if wants_provider_nav {
                             if let Some(pending) = pending_model_selector.write().as_mut() {
-                                if list_focused {
-                                    focus_model_selector_list(&mut model_input_focus, pending);
+                                // All / Scoped: consume the key but do not switch providers.
+                                if pending.is_provider_scope_mode() {
+                                    if list_focused {
+                                        focus_model_selector_list(&mut model_input_focus, pending);
+                                    }
+                                    sync_pending_filter(pending, &model_filter.read());
+                                    pending.apply_provider_nav(delta);
+                                    model_provider_index.set(pending.provider_index);
+                                    model_selected_index.set(pending.model_index);
                                 }
-                                sync_pending_filter(pending, &model_filter.read());
-                                pending.apply_provider_nav(delta);
-                                model_provider_index.set(pending.provider_index);
-                                model_selected_index.set(pending.model_index);
                             }
                             return;
                         }
@@ -1581,10 +1665,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 Ok(label) => {
                                     publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                                     chrome_refresh_pending.set(true);
-                                    push_transcript_message(
+                                    publish_ephemeral_transcript_notice(
                                         &mut messages,
                                         &mut messages_revision,
-                                        TranscriptMessage::text(format!("Model set to {label}"), TranscriptStyle::Meta),
+                                        &mut pending_transcript_notice_expires,
+                                        MODEL_SET_NOTICE_KEY,
+                                        model_set_notice_text(&label),
                                     );
                                     if let Some(session) = agent {
                                         spawn_runtime_model_switch(session, value);
@@ -2228,15 +2314,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     settings.ui.file_picker.show_hidden_files = next;
                     let _ = Settings::save(&paths, &settings);
                 }
-                let message = if next {
-                    "File picker: showing hidden files."
-                } else {
-                    "File picker: hiding hidden files."
-                };
-                push_transcript_message(
+                // Transcript ephemeral notice (subtle grey `transient:*` styling; auto-clears after TTL).
+                publish_ephemeral_transcript_notice(
                     &mut messages,
                     &mut messages_revision,
-                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                    &mut pending_transcript_notice_expires,
+                    FILE_PICKER_HIDDEN_NOTICE_KEY,
+                    file_picker_hidden_notice_text(next),
                 );
                 return;
             }
@@ -2366,24 +2450,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     let agent = agent_session.clone();
                     let (provider, model) = agent
                         .as_ref()
-                        .map(|s| (Some(s.model_provider().to_string()), Some(s.model_id().to_string())))
+                        .map(|s| (Some(s.model_provider()), Some(s.model_id())))
                         .unwrap_or((None, None));
                     let mut stats = chrome_stats.read().clone();
                     match cycle_scoped_model_selection(
                         &paths,
-                        &session_scoped_items.read(),
+                        &mut session_scoped_items.write(),
                         provider.as_deref(),
                         model.as_deref(),
                         reverse,
                         &mut stats,
                     ) {
-                        Ok((label, value)) => {
+                        Ok((_label, value)) => {
                             publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                             chrome_refresh_pending.set(true);
-                            push_transcript_message(
+                            // Scoped cycle: `Model set to MODEL_ID (PROVIDER)`.
+                            publish_ephemeral_transcript_notice(
                                 &mut messages,
                                 &mut messages_revision,
-                                TranscriptMessage::text(format!("Model set to {label}"), TranscriptStyle::Meta),
+                                &mut pending_transcript_notice_expires,
+                                MODEL_SET_NOTICE_KEY,
+                                model_set_notice_from_value(&value),
                             );
                             if let Some(session) = agent {
                                 spawn_runtime_model_switch(session, value);

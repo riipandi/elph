@@ -17,7 +17,7 @@ const TIPS: &[&str] = &[
     "Tab toggles prompt / transcript focus",
     "Shift+Tab cycles agent mode (Build · Plan · Ask · Brave)",
     "Ctrl+~ cycles thinking level (Ctrl+` works too)",
-    "Ctrl+L opens the model picker · /model filters too",
+    "Ctrl+L opens the model picker · Ctrl+P cycles scoped models",
     "Shift+↑↓ scrolls the transcript",
     "Esc returns to the prompt · type while reading to jump back",
     "Shift+Enter or Ctrl+J inserts a newline",

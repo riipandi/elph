@@ -189,10 +189,12 @@ mod tests {
     }
 
     #[test]
-    fn empty_query_preserves_input_order() {
+    fn empty_query_preserves_visible_input_order() {
         let input = commands();
+        let visible: Vec<SlashCommand> = input.iter().filter(|cmd| !cmd.hidden).cloned().collect();
         let filtered = filter_commands(&input, "");
-        assert_eq!(filtered, input);
+        // Empty query keeps stable order of non-hidden commands (hidden easter eggs omitted).
+        assert_eq!(filtered, visible);
     }
 
     #[test]

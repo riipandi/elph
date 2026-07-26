@@ -120,8 +120,6 @@ pub struct ModelCatalogSnapshot {
     pub models_by_provider: HashMap<String, Vec<ModelRow>>,
     /// Every model across providers (tab [`ALL_PROVIDERS_TAB_INDEX`]).
     pub all_models: Vec<ModelRow>,
-    /// Models from [`crate::platform::Settings`] `models.scoped` (tab [`SCOPED_PROVIDERS_TAB_INDEX`]).
-    pub scoped_models: Vec<ModelRow>,
     pub total_providers: usize,
     pub total_models: usize,
 }
@@ -155,6 +153,7 @@ impl ModelCatalogSnapshot {
         all_models.sort_by(|left, right| left.name.cmp(&right.name).then_with(|| left.value.cmp(&right.value)));
 
         let scoped_models = build_scoped_model_rows(scoped_model_items);
+        let scoped_count = scoped_models.len();
 
         providers.insert(
             0,
@@ -169,17 +168,17 @@ impl ModelCatalogSnapshot {
             ModelProviderTab {
                 id: SCOPED_PROVIDERS_TAB_ID.to_string(),
                 label: SCOPED_PROVIDERS_TAB_LABEL.to_string(),
-                model_count: scoped_models.len(),
+                model_count: scoped_count,
             },
         );
         models_by_provider.insert(ALL_PROVIDERS_TAB_ID.to_string(), all_models.clone());
-        models_by_provider.insert(SCOPED_PROVIDERS_TAB_ID.to_string(), scoped_models.clone());
+        // Scoped tab models live only in the map (same pattern as per-provider lists).
+        models_by_provider.insert(SCOPED_PROVIDERS_TAB_ID.to_string(), scoped_models);
 
         Self {
             providers,
             models_by_provider,
             all_models,
-            scoped_models,
             total_providers,
             total_models,
         }
@@ -318,6 +317,10 @@ impl PendingModelSelector {
         }
     }
 
+    /// Open on the **All** tab (default), highlighting the current model when known.
+    ///
+    /// Remembers the built-in provider for later Provider-tab navigation; does not land on
+    /// Scoped/Provider unless the user switches with `[` / `]`.
     pub fn open_with_selection(
         initial_filter: String,
         stashed_prompt_draft: Option<String>,
@@ -326,29 +329,21 @@ impl PendingModelSelector {
         model_id: Option<&str>,
     ) -> Self {
         let mut pending = Self::open(initial_filter, stashed_prompt_draft, scoped_model_items);
+        // Always start on All.
+        pending.provider_index = ALL_PROVIDERS_TAB_INDEX;
         if let (Some(provider), Some(model)) = (provider_id, model_id) {
             let value = format!("{provider}/{model}");
-            // Always remember the real built-in provider tab — never the synthetic All/Scoped indices.
-            // Preferring Scoped for the *visible* tab must not corrupt Provider-mode restore.
+            // Remember the real built-in provider for Provider-tab restore.
             if let Some(builtin_pi) = pending.catalog.providers.iter().position(|tab| tab.id == provider) {
                 pending.last_builtin_provider_index = builtin_pi;
             }
-            let scoped_index = pending
-                .catalog
-                .providers
-                .iter()
-                .position(|tab| tab.id == SCOPED_PROVIDERS_TAB_ID)
-                .filter(|_| pending.catalog.scoped_models.iter().any(|row| row.value == value));
-            if let Some(pi) =
-                scoped_index.or_else(|| pending.catalog.providers.iter().position(|tab| tab.id == provider))
-            {
-                pending.provider_index = pi;
-                let models = pending.filtered_models();
-                if let Some(mi) = models.iter().position(|row| row.value == value) {
-                    pending.model_index = mi;
-                }
+            // Highlight the current model within the All list when present.
+            let models = pending.filtered_models();
+            if let Some(mi) = models.iter().position(|row| row.value == value) {
+                pending.model_index = mi;
             }
         }
+        pending.clamp_indices();
         pending
     }
 
@@ -447,25 +442,15 @@ impl PendingModelSelector {
         self.set_scope_mode(next_mode);
     }
 
-    /// `←/→` cycles built-in provider tabs only (never All/Scoped).
+    /// `←/→` cycles built-in providers **only while the Provider scope tab is active**.
     ///
-    /// When the current scope is All or Scoped, enters Provider mode first
-    /// (right → first provider, left → last provider), then subsequent arrows
-    /// wrap among built-in providers.
+    /// On All / Scoped, arrows are ignored — use `[` / `]` to switch scope tabs first.
     pub fn apply_provider_nav(&mut self, delta: isize) {
-        let indices = self.catalog.builtin_provider_indices();
-        if indices.is_empty() {
+        if !self.is_provider_scope_mode() {
             return;
         }
-
-        if !self.is_provider_scope_mode() {
-            let target = if delta >= 0 {
-                indices[0]
-            } else {
-                indices[indices.len() - 1]
-            };
-            self.last_builtin_provider_index = target;
-            self.set_provider_index(target);
+        let indices = self.catalog.builtin_provider_indices();
+        if indices.is_empty() {
             return;
         }
 
@@ -513,8 +498,12 @@ pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
     )
 }
 
-pub fn model_selector_footer_hint(_in_provider_scope: bool) -> String {
-    "↑/↓ model · ←/→ provider · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
+pub fn model_selector_footer_hint(in_provider_scope: bool) -> String {
+    if in_provider_scope {
+        "↑/↓ model · ←/→ provider · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
+    } else {
+        "↑/↓ model · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
+    }
 }
 
 pub fn model_match_score(row: &ModelRow, query: &str) -> Option<i32> {
@@ -758,7 +747,6 @@ mod tests {
             providers: vec![],
             models_by_provider: HashMap::new(),
             all_models: vec![],
-            scoped_models: vec![],
             total_providers: 3,
             total_models: 12,
         };
@@ -810,7 +798,14 @@ mod tests {
         let catalog = ModelCatalogSnapshot::build(&[]);
         assert_eq!(catalog.providers[1].id, SCOPED_PROVIDERS_TAB_ID);
         assert_eq!(catalog.providers[1].label, SCOPED_PROVIDERS_TAB_LABEL);
-        assert_eq!(catalog.scoped_models.len(), 0);
+        assert_eq!(
+            catalog
+                .models_by_provider
+                .get(SCOPED_PROVIDERS_TAB_ID)
+                .map(Vec::len)
+                .unwrap_or(0),
+            0
+        );
     }
 
     #[test]
@@ -837,7 +832,7 @@ mod tests {
     }
 
     #[test]
-    fn open_with_selection_targets_provider_tab_not_all() {
+    fn open_with_selection_defaults_to_all_tab() {
         let catalog = ModelCatalogSnapshot::build(&[]);
         let provider_id = catalog
             .providers
@@ -854,34 +849,13 @@ mod tests {
 
         let pending =
             PendingModelSelector::open_with_selection(String::new(), None, &[], Some(provider_id), Some(model_id));
-        assert_eq!(pending.active_provider_id(), Some(provider_id));
-        assert!(!catalog.is_all_providers_tab(pending.provider_index));
-    }
-
-    #[test]
-    fn open_with_selection_prefers_scoped_tab_when_model_is_curated() {
-        let base = ModelCatalogSnapshot::build(&[]);
-        let sample = base.all_models.first().expect("model");
-        let (provider_id, model_id) = sample.value.split_once('/').expect("provider/model");
-        let catalog = ModelCatalogSnapshot::build(std::slice::from_ref(&sample.value));
-        let pending = PendingModelSelector::open_with_selection(
-            String::new(),
-            None,
-            std::slice::from_ref(&sample.value),
-            Some(provider_id),
-            Some(model_id),
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        assert!(catalog.is_all_providers_tab(pending.provider_index));
+        assert_eq!(
+            pending.selected_model().map(|row| row.value),
+            Some(format!("{provider_id}/{model_id}"))
         );
-        assert!(catalog.is_scoped_providers_tab(pending.provider_index));
-        assert_eq!(pending.selected_model().map(|row| row.value), Some(sample.value.clone()));
-        // Scoped landing must not poison Provider-mode restore with the synthetic tab index.
-        assert!(
-            matches!(
-                catalog.scope_mode(pending.last_builtin_provider_index),
-                ModelScopeMode::Provider
-            ),
-            "last_builtin_provider_index must be a real provider tab, got {}",
-            pending.last_builtin_provider_index
-        );
+        // Provider restore still points at the model's built-in tab.
         let builtin = catalog
             .providers
             .iter()
@@ -891,7 +865,31 @@ mod tests {
     }
 
     #[test]
-    fn scope_nav_reaches_provider_after_opening_scoped_selection() {
+    fn open_with_selection_stays_on_all_even_when_model_is_scoped() {
+        let base = ModelCatalogSnapshot::build(&[]);
+        let sample = base.all_models.first().expect("model");
+        let (provider_id, model_id) = sample.value.split_once('/').expect("provider/model");
+        let pending = PendingModelSelector::open_with_selection(
+            String::new(),
+            None,
+            std::slice::from_ref(&sample.value),
+            Some(provider_id),
+            Some(model_id),
+        );
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        assert_eq!(pending.selected_model().map(|row| row.value), Some(sample.value.clone()));
+        assert!(
+            matches!(
+                pending.catalog.scope_mode(pending.last_builtin_provider_index),
+                ModelScopeMode::Provider
+            ),
+            "last_builtin_provider_index must be a real provider tab, got {}",
+            pending.last_builtin_provider_index
+        );
+    }
+
+    #[test]
+    fn scope_nav_reaches_provider_from_default_all() {
         let base = ModelCatalogSnapshot::build(&[]);
         let sample = base.all_models.first().expect("model");
         let (provider_id, model_id) = sample.value.split_once('/').expect("provider/model");
@@ -902,8 +900,10 @@ mod tests {
             Some(provider_id),
             Some(model_id),
         );
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        // ] from All → Scoped, then ] → Provider.
+        pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
-        // ] from Scoped must enter Provider (was stuck on Scoped when last_builtin was index 1).
         pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
         assert!(!pending.catalog.is_scoped_providers_tab(pending.provider_index));
@@ -951,28 +951,19 @@ mod tests {
     }
 
     #[test]
-    fn provider_nav_from_all_or_scoped_enters_provider_mode() {
-        let catalog = ModelCatalogSnapshot::build(&[]);
-        let first = catalog
-            .builtin_provider_indices()
-            .first()
-            .copied()
-            .expect("builtin provider");
-        let last = catalog
-            .builtin_provider_indices()
-            .last()
-            .copied()
-            .expect("builtin provider");
-
+    fn provider_nav_ignored_outside_provider_scope() {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        let start = pending.provider_index;
         pending.apply_provider_nav(1);
-        assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
-        assert_eq!(pending.provider_index, first);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
+        assert_eq!(pending.provider_index, start);
 
         pending.set_scope_mode(ModelScopeMode::Scoped);
+        let scoped_index = pending.provider_index;
         pending.apply_provider_nav(-1);
-        assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
-        assert_eq!(pending.provider_index, last);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
+        assert_eq!(pending.provider_index, scoped_index);
     }
 
     #[test]

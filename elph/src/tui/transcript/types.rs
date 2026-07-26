@@ -799,11 +799,12 @@ mod tests {
     }
 
     #[test]
-    fn ephemeral_notice_uses_amber_foreground() {
+    fn ephemeral_notice_uses_subtle_grey_foreground() {
         let notice =
             TranscriptMessage::startup_status("transient:agent_mode", "Agent mode: plan.", TranscriptStyle::Meta);
         assert_eq!(notice.transcript_foreground(), EPHEMERAL_NOTICE_FG);
-        // Permanent meta rows stay dim.
+        // Same grey family as permanent meta rows (subtle, not amber/yellow).
+        assert_eq!(EPHEMERAL_NOTICE_FG, META_FG);
         let meta = TranscriptMessage::text("session resumed", TranscriptStyle::Meta);
         assert_eq!(meta.transcript_foreground(), META_FG);
     }

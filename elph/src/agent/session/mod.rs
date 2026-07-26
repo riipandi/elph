@@ -45,7 +45,8 @@ pub struct CodingAgentSession {
     harness: Arc<AgentHarness<SessionDirStorage>>,
     session_manager: SessionManager,
     session_id: String,
-    selection: ModelSelection,
+    /// Live model selection (updated by [`Self::set_model_from_value`] for Ctrl+P / picker).
+    selection: RwLock<ModelSelection>,
     policy: Arc<Mutex<AgentModePolicy>>,
     mode_state: Arc<Mutex<AgentMode>>,
     ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
@@ -83,7 +84,7 @@ impl CodingAgentSession {
             harness: harness.clone(),
             session_manager,
             session_id,
-            selection,
+            selection: RwLock::new(selection),
             policy: Arc::new(Mutex::new(policy)),
             mode_state,
             ui_tx: ui_tx.clone(),
@@ -159,18 +160,16 @@ impl CodingAgentSession {
     }
 
     pub fn model_display(&self) -> String {
-        format!(
-            "{} [{}/{}]",
-            self.selection.display_name, self.selection.provider, self.selection.model_id
-        )
+        let selection = self.selection.read();
+        format!("{} [{}/{}]", selection.display_name, selection.provider, selection.model_id)
     }
 
-    pub fn model_provider(&self) -> &str {
-        &self.selection.provider
+    pub fn model_provider(&self) -> String {
+        self.selection.read().provider.clone()
     }
 
-    pub fn model_id(&self) -> &str {
-        &self.selection.model_id
+    pub fn model_id(&self) -> String {
+        self.selection.read().model_id.clone()
     }
 
     pub fn session_id(&self) -> &str {
@@ -178,11 +177,11 @@ impl CodingAgentSession {
     }
 
     pub fn context_window(&self) -> u32 {
-        self.selection.model.context_window
+        self.selection.read().model.context_window
     }
 
     pub fn supports_image_input(&self) -> bool {
-        self.selection.model.input.iter().any(|cap| cap == "image")
+        self.selection.read().model.input.iter().any(|cap| cap == "image")
     }
 
     pub fn goal_runtime(&self) -> Arc<GoalRuntime> {
@@ -314,7 +313,22 @@ impl CodingAgentSession {
             .set_model(model.clone())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        Ok(format!("{} [{}]", model.name, model.provider))
+        // Keep live selection in sync so Ctrl+P cycle / chrome refresh see the new model.
+        let display_name = model.name.clone();
+        let provider = model.provider.clone();
+        let model_id = model.id.clone();
+        {
+            let mut selection = self.selection.write();
+            let models = Arc::clone(&selection.models);
+            *selection = ModelSelection {
+                provider: provider.clone(),
+                model_id,
+                model,
+                models,
+                display_name: display_name.clone(),
+            };
+        }
+        Ok(format!("{display_name} [{provider}]"))
     }
 
     pub async fn navigate_tree_to(&self, entry_id: &str) -> Result<()> {

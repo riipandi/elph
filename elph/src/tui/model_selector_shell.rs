@@ -46,7 +46,11 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
     let scoped_from_settings = Settings::load(args.paths)
         .map(|settings| settings.models.scoped)
         .unwrap_or_default();
-    let scoped_model_items = args.session_scoped.unwrap_or(scoped_from_settings.as_slice());
+    // Prefer non-empty session list (unsaved /scoped-models edits); else settings.json.
+    let scoped_model_items = match args.session_scoped {
+        Some(items) if !items.is_empty() => items,
+        _ => scoped_from_settings.as_slice(),
+    };
     let selector = PendingModelSelector::open_with_selection(
         args.initial_filter,
         stashed,

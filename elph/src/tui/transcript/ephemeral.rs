@@ -29,6 +29,12 @@ pub const PROMPT_COPY_NOTICE_KEY: &str = "transient:prompt_copy";
 /// Stable key for text-select mode (Ctrl+S) mouse-capture notices.
 pub const SELECT_MODE_NOTICE_KEY: &str = "transient:select_mode";
 
+/// Stable key for `@` file picker hidden-files toggle (Ctrl+.).
+pub const FILE_PICKER_HIDDEN_NOTICE_KEY: &str = "transient:file_picker_hidden";
+
+/// Stable key for model selection / Ctrl+P cycle notices in the transcript.
+pub const MODEL_SET_NOTICE_KEY: &str = "transient:model_set";
+
 /// How long an agent-mode (or blocked-toggle) banner stays visible.
 pub const AGENT_MODE_NOTICE_TTL: Duration = Duration::from_secs(3);
 
@@ -51,7 +57,7 @@ pub fn api_error_banner(text: impl Into<String>) -> EphemeralBanner {
 /// Visual weight for a pinned ephemeral banner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EphemeralBannerKind {
-    /// Soft amber — mode changes and similar info toasts.
+    /// Subtle grey — mode changes and similar info toasts.
     Notice,
     /// Warm orange — quit-while-busy confirmation.
     Warning,
@@ -209,6 +215,35 @@ pub fn select_mode_off_banner() -> EphemeralBanner {
         text: "Text select off · wheel scroll and click restored · Ctrl+S to enable".to_string(),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+    }
+}
+
+/// Transcript text after Ctrl+. toggles hidden files in the `@` file picker.
+pub fn file_picker_hidden_notice_text(showing_hidden: bool) -> String {
+    if showing_hidden {
+        "File picker: showing hidden files.".to_string()
+    } else {
+        "File picker: hiding hidden files.".to_string()
+    }
+}
+
+/// Transcript text after selecting or cycling a model.
+///
+/// Picker may pass a display label (`Claude Sonnet 4 [anthropic]`); scoped cycle
+/// should use [`model_set_notice_from_value`] for `MODEL_ID (PROVIDER)`.
+pub fn model_set_notice_text(label: &str) -> String {
+    format!("Model set to {label}")
+}
+
+/// Scoped cycle / catalog notice: `Model set to MODEL_ID (PROVIDER)`.
+///
+/// `value` is `provider/model_id` (model_id may itself contain `/`, e.g. `kilo/kilo-auto/free`).
+pub fn model_set_notice_from_value(value: &str) -> String {
+    match value.split_once('/') {
+        Some((provider, model_id)) if !provider.is_empty() && !model_id.is_empty() => {
+            format!("Model set to {model_id} ({provider})")
+        }
+        _ => model_set_notice_text(value),
     }
 }
 
@@ -387,6 +422,43 @@ mod tests {
 
         let fail_notice = clipboard_notice_banner(&elph_tui::ClipboardNotice::failed("denied"));
         assert_eq!(fail_notice.kind, EphemeralBannerKind::Error);
+    }
+
+    #[test]
+    fn file_picker_hidden_notice_text_matches_toggle() {
+        assert!(
+            file_picker_hidden_notice_text(true)
+                .to_ascii_lowercase()
+                .contains("showing hidden")
+        );
+        assert!(
+            file_picker_hidden_notice_text(false)
+                .to_ascii_lowercase()
+                .contains("hiding hidden")
+        );
+        assert!(FILE_PICKER_HIDDEN_NOTICE_KEY.starts_with("transient:"));
+    }
+
+    #[test]
+    fn model_set_notice_text_includes_label() {
+        let text = model_set_notice_text("Claude Sonnet 4 [anthropic]");
+        assert!(text.starts_with("Model set to "));
+        assert!(text.contains("Claude Sonnet 4"));
+        assert!(text.contains("[anthropic]"));
+        assert!(MODEL_SET_NOTICE_KEY.starts_with("transient:"));
+    }
+
+    #[test]
+    fn model_set_notice_from_value_uses_model_id_and_provider() {
+        assert_eq!(
+            model_set_notice_from_value("opencode/big-pickle"),
+            "Model set to big-pickle (opencode)"
+        );
+        assert_eq!(
+            model_set_notice_from_value("kilo/kilo-auto/free"),
+            "Model set to kilo-auto/free (kilo)"
+        );
+        assert_eq!(model_set_notice_from_value("bare-id"), "Model set to bare-id");
     }
 
     #[test]

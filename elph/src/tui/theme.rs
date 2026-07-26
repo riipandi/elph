@@ -91,11 +91,11 @@ pub const META_FG: Color = Color::Rgb {
     b: 0x85,
 };
 
-/// Ephemeral toasts — palette 11 `#ffd966` (bright yellow).
+/// Ephemeral transcript/status toasts — subtle grey (same family as [`META_FG`]).
 pub const EPHEMERAL_NOTICE_FG: Color = Color::Rgb {
-    r: 0xff,
-    g: 0xd9,
-    b: 0x66,
+    r: 0x7a,
+    g: 0x7e,
+    b: 0x85,
 };
 
 /// Quit-while-busy confirmation — palette 3 `#ffb347`.

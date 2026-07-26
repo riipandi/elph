@@ -33,11 +33,8 @@ pub fn open_scoped_models(args: OpenScopedModelsArgs<'_>) {
     }
 
     // Prefer live session list (may include unsaved prior session edits); fall back to settings.
-    let enabled = if args.session_scoped.is_empty() {
-        Settings::load(args.paths).map(|s| s.models.scoped).unwrap_or_default()
-    } else {
-        args.session_scoped.to_vec()
-    };
+    let mut session_seed = args.session_scoped.to_vec();
+    let enabled = resolve_scoped_cycle_list(args.paths, &mut session_seed);
 
     let selector = PendingScopedModels::open(enabled, stashed);
     args.selected_index.set(selector.selected_index);
@@ -90,22 +87,31 @@ pub fn sync_scoped_filter(pending: &mut PendingScopedModels, filter: &str) {
     pending.set_filter(filter.to_string());
 }
 
+/// Resolve the live Ctrl+P cycle list: prefer in-session edits, else `settings.models.scoped`.
+///
+/// When `session_scoped` is empty, reloads merged home/project settings so
+/// `settings.json` `models.scoped` is the source of truth (and seeds the session list).
+pub fn resolve_scoped_cycle_list(paths: &Paths, session_scoped: &mut Vec<String>) -> Vec<String> {
+    if session_scoped.is_empty() {
+        *session_scoped = Settings::load(paths)
+            .map(|settings| settings.models.scoped)
+            .unwrap_or_default();
+    }
+    session_scoped.clone()
+}
+
 /// Ctrl+P / Shift+Ctrl+P — cycle scoped models without opening the editor.
 ///
 /// Returns `(display_label, provider/model_id)`.
 pub fn cycle_scoped_model_selection(
     paths: &Paths,
-    session_scoped: &[String],
+    session_scoped: &mut Vec<String>,
     current_provider: Option<&str>,
     current_model: Option<&str>,
     reverse: bool,
     chrome_stats: &mut ChromeStats,
 ) -> Result<(String, String)> {
-    let list = if session_scoped.is_empty() {
-        Settings::load(paths).map(|s| s.models.scoped).unwrap_or_default()
-    } else {
-        session_scoped.to_vec()
-    };
+    let list = resolve_scoped_cycle_list(paths, session_scoped);
     let current = match (current_provider, current_model) {
         (Some(p), Some(m)) => Some((p, m)),
         _ => None,
@@ -139,5 +145,43 @@ pub fn scoped_models_reorder_delta(modifiers: KeyModifiers, code: KeyCode) -> Op
         KeyCode::Up => Some(-1),
         KeyCode::Down => Some(1),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::Settings;
+    use elph_core::utils::path::AppPaths;
+
+    #[test]
+    fn resolve_scoped_cycle_list_loads_settings_when_session_empty() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
+        std::fs::create_dir_all(paths.config_dir()).expect("config dir");
+        let mut settings = Settings::defaults();
+        settings.models.scoped = vec!["opencode/big-pickle".into(), "kilo/kilo-auto/free".into()];
+        Settings::save(&paths, &settings).expect("save settings");
+
+        let mut session = Vec::new();
+        let list = resolve_scoped_cycle_list(&paths, &mut session);
+        assert_eq!(list, settings.models.scoped);
+        // Session is seeded so subsequent cycles / Scoped tab share the list.
+        assert_eq!(session, settings.models.scoped);
+    }
+
+    #[test]
+    fn resolve_scoped_cycle_list_prefers_non_empty_session() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
+        std::fs::create_dir_all(paths.config_dir()).expect("config dir");
+        let mut settings = Settings::defaults();
+        settings.models.scoped = vec!["opencode/big-pickle".into()];
+        Settings::save(&paths, &settings).expect("save settings");
+
+        let mut session = vec!["kilo/kilo-auto/free".into()];
+        let list = resolve_scoped_cycle_list(&paths, &mut session);
+        assert_eq!(list, vec!["kilo/kilo-auto/free".to_string()]);
+        assert_eq!(session, vec!["kilo/kilo-auto/free".to_string()]);
     }
 }
