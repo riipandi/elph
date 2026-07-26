@@ -68,6 +68,8 @@ pub struct ScrollBoxProps<'a> {
     pub theme: Option<UiTheme>,
     /// Optional handle to read scroll offset for linked [`VerticalScrollbar`] / [`ScrollIndicator`].
     pub handle: Option<Ref<ScrollViewHandle>>,
+    /// Suppress the border and default background so the box blends into a parent card.
+    pub no_border: bool,
     pub children: Vec<AnyElement<'a>>,
 }
 
@@ -78,15 +80,26 @@ pub fn ScrollBox<'a>(props: &mut ScrollBoxProps<'a>, hooks: Hooks) -> impl Into<
     let style = props.scrollbar_style.unwrap_or_else(|| theme.scrollbar_style());
     let children = std::mem::take(&mut props.children);
     let builtin_scrollbar = props.scrollbar && props.handle.is_none();
+    let border_style = if props.no_border {
+        BorderStyle::None
+    } else {
+        BorderStyle::Single
+    };
+    let border_color = if props.no_border { Color::Reset } else { theme.border };
+    let bg = if props.no_border {
+        Color::Reset
+    } else {
+        theme.list_surface()
+    };
 
     element! {
         View(
             width: props.width,
             height: props.height,
             overflow: Overflow::Hidden,
-            border_style: BorderStyle::Single,
-            border_color: theme.border,
-            background_color: theme.list_surface(),
+            border_style: border_style,
+            border_color: border_color,
+            background_color: bg,
         ) {
             View(width: 100pct, height: 100pct, overflow: Overflow::Hidden) {
                 ScrollView(

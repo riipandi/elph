@@ -7,6 +7,7 @@
 //! Finished headers are iocraft [`Button`]s — click toggles that block; Ctrl+O toggles the latest.
 //! Collapsed tools use human verbs + compact targets (`Edit /U/a/…/file.rs`).
 
+use elph_tui::components::diff::compute::compute_diff;
 use elph_tui::components::{DiffMode, DiffView};
 use elph_tui::components::{
     ProcessStatus, ProcessStatusIndicator, ProcessStatusRow, process_status_glyph, process_status_word,
@@ -598,7 +599,9 @@ pub fn tool_call_card(
                     None
                 })
                 #(if has_diff {
-                    // Render inline diff view for edit_file
+                    // Render inline diff for edit_file — seamless within the tool card.
+                    // Compute actual hunk output rows instead of total old/new lines so the
+                    // viewport matches content (no empty space). Cap at 20 for transcript budget.
                     let diff_width = inner_width.saturating_sub(1);
                     let old_text = tool.old_text.clone().unwrap_or_default();
                     let new_text = tool.new_text.clone().unwrap_or_default();
@@ -608,12 +611,20 @@ pub fn tool_call_card(
                             .find(|p| p.key.as_deref() == Some("path"))
                             .map(|p| p.value.clone())
                     });
-                    // Compute a reasonable viewport height: cap at ~20 diff lines so it
-                    // scrolls internally instead of blowing the transcript row budget.
-                    let n_old = old_text.lines().count().max(1_usize);
-                    let n_new = new_text.lines().count().max(1_usize);
-                    let diff_rows = n_old.max(n_new).saturating_add(4).min(20_usize) as u16;
                     let context_lines: usize = 3;
+                    let diff_result = compute_diff(&old_text, &new_text, context_lines);
+                    let diff_rows: u16 = if diff_result.hunks.is_empty() {
+                        1
+                    } else {
+                        // hunk header (1) + lines per hunk, plus gap between hunks
+                        let total: u16 = diff_result.hunks.iter().map(|h| {
+                            1u16 + h.lines.len() as u16
+                        }).sum::<u16>();
+                        total.saturating_add(
+                            diff_result.hunks.len().saturating_sub(1) as u16
+                        )
+                        .clamp(4, 20)
+                    };
                     Some(element! {
                         View(width: 100pct, padding_top: 1, flex_shrink: 0f32) {
                             DiffView(
@@ -628,6 +639,7 @@ pub fn tool_call_card(
                                 show_hunk_header: true,
                                 show_line_numbers: true,
                                 context_lines: context_lines,
+                                no_border: true,
                             )
                         }
                     })

@@ -67,6 +67,8 @@ pub struct DiffViewProps {
     pub show_line_numbers: bool,
     /// Number of context lines per hunk (default: 3).
     pub context_lines: usize,
+    /// Suppress the scroll-box border and default background so the diff blends into a parent card.
+    pub no_border: bool,
 }
 
 /// Scrollable unified or side-by-side diff with optional syntax highlighting
@@ -181,6 +183,7 @@ pub fn DiffView(props: &DiffViewProps, hooks: Hooks) -> impl Into<AnyElement<'st
         ScrollBox(
             width: props.width,
             height: props.height,
+            no_border: props.no_border,
             children: children,
         )
     }
