@@ -52,6 +52,8 @@ pub enum SessionTreeEntry {
         parent_id: Option<String>,
         timestamp: String,
         message: AgentMessage,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        skill_name: Option<String>,
     },
     #[serde(rename = "thinking_level_change")]
     ThinkingLevelChange {

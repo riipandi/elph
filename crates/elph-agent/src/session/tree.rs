@@ -106,6 +106,22 @@ impl<S: SessionStorage> Session<S> {
             parent_id: self.storage.get_leaf_id().await?,
             timestamp: now_iso_timestamp(),
             message,
+            skill_name: None,
+        })
+        .await
+    }
+
+    pub async fn append_message_with_skill(
+        &mut self,
+        message: AgentMessage,
+        skill_name: impl Into<String>,
+    ) -> Result<String, SessionError> {
+        self.append_typed_entry(SessionTreeEntry::Message {
+            id: self.storage.create_entry_id().await,
+            parent_id: self.storage.get_leaf_id().await?,
+            timestamp: now_iso_timestamp(),
+            message,
+            skill_name: Some(skill_name.into()),
         })
         .await
     }

@@ -6,7 +6,7 @@ use anyhow::Result;
 use elph_agent::{McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use crate::agent::SkillConflict;
 use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
@@ -367,10 +367,39 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
     };
 
     let mut messages: Vec<TranscriptMessage> = Vec::new();
+    // Track timestamps to compute response durations between user→assistant pairs.
+    let mut last_user_ts: Option<DateTime<Utc>> = None;
+    // Track skill names from Custom entries, keyed by parent_id (the user message they follow).
+    let mut skill_by_user: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+    // First pass: collect skill names from Custom entries.
     for entry in &entries {
-        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+        if let elph_agent::SessionTreeEntry::Custom {
+            custom_type,
+            data,
+            parent_id,
+            ..
+        } = entry
+            && custom_type == "skill_invocation"
+            && let Some(data) = data
+            && let Some(name) = data.get("name").and_then(|v| v.as_str())
+            && let Some(pid) = parent_id
+        {
+            skill_by_user.insert(pid.clone(), name.to_string());
+        }
+    }
+
+    // Second pass: convert message entries to TranscriptMessages.
+    for entry in &entries {
+        let elph_agent::SessionTreeEntry::Message {
+            message, timestamp, id, ..
+        } = entry
+        else {
             continue;
         };
+        // Parse entry timestamp for duration computation and user submission time.
+        let entry_ts = parse_iso_timestamp(timestamp);
+
         let Some(llm) = message.as_llm() else {
             continue;
         };
@@ -391,14 +420,21 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                     continue;
                 }
 
-                // Detect skill invocations: `<skill name="...">...</skill>` → SkillPrompt card.
-                if let Some(skill_name) = extract_skill_name(&text) {
-                    let mut msg = TranscriptMessage::text(skill_name, TranscriptStyle::SkillPrompt);
+                // Track timestamp for computing the next assistant response's duration.
+                if let Some(ts) = entry_ts {
+                    last_user_ts = Some(ts);
+                }
+
+                // Check if this user message was a skill invocation (stored as Custom entry).
+                if let Some(skill_name) = skill_by_user.get(id) {
+                    let mut msg = TranscriptMessage::text(skill_name.clone(), TranscriptStyle::SkillPrompt);
                     msg.detail_expanded = false;
                     messages.push(msg);
                 } else {
                     let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
-                    msg.submitted_at = Some(Utc::now());
+                    // Use the actual persisted timestamp so the transcript shows the
+                    // real submission time on resume.
+                    msg.submitted_at = entry_ts;
                     msg.detail_expanded = false;
                     messages.push(msg);
                 }
@@ -417,6 +453,15 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                 }
 
                 let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
+
+                // Compute response duration from the user→assistant timestamp delta.
+                if let (Some(user_ts), Some(assist_ts)) = (last_user_ts, entry_ts) {
+                    let delta = (assist_ts - user_ts).to_std().ok();
+                    if let Some(dur) = delta {
+                        msg.duration_secs = Some(dur.as_secs_f64());
+                    }
+                }
+
                 // Pre-render: parse markdown synchronously at bootstrap so the transcript
                 // shows fully formatted content from the first frame (no worker round-trip).
                 let mut md = AssistantMarkdownBuffer::new();
@@ -437,17 +482,23 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
     messages
 }
 
-/// Extract skill name from a skill-invocation message.
-/// Matches `<skill name="...">` at the start of the text.
-fn extract_skill_name(text: &str) -> Option<String> {
-    let text = text.trim();
-    if !text.starts_with("<skill name=\"") {
-        return None;
-    }
-    // Extract name attribute value
-    let after_open = text.strip_prefix("<skill name=\"")?;
-    let name = after_open.split('\"').next()?;
-    if name.is_empty() { None } else { Some(name.to_string()) }
+/// Parse an ISO 8601 / RFC 3339 timestamp string into `DateTime<Utc>`.
+fn parse_iso_timestamp(ts: &str) -> Option<DateTime<Utc>> {
+    // Try RFC 3339 first, then basic ISO 8601.
+    DateTime::parse_from_rfc3339(ts)
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok()
+        .or_else(|| {
+            DateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.fZ")
+                .map(|dt| dt.with_timezone(&Utc))
+                .ok()
+        })
+        .or_else(|| {
+            // Fallback: try chrono's flexible ISO 8601 parser
+            chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.f")
+                .ok()
+                .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
+        })
 }
 
 /// MCP bootstrap UI update (per-server progress or final transcript line).

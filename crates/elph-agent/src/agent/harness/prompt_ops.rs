@@ -231,6 +231,35 @@ where
         self.emit_queue_update().await
     }
 
+    /// Append a custom metadata entry to the session tree.
+    ///
+    /// Stored directly when the harness is idle; queued as a pending write otherwise.
+    pub async fn append_custom_entry(
+        &self,
+        custom_type: impl Into<String>,
+        data: Option<serde_json::Value>,
+    ) -> HarnessOpResult<()> {
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            self.shared
+                .session
+                .lock()
+                .await
+                .append_custom_entry(&custom_type.into(), data)
+                .await
+                .map_err(session_error)?;
+        } else {
+            self.shared
+                .pending_session_writes
+                .lock()
+                .await
+                .push(PendingSessionWrite::Custom {
+                    custom_type: custom_type.into(),
+                    data,
+                });
+        }
+        Ok(())
+    }
+
     pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
         if self.phase_async().await == AgentHarnessPhase::Idle {
             self.shared

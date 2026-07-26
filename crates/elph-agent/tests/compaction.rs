@@ -155,6 +155,7 @@ fn message_entry(id: &str, parent_id: Option<&str>, message: AgentMessage) -> Se
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
         timestamp: "2024-01-01T00:00:00Z".to_string(),
+        skill_name: None,
         message,
     }
 }

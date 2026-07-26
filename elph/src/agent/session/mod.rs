@@ -350,6 +350,13 @@ impl CodingAgentSession {
         let started = Instant::now();
         let additional = (!args.trim().is_empty()).then(|| args.trim());
         let result = self.harness.skill(name, additional).await.map(|_| ());
+        // Persist the skill name as a custom entry for reliable retrieval on resume.
+        if result.is_ok() {
+            let _ = self
+                .harness
+                .append_custom_entry("skill_invocation", Some(serde_json::json!({"name": name, "args": args})))
+                .await;
+        }
         match &result {
             Ok(()) => self.finish_ui_turn(started).await,
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
