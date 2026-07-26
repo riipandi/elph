@@ -21,7 +21,7 @@
 //!     "showThinking", "autoExpandThinking", "stickyScroll",
 //!     "footerTokenDisplay", "coloredStatusFooter", "filePicker"
 //!   },
-//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel" },
+//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel" },
 //!   "models": { "scoped": ["provider/model_id", ...] },
 //!   "provider": { "maxRetries", "defaultTimeout" },
 //!   "memory": { "embedModel", "embedQuantized" }
@@ -197,6 +197,11 @@ pub struct SessionSettings {
     pub agent_mode: String,
     #[serde(default = "default_thinking_level")]
     pub thinking_level: String,
+    /// Model for automatic session title generation (`provider/model_id`, or `"inherit"`).
+    ///
+    /// When `"inherit"` (default), the live session model is used for the background title call.
+    #[serde(default = "default_title_model")]
+    pub title_model: String,
 }
 
 /// Model-catalog preferences.
@@ -263,6 +268,7 @@ impl Settings {
                 model_id: None,
                 agent_mode: default_agent_mode(),
                 thinking_level: default_thinking_level(),
+                title_model: default_title_model(),
             },
             models: ModelsSettings::default(),
             provider: ProviderHttpSettings::default(),
@@ -459,6 +465,10 @@ fn default_thinking_level() -> String {
     "high".to_string()
 }
 
+fn default_title_model() -> String {
+    "inherit".to_string()
+}
+
 fn default_footer_token_display() -> String {
     "both".to_string()
 }
@@ -501,6 +511,7 @@ mod tests {
         assert!(decoded.memory.embed_quantized);
         assert!(decoded.session.provider_id.is_none());
         assert!(decoded.session.model_id.is_none());
+        assert_eq!(decoded.session.title_model, "inherit");
         assert_eq!(decoded.provider.max_retries, 2);
         assert_eq!(decoded.provider.default_timeout, "120s");
         assert!(decoded.ui.show_thinking);

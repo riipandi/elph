@@ -147,6 +147,7 @@ pub async fn create_coding_session_with_events(
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),
+        title_model: options.settings.session.title_model.clone(),
     })
     .await?;
 

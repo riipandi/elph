@@ -226,7 +226,9 @@ pub use prompt::format_prompt_template_invocation;
 pub use prompt::load_prompt_templates;
 pub use prompt::load_sourced_prompt_templates;
 pub use prompt::parse_command_args;
+pub use prompt::builtin::session_name::extract_conversation_for_naming;
 pub use prompt::session_name::generate_session_name;
+pub use prompt::session_name::generate_session_name_with_prompts;
 pub use prompt::substitute_args;
 pub use prompt::{DEFAULT_SYSTEM_PROMPT, resolve_system_prompt_text};
 #[cfg(feature = "prompt-templates")]

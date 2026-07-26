@@ -275,6 +275,29 @@ where
         Ok(())
     }
 
+    /// Persist a session display title (`session_info` tree entry).
+    ///
+    /// Stored directly when idle; queued as a pending write while a turn is running.
+    pub async fn set_session_name(&self, name: impl Into<String>) -> HarnessOpResult<()> {
+        let name = name.into();
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            self.shared
+                .session
+                .lock()
+                .await
+                .append_session_name(name)
+                .await
+                .map_err(session_error)?;
+        } else {
+            self.shared
+                .pending_session_writes
+                .lock()
+                .await
+                .push(PendingSessionWrite::SessionInfo { name: Some(name) });
+        }
+        Ok(())
+    }
+
     pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
         let prompt_meta = self.shared.pending_prompt_meta.lock().await.take();
         if self.phase_async().await == AgentHarnessPhase::Idle {
