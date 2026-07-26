@@ -19,6 +19,13 @@ use tokio::sync::mpsc;
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, create_coding_session_with_events};
 use crate::platform::{Paths, Settings};
 
+/// Handle + receiver + working directory extracted from an active session.
+type SessionContext = (
+    Arc<CodingAgentSession>,
+    Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
+    PathBuf,
+);
+
 /// Per-session runtime state kept for the duration of the ACP connection.
 struct AcpSessionState {
     session: Arc<CodingAgentSession>,
@@ -129,14 +136,7 @@ async fn create_acp_session(state: &Arc<Mutex<AcpAgentState>>, cwd: &PathBuf) ->
 ///
 /// Returns the session handle, its UI event receiver (for streaming), and the
 /// working directory it was created with (for `/reload` and similar commands).
-fn lookup_session(
-    state: &Arc<Mutex<AcpAgentState>>,
-    key: &str,
-) -> anyhow::Result<(
-    Arc<CodingAgentSession>,
-    Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<AgentUiEvent>>>,
-    PathBuf,
-)> {
+fn lookup_session(state: &Arc<Mutex<AcpAgentState>>, key: &str) -> anyhow::Result<SessionContext> {
     let guard = state.lock();
     let entry = guard.sessions.get(key).context("ACP session not found")?;
     Ok((Arc::clone(&entry.session), entry.ui_rx.clone(), entry.cwd.clone()))
