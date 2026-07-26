@@ -357,7 +357,7 @@ pub fn parse_stdio_config(command: String, args: Vec<String>, env: BTreeMap<Stri
         env,
         cwd: None,
         timeout_ms: None,
-        disabled: false,
+        enable: true,
         policy: None,
     }
 }
