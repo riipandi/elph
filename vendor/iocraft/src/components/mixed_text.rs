@@ -1,7 +1,7 @@
 use crate::{
     components::text::{Text, TextAlign, TextDecoration, TextDrawer, TextWrap},
     segmented_string::SegmentedString,
-    strip_ansi::strip_ansi,
+    strip_ansi::sanitize_terminal_text,
     CanvasTextStyle, Color, Component, ComponentDrawer, ComponentUpdater, Hooks, Props, Weight,
 };
 
@@ -138,7 +138,7 @@ impl Component for MixedText {
         updater: &mut ComponentUpdater,
     ) {
         for content in props.contents.iter_mut() {
-            content.text = strip_ansi(&content.text).into_owned();
+            content.text = sanitize_terminal_text(&content.text).into_owned();
         }
         let plaintext = props
             .contents

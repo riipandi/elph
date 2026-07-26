@@ -329,8 +329,12 @@ impl Canvas {
                     return Ok(());
                 }
                 close_hyperlink(w, open)?;
+                // Skip URIs that would desync the terminal (controls / oversize).
+                let Some(safe) = crate::strip_ansi::sanitize_osc8_uri(url.as_ref()) else {
+                    return Ok(());
+                };
                 // OSC 8 start: ESC ] 8 ; ; URI ST
-                write!(w, "\x1b]8;;{}\x1b\\", url.as_ref())?;
+                write!(w, "\x1b]8;;{}\x1b\\", safe)?;
                 *open = Some(Arc::clone(url));
                 Ok(())
             };
@@ -411,6 +415,9 @@ impl Canvas {
             }
 
             if ansi && col >= self.width {
+                // Never erase while an OSC 8 region is open — some terminals drop link state
+                // and leave the rest of the frame corrupted until a full redraw (resize).
+                close_hyperlink(&mut w, &mut open_hyperlink)?;
                 if background_color.is_some() {
                     write!(w, csi!("{}m"), Colored::BackgroundColor(Color::Reset))?;
                     background_color = None;

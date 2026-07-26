@@ -42,7 +42,10 @@ pub fn format_assistant_stream_body_display(content: &str) -> String {
 }
 
 pub fn format_tool_output_display(output: &str) -> String {
-    let trimmed = output.trim();
+    // Drop bare CR / other C0 controls that web pages often embed — raw-mode TUIs
+    // treat `\r` as cursor home and corrupt the frame until a full redraw (resize).
+    let sanitized = sanitize_tool_body(output);
+    let trimmed = sanitized.trim();
     if trimmed.is_empty() {
         return String::new();
     }
@@ -64,6 +67,13 @@ pub fn format_tool_output_display(output: &str) -> String {
     format!("{truncated}…")
 }
 
+fn sanitize_tool_body(output: &str) -> String {
+    output
+        .chars()
+        .filter(|c| *c == '\n' || *c == '\t' || !c.is_control())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -78,6 +88,15 @@ mod tests {
         let long = "line\n".repeat(20);
         let display = format_tool_output_display(&long);
         assert!(display.contains("lines total"));
+    }
+
+    #[test]
+    fn tool_output_strips_carriage_returns_from_web_bodies() {
+        let dirty = "title\r\nhttps://example.com/path\rnext";
+        let display = format_tool_output_display(dirty);
+        assert!(!display.contains('\r'), "{display:?}");
+        assert!(display.contains("https://example.com/path"));
+        assert!(display.contains("next"));
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use crate::{
-    render::MeasureFunc, segmented_string::SegmentedString, strip_ansi::strip_ansi,
+    render::MeasureFunc, segmented_string::SegmentedString, strip_ansi::sanitize_terminal_text,
     CanvasTextStyle, Color, Component, ComponentDrawer, ComponentUpdater, Hooks, Props, Weight,
 };
 use taffy::{AvailableSpace, Size};
@@ -259,7 +259,7 @@ impl Component for Text {
             italic: props.italic,
             invert: props.invert,
         };
-        self.content = strip_ansi(&props.content).into_owned();
+        self.content = sanitize_terminal_text(&props.content).into_owned();
         self.wrap = props.wrap;
         self.align = props.align;
         updater.set_measure_func(Self::measure_func(self.content.clone(), props.wrap));
