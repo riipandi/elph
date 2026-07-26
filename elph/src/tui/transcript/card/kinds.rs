@@ -7,6 +7,7 @@
 //! Finished headers are iocraft [`Button`]s — click toggles that block; Ctrl+O toggles the latest.
 //! Collapsed tools use human verbs + compact targets (`Edit /U/a/…/file.rs`).
 
+use elph_tui::components::{DiffMode, DiffView};
 use elph_tui::components::{
     ProcessStatus, ProcessStatusIndicator, ProcessStatusRow, process_status_glyph, process_status_word,
 };
@@ -533,9 +534,14 @@ pub fn tool_call_card(
                     .flatten()
             })
             .flatten();
+        // edit_file with diff data: skip generic args, render diff view instead.
+        let has_diff = tool.name == "edit_file" && tool.old_text.is_some() && tool.new_text.is_some() && show_detail;
         // Wait Agent: agent id lives in the header detail (a11y) — no args dump.
-        let has_generic_args =
-            show_detail && !wait_agent && ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
+        let has_generic_args = show_detail
+            && !wait_agent
+            && !has_diff
+            && ask_user_rows.is_none()
+            && !parse_tool_params(&tool.args_summary).is_empty();
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
         let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed {
@@ -591,7 +597,41 @@ pub fn tool_call_card(
                 } else {
                     None
                 })
-                #(if !output.is_empty() {
+                #(if has_diff {
+                    // Render inline diff view for edit_file
+                    let diff_width = inner_width.saturating_sub(1);
+                    let old_text = tool.old_text.clone().unwrap_or_default();
+                    let new_text = tool.new_text.clone().unwrap_or_default();
+                    let diff_file_path = tool.file_path.clone().or_else(|| {
+                        parse_tool_params(&tool.args_summary)
+                            .iter()
+                            .find(|p| p.key.as_deref() == Some("path"))
+                            .map(|p| p.value.clone())
+                    });
+                    // Compute a reasonable viewport height: cap at ~20 diff lines so it
+                    // scrolls internally instead of blowing the transcript row budget.
+                    let n_old = old_text.lines().count().max(1_usize);
+                    let n_new = new_text.lines().count().max(1_usize);
+                    let diff_rows = n_old.max(n_new).saturating_add(4).min(20_usize) as u16;
+                    let context_lines: usize = 3;
+                    Some(element! {
+                        View(width: 100pct, padding_top: 1, flex_shrink: 0f32) {
+                            DiffView(
+                                width: diff_width,
+                                height: diff_rows,
+                                old_text: old_text,
+                                new_text: new_text,
+                                mode: DiffMode::Unified,
+                                file_path: diff_file_path,
+                                syntax_highlight: true,
+                                show_file_header: false,
+                                show_hunk_header: true,
+                                show_line_numbers: true,
+                                context_lines: context_lines,
+                            )
+                        }
+                    })
+                } else if !output.is_empty() {
                     // Extra air before ask-user answers so reply text does not crowd the prompt rows.
                     let output_gap = if message.is_ask_user_tool() {
                         ASK_USER_ANSWER_SECTION_GAP

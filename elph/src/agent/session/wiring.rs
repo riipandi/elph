@@ -194,6 +194,7 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
                 id: tool_call_id,
                 is_error,
                 output: summarize_tool_result(&result),
+                details: result.details.clone(),
             });
         }
         AgentEvent::MessageEnd { message } => {

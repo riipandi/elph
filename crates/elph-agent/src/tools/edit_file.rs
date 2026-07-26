@@ -11,7 +11,7 @@ use crate::agent::harness::types::{FileSystem, Result as HarnessResult};
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, file_error, read_file_text, resolve_path};
 use crate::tools::simple_tool;
-use crate::types::{AgentTool, AgentToolResult};
+use crate::types::{AgentTool, AgentToolResult, ToolResultContent};
 
 pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     let env_for_tool = env.clone();
@@ -69,7 +69,18 @@ async fn execute_edit(
     }
     let updated = content.replacen(old_string, new_string, 1);
     match FileSystem::write_file(env.as_ref(), &absolute, updated.as_bytes(), signal.as_ref()).await {
-        HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!("Edited {path}"))),
+        HarnessResult::Ok(()) => Ok(AgentToolResult {
+            content: vec![ToolResultContent::Text(elph_ai::TextContent::new(format!(
+                "Edited {path}"
+            )))],
+            details: json!({
+                "old_content": content,
+                "new_content": updated,
+                "file_path": absolute,
+            }),
+            added_tool_names: None,
+            terminate: None,
+        }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }
 }

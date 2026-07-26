@@ -371,7 +371,12 @@ impl TranscriptEventApplier {
             AgentUiEvent::ThinkingDelta(delta) if self.show_thinking => self.append_thinking(messages, &delta),
             AgentUiEvent::ToolStart { id, name, args_summary } => self.start_tool(messages, id, name, args_summary),
             AgentUiEvent::ToolUpdate { id, output } => self.update_tool(messages, &id, &output),
-            AgentUiEvent::ToolEnd { id, is_error, output } => self.end_tool(messages, &id, is_error, &output),
+            AgentUiEvent::ToolEnd {
+                id,
+                is_error,
+                output,
+                details,
+            } => self.end_tool(messages, &id, is_error, &output, &details),
             AgentUiEvent::RunCompleted { .. } => self.finalize_turn(messages),
             AgentUiEvent::SubagentStatus {
                 agent_id,
@@ -553,7 +558,14 @@ impl TranscriptEventApplier {
         true
     }
 
-    fn end_tool(&mut self, messages: &mut [TranscriptMessage], id: &str, is_error: bool, output: &str) -> bool {
+    fn end_tool(
+        &mut self,
+        messages: &mut [TranscriptMessage],
+        id: &str,
+        is_error: bool,
+        output: &str,
+        details: &serde_json::Value,
+    ) -> bool {
         if let Some(index) = self.live_tool_indexes.remove(id)
             && let Some(message) = messages.get_mut(index)
         {
@@ -561,6 +573,17 @@ impl TranscriptEventApplier {
                 && !output.is_empty()
             {
                 tool.output = output.to_string();
+                // Extract diff context for edit_file tool
+                if tool.name == "edit_file"
+                    && let (Some(old), Some(new)) = (
+                        details.get("old_content").and_then(|v| v.as_str()),
+                        details.get("new_content").and_then(|v| v.as_str()),
+                    )
+                {
+                    tool.old_text = Some(old.to_string());
+                    tool.new_text = Some(new.to_string());
+                    tool.file_path = details.get("file_path").and_then(|v| v.as_str()).map(|s| s.to_string());
+                }
             }
             message.style = if is_error {
                 TranscriptStyle::ToolFailed
@@ -655,6 +678,7 @@ mod tests {
                 id: "t1".into(),
                 is_error: false,
                 output: String::new(),
+                details: serde_json::json!({}),
             },
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolSuccess);
@@ -679,6 +703,7 @@ mod tests {
                 id: "t2".into(),
                 is_error: true,
                 output: "exit 1".into(),
+                details: serde_json::json!({}),
             },
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolFailed);
@@ -826,6 +851,7 @@ mod tests {
                 id: "t-dur".into(),
                 is_error: false,
                 output: String::new(),
+                details: serde_json::json!({}),
             },
         );
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));

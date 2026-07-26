@@ -36,6 +36,12 @@ pub struct ToolCardDetail {
     pub name: String,
     pub args_summary: String,
     pub output: String,
+    /// Full file content before edit (for edit_file diff rendering).
+    pub old_text: Option<String>,
+    /// Full file content after edit (for edit_file diff rendering).
+    pub new_text: Option<String>,
+    /// Resolved file path for syntax language detection.
+    pub file_path: Option<String>,
 }
 
 #[derive(Clone)]
@@ -143,6 +149,9 @@ impl TranscriptMessage {
                 name: name.into(),
                 args_summary: args_summary.into(),
                 output: String::new(),
+                old_text: None,
+                new_text: None,
+                file_path: None,
             }),
             markdown: None,
             duration_secs: None,
@@ -465,6 +474,22 @@ impl ToolCardDetail {
         if collapsed {
             return header;
         }
+
+        // For edit_file with diff data, estimate layout from old/new content lines.
+        if self.name == "edit_file" && self.old_text.is_some() && self.new_text.is_some() {
+            let mut lines = vec![header];
+            if let (Some(old), Some(new)) = (&self.old_text, &self.new_text) {
+                let old_count = old.lines().count();
+                let new_count = new.lines().count();
+                lines.push(format!("--- a/<file>  ({old_count} lines)"));
+                lines.push(format!("+++ b/<file>  ({new_count} lines)"));
+                // Estimate diff line count as max(old_lines, new_lines) + hunk overhead
+                let estimate = old_count.max(new_count).saturating_add(3);
+                lines.push(format!("@@ diff ~{estimate} lines @@"));
+            }
+            return lines.join("\n");
+        }
+
         let mut lines = vec![header];
         let args = if self.name == "ask_user_question" {
             format_ask_user_tool_layout_text(&self.args_summary)

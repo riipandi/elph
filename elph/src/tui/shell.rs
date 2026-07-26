@@ -1328,6 +1328,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     id,
                                     is_error,
                                     output: output.clone(),
+                                    details: serde_json::json!({}),
                                 },
                             ) {
                                 transcript_changed = true;
