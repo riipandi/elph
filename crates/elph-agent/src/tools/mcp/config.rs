@@ -32,8 +32,8 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpConfig {
-    /// Named server definitions.
-    #[serde(default)]
+    /// Named server definitions (key is `mcpServers` in JSON).
+    #[serde(rename = "mcpServers", default)]
     pub servers: BTreeMap<String, McpServerConfig>,
     /// Global tool policy (merged with per-server `policy`).
     #[serde(default, skip_serializing_if = "McpPolicyConfig::is_empty")]
@@ -205,7 +205,7 @@ pub struct McpStdioConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
     /// When false, the server is skipped during discovery and tool calls.
-    #[serde(default = "default_true", alias = "disabled")]
+    #[serde(default = "default_true")]
     pub enable: bool,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -265,7 +265,7 @@ pub struct McpHttpConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
     /// When false, the server is skipped during discovery and tool calls.
-    #[serde(default = "default_true", alias = "disabled")]
+    #[serde(default = "default_true")]
     pub enable: bool,
     /// Prefer OAuth credentials from `mcp auth` (and run OAuth-aware transport).
     #[serde(default)]
@@ -407,7 +407,7 @@ mod tests {
     #[test]
     fn deserializes_stdio_and_http() {
         let json = r#"{
-            "servers": {
+            "mcpServers": {
                 "local": {
                     "type": "stdio",
                     "command": "npx",
@@ -431,7 +431,7 @@ mod tests {
     fn deserializes_sse_and_policy() {
         let json = r#"{
             "policy": { "default": "requireApproval", "allow": ["mcp_fs__*"] },
-            "servers": {
+            "mcpServers": {
                 "legacy": {
                     "type": "sse",
                     "url": "http://localhost:3000/sse",
@@ -476,7 +476,7 @@ mod tests {
         let home: McpConfig = serde_json::from_str(
             r#"{
             "policy": { "default": "requireApproval", "allow": ["mcp_home__*"] },
-            "servers": {
+            "mcpServers": {
                 "shared": { "type": "http", "url": "https://home.example/mcp" },
                 "home_only": { "type": "stdio", "command": "true" }
             }
@@ -486,7 +486,7 @@ mod tests {
         let project: McpConfig = serde_json::from_str(
             r#"{
             "policy": { "deny": ["mcp_danger__*"] },
-            "servers": {
+            "mcpServers": {
                 "shared": { "type": "http", "url": "https://project.example/mcp", "enable": false },
                 "project_only": { "type": "stdio", "command": "npx" }
             }

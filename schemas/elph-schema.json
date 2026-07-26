@@ -6,6 +6,10 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
+        },
         "ui": {
             "$ref": "#/definitions/ui"
         },
@@ -163,6 +167,11 @@
                     "default": "high",
                     "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
                     "description": "Default reasoning / thinking budget level."
+                },
+                "titleModel": {
+                    "type": "string",
+                    "default": "inherit",
+                    "description": "Model for session title generation. Use a provider/model_id or \"inherit\" to reuse the session model."
                 }
             }
         },
