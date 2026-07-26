@@ -155,6 +155,8 @@ fn message_entry(id: &str, parent_id: Option<&str>, message: AgentMessage) -> Se
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
         timestamp: "2024-01-01T00:00:00Z".to_string(),
+        prompt_title: String::new(),
+        prompt_kind: String::new(),
         message,
     }
 }
@@ -642,7 +644,11 @@ fn prepare_compaction_uses_previous_summary() {
             ),
         ),
     ];
-    let preparation = prepare_compaction(&entries, DEFAULT_COMPACTION_SETTINGS)
+    let compact_settings = CompactionSettings {
+        keep_recent_tokens: 1,
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    let preparation = prepare_compaction(&entries, compact_settings)
         .unwrap()
         .expect("preparation");
     assert_eq!(preparation.previous_summary.as_deref(), Some("First summary"));
@@ -1124,7 +1130,11 @@ async fn compact_returns_result_with_file_details() {
             ),
         ),
     ];
-    let preparation = prepare_compaction(&entries, DEFAULT_COMPACTION_SETTINGS)
+    let compact_settings = CompactionSettings {
+        keep_recent_tokens: 2,
+        ..DEFAULT_COMPACTION_SETTINGS
+    };
+    let preparation = prepare_compaction(&entries, compact_settings)
         .unwrap()
         .expect("preparation");
 

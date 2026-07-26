@@ -125,10 +125,14 @@ impl SessionDirStorage {
         append_jsonl_value(&self.session_dir, PROMPT_HISTORY_FILE, &line).await
     }
 
-    async fn touch_summary(&self) -> Result<(), SessionError> {
+    async fn touch_summary(&mut self) -> Result<(), SessionError> {
         let mut summary = read_summary(&self.session_dir).await?;
-        summary.touch(crate::messages::now_iso_timestamp());
-        write_summary(&self.session_dir, &summary).await
+        let now = crate::messages::now_iso_timestamp();
+        summary.touch(now.clone());
+        write_summary(&self.session_dir, &summary).await?;
+        // Keep in-memory metadata aligned with summary.json for get_metadata callers.
+        self.metadata.updated_at = now;
+        Ok(())
     }
 }
 
@@ -144,6 +148,7 @@ fn summary_to_metadata(summary: &SessionSummary, session_dir: &Path) -> SessionD
     SessionDirMetadata {
         id: summary.info.id.clone(),
         created_at: summary.created_at.clone(),
+        updated_at: summary.updated_at.clone(),
         cwd: summary.info.cwd.clone(),
         dir: session_dir.to_string_lossy().to_string(),
         parent_session_id: summary.parent_session_id.clone(),

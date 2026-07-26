@@ -180,6 +180,8 @@ pub fn message_entry(
         id: id.to_string(),
         parent_id: parent_id.map(str::to_string),
         timestamp: "2026-01-01T00:00:00.000Z".to_string(),
+        prompt_title: String::new(),
+        prompt_kind: String::new(),
         message,
     }
 }

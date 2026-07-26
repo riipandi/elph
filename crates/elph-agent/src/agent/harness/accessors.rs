@@ -132,4 +132,14 @@ where
         let guard = self.shared.stream_options.lock().await;
         clone_stream_options(&guard)
     }
+
+    /// Latest non-empty session title from `session_info` tree entries, if any.
+    pub async fn session_name(&self) -> Option<String> {
+        self.shared.session.lock().await.session_name().await
+    }
+
+    /// Session backend metadata (includes last-activity timestamps for dir storage).
+    pub async fn session_metadata(&self) -> S::Metadata {
+        self.shared.session.lock().await.metadata().await
+    }
 }

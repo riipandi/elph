@@ -239,6 +239,10 @@ pub struct StatusZoneProps {
     pub approval_has_focus: bool,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
+    /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
+    ///
+    /// Uses clonable [`Handler`] so each chip can bind its own `(index, action)`.
+    pub on_queue_action: Handler<(usize, PromptQueueAction)>,
 }
 
 impl Default for StatusZoneProps {
@@ -260,6 +264,7 @@ impl Default for StatusZoneProps {
             approval_selected: None,
             approval_has_focus: false,
             queue_count: 0,
+            on_queue_action: Handler::default(),
         }
     }
 }
@@ -293,6 +298,7 @@ fn render_ephemeral_banner(screen_width: u16, text: &str, color: Color) -> AnyEl
 #[component]
 pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let _ = hooks;
+    let on_queue_action = props.on_queue_action.clone();
     // Prompt queue sits above StatusRow (same vertical band as UserQuestionBar / permission UI).
     // Tool approval stays below StatusRow (existing layout).
     let above_status_row = match props.dialog.clone() {
@@ -307,6 +313,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             selected,
             action,
             interactive,
+            on_queue_action,
         )),
         _ => None,
     };
@@ -382,6 +389,7 @@ fn render_prompt_queue_dialog(
     selected: usize,
     action: PromptQueueAction,
     interactive: bool,
+    on_queue_action: Handler<(usize, PromptQueueAction)>,
 ) -> AnyElement<'static> {
     use crate::tui::theme::{EDITOR_TEXT_FOCUSED, PROMPT_QUEUE_FG};
     use elph_tui::utils::{display_width, truncate_with_ellipsis};
@@ -412,7 +420,7 @@ fn render_prompt_queue_dialog(
                 .max(4) as usize;
             let one_line = item.text.lines().next().unwrap_or("").trim();
             let title = truncate_with_ellipsis(one_line, title_budget);
-            let action_chips = render_queue_action_chips(action, row_focused);
+            let action_chips = render_queue_action_chips(action, row_focused, idx, &on_queue_action);
             element! {
                 View(
                     width: screen_width,
@@ -471,19 +479,32 @@ fn queue_actions_rail_width() -> usize {
         + PromptQueueAction::ALL.len().saturating_sub(1)
 }
 
-fn render_queue_action_chips(selected: PromptQueueAction, row_focused: bool) -> Vec<AnyElement<'static>> {
+fn render_queue_action_chips(
+    selected: PromptQueueAction,
+    row_focused: bool,
+    row_index: usize,
+    on_queue_action: &Handler<(usize, PromptQueueAction)>,
+) -> Vec<AnyElement<'static>> {
     use crate::tui::theme::{PROMPT_QUEUE_FG, PROMPT_QUEUE_SELECTED_FG};
     PromptQueueAction::ALL
         .iter()
+        .copied()
         .map(|a| {
             let label = format!("[{}]", a.label());
-            let color = if row_focused && *a == selected {
+            let color = if row_focused && a == selected {
                 PROMPT_QUEUE_SELECTED_FG
             } else {
                 PROMPT_QUEUE_FG
             };
+            // Clonable Handler + bind → each chip is an independent hit target.
+            let click = on_queue_action.bind((row_index, a));
             element! {
-                Text(color: color, wrap: TextWrap::NoWrap, content: label)
+                Button(
+                    has_focus: false,
+                    handler: click,
+                ) {
+                    Text(color: color, wrap: TextWrap::NoWrap, content: label)
+                }
             }
             .into()
         })

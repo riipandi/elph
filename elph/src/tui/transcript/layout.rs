@@ -126,6 +126,14 @@ fn message_layout_fingerprint(message: &TranscriptMessage, wrap_width: u16) -> u
         hash_text_sample(&tool.args_summary, &mut hasher);
         tool.output.len().hash(&mut hasher);
         hash_text_sample(&tool.output, &mut hasher);
+        if let Some(ref old) = tool.old_text {
+            old.len().hash(&mut hasher);
+            hash_text_sample(old, &mut hasher);
+        }
+        if let Some(ref new) = tool.new_text {
+            new.len().hash(&mut hasher);
+            hash_text_sample(new, &mut hasher);
+        }
     }
     if let Some(md) = &message.markdown {
         md.stable_end.hash(&mut hasher);

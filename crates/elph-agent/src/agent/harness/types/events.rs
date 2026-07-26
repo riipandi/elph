@@ -127,6 +127,24 @@ pub struct CompactResult {
     pub details: Option<Value>,
 }
 
+impl CompactResult {
+    /// A no-op result indicating nothing was worth compacting.
+    /// Callers should skip appending a Compaction entry when `is_noop` is true.
+    pub fn empty() -> Self {
+        Self {
+            summary: String::new(),
+            first_kept_entry_id: String::new(),
+            tokens_before: 0,
+            details: None,
+        }
+    }
+
+    /// Whether this result is a no-op (nothing to compact).
+    pub fn is_noop(&self) -> bool {
+        self.summary.is_empty() && self.first_kept_entry_id.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BranchSummaryResult {
     pub summary: String,

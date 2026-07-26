@@ -8,4 +8,5 @@ pub mod prompt;
 pub mod skills;
 pub mod tui;
 pub mod types;
+pub mod utils;
 pub mod worktree;

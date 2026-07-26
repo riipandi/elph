@@ -7,6 +7,7 @@
 //! Finished headers are iocraft [`Button`]s — click toggles that block; Ctrl+O toggles the latest.
 //! Collapsed tools use human verbs + compact targets (`Edit /U/a/…/file.rs`).
 
+use elph_tui::components::{DiffLineNumberStyle, DiffMode, DiffView, EMBEDDED_DIFF_MAX_LINES};
 use elph_tui::components::{
     ProcessStatus, ProcessStatusIndicator, ProcessStatusRow, process_status_glyph, process_status_word,
 };
@@ -22,10 +23,12 @@ use crate::tui::tool_params::{
     ToolParamsView, format_collapsed_tool_parts_linked, parse_tool_params, tool_display_verb,
 };
 
-use super::super::types::{TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at};
+use super::super::types::{
+    TOOL_CARD_DIFF_CONTEXT_LINES, TranscriptMessage, TranscriptStyle, toggle_collapsible_detail_at,
+};
 use super::chrome::{
     ASK_USER_ANSWER_SECTION_GAP, COLORED_CARD_PAD, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP,
-    TOOL_OUTPUT_SECTION_GAP, TranscriptCardChrome,
+    TOOL_OUTPUT_SECTION_GAP, TOOL_RESULT_PAD_LEFT, TranscriptCardChrome,
 };
 use super::frame::{
     assistant_message_elements, render_flush_card, render_invisible_tinted_card, render_tinted_card,
@@ -367,7 +370,7 @@ pub fn chat_response_card(
     } else {
         chrome.padding_h = PROCESS_LOG_PAD_H;
     }
-    let streaming = message.duration_secs.is_none();
+    let streaming = message.duration_secs.is_none() && !message.markdown.as_ref().is_some_and(|md| md.stream_complete);
     let status = if streaming {
         ProcessStatus::Running
     } else {
@@ -533,12 +536,18 @@ pub fn tool_call_card(
                     .flatten()
             })
             .flatten();
+        // edit_file with before/after text: skip generic args/output, render embedded DiffView.
+        let has_diff = show_detail && tool.has_inline_diff();
         // Wait Agent: agent id lives in the header detail (a11y) — no args dump.
-        let has_generic_args =
-            show_detail && !wait_agent && ask_user_rows.is_none() && !parse_tool_params(&tool.args_summary).is_empty();
+        let has_generic_args = show_detail
+            && !wait_agent
+            && !has_diff
+            && ask_user_rows.is_none()
+            && !parse_tool_params(&tool.args_summary).is_empty();
         // Compact header for collapsed tools + Wait Agent (running/done): verb + scannable target.
         // Expanded generic tools: verb only (args/output below).
-        let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed {
+        // Expanded edit_file with diff: verb + short path so the header still identifies the file.
+        let (header_task, header_detail, header_detail_href) = if wait_agent || collapsed || has_diff {
             let parts = format_collapsed_tool_parts_linked(&tool.name, &tool.args_summary);
             (parts.verb, parts.detail, parts.detail_href)
         } else {
@@ -546,6 +555,8 @@ pub fn tool_call_card(
         };
         // Wait: click only when finished and there is result body text.
         let clickable = message.is_collapsible_detail();
+        // Result body (args / output / diff) sits one cell in from the header glyph column.
+        let result_width = inner_width.saturating_sub(TOOL_RESULT_PAD_LEFT).max(8);
         return element! {
             View(
                 width: chrome.outer_width,
@@ -572,18 +583,28 @@ pub fn tool_call_card(
                 )
                 #(if ask_user_rows.is_some() {
                     Some(element! {
-                        View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            flex_shrink: 0f32,
+                        ) {
                             AskUserToolCardView(
-                                width: inner_width,
+                                width: result_width,
                                 raw: tool.args_summary.clone(),
                             )
                         }
                     })
                 } else if has_generic_args {
                     Some(element! {
-                        View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            flex_shrink: 0f32,
+                        ) {
                             ToolParamsView(
-                                width: inner_width,
+                                width: result_width,
                                 raw: tool.args_summary.clone(),
                             )
                         }
@@ -591,7 +612,44 @@ pub fn tool_call_card(
                 } else {
                     None
                 })
-                #(if !output.is_empty() {
+                #(if has_diff {
+                    // Embedded unified DiffView — props must stay aligned with
+                    // ToolCardDetail::inline_diff_body_rows / layout_text budgets.
+                    // no_border + max_lines: content-sized column (no nested ScrollBox).
+                    let old_text = tool.old_text.clone().unwrap_or_default();
+                    let new_text = tool.new_text.clone().unwrap_or_default();
+                    let diff_file_path = tool.file_path.clone().or_else(|| {
+                        parse_tool_params(&tool.args_summary)
+                            .iter()
+                            .find(|p| p.key.as_deref() == Some("path"))
+                            .map(|p| p.value.clone())
+                    });
+                    Some(element! {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            flex_direction: FlexDirection::Column,
+                            flex_shrink: 0f32,
+                        ) {
+                            DiffView(
+                                width: result_width,
+                                height: 0u16,
+                                old_text: old_text,
+                                new_text: new_text,
+                                mode: DiffMode::Unified,
+                                file_path: diff_file_path,
+                                syntax_highlight: true,
+                                show_file_header: false,
+                                show_hunk_header: true,
+                                line_numbers: DiffLineNumberStyle::Single,
+                                context_lines: TOOL_CARD_DIFF_CONTEXT_LINES,
+                                no_border: true,
+                                max_lines: Some(EMBEDDED_DIFF_MAX_LINES),
+                            )
+                        }
+                    })
+                } else if !output.is_empty() {
                     // Extra air before ask-user answers so reply text does not crowd the prompt rows.
                     let output_gap = if message.is_ask_user_tool() {
                         ASK_USER_ANSWER_SECTION_GAP
@@ -605,6 +663,7 @@ pub fn tool_call_card(
                         View(
                             width: 100pct,
                             padding_top: output_gap,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
                             flex_direction: FlexDirection::Column,
                             gap: 0,
                         ) {

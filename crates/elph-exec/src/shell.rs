@@ -137,17 +137,15 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
     let master_fd = pty_master.into_owned_fd();
     let async_pty =
         AsyncFd::new(master_fd).map_err(|error| ExecError::new(ExecErrorCode::SpawnError, error.to_string()))?;
-
     let mut captured = String::new();
     let mut read_buf = vec![0u8; config.read_chunk_bytes.max(256)];
+    let deadline = timeout_ms.map(|ms| tokio::time::Instant::now() + Duration::from_millis(ms));
 
     loop {
         if options.abort_token.as_ref().is_some_and(|t| t.is_cancelled()) {
             let _ = child.kill().await;
             return Err(ExecError::aborted());
         }
-
-        let timeout_sleep = timeout_ms.map(|ms| time::sleep(Duration::from_millis(ms)));
 
         tokio::select! {
             _ = async {
@@ -161,12 +159,12 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
                 return Err(ExecError::aborted());
             }
             _ = async {
-                if let Some(sleep) = timeout_sleep {
-                    sleep.await;
+                if let Some(deadline) = deadline {
+                    tokio::time::sleep_until(deadline).await;
                 } else {
                     std::future::pending().await
                 }
-            }, if timeout_ms.is_some() => {
+            }, if deadline.is_some() => {
                 let _ = child.kill().await;
                 return Err(ExecError::new(
                     ExecErrorCode::Timeout,

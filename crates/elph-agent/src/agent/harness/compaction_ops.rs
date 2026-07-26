@@ -43,9 +43,11 @@ where
             .branch(None)
             .await
             .map_err(session_error)?;
-        let preparation = prepare_compaction(&branch_entries, DEFAULT_COMPACTION_SETTINGS)
-            .map_err(compaction_error)?
-            .ok_or_else(|| AgentHarnessError::new(AgentHarnessErrorCode::Compaction, "Nothing to compact"))?;
+        let Some(preparation) =
+            prepare_compaction(&branch_entries, DEFAULT_COMPACTION_SETTINGS).map_err(compaction_error)?
+        else {
+            return Ok(CompactResult::empty());
+        };
 
         let hook_result = self
             .shared
@@ -86,6 +88,12 @@ where
             .map_err(compaction_error)?;
             module_to_compact_result(module_result)
         };
+
+        // No-op result (nothing worth compacting) — skip appending a Compaction entry
+        // so subsequent /compact calls can still find work to do.
+        if compact_result.is_noop() {
+            return Ok(compact_result);
+        }
 
         let entry_id = self
             .shared

@@ -7,8 +7,9 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
-    confetti_mode_from_args, dispatch_slash_command, format_help_message, slash_unimplemented_message,
-    system_prompt_slash_message, tools_slash_message,
+    confetti_mode_from_args, dispatch_slash_command, format_help_message, rename_session_title,
+    session_info_slash_message, session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message,
+    tools_slash_message,
 };
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
@@ -18,15 +19,31 @@ use super::agent_bridge::SlashDispatcher;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashOutcome {
     Quit,
+    NewSession,
+    BackgroundTask,
     Status(String),
     Assistant(String),
     Unimplemented(String),
     SpawnAgentTurn,
     OverlayDeferred(OverlayCommand),
-    OpenModelSelector { filter: String },
+    OpenModelSelector {
+        filter: String,
+    },
     OpenScopedModels,
-    OpenSystemPromptDialog { text: String },
-    PlayConfetti { mode: crate::tui::confetti::ConfettiMode },
+    OpenSystemPromptDialog {
+        text: String,
+    },
+    /// Session metadata viewer (ScrollTextDialog).
+    OpenSessionInfoDialog {
+        text: String,
+    },
+    /// Rename session inline text dialog (prefilled title).
+    OpenRenameDialog {
+        initial: String,
+    },
+    PlayConfetti {
+        mode: crate::tui::confetti::ConfettiMode,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -49,6 +66,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
 
     match dispatch {
         SlashDispatch::Quit => SlashOutcome::Quit,
+        SlashDispatch::NewSession => SlashOutcome::NewSession,
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
@@ -60,6 +78,25 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
+        SlashDispatch::SessionInfo => match session_info_slash_message(ctx.agent_session.as_ref()) {
+            Ok(text) => SlashOutcome::OpenSessionInfoDialog { text },
+            Err(message) => SlashOutcome::Status(message),
+        },
+        SlashDispatch::Rename { args } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            }
+            // Non-empty args: save immediately without opening the dialog.
+            let trimmed = args.trim();
+            if !trimmed.is_empty() {
+                return match rename_session_title(ctx.agent_session.as_ref().expect("checked"), trimmed) {
+                    Ok(()) => SlashOutcome::Status(format!("Session renamed to “{trimmed}”.")),
+                    Err(message) => SlashOutcome::Status(message),
+                };
+            }
+            let initial = session_title_for_rename(ctx.agent_session.as_ref()).unwrap_or_default();
+            SlashOutcome::OpenRenameDialog { initial }
+        }
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
@@ -69,11 +106,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
         },
-        SlashDispatch::Compact
-        | SlashDispatch::Goal { .. }
-        | SlashDispatch::Reload
-        | SlashDispatch::Extension { .. }
-        | SlashDispatch::PromptTemplate { .. } => {
+        SlashDispatch::Compact | SlashDispatch::PromptTemplate { .. } => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
@@ -85,6 +118,19 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             }
             SlashOutcome::SpawnAgentTurn
+        }
+        SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            }
+            if ctx.spawn_agent_work {
+                let session = ctx.agent_session.clone().expect("checked above");
+                let paths = ctx.paths.cloned();
+                let cwd = ctx.cwd.map(|path| path.to_path_buf());
+                let extension_host = ctx.extension_host.cloned();
+                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            }
+            SlashOutcome::BackgroundTask
         }
         SlashDispatch::Skill { ref name, ref args } => {
             if let Some(skills) = ctx.skills
@@ -110,7 +156,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
 
 /// Whether the submitted slash line should appear as a user/meta card in the transcript.
 pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
-    matches!(outcome, SlashOutcome::SpawnAgentTurn)
+    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
 }
 
 /// Outcomes that only touch UI / local state and never start an agent turn.
@@ -123,9 +169,13 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
         SlashOutcome::Status(_)
             | SlashOutcome::Assistant(_)
             | SlashOutcome::Unimplemented(_)
+            | SlashOutcome::NewSession
+            | SlashOutcome::BackgroundTask
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }
+            | SlashOutcome::OpenSessionInfoDialog { .. }
+            | SlashOutcome::OpenRenameDialog { .. }
             | SlashOutcome::PlayConfetti { .. }
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
@@ -283,6 +333,46 @@ mod tests {
     fn system_prompt_without_session_returns_status() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/system-prompt",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn session_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/session",
+            extensions: None,
+            prompt_templates: None,
+            skills: None,
+            agent_session: None,
+            extension_host: None,
+            paths: None,
+            cwd: None,
+            spawn_agent_work: true,
+        });
+        assert!(matches!(
+            outcome,
+            SlashOutcome::Status(ref message) if message == "Agent session required for this command."
+        ));
+        assert!(slash_outcome_is_ui_only(&outcome));
+    }
+
+    #[test]
+    fn rename_without_session_returns_status() {
+        let outcome = handle_slash_submit(SlashContext {
+            input: "/rename",
             extensions: None,
             prompt_templates: None,
             skills: None,

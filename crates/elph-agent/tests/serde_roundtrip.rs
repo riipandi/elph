@@ -29,6 +29,8 @@ fn session_tree_entry_roundtrip_message() {
         id: "abc".to_string(),
         parent_id: None,
         timestamp: "2026-01-01T00:00:00Z".to_string(),
+        prompt_title: String::new(),
+        prompt_kind: String::new(),
         message: llm_message_to_agent(Message::Assistant(faux_assistant_message(vec![faux_text("two")], None))),
     };
     let json = serde_json::to_string(&entry).unwrap();

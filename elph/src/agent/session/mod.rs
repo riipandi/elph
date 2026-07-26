@@ -7,6 +7,7 @@ use anyhow::Result;
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::RwLock;
 use std::time::Instant;
@@ -27,6 +28,11 @@ use crate::platform::Paths;
 use elph_agent::parse_command_args;
 use std::path::Path;
 
+/// System prompt for background session title generation (`elph/templates/agent/`).
+const SESSION_TITLE_SYSTEM: &str = include_str!("../../../templates/agent/session_title_system.md");
+/// User prompt template; `{{conversation}}` is replaced with the naming excerpt.
+const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_title_user.md");
+
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {
     pub harness: Arc<AgentHarness<SessionDirStorage>>,
@@ -39,6 +45,8 @@ pub struct CodingAgentSessionParams {
     pub goal_runtime: Arc<GoalRuntime>,
     pub mcp_registry: Option<Arc<McpToolRegistry>>,
     pub ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
+    /// Model for auto session titles (`provider/model_id` or `"inherit"`).
+    pub title_model: String,
 }
 
 pub struct CodingAgentSession {
@@ -59,6 +67,10 @@ pub struct CodingAgentSession {
     mode_gate: Arc<Mutex<()>>,
     /// Last successfully compiled system prompt for sync slash reads during a busy turn.
     system_prompt_cache: RwLock<Option<String>>,
+    /// Settings `session.titleModel` (`inherit` or `provider/model_id`).
+    title_model: String,
+    /// Ensures at most one background auto-title attempt per session instance.
+    title_generation_started: AtomicBool,
 }
 
 impl CodingAgentSession {
@@ -74,12 +86,15 @@ impl CodingAgentSession {
             goal_runtime,
             mcp_registry,
             ui_tx,
+            title_model,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
         if let Some(reg) = mcp_slot.read().clone() {
             policy = policy.with_mcp_registry(reg);
         }
+        // Resumed sessions that already have a title should not re-run generation.
+        let already_named = harness.session_name().await.is_some();
         let session = Self {
             harness: harness.clone(),
             session_manager,
@@ -94,6 +109,8 @@ impl CodingAgentSession {
             turn_gate: Arc::new(Mutex::new(())),
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
+            title_model,
+            title_generation_started: AtomicBool::new(already_named),
         };
         session.wire_harness(ui_tx).await?;
         session.apply_agent_mode(agent_mode).await?;
@@ -172,6 +189,11 @@ impl CodingAgentSession {
         self.selection.read().model_id.clone()
     }
 
+    /// Provider API id for the live model (e.g. `openai-responses`).
+    pub fn model_api(&self) -> String {
+        self.selection.read().model.api.clone()
+    }
+
     pub fn session_id(&self) -> &str {
         &self.session_id
     }
@@ -233,7 +255,10 @@ impl CodingAgentSession {
         let started = Instant::now();
         let result = self.harness.prompt(text, None).await.map(|_| ());
         match &result {
-            Ok(()) => self.finish_ui_turn(started).await,
+            Ok(()) => {
+                self.finish_ui_turn(started).await;
+                self.maybe_generate_session_title();
+            }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
             }
@@ -327,12 +352,22 @@ impl CodingAgentSession {
     pub async fn compact(&self) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
-        let result = self.harness.compact(None).await.map(|_| ());
+        let result = self.harness.compact(None).await;
         self.finish_ui_turn(started).await;
-        if let Err(err) = &result {
-            let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
+        match &result {
+            Ok(compact_result) if compact_result.is_noop() => {
+                let _ = self
+                    .ui_tx
+                    .send(AgentUiEvent::Status("History is already up to date.".into()));
+            }
+            Ok(_) => {
+                let _ = self.ui_tx.send(AgentUiEvent::Status("History compacted.".into()));
+            }
+            Err(err) => {
+                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
+            }
         }
-        result.map_err(|e| anyhow::anyhow!("{e}"))
+        result.map(|_| ()).map_err(|e| anyhow::anyhow!("{e}"))
     }
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
@@ -351,7 +386,10 @@ impl CodingAgentSession {
         let additional = (!args.trim().is_empty()).then(|| args.trim());
         let result = self.harness.skill(name, additional).await.map(|_| ());
         match &result {
-            Ok(()) => self.finish_ui_turn(started).await,
+            Ok(()) => {
+                self.finish_ui_turn(started).await;
+                self.maybe_generate_session_title();
+            }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Skill error: {err}")).await;
             }
@@ -369,7 +407,10 @@ impl CodingAgentSession {
         let parsed = parse_command_args(args);
         let result = self.harness.prompt_from_template(name, &parsed).await.map(|_| ());
         match &result {
-            Ok(()) => self.finish_ui_turn(started).await,
+            Ok(()) => {
+                self.finish_ui_turn(started).await;
+                self.maybe_generate_session_title();
+            }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Template error: {err}"))
                     .await;
@@ -421,6 +462,17 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))
     }
 
+    /// Persist a full TUI transcript snapshot so `--resume` restores live card state
+    /// (thinking, tools, durations, expand flags, edit_file diffs, …).
+    pub async fn save_transcript_snapshot(&self, messages: &[crate::tui::transcript::TranscriptMessage]) -> Result<()> {
+        use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, build_snapshot_data};
+        let data = build_snapshot_data(messages);
+        self.harness
+            .append_custom_entry(TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, Some(data))
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
     pub async fn resolve_plan(&self, choice: PlanConfirmationChoice) -> Result<()> {
         self.harness
             .resolve_plan_confirmation(choice)
@@ -466,5 +518,104 @@ impl CodingAgentSession {
         let _ = self.ui_tx.send(AgentUiEvent::RunCompleted {
             elapsed_secs: started.elapsed().as_secs_f64(),
         });
+    }
+
+    /// After the first successful user turn, generate and persist a session title in the background.
+    ///
+    /// Silent on failure; at most one attempt per session instance (skipped when already named).
+    fn maybe_generate_session_title(&self) {
+        if self
+            .title_generation_started
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_err()
+        {
+            return;
+        }
+
+        let harness = self.harness.clone();
+        let models = {
+            let selection = self.selection.read();
+            Arc::clone(&selection.models)
+        };
+        let inherit_model = self.selection.read().model.clone();
+        let title_model_setting = self.title_model.clone();
+
+        tokio::spawn(async move {
+            if let Err(err) =
+                generate_and_store_session_title(harness, models, inherit_model, &title_model_setting).await
+            {
+                log::debug!("auto session title skipped: {err:#}");
+            }
+        });
+    }
+}
+
+async fn generate_and_store_session_title(
+    harness: Arc<AgentHarness<SessionDirStorage>>,
+    models: Arc<elph_ai::Models>,
+    inherit_model: elph_ai::Model,
+    title_model_setting: &str,
+) -> Result<()> {
+    if harness.session_name().await.is_some() {
+        return Ok(());
+    }
+
+    let branch = harness
+        .session_branch_entries()
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    let context = elph_agent::build_session_context(&branch);
+    let conversation = elph_agent::extract_conversation_for_naming(&context.messages);
+    if conversation.trim().is_empty() {
+        return Ok(());
+    }
+
+    let model = resolve_title_model(title_model_setting, &inherit_model)?;
+    let user_prompt = SESSION_TITLE_USER.replace("{{conversation}}", &conversation);
+    let Some(title) = elph_agent::generate_session_name_with_prompts(
+        &context.messages,
+        models.as_ref(),
+        &model,
+        SESSION_TITLE_SYSTEM,
+        &user_prompt,
+    )
+    .await
+    else {
+        return Ok(());
+    };
+
+    harness
+        .set_session_name(title)
+        .await
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(())
+}
+
+fn resolve_title_model(setting: &str, inherit: &elph_ai::Model) -> Result<elph_ai::Model> {
+    let trimmed = setting.trim();
+    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("inherit") {
+        return Ok(inherit.clone());
+    }
+    super::overlays::resolve_model_from_value(trimmed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_title_model;
+    use elph_ai::get_builtin_model;
+
+    #[test]
+    fn title_model_inherit_uses_session_model() {
+        let model = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
+        let resolved = resolve_title_model("inherit", &model).expect("resolve");
+        assert_eq!(resolved.id, model.id);
+        assert_eq!(resolved.provider, model.provider);
+    }
+
+    #[test]
+    fn title_model_empty_inherits() {
+        let model = get_builtin_model("openai", "gpt-4o-mini").expect("builtin model");
+        let resolved = resolve_title_model("  ", &model).expect("resolve");
+        assert_eq!(resolved.id, model.id);
     }
 }

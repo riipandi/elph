@@ -46,6 +46,12 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        // Transcript + prompt history use `/skill:name [args]` (leading slash required).
+        let prompt_title = match additional_instructions.map(str::trim).filter(|s| !s.is_empty()) {
+            Some(args) => format!("/skill:{name} {args}"),
+            None => format!("/skill:{name}"),
+        };
+        *self.shared.pending_prompt_meta.lock().await = Some(("skill".into(), prompt_title));
         let result = async {
             let turn_state = self.create_turn_state().await?;
             let skill = turn_state
@@ -60,6 +66,7 @@ where
             self.execute_turn(turn_state, text, None).await
         }
         .await;
+        *self.shared.pending_prompt_meta.lock().await = None;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -73,6 +80,13 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        // Transcript + prompt history keep the leading `/` (`/name [args…]`).
+        let prompt_title = if args.is_empty() {
+            format!("/{name}")
+        } else {
+            format!("/{name} {}", args.join(" "))
+        };
+        *self.shared.pending_prompt_meta.lock().await = Some(("template".into(), prompt_title));
         let result = async {
             let turn_state = self.create_turn_state().await?;
             let template = turn_state
@@ -90,6 +104,7 @@ where
             self.execute_turn(turn_state, text, None).await
         }
         .await;
+        *self.shared.pending_prompt_meta.lock().await = None;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -231,15 +246,78 @@ where
         self.emit_queue_update().await
     }
 
-    pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
+    /// Append a custom metadata entry to the session tree.
+    ///
+    /// Stored directly when the harness is idle; queued as a pending write otherwise.
+    pub async fn append_custom_entry(
+        &self,
+        custom_type: impl Into<String>,
+        data: Option<serde_json::Value>,
+    ) -> HarnessOpResult<()> {
         if self.phase_async().await == AgentHarnessPhase::Idle {
             self.shared
                 .session
                 .lock()
                 .await
-                .append_message(message)
+                .append_custom_entry(&custom_type.into(), data)
                 .await
                 .map_err(session_error)?;
+        } else {
+            self.shared
+                .pending_session_writes
+                .lock()
+                .await
+                .push(PendingSessionWrite::Custom {
+                    custom_type: custom_type.into(),
+                    data,
+                });
+        }
+        Ok(())
+    }
+
+    /// Persist a session display title (`session_info` tree entry).
+    ///
+    /// Stored directly when idle; queued as a pending write while a turn is running.
+    pub async fn set_session_name(&self, name: impl Into<String>) -> HarnessOpResult<()> {
+        let name = name.into();
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            self.shared
+                .session
+                .lock()
+                .await
+                .append_session_name(name)
+                .await
+                .map_err(session_error)?;
+        } else {
+            self.shared
+                .pending_session_writes
+                .lock()
+                .await
+                .push(PendingSessionWrite::SessionInfo { name: Some(name) });
+        }
+        Ok(())
+    }
+
+    pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
+        let prompt_meta = self.shared.pending_prompt_meta.lock().await.take();
+        if self.phase_async().await == AgentHarnessPhase::Idle {
+            if let Some((kind, title)) = prompt_meta {
+                self.shared
+                    .session
+                    .lock()
+                    .await
+                    .append_message_with_prompt(message, title, kind)
+                    .await
+                    .map_err(session_error)?;
+            } else {
+                self.shared
+                    .session
+                    .lock()
+                    .await
+                    .append_message(message)
+                    .await
+                    .map_err(session_error)?;
+            }
         } else {
             self.shared
                 .pending_session_writes

@@ -32,7 +32,6 @@ The Cargo feature is named `tracing` for historical reasons. It enables `fastrac
 
 | Crate         | Feature   | Default | Enables                                           |
 | ------------- | --------- | ------- | ------------------------------------------------- |
-| `elph-core`   | `tracing` | no      | `fastrace`, `fastrace-reqwest`, `JsonlReporter`   |
 | `elph-ai`     | `tracing` | no      | Provider stream spans, HTTP trace propagation     |
 | `elph-agent`  | `tracing` | no      | Harness/loop/tool/MCP spans (chains to above)     |
 | `elph` binary | —         | always  | `tracing` on `elph-core`, `elph-ai`, `elph-agent` |
@@ -51,13 +50,13 @@ Without the `tracing` feature, span macros compile to no-ops and `with_trace_hea
 
 Resolved by [`LoggingOptions::resolve`](../../elph-core/src/logger/options.rs) via [`AgentBuilder`](../../elph-agent/src/builder.rs). The `elph` binary uses prefix `ELPH`.
 
-| Variable                 | Default | Effect                                        |
-| ------------------------ | ------- | --------------------------------------------- |
+| Variable                 | Default | Effect                                                                                             |
+| ------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
 | `{PREFIX}_TRACE`         | on      | Set to `0`, `false`, `off`, or `no` to disable tracing (file output, log bridge, HTTP propagation) |
-| `{PREFIX}_LOG_LEVEL`     | `info`  | `trace` / `debug` / `info` / `warn` / `error` |
-| `{PREFIX}_LOG_FILE`      | on      | Set to `0` to disable rolling JSONL logs      |
-| `{PREFIX}_LOG_ROTATION`  | `daily` | `hourly`, `daily`, or `weekly`                |
-| `{PREFIX}_LOG_MAX_FILES` | —       | Cap retained rotated log files                |
+| `{PREFIX}_LOG_LEVEL`     | `info`  | `trace` / `debug` / `info` / `warn` / `error`                                                      |
+| `{PREFIX}_LOG_FILE`      | on      | Set to `0` to disable rolling JSONL logs                                                           |
+| `{PREFIX}_LOG_ROTATION`  | `daily` | `hourly`, `daily`, or `weekly`                                                                     |
+| `{PREFIX}_LOG_MAX_FILES` | —       | Cap retained rotated log files                                                                     |
 
 Trace collection is skipped when `trace_enabled` is false, in unit tests (`cfg!(test)`), or when the reporter cannot be created (a warning is logged and execution continues).
 

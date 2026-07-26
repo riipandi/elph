@@ -6,11 +6,15 @@ use anyhow::Result;
 use elph_agent::{McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
+use chrono::{DateTime, Utc};
+
 use crate::agent::SkillConflict;
 use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
 use crate::agent::{create_coding_session_with_events, format_skill_conflict_notice};
 use crate::platform::{Paths, Settings};
+use crate::tui::transcript::markdown::AssistantMarkdownBuffer;
+use crate::tui::transcript::markdown::parse_markdown_on_worker;
 use crate::tui::transcript::{TranscriptMessage, TranscriptStyle};
 
 /// Middle-dot separator for startup copy (` · `).
@@ -318,6 +322,9 @@ pub struct AgentBootstrap {
     pub session: Arc<CodingAgentSession>,
     pub ui_rx: Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>,
     pub session_id: String,
+    /// Pre-populated transcript messages from the persisted session branch (for --resume).
+    /// Empty for a brand-new session.
+    pub history_messages: Vec<TranscriptMessage>,
 }
 
 /// Create the agent session without blocking on MCP discovery.
@@ -338,11 +345,322 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
     let session = Arc::new(session);
     let session_id = session.session_id().to_string();
+
+    // Load persisted chat history from the session branch (for --resume).
+    let history_messages = load_chat_history(session.as_ref()).await;
+
     Ok(AgentBootstrap {
         session,
         ui_rx: Arc::new(Mutex::new(ui_rx)),
         session_id,
+        history_messages,
     })
+}
+
+/// Load persisted chat history from the session's branch entries and convert them
+/// to transcript messages for display on resume.
+///
+/// Prefer the latest `elph.transcript.snapshot` custom entry (exact live TUI state).
+/// Fall back to reconstructing cards from LLM messages + tool results when no snapshot
+/// exists (e.g. interrupted turn before snapshot was written).
+async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessage> {
+    let Ok(entries) = session.branch_entries().await else {
+        return Vec::new();
+    };
+
+    if let Some(messages) = load_transcript_snapshot_from_entries(&entries) {
+        return messages;
+    }
+
+    reconstruct_transcript_from_llm_entries(&entries)
+}
+
+/// Latest full transcript snapshot written after each completed turn.
+fn load_transcript_snapshot_from_entries(entries: &[elph_agent::SessionTreeEntry]) -> Option<Vec<TranscriptMessage>> {
+    use crate::tui::transcript::{TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE, messages_from_snapshot_data};
+
+    let mut latest: Option<&serde_json::Value> = None;
+    for entry in entries {
+        if let elph_agent::SessionTreeEntry::Custom { custom_type, data, .. } = entry
+            && custom_type == TRANSCRIPT_SNAPSHOT_CUSTOM_TYPE
+            && let Some(data) = data
+        {
+            latest = Some(data);
+        }
+    }
+    latest.and_then(messages_from_snapshot_data)
+}
+
+/// Reconstruct transcript cards from the LLM session tree (fallback path).
+fn reconstruct_transcript_from_llm_entries(entries: &[elph_agent::SessionTreeEntry]) -> Vec<TranscriptMessage> {
+    use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
+    use std::collections::HashMap;
+
+    // --- first pass: index tool results by tool_call_id ---
+    let mut tool_results: HashMap<String, ToolResultInfo> = HashMap::new();
+    for entry in entries {
+        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+            continue;
+        };
+        let Some(llm) = message.as_llm() else {
+            continue;
+        };
+        if let Message::ToolResult {
+            tool_call_id,
+            content,
+            is_error,
+            details,
+            timestamp,
+            ..
+        } = llm
+        {
+            let output: String = content
+                .iter()
+                .filter_map(|b| match b {
+                    ContentBlock::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            tool_results.insert(
+                tool_call_id.clone(),
+                ToolResultInfo {
+                    output,
+                    is_error: *is_error,
+                    details: details.clone(),
+                    timestamp_ms: *timestamp,
+                },
+            );
+        }
+    }
+
+    // --- second pass: build transcript messages in order ---
+    let mut messages: Vec<TranscriptMessage> = Vec::new();
+    // Previous event wall time (ms since epoch) for duration reconstruction.
+    let mut last_event_ms: Option<i64> = None;
+
+    for entry in entries {
+        let elph_agent::SessionTreeEntry::Message {
+            message,
+            timestamp,
+            prompt_title,
+            prompt_kind,
+            ..
+        } = entry
+        else {
+            continue;
+        };
+        let entry_ts = parse_iso_timestamp(timestamp);
+
+        let Some(llm) = message.as_llm() else {
+            continue;
+        };
+        match llm {
+            Message::User {
+                content,
+                timestamp: user_ms,
+            } => {
+                // Prefer stored slash title (skill/template) over expanded invocation body.
+                if let Some(msg) = prompt_card_from_session_meta(
+                    prompt_title,
+                    prompt_kind,
+                    entry_ts.or_else(|| datetime_from_millis(*user_ms)),
+                ) {
+                    messages.push(msg);
+                    last_event_ms = Some(*user_ms);
+                    continue;
+                }
+
+                let text = match content {
+                    UserContent::Text(t) => t.clone(),
+                    UserContent::Blocks(blocks) => blocks
+                        .iter()
+                        .filter_map(|b| match b {
+                            ContentBlock::Text { text } => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                };
+                if text.is_empty() {
+                    continue;
+                }
+
+                let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
+                msg.submitted_at = entry_ts.or_else(|| datetime_from_millis(*user_ms));
+                msg.detail_expanded = false;
+                messages.push(msg);
+                last_event_ms = Some(*user_ms);
+            }
+            Message::Assistant(assistant) => {
+                let assist_ms = assistant.timestamp;
+                // Wall time for this LLM completion (generation after previous event).
+                let generation_secs = last_event_ms.and_then(|prev| secs_between_ms(prev, assist_ms));
+
+                let mut thinking_assigned_duration = false;
+                let mut text_assigned_duration = false;
+                let mut has_visible = false;
+
+                for block in &assistant.content {
+                    match block {
+                        AssistantContentBlock::Thinking(t) => {
+                            let thinking = t.thinking.trim();
+                            if thinking.is_empty() {
+                                continue;
+                            }
+                            has_visible = true;
+                            let mut msg = TranscriptMessage::text(t.thinking.clone(), TranscriptStyle::Thinking);
+                            // Attribute generation wall time to the first thinking block.
+                            if !thinking_assigned_duration {
+                                msg.duration_secs = generation_secs;
+                                thinking_assigned_duration = true;
+                            }
+                            // Match live finalize_thinking default (collapsed when settled).
+                            msg.detail_expanded = false;
+                            messages.push(msg);
+                        }
+                        AssistantContentBlock::ToolCall(tc) => {
+                            has_visible = true;
+                            // Same raw JSON args as live ToolStart (not pretty-formatted).
+                            let args_summary = serde_json::to_string(&tc.arguments).unwrap_or_default();
+
+                            let mut msg = TranscriptMessage::tool_call(
+                                tc.name.clone(),
+                                args_summary,
+                                TranscriptStyle::ToolSuccess,
+                            );
+
+                            if let Some(result) = tool_results.get(&tc.id) {
+                                if let Some(tool) = msg.tool.as_mut() {
+                                    tool.output = result.output.clone();
+                                    if let Some(details) = &result.details {
+                                        let _ = tool.apply_tool_result_details(details);
+                                        if let Some(secs) = crate::tui::transcript::duration_from_tool_details(details)
+                                        {
+                                            msg.duration_secs = Some(secs);
+                                        }
+                                    }
+                                }
+                                if result.is_error {
+                                    msg.style = TranscriptStyle::ToolFailed;
+                                }
+                                // Fallback duration: tool_result wall clock − assistant message time.
+                                if msg.duration_secs.is_none() {
+                                    msg.duration_secs = secs_between_ms(assist_ms, result.timestamp_ms);
+                                }
+                                last_event_ms = Some(result.timestamp_ms.max(assist_ms));
+                            }
+
+                            msg.detail_expanded = msg.tool.as_ref().is_some_and(|t| t.has_inline_diff());
+                            messages.push(msg);
+                        }
+                        AssistantContentBlock::Text(t) => {
+                            let text = t.text.trim();
+                            if text.is_empty() {
+                                continue;
+                            }
+                            has_visible = true;
+
+                            let mut msg = TranscriptMessage::text(t.text.clone(), TranscriptStyle::Assistant);
+                            if !text_assigned_duration {
+                                // Prefer remaining generation time when thinking already took it;
+                                // if this assistant message is text-only, use full generation_secs.
+                                if thinking_assigned_duration {
+                                    msg.duration_secs = last_event_ms
+                                        .and_then(|prev| secs_between_ms(prev, assist_ms))
+                                        .or(generation_secs);
+                                } else {
+                                    msg.duration_secs = generation_secs;
+                                }
+                                text_assigned_duration = true;
+                            }
+
+                            let mut md = AssistantMarkdownBuffer::new();
+                            md.mark_stream_complete();
+                            md.refresh_stable(&msg.content, 100);
+                            if let Some(part) = md.parts.first() {
+                                let hash = part.source_hash;
+                                let document = parse_markdown_on_worker(&msg.content);
+                                md.apply_document(hash, document);
+                            }
+                            msg.markdown = Some(md);
+                            msg.detail_expanded = true;
+                            messages.push(msg);
+                        }
+                    }
+                }
+
+                if has_visible {
+                    last_event_ms = Some(assist_ms.max(last_event_ms.unwrap_or(0)));
+                }
+            }
+            Message::ToolResult { timestamp, .. } => {
+                // Already merged into tool cards; advance clock for subsequent segments.
+                last_event_ms = Some((*timestamp).max(last_event_ms.unwrap_or(0)));
+            }
+        }
+    }
+
+    messages
+}
+
+/// Indexed tool-result data used when matching `ToolCall` blocks to their output.
+struct ToolResultInfo {
+    output: String,
+    is_error: bool,
+    /// Structured tool details (e.g. edit_file old/new content for DiffView).
+    details: Option<serde_json::Value>,
+    timestamp_ms: i64,
+}
+
+fn datetime_from_millis(ms: i64) -> Option<DateTime<Utc>> {
+    DateTime::from_timestamp_millis(ms)
+}
+
+fn secs_between_ms(start_ms: i64, end_ms: i64) -> Option<f64> {
+    let delta = end_ms.saturating_sub(start_ms);
+    if delta <= 0 {
+        return None;
+    }
+    Some(delta as f64 / 1000.0)
+}
+
+/// Build the transcript prompt card for a skill/template slash turn.
+pub(crate) fn prompt_card_from_session_meta(
+    prompt_title: &str,
+    prompt_kind: &str,
+    submitted_at: Option<DateTime<Utc>>,
+) -> Option<TranscriptMessage> {
+    if prompt_title.is_empty() {
+        return None;
+    }
+    let style = if prompt_kind == "skill" {
+        TranscriptStyle::SkillPrompt
+    } else {
+        TranscriptStyle::User
+    };
+    let mut msg = TranscriptMessage::text(prompt_title.to_string(), style);
+    msg.submitted_at = submitted_at;
+    msg.detail_expanded = false;
+    Some(msg)
+}
+
+/// Parse an ISO 8601 / RFC 3339 timestamp string into `DateTime<Utc>`.
+fn parse_iso_timestamp(ts: &str) -> Option<DateTime<Utc>> {
+    // Try RFC 3339 first, then basic ISO 8601.
+    DateTime::parse_from_rfc3339(ts)
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok()
+        .or_else(|| {
+            DateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.fZ")
+                .map(|dt| dt.with_timezone(&Utc))
+                .ok()
+        })
+        .or_else(|| {
+            // Fallback: try chrono's flexible ISO 8601 parser
+            chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S%.f")
+                .ok()
+                .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
+        })
 }
 
 /// MCP bootstrap UI update (per-server progress or final transcript line).
@@ -557,5 +875,34 @@ mod tests {
             "Agent ready (active model: none)"
         );
         assert_eq!(format_agent_ready_line(None, None), "Agent ready (active model: none)");
+    }
+
+    #[test]
+    fn prompt_card_from_session_meta_skill_and_template() {
+        let skill = prompt_card_from_session_meta("/skill:tui-design layout", "skill", None).expect("skill");
+        assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
+        assert_eq!(skill.content, "/skill:tui-design layout");
+        assert!(skill.style.is_user_input_card());
+
+        let template = prompt_card_from_session_meta("/review-pr 42", "template", None).expect("template");
+        assert_eq!(template.style, TranscriptStyle::User);
+        assert_eq!(template.content, "/review-pr 42");
+
+        assert!(prompt_card_from_session_meta("", "skill", None).is_none());
+    }
+
+    #[test]
+    fn snapshot_preserves_skill_and_template_prompt_cards() {
+        use crate::tui::transcript::{build_snapshot_data, messages_from_snapshot_data};
+
+        let skill = prompt_card_from_session_meta("/skill:code-review fix tests", "skill", None).unwrap();
+        let template = prompt_card_from_session_meta("/summarize --short", "template", None).unwrap();
+        let data = build_snapshot_data(&[skill, template]);
+        let restored = messages_from_snapshot_data(&data).expect("parse");
+        assert_eq!(restored.len(), 2);
+        assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
+        assert_eq!(restored[0].content, "/skill:code-review fix tests");
+        assert_eq!(restored[1].style, TranscriptStyle::User);
+        assert_eq!(restored[1].content, "/summarize --short");
     }
 }

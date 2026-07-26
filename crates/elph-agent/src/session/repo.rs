@@ -206,7 +206,13 @@ impl SessionDirRepo {
                 }
             }
         }
-        sessions.sort_by(|left, right| right.created_at.cmp(&left.created_at));
+        // Most recently active first (falls back to created_at when equal).
+        sessions.sort_by(|left, right| {
+            right
+                .updated_at
+                .cmp(&left.updated_at)
+                .then_with(|| right.created_at.cmp(&left.created_at))
+        });
         Ok(sessions)
     }
 

@@ -1,11 +1,11 @@
 use std::future::Future;
 
-use elph_core::trace;
 use fastrace::collector::SpanContext;
 use fastrace::future::FutureExt;
 use fastrace::prelude::Span;
 use reqwest::RequestBuilder;
 
+use super as trace;
 use crate::types::Model;
 
 pub fn with_trace_headers(request: RequestBuilder) -> RequestBuilder {

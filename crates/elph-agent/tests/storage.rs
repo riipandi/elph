@@ -185,10 +185,30 @@ async fn session_dir_storage_creates_session_layout_on_create() {
     assert!(storage.get_leaf_id().await.expect("leaf").is_none());
     assert!(storage.get_entries().await.is_empty());
 
+    let before = storage.get_metadata().await;
+    assert!(!before.updated_at.is_empty());
+    assert_eq!(before.updated_at, before.created_at);
+
+    // Ensure wall-clock progression so ISO timestamps differ on fast machines.
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
     storage
         .append_entry(message_entry("user-1", None, user_agent_message("one")))
         .await
         .expect("append");
+
+    let after = storage.get_metadata().await;
+    assert!(
+        after.updated_at >= before.updated_at,
+        "append should record last activity (before={}, after={})",
+        before.updated_at,
+        after.updated_at
+    );
+    let summary: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(session_dir.join(SUMMARY_FILE)).expect("summary")).expect("parse");
+    assert_eq!(
+        summary.get("updated_at").and_then(|v| v.as_str()),
+        Some(after.updated_at.as_str())
+    );
 
     let events = fs::read_to_string(session_dir.join(EVENTS_FILE)).expect("events");
     assert_eq!(events.trim().lines().count(), 1);
@@ -244,16 +264,22 @@ async fn session_dir_storage_creates_and_reads_session_metadata_from_summary() {
     assert_eq!(metadata.cwd, cwd);
     assert_eq!(metadata.dir, session_dir.to_string_lossy());
     assert_eq!(metadata.parent_session_id.as_deref(), Some("parent-id"));
+    assert!(!metadata.updated_at.is_empty());
+    assert_eq!(metadata.updated_at, metadata.created_at);
 
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
     storage
         .append_entry(message_entry("user-1", None, user_agent_message("one")))
         .await
         .expect("append");
+    let live = storage.get_metadata().await;
+    assert!(live.updated_at >= metadata.updated_at);
     let loaded = load_session_metadata(&session_dir).await.expect("metadata");
     assert_eq!(loaded.id, metadata.id);
     assert_eq!(loaded.cwd, metadata.cwd);
     assert_eq!(loaded.dir, metadata.dir);
     assert_eq!(loaded.parent_session_id, metadata.parent_session_id);
+    assert_eq!(loaded.updated_at, live.updated_at);
 }
 
 #[tokio::test]

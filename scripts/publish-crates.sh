@@ -10,9 +10,8 @@ CARGO="${CARGO:-cargo}"
 ALLOW_DIRTY="${ALLOW_DIRTY:---allow-dirty}"
 DRY_RUN="${DRY_RUN:-0}"
 
-# elph-core is published first (no internal workspace deps).
+# elph-ai is published first (no internal workspace deps).
 PACKAGES=(
-    elph-core
     elph-ai
     elph-exec
     elph-agent

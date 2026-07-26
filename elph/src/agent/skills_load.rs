@@ -2,9 +2,9 @@
 
 use std::collections::HashMap;
 
+use crate::utils::path::AppPaths;
 use elph_agent::load_skills;
 use elph_agent::{LocalExecutionEnv, Skill};
-use elph_core::utils::path::AppPaths;
 use elph_tui::utils::truncate_with_ellipsis;
 
 use crate::platform::Paths;
@@ -118,11 +118,6 @@ pub fn truncate_palette_description(description: &str) -> String {
     truncate_with_ellipsis(first_line, MAX_PALETTE_DESCRIPTION_CHARS)
 }
 
-/// Backward-compatible alias for [`truncate_palette_description`].
-pub fn truncate_skill_palette_description(description: &str) -> String {
-    truncate_palette_description(description)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,20 +135,6 @@ mod tests {
     #[test]
     fn skill_slash_name_uses_prefix() {
         assert_eq!(skill_slash_name("tui-design"), "skill:tui-design");
-    }
-
-    #[test]
-    fn truncate_skill_palette_description_caps_length() {
-        let long = "a".repeat(120);
-        let out = truncate_skill_palette_description(&long);
-        assert!(out.chars().count() <= MAX_PALETTE_DESCRIPTION_CHARS);
-        assert!(out.ends_with('…'));
-    }
-
-    #[test]
-    fn truncate_skill_palette_description_uses_first_line_only() {
-        let out = truncate_skill_palette_description("First line\nSecond line");
-        assert_eq!(out, "First line");
     }
 
     #[test]

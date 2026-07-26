@@ -62,6 +62,7 @@ The largest test suite (30+ test files). Key areas:
 | `tracing_http.rs`                 | HTTP trace header propagation                                  |
 | `env.rs`                          | Local execution environment                                    |
 | `e2e.rs`                          | End-to-end: full agent execution                               |
+| `edit_file.rs` (in tools tests)   | edit_file tool with diff result handling                       |
 | `plugins.rs`                      | WASM plugins                                                   |
 | `defaults.rs`                     | Default configuration                                          |
 | `resource_formatting.rs`          | Resource formatting                                            |

@@ -27,14 +27,14 @@ pub fn list_model_select_items() -> Vec<SelectItem> {
 
 pub async fn list_session_select_items(session_manager: &SessionManager) -> Result<Vec<SelectItem>> {
     let sessions = session_manager.list().await?;
-    let mut items: Vec<SelectItem> = sessions
+    // Repo already sorts by last activity (`updated_at`); keep that order.
+    let items: Vec<SelectItem> = sessions
         .into_iter()
         .map(|meta| {
             let short_id = meta.id.chars().take(8).collect::<String>();
-            SelectItem::new(meta.id, short_id).with_description(meta.created_at)
+            SelectItem::new(meta.id, short_id).with_description(meta.updated_at)
         })
         .collect();
-    items.sort_by(|a, b| b.description.cmp(&a.description));
     Ok(items)
 }
 

@@ -168,10 +168,13 @@ impl SlashDispatcher {
                         log::error!("skill dispatch failed ({name}): {err}");
                     }
                 }
-                SlashDispatch::Quit
+                SlashDispatch::NewSession
+                | SlashDispatch::Quit
                 | SlashDispatch::Help
                 | SlashDispatch::Tools { .. }
                 | SlashDispatch::SystemPrompt
+                | SlashDispatch::SessionInfo
+                | SlashDispatch::Rename { .. }
                 | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_) => {}
@@ -184,11 +187,18 @@ impl SlashDispatcher {
 #[derive(Debug, Default, Clone)]
 pub struct PromptQueueView {
     items: Vec<QueuedPromptItem>,
+    /// Texts removed via **Send** (interject). Hidden until the harness no longer holds them
+    /// (Send re-queues as steer, which would otherwise reappear in the list).
+    suppressed_sent: Vec<String>,
 }
 
 impl PromptQueueView {
     pub fn replace(&mut self, items: Vec<QueuedPromptItem>) {
-        self.items = items;
+        // Drop suppress entries that are no longer in the harness snapshot (drained/consumed).
+        self.suppressed_sent
+            .retain(|text| items.iter().any(|item| item.text == *text));
+        self.items = Self::filter_suppressed(items, &self.suppressed_sent);
+        self.renumber_seq();
     }
 
     pub fn items(&self) -> &[QueuedPromptItem] {
@@ -205,6 +215,7 @@ impl PromptQueueView {
 
     pub fn clear(&mut self) {
         self.items.clear();
+        self.suppressed_sent.clear();
     }
 
     /// Optimistic local append before harness `QueueUpdate` (caller must bump UI revision).
@@ -213,6 +224,8 @@ impl PromptQueueView {
         if text.is_empty() {
             return;
         }
+        // New enqueue should not stay hidden if the same string was previously Sent.
+        self.suppressed_sent.retain(|t| t != &text);
         let kind_index = self
             .items
             .iter()
@@ -238,10 +251,38 @@ impl PromptQueueView {
             return None;
         }
         let removed = self.items.remove(display_index);
+        self.renumber_seq();
+        Some(removed)
+    }
+
+    /// Mark a prompt as Sent/interjected so later `QueueUpdate` snapshots hide it until drained.
+    pub fn suppress_sent(&mut self, text: impl Into<String>) {
+        let text = text.into();
+        if text.is_empty() {
+            return;
+        }
+        if !self.suppressed_sent.iter().any(|t| t == &text) {
+            self.suppressed_sent.push(text);
+        }
+        self.items
+            .retain(|item| !self.suppressed_sent.iter().any(|t| t == &item.text));
+        self.renumber_seq();
+    }
+
+    fn renumber_seq(&mut self) {
         for (i, item) in self.items.iter_mut().enumerate() {
             item.seq = (i as u32).saturating_add(1);
         }
-        Some(removed)
+    }
+
+    fn filter_suppressed(items: Vec<QueuedPromptItem>, suppressed: &[String]) -> Vec<QueuedPromptItem> {
+        if suppressed.is_empty() {
+            return items;
+        }
+        items
+            .into_iter()
+            .filter(|item| !suppressed.iter().any(|t| t == &item.text))
+            .collect()
     }
 
     /// Compact badge text, e.g. `Q:3`, or empty when no queue.
@@ -293,6 +334,10 @@ pub fn coalesce_agent_ui_events(events: Vec<AgentUiEvent>) -> Vec<AgentUiEvent> 
     }
     out
 }
+
+/// Max bytes kept in streaming tool output. Older bytes are dropped from the front so the
+/// card renders the tail without slowdown (matches shell_output.rs buffer cap).
+const TOOL_OUTPUT_STREAM_CAP: usize = 100 * 1024;
 
 /// Applies streaming agent events to transcript messages.
 pub struct TranscriptEventApplier {
@@ -370,7 +415,12 @@ impl TranscriptEventApplier {
             AgentUiEvent::ThinkingDelta(delta) if self.show_thinking => self.append_thinking(messages, &delta),
             AgentUiEvent::ToolStart { id, name, args_summary } => self.start_tool(messages, id, name, args_summary),
             AgentUiEvent::ToolUpdate { id, output } => self.update_tool(messages, &id, &output),
-            AgentUiEvent::ToolEnd { id, is_error, output } => self.end_tool(messages, &id, is_error, &output),
+            AgentUiEvent::ToolEnd {
+                id,
+                is_error,
+                output,
+                details,
+            } => self.end_tool(messages, &id, is_error, &output, &details),
             AgentUiEvent::RunCompleted { .. } => self.finalize_turn(messages),
             AgentUiEvent::SubagentStatus {
                 agent_id,
@@ -544,33 +594,55 @@ impl TranscriptEventApplier {
         let Some(message) = messages.get_mut(index) else {
             return false;
         };
-        if let Some(tool) = message.tool.as_mut() {
-            tool.output.push_str(output);
-            return true;
+        let target = if let Some(tool) = message.tool.as_mut() {
+            &mut tool.output
+        } else {
+            &mut message.content
+        };
+        // Cap streaming output so the card does not slow down rendering a multi-MB string.
+        let new_len = target.len().saturating_add(output.len());
+        if new_len > TOOL_OUTPUT_STREAM_CAP && !target.is_empty() {
+            // Keep only the last TOOL_OUTPUT_STREAM_CAP - chunk_len bytes, prefixed with a marker.
+            let drop = new_len.saturating_sub(TOOL_OUTPUT_STREAM_CAP).min(target.len());
+            let prefix = "\n[...stream output truncated...]\n";
+            *target = format!("{prefix}{}", &target[drop..]);
         }
-        message.content.push_str(output);
+        target.push_str(output);
         true
     }
 
-    fn end_tool(&mut self, messages: &mut [TranscriptMessage], id: &str, is_error: bool, output: &str) -> bool {
+    fn end_tool(
+        &mut self,
+        messages: &mut [TranscriptMessage],
+        id: &str,
+        is_error: bool,
+        output: &str,
+        details: &serde_json::Value,
+    ) -> bool {
         if let Some(index) = self.live_tool_indexes.remove(id)
             && let Some(message) = messages.get_mut(index)
         {
-            if let Some(tool) = message.tool.as_mut()
-                && !output.is_empty()
-            {
-                tool.output = output.to_string();
+            if let Some(tool) = message.tool.as_mut() {
+                if !output.is_empty() {
+                    tool.output = output.to_string();
+                }
+                // Install edit_file before/after text for the embedded DiffView (if present).
+                let _ = tool.apply_tool_result_details(details);
             }
             message.style = if is_error {
                 TranscriptStyle::ToolFailed
             } else {
                 TranscriptStyle::ToolSuccess
             };
+            // Prefer wall-clock from live Instant; fall back to persisted `_elph_ui.duration_secs`.
             if let Some(started) = self.tool_started_at.remove(id) {
                 message.duration_secs = Some(format_elapsed_secs(started));
+            } else if let Some(secs) = crate::tui::transcript::duration_from_tool_details(details) {
+                message.duration_secs = Some(secs);
             }
-            // Collapse args/output so the transcript stays compact after the tool finishes.
-            message.detail_expanded = false;
+            // Collapse finished tools for a compact log — except edit_file with an inline
+            // diff payload, which stays expanded so the change is visible without a click.
+            message.detail_expanded = message.tool.as_ref().is_some_and(|t| t.has_inline_diff());
             return true;
         }
         false
@@ -654,6 +726,7 @@ mod tests {
                 id: "t1".into(),
                 is_error: false,
                 output: String::new(),
+                details: serde_json::json!({}),
             },
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolSuccess);
@@ -678,10 +751,72 @@ mod tests {
                 id: "t2".into(),
                 is_error: true,
                 output: "exit 1".into(),
+                details: serde_json::json!({}),
             },
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolFailed);
         assert_eq!(messages[0].tool.as_ref().unwrap().output, "exit 1");
+    }
+
+    #[test]
+    fn edit_file_tool_end_stores_diff_payload() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "edit1".into(),
+                name: "edit_file".into(),
+                args_summary: r#"{"path":"src/a.rs"}"#.into(),
+            },
+        );
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolEnd {
+                id: "edit1".into(),
+                is_error: false,
+                output: "Edited src/a.rs".into(),
+                details: serde_json::json!({
+                    "old_content": "fn a() {}\n",
+                    "new_content": "fn a() { 1 }\n",
+                    "file_path": "/tmp/src/a.rs",
+                }),
+            },
+        );
+        let tool = messages[0].tool.as_ref().expect("tool");
+        assert_eq!(tool.old_text.as_deref(), Some("fn a() {}\n"));
+        assert_eq!(tool.new_text.as_deref(), Some("fn a() { 1 }\n"));
+        assert_eq!(tool.file_path.as_deref(), Some("/tmp/src/a.rs"));
+        // edit_file with diff stays expanded so the card shows the DiffView immediately.
+        assert!(messages[0].detail_expanded);
+        assert!(tool.has_inline_diff());
+        assert!(messages[0].layout_text().lines().count() > 2);
+        assert!(!messages[0].is_tool_collapsed());
+    }
+
+    #[test]
+    fn read_file_tool_end_stays_collapsed() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolStart {
+                id: "r1".into(),
+                name: "read_file".into(),
+                args_summary: r#"{"path":"a.rs"}"#.into(),
+            },
+        );
+        applier.apply(
+            &mut messages,
+            AgentUiEvent::ToolEnd {
+                id: "r1".into(),
+                is_error: false,
+                output: "fn a() {}".into(),
+                details: serde_json::json!({}),
+            },
+        );
+        assert!(!messages[0].detail_expanded);
+        assert!(messages[0].is_tool_collapsed());
     }
 
     #[test]
@@ -825,6 +960,7 @@ mod tests {
                 id: "t-dur".into(),
                 is_error: false,
                 output: String::new(),
+                details: serde_json::json!({}),
             },
         );
         assert!(messages[0].duration_secs.is_some_and(|secs| secs > 0.0));
@@ -900,6 +1036,60 @@ mod tests {
         assert_eq!(queue.items().first().map(|i| i.text.as_str()), Some("first"));
         queue.clear();
         assert!(queue.is_empty());
+    }
+
+    #[test]
+    fn prompt_queue_send_hides_until_harness_drains() {
+        let mut queue = PromptQueueView::default();
+        queue.replace(vec![
+            QueuedPromptItem {
+                seq: 1,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 0,
+                text: "do the thing".into(),
+            },
+            QueuedPromptItem {
+                seq: 2,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 1,
+                text: "other".into(),
+            },
+        ]);
+        let sent = queue.remove_at_local(0).expect("item");
+        queue.suppress_sent(sent.text.clone());
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.items()[0].text, "other");
+
+        // Interject re-queues as steer — must stay hidden.
+        queue.replace(vec![
+            QueuedPromptItem {
+                seq: 1,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 0,
+                text: "other".into(),
+            },
+            QueuedPromptItem {
+                seq: 2,
+                kind: QueuedPromptKind::Steer,
+                kind_index: 0,
+                text: "do the thing".into(),
+            },
+        ]);
+        assert_eq!(queue.len(), 1);
+        assert_eq!(queue.items()[0].text, "other");
+
+        // After drain, suppress entry is pruned.
+        queue.replace(vec![QueuedPromptItem {
+            seq: 1,
+            kind: QueuedPromptKind::FollowUp,
+            kind_index: 0,
+            text: "other".into(),
+        }]);
+        assert_eq!(queue.len(), 1);
+
+        // Same text re-queued later is visible again.
+        queue.push_follow_up_local("do the thing".into());
+        assert_eq!(queue.len(), 2);
     }
 
     #[test]

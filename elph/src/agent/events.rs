@@ -62,6 +62,8 @@ pub enum AgentUiEvent {
         id: String,
         is_error: bool,
         output: String,
+        /// Structured tool-result metadata (old/new content for edit_file, etc.).
+        details: serde_json::Value,
     },
     RunCompleted {
         elapsed_secs: f64,

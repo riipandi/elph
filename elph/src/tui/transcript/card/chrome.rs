@@ -12,6 +12,8 @@ pub const COLORED_CARD_PAD_H: u16 = COLORED_CARD_PAD + 1;
 /// Horizontal inset for process-log rows (tool / thinking / response / status / subagent).
 /// One cell tighter than tinted bubbles so glyph columns stay compact.
 pub const PROCESS_LOG_PAD_H: u16 = COLORED_CARD_PAD;
+/// Extra left inset for tool-call result body (args / output / diff) under the header.
+pub const TOOL_RESULT_PAD_LEFT: u16 = 2;
 pub const COLORED_CARD_GAP: u16 = 1;
 pub const FLUSH_CARD_PAD: u16 = 0;
 pub const FLUSH_CARD_GAP: u16 = 0;

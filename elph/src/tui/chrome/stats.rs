@@ -52,16 +52,16 @@ pub fn count_user_turns(path_entries: &[SessionTreeEntry]) -> u32 {
 }
 
 pub fn read_git_branch(project_dir: &Path) -> Option<String> {
-    elph_core::utils::git::read_branch(project_dir)
+    crate::utils::git::read_branch(project_dir)
 }
 
 /// Branch name and changed-file count for the footer, when `project_dir` is a git work tree.
 pub fn read_git_footer_info(project_dir: &Path) -> Option<GitFooterInfo> {
-    if !elph_core::utils::git::is_worktree(project_dir) {
+    if !crate::utils::git::is_worktree(project_dir) {
         return None;
     }
     let branch = read_git_branch(project_dir).unwrap_or_else(|| "HEAD".to_string());
-    let stats = elph_core::utils::git::read_worktree_stats(project_dir).unwrap_or_default();
+    let stats = crate::utils::git::read_worktree_stats(project_dir).unwrap_or_default();
     Some(GitFooterInfo {
         branch,
         files_added: stats.files_added,
@@ -196,6 +196,8 @@ mod tests {
             id: id.to_string(),
             parent_id: None,
             timestamp: "2026-01-01T00:00:00.000Z".to_string(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
             message: llm_message_to_agent(Message::User {
                 content: elph_ai::UserContent::Text(text.into()),
                 timestamp: 0,
@@ -208,6 +210,8 @@ mod tests {
             id: id.to_string(),
             parent_id: None,
             timestamp: "2026-01-01T00:00:00.000Z".to_string(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
             message: llm_message_to_agent(Message::Assistant(elph_ai::faux_assistant_message(
                 vec![elph_ai::faux_text(text)],
                 None,

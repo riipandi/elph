@@ -30,12 +30,93 @@ pub const QUIT_BUSY_NOTICE_KEY: &str = "transient:quit_busy";
 /// Vertical breathing room above and below [`QUIT_BUSY_NOTICE_KEY`] rows.
 pub const QUIT_BUSY_NOTICE_PAD: u16 = 1;
 
+/// Context lines around each change hunk in transcript tool-card diffs.
+/// Must match the `context_lines` passed to [`elph_tui::components::DiffView`] in the tool card.
+pub const TOOL_CARD_DIFF_CONTEXT_LINES: usize = 3;
+
 /// Structured payload for tool invocation cards in the transcript.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ToolCardDetail {
     pub name: String,
     pub args_summary: String,
     pub output: String,
+    /// Full file content before edit (for edit_file diff rendering).
+    pub old_text: Option<String>,
+    /// Full file content after edit (for edit_file diff rendering).
+    pub new_text: Option<String>,
+    /// Resolved file path for syntax language detection.
+    pub file_path: Option<String>,
+}
+
+impl ToolCardDetail {
+    /// Tool name without MCP/namespace prefix (`foo__edit_file` → `edit_file`).
+    pub fn base_name(&self) -> &str {
+        self.name.rsplit("__").next().unwrap_or(self.name.as_str())
+    }
+
+    pub fn is_edit_file(&self) -> bool {
+        self.base_name() == "edit_file"
+    }
+
+    /// Whether the card can render an embedded unified diff (edit_file + before/after text).
+    pub fn has_inline_diff(&self) -> bool {
+        self.is_edit_file() && self.old_text.is_some() && self.new_text.is_some()
+    }
+
+    /// Pull `old_content` / `new_content` / `file_path` from tool-result `details` JSON.
+    ///
+    /// Returns `true` when an inline diff payload was installed.
+    pub fn apply_tool_result_details(&mut self, details: &serde_json::Value) -> bool {
+        if !self.is_edit_file() {
+            return false;
+        }
+        let Some(old) = json_string_field(details, "old_content") else {
+            return false;
+        };
+        let Some(new) = json_string_field(details, "new_content") else {
+            return false;
+        };
+        self.old_text = Some(old);
+        self.new_text = Some(new);
+        if let Some(path) = json_string_field(details, "file_path") {
+            self.file_path = Some(path);
+        }
+        true
+    }
+
+    /// Display rows for the embedded DiffView body (hunk lines + cap), excluding header/padding.
+    pub fn inline_diff_body_rows(&self) -> u16 {
+        let (Some(old), Some(new)) = (&self.old_text, &self.new_text) else {
+            return 0;
+        };
+        elph_tui::components::unified_diff_display_rows(
+            old,
+            new,
+            TOOL_CARD_DIFF_CONTEXT_LINES,
+            false, // show_file_header — tool card hides ---/+++
+            true,  // show_hunk_header
+            Some(elph_tui::components::EMBEDDED_DIFF_MAX_LINES),
+        )
+    }
+}
+
+/// Read a JSON object field as a string (accepts JSON strings; other scalars via Display).
+fn json_string_field(details: &serde_json::Value, key: &str) -> Option<String> {
+    let v = details.get(key)?;
+    if let Some(s) = v.as_str() {
+        return Some(s.to_string());
+    }
+    if v.is_null() {
+        return None;
+    }
+    // PathBuf / number edge cases — strip JSON string quotes if present.
+    let s = v.to_string();
+    let trimmed = s.trim().trim_matches('"');
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 #[derive(Clone)]
@@ -143,6 +224,9 @@ impl TranscriptMessage {
                 name: name.into(),
                 args_summary: args_summary.into(),
                 output: String::new(),
+                old_text: None,
+                new_text: None,
+                file_path: None,
             }),
             markdown: None,
             duration_secs: None,
@@ -465,6 +549,20 @@ impl ToolCardDetail {
         if collapsed {
             return header;
         }
+
+        // edit_file + diff payload: budget the same rows DiffView paints (must stay in sync
+        // with tool_call_card DiffView props), plus padding_top: 1 above the diff.
+        if self.has_inline_diff() {
+            let mut lines = vec![header];
+            let body = self.inline_diff_body_rows() as usize;
+            // Non-empty placeholders: str::lines / wrap counters drop trailing blanks.
+            let total = body.saturating_add(1);
+            for _ in 0..total {
+                lines.push("·".to_string());
+            }
+            return lines.join("\n");
+        }
+
         let mut lines = vec![header];
         let args = if self.name == "ask_user_question" {
             format_ask_user_tool_layout_text(&self.args_summary)
@@ -501,7 +599,8 @@ pub enum TranscriptCardKind {
     Meta,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TranscriptStyle {
     User,
     Thinking,
@@ -541,8 +640,8 @@ impl TranscriptStyle {
 
     /// Style for a slash command line echoed when it spawns an agent turn.
     pub fn for_slash_turn_echo(slash_input: &str) -> Self {
-        let trimmed = slash_input.trim_start();
-        if trimmed.starts_with("/skill:") {
+        let trimmed = slash_input.trim_start().trim_start_matches('/');
+        if trimmed.starts_with("skill:") || trimmed.starts_with("skill ") {
             Self::SkillPrompt
         } else {
             Self::User
@@ -919,6 +1018,57 @@ mod tests {
         assert!(layout.contains("· 1.2s"));
         assert!(!layout.contains("edit_file"));
         assert!(message.is_tool_collapsed());
+    }
+
+    #[test]
+    fn edit_file_diff_layout_rows_match_display_budget() {
+        let mut message =
+            TranscriptMessage::tool_call("edit_file", r#"{"path":"src/main.rs"}"#, TranscriptStyle::ToolSuccess);
+        {
+            let tool = message.tool.as_mut().expect("tool");
+            tool.output = "Edited src/main.rs".into();
+            assert!(tool.apply_tool_result_details(&serde_json::json!({
+                "old_content": "a\nb\nc\n",
+                "new_content": "a\nx\nc\n",
+                "file_path": "src/main.rs",
+            })));
+            assert!(tool.has_inline_diff());
+        }
+        message.duration_secs = Some(0.5);
+        message.detail_expanded = true;
+
+        let layout = message.layout_text();
+        let lines = layout.lines().count();
+        let body = message.tool.as_ref().expect("tool").inline_diff_body_rows() as usize;
+        // header + padding_top + body
+        assert_eq!(lines, 1 + 1 + body, "layout={layout:?}");
+        assert!(lines > 3, "expanded edit_file must reserve multi-line diff height");
+        let wrap_rows = elph_tui::wrapped_transcript_row_count(&layout, 80);
+        assert_eq!(wrap_rows as usize, lines);
+
+        // Full transcript row budget includes vertical pad for expanded tinted tool cards.
+        let layouts = crate::tui::transcript::layout::layout_transcript_rows(std::slice::from_ref(&message), 80);
+        assert_eq!(layouts.len(), 1);
+        assert!(layouts[0].row_count > 4);
+    }
+
+    #[test]
+    fn namespaced_edit_file_accepts_diff_details() {
+        let mut tool = ToolCardDetail {
+            name: "mcp__edit_file".into(),
+            args_summary: r#"{"path":"a.rs"}"#.into(),
+            output: String::new(),
+            old_text: None,
+            new_text: None,
+            file_path: None,
+        };
+        assert!(tool.is_edit_file());
+        assert!(tool.apply_tool_result_details(&serde_json::json!({
+            "old_content": "x",
+            "new_content": "y",
+            "file_path": "/tmp/a.rs",
+        })));
+        assert!(tool.has_inline_diff());
     }
 
     #[test]

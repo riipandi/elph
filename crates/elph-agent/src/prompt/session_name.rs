@@ -8,6 +8,9 @@ use crate::types::AgentMessage;
 
 /// Generate a short session title from the conversation transcript.
 ///
+/// Uses the built-in system/user prompts. Prefer
+/// [`generate_session_name_with_prompts`] when the host supplies template files.
+///
 /// Returns `None` when there is no naming-worthy content or the model call fails.
 pub async fn generate_session_name(
     messages: &[AgentMessage],
@@ -18,15 +21,38 @@ pub async fn generate_session_name(
     if conversation.trim().is_empty() {
         return None;
     }
+    let user_prompt = build_session_name_prompt(&conversation);
+    generate_session_name_with_prompts(messages, models, model, SESSION_NAME_SYSTEM_PROMPT, &user_prompt).await
+}
 
-    let prompt = build_session_name_prompt(&conversation);
+/// Generate a session title using host-supplied system and user prompts.
+///
+/// `user_prompt` should already include the conversation excerpt (or be a fully
+/// rendered template). `messages` is still used to decide whether content is
+/// naming-worthy via [`extract_conversation_for_naming`].
+pub async fn generate_session_name_with_prompts(
+    messages: &[AgentMessage],
+    models: &Models,
+    model: &elph_ai::Model,
+    system_prompt: &str,
+    user_prompt: &str,
+) -> Option<String> {
+    let conversation = extract_conversation_for_naming(messages);
+    if conversation.trim().is_empty() {
+        return None;
+    }
+    let user_prompt = user_prompt.trim();
+    if user_prompt.is_empty() {
+        return None;
+    }
+
     let response = models
         .complete_simple(
             model,
             &Context {
-                system_prompt: Some(SESSION_NAME_SYSTEM_PROMPT.to_string()),
+                system_prompt: Some(system_prompt.trim().to_string()),
                 messages: vec![Message::User {
-                    content: elph_ai::UserContent::Text(prompt),
+                    content: elph_ai::UserContent::Text(user_prompt.to_string()),
                     timestamp: now_millis(),
                 }],
                 tools: None,

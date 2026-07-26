@@ -367,6 +367,8 @@ mod tests {
             id: id.into(),
             parent_id: None,
             timestamp: "0".into(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
             message: AgentMessage::Llm(Box::new(Message::User {
                 content: elph_ai::UserContent::Text(text.into()),
                 timestamp: 0,
@@ -411,6 +413,8 @@ mod tests {
             id: "1".into(),
             parent_id: None,
             timestamp: "0".into(),
+            prompt_title: String::new(),
+            prompt_kind: String::new(),
             message: AgentMessage::Llm(Box::new(Message::ToolResult {
                 tool_call_id: "t1".into(),
                 tool_name: "test".into(),

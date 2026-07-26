@@ -16,6 +16,7 @@ use iocraft::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
+use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
@@ -37,6 +38,7 @@ use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
 
+use crate::agent::rename_session_title;
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
 use crate::tui::file_picker::FilePickerKeyAction;
 use crate::tui::file_picker::{
@@ -54,13 +56,19 @@ use crate::tui::model_selector_shell::{
     sync_pending_filter,
 };
 use crate::tui::prompt::PromptChrome;
+use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
+use crate::tui::prompt_history::{
+    PromptHistoryKeyAction, build_snapshot as build_prompt_history_snapshot, can_open_history,
+    resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
+};
+use crate::tui::rename_dialog::{OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog};
 use crate::tui::scoped_models::PendingScopedModels;
 use crate::tui::scoped_models_bar::{ScopedModelsBar, ScopedModelsView};
 use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
-use crate::tui::scroll_text_dialog::ScrollTextDialogOverlay;
+use crate::tui::scroll_text_dialog::{OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog};
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
@@ -304,51 +312,81 @@ struct PromptQueueActionCtx<'a> {
     agent_turn_active: bool,
     messages: &'a mut State<Vec<TranscriptMessage>>,
     messages_revision: &'a mut State<u64>,
+    prompt_history: &'a mut Ref<Vec<String>>,
     pre_echoed_user_prompts: &'a mut State<u32>,
     draft: &'a mut State<String>,
     live_draft: &'a mut Ref<String>,
+    live_cursor: &'a mut Ref<usize>,
+    prompt_editor_mirror: &'a mut Ref<(String, usize)>,
+    force_palette_sync: &'a mut Ref<bool>,
     shell_focus: &'a mut State<ShellFocus>,
     queue_manager_open: &'a mut State<bool>,
     queue_manager_selected: &'a mut State<usize>,
     queue_manager_action: &'a mut State<PromptQueueAction>,
 }
 
-/// Apply Send / Edit / Cancel on a queue row; returns true when handled.
+/// Close the queue manager and return focus to the prompt.
+fn close_queue_manager(ctx: &mut PromptQueueActionCtx<'_>) {
+    ctx.queue_manager_open.set(false);
+    ctx.queue_manager_selected.set(0);
+    ctx.queue_manager_action.set(PromptQueueAction::SendNow);
+    ctx.shell_focus.set(ShellFocus::Prompt);
+}
+
+/// Apply Send / Edit / Cancel on a queue row.
+///
+/// - **Send** — drop from queue and interject (steer); when idle, steer falls back to a normal turn.
+/// - **Edit** — drop from queue and load the text into the prompt editor.
+/// - **Cancel** — drop from queue only.
+///
+/// Returns `Some(text)` when the shell should mark a busy idle turn (Send while not already streaming).
 fn apply_prompt_queue_action(
     action: PromptQueueAction,
     display_index: usize,
     ctx: &mut PromptQueueActionCtx<'_>,
-    start_idle_turn: impl FnOnce(String),
-) -> bool {
-    let Some(item) = ctx.prompt_queue.write().remove_at_local(display_index) else {
-        return false;
-    };
+) -> Option<String> {
+    let item = ctx.prompt_queue.read().items().get(display_index).cloned()?;
+    // Optimistic local remove so the row disappears immediately; harness QueueUpdate reconciles.
+    let _ = ctx.prompt_queue.write().remove_at_local(display_index);
     ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
+
     match action {
         PromptQueueAction::SendNow => {
+            // Hide immediately and keep hidden if interject re-queues as steer.
+            ctx.prompt_queue.write().suppress_sent(item.text.clone());
+            ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
-            push_transcript_message(ctx.messages, ctx.messages_revision, submitted);
+            push_transcript_message(ctx.messages, ctx.messages_revision, ctx.prompt_history, submitted);
             ctx.pre_echoed_user_prompts
                 .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
+            let need_busy = !ctx.agent_turn_active;
             if let Some(session) = ctx.agent_session.as_ref() {
-                if ctx.agent_turn_active {
-                    TurnDispatcher::spawn_interject_queued(Arc::clone(session), item.kind, item.kind_index, item.text);
-                } else {
-                    start_idle_turn(item.text);
-                }
+                // Always interject: remove from harness queue then steer (idle → normal turn).
+                TurnDispatcher::spawn_interject_queued(
+                    Arc::clone(session),
+                    item.kind,
+                    item.kind_index,
+                    item.text.clone(),
+                );
             }
+            close_queue_manager(ctx);
+            if need_busy { Some(item.text) } else { None }
         }
         PromptQueueAction::Edit => {
             if let Some(session) = ctx.agent_session.as_ref() {
                 TurnDispatcher::spawn_remove_queued(Arc::clone(session), item.kind, item.kind_index);
             }
-            ctx.draft.set(item.text.clone());
-            ctx.live_draft.set(item.text);
-            ctx.queue_manager_open.set(false);
-            ctx.queue_manager_selected.set(0);
-            ctx.queue_manager_action.set(PromptQueueAction::SendNow);
-            ctx.shell_focus.set(ShellFocus::Prompt);
+            let text = item.text;
+            let cursor = text.len();
+            ctx.draft.set(text.clone());
+            ctx.live_draft.set(text.clone());
+            ctx.live_cursor.set(cursor);
+            ctx.prompt_editor_mirror.set((text, cursor));
+            // Force Textarea to accept the external draft (focused sync is prefix-only).
+            ctx.force_palette_sync.set(true);
+            close_queue_manager(ctx);
+            None
         }
         PromptQueueAction::Cancel => {
             if let Some(session) = ctx.agent_session.as_ref() {
@@ -356,16 +394,13 @@ fn apply_prompt_queue_action(
             }
             let len = ctx.prompt_queue.read().len();
             if len == 0 {
-                ctx.queue_manager_open.set(false);
-                ctx.queue_manager_selected.set(0);
-                ctx.queue_manager_action.set(PromptQueueAction::SendNow);
-                ctx.shell_focus.set(ShellFocus::Prompt);
+                close_queue_manager(ctx);
             } else {
                 ctx.queue_manager_selected.set(display_index.min(len - 1));
             }
+            None
         }
     }
-    true
 }
 
 struct PendingQuitAction<'a> {
@@ -522,8 +557,18 @@ fn begin_turn_token_tracking(tracker: &mut Ref<Option<TurnTokenTracker>>, chrome
 fn push_transcript_message(
     messages: &mut State<Vec<TranscriptMessage>>,
     messages_revision: &mut State<u64>,
+    prompt_history: &mut Ref<Vec<String>>,
     message: TranscriptMessage,
 ) {
+    // Keep Arrow Up history in sync with user / skill prompt cards.
+    // Skills → `/skill:…`; other slash commands keep a leading `/`.
+    if matches!(message.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
+        crate::tui::prompt_history::push_history_entry_styled(
+            &mut prompt_history.write(),
+            &message.content,
+            message.style,
+        );
+    }
     messages.set({
         let mut list = messages.read().clone();
         list.push(message);
@@ -643,6 +688,7 @@ fn apply_bootstrap_ui_event(
     agent_session_slot: &mut Ref<Option<Arc<CodingAgentSession>>>,
     ui_events_slot: &mut Ref<Option<Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>>>,
     messages: &mut State<Vec<TranscriptMessage>>,
+    prompt_history: &mut Ref<Vec<String>>,
 ) {
     match event {
         BootstrapUiEvent::AgentReady(bootstrap) => {
@@ -662,6 +708,15 @@ fn apply_bootstrap_ui_event(
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
             {
                 let mut msgs = messages.write();
+                // Prepend persisted chat history so the transcript shows previous turns on resume.
+                if !bootstrap.history_messages.is_empty() {
+                    // Keep only the startup status lines, insert history before them.
+                    let startup_lines: Vec<_> = msgs.iter().filter(|m| m.startup_key.is_some()).cloned().collect();
+                    msgs.clear();
+                    msgs.extend(bootstrap.history_messages.iter().cloned());
+                    msgs.extend(startup_lines);
+                    seed_history_from_transcript(&mut prompt_history.write(), &bootstrap.history_messages);
+                }
                 let provider = bootstrap.session.model_provider();
                 let model = bootstrap.session.model_id();
                 mark_agent_startup_ready(
@@ -752,6 +807,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut file_picker_active = hooks.use_ref(|| false);
     let mut file_picker_suppressed = hooks.use_ref(|| false);
     let mut file_picker_key_handled = hooks.use_ref(|| false);
+    let mut prompt_history_open = hooks.use_state(|| false);
+    let mut prompt_history_index = hooks.use_state(|| 0usize);
+    let mut prompt_history = hooks.use_ref(Vec::<String>::new);
     let mut force_palette_sync = hooks.use_ref(|| false);
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
@@ -760,8 +818,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut agent_turn_active = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
     let mut session_elapsed_secs = hooks.use_state(|| 0.0f64);
-    let session_wall_started_at = hooks.use_ref(Instant::now);
+    let mut session_wall_started_at = hooks.use_ref(Instant::now);
     let show_thinking = props.show_thinking;
+    let auto_expand_thinking = props.auto_expand_thinking;
     let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
     let mut activity_started_at = hooks.use_ref(|| None::<Instant>);
     let mut last_activity_label = hooks.use_ref(String::new);
@@ -769,6 +828,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut queue_manager_open = hooks.use_state(|| false);
     let mut queue_manager_selected = hooks.use_state(|| 0usize);
     let mut queue_manager_action = hooks.use_state(PromptQueueAction::default);
+    // Mouse clicks on queue action chips (drained each frame in the shell body).
+    let mut pending_queue_click = hooks.use_state(|| None::<(usize, PromptQueueAction)>);
+    let on_queue_action_click = hooks.use_async_handler(move |(idx, action)| {
+        let mut pending_queue_click = pending_queue_click;
+        async move {
+            pending_queue_click.set(Some((idx, action)));
+        }
+    });
     // Bumped on queue mutations so MainShell re-renders (prompt_queue is a Ref).
     let mut queue_ui_revision = hooks.use_state(|| 0u64);
     // Shell already pushed a user card; skip matching `UserPromptCommitted` from the agent loop.
@@ -787,7 +854,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut live_cursor = hooks.use_ref(|| 0usize);
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let mut clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
-    let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
+    let mut prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let mut styled_content = hooks.use_ref(String::new);
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
     let mut mention_index_requested = hooks.use_ref(|| false);
@@ -817,6 +884,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_system_prompt = hooks.use_ref(|| None::<PendingSystemPromptDialog>);
     let system_prompt_scroll = hooks.use_ref_default::<ScrollViewHandle>();
     let mut system_prompt_scroll_tick = hooks.use_ref(|| 0u32);
+    let mut pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
+    let mut rename_value = hooks.use_state(String::new);
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_ref(|| 0u32);
@@ -833,7 +902,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             BootstrapPhase::Done
         }
     });
-    let bootstrap_config = hooks.use_ref(|| props.bootstrap.clone());
+    let mut bootstrap_config = hooks.use_ref(|| props.bootstrap.clone());
     let mut bootstrap_worker_started = hooks.use_ref(|| false);
     let mut bootstrap_rx = hooks.use_ref(|| None::<UnboundedReceiver<BootstrapUiEvent>>);
     let mut live_session_id = hooks.use_state(|| props.session_id.clone());
@@ -892,7 +961,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Auto-clear schedule for transcript `transient:*` notices (file-picker, model set, …).
     let mut pending_transcript_notice_expires = hooks.use_ref(HashMap::<&'static str, Instant>::new);
 
+    // Set true by `/new` handler; the tick loop picks this up to reload resources + restart
+    // bootstrap with a fresh session (in-process, no exit + re-launch).
+    let mut new_session_requested = hooks.use_ref(|| false);
+
     let cwd_for_mention_index = cwd.clone();
+    let cwd_for_loop = cwd.clone();
+    let extension_host_for_loop = extension_host.clone();
     let mut layout_screen_size_for_loop = layout_screen_size;
     hooks.use_future(async move {
         loop {
@@ -945,6 +1020,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut agent_session_slot,
                         &mut ui_events_slot,
                         &mut messages,
+                        &mut prompt_history,
                     );
                     publish_transcript_now(
                         &mut messages_revision,
@@ -952,6 +1028,50 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut last_transcript_publish,
                     );
                 }
+            }
+
+            // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
+            // and restart the bootstrap worker — all without exiting the TUI.
+            if *new_session_requested.read() {
+                *new_session_requested.write() = false;
+
+                let paths_for_load = paths.read().clone();
+                let cwd_for_load = cwd_for_loop.clone();
+                let settings = Settings::load(&paths_for_load).ok();
+                if let Some(settings) = settings {
+                    let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
+                    let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
+
+                    // Update palette data from fresh resources
+                    let new_templates = loaded.resources.prompt_templates.clone();
+                    let new_skills = loaded.resources.skills.clone();
+                    prompt_templates.set(new_templates);
+                    skills.set(new_skills);
+                    {
+                        let ext_registry = extension_host_for_loop.registry();
+                        let reg = ext_registry.read();
+                        slash_commands.set(slash_commands_for_palette(
+                            Some(&reg),
+                            Some(&prompt_templates.read()),
+                            Some(&skills.read()),
+                        ));
+                    }
+
+                    // Create a fresh bootstrap config with no resume_id (forces a new session)
+                    let new_config = TuiBootstrapConfig {
+                        paths: paths_for_load,
+                        settings,
+                        resume_id: None,
+                        preloaded_resources: loaded,
+                    };
+                    bootstrap_config.set(Some(new_config));
+                }
+
+                // Reset bootstrap phase so the next tick re-spawns the worker
+                bootstrap_phase.set(BootstrapPhase::Pending);
+                bootstrap_worker_started.set(false);
+                bootstrap_rx.set(None);
+                chrome_refresh_pending.set(true);
             }
 
             let agent_session_for_loop = agent_session_slot.read().clone();
@@ -1222,7 +1342,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         } else {
                             let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                submitted,
+                            );
                             transcript_changed = true;
                         }
                         continue;
@@ -1268,6 +1393,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     id,
                                     is_error,
                                     output: output.clone(),
+                                    details: serde_json::json!({}),
                                 },
                             ) {
                                 transcript_changed = true;
@@ -1343,6 +1469,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 chrome_refresh_pending.set(true);
                 // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
 
+                // Persist full transcript (thinking / tools / durations / expand / diffs)
+                // so --resume matches the live session. Non-fatal on failure.
+                if let Some(session) = agent_session_for_loop.as_ref() {
+                    let snapshot = messages.read().clone();
+                    let session = Arc::clone(session);
+                    tokio::spawn(async move {
+                        if let Err(err) = session.save_transcript_snapshot(&snapshot).await {
+                            log::warn!("transcript snapshot save failed: {err:#}");
+                        }
+                    });
+                }
+
                 if turn_cancel_requested.get() {
                     turn_cancel_requested.set(false);
                     let elapsed = run_completed_elapsed.unwrap_or(0.0);
@@ -1386,6 +1524,66 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 return;
             }
 
+            // Prompt history palette (Arrow Up on empty focused editor; Tab/Enter apply).
+            {
+                let history_open = prompt_history_open.get();
+                let history_snap = build_prompt_history_snapshot(
+                    history_open,
+                    &prompt_history.read(),
+                    48, // height only affects viewport cap; real height applied at render
+                );
+                if history_open {
+                    if let Some(action) =
+                        resolve_prompt_history_key_action(&history_snap, prompt_history_index.get(), code, modifiers)
+                    {
+                        match action {
+                            PromptHistoryKeyAction::MoveSelection(index) => {
+                                prompt_history_index.set(index);
+                            }
+                            PromptHistoryKeyAction::ApplyToPrompt { text } => {
+                                draft.set(text.clone());
+                                live_draft.set(text.clone());
+                                live_cursor.set(text.len());
+                                force_palette_sync.set(true);
+                                prompt_history_open.set(false);
+                                prompt_history_index.set(0);
+                                shell_focus.set(ShellFocus::Prompt);
+                            }
+                            PromptHistoryKeyAction::Dismiss => {
+                                prompt_history_open.set(false);
+                                prompt_history_index.set(0);
+                            }
+                        }
+                        return;
+                    }
+                    // Consume other plain keys while open (type to dismiss + seed).
+                    if modifiers.is_empty() && matches!(code, KeyCode::Char(_)) {
+                        prompt_history_open.set(false);
+                        prompt_history_index.set(0);
+                        // Fall through so the character reaches the editor.
+                    } else if modifiers.is_empty()
+                        && matches!(code, KeyCode::Up | KeyCode::Down | KeyCode::Tab | KeyCode::Enter | KeyCode::Esc)
+                    {
+                        return;
+                    }
+                } else if shell_focus.get() == ShellFocus::Prompt && is_prompt_history_open_key(code, modifiers) {
+                    let draft_body = {
+                        let live = live_draft.read().clone();
+                        let stored = draft.read().clone();
+                        if live.len() >= stored.len() { live } else { stored }
+                    };
+                    let slash_open = palette_visible(&compose_palette_draft(input_prefix_kind.get(), &draft_body));
+                    let picker_open = input_prefix_kind.get() == InputPrefixKind::Default
+                        && file_picker_open(&draft_body, live_cursor.get().min(draft_body.len()));
+                    if can_open_history(true, &draft_body, slash_open, picker_open, prompt_history.read().len()) {
+                        prompt_history_open.set(true);
+                        let history_len = prompt_history.read().len();
+                        prompt_history_index.set(history_len.saturating_sub(1));
+                        return;
+                    }
+                }
+            }
+
             // Ctrl+S (or Ctrl+Shift+S) — toggle mouse capture for native text selection.
             // Persistent until toggled again. Skipped when scoped-models editor needs Ctrl+S to save
             // (that handler runs later while the overlay is open).
@@ -1425,6 +1623,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 && pending_model_selector.read().is_none()
                 && pending_scoped_models.read().is_none()
                 && pending_system_prompt.read().is_none()
+                && pending_rename.read().is_none()
                 && pending_confetti.read().is_none()
             {
                 // Close queue manager if open; interject still runs.
@@ -1444,13 +1643,56 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         .unwrap_or_default()
                 };
                 let body = editor_body.trim().to_string();
-                // Prefer top queue item when present (one Ctrl+Enter per item).
+                // Ctrl+Enter from the textarea always interjects editor text directly —
+                // never enqueue as follow-up and never prefer the prompt-queue list.
+                // (Queue items are sent via the queue [Send] chip or when the editor is empty.)
+                if !body.is_empty() {
+                    if let Some(session) = agent_session.as_ref() {
+                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
+                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
+                        if agent_turn_active.get() {
+                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
+                        } else {
+                            // Idle: start a normal turn (steer while idle falls back the same way).
+                            agent_turn_active.set(true);
+                            chrome_refresh_pending.set(true);
+                            idle_status_notice.set(None);
+                            turn_cancel_requested.set(false);
+                            mark_busy(
+                                &mut BusyActivation {
+                                    busy: &mut busy,
+                                    busy_started_at: &mut busy_started_at,
+                                    activity_started_at: &mut activity_started_at,
+                                    activity_label: &mut activity_label,
+                                    last_activity_label: &mut last_activity_label,
+                                },
+                                true,
+                                None,
+                            );
+                            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+                            TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
+                        }
+                    }
+                    draft.set(String::new());
+                    live_draft.set(String::new());
+                    force_editor_clear.set(true);
+                    suppress_enter_newline.set(true);
+                    return;
+                }
+                // Empty editor: optional — interject the front queue item (one at a time).
                 if !prompt_queue.read().is_empty() {
-                    if let Some(item) = prompt_queue.write().pop_front_local() {
+                    let popped = {
+                        let mut q = prompt_queue.write();
+                        q.pop_front_local()
+                    };
+                    if let Some(item) = popped {
+                        prompt_queue.write().suppress_sent(item.text.clone());
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                         let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
-                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                        push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if let Some(session) = agent_session.as_ref() {
                             if agent_turn_active.get() {
@@ -1473,7 +1715,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         activity_label: &mut activity_label,
                                         last_activity_label: &mut last_activity_label,
                                     },
-                                    false,
+                                    true,
                                     None,
                                 );
                                 begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
@@ -1481,44 +1723,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                     }
-                    return;
-                }
-                if !body.is_empty() {
-                    if agent_turn_active.get() {
-                        if let Some(session) = agent_session.as_ref() {
-                            let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
-                            pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                            TurnDispatcher::spawn_steer(Arc::clone(session), body);
-                        }
-                    } else if let Some(session) = agent_session.as_ref() {
-                        let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
-                        submitted.submitted_at = Some(chrono::Utc::now());
-                        push_transcript_message(&mut messages, &mut messages_revision, submitted);
-                        pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
-                        agent_turn_active.set(true);
-                        chrome_refresh_pending.set(true);
-                        idle_status_notice.set(None);
-                        turn_cancel_requested.set(false);
-                        mark_busy(
-                            &mut BusyActivation {
-                                busy: &mut busy,
-                                busy_started_at: &mut busy_started_at,
-                                activity_started_at: &mut activity_started_at,
-                                activity_label: &mut activity_label,
-                                last_activity_label: &mut last_activity_label,
-                            },
-                            false,
-                            None,
-                        );
-                        begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                        TurnDispatcher::spawn_turn(Arc::clone(session), body, false);
-                    }
-                    draft.set(String::new());
-                    live_draft.set(String::new());
-                    force_editor_clear.set(true);
-                    suppress_enter_newline.set(true);
                 }
                 return;
             }
@@ -1556,6 +1760,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             let system_prompt_open = pending_system_prompt.read().is_some();
+            let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
@@ -1565,6 +1770,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || model_selector_open
                 || scoped_models_open
                 || system_prompt_open
+                || rename_open
                 || confetti_open
                 || queue_manager_is_open;
 
@@ -1634,8 +1840,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let idx = queue_manager_selected.get();
                         let turn_active = agent_turn_active.get();
                         let session = agent_session.clone();
-                        let mut idle_turn: Option<String> = None;
-                        apply_prompt_queue_action(
+                        let mark_busy_for_idle = apply_prompt_queue_action(
                             action,
                             idx,
                             &mut PromptQueueActionCtx {
@@ -1645,19 +1850,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 agent_turn_active: turn_active,
                                 messages: &mut messages,
                                 messages_revision: &mut messages_revision,
+                                prompt_history: &mut prompt_history,
                                 pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
                                 draft: &mut draft,
                                 live_draft: &mut live_draft,
+                                live_cursor: &mut live_cursor,
+                                prompt_editor_mirror: &mut prompt_editor_mirror,
+                                force_palette_sync: &mut force_palette_sync,
                                 shell_focus: &mut shell_focus,
                                 queue_manager_open: &mut queue_manager_open,
                                 queue_manager_selected: &mut queue_manager_selected,
                                 queue_manager_action: &mut queue_manager_action,
                             },
-                            |text| idle_turn = Some(text),
                         );
-                        if let Some(text) = idle_turn
-                            && let Some(session) = session.as_ref()
-                        {
+                        // Send while idle: interject spawn runs the turn; mark shell busy UI only.
+                        if mark_busy_for_idle.is_some() {
                             agent_turn_active.set(true);
                             chrome_refresh_pending.set(true);
                             idle_status_notice.set(None);
@@ -1674,7 +1881,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 None,
                             );
                             begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
-                            TurnDispatcher::spawn_turn(Arc::clone(session), text, false);
                         }
                         return;
                     }
@@ -1742,6 +1948,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 }
 
+                if rename_open {
+                    let mut pending_rename = pending_rename;
+                    let mut rename_value = rename_value;
+                    let mut draft = draft;
+                    let mut live_draft = live_draft;
+                    let mut shell_focus = shell_focus;
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+                    // Text input owns typing / Enter / Esc via DialogUserInputContent.
+                    if !shell_global_shortcut(modifiers, code) {
+                        return;
+                    }
+                }
+
                 if scoped_models_open
                     && pending_user_question.read().is_none()
                     && !system_prompt_open
@@ -1778,6 +2008,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             push_transcript_message(
                                 &mut messages,
                                 &mut messages_revision,
+                                &mut prompt_history,
                                 TranscriptMessage::text(
                                     format!("Scoped models saved ({} enabled).", pending.enabled_count()),
                                     TranscriptStyle::Meta,
@@ -2014,6 +2245,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     push_transcript_message(
                                         &mut messages,
                                         &mut messages_revision,
+                                        &mut prompt_history,
                                         TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
                                     );
                                 }
@@ -2196,6 +2428,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         push_transcript_message(
                             &mut messages,
                             &mut messages_revision,
+                            &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
@@ -2348,6 +2581,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         push_transcript_message(
                             &mut messages,
                             &mut messages_revision,
+                            &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
@@ -2408,6 +2642,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         push_transcript_message(
                             &mut messages,
                             &mut messages_revision,
+                            &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
                         );
                     }
@@ -2499,7 +2734,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         suppress_enter_newline.set(true);
                         force_palette_sync.set(true);
 
-                        let body = slash_input.trim().trim_start_matches('/').trim().to_string();
+                        // Transcript + prompt history keep the leading `/` (skills → `/skill:…`).
+                        let echo = {
+                            let s = slash_input.trim();
+                            if s.starts_with('/') {
+                                s.to_string()
+                            } else {
+                                format!("/{s}")
+                            }
+                        };
 
                         let extension_registry = extension_host_for_keys.registry();
                         let ext_registry = extension_registry.read();
@@ -2522,14 +2765,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             agent_turn_active.get() && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let mut submitted = TranscriptMessage::text(
-                                body.clone(),
+                                echo.clone(),
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                submitted,
+                            );
                         }
 
                         match outcome {
@@ -2571,6 +2819,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     width_pct: None,
                                 });
                             }
+                            SlashOutcome::OpenSessionInfoDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenRenameDialog { initial } => {
+                                open_rename_dialog(OpenRenameDialogArgs {
+                                    pending: &mut pending_rename,
+                                    value: &mut rename_value,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
+                                force_editor_clear.set(true);
+                            }
                             SlashOutcome::PlayConfetti { mode } => {
                                 open_confetti(OpenConfettiArgs {
                                     pending: &mut pending_confetti,
@@ -2586,6 +2855,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
+                                    &mut prompt_history,
                                     TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
                             }
@@ -2593,6 +2863,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
+                                    &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
@@ -2600,6 +2871,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
+                                    &mut prompt_history,
                                     TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
@@ -2607,6 +2879,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 push_transcript_message(
                                     &mut messages,
                                     &mut messages_revision,
+                                    &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
@@ -2847,6 +3120,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             push_transcript_message(
                                 &mut messages,
                                 &mut messages_revision,
+                                &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
                             );
                         }
@@ -2933,6 +3207,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         && pending_model_selector.read().is_none()
                         && pending_scoped_models.read().is_none()
                         && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
                         && pending_confetti.read().is_none() =>
                 {
                     if queue_manager_open.get() {
@@ -3057,6 +3332,63 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         }
     }
 
+    // Drain mouse clicks on queue [Send]/[Edit]/[Cancel] chips.
+    if let Some((idx, action)) = pending_queue_click.get() {
+        pending_queue_click.set(None);
+        // Ensure chips work even before Ctrl+Q opens "interactive" keyboard mode.
+        if !queue_manager_open.get() {
+            queue_manager_open.set(true);
+            queue_manager_selected.set(idx);
+            shell_focus.set(ShellFocus::StatusDialog);
+        } else {
+            queue_manager_selected.set(idx);
+        }
+        queue_manager_action.set(action);
+        let session = agent_session.clone();
+        let turn_active = agent_turn_active.get();
+        let mark_busy_for_idle = apply_prompt_queue_action(
+            action,
+            idx,
+            &mut PromptQueueActionCtx {
+                prompt_queue: &mut prompt_queue,
+                queue_ui_revision: &mut queue_ui_revision,
+                agent_session: &session,
+                agent_turn_active: turn_active,
+                messages: &mut messages,
+                messages_revision: &mut messages_revision,
+                prompt_history: &mut prompt_history,
+                pre_echoed_user_prompts: &mut pre_echoed_user_prompts,
+                draft: &mut draft,
+                live_draft: &mut live_draft,
+                live_cursor: &mut live_cursor,
+                prompt_editor_mirror: &mut prompt_editor_mirror,
+                force_palette_sync: &mut force_palette_sync,
+                shell_focus: &mut shell_focus,
+                queue_manager_open: &mut queue_manager_open,
+                queue_manager_selected: &mut queue_manager_selected,
+                queue_manager_action: &mut queue_manager_action,
+            },
+        );
+        if mark_busy_for_idle.is_some() {
+            agent_turn_active.set(true);
+            chrome_refresh_pending.set(true);
+            idle_status_notice.set(None);
+            turn_cancel_requested.set(false);
+            mark_busy(
+                &mut BusyActivation {
+                    busy: &mut busy,
+                    busy_started_at: &mut busy_started_at,
+                    activity_started_at: &mut activity_started_at,
+                    activity_label: &mut activity_label,
+                    last_activity_label: &mut last_activity_label,
+                },
+                false,
+                None,
+            );
+            begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
+        }
+    }
+
     if should_exit.get() {
         let chrome = chrome_stats.read().clone();
         let api_duration_secs = accumulate_session_elapsed(
@@ -3064,7 +3396,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             live_turn_elapsed_secs(busy.get(), &busy_started_at.read()),
         );
         let wall_duration_secs = session_wall_started_at.read().elapsed().as_secs_f64();
-        let (lines_added, lines_removed) = elph_core::utils::git::read_worktree_stats(paths.read().project_dir())
+        let (lines_added, lines_removed) = crate::utils::git::read_worktree_stats(paths.read().project_dir())
             .map(|stats| (stats.lines_added, stats.lines_deleted))
             .unwrap_or((0, 0));
         record_if_active(
@@ -3109,6 +3441,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let system_prompt_open = pending_system_prompt.read().is_some();
+    let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
@@ -3116,22 +3449,34 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || model_selector_open
         || scoped_models_open
         || system_prompt_open
+        || rename_open
         || confetti_open
         || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
     let transcript_focused = !status_dialog_open && shell_focus.get() == ShellFocus::Transcript;
     let question_has_focus = user_question_open;
-    let model_selector_has_focus =
-        model_selector_open && !user_question_open && !system_prompt_open && !confetti_open && !scoped_models_open;
-    let scoped_models_has_focus =
-        scoped_models_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
-    let system_prompt_has_focus = system_prompt_open && !confetti_open;
+    let model_selector_has_focus = model_selector_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !scoped_models_open;
+    let scoped_models_has_focus = scoped_models_open
+        && !user_question_open
+        && !system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !model_selector_open;
+    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
+    let rename_has_focus =
+        rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = pending_tool_approval.read().is_some()
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
         && !system_prompt_open
+        && !rename_open
         && !confetti_open
         && !queue_manager_is_open;
     if let Some(pending) = pending_model_selector.write().as_mut() {
@@ -3234,7 +3579,69 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         }
         .into()
     });
-    let editor_overlay = model_selector_overlay.or(scoped_models_overlay);
+    let rename_overlay = if rename_open {
+        let rename_session = agent_session.clone();
+        Some(
+            element! {
+                RenameDialogBar(
+                    screen_width: screen_width,
+                    has_focus: rename_has_focus,
+                    value: Some(rename_value),
+                    on_submit: move |_| {
+                        let title = rename_value.read().clone();
+                        let result = rename_session
+                            .as_ref()
+                            .map(|session| rename_session_title(session, &title))
+                            .unwrap_or_else(|| Err("Agent session required for this command.".into()));
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        match result {
+                            Ok(()) => {
+                                let notice = format!("Session renamed to “{}”.", title.trim());
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(notice, TranscriptStyle::Meta),
+                                );
+                            }
+                            Err(message) => {
+                                push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                );
+                            }
+                        }
+                    },
+                    on_cancel: move |_| {
+                        close_rename_dialog(
+                            &mut pending_rename,
+                            &mut rename_value,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        force_editor_clear.set(true);
+                    },
+                )
+            }
+            .into(),
+        )
+    } else {
+        None
+    };
+    // Same slot as slash palette / model picker: above the editor, below the status row.
+    let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
         let plane = if let Some(runtime) = confetti_runtime.write().as_mut() {
@@ -3312,6 +3719,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let editor_cursor = live_cursor.get();
     let slash_palette_snapshot = build_snapshot(&draft_for_palette, &slash_commands.read(), screen_height);
     slash_palette_active.set(slash_palette_snapshot.visible);
+    // Close prompt history when other palettes open or draft is non-empty.
+    let picker_for_history_close =
+        input_prefix_kind.get() == InputPrefixKind::Default && file_picker_open(&draft_body, editor_cursor);
+    if prompt_history_open.get()
+        && (slash_palette_snapshot.visible || picker_for_history_close || !live_draft.read().trim().is_empty())
+    {
+        prompt_history_open.set(false);
+        prompt_history_index.set(0);
+    }
+    let prompt_history_snapshot =
+        build_prompt_history_snapshot(prompt_history_open.get(), &prompt_history.read(), screen_height);
     {
         let old_index = slash_palette_index.get();
         let mut query = slash_palette_query.write();
@@ -3398,6 +3816,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 has_focus: transcript_focused,
                 // Modal dialogs own the wheel; keep the transcript still underneath.
                 mouse_scroll: Some(!status_dialog_open),
+                text_select_mode: select_mode.get(),
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
@@ -3431,9 +3850,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 )
                             {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                 );
                             }
                         },
@@ -3457,9 +3877,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 )
                             {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                 );
                             }
                         },
@@ -3502,9 +3923,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 )
                             {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                 );
                             }
                         },
@@ -3553,9 +3975,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 )
                             {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                 );
                             }
                         },
@@ -3582,6 +4005,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 approval_selected: Some(approval_selected),
                 approval_has_focus: approval_has_focus,
                 queue_count: queue_count,
+                on_queue_action: on_queue_action_click,
             )
             PromptChrome(
                 screen_width: screen_width,
@@ -3615,12 +4039,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 file_picker_snapshot: file_picker_snapshot,
                 file_picker_selected: Some(file_picker_index),
                 file_picker_show_hidden: file_picker_show_hidden.get(),
+                prompt_history_snapshot: prompt_history_snapshot,
+                prompt_history_selected: Some(prompt_history_index),
                 editor_overlay: editor_overlay,
                 text_select_mode: select_mode.get(),
                 blocked_hint: if system_prompt_open {
                     Some("Viewing system prompt — Esc to close".to_string())
                 } else if user_question_open {
                     Some("Answer the question above".to_string())
+                } else if rename_open {
+                    Some("Rename session — Enter save · Esc cancel".to_string())
                 } else if model_selector_open {
                     Some("Select a model above".to_string())
                 } else if scoped_models_open {
@@ -3704,6 +4132,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             push_transcript_message(
                                 &mut messages,
                                 &mut messages_revision,
+                                &mut prompt_history,
                                 TranscriptMessage::text("Empty command.", TranscriptStyle::Meta),
                             );
                             draft.set(String::new());
@@ -3719,7 +4148,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let with_context = prefix_kind == InputPrefixKind::ShellWithContext;
                             let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history, submitted);
 
                             let tool_id = next_user_shell_tool_id();
                             {
@@ -3792,15 +4224,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let queue_follow_up = agent_turn_active.get()
                             && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
+                            // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
+                            let echo = if slash_input.trim().starts_with('/') {
+                                slash_input.trim().to_string()
+                            } else {
+                                format!("/{}", slash_input.trim())
+                            };
                             let mut submitted = TranscriptMessage::text(
-                                body.clone(),
+                                echo,
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
-                            push_transcript_message(&mut messages, &mut messages_revision, submitted);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history, submitted);
                         }
 
                         match outcome {
@@ -3823,25 +4264,84 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     false,
                                 );
                             }
+                            SlashOutcome::NewSession => {
+                                // Abort current agent turn if active
+                                if let Some(session) = agent_session.as_ref() {
+                                    TurnDispatcher::spawn_abort(Arc::clone(session));
+                                }
+
+                                // Clear pending dialogs
+                                pending_tool_approval.set(None);
+                                if let Some(question) = pending_user_question.write().take() {
+                                    question.respond(String::new());
+                                }
+
+                                // Clear prompt queue
+                                prompt_queue.write().clear();
+                                queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+
+                                // Reset event applier so old transcript state is discarded
+                                event_applier.set(TranscriptEventApplier::new(
+                                    show_thinking,
+                                    auto_expand_thinking,
+                                ));
+
+                                // Reset transcript to a clean "Starting new session…" line
+                                messages.set(vec![TranscriptMessage::startup_status(
+                                    crate::tui::startup::STARTUP_KEY_PHASE,
+                                    "Starting new session…".to_string(),
+                                    TranscriptStyle::StatusRunning,
+                                )]);
+                                messages_revision.set(messages_revision.get().wrapping_add(1));
+
+                                // Reset timing / busy / tracking state
+                                busy.set(false);
+                                agent_turn_active.set(false);
+                                activity_label.set(String::new());
+                                session_elapsed_secs.set(0.0);
+                                *session_wall_started_at.write() = Instant::now();
+                                busy_started_at.set(None);
+                                activity_started_at.set(None);
+                                last_activity_label.set(String::new());
+                                turn_cancel_requested.set(false);
+                                turn_token_tracker.set(None);
+                                pre_echoed_user_prompts.set(0);
+                                idle_status_notice.set(None);
+
+                                // Clear ephemeral banner
+                                ephemeral_banner.set(None);
+
+                                // Clear draft / editor
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+
+                                // Signal the tick loop to reload resources and restart bootstrap
+                                new_session_requested.set(true);
+                            }
                             SlashOutcome::Status(message) => {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::assistant_slash_markdown(message),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(message, TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::OpenModelSelector { filter } => {
@@ -3895,6 +4395,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 suppress_enter_newline.set(true);
                                 return;
                             }
+                            SlashOutcome::OpenSessionInfoDialog { text } => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenRenameDialog { initial } => {
+                                open_rename_dialog(OpenRenameDialogArgs {
+                                    pending: &mut pending_rename,
+                                    value: &mut rename_value,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    initial,
+                                });
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::PlayConfetti { mode } => {
                                 open_confetti(OpenConfettiArgs {
                                     pending: &mut pending_confetti,
@@ -3912,10 +4439,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
-                                    &mut messages,
-                                    &mut messages_revision,
-                                    TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::BackgroundTask => {
+                                // Background task already dispatched via spawn_agent_work in
+                                // handle_slash_submit. No busy/turn state needed — the task will
+                                // emit Status events when done.
                             }
                             SlashOutcome::SpawnAgentTurn if is_slash => {
                                 if agent_turn_active.get() {
@@ -3974,9 +4507,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TurnDispatcher::spawn_turn(Arc::clone(session), body.clone(), false);
                                 } else {
                                     push_transcript_message(
-                                        &mut messages,
-                                        &mut messages_revision,
-                                        TranscriptMessage::text(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(
                                             "Agent session unavailable — check logs or run `elph doctor`.",
                                             TranscriptStyle::Meta,
                                         ),

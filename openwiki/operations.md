@@ -70,6 +70,29 @@ elph update              # Self-update
 elph completions bash    # Generate shell completions
 ```
 
+### Slash commands
+
+| Command    | Description                                                             |
+| ---------- | ----------------------------------------------------------------------- |
+| `/new`     | Start a fresh session in-place (reloads resources, no exit + re-launch) |
+| `/compact` | Compact conversation history                                            |
+| `/goal`    | Manage goals/todos                                                      |
+| `/reload`  | Reload extensions and skills                                            |
+
+**Source:** `/elph/src/agent/slash_commands.rs`, `/elph/src/tui/slash_handler.rs`
+
+### BackgroundTask async dispatch
+
+Slash commands that require an agent session but should not block the TUI (e.g. `/goal`, `/reload`, `/extension`) can be dispatched as background tasks via `SlashOutcome::BackgroundTask`. The TUI continues to accept input while the task runs in the background.
+
+**Source:** `/elph/src/tui/slash_handler.rs` — `SlashOutcome::BackgroundTask`
+
+### Shell execution timeout
+
+The `elph-exec` shell execution layer uses deadline-based timeouts (`tokio::time::sleep_until`) instead of interval-based sleeps, and caps streaming tool output at 100KB to prevent rendering slowdowns from multi-MB outputs.
+
+**Source:** `/crates/elph-exec/src/shell.rs`
+
 **Source:** `/elph/src/cli/mod.rs` and submodule files.
 
 ## Configuration system

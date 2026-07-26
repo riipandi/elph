@@ -52,6 +52,13 @@ pub enum SessionTreeEntry {
         parent_id: Option<String>,
         timestamp: String,
         message: AgentMessage,
+        /// Transcript prompt-card title (slash body without leading `/`).
+        /// e.g. `skill:review fix this` or `my-template arg1`. Empty for free-form prompts.
+        #[serde(default, rename = "promptTitle")]
+        prompt_title: String,
+        /// Prompt card kind: `"skill"`, `"template"`, or empty for free-form user messages.
+        #[serde(default, rename = "promptKind")]
+        prompt_kind: String,
     },
     #[serde(rename = "thinking_level_change")]
     ThinkingLevelChange {
@@ -265,6 +272,9 @@ pub struct SessionDirMetadata {
     pub id: String,
     #[serde(rename = "createdAt")]
     pub created_at: String,
+    /// Last activity time (updated when tree entries are appended).
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
     pub cwd: String,
     /// Absolute path to the session directory (`~/.elph/sessions/<key>/<id>/`).
     pub dir: String,

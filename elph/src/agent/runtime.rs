@@ -1,12 +1,12 @@
 //! Factory for coding-agent sessions.
 
+use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::create_goal_tools;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
     GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
 };
-use elph_core::utils::path::AppPaths;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -147,6 +147,7 @@ pub async fn create_coding_session_with_events(
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),
+        title_model: options.settings.session.title_model.clone(),
     })
     .await?;
 

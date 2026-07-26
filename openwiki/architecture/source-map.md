@@ -19,7 +19,7 @@ elph/src/
 │
 ├── cli/                  # CLI subcommands (clap-based)
 │   ├── mod.rs            # Cli struct + Commands enum (17+ subcommands)
-│   ├── acp.rs            # Agent Client Protocol server
+│   ├── acp.rs            # Agent Client Protocol server (CLI entry point)
 │   ├── codegraph.rs      # code-review-graph integration
 │   ├── completions.rs    # Shell completion generation
 │   ├── default.rs        # Default/interactive mode handler
@@ -129,7 +129,12 @@ elph/src/
 │   ├── bootstrap.rs      # App bootstrap
 │   ├── mcp.rs            # MCP server relay
 │   ├── migrations.rs     # Platform datastore migrations
-│   └── exit_message.rs   # Exit message display
+│   ├── acp/              # Agent Client Protocol server
+│   │   ├── mod.rs        # ACP server runtime (run_agent_stdio)
+│   │   ├── handler.rs    # Prompt dispatch and slash command routing
+│   │   └── util.rs       # Notification chunking, event streaming, text extraction
+│   ├── exit_message.rs   # Exit message display
+│   └── provider.rs       # Provider config (added opencode-go)
 │
 ├── memory/               # Agent memory
 │   ├── mod.rs
@@ -228,13 +233,24 @@ crates/elph-agent/src/
 
 ## `elph-ai` — `/crates/elph-ai/`
 
-Provider-agnostic LLM API layer.
+Provider-agnostic LLM API layer. Now includes self-contained tracing and logging infrastructure (previously in `elph-core`).
 
 ```
 crates/elph-ai/src/
 ├── lib.rs                # Provider resolution, auth helpers, model lookup
-├── trace.rs              # Tracing integration
-├── session_resources.rs  # Session resource cleanup
+│
+├── trace/                # Distributed tracing (self-contained, no elph-core dep)
+│   ├── mod.rs            # Feature-gated module routing
+│   ├── core_imp.rs       # fastrace-based implementation with JsonlReporter
+│   ├── core_stub.rs      # No-op stubs when tracing feature disabled
+│   ├── imp.rs            # Public tracing API (model_stream_span, spawn_stream)
+│   ├── reporter.rs       # JsonlReporter — writes JSONL span trees to disk
+│   └── stub.rs           # No-op stub implementations
+│
+├── logger/               # Logging configuration (self-contained)
+│   ├── mod.rs
+│   ├── options.rs        # LoggingOptions, LogRotation, env-var parsing
+│   └── crash.rs          # Crash handler
 │
 ├── api/                  # Provider API implementations
 │   ├── mod.rs
@@ -271,55 +287,58 @@ crates/elph-ai/src/
 └── utils/                # Deferred tools, diagnostics, streaming, retry
 ```
 
-## `elph-core` — `/crates/elph-core/`
+## `floppy` — `/crates/floppy/`
 
-Shared primitives and utilities used across the workspace.
+Standalone AI memory crate (extracted from `elph-core`). Vector memory with Turso + ONNX embeddings, query engine, scoring, and report generation.
 
 ```
-crates/elph-core/src/
-├── lib.rs                # Re-exports
-├── fs.rs                 # File system helpers
-│
-├── floppy/               # Agent memory system (ported from memelord)
+crates/floppy/src/
+├── lib.rs                # Public API
+├── builder.rs            # FloppyBuilder
+├── embed.rs              # ONNX embedding integration
+├── migrations.rs         # DB schema migrations
+├── paths.rs              # Storage paths
+├── scoring.rs            # Welford scoring, EMA weight updates
+├── report.rs             # Memory reporting
+├── util.rs               # Utilities
+├── types/
 │   ├── mod.rs
-│   ├── builder.rs        # FloppyBuilder
-│   ├── embed.rs          # ONNX embedding
-│   ├── migrations.rs     # DB schema migrations
-│   ├── paths.rs          # Storage paths
-│   ├── scoring.rs        # Welford scoring, EMA weight updates
-│   ├── report.rs         # Memory reporting
-│   ├── util.rs           # Utilities
-│   ├── types/            # Memory, config, task, report types
-│   ├── store/            # Turso DB operations (read/write/tasks/embed)
-│   └── query/            # Memory query (search, memories, status, tasks, timeline)
-│
-├── logger/               # Logging configuration
+│   ├── config.rs         # FloppyConfig
+│   ├── memory.rs         # MemoryEntry, MemoryFilter
+│   ├── report.rs         # Report types
+│   └── task.rs           # Task types
+├── store/
 │   ├── mod.rs
-│   ├── crash.rs          # Crash handler
-│   └── options.rs        # Log rotation, level options
-│
-├── trace/                # Distributed tracing
-│   ├── mod.rs
-│   ├── imp.rs            # fastrace implementation
-│   ├── reporter.rs       # HTTP trace reporter
-│   └── stub.rs           # No-op stub
-│
-├── scaffold/             # Project scaffolding
-│   ├── mod.rs
-│   ├── bundled.rs        # Bundled manifest
-│   ├── trust.rs          # Trust store
-│   └── version.rs        # Version file
-│
-└── utils/                # General utilities
+│   ├── read.rs           # Read operations
+│   ├── write.rs          # Write operations
+│   ├── embed.rs          # Embedding storage
+│   ├── tasks.rs          # Task storage
+│   └── store_tests.rs    # Store tests
+└── query/
     ├── mod.rs
-    ├── git.rs            # Git integration (git2)
-    ├── lines.rs          # Line counting/processing
-    ├── project_key.rs    # Project key generation
-    └── path/             # Path resolution
-        ├── mod.rs
-        ├── app_paths.rs  # Application path definitions
-        └── resolver.rs   # Path resolver
+    ├── memories.rs       # Memory query operations
+    ├── search.rs         # Semantic search
+    ├── status.rs         # Status queries
+    ├── tasks.rs          # Task queries
+    ├── timeline.rs       # Timeline queries
+    └── query_tests.rs    # Query tests
 ```
+
+## `elph-core` — REMOVED
+
+`elph-core` has been removed as a standalone crate. Its modules were redistributed:
+
+| Former module          | New location                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `floppy/*`             | `/crates/floppy/` (standalone crate)                                                     |
+| `fs.rs`                | `/crates/elph-agent/src/fs.rs`                                                           |
+| `logger/*`             | `/crates/elph-agent/src/logger/*`                                                        |
+| `trace/*`              | `/crates/elph-agent/src/trace/*` (core) + `/crates/elph-ai/src/trace/*` (provider-level) |
+| `utils/lines.rs`       | `/crates/elph-agent/src/utils/lines.rs`                                                  |
+| `utils/path/*`         | `/elph/src/utils/path/*`                                                                 |
+| `utils/git.rs`         | `/elph/src/utils/git.rs`                                                                 |
+| `utils/project_key.rs` | `/elph/src/utils/project_key.rs`                                                         |
+| `scaffold/*`           | `/elph/src/platform/scaffold/*`                                                          |
 
 ## `elph-tui` — `/crates/elph-tui/`
 
@@ -345,6 +364,12 @@ crates/elph-tui/src/
 │   ├── markdown/         # Markdown rendering
 │   ├── textarea/         # Text area component
 │   ├── dialog_shell/     # Dialog shell
+│   ├── diff/             # Git diff viewer (unified + side-by-side, syntax highlighting, line numbers)
+│   │   ├── mod.rs        # DiffView component, DiffMode, DiffViewProps
+│   │   ├── types.rs      # DiffHunkLine, DiffHunk, DiffResult data model
+│   │   ├── compute.rs    # Diff computation via similar::TextDiff::grouped_ops
+│   │   ├── highlight.rs  # Syntax highlighting for diff lines (syntect)
+│   │   └── render.rs     # Rendering helpers (hunk headers, line numbers, unified/side-by-side)
 │   ├── progress_indicator.rs
 │   ├── status_indicator.rs
 │   ├── select.rs
@@ -372,9 +397,8 @@ crates/elph-exec/src/
 
 ## Additional crates (placeholder status)
 
-| Crate          | Path                    | Status | Notes                                                          |
-| -------------- | ----------------------- | ------ | -------------------------------------------------------------- |
-| `elph-cron`    | `/crates/elph-cron/`    | Empty  | `src/lib.rs` has no implementation                             |
-| `elph-sandbox` | `/crates/elph-sandbox/` | Empty  | `src/lib.rs` has no implementation                             |
-| `elph-swarm`   | `/crates/elph-swarm/`   | Empty  | `src/lib.rs` has no implementation                             |
-| `floppy`       | `/crates/floppy/`       | Empty  | Standalone crate; implementation is in `elph-core/src/floppy/` |
+| Crate          | Path                    | Status | Notes                              |
+| -------------- | ----------------------- | ------ | ---------------------------------- |
+| `elph-cron`    | `/crates/elph-cron/`    | Empty  | `src/lib.rs` has no implementation |
+| `elph-sandbox` | `/crates/elph-sandbox/` | Empty  | `src/lib.rs` has no implementation |
+| `elph-swarm`   | `/crates/elph-swarm/`   | Empty  | `src/lib.rs` has no implementation |

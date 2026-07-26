@@ -23,6 +23,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OPENCODE_API_KEY",
             default_model: "big-pickle",
         }),
+        "opencode-go" => Some(ProviderConfig {
+            label: "OpenCode Go",
+            api_key_env_key: "OPENCODE_API_KEY",
+            default_model: "deepseek-v4-flash",
+        }),
         "anthropic" => Some(ProviderConfig {
             label: "Anthropic",
             api_key_env_key: "ANTHROPIC_API_KEY",
@@ -38,13 +43,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OPENROUTER_API_KEY",
             default_model: "anthropic/claude-sonnet-4",
         }),
-        // Gitlawb OpenGateway — https://gitlawb.com/opengateway (OGW_API_KEY | OPENGATEWAY_API_KEY).
         "opengateway" => Some(ProviderConfig {
             label: "OpenGateway",
             api_key_env_key: "OGW_API_KEY",
             default_model: "auto",
         }),
-        // Kilo AI Gateway — https://kilo.ai/docs/gateway (KILO_API_KEY).
         "kilo" => Some(ProviderConfig {
             label: "Kilo Gateway",
             api_key_env_key: "KILO_API_KEY",

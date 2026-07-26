@@ -64,7 +64,10 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                     println!("No sessions found for {}", cwd.display());
                 } else {
                     for meta in sessions {
-                        println!("{}  {}  {}", meta.id, meta.created_at, meta.dir);
+                        println!(
+                            "{}  created {}  updated {}  {}",
+                            meta.id, meta.created_at, meta.updated_at, meta.dir
+                        );
                     }
                 }
                 EXIT_SUCCESS

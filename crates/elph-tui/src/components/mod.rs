@@ -57,7 +57,9 @@ pub use dialog_shell::{
     dialog_todo_list_content_rows, multi_choice_key_action, multi_choice_selected_indices, multi_choice_toggle,
     progress_row_glyph, select_list_chrome_rows, todo_row_line, todo_row_prefix,
 };
-pub use diff::{DiffMode, DiffView, DiffViewProps};
+pub use diff::{
+    DiffLineNumberStyle, DiffMode, DiffView, DiffViewProps, EMBEDDED_DIFF_MAX_LINES, unified_diff_display_rows,
+};
 pub use frame_buffer::{FrameBuffer, FrameBufferView, FrameBufferViewProps};
 pub use input::{Input, InputProps};
 pub use line_numbers::{LineNumbers, LineNumbersProps};

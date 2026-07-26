@@ -47,7 +47,7 @@ tools-read-file = []
 tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-dir"]
 tools-web = []
 tools-write-file = []
-tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing", "elph-core/tracing"]
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
 # obscura is git-only (h4ckf0r0day/obscura); workspace [patch.crates-io] redirects 0.1 → tag v0.1.9.
 
 [dependencies]
@@ -58,7 +58,6 @@ base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
-elph-core = { workspace = true, default-features = true }
 elph-exec.workspace = true
 elph-tui.workspace = true
 fastrace = { workspace = true, optional = true }
@@ -71,6 +70,8 @@ ignore.workspace = true
 jsonschema.workspace = true
 kalid.workspace = true
 log.workspace = true
+memchr.workspace = true
+logforth.workspace = true
 memorable-ids.workspace = true
 minijinja = { workspace = true, optional = true, features = ["custom_syntax"] }
 obscura = { workspace = true, optional = true }
@@ -254,7 +255,6 @@ path = "examples/agent_collaboration.rs"
 
 [dev-dependencies]
 elph-ai = { workspace = true }
-elph-core = { workspace = true, features = ["tracing"] }
 httpmock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -291,3 +291,13 @@ required-features = ["prompt-templates"]
 
 [lints.rust]
 linker_messages = "allow"
+
+[[test]]
+name = "tracing_integration"
+path = "tests/tracing_integration.rs"
+required-features = ["tracing"]
+
+[[test]]
+name = "plugins"
+path = "tests/plugins.rs"
+required-features = ["extensions"]

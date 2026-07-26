@@ -198,10 +198,125 @@ impl Default for ScrollTextDialogOverlayProps {
     }
 }
 
+/// Whether body text is mostly `Label: value` rows (session info, structured dumps).
+pub fn text_looks_like_key_value_lines(text: &str) -> bool {
+    let mut total = 0usize;
+    let mut kv = 0usize;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        total += 1;
+        if split_key_value_line(trimmed).is_some() {
+            kv += 1;
+        }
+    }
+    total > 0 && kv * 2 >= total
+}
+
+/// Split a single `Label: value` line. Label must be short and free of path noise.
+fn split_key_value_line(line: &str) -> Option<(&str, &str)> {
+    let (label, value) = line.split_once(':')?;
+    let label = label.trim();
+    let value = value.trim_start();
+    if label.is_empty() || label.chars().count() > 40 {
+        return None;
+    }
+    // Avoid treating URLs / times as key-value (`http://…`, `12:30`).
+    if label.chars().any(|ch| matches!(ch, '/' | '\\' | '@')) {
+        return None;
+    }
+    if label.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    if value.starts_with("//") {
+        return None;
+    }
+    // Require a space after `:` (or empty value) so `http:…` / bare schemes don't match.
+    let after_colon = line.split_once(':').map(|(_, rest)| rest).unwrap_or("");
+    if !after_colon.is_empty() && !after_colon.starts_with(char::is_whitespace) {
+        return None;
+    }
+    Some((label, value))
+}
+
+fn render_scroll_text_body(text: &str, body_width: u16, theme: UiTheme) -> AnyElement<'static> {
+    if text_looks_like_key_value_lines(text) {
+        let rows: Vec<AnyElement<'static>> = text
+            .lines()
+            .map(|line| {
+                if line.trim().is_empty() {
+                    return element! {
+                        View(width: body_width, height: 1u16, flex_shrink: 0f32) {}
+                    }
+                    .into();
+                }
+                if let Some((label, value)) = split_key_value_line(line.trim_end()) {
+                    element! {
+                        View(
+                            width: body_width,
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            flex_shrink: 0f32,
+                        ) {
+                            Text(
+                                content: format!("{label}: "),
+                                color: theme.text_muted,
+                                weight: Weight::Normal,
+                                wrap: TextWrap::NoWrap,
+                            )
+                            Text(
+                                content: value.to_string(),
+                                color: theme.text_primary,
+                                weight: Weight::Bold,
+                                wrap: TextWrap::Wrap,
+                            )
+                        }
+                    }
+                    .into()
+                } else {
+                    element! {
+                        Text(
+                            content: line.to_string(),
+                            color: theme.text_secondary,
+                            wrap: TextWrap::Wrap,
+                        )
+                    }
+                    .into()
+                }
+            })
+            .collect();
+        element! {
+            View(
+                width: body_width,
+                flex_direction: FlexDirection::Column,
+                gap: 0,
+                flex_shrink: 0f32,
+            ) {
+                #(rows)
+            }
+        }
+        .into()
+    } else {
+        element! {
+            Text(
+                content: text.to_string(),
+                color: theme.text_primary,
+                wrap: TextWrap::Wrap,
+            )
+        }
+        .into()
+    }
+}
+
 /// Centered slim-header dialog with a scrollable plain-text body.
 ///
 /// Scrollbar is the **built-in** [`ScrollView`] track so thumb position always
 /// matches the same offset the content uses (shell `scroll_view_*` + mouse wheel).
+///
+/// When most lines look like `Label: value` (e.g. `/session`), labels use muted
+/// color and values use bold primary text for easier scanning.
 #[component]
 pub fn ScrollTextDialogOverlay(
     props: &mut ScrollTextDialogOverlayProps,
@@ -214,6 +329,7 @@ pub fn ScrollTextDialogOverlay(
     let header = DialogHeader::title(props.title.clone());
     let needs_scrollbar = scroll_text_needs_scrollbar(&props.text, body_width, props.body_height);
     let on_esc = props.on_esc.take();
+    let body = render_scroll_text_body(&props.text, body_width, theme);
 
     // Shell owns ↑/↓ / PgUp / PgDn via the shared handle (keyboard_scroll off → no double step).
     // Mouse wheel stays on this ScrollView while the dialog has focus.
@@ -250,11 +366,7 @@ pub fn ScrollTextDialogOverlay(
                         scrollbar_thumb_color: Some(thumb),
                         scrollbar_track_color: Some(track),
                     ) {
-                        Text(
-                            content: props.text.clone(),
-                            color: theme.text_primary,
-                            wrap: TextWrap::Wrap,
-                        )
+                        #(body)
                     }
                 }
             }
@@ -265,6 +377,15 @@ pub fn ScrollTextDialogOverlay(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn key_value_detection_for_session_info() {
+        let session = "Title: Fix login\nSession ID: abc\nModel: openai/gpt-4o\nContext: 75K / 500K tokens (15%)";
+        assert!(text_looks_like_key_value_lines(session));
+        assert!(!text_looks_like_key_value_lines("plain paragraph\nwithout labels"));
+        assert_eq!(split_key_value_line("Title: Fix login"), Some(("Title", "Fix login")));
+        assert!(split_key_value_line("http://example.com").is_none());
+    }
 
     #[test]
     fn dialog_width_uses_percent_of_terminal() {

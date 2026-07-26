@@ -17,8 +17,8 @@ resource: /
 | Binary CLI + TUI   | `/elph/`              | The `elph` application — interactive TUI, non-interactive `run`, admin subcommands               |
 | Agent runtime      | `/crates/elph-agent/` | App-agnostic agent harness: turn loop, tool execution, MCP, sessions, subagents, compaction      |
 | LLM provider layer | `/crates/elph-ai/`    | Provider-agnostic LLM API: OpenAI-compatible, Anthropic, Bedrock, Gemini, Copilot, Mistral, etc. |
-| Core primitives    | `/crates/elph-core/`  | Shared utilities: `floppy` vector memory, logger, scaffold, git, path resolution, tracing        |
-| TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, themes, transcript layout                    |
+| Core primitives    | `/crates/floppy/`     | Standalone AI memory crate: vector memory, Turso + ONNX embeddings, query engine                 |
+| TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, diff viewer, themes, transcript layout       |
 | Shell execution    | `/crates/elph-exec/`  | Configurable local shell and PTY execution                                                       |
 
 ### Placeholder crates (not yet implemented)
@@ -26,7 +26,6 @@ resource: /
 - `elph-cron` — cron-based scheduled tasks (empty)
 - `elph-sandbox` — sandbox execution (empty)
 - `elph-swarm` — multi-agent swarm orchestration (empty)
-- `floppy` — standalone AI memory crate (empty; implementation lives in `elph-core/src/floppy/`)
 
 ## Installation
 
@@ -65,6 +64,12 @@ make run            # cargo run --bin elph
 | **Plan**  | Read-only, research mode          | Yellow     |
 | **Ask**   | Chat mode, no code changes        | Blue       |
 | **Brave** | All tools auto-approved           | Orange     |
+
+### Text-select mode
+
+Toggle with `ctrl+s` in the TUI. When active, the scrollbar is hidden and the scrollbar column is cleared so native terminal text selection (drag-to-select) works without interference.
+
+**Source:** `/elph/src/tui/transcript/panel.rs` — `TranscriptPanelProps::text_select_mode`
 
 ### Thinking levels
 
