@@ -28,7 +28,7 @@ use super::super::types::{
 };
 use super::chrome::{
     ASK_USER_ANSWER_SECTION_GAP, COLORED_CARD_PAD, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP,
-    TOOL_OUTPUT_SECTION_GAP, TranscriptCardChrome,
+    TOOL_OUTPUT_SECTION_GAP, TOOL_RESULT_PAD_LEFT, TranscriptCardChrome,
 };
 use super::frame::{
     assistant_message_elements, render_flush_card, render_invisible_tinted_card, render_tinted_card,
@@ -558,6 +558,8 @@ pub fn tool_call_card(
         };
         // Wait: click only when finished and there is result body text.
         let clickable = message.is_collapsible_detail();
+        // Result body (args / output / diff) sits one cell in from the header glyph column.
+        let result_width = inner_width.saturating_sub(TOOL_RESULT_PAD_LEFT).max(8);
         return element! {
             View(
                 width: chrome.outer_width,
@@ -584,18 +586,28 @@ pub fn tool_call_card(
                 )
                 #(if ask_user_rows.is_some() {
                     Some(element! {
-                        View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            flex_shrink: 0f32,
+                        ) {
                             AskUserToolCardView(
-                                width: inner_width,
+                                width: result_width,
                                 raw: tool.args_summary.clone(),
                             )
                         }
                     })
                 } else if has_generic_args {
                     Some(element! {
-                        View(width: inner_width, padding_top: 1, flex_shrink: 0f32) {
+                        View(
+                            width: inner_width,
+                            padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            flex_shrink: 0f32,
+                        ) {
                             ToolParamsView(
-                                width: inner_width,
+                                width: result_width,
                                 raw: tool.args_summary.clone(),
                             )
                         }
@@ -607,7 +619,6 @@ pub fn tool_call_card(
                     // Embedded unified DiffView — props must stay aligned with
                     // ToolCardDetail::inline_diff_body_rows / layout_text budgets.
                     // no_border + max_lines: content-sized column (no nested ScrollBox).
-                    let diff_width = inner_width.max(8);
                     let old_text = tool.old_text.clone().unwrap_or_default();
                     let new_text = tool.new_text.clone().unwrap_or_default();
                     let diff_file_path = tool.file_path.clone().or_else(|| {
@@ -620,11 +631,12 @@ pub fn tool_call_card(
                         View(
                             width: inner_width,
                             padding_top: 1,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
                             flex_direction: FlexDirection::Column,
                             flex_shrink: 0f32,
                         ) {
                             DiffView(
-                                width: diff_width,
+                                width: result_width,
                                 height: 0u16,
                                 old_text: old_text,
                                 new_text: new_text,
@@ -654,6 +666,7 @@ pub fn tool_call_card(
                         View(
                             width: 100pct,
                             padding_top: output_gap,
+                            padding_left: TOOL_RESULT_PAD_LEFT,
                             flex_direction: FlexDirection::Column,
                             gap: 0,
                         ) {
