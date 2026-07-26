@@ -1592,6 +1592,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     // Select text mode: redirect focus to the transcript so Arrow Up/Down
                     // scrolls the transcript panel instead of the prompt editor.
                     shell_focus.set(ShellFocus::Transcript);
+                    return;
                 }
             }
 
