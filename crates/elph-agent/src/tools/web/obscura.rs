@@ -75,7 +75,32 @@ pub async fn search_duckduckgo(query: &str) -> Result<Vec<SearchResult>> {
         .map_err(|_| anyhow::anyhow!("obscura browser worker dropped reply"))?
 }
 
+/// Suppress stderr for the Obscura browser thread by redirecting fd 2 to /dev/null.
+///
+/// The V8 engine inside Obscura writes JavaScript console output and HTTP fetch
+/// errors directly to file descriptor 2, bypassing the Rust `log` crate.  In TUI
+/// mode these messages corrupt the terminal; after exit they leak to the raw shell.
+/// This function discards them so the logging system (file + logforth) stays the
+/// sole output channel.
+#[cfg(unix)]
+fn suppress_thread_stderr() {
+    use std::os::unix::io::AsRawFd;
+    // FFI declaration avoids pulling in `libc` as a direct dependency.
+    extern "C" {
+        fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;
+    }
+    if let Ok(null) = std::fs::File::open("/dev/null") {
+        unsafe {
+            dup2(null.as_raw_fd(), 2);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn suppress_thread_stderr() {}
+
 fn run_browser_worker(rx: Receiver<BrowserJob>) {
+    suppress_thread_stderr();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
