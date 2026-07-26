@@ -17,6 +17,7 @@ mod model_selector;
 mod model_selector_bar;
 mod model_selector_shell;
 mod prompt;
+mod prompt_history;
 mod scoped_models;
 mod scoped_models_bar;
 mod scoped_models_shell;

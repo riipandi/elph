@@ -10,6 +10,7 @@ use crate::types::{AgentMode, ThinkingLevel};
 use super::editor::Editor;
 use super::footer::Footer;
 use crate::tui::file_picker::{FilePickerPalette, FilePickerSnapshot};
+use crate::tui::prompt_history::{PromptHistoryPalette, PromptHistorySnapshot};
 use crate::tui::slash_palette::palette_anchor_bottom;
 use crate::tui::slash_palette::{SlashCommandPalette, SlashPaletteSnapshot};
 
@@ -43,6 +44,8 @@ pub struct PromptChromeProps {
     pub file_picker_snapshot: FilePickerSnapshot,
     pub file_picker_selected: Option<State<usize>>,
     pub file_picker_show_hidden: bool,
+    pub prompt_history_snapshot: PromptHistorySnapshot,
+    pub prompt_history_selected: Option<State<usize>>,
     /// Inline dialog anchored above the editor (e.g. model picker); same slot as slash palette.
     pub editor_overlay: Option<AnyElement<'static>>,
     pub on_submit: HandlerMut<'static, String>,
@@ -107,7 +110,10 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     text_select_mode: props.text_select_mode,
                     clipboard_toast: props.clipboard_toast,
                     on_submit: props.on_submit.take(),
-                    on_escape: if props.slash_palette_snapshot.visible || props.file_picker_snapshot.visible {
+                    on_escape: if props.slash_palette_snapshot.visible
+                        || props.file_picker_snapshot.visible
+                        || props.prompt_history_snapshot.visible
+                    {
                         HandlerMut::default()
                     } else {
                         props.on_escape.take()
@@ -132,6 +138,14 @@ pub fn PromptChrome(props: &mut PromptChromeProps) -> impl Into<AnyElement<'stat
                     anchor_bottom: palette_anchor,
                     selected_index: props.file_picker_selected,
                     show_hidden_files: props.file_picker_show_hidden,
+                )
+                PromptHistoryPalette(
+                    screen_width: props.screen_width,
+                    screen_height: props.screen_height,
+                    agent_mode: props.agent_mode,
+                    snapshot: props.prompt_history_snapshot.clone(),
+                    anchor_bottom: palette_anchor,
+                    selected_index: props.prompt_history_selected,
                 )
                 #(props.editor_overlay.take().map(|overlay| -> AnyElement<'static> {
                     element! {
