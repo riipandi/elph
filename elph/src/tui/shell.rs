@@ -2155,6 +2155,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     mode,
                                 });
+                                force_editor_clear.set(true);
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
@@ -3388,6 +3389,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
+                                force_editor_clear.set(true);
                                 suppress_enter_newline.set(true);
                                 return;
                             }

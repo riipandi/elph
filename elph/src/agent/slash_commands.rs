@@ -79,13 +79,17 @@ pub fn slash_commands_for_palette(
     prompt_templates: Option<&[PromptTemplate]>,
     skills: Option<&[Skill]>,
 ) -> Vec<SlashCommand> {
+    // Include hidden builtins (e.g. `/confetti`) so Tab can still complete them when the
+    // typed query matches. Empty-query palette + `/help` filter them out via `hidden`.
     let mut commands: Vec<SlashCommand> = builtin_slash_commands()
         .into_iter()
-        .filter(|cmd| !cmd.hidden)
         .map(|cmd| {
             let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description));
             if let Some(hint) = cmd.args_hint {
                 entry = entry.with_args_hint(hint);
+            }
+            if cmd.hidden {
+                entry = entry.with_hidden(true);
             }
             entry
         })
@@ -158,7 +162,7 @@ pub fn format_help_message(
 ) -> String {
     let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
-    for cmd in commands {
+    for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
         lines.push(format!("  /{} — {}", cmd.name, cmd.description));
     }
     lines.join("\n")
@@ -248,6 +252,9 @@ pub fn confetti_mode_from_args(args: &str) -> &'static str {
 }
 
 /// Overlay slash commands that run immediately when confirmed from the palette.
+///
+/// Commands with arg completions (e.g. `tools`, `goal`, `confetti`) are **not** listed —
+/// Tab/Enter first complete the name so the args palette can open.
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
     matches!(command_name, "model" | "scoped-models" | "tree" | "resume")
 }
@@ -487,11 +494,13 @@ mod tests {
         assert_eq!(confetti_mode_from_args(""), "confetti");
         assert_eq!(confetti_mode_from_args("fireworks"), "firework");
 
-        let names: Vec<_> = slash_commands_for_palette(None, None, None)
-            .into_iter()
-            .map(|cmd| cmd.name)
-            .collect();
-        assert!(!names.iter().any(|name| name == "confetti"));
+        let commands = slash_commands_for_palette(None, None, None);
+        let confetti = commands.iter().find(|cmd| cmd.name == "confetti");
+        // Kept in the registry (so Tab can match), but marked hidden for empty `/` + help.
+        assert!(
+            confetti.is_some_and(|cmd| cmd.hidden),
+            "hidden commands stay in registry for Tab"
+        );
 
         let help = format_help_message(None, None, None);
         assert!(!help.contains("/confetti"));

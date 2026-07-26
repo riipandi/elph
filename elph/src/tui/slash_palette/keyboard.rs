@@ -381,4 +381,39 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn confetti_tab_completes_command_without_submitting() {
+        use super::super::model::build_snapshot;
+        use crate::types::SlashCommand;
+
+        let commands = vec![
+            SlashCommand::new("confetti", "Confetti celebration")
+                .with_args_hint("[confetti|firework]")
+                .with_hidden(true),
+        ];
+        // Command phase: Tab fills `/confetti ` so the args palette can open.
+        let filtered = super::super::model::filter_commands(&commands, "conf");
+        let action = resolve_key_action("/conf", &filtered, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::CompleteDraft {
+                text: "/confetti ".into(),
+                suppress_enter_newline: false,
+            }
+        );
+
+        // Args phase: palette lists confetti | firework; Enter submits selected mode.
+        let snapshot = build_snapshot("/confetti ", &commands, 40);
+        assert!(matches!(snapshot.phase, super::super::model::SlashPalettePhase::Args { .. }));
+        assert!(snapshot.options.iter().any(|opt| opt.name == "firework"));
+        let action =
+            resolve_snapshot_key_action("/confetti ", &snapshot, 1, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        assert_eq!(
+            action,
+            SlashPaletteKeyAction::SubmitCommand {
+                slash_input: "/confetti firework".into(),
+            }
+        );
+    }
 }
