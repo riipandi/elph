@@ -14,7 +14,7 @@ linker_messages = "allow"
 
 [workspace.dependencies]
 aes-gcm = "0.11.0"
-agent-client-protocol = "1.3.0"
+agent-client-protocol = "2.0.0"
 anstyle = "1.0.14"
 anstyle-syntect = "1.0.5"
 anyhow = "1.0.104"

@@ -9,7 +9,7 @@ use agent_client_protocol::schema::v1::{
     NewSessionResponse, PromptRequest, PromptResponse, SessionId, SessionNotification, SessionUpdate, StopReason,
     TextContent,
 };
-use agent_client_protocol::{Agent, Client, ConnectionTo, Dispatch, Result as AcpResult, Stdio};
+use agent_client_protocol::{Agent, Client, ConnectionTo, Result as AcpResult, Stdio};
 use anyhow::Context;
 use parking_lot::Mutex;
 use tokio::sync::mpsc;
@@ -83,12 +83,6 @@ pub async fn run_agent_stdio(paths: Paths, settings: Settings) -> AcpResult<()> 
                 }
             },
             agent_client_protocol::on_receive_request!(),
-        )
-        .on_receive_dispatch(
-            async move |message: Dispatch, cx: ConnectionTo<Client>| {
-                message.respond_with_error(agent_client_protocol::util::internal_error("unhandled ACP message"), cx)
-            },
-            agent_client_protocol::on_receive_dispatch!(),
         )
         .connect_to(Stdio::new())
         .await
