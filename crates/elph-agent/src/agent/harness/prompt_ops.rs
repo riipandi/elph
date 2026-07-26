@@ -46,10 +46,10 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
-        // Transcript card title matches live slash echo (`skill:name [args]`).
+        // Transcript + prompt history use `/skill:name [args]` (leading slash required).
         let prompt_title = match additional_instructions.map(str::trim).filter(|s| !s.is_empty()) {
-            Some(args) => format!("skill:{name} {args}"),
-            None => format!("skill:{name}"),
+            Some(args) => format!("/skill:{name} {args}"),
+            None => format!("/skill:{name}"),
         };
         *self.shared.pending_prompt_meta.lock().await = Some(("skill".into(), prompt_title));
         let result = async {
@@ -80,11 +80,11 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
-        // Transcript card title matches live slash echo (`name [args…]`).
+        // Transcript + prompt history keep the leading `/` (`/name [args…]`).
         let prompt_title = if args.is_empty() {
-            name.to_string()
+            format!("/{name}")
         } else {
-            format!("{name} {}", args.join(" "))
+            format!("/{name} {}", args.join(" "))
         };
         *self.shared.pending_prompt_meta.lock().await = Some(("template".into(), prompt_title));
         let result = async {

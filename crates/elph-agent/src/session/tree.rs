@@ -140,7 +140,7 @@ impl<S: SessionStorage> Session<S> {
         skill_name: impl Into<String>,
     ) -> Result<String, SessionError> {
         let name = skill_name.into();
-        self.append_message_with_prompt(message, format!("skill:{name}"), "skill")
+        self.append_message_with_prompt(message, format!("/skill:{name}"), "skill")
             .await
     }
 

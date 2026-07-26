@@ -640,8 +640,8 @@ impl TranscriptStyle {
 
     /// Style for a slash command line echoed when it spawns an agent turn.
     pub fn for_slash_turn_echo(slash_input: &str) -> Self {
-        let trimmed = slash_input.trim_start();
-        if trimmed.starts_with("/skill:") {
+        let trimmed = slash_input.trim_start().trim_start_matches('/');
+        if trimmed.starts_with("skill:") || trimmed.starts_with("skill ") {
             Self::SkillPrompt
         } else {
             Self::User

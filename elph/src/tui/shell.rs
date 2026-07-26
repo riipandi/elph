@@ -47,7 +47,7 @@ use crate::tui::file_picker::{
 };
 use crate::tui::prompt_history::{
     PromptHistoryKeyAction, build_snapshot as build_prompt_history_snapshot, can_open_history,
-    push_history_entry, resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
+    resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
 };
 use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
 use crate::tui::model_selector::ModelSelectorFocus;
@@ -536,11 +536,16 @@ fn push_transcript_message(
     message: TranscriptMessage,
 ) {
     // Keep Arrow Up history in sync with user / skill prompt cards.
+    // Skills → `/skill:…`; other slash commands keep a leading `/`.
     if matches!(
         message.style,
         TranscriptStyle::User | TranscriptStyle::SkillPrompt
     ) {
-        push_history_entry(&mut prompt_history.write(), &message.content);
+        crate::tui::prompt_history::push_history_entry_styled(
+            &mut prompt_history.write(),
+            &message.content,
+            message.style,
+        );
     }
     messages.set({
         let mut list = messages.read().clone();
@@ -2693,7 +2698,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         suppress_enter_newline.set(true);
                         force_palette_sync.set(true);
 
-                        let body = slash_input.trim().trim_start_matches('/').trim().to_string();
+                        // Transcript + prompt history keep the leading `/` (skills → `/skill:…`).
+                        let echo = {
+                            let s = slash_input.trim();
+                            if s.starts_with('/') {
+                                s.to_string()
+                            } else {
+                                format!("/{s}")
+                            }
+                        };
 
                         let extension_registry = extension_host_for_keys.registry();
                         let ext_registry = extension_registry.read();
@@ -2716,7 +2729,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             agent_turn_active.get() && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let mut submitted = TranscriptMessage::text(
-                                body.clone(),
+                                echo.clone(),
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {
@@ -4018,8 +4031,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let queue_follow_up = agent_turn_active.get()
                             && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
+                            // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
+                            let echo = if slash_input.trim().starts_with('/') {
+                                slash_input.trim().to_string()
+                            } else {
+                                format!("/{}", slash_input.trim())
+                            };
                             let mut submitted = TranscriptMessage::text(
-                                body.clone(),
+                                echo,
                                 TranscriptStyle::for_slash_turn_echo(&slash_input),
                             );
                             if submitted.style.is_user_input_card() {

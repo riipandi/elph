@@ -17,5 +17,5 @@ pub use keyboard::resolve_key_action;
 pub use model::PromptHistorySnapshot;
 pub use model::build_snapshot;
 pub use model::can_open_history;
-pub use model::push_history_entry;
+pub use model::push_history_entry_styled;
 pub use model::seed_history_from_transcript;
