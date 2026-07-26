@@ -174,7 +174,7 @@ impl PromptQueueAction {
 
     pub fn label(self) -> &'static str {
         match self {
-            Self::SendNow => "Send now",
+            Self::SendNow => "Send",
             Self::Edit => "Edit",
             Self::Cancel => "Cancel",
         }
@@ -375,7 +375,7 @@ pub fn build_prompt_queue_dialog_kind(
     })
 }
 
-/// Minimal queue strip: numbered previews + per-item actions, one blank row under the list.
+/// Single-line queue rows: `#n title…` left, `[Send] [Edit] [Cancel]` right (timestamp-style rail).
 fn render_prompt_queue_dialog(
     screen_width: u16,
     items: &[crate::agent::QueuedPromptItem],
@@ -383,11 +383,11 @@ fn render_prompt_queue_dialog(
     action: PromptQueueAction,
     interactive: bool,
 ) -> AnyElement<'static> {
-    use crate::tui::theme::{PROMPT_QUEUE_FG, PROMPT_QUEUE_SELECTED_FG};
-    use elph_tui::utils::truncate_with_ellipsis;
+    use crate::tui::theme::{EDITOR_TEXT_FOCUSED, PROMPT_QUEUE_FG};
+    use elph_tui::utils::{display_width, truncate_with_ellipsis};
 
-    const MAX_ITEMS: usize = 4;
-    let max_w = screen_width.saturating_sub(4).max(12) as usize;
+    const MAX_ITEMS: usize = 5;
+    let inner_w = screen_width.saturating_sub(2).max(12);
     let selected = selected.min(items.len().saturating_sub(1));
     let start = if items.len() <= MAX_ITEMS {
         0
@@ -398,48 +398,53 @@ fn render_prompt_queue_dialog(
     let rows: Vec<AnyElement<'static>> = items[start..end]
         .iter()
         .enumerate()
-        .flat_map(|(offset, item)| {
+        .map(|(offset, item)| {
             let idx = start + offset;
-            let is_sel = idx == selected;
+            let row_focused = idx == selected && interactive;
+            let actions_w = queue_actions_rail_width() as u16;
+            // "#1 " + title budget (gap before right rail).
+            let num = format!("#{} ", item.seq);
+            let num_w = display_width(&num) as u16;
+            let title_budget = inner_w
+                .saturating_sub(num_w)
+                .saturating_sub(actions_w)
+                .saturating_sub(1)
+                .max(4) as usize;
             let one_line = item.text.lines().next().unwrap_or("").trim();
-            let preview = truncate_with_ellipsis(&format!("#{seq}  {text}", seq = item.seq, text = one_line), max_w);
-            let body_fg = if is_sel && interactive {
-                PROMPT_QUEUE_SELECTED_FG
-            } else {
-                PROMPT_QUEUE_FG
-            };
-            let actions_line = format_queue_actions_line(action, is_sel && interactive, max_w);
-            let action_fg = if is_sel && interactive {
-                PROMPT_QUEUE_SELECTED_FG
-            } else {
-                PROMPT_QUEUE_FG
-            };
-            [
-                element! {
+            let title = truncate_with_ellipsis(one_line, title_budget);
+            let action_chips = render_queue_action_chips(action, row_focused);
+            element! {
+                View(
+                    width: screen_width,
+                    height: 1,
+                    flex_shrink: 0f32,
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
+                    padding_left: 1,
+                    padding_right: 1,
+                ) {
                     View(
-                        width: screen_width,
-                        height: 1,
-                        flex_shrink: 0f32,
-                        padding_left: 1,
-                        padding_right: 1,
+                        flex_direction: FlexDirection::Row,
+                        flex_grow: 1f32,
+                        flex_shrink: 1f32,
+                        overflow: Overflow::Hidden,
+                        align_items: AlignItems::Center,
                     ) {
-                        Text(color: body_fg, wrap: TextWrap::NoWrap, content: preview)
+                        Text(color: PROMPT_QUEUE_FG, wrap: TextWrap::NoWrap, content: num)
+                        Text(color: EDITOR_TEXT_FOCUSED, wrap: TextWrap::NoWrap, content: title)
+                    }
+                    View(
+                        flex_direction: FlexDirection::Row,
+                        flex_shrink: 0f32,
+                        align_items: AlignItems::Center,
+                        gap: 1,
+                    ) {
+                        #(action_chips)
                     }
                 }
-                .into(),
-                element! {
-                    View(
-                        width: screen_width,
-                        height: 1,
-                        flex_shrink: 0f32,
-                        padding_left: 3,
-                        padding_right: 1,
-                    ) {
-                        Text(color: action_fg, wrap: TextWrap::NoWrap, content: actions_line)
-                    }
-                }
-                .into(),
-            ]
+            }
+            .into()
         })
         .collect();
 
@@ -457,19 +462,32 @@ fn render_prompt_queue_dialog(
     .into()
 }
 
-fn format_queue_actions_line(selected: PromptQueueAction, highlight: bool, max_w: usize) -> String {
-    use elph_tui::utils::truncate_with_ellipsis;
-    let parts: Vec<String> = PromptQueueAction::ALL
+fn queue_actions_rail_width() -> usize {
+    // "[Send] [Edit] [Cancel]" with single spaces between chips.
+    PromptQueueAction::ALL
+        .iter()
+        .map(|a| a.label().len() + 2) // [label]
+        .sum::<usize>()
+        + PromptQueueAction::ALL.len().saturating_sub(1)
+}
+
+fn render_queue_action_chips(selected: PromptQueueAction, row_focused: bool) -> Vec<AnyElement<'static>> {
+    use crate::tui::theme::{PROMPT_QUEUE_FG, PROMPT_QUEUE_SELECTED_FG};
+    PromptQueueAction::ALL
         .iter()
         .map(|a| {
-            if highlight && *a == selected {
-                format!("[{}]", a.label())
+            let label = format!("[{}]", a.label());
+            let color = if row_focused && *a == selected {
+                PROMPT_QUEUE_SELECTED_FG
             } else {
-                a.label().to_string()
+                PROMPT_QUEUE_FG
+            };
+            element! {
+                Text(color: color, wrap: TextWrap::NoWrap, content: label)
             }
+            .into()
         })
-        .collect();
-    truncate_with_ellipsis(&parts.join("  ·  "), max_w.saturating_sub(2).max(8))
+        .collect()
 }
 
 #[cfg(test)]
