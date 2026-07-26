@@ -106,7 +106,7 @@ fn parse_frontmatter<T: for<'de> Deserialize<'de> + Default>(content: &str) -> R
     };
     let yaml_string = &normalized[4..end_index];
     let body = normalized[end_index + 4..].trim().to_string();
-    let frontmatter: T = match serde_yaml::from_str(yaml_string) {
+    let frontmatter: T = match yaml_serde::from_str(yaml_string) {
         Ok(value) => value,
         Err(error) => return err(error.to_string()),
     };

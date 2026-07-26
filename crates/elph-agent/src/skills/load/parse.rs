@@ -80,13 +80,13 @@ pub(super) fn parse_frontmatter<T: for<'de> Deserialize<'de> + Default>(
     };
     let yaml_string = &normalized[4..end_index];
     let body = normalized[end_index + 4..].trim().to_string();
-    let frontmatter: T = match serde_yaml::from_str(yaml_string) {
+    let frontmatter: T = match yaml_serde::from_str(yaml_string) {
         Ok(value) => value,
         Err(error) => return err(to_error(error)),
     };
     ok(ParsedFrontmatter { frontmatter, body })
 }
 
-fn to_error(error: serde_yaml::Error) -> String {
+fn to_error(error: yaml_serde::Error) -> String {
     error.to_string()
 }
