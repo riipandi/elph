@@ -1566,7 +1566,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     {
                         return;
                     }
-                } else if shell_focus.get() == ShellFocus::Prompt && !select_mode.get() && is_prompt_history_open_key(code, modifiers) {
+                } else if shell_focus.get() == ShellFocus::Prompt
+                    && !select_mode.get()
+                    && is_prompt_history_open_key(code, modifiers)
+                {
                     let draft_body = {
                         let live = live_draft.read().clone();
                         let stored = draft.read().clone();
@@ -1581,6 +1584,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         prompt_history_index.set(history_len.saturating_sub(1));
                         return;
                     }
+                } else if shell_focus.get() == ShellFocus::Prompt
+                    && select_mode.get()
+                    && modifiers.is_empty()
+                    && matches!(code, KeyCode::Up | KeyCode::Down)
+                {
+                    // Select text mode: redirect focus to the transcript so Arrow Up/Down
+                    // scrolls the transcript panel instead of the prompt editor.
+                    shell_focus.set(ShellFocus::Transcript);
                 }
             }
 
