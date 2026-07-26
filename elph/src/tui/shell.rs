@@ -1500,6 +1500,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
+                    // `[` / `]` — All | Scoped | Provider (any focus).
                     if let Some(delta) = model_selector_scope_delta(modifiers, code) {
                         if let Some(pending) = pending_model_selector.write().as_mut() {
                             sync_pending_filter(pending, &model_filter.read());
@@ -1513,18 +1514,28 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
-                    if model_input_focus.get() == ModelSelectorFocus::List {
-                        if let Some(delta) = model_selector_provider_delta(modifiers, code) {
+                    // ←/→ (and h/l on list) — cycle built-in providers only.
+                    // Arrows also work from the filter when it is empty so users need not Tab first.
+                    if let Some(delta) = model_selector_provider_delta(modifiers, code) {
+                        let list_focused = model_input_focus.get() == ModelSelectorFocus::List;
+                        let is_arrow = matches!(code, KeyCode::Left | KeyCode::Right);
+                        let filter_empty = model_filter.read().trim().is_empty();
+                        let allow_provider_nav = list_focused || (is_arrow && filter_empty);
+                        if allow_provider_nav {
                             if let Some(pending) = pending_model_selector.write().as_mut() {
-                                focus_model_selector_list(&mut model_input_focus, pending);
+                                if list_focused {
+                                    focus_model_selector_list(&mut model_input_focus, pending);
+                                }
                                 sync_pending_filter(pending, &model_filter.read());
-                                pending.apply_horizontal_nav(delta);
+                                pending.apply_provider_nav(delta);
                                 model_provider_index.set(pending.provider_index);
                                 model_selected_index.set(pending.model_index);
                             }
                             return;
                         }
+                    }
 
+                    if model_input_focus.get() == ModelSelectorFocus::List {
                         if modifiers.is_empty()
                             && code == KeyCode::Backspace
                             && let Some(pending) = pending_model_selector.write().as_mut()

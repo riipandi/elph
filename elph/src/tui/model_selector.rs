@@ -73,6 +73,7 @@ pub struct ModelRow {
     pub model_id: String,
     pub context_k: u32,
     pub reasoning: bool,
+    pub images: bool,
 }
 
 fn model_row_from_builtin(provider_id: &str, model: &Model) -> ModelRow {
@@ -83,6 +84,32 @@ fn model_row_from_builtin(provider_id: &str, model: &Model) -> ModelRow {
         model_id: model.id.clone(),
         context_k: model.context_window / 1000,
         reasoning: model.reasoning,
+        images: model.input.iter().any(|cap| cap == "image"),
+    }
+}
+
+/// Compact context size for list rows (`128K`, `1M`).
+pub fn format_model_context_label(context_k: u32) -> String {
+    if context_k >= 1000 && context_k.is_multiple_of(1000) {
+        format!("{}M", context_k / 1000)
+    } else {
+        format!("{context_k}K")
+    }
+}
+
+/// Capability badges for list rows: `(think)`, `(img)`, or `(think|img)`.
+pub fn format_model_capability_label(reasoning: bool, images: bool) -> Option<String> {
+    let mut caps = Vec::new();
+    if reasoning {
+        caps.push("think");
+    }
+    if images {
+        caps.push("img");
+    }
+    if caps.is_empty() {
+        None
+    } else {
+        Some(format!("({})", caps.join("|")))
     }
 }
 
@@ -301,6 +328,11 @@ impl PendingModelSelector {
         let mut pending = Self::open(initial_filter, stashed_prompt_draft, scoped_model_items);
         if let (Some(provider), Some(model)) = (provider_id, model_id) {
             let value = format!("{provider}/{model}");
+            // Always remember the real built-in provider tab — never the synthetic All/Scoped indices.
+            // Preferring Scoped for the *visible* tab must not corrupt Provider-mode restore.
+            if let Some(builtin_pi) = pending.catalog.providers.iter().position(|tab| tab.id == provider) {
+                pending.last_builtin_provider_index = builtin_pi;
+            }
             let scoped_index = pending
                 .catalog
                 .providers
@@ -311,9 +343,6 @@ impl PendingModelSelector {
                 scoped_index.or_else(|| pending.catalog.providers.iter().position(|tab| tab.id == provider))
             {
                 pending.provider_index = pi;
-                if !is_synthetic_provider_tab(provider) {
-                    pending.last_builtin_provider_index = pi;
-                }
                 let models = pending.filtered_models();
                 if let Some(mi) = models.iter().position(|row| row.value == value) {
                     pending.model_index = mi;
@@ -321,6 +350,18 @@ impl PendingModelSelector {
             }
         }
         pending
+    }
+
+    /// Built-in provider catalog index used when entering Provider scope mode.
+    fn resolved_builtin_provider_index(&self) -> usize {
+        if matches!(
+            self.catalog.scope_mode(self.last_builtin_provider_index),
+            ModelScopeMode::Provider
+        ) {
+            self.last_builtin_provider_index
+        } else {
+            self.catalog.first_builtin_provider_index()
+        }
     }
 
     pub fn scope_mode(&self) -> ModelScopeMode {
@@ -382,11 +423,15 @@ impl PendingModelSelector {
         if self.is_provider_scope_mode() {
             self.last_builtin_provider_index = self.provider_index;
         }
+        let provider_target = self.resolved_builtin_provider_index();
         self.provider_index = match mode {
             ModelScopeMode::All => ALL_PROVIDERS_TAB_INDEX,
             ModelScopeMode::Scoped => SCOPED_PROVIDERS_TAB_INDEX,
-            ModelScopeMode::Provider => self.last_builtin_provider_index,
+            ModelScopeMode::Provider => provider_target,
         };
+        if matches!(mode, ModelScopeMode::Provider) {
+            self.last_builtin_provider_index = provider_target;
+        }
         self.model_index = 0;
         self.clamp_indices();
     }
@@ -402,45 +447,41 @@ impl PendingModelSelector {
         self.set_scope_mode(next_mode);
     }
 
-    /// `←/→` cycles scope tabs in All/Scoped; in Provider mode, moves across `All`, `Scoped`, and providers.
-    pub fn apply_horizontal_nav(&mut self, delta: isize) {
-        if self.is_provider_scope_mode() {
-            self.apply_provider_mode_header_nav(delta);
-        } else {
-            self.apply_scope_nav(delta);
-        }
-    }
-
-    fn provider_mode_header_segments(&self) -> Vec<usize> {
-        let mut segments = vec![ALL_PROVIDERS_TAB_INDEX, SCOPED_PROVIDERS_TAB_INDEX];
-        segments.extend(self.catalog.builtin_provider_indices());
-        segments
-    }
-
-    fn provider_mode_header_index(&self) -> usize {
-        let segments = self.provider_mode_header_segments();
-        segments
-            .iter()
-            .position(|&index| index == self.provider_index)
-            .unwrap_or_else(|| segments.len().saturating_sub(1))
-    }
-
-    fn apply_provider_mode_header_nav(&mut self, delta: isize) {
-        let segments = self.provider_mode_header_segments();
-        if segments.is_empty() {
+    /// `←/→` cycles built-in provider tabs only (never All/Scoped).
+    ///
+    /// When the current scope is All or Scoped, enters Provider mode first
+    /// (right → first provider, left → last provider), then subsequent arrows
+    /// wrap among built-in providers.
+    pub fn apply_provider_nav(&mut self, delta: isize) {
+        let indices = self.catalog.builtin_provider_indices();
+        if indices.is_empty() {
             return;
         }
-        let current = self.provider_mode_header_index().min(segments.len() - 1);
-        let next = (current as isize + delta).rem_euclid(segments.len() as isize) as usize;
-        let target = segments[next];
-        if self.catalog.is_all_providers_tab(target) {
-            self.set_scope_mode(ModelScopeMode::All);
-        } else if self.catalog.is_scoped_providers_tab(target) {
-            self.set_scope_mode(ModelScopeMode::Scoped);
-        } else {
+
+        if !self.is_provider_scope_mode() {
+            let target = if delta >= 0 {
+                indices[0]
+            } else {
+                indices[indices.len() - 1]
+            };
             self.last_builtin_provider_index = target;
             self.set_provider_index(target);
+            return;
         }
+
+        let current_pos = indices
+            .iter()
+            .position(|&index| index == self.provider_index)
+            .unwrap_or(0);
+        let next = (current_pos as isize + delta).rem_euclid(indices.len() as isize) as usize;
+        let target = indices[next];
+        self.last_builtin_provider_index = target;
+        self.set_provider_index(target);
+    }
+
+    /// Backward-compatible alias: arrows only move providers (not scope tabs).
+    pub fn apply_horizontal_nav(&mut self, delta: isize) {
+        self.apply_provider_nav(delta);
     }
 }
 
@@ -477,13 +518,8 @@ pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
     )
 }
 
-pub fn model_selector_footer_hint(in_provider_scope: bool) -> String {
-    let header_hint = if in_provider_scope {
-        "←/→ scope & provider"
-    } else {
-        "←/→ scope"
-    };
-    format!("↑/↓ model · {header_hint} · [ ] scope · a-z filter · / focus filter · Enter confirm · Esc cancel")
+pub fn model_selector_footer_hint(_in_provider_scope: bool) -> String {
+    "↑/↓ model · ←/→ provider · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
 }
 
 pub fn model_match_score(row: &ModelRow, query: &str) -> Option<i32> {
@@ -493,7 +529,7 @@ pub fn model_match_score(row: &ModelRow, query: &str) -> Option<i32> {
     }
 
     let provider_label = format_provider_label(&row.provider_id).to_ascii_lowercase();
-    let context_label = format!("{}k", row.context_k);
+    let context_label = format_model_context_label(row.context_k).to_ascii_lowercase();
 
     let mut best = field_score(&query, &row.name.to_ascii_lowercase(), NAME_WEIGHT, true);
     best = max_score(best, field_score(&query, &row.model_id.to_ascii_lowercase(), ID_WEIGHT, true));
@@ -505,6 +541,9 @@ pub fn model_match_score(row: &ModelRow, query: &str) -> Option<i32> {
     best = max_score(best, field_score(&query, &context_label, DESCRIPTION_WEIGHT, true));
     if row.reasoning {
         best = max_score(best, field_score(&query, "think reasoning", DESCRIPTION_WEIGHT, false));
+    }
+    if row.images {
+        best = max_score(best, field_score(&query, "img image vision", DESCRIPTION_WEIGHT, false));
     }
     best
 }
@@ -589,6 +628,7 @@ mod tests {
             model_id: "claude-sonnet-4".into(),
             context_k: 200,
             reasoning: false,
+            images: false,
         }];
         let filtered = filter_models_fuzzy(&rows, "bedrock");
         assert_eq!(filtered.len(), 1);
@@ -604,6 +644,7 @@ mod tests {
                 model_id: "claude-sonnet-4".into(),
                 context_k: 200,
                 reasoning: false,
+                images: false,
             },
             ModelRow {
                 value: "anthropic/claude-opus-4".into(),
@@ -612,6 +653,7 @@ mod tests {
                 model_id: "claude-opus-4".into(),
                 context_k: 200,
                 reasoning: true,
+                images: true,
             },
         ];
         let filtered = filter_models_fuzzy(&rows, "sonnet 4");
@@ -628,6 +670,7 @@ mod tests {
             model_id: "claude-sonnet-4".into(),
             context_k: 200,
             reasoning: false,
+            images: false,
         };
         assert_eq!(model_match_score(&sonnet, "opus"), None);
         assert_eq!(model_row_match_score(&sonnet, "opus 4"), None);
@@ -643,6 +686,7 @@ mod tests {
                 model_id: "claude-sonnet-4".into(),
                 context_k: 200,
                 reasoning: false,
+                images: false,
             },
             ModelRow {
                 value: "anthropic/claude-opus-4".into(),
@@ -651,6 +695,7 @@ mod tests {
                 model_id: "claude-opus-4".into(),
                 context_k: 200,
                 reasoning: true,
+                images: true,
             },
         ];
         let filtered = filter_models_fuzzy(&rows, "opus 4");
@@ -668,6 +713,7 @@ mod tests {
                 model_id: "m1".into(),
                 context_k: 128,
                 reasoning: false,
+                images: false,
             },
             ModelRow {
                 value: "a/m2".into(),
@@ -676,9 +722,29 @@ mod tests {
                 model_id: "m2".into(),
                 context_k: 128,
                 reasoning: false,
+                images: false,
             },
         ];
         assert_eq!(filter_models_fuzzy(&rows, ""), rows);
+    }
+
+    #[test]
+    fn context_label_uses_k_and_m_suffixes() {
+        assert_eq!(format_model_context_label(128), "128K");
+        assert_eq!(format_model_context_label(1000), "1M");
+        assert_eq!(format_model_context_label(2000), "2M");
+        assert_eq!(format_model_context_label(1048), "1048K");
+    }
+
+    #[test]
+    fn capability_label_joins_think_and_img() {
+        assert_eq!(format_model_capability_label(true, false).as_deref(), Some("(think)"));
+        assert_eq!(format_model_capability_label(false, true).as_deref(), Some("(img)"));
+        assert_eq!(
+            format_model_capability_label(true, true).as_deref(),
+            Some("(think|img)")
+        );
+        assert_eq!(format_model_capability_label(false, false), None);
     }
 
     #[test]
@@ -815,76 +881,109 @@ mod tests {
         );
         assert!(catalog.is_scoped_providers_tab(pending.provider_index));
         assert_eq!(pending.selected_model().map(|row| row.value), Some(sample.value.clone()));
+        // Scoped landing must not poison Provider-mode restore with the synthetic tab index.
+        assert!(
+            matches!(
+                catalog.scope_mode(pending.last_builtin_provider_index),
+                ModelScopeMode::Provider
+            ),
+            "last_builtin_provider_index must be a real provider tab, got {}",
+            pending.last_builtin_provider_index
+        );
+        let builtin = catalog
+            .providers
+            .iter()
+            .position(|tab| tab.id == provider_id)
+            .expect("builtin provider tab");
+        assert_eq!(pending.last_builtin_provider_index, builtin);
     }
 
     #[test]
-    fn horizontal_nav_cycles_scope_when_not_in_provider_mode() {
+    fn scope_nav_reaches_provider_after_opening_scoped_selection() {
+        let base = ModelCatalogSnapshot::build(&[]);
+        let sample = base.all_models.first().expect("model");
+        let (provider_id, model_id) = sample.value.split_once('/').expect("provider/model");
+        let mut pending = PendingModelSelector::open_with_selection(
+            String::new(),
+            None,
+            std::slice::from_ref(&sample.value),
+            Some(provider_id),
+            Some(model_id),
+        );
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
+        // ] from Scoped must enter Provider (was stuck on Scoped when last_builtin was index 1).
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
+        assert!(!pending.catalog.is_scoped_providers_tab(pending.provider_index));
+        assert!(!pending.catalog.is_all_providers_tab(pending.provider_index));
+    }
+
+    #[test]
+    fn set_scope_mode_provider_recovers_from_corrupt_last_builtin() {
+        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        pending.last_builtin_provider_index = SCOPED_PROVIDERS_TAB_INDEX;
+        pending.set_scope_mode(ModelScopeMode::Provider);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
+        assert_eq!(
+            pending.provider_index,
+            pending.catalog.first_builtin_provider_index()
+        );
+    }
+
+    #[test]
+    fn scope_brackets_cycle_all_scoped_provider() {
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         assert_eq!(pending.scope_mode(), ModelScopeMode::All);
-        pending.apply_horizontal_nav(1);
+        pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
-        pending.apply_horizontal_nav(1);
+        pending.apply_scope_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
+        pending.apply_scope_nav(1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
     }
 
     #[test]
-    fn horizontal_nav_cycles_builtin_providers_in_provider_mode() {
+    fn provider_nav_cycles_builtin_providers_only() {
         let catalog = ModelCatalogSnapshot::build(&[]);
         let builtins = catalog.builtin_provider_indices();
         assert!(builtins.len() >= 2);
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
         pending.set_scope_mode(ModelScopeMode::Provider);
         let start = pending.provider_index;
-        pending.apply_horizontal_nav(1);
+        pending.apply_provider_nav(1);
         assert_ne!(pending.provider_index, start);
         assert!(pending.is_provider_scope_mode());
         assert_eq!(pending.last_builtin_provider_index, pending.provider_index);
-    }
-
-    #[test]
-    fn horizontal_nav_from_first_provider_reaches_scoped() {
-        let catalog = ModelCatalogSnapshot::build(&[]);
-        let first = catalog
-            .builtin_provider_indices()
-            .first()
-            .copied()
-            .expect("builtin provider");
-        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
-        pending.set_provider_index(first);
+        // Wrapping left from first stays in Provider mode (does not jump to Scoped/All).
+        pending.set_provider_index(builtins[0]);
+        pending.apply_provider_nav(-1);
+        assert_eq!(pending.provider_index, *builtins.last().expect("last provider"));
         assert!(pending.is_provider_scope_mode());
-        pending.apply_horizontal_nav(-1);
-        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
     }
 
     #[test]
-    fn horizontal_nav_from_provider_mode_reaches_all() {
+    fn provider_nav_from_all_or_scoped_enters_provider_mode() {
         let catalog = ModelCatalogSnapshot::build(&[]);
         let first = catalog
             .builtin_provider_indices()
             .first()
             .copied()
             .expect("builtin provider");
-        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
-        pending.set_provider_index(first);
-        pending.apply_horizontal_nav(-1);
-        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
-        pending.apply_horizontal_nav(-1);
-        assert_eq!(pending.scope_mode(), ModelScopeMode::All);
-    }
-
-    #[test]
-    fn horizontal_nav_from_scoped_enters_first_provider() {
-        let catalog = ModelCatalogSnapshot::build(&[]);
-        let first = catalog
+        let last = catalog
             .builtin_provider_indices()
-            .first()
+            .last()
             .copied()
             .expect("builtin provider");
+
         let mut pending = PendingModelSelector::open(String::new(), None, &[]);
-        pending.set_scope_mode(ModelScopeMode::Scoped);
-        pending.apply_horizontal_nav(1);
+        pending.apply_provider_nav(1);
         assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
         assert_eq!(pending.provider_index, first);
+
+        pending.set_scope_mode(ModelScopeMode::Scoped);
+        pending.apply_provider_nav(-1);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Provider);
+        assert_eq!(pending.provider_index, last);
     }
 
     #[test]

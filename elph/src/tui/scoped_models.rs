@@ -311,6 +311,7 @@ fn model_row_for_value(value: &str) -> Option<ModelRow> {
         model_id: model.id.clone(),
         context_k: model.context_window / 1000,
         reasoning: model.reasoning,
+        images: model.input.iter().any(|cap| cap == "image"),
     })
 }
 
@@ -345,6 +346,7 @@ fn filter_items(items: &[ScopedModelItem], query: &str) -> Vec<ScopedModelItem> 
                 model_id: item.model_id.clone(),
                 context_k: 0,
                 reasoning: false,
+                images: false,
             };
             model_match_score(&row, query).map(|score| (item.clone(), score))
         })
