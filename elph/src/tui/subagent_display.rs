@@ -51,13 +51,24 @@ pub fn subagent_action_label(message: &str) -> String {
     truncate_chars(message, 40)
 }
 
-/// Task title only (bold when finished). Example: `Subagent worker-1`
+/// Task title label in the new tree format. Example: `worker-1 [claude-sonnet-4]  Analyze`
 ///
 /// Nesting is applied as whole-row padding ([`subagent_status_indent`]), not leading spaces
 /// in the label — spaces in the label push the text far from the status glyph.
-pub fn format_subagent_task_label(task_name: &str, agent_path: &str, agent_id: &str) -> String {
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn format_subagent_task_label(task_name: &str, agent_path: &str, agent_id: &str, model: &str) -> String {
     let name = subagent_short_name(task_name, agent_path, agent_id);
-    format!("Subagent {name}")
+    let model_tag = if model.is_empty() {
+        String::new()
+    } else {
+        format!(" [{}]", model)
+    };
+    let task = task_name.trim();
+    if task.is_empty() || task == name || task.eq_ignore_ascii_case("default") || task.eq_ignore_ascii_case("agent") {
+        format!("{name}{model_tag}")
+    } else {
+        format!("{name}{model_tag}  {task}")
+    }
 }
 
 /// Extra left pad (cells) for nested subagent status rows so the glyph indents with the label.
@@ -68,6 +79,10 @@ pub fn subagent_status_indent(agent_path: &str) -> u16 {
 }
 
 /// Secondary detail (never bold): action + phase word. Example: `Read · running`
+///
+/// Note: In the tree format, detail is now merged into the label content. This function
+/// is kept for legacy status rows (non-tree startup/mcp status lines).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn format_subagent_status_detail(action: &str, phase: SubagentUiPhase) -> String {
     let phase_word = phase.as_word();
     let action = subagent_action_label(action);
@@ -80,8 +95,9 @@ pub fn format_subagent_status_detail(action: &str, phase: SubagentUiPhase) -> St
 
 /// Full single-line label for layout/tests (task + detail).
 ///
-/// Example: `  Subagent worker-1 · Read · running`
+/// Example: `worker-1 [claude-sonnet-4]  worker-1 · Read · running`
 #[cfg(test)]
+#[allow(dead_code)]
 pub fn format_subagent_status_label(
     task_name: &str,
     agent_path: &str,
@@ -89,7 +105,7 @@ pub fn format_subagent_status_label(
     action: &str,
     phase: SubagentUiPhase,
 ) -> String {
-    let task = format_subagent_task_label(task_name, agent_path, agent_id);
+    let task = format_subagent_task_label(task_name, agent_path, agent_id, "");
     let detail = format_subagent_status_detail(action, phase);
     if detail.is_empty() {
         task
@@ -142,30 +158,46 @@ mod tests {
     }
 
     #[test]
-    fn status_label_splits_task_and_detail() {
-        let task = format_subagent_task_label("worker-1", "main/worker-1", "id");
+    fn tree_task_label_includes_model() {
+        // Name from task_name (deduplicated when task_name == short_name).
+        assert_eq!(
+            format_subagent_task_label("worker-1", "main/worker-1", "id", "claude-sonnet-4"),
+            "worker-1 [claude-sonnet-4]"
+        );
+        // Without model.
+        assert_eq!(format_subagent_task_label("worker-1", "main/worker-1", "id", ""), "worker-1");
+        // Sentinels fall through to path tail.
+        assert_eq!(
+            format_subagent_task_label("default", "main/w-1", "agent_01", "claude-sonnet-4"),
+            "w-1 [claude-sonnet-4]"
+        );
+        // Empty falls through to path tail.
+        assert_eq!(
+            format_subagent_task_label("", "main/leaf-agent", "agent_02", "gpt-4o"),
+            "leaf-agent [gpt-4o]"
+        );
+        // Name from agent_id when no task_name or path tail.
+        assert_eq!(format_subagent_task_label("", "", "agent-xyz", "sonnet"), "agent-xyz [sonnet]");
+    }
+
+    #[test]
+    fn tree_task_label_omits_redundant_task() {
+        // When task_name == short_name, only name+model shown (no duplicate).
+        let task = format_subagent_task_label("worker-1", "main/worker-1", "id", "claude-sonnet-4");
+        assert_eq!(task, "worker-1 [claude-sonnet-4]");
+    }
+
+    #[test]
+    fn status_label_detail_still_works_legacy() {
         let detail = format_subagent_status_detail("tool: read_file", SubagentUiPhase::Running);
-        // Label has no leading spaces — glyph sits tight; first-level under main is flush.
-        assert_eq!(task, "Subagent worker-1");
         assert_eq!(subagent_status_indent("main/worker-1"), 0);
         assert_eq!(detail, "Read · running");
-        let full = format_subagent_status_label(
-            "worker-1",
-            "main/worker-1",
-            "id",
-            "tool: read_file",
-            SubagentUiPhase::Running,
-        );
-        assert!(full.contains("Subagent worker-1"), "{full}");
-        assert!(full.contains("Read"), "{full}");
-        assert!(!full.contains("read_file"), "{full}");
     }
 
     #[test]
     fn nested_path_indents_row_not_label() {
-        let task = format_subagent_task_label("", "main/a/b", "id");
+        let task = format_subagent_task_label("", "main/a/b", "id", "claude-sonnet-4");
         assert!(!task.starts_with(' '), "{task:?}");
-        assert!(task.starts_with("Subagent"), "{task}");
         // depth 2 → one nesting step past main children → 2 cells.
         assert_eq!(subagent_status_indent("main/a/b"), 2);
         assert_eq!(subagent_status_indent("main"), 0);

@@ -70,8 +70,12 @@ impl CodingAgentSession {
             })
             .await;
 
+        // Resolve active model id for subagent status display (e.g. `claude-sonnet-4-20250514`).
+        let active_model_id = self.selection.read().model.id.clone();
+
         let forwarder: SubagentEventForwarder = Arc::new({
             let ui_tx = ui_tx.clone();
+            let model_id = active_model_id.clone();
             move |event, info: &SubagentInfo| {
                 use crate::agent::SubagentUiPhase;
                 match event {
@@ -83,6 +87,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Running,
                             message: String::new(),
+                            model: model_id.clone(),
                         });
                     }
                     AgentEvent::AgentEnd { .. } => {
@@ -92,6 +97,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Done,
                             message: String::new(),
+                            model: model_id.clone(),
                         });
                     }
                     // Tool activity: upsert running row with human verb (low noise via upsert).
@@ -102,6 +108,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Running,
                             message: format!("tool:{tool_name}"),
+                            model: model_id.clone(),
                         });
                     }
                     AgentEvent::ToolExecutionEnd {
@@ -115,6 +122,7 @@ impl CodingAgentSession {
                             task_name: info.task_name.clone(),
                             phase: SubagentUiPhase::Error,
                             message: format!("tool:{tool_name}"),
+                            model: model_id.clone(),
                         });
                     }
                     _ => {}
