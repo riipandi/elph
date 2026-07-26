@@ -663,6 +663,14 @@ fn apply_bootstrap_ui_event(
             ui_events_slot.set(Some(Arc::clone(&bootstrap.ui_rx)));
             {
                 let mut msgs = messages.write();
+                // Prepend persisted chat history so the transcript shows previous turns on resume.
+                if !bootstrap.history_messages.is_empty() {
+                    // Keep only the startup status lines, insert history before them.
+                    let startup_lines: Vec<_> = msgs.iter().filter(|m| m.startup_key.is_some()).cloned().collect();
+                    msgs.clear();
+                    msgs.extend(bootstrap.history_messages.iter().cloned());
+                    msgs.extend(startup_lines);
+                }
                 let provider = bootstrap.session.model_provider();
                 let model = bootstrap.session.model_id();
                 mark_agent_startup_ready(

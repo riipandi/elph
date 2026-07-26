@@ -318,6 +318,9 @@ pub struct AgentBootstrap {
     pub session: Arc<CodingAgentSession>,
     pub ui_rx: Arc<Mutex<UnboundedReceiver<AgentUiEvent>>>,
     pub session_id: String,
+    /// Pre-populated transcript messages from the persisted session branch (for --resume).
+    /// Empty for a brand-new session.
+    pub history_messages: Vec<TranscriptMessage>,
 }
 
 /// Create the agent session without blocking on MCP discovery.
@@ -338,11 +341,71 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
     let session = Arc::new(session);
     let session_id = session.session_id().to_string();
+
+    // Load persisted chat history from the session branch (for --resume).
+    let history_messages = load_chat_history(session.as_ref()).await;
+
     Ok(AgentBootstrap {
         session,
         ui_rx: Arc::new(Mutex::new(ui_rx)),
         session_id,
+        history_messages,
     })
+}
+
+/// Load persisted chat history from the session's branch entries and convert them
+/// to transcript messages for display on resume.
+async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessage> {
+    use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
+
+    let Ok(entries) = session.branch_entries().await else {
+        return Vec::new();
+    };
+
+    let mut messages: Vec<TranscriptMessage> = Vec::new();
+    for entry in &entries {
+        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+            continue;
+        };
+        let Some(llm) = message.as_llm() else {
+            continue;
+        };
+        match llm {
+            Message::User { content, .. } => {
+                let text = match content {
+                    UserContent::Text(t) => t.clone(),
+                    UserContent::Blocks(blocks) => blocks
+                        .iter()
+                        .filter_map(|b| match b {
+                            ContentBlock::Text { text } => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                };
+                if !text.is_empty() {
+                    messages.push(TranscriptMessage::text(text, TranscriptStyle::User));
+                }
+            }
+            Message::Assistant(assistant) => {
+                let text: String = assistant
+                    .content
+                    .iter()
+                    .filter_map(|block| match block {
+                        AssistantContentBlock::Text(t) => Some(t.text.as_str()),
+                        _ => None,
+                    })
+                    .collect();
+                if !text.is_empty() {
+                    let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
+                    msg.local_slash_response = true;
+                    messages.push(msg);
+                }
+            }
+            _ => {}
+        }
+    }
+    messages
 }
 
 /// MCP bootstrap UI update (per-server progress or final transcript line).
