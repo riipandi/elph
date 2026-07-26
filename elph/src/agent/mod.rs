@@ -36,7 +36,7 @@ pub use runtime::create_coding_session_with_events;
 pub use session::CodingAgentSession;
 pub use session_manager::SessionManager;
 pub use skills_load::SkillConflict;
-pub use skills_load::{format_skill_conflict_notice, truncate_skill_palette_description};
+pub use skills_load::{format_skill_conflict_notice, truncate_palette_description, truncate_skill_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{

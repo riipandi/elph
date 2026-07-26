@@ -1,10 +1,10 @@
 //! Resolved chrome tokens for one palette card render.
 
+use elph_tui::components::theme::UiTheme;
 use iocraft::prelude::Color;
 
 use super::super::model::SlashPaletteSnapshot;
 use super::super::row_layout;
-use crate::tui::theme::{BORDER_MUTED, TEXT_FG, TOOL_ARGS_FG};
 use crate::types::AgentMode;
 
 /// Precomputed layout and copy for [`super::SlashPaletteCard`].
@@ -17,10 +17,6 @@ pub struct PaletteCardChrome {
     pub border_color: Color,
     pub background: Color,
     pub title_color: Color,
-    pub name_idle_color: Color,
-    pub name_active_color: Color,
-    pub desc_active_color: Color,
-    pub desc_idle_color: Color,
     pub args_hint_color: Color,
     pub title: String,
 }
@@ -35,10 +31,6 @@ impl Default for PaletteCardChrome {
             border_color: Color::Reset,
             background: Color::Reset,
             title_color: Color::Reset,
-            name_idle_color: Color::Reset,
-            name_active_color: Color::Reset,
-            desc_active_color: Color::Reset,
-            desc_idle_color: Color::Reset,
             args_hint_color: Color::Reset,
             title: String::new(),
         }
@@ -47,6 +39,7 @@ impl Default for PaletteCardChrome {
 
 impl PaletteCardChrome {
     pub fn from_snapshot(screen_width: u16, _agent_mode: AgentMode, snapshot: &SlashPaletteSnapshot) -> Self {
+        let theme = UiTheme::default();
         let card_width = row_layout::palette_card_width(screen_width);
         let list_width = row_layout::palette_list_width(screen_width);
         let content_width = list_width;
@@ -60,14 +53,10 @@ impl PaletteCardChrome {
             content_width,
             list_width,
             command_column_width,
-            border_color: BORDER_MUTED,
-            background: Color::Reset,
-            title_color: TOOL_ARGS_FG,
-            name_idle_color: TEXT_FG,
-            name_active_color: TEXT_FG,
-            desc_active_color: TEXT_FG,
-            desc_idle_color: Color::DarkGrey,
-            args_hint_color: TOOL_ARGS_FG,
+            border_color: theme.border,
+            background: theme.surface,
+            title_color: theme.text_muted,
+            args_hint_color: theme.accent_soft,
             title: card_title(snapshot),
         }
     }

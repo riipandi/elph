@@ -1,6 +1,6 @@
 //! Built-in slash command registry and dispatch.
 
-use crate::agent::{parse_skill_slash, skill_slash_name, truncate_skill_palette_description};
+use crate::agent::{parse_skill_slash, skill_slash_name, truncate_palette_description};
 use crate::types::SlashCommand;
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
@@ -83,7 +83,7 @@ pub fn slash_commands_for_palette(
         .into_iter()
         .filter(|cmd| !cmd.hidden)
         .map(|cmd| {
-            let mut entry = SlashCommand::new(cmd.name, cmd.description);
+            let mut entry = SlashCommand::new(cmd.name, truncate_palette_description(cmd.description));
             if let Some(hint) = cmd.args_hint {
                 entry = entry.with_args_hint(hint);
             }
@@ -95,14 +95,20 @@ pub fn slash_commands_for_palette(
     if let Some(registry) = extensions {
         for cmd in registry.commands() {
             if !builtin_names.contains(&cmd.name) {
-                commands.push(SlashCommand::new(cmd.name, cmd.description));
+                commands.push(SlashCommand::new(
+                    cmd.name,
+                    truncate_palette_description(&cmd.description),
+                ));
             }
         }
     }
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
-                commands.push(SlashCommand::new(&template.name, &template.description));
+                commands.push(SlashCommand::new(
+                    &template.name,
+                    truncate_palette_description(&template.description),
+                ));
             }
         }
     }
@@ -110,7 +116,7 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                commands.push(SlashCommand::new(name, truncate_skill_palette_description(&skill.description)));
+                commands.push(SlashCommand::new(name, truncate_palette_description(&skill.description)));
             }
         }
     }
