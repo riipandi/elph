@@ -1,17 +1,17 @@
 //! Markdown pipeline: pulldown-cmark parse + syntect highlight + cached render.
 
 mod blocks;
-mod colors;
-mod highlight;
+pub(crate) mod colors;
+pub(crate) mod highlight;
 mod layout;
-mod linkify;
-mod model;
-mod parse;
-mod parser_config;
-mod render;
-mod syntax;
+pub(crate) mod linkify;
+pub(crate) mod model;
+pub(crate) mod parse;
+pub(crate) mod parser_config;
+pub(crate) mod render;
+pub(crate) mod syntax;
 mod table;
-mod theme;
+pub(crate) mod theme;
 
 pub use layout::{markdown_document_row_count, markdown_source_row_count};
 pub use linkify::{path_to_file_url, spans_with_links};
