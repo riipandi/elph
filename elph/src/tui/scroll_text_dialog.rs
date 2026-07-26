@@ -114,6 +114,27 @@ pub fn scroll_text_scrollbar_visible(content_height: u16, viewport_height: u16) 
     content_height > viewport_height && viewport_height > 0
 }
 
+/// Stable text-column width: always reserve the scrollbar gutter so wrap width
+/// does not jump when the track appears or disappears.
+pub fn scroll_text_content_width(body_width: u16) -> u16 {
+    body_width.saturating_sub(1).max(1)
+}
+
+/// Estimate wrapped terminal rows for plain text at a fixed column width.
+///
+/// Used for the external scrollbar so visibility/geometry do not depend on
+/// ScrollView's post-scroll measure (which can collapse toward the viewport).
+pub fn estimate_scroll_text_lines(text: &str, width: u16) -> u16 {
+    let w = width.max(1) as usize;
+    let mut rows = 0usize;
+    // `split('\n')` keeps trailing empty lines; `lines()` would drop them.
+    for line in text.split('\n') {
+        let n = line.chars().count();
+        rows = rows.saturating_add(if n == 0 { 1 } else { n.div_ceil(w) });
+    }
+    rows.max(1) as u16
+}
+
 #[derive(Props)]
 pub struct ScrollTextDialogOverlayProps {
     pub screen_width: u16,
@@ -150,54 +171,81 @@ impl Default for ScrollTextDialogOverlayProps {
 #[component]
 pub fn ScrollTextDialogOverlay(
     props: &mut ScrollTextDialogOverlayProps,
-    hooks: Hooks,
+    mut hooks: Hooks,
 ) -> impl Into<AnyElement<'static>> {
-    let _ = props.scroll_tick;
-    let _hooks = hooks;
     let theme = props.theme.unwrap_or_default();
     let body_width = props.chrome.inner_body_width();
     let header = DialogHeader::title(props.title.clone());
-
-    let (scroll_offset, content_height, viewport_height) = props
+    // Always reserve the gutter so text wrap width stays stable across frames.
+    let scroll_width = scroll_text_content_width(body_width);
+    // Viewport is the fixed body slot — do not use ScrollView's live measure for this.
+    let viewport_height = props.body_height.max(1);
+    // Content height from text wrap (stable while scrolling). Prefer handle measure when
+    // it is *larger* (e.g. wide glyphs), but never let a collapsed measure hide the track.
+    let estimated = estimate_scroll_text_lines(&props.text, scroll_width);
+    let measured = props
         .scroll_handle
         .as_ref()
-        .map(|handle| {
-            let guard = handle.read();
-            (
-                guard.scroll_offset().max(0) as u16,
-                // Prefer measured content height; fall back so we don't paint a
-                // full-height thumb before the first measure settles.
-                guard.content_height().max(1),
-                guard.viewport_height().max(props.body_height).max(1),
-            )
-        })
-        .unwrap_or((0, 1, props.body_height.max(1)));
-
+        .map(|handle| handle.read().content_height())
+        .unwrap_or(0);
+    let content_height = estimated.max(measured).max(1);
     let show_scrollbar = scroll_text_scrollbar_visible(content_height, viewport_height);
-    let scroll_width = if show_scrollbar {
-        body_width.saturating_sub(1).max(1)
-    } else {
-        body_width.max(1)
-    };
+
+    // Keyboard path bumps shell `scroll_tick`; mouse wheel only updates ScrollView
+    // internals — re-render here so the external thumb tracks the offset.
+    let has_focus = props.has_focus;
+    let mut wheel_tick = hooks.use_state(|| 0u32);
+    hooks.use_terminal_events(move |event| {
+        if !has_focus {
+            return;
+        }
+        let TerminalEvent::FullscreenMouse(mouse) = event else {
+            return;
+        };
+        if matches!(
+            mouse.kind,
+            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown
+        ) {
+            wheel_tick.set(wheel_tick.get().wrapping_add(1));
+        }
+    });
+    let _ = (props.scroll_tick, wheel_tick.get());
+
+    let scroll_offset = props
+        .scroll_handle
+        .as_ref()
+        .map(|handle| handle.read().scroll_offset().max(0) as u16)
+        .unwrap_or(0)
+        .min(content_height.saturating_sub(viewport_height));
+
     // Shell owns ↑/↓ / PgUp / PgDn via the shared handle; avoid double-stepping.
     // Mouse wheel is owned by this dialog while focused (transcript mouse is disabled).
     let keyboard_scroll = false;
     let mouse_scroll = props.has_focus;
 
-    let scrollbar: Option<AnyElement<'static>> = if show_scrollbar {
-        Some(
-            element! {
-                VerticalScrollbar(
-                    viewport_height: viewport_height,
-                    content_height: content_height,
-                    scroll_offset: scroll_offset,
-                    theme: Some(theme),
-                )
-            }
-            .into(),
-        )
+    // Use a readable track (hint), not border_subtle which vanishes on dark surfaces.
+    let scrollbar_style = elph_tui::components::scroll_bar::ScrollbarStyle {
+        thumb_color: Some(theme.border_focus),
+        track_color: Some(theme.text_hint),
+    };
+
+    let scrollbar: AnyElement<'static> = if show_scrollbar {
+        element! {
+            VerticalScrollbar(
+                viewport_height: viewport_height,
+                content_height: content_height,
+                scroll_offset: scroll_offset,
+                style: Some(scrollbar_style),
+                theme: Some(theme),
+            )
+        }
+        .into()
     } else {
-        None
+        // Empty gutter keeps layout aligned with the scrolling case.
+        element! {
+            View(width: 1, height: props.body_height, flex_shrink: 0f32)
+        }
+        .into()
     };
 
     element! {
@@ -271,6 +319,24 @@ mod tests {
         assert!(!scroll_text_scrollbar_visible(12, 12));
         assert!(scroll_text_scrollbar_visible(20, 12));
         assert!(!scroll_text_scrollbar_visible(20, 0));
+    }
+
+    #[test]
+    fn estimate_lines_wraps_and_counts_newlines() {
+        assert_eq!(estimate_scroll_text_lines("hello", 10), 1);
+        assert_eq!(estimate_scroll_text_lines("hello world!!", 5), 3);
+        assert_eq!(estimate_scroll_text_lines("a\nb\nc", 80), 3);
+        // Long content stays tall regardless of scroll measure.
+        let long = "x".repeat(200);
+        let lines = estimate_scroll_text_lines(&long, 20);
+        assert!(lines >= 10);
+        assert!(scroll_text_scrollbar_visible(lines, 8));
+    }
+
+    #[test]
+    fn content_width_always_reserves_scrollbar_gutter() {
+        assert_eq!(scroll_text_content_width(40), 39);
+        assert_eq!(scroll_text_content_width(1), 1);
     }
 
     #[test]
