@@ -13,6 +13,7 @@ use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
 use crate::agent::{create_coding_session_with_events, format_skill_conflict_notice};
 use crate::platform::{Paths, Settings};
+use crate::tui::tool_params::format_tool_params_display as format_tool_args_display;
 use crate::tui::transcript::markdown::AssistantMarkdownBuffer;
 use crate::tui::transcript::markdown::parse_markdown_on_worker;
 use crate::tui::transcript::{TranscriptMessage, TranscriptStyle};
@@ -359,18 +360,56 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
 /// Load persisted chat history from the session's branch entries and convert them
 /// to transcript messages for display on resume.
+///
+/// Thinking blocks and tool-call blocks are rendered as separate transcript entries
+/// matching the live-streaming UX. Response (text) blocks are expanded on resume so
+/// the user can read previous replies; thinking and tool-call entries are collapsed
+/// to keep the transcript compact.
 async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessage> {
     use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
+    use std::collections::HashMap;
 
     let Ok(entries) = session.branch_entries().await else {
         return Vec::new();
     };
 
+    // --- first pass: index tool results by tool_call_id ---
+    let mut tool_results: HashMap<String, ToolResultInfo> = HashMap::new();
+    for entry in &entries {
+        let elph_agent::SessionTreeEntry::Message { message, .. } = entry else {
+            continue;
+        };
+        let Some(llm) = message.as_llm() else {
+            continue;
+        };
+        if let Message::ToolResult {
+            tool_call_id,
+            content,
+            is_error,
+            ..
+        } = llm
+        {
+            let output: String = content
+                .iter()
+                .filter_map(|b| match b {
+                    ContentBlock::Text { text } => Some(text.as_str()),
+                    _ => None,
+                })
+                .collect();
+            tool_results.insert(
+                tool_call_id.clone(),
+                ToolResultInfo {
+                    output,
+                    is_error: *is_error,
+                },
+            );
+        }
+    }
+
+    // --- second pass: build transcript messages ---
     let mut messages: Vec<TranscriptMessage> = Vec::new();
-    // Track timestamps to compute response durations between user→assistant pairs.
     let mut last_user_ts: Option<DateTime<Utc>> = None;
 
-    // Convert message entries to TranscriptMessages.
     for entry in &entries {
         let elph_agent::SessionTreeEntry::Message {
             message,
@@ -381,7 +420,6 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
         else {
             continue;
         };
-        // Parse entry timestamp for duration computation and user submission time.
         let entry_ts = parse_iso_timestamp(timestamp);
 
         let Some(llm) = message.as_llm() else {
@@ -422,46 +460,102 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                 }
             }
             Message::Assistant(assistant) => {
-                let text: String = assistant
-                    .content
-                    .iter()
-                    .filter_map(|block| match block {
-                        AssistantContentBlock::Text(t) => Some(t.text.as_str()),
-                        _ => None,
-                    })
-                    .collect();
-                if text.is_empty() {
-                    continue;
-                }
+                let assist_ts = entry_ts;
 
-                let mut msg = TranscriptMessage::text(text, TranscriptStyle::Assistant);
+                // Process each content block into its own transcript entry.
+                let mut has_visible = false;
 
-                // Compute response duration from the user→assistant timestamp delta.
-                if let (Some(user_ts), Some(assist_ts)) = (last_user_ts, entry_ts) {
-                    let delta = (assist_ts - user_ts).to_std().ok();
-                    if let Some(dur) = delta {
-                        msg.duration_secs = Some(dur.as_secs_f64());
+                for block in &assistant.content {
+                    match block {
+                        AssistantContentBlock::Thinking(t) => {
+                            let thinking = t.thinking.trim();
+                            if thinking.is_empty() {
+                                continue;
+                            }
+                            has_visible = true;
+                            let mut msg = TranscriptMessage::text(t.thinking.clone(), TranscriptStyle::Thinking);
+                            msg.detail_expanded = false;
+                            messages.push(msg);
+                        }
+                        AssistantContentBlock::ToolCall(tc) => {
+                            has_visible = true;
+                            let args_json = serde_json::to_string(&tc.arguments).unwrap_or_default();
+                            let args_summary = format_tool_args_display(&args_json);
+
+                            let mut msg = TranscriptMessage::tool_call(
+                                tc.name.clone(),
+                                args_summary,
+                                TranscriptStyle::ToolSuccess,
+                            );
+
+                            // Merge matching tool-result output and error state.
+                            if let Some(result) = tool_results.get(&tc.id) {
+                                if let Some(tool) = msg.tool.as_mut() {
+                                    tool.output = result.output.clone();
+                                }
+                                if result.is_error {
+                                    msg.style = TranscriptStyle::ToolFailed;
+                                }
+                            }
+
+                            msg.detail_expanded = false;
+                            messages.push(msg);
+                        }
+                        AssistantContentBlock::Text(t) => {
+                            let text = t.text.trim();
+                            if text.is_empty() {
+                                continue;
+                            }
+                            has_visible = true;
+
+                            let mut msg = TranscriptMessage::text(t.text.clone(), TranscriptStyle::Assistant);
+
+                            // Compute response duration from user→assistant timestamp delta.
+                            if let (Some(user_ts), Some(ts)) = (last_user_ts, assist_ts) {
+                                let delta = (ts - user_ts).to_std().ok();
+                                if let Some(dur) = delta {
+                                    msg.duration_secs = Some(dur.as_secs_f64());
+                                }
+                            }
+
+                            // Pre-render markdown so the transcript shows fully formatted
+                            // content from the first frame (no worker round-trip).
+                            let mut md = AssistantMarkdownBuffer::new();
+                            md.mark_stream_complete();
+                            md.refresh_stable(&msg.content, 100);
+                            if let Some(part) = md.parts.first() {
+                                let hash = part.source_hash;
+                                let document = parse_markdown_on_worker(&msg.content);
+                                md.apply_document(hash, document);
+                            }
+                            msg.markdown = Some(md);
+
+                            // Response text is expanded on resume so the user can read
+                            // previous replies without manually expanding each one.
+                            msg.detail_expanded = true;
+                            messages.push(msg);
+                        }
                     }
                 }
 
-                // Pre-render: parse markdown synchronously at bootstrap so the transcript
-                // shows fully formatted content from the first frame (no worker round-trip).
-                let mut md = AssistantMarkdownBuffer::new();
-                md.mark_stream_complete();
-                md.refresh_stable(&msg.content, 100);
-                if let Some(part) = md.parts.first() {
-                    let hash = part.source_hash;
-                    let document = parse_markdown_on_worker(&msg.content);
-                    md.apply_document(hash, document);
+                // Skip entirely when no visible content blocks were emitted.
+                if !has_visible {
+                    continue;
                 }
-                msg.markdown = Some(md);
-                msg.detail_expanded = false;
-                messages.push(msg);
             }
-            _ => {}
+            // ToolResult entries are consumed in the first pass and matched into
+            // their corresponding ToolCall cards above — never rendered standalone.
+            Message::ToolResult { .. } => {}
         }
     }
+
     messages
+}
+
+/// Indexed tool-result data used when matching `ToolCall` blocks to their output.
+struct ToolResultInfo {
+    output: String,
+    is_error: bool,
 }
 
 /// Parse an ISO 8601 / RFC 3339 timestamp string into `DateTime<Utc>`.

@@ -32,7 +32,7 @@ mod subagent_display;
 mod system_prompt_dialog;
 mod theme;
 mod tool_approval;
-mod tool_params;
+pub(crate) mod tool_params;
 mod transcript;
 mod user_question;
 mod user_question_bar;

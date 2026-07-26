@@ -66,6 +66,12 @@ make run            # cargo run --bin elph
 | **Ask**   | Chat mode, no code changes        | Blue       |
 | **Brave** | All tools auto-approved           | Orange     |
 
+### Text-select mode
+
+Toggle with `ctrl+s` in the TUI. When active, the scrollbar is hidden and the scrollbar column is cleared so native terminal text selection (drag-to-select) works without interference.
+
+**Source:** `/elph/src/tui/transcript/panel.rs` — `TranscriptPanelProps::text_select_mode`
+
 ### Thinking levels
 
 Controls reasoning depth: `Off` → `Minimal` → `Low` → `Medium` → `High` → `Xhigh` → `Max`. Each has a distinct footer color.

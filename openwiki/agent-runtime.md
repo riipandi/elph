@@ -46,6 +46,7 @@ The harness (`agent/harness/`) is the top-level orchestrator that wraps the runt
     - **Next-turn queue**: prompts that run after the current turn completes
     - Queue operations: `peek_queues`, `remove_steer_at`, `remove_follow_up_at`, `promote_follow_up_front_to_steer`, `clear_prompt_queues`
     - `promote_follow_up_front_to_steer` rejects promotion while idle (avoids a lost-item window under concurrent drain) and re-checks idle state after dequeue
+    - `pending_skill_name` — tracks the skill being invoked during a turn; attached to session tree entries for skill invocation tracking
     - `TurnDispatcher` in the TUI bridge (`agent_bridge.rs`) spawns the async queue operations
 
 **Source:** `crates/elph-agent/src/agent/harness/mod.rs`, `crates/elph-agent/src/agent/harness/prompt_ops.rs`
@@ -65,6 +66,7 @@ Sessions support:
 - **Fork/branch** — create child sessions from any point in history
 - **Resume** — reload a session by ID
 - **Metadata** — session ID (kalid), created/updated timestamps, model info
+- **Skill tracking** — each tree entry can carry a `skill_name` field for skill invocation tracking
 
 **Source:** `crates/elph-agent/src/session/`
 
@@ -143,6 +145,17 @@ History compaction (`compaction/`) manages context window limits:
 - **Branch management**: merges branched conversations when appropriate
 
 **Source:** `crates/elph-agent/src/compaction/`
+
+### Duration formatting
+
+Response durations are formatted with hours and minutes when applicable:
+
+- `<1s` → `0s`
+- `<1m` → `{seconds}s`
+- `<1h` → `{minutes}m{seconds}s`
+- `≥1h` → `{hours}h{minutes}m{seconds}s` (with seconds omitted when zero)
+
+**Source:** `/elph/src/platform/exit_message.rs` — `format_duration_secs`
 
 ## Collaboration modes
 
