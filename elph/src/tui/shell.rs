@@ -16,6 +16,7 @@ use iocraft::prelude::*;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_util::sync::CancellationToken;
 
+use crate::agent::load_resources;
 use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
@@ -760,8 +761,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut agent_turn_active = hooks.use_state(|| false);
     let mut activity_label = hooks.use_state(|| "Thinking".to_string());
     let mut session_elapsed_secs = hooks.use_state(|| 0.0f64);
-    let session_wall_started_at = hooks.use_ref(Instant::now);
+    let mut session_wall_started_at = hooks.use_ref(Instant::now);
     let show_thinking = props.show_thinking;
+    let auto_expand_thinking = props.auto_expand_thinking;
     let mut busy_started_at = hooks.use_ref(|| None::<Instant>);
     let mut activity_started_at = hooks.use_ref(|| None::<Instant>);
     let mut last_activity_label = hooks.use_ref(String::new);
@@ -833,7 +835,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             BootstrapPhase::Done
         }
     });
-    let bootstrap_config = hooks.use_ref(|| props.bootstrap.clone());
+    let mut bootstrap_config = hooks.use_ref(|| props.bootstrap.clone());
     let mut bootstrap_worker_started = hooks.use_ref(|| false);
     let mut bootstrap_rx = hooks.use_ref(|| None::<UnboundedReceiver<BootstrapUiEvent>>);
     let mut live_session_id = hooks.use_state(|| props.session_id.clone());
@@ -892,7 +894,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Auto-clear schedule for transcript `transient:*` notices (file-picker, model set, …).
     let mut pending_transcript_notice_expires = hooks.use_ref(HashMap::<&'static str, Instant>::new);
 
+    // Set true by `/new` handler; the tick loop picks this up to reload resources + restart
+    // bootstrap with a fresh session (in-process, no exit + re-launch).
+    let mut new_session_requested = hooks.use_ref(|| false);
+
     let cwd_for_mention_index = cwd.clone();
+    let cwd_for_loop = cwd.clone();
+    let extension_host_for_loop = extension_host.clone();
     let mut layout_screen_size_for_loop = layout_screen_size;
     hooks.use_future(async move {
         loop {
@@ -952,6 +960,50 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut last_transcript_publish,
                     );
                 }
+            }
+
+            // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
+            // and restart the bootstrap worker — all without exiting the TUI.
+            if *new_session_requested.read() {
+                *new_session_requested.write() = false;
+
+                let paths_for_load = paths.read().clone();
+                let cwd_for_load = cwd_for_loop.clone();
+                let settings = Settings::load(&paths_for_load).ok();
+                if let Some(settings) = settings {
+                    let env = Arc::new(LocalExecutionEnv::new(&cwd_for_load));
+                    let loaded = load_resources(&paths_for_load, &cwd_for_load, &env).await;
+
+                    // Update palette data from fresh resources
+                    let new_templates = loaded.resources.prompt_templates.clone();
+                    let new_skills = loaded.resources.skills.clone();
+                    prompt_templates.set(new_templates);
+                    skills.set(new_skills);
+                    {
+                        let ext_registry = extension_host_for_loop.registry();
+                        let reg = ext_registry.read();
+                        slash_commands.set(slash_commands_for_palette(
+                            Some(&reg),
+                            Some(&prompt_templates.read()),
+                            Some(&skills.read()),
+                        ));
+                    }
+
+                    // Create a fresh bootstrap config with no resume_id (forces a new session)
+                    let new_config = TuiBootstrapConfig {
+                        paths: paths_for_load,
+                        settings,
+                        resume_id: None,
+                        preloaded_resources: loaded,
+                    };
+                    bootstrap_config.set(Some(new_config));
+                }
+
+                // Reset bootstrap phase so the next tick re-spawns the worker
+                bootstrap_phase.set(BootstrapPhase::Pending);
+                bootstrap_worker_started.set(false);
+                bootstrap_rx.set(None);
+                chrome_refresh_pending.set(true);
             }
 
             let agent_session_for_loop = agent_session_slot.read().clone();
@@ -3823,6 +3875,62 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     false,
                                 );
                             }
+                            SlashOutcome::NewSession => {
+                                // Abort current agent turn if active
+                                if let Some(session) = agent_session.as_ref() {
+                                    TurnDispatcher::spawn_abort(Arc::clone(session));
+                                }
+
+                                // Clear pending dialogs
+                                pending_tool_approval.set(None);
+                                if let Some(question) = pending_user_question.write().take() {
+                                    question.respond(String::new());
+                                }
+
+                                // Clear prompt queue
+                                prompt_queue.write().clear();
+                                queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+
+                                // Reset event applier so old transcript state is discarded
+                                event_applier.set(TranscriptEventApplier::new(
+                                    show_thinking,
+                                    auto_expand_thinking,
+                                ));
+
+                                // Reset transcript to a clean "Starting new session…" line
+                                messages.set(vec![TranscriptMessage::startup_status(
+                                    crate::tui::startup::STARTUP_KEY_PHASE,
+                                    "Starting new session…".to_string(),
+                                    TranscriptStyle::StatusRunning,
+                                )]);
+                                messages_revision.set(messages_revision.get().wrapping_add(1));
+
+                                // Reset timing / busy / tracking state
+                                busy.set(false);
+                                agent_turn_active.set(false);
+                                activity_label.set(String::new());
+                                session_elapsed_secs.set(0.0);
+                                *session_wall_started_at.write() = Instant::now();
+                                busy_started_at.set(None);
+                                activity_started_at.set(None);
+                                last_activity_label.set(String::new());
+                                turn_cancel_requested.set(false);
+                                turn_token_tracker.set(None);
+                                pre_echoed_user_prompts.set(0);
+                                idle_status_notice.set(None);
+
+                                // Clear ephemeral banner
+                                ephemeral_banner.set(None);
+
+                                // Clear draft / editor
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+
+                                // Signal the tick loop to reload resources and restart bootstrap
+                                new_session_requested.set(true);
+                            }
                             SlashOutcome::Status(message) => {
                                 push_transcript_message(
                                     &mut messages,
@@ -3916,6 +4024,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut messages_revision,
                                     TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::BackgroundTask => {
+                                // Background task already dispatched via spawn_agent_work in
+                                // handle_slash_submit. No busy/turn state needed — the task will
+                                // emit Status events when done.
                             }
                             SlashOutcome::SpawnAgentTurn if is_slash => {
                                 if agent_turn_active.get() {

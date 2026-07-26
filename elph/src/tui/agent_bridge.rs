@@ -168,7 +168,8 @@ impl SlashDispatcher {
                         log::error!("skill dispatch failed ({name}): {err}");
                     }
                 }
-                SlashDispatch::Quit
+                SlashDispatch::NewSession
+                | SlashDispatch::Quit
                 | SlashDispatch::Help
                 | SlashDispatch::Tools { .. }
                 | SlashDispatch::SystemPrompt

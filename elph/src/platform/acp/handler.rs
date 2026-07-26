@@ -94,6 +94,14 @@ async fn handle_acp_slash_command(
 
         // ── Informational end-turn ───────────────────────────────────────────
         Some(SlashDispatch::Quit) => send_text_chunks(connection, session_id, "Goodbye!").await,
+        Some(SlashDispatch::NewSession) => {
+            send_text_chunks(
+                connection,
+                session_id,
+                "New session requested. Use the ACP NewSession endpoint to create one.",
+            )
+            .await
+        }
 
         // ── Unavailable via ACP ──────────────────────────────────────────────
         Some(SlashDispatch::Confetti { .. }) => {

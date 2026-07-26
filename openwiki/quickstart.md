@@ -18,7 +18,7 @@ resource: /
 | Agent runtime      | `/crates/elph-agent/` | App-agnostic agent harness: turn loop, tool execution, MCP, sessions, subagents, compaction      |
 | LLM provider layer | `/crates/elph-ai/`    | Provider-agnostic LLM API: OpenAI-compatible, Anthropic, Bedrock, Gemini, Copilot, Mistral, etc. |
 | Core primitives    | `/crates/elph-core/`  | Shared utilities: `floppy` vector memory, logger, scaffold, git, path resolution, tracing        |
-| TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, themes, transcript layout                    |
+| TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, diff viewer, themes, transcript layout       |
 | Shell execution    | `/crates/elph-exec/`  | Configurable local shell and PTY execution                                                       |
 
 ### Placeholder crates (not yet implemented)

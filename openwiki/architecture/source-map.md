@@ -19,7 +19,7 @@ elph/src/
 │
 ├── cli/                  # CLI subcommands (clap-based)
 │   ├── mod.rs            # Cli struct + Commands enum (17+ subcommands)
-│   ├── acp.rs            # Agent Client Protocol server
+│   ├── acp.rs            # Agent Client Protocol server (CLI entry point)
 │   ├── codegraph.rs      # code-review-graph integration
 │   ├── completions.rs    # Shell completion generation
 │   ├── default.rs        # Default/interactive mode handler
@@ -129,7 +129,12 @@ elph/src/
 │   ├── bootstrap.rs      # App bootstrap
 │   ├── mcp.rs            # MCP server relay
 │   ├── migrations.rs     # Platform datastore migrations
-│   └── exit_message.rs   # Exit message display
+│   ├── acp/              # Agent Client Protocol server
+│   │   ├── mod.rs        # ACP server runtime (run_agent_stdio)
+│   │   ├── handler.rs    # Prompt dispatch and slash command routing
+│   │   └── util.rs       # Notification chunking, event streaming, text extraction
+│   ├── exit_message.rs   # Exit message display
+│   └── provider.rs       # Provider config (added opencode-go)
 │
 ├── memory/               # Agent memory
 │   ├── mod.rs
@@ -345,6 +350,12 @@ crates/elph-tui/src/
 │   ├── markdown/         # Markdown rendering
 │   ├── textarea/         # Text area component
 │   ├── dialog_shell/     # Dialog shell
+│   ├── diff/             # Git diff viewer (unified + side-by-side, syntax highlighting, line numbers)
+│   │   ├── mod.rs        # DiffView component, DiffMode, DiffViewProps
+│   │   ├── types.rs      # DiffHunkLine, DiffHunk, DiffResult data model
+│   │   ├── compute.rs    # Diff computation via similar::TextDiff::grouped_ops
+│   │   ├── highlight.rs  # Syntax highlighting for diff lines (syntect)
+│   │   └── render.rs     # Rendering helpers (hunk headers, line numbers, unified/side-by-side)
 │   ├── progress_indicator.rs
 │   ├── status_indicator.rs
 │   ├── select.rs

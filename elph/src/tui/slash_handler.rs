@@ -18,6 +18,8 @@ use super::agent_bridge::SlashDispatcher;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashOutcome {
     Quit,
+    NewSession,
+    BackgroundTask,
     Status(String),
     Assistant(String),
     Unimplemented(String),
@@ -49,6 +51,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
 
     match dispatch {
         SlashDispatch::Quit => SlashOutcome::Quit,
+        SlashDispatch::NewSession => SlashOutcome::NewSession,
         SlashDispatch::Help => {
             SlashOutcome::Status(format_help_message(ctx.extensions, ctx.prompt_templates, ctx.skills))
         }
@@ -69,11 +72,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
         },
-        SlashDispatch::Compact
-        | SlashDispatch::Goal { .. }
-        | SlashDispatch::Reload
-        | SlashDispatch::Extension { .. }
-        | SlashDispatch::PromptTemplate { .. } => {
+        SlashDispatch::Compact | SlashDispatch::PromptTemplate { .. } => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
             }
@@ -85,6 +84,19 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
                 SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
             }
             SlashOutcome::SpawnAgentTurn
+        }
+        SlashDispatch::Goal { .. } | SlashDispatch::Reload | SlashDispatch::Extension { .. } => {
+            if ctx.agent_session.is_none() {
+                return SlashOutcome::Status("Agent session required for this command.".into());
+            }
+            if ctx.spawn_agent_work {
+                let session = ctx.agent_session.clone().expect("checked above");
+                let paths = ctx.paths.cloned();
+                let cwd = ctx.cwd.map(|path| path.to_path_buf());
+                let extension_host = ctx.extension_host.cloned();
+                SlashDispatcher::spawn(session, dispatch, extension_host, paths, cwd);
+            }
+            SlashOutcome::BackgroundTask
         }
         SlashDispatch::Skill { ref name, ref args } => {
             if let Some(skills) = ctx.skills
@@ -110,7 +122,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
 
 /// Whether the submitted slash line should appear as a user/meta card in the transcript.
 pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
-    matches!(outcome, SlashOutcome::SpawnAgentTurn)
+    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
 }
 
 /// Outcomes that only touch UI / local state and never start an agent turn.
@@ -123,6 +135,8 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
         SlashOutcome::Status(_)
             | SlashOutcome::Assistant(_)
             | SlashOutcome::Unimplemented(_)
+            | SlashOutcome::NewSession
+            | SlashOutcome::BackgroundTask
             | SlashOutcome::OpenModelSelector { .. }
             | SlashOutcome::OpenScopedModels
             | SlashOutcome::OpenSystemPromptDialog { .. }

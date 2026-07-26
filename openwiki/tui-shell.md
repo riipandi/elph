@@ -165,22 +165,23 @@ The `AgentBridge` (`/elph/src/tui/agent_bridge.rs`) converts agent runtime event
 
 The `elph-tui` crate provides reusable widgets used by the main TUI and external consumers:
 
-| Component          | File                               | Description                                                                    |
-| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------ |
-| Markdown           | `components/markdown/`             | Live markdown renderer with syntax highlighting and OSC 8 clickable hyperlinks |
-| Textarea           | `components/textarea/`             | Multi-line text editor                                                         |
-| Dialog shell       | `components/dialog_shell/`         | Modal dialog framework                                                         |
-| Progress indicator | `components/progress_indicator.rs` | Progress bar                                                                   |
-| Status indicator   | `components/status_indicator.rs`   | Status dots/indicators                                                         |
-| Select             | `components/select.rs`             | Selection list                                                                 |
-| Transcript layout  | `transcript_layout.rs`             | Chat-like vertical layout                                                      |
-| Text input layout  | `text_input_layout.rs`             | Input area layout                                                              |
-| Slash palette      | `slash_palette/`                   | Fuzzy completion palette                                                       |
-| Color              | `color.rs`                         | Color parsing and conversion                                                   |
-| Theme config       | `theme_config.rs`                  | Theme system definition                                                        |
-| Loader             | `loader.rs`                        | Loading animations                                                             |
-| CLI progress       | `cli_progress.rs`                  | Terminal progress spinners                                                     |
-| Clipboard          | `clipboard.rs`                     | Native clipboard copy/read with status toasts                                  |
+| Component          | File                               | Description                                                                                                  |
+| ------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Markdown           | `components/markdown/`             | Live markdown renderer with syntax highlighting and OSC 8 clickable hyperlinks                               |
+| Textarea           | `components/textarea/`             | Multi-line text editor                                                                                       |
+| Dialog shell       | `components/dialog_shell/`         | Modal dialog framework                                                                                       |
+| Progress indicator | `components/progress_indicator.rs` | Progress bar                                                                                                 |
+| Status indicator   | `components/status_indicator.rs`   | Status dots/indicators                                                                                       |
+| Select             | `components/select.rs`             | Selection list                                                                                               |
+| Diff viewer        | `components/diff/`                 | Git diff viewer with unified/side-by-side modes, syntax highlighting, hunk-aware rendering, and line numbers |
+| Transcript layout  | `transcript_layout.rs`             | Chat-like vertical layout                                                                                    |
+| Text input layout  | `text_input_layout.rs`             | Input area layout                                                                                            |
+| Slash palette      | `slash_palette/`                   | Fuzzy completion palette                                                                                     |
+| Color              | `color.rs`                         | Color parsing and conversion                                                                                 |
+| Theme config       | `theme_config.rs`                  | Theme system definition                                                                                      |
+| Loader             | `loader.rs`                        | Loading animations                                                                                           |
+| CLI progress       | `cli_progress.rs`                  | Terminal progress spinners                                                                                   |
+| Clipboard          | `clipboard.rs`                     | Native clipboard copy/read with status toasts                                                                |
 
 ### App-level dialogs (`elph/src/tui/`)
 
@@ -197,7 +198,7 @@ The `elph-tui` crate provides reusable widgets used by the main TUI and external
 When modifying TUI components, relevant test locations:
 
 - Component tests — `crates/elph-tui/tests/`
-- Key areas: transcript layout, textarea, color parsing, theme config
+- Key areas: transcript layout, textarea, color parsing, theme config, diff viewer
 - Integration test in `/elph/tests/bootstrap.rs` for full TUI startup
 
 Run: `cargo nextest run -p elph-tui`

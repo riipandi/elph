@@ -136,6 +136,7 @@ pub enum OverlayCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashDispatch {
     Quit,
+    NewSession,
     Compact,
     Goal { args: String },
     Help,
@@ -275,8 +276,9 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         }
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
         "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
+        "new" => Some(SlashDispatch::NewSession),
         "settings" | "export" | "import" | "copy" | "name" | "session" | "changelog" | "hotkeys" | "fork" | "clone"
-        | "trust" | "provider" | "new" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
+        | "trust" | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
         _ => None,
     }
 }
@@ -388,6 +390,10 @@ mod tests {
             Some(SlashDispatch::SystemPrompt)
         );
         assert_eq!(dispatch_slash_command("/reload", None, None, None), Some(SlashDispatch::Reload));
+        assert_eq!(
+            dispatch_slash_command("/new", None, None, None),
+            Some(SlashDispatch::NewSession)
+        );
     }
 
     #[test]
