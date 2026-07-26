@@ -11,10 +11,6 @@
 //! | `highlight` | Syntax highlighting for diff lines (syntect)           |
 //! | `render`    | Rendering helpers — colors, prefixes, hunk formatting   |
 //! | (this file) | [`DiffMode`], [`DiffViewProps`], [`DiffView`] component  |
-//!
-//! The old helper functions (`unified_lines`, `side_by_side_lines`,
-//! `diff_line_color`, `diff_line_prefix`) are re-exported here for
-//! backward compatibility.
 
 pub mod compute;
 pub mod highlight;
@@ -26,18 +22,9 @@ use iocraft::prelude::*;
 use super::scroll_box::ScrollBox;
 use super::theme::{UiTheme, resolve_ui_theme};
 
-// ── Re-exports for backward compatibility ──────────────────────────────────
-//
-// External test files and callers import these from `elph_tui::components::diff::*`
-// rather than from the submodule paths.  The `pub use` also brings each name
-// into scope inside this module, so no separate `use` is needed.
-pub use compute::{compute_diff, diff_result_with_paths};
-pub use highlight::{highlight_diff_line, language_from_file_path, language_from_shebang};
-pub use render::{
-    diff_line_background, diff_line_color, diff_line_color_with_overrides, diff_line_prefix, format_file_header,
-    format_hunk_header, render_unified_hunk, side_by_side_lines, unified_lines,
-};
-pub use types::{DiffHunk, DiffHunkLine, DiffResult};
+use compute::compute_diff;
+use highlight::language_from_file_path;
+use render::{render_unified_hunk, side_by_side_lines};
 
 // ── Diff display mode ──────────────────────────────────────────────────────
 
@@ -66,7 +53,6 @@ pub struct DiffViewProps {
     pub separator_color: Option<Color>,
     pub theme: Option<UiTheme>,
 
-    // ── New optional props (all backward-compatible) ──
     /// File path for language detection and file header display.
     pub file_path: Option<String>,
     /// Enable syntax highlighting via syntect (requires `file_path` or explicit `language`).
@@ -109,7 +95,6 @@ pub fn DiffView(props: &DiffViewProps, hooks: Hooks) -> impl Into<AnyElement<'st
     let use_side_by_side = props.mode == DiffMode::SideBySide && props.width >= props.side_by_side_min_width.max(40);
 
     let children: Vec<AnyElement<'static>> = if use_side_by_side {
-        // Side-by-side mode (uses the legacy approach for now)
         let delete_color = props.delete_color.unwrap_or(theme.error);
         let insert_color = props.insert_color.unwrap_or(theme.success);
         let separator_color = props.separator_color.unwrap_or(theme.border);

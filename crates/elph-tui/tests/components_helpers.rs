@@ -1,7 +1,7 @@
 use elph_tui::components::ascii_font::{render_bitmap, render_figlet};
 use elph_tui::components::card::CardBorderStyle;
 use elph_tui::components::code::highlight_rust_line;
-use elph_tui::components::diff::{diff_line_color, diff_line_prefix, side_by_side_lines, unified_lines};
+use elph_tui::components::diff::render::{diff_line_color, diff_line_prefix, side_by_side_lines};
 use elph_tui::components::frame_buffer::FrameBuffer;
 use elph_tui::components::markdown::render_markdown_lines;
 use elph_tui::components::qr_code::render_qr;
@@ -47,8 +47,8 @@ fn side_by_side_diff_handles_uneven_line_counts() {
 
 #[test]
 fn unified_diff_empty_inputs() {
-    let lines = unified_lines("", "", elph_tui::components::UiTheme::default(), None, None, None);
-    assert!(lines.is_empty());
+    let result = elph_tui::components::diff::compute::compute_diff("", "", 3);
+    assert!(result.hunks.is_empty());
 }
 
 #[test]

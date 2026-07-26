@@ -196,7 +196,7 @@ mod tests {
             id: id.to_string(),
             parent_id: None,
             timestamp: "2026-01-01T00:00:00.000Z".to_string(),
-            skill_name: None,
+            skill_name: String::new(),
             message: llm_message_to_agent(Message::User {
                 content: elph_ai::UserContent::Text(text.into()),
                 timestamp: 0,
@@ -209,7 +209,7 @@ mod tests {
             id: id.to_string(),
             parent_id: None,
             timestamp: "2026-01-01T00:00:00.000Z".to_string(),
-            skill_name: None,
+            skill_name: String::new(),
             message: llm_message_to_agent(Message::Assistant(elph_ai::faux_assistant_message(
                 vec![elph_ai::faux_text(text)],
                 None,

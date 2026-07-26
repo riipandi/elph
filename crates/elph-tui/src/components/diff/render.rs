@@ -1,11 +1,7 @@
 //! Rendering helpers for unified and side-by-side diff display.
-//!
-//! Provides both the new hunk-aware rendering pipeline (`render_unified_hunk`)
-//! and the legacy flat helpers (`unified_lines`, `side_by_side_lines`) that
-//! external tests still depend on.
 
 use iocraft::prelude::*;
-use similar::{ChangeTag, TextDiff};
+use similar::ChangeTag;
 
 use super::highlight::highlight_diff_line;
 use super::types::DiffHunk;
@@ -66,35 +62,7 @@ fn dim_color(color: Color, factor: f64) -> Color {
     }
 }
 
-// ── Legacy flat helpers (backward-compatible) ──────────────────────────────
-
-/// Build unified diff lines (old API — kept for backward compatibility).
-pub fn unified_lines(
-    old_text: &str,
-    new_text: &str,
-    theme: UiTheme,
-    delete_color: Option<Color>,
-    insert_color: Option<Color>,
-    equal_color: Option<Color>,
-) -> Vec<AnyElement<'static>> {
-    let diff = TextDiff::from_lines(old_text, new_text);
-    diff.iter_all_changes()
-        .map(|change| {
-            let tag = change.tag();
-            let value = change.value();
-            element! {
-                Text(
-                    content: format!("{}{}", diff_line_prefix(tag), value),
-                    color: diff_line_color_with_overrides(theme, tag, delete_color, insert_color, equal_color),
-                    wrap: TextWrap::NoWrap,
-                )
-            }
-            .into()
-        })
-        .collect()
-}
-
-/// Build side-by-side diff lines (old API — kept for backward compatibility).
+/// Build side-by-side diff lines.
 pub fn side_by_side_lines(
     old_text: &str,
     new_text: &str,
@@ -353,14 +321,16 @@ mod tests {
 
     #[test]
     fn unified_diff_empty_inputs() {
-        let lines = unified_lines("", "", UiTheme::default(), None, None, None);
-        assert!(lines.is_empty());
+        let result = compute_diff("", "", 3);
+        assert!(result.hunks.is_empty());
     }
 
     #[test]
     fn unified_diff_non_empty() {
-        let lines = unified_lines("a\n", "b\n", UiTheme::default(), None, None, None);
-        assert!(!lines.is_empty());
+        let result = compute_diff("a\n", "b\n", 3);
+        let theme = UiTheme::default();
+        let elements = render_unified_hunk(&result.hunks[0], None, false, false, theme, 40);
+        assert!(!elements.is_empty());
     }
 
     #[test]

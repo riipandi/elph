@@ -106,11 +106,12 @@ impl<S: SessionStorage> Session<S> {
             parent_id: self.storage.get_leaf_id().await?,
             timestamp: now_iso_timestamp(),
             message,
-            skill_name: None,
+            skill_name: String::new(),
         })
         .await
     }
 
+    /// Append a message entry tagged with a skill name (for skill invocations).
     pub async fn append_message_with_skill(
         &mut self,
         message: AgentMessage,
@@ -121,7 +122,7 @@ impl<S: SessionStorage> Session<S> {
             parent_id: self.storage.get_leaf_id().await?,
             timestamp: now_iso_timestamp(),
             message,
-            skill_name: Some(skill_name.into()),
+            skill_name: skill_name.into(),
         })
         .await
     }

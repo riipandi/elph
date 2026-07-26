@@ -16,13 +16,24 @@ where
             let Some(write) = write else { break };
             match write {
                 PendingSessionWrite::Message { message } => {
-                    self.shared
-                        .session
-                        .lock()
-                        .await
-                        .append_message(message)
-                        .await
-                        .map_err(session_error)?;
+                    let skill_name = self.shared.pending_skill_name.lock().await.take();
+                    if let Some(name) = skill_name {
+                        self.shared
+                            .session
+                            .lock()
+                            .await
+                            .append_message_with_skill(message, name)
+                            .await
+                            .map_err(session_error)?;
+                    } else {
+                        self.shared
+                            .session
+                            .lock()
+                            .await
+                            .append_message(message)
+                            .await
+                            .map_err(session_error)?;
+                    }
                 }
                 PendingSessionWrite::ModelChange { provider, model_id } => {
                     self.shared

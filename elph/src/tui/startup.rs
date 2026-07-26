@@ -369,30 +369,14 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
     let mut messages: Vec<TranscriptMessage> = Vec::new();
     // Track timestamps to compute response durations between user→assistant pairs.
     let mut last_user_ts: Option<DateTime<Utc>> = None;
-    // Track skill names from Custom entries, keyed by parent_id (the user message they follow).
-    let mut skill_by_user: std::collections::HashMap<String, String> = std::collections::HashMap::new();
 
-    // First pass: collect skill names from Custom entries.
-    for entry in &entries {
-        if let elph_agent::SessionTreeEntry::Custom {
-            custom_type,
-            data,
-            parent_id,
-            ..
-        } = entry
-            && custom_type == "skill_invocation"
-            && let Some(data) = data
-            && let Some(name) = data.get("name").and_then(|v| v.as_str())
-            && let Some(pid) = parent_id
-        {
-            skill_by_user.insert(pid.clone(), name.to_string());
-        }
-    }
-
-    // Second pass: convert message entries to TranscriptMessages.
+    // Convert message entries to TranscriptMessages.
     for entry in &entries {
         let elph_agent::SessionTreeEntry::Message {
-            message, timestamp, id, ..
+            message,
+            timestamp,
+            skill_name,
+            ..
         } = entry
         else {
             continue;
@@ -425,15 +409,13 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
                     last_user_ts = Some(ts);
                 }
 
-                // Check if this user message was a skill invocation (stored as Custom entry).
-                if let Some(skill_name) = skill_by_user.get(id) {
+                // Use the persisted skill_name directly (no Custom entry lookup needed).
+                if !skill_name.is_empty() {
                     let mut msg = TranscriptMessage::text(skill_name.clone(), TranscriptStyle::SkillPrompt);
                     msg.detail_expanded = false;
                     messages.push(msg);
                 } else {
                     let mut msg = TranscriptMessage::text(text, TranscriptStyle::User);
-                    // Use the actual persisted timestamp so the transcript shows the
-                    // real submission time on resume.
                     msg.submitted_at = entry_ts;
                     msg.detail_expanded = false;
                     messages.push(msg);

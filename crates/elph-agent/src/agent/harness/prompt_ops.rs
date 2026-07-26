@@ -46,6 +46,7 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        *self.shared.pending_skill_name.lock().await = Some(name.to_string());
         let result = async {
             let turn_state = self.create_turn_state().await?;
             let skill = turn_state
@@ -60,6 +61,7 @@ where
             self.execute_turn(turn_state, text, None).await
         }
         .await;
+        *self.shared.pending_skill_name.lock().await = None;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -261,14 +263,25 @@ where
     }
 
     pub async fn append_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
+        let skill_name = self.shared.pending_skill_name.lock().await.take();
         if self.phase_async().await == AgentHarnessPhase::Idle {
-            self.shared
-                .session
-                .lock()
-                .await
-                .append_message(message)
-                .await
-                .map_err(session_error)?;
+            if let Some(name) = &skill_name {
+                self.shared
+                    .session
+                    .lock()
+                    .await
+                    .append_message_with_skill(message, name.clone())
+                    .await
+                    .map_err(session_error)?;
+            } else {
+                self.shared
+                    .session
+                    .lock()
+                    .await
+                    .append_message(message)
+                    .await
+                    .map_err(session_error)?;
+            }
         } else {
             self.shared
                 .pending_session_writes
