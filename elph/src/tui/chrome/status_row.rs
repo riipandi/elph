@@ -29,7 +29,7 @@ const TIPS: &[&str] = &[
     "Ctrl+V pastes an image when the model supports vision",
     "y copies selection · Ctrl+Y copies the full prompt",
     "Shift+←/→ selects in the prompt · Esc clears the selection",
-    "Ctrl+S toggles native text select (prompt stays usable) · Ctrl+C clears or cancels",
+    "Ctrl+S text select (wheel off; Shift+↑/↓ scrolls) · Ctrl+C clears or cancels",
     "Brave mode skips tool-approval prompts",
     "Plan mode is for read-only exploration and planning",
     "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",

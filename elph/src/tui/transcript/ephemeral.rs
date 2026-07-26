@@ -188,11 +188,15 @@ pub fn prompt_copy_failed_banner() -> EphemeralBanner {
 ///
 /// Prompt stays interactive; only mouse capture is released so the terminal can
 /// native-select transcript text. Footer shows a sticky `sel |` badge.
+///
+/// **Trade-off:** without mouse capture the app never receives wheel events, so
+/// transcript wheel-scroll is unavailable. Keyboard scroll still works
+/// (`Shift+↑/↓`, and arrow keys when the transcript is focused).
 pub fn select_mode_on_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
-        // Notice (not warning): typing/submit still work; only wheel/click on the TUI are off.
-        text: "Text select on · drag to select · prompt still works · Ctrl+S to turn off".to_string(),
+        // Notice (not warning): typing/submit still work; wheel/click on the TUI are off.
+        text: "Text select on · drag to select · Shift+↑/↓ scrolls · Ctrl+S off".to_string(),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
@@ -202,7 +206,7 @@ pub fn select_mode_on_banner() -> EphemeralBanner {
 pub fn select_mode_off_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: SELECT_MODE_NOTICE_KEY,
-        text: "Text select off · scroll and click restored · Ctrl+S to enable".to_string(),
+        text: "Text select off · wheel scroll and click restored · Ctrl+S to enable".to_string(),
         kind: EphemeralBannerKind::Notice,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
@@ -391,7 +395,11 @@ mod tests {
         assert_eq!(on.key, SELECT_MODE_NOTICE_KEY);
         assert_eq!(on.kind, EphemeralBannerKind::Notice);
         assert!(on.text.to_ascii_lowercase().contains("text select on"));
-        assert!(on.text.to_ascii_lowercase().contains("prompt still works"));
+        assert!(
+            on.text.to_ascii_lowercase().contains("shift") || on.text.contains("↑"),
+            "select-mode banner should mention keyboard scroll: {}",
+            on.text
+        );
         assert!(on.text.contains("Ctrl+S"));
         assert!(!on.text.contains("Esc"));
 
