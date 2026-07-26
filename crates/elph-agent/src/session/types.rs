@@ -272,6 +272,9 @@ pub struct SessionDirMetadata {
     pub id: String,
     #[serde(rename = "createdAt")]
     pub created_at: String,
+    /// Last activity time (updated when tree entries are appended).
+    #[serde(rename = "updatedAt")]
+    pub updated_at: String,
     pub cwd: String,
     /// Absolute path to the session directory (`~/.elph/sessions/<key>/<id>/`).
     pub dir: String,

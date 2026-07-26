@@ -189,6 +189,11 @@ impl CodingAgentSession {
         self.selection.read().model_id.clone()
     }
 
+    /// Provider API id for the live model (e.g. `openai-responses`).
+    pub fn model_api(&self) -> String {
+        self.selection.read().model.api.clone()
+    }
+
     pub fn session_id(&self) -> &str {
         &self.session_id
     }
