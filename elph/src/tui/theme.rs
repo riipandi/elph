@@ -211,6 +211,20 @@ pub const STATUS_FAILED_FG: Color = Color::Rgb {
 /// Queued / idle status line.
 pub const STATUS_QUEUED_FG: Color = TOOL_ARGS_FG;
 
+/// Prompt-queue list body — very muted so it sits under the status row.
+pub const PROMPT_QUEUE_FG: Color = Color::Rgb {
+    r: 0x5c,
+    g: 0x60,
+    b: 0x66,
+};
+
+/// Prompt-queue selected row / action — slightly brighter muted grey.
+pub const PROMPT_QUEUE_SELECTED_FG: Color = Color::Rgb {
+    r: 0x8a,
+    g: 0x8e,
+    b: 0x94,
+};
+
 pub const EDITOR_TEXT_FOCUSED: Color = TEXT_FG;
 pub const EDITOR_TEXT_DIMMED: Color = Color::Rgb {
     r: 0x7a,

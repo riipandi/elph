@@ -1446,6 +1446,27 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
     }
 }
 
+fn agent_user_text(message: &elph_agent::AgentMessage) -> String {
+    match message.as_llm() {
+        Some(Message::User {
+            content: UserContent::Text(t),
+            ..
+        }) => t.clone(),
+        Some(Message::User {
+            content: UserContent::Blocks(blocks),
+            ..
+        }) => blocks
+            .iter()
+            .filter_map(|b| match b {
+                ContentBlock::Text { text } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+            .join(""),
+        _ => String::new(),
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn harness_queue_remove_and_promote_follow_up_to_steer() {
     let (_temp, env) = test_env();
@@ -1490,19 +1511,8 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
     assert_eq!(peek.follow_up.len(), 2);
     assert_eq!(peek.steer.len(), 1);
 
-    let removed = harness
-        .remove_follow_up_at(0)
-        .await
-        .expect("remove")
-        .expect("had item");
-    let removed_text = match removed.as_llm() {
-        Some(Message::User {
-            content: UserContent::Text(t),
-            ..
-        }) => t.clone(),
-        _ => panic!("expected user text"),
-    };
-    assert_eq!(removed_text, "follow-a");
+    let removed = harness.remove_follow_up_at(0).await.expect("remove").expect("had item");
+    assert_eq!(agent_user_text(&removed), "follow-a");
     assert_eq!(harness.peek_queues().await.follow_up.len(), 1);
 
     let promoted = harness
@@ -1510,14 +1520,7 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
         .await
         .expect("promote")
         .expect("had follow-up");
-    let promoted_text = match promoted.as_llm() {
-        Some(Message::User {
-            content: UserContent::Text(t),
-            ..
-        }) => t.clone(),
-        _ => panic!("expected user text"),
-    };
-    assert_eq!(promoted_text, "follow-b");
+    assert_eq!(agent_user_text(&promoted), "follow-b");
     let after = harness.peek_queues().await;
     assert!(after.follow_up.is_empty());
     assert_eq!(after.steer.len(), 2);
@@ -1528,5 +1531,6 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
     assert!(cleared.follow_up.is_empty());
 
     release.store(true, Ordering::SeqCst);
+    let _ = harness.abort().await;
     let _ = first_prompt.await.expect("join first prompt");
 }

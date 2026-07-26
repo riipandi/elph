@@ -1,13 +1,14 @@
 //! Non-blocking agent turn dispatch and transcript event application.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
 use crate::agent::format_skill_conflict_notice;
 use crate::agent::goal_slash::handle_goal_slash;
-use crate::agent::{AgentUiEvent, CodingAgentSession, SlashDispatch, SubagentUiPhase};
+use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
+use crate::agent::{SlashDispatch, SubagentUiPhase};
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
 
@@ -35,6 +36,56 @@ impl TurnDispatcher {
         tokio::spawn(async move {
             if let Err(err) = session.abort().await {
                 log::warn!("agent abort failed: {err}");
+            }
+        });
+    }
+
+    pub fn spawn_follow_up(session: Arc<CodingAgentSession>, text: String) {
+        tokio::spawn(async move {
+            if let Err(err) = session.queue_follow_up(text).await {
+                log::warn!("queue follow-up failed: {err}");
+                let _ = session
+                    .ui_event_sender()
+                    .send(AgentUiEvent::Status(format!("Could not queue prompt: {err}")));
+            }
+        });
+    }
+
+    pub fn spawn_steer(session: Arc<CodingAgentSession>, text: String) {
+        tokio::spawn(async move {
+            if let Err(err) = session.queue_steer(text).await {
+                log::warn!("queue steer failed: {err}");
+                let _ = session
+                    .ui_event_sender()
+                    .send(AgentUiEvent::Status(format!("Could not interject: {err}")));
+            }
+        });
+    }
+
+    pub fn spawn_remove_queued(session: Arc<CodingAgentSession>, kind: QueuedPromptKind, kind_index: usize) {
+        tokio::spawn(async move {
+            if let Err(err) = session.remove_queued(kind, kind_index).await {
+                log::warn!("remove queued prompt failed: {err}");
+            }
+        });
+    }
+
+    /// Pop one queued item (by kind index) and interject it immediately via steer.
+    pub fn spawn_interject_queued(
+        session: Arc<CodingAgentSession>,
+        kind: QueuedPromptKind,
+        kind_index: usize,
+        text: String,
+    ) {
+        tokio::spawn(async move {
+            if let Err(err) = session.remove_queued(kind, kind_index).await {
+                log::warn!("remove queued before interject failed: {err}");
+            }
+            if let Err(err) = session.queue_steer(text).await {
+                log::warn!("interject queued prompt failed: {err}");
+                let _ = session
+                    .ui_event_sender()
+                    .send(AgentUiEvent::Status(format!("Could not interject: {err}")));
             }
         });
     }
@@ -129,27 +180,80 @@ impl SlashDispatcher {
     }
 }
 
-/// FIFO queue for follow-up prompts submitted while a turn is in flight.
-#[derive(Debug, Default)]
-pub struct PromptQueue {
-    items: VecDeque<String>,
+/// Local mirror of harness steer/follow-up queues for StatusRow + Ctrl+Q.
+#[derive(Debug, Default, Clone)]
+pub struct PromptQueueView {
+    items: Vec<QueuedPromptItem>,
 }
 
-impl PromptQueue {
-    pub fn push(&mut self, text: String) {
-        if !text.trim().is_empty() {
-            self.items.push_back(text);
-        }
+impl PromptQueueView {
+    pub fn replace(&mut self, items: Vec<QueuedPromptItem>) {
+        self.items = items;
     }
 
-    pub fn pop_front(&mut self) -> Option<String> {
-        self.items.pop_front()
+    pub fn items(&self) -> &[QueuedPromptItem] {
+        &self.items
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
     }
 
     pub fn clear(&mut self) {
         self.items.clear();
     }
+
+    /// Optimistic local append before harness `QueueUpdate` (caller must bump UI revision).
+    pub fn push_follow_up_local(&mut self, text: String) {
+        let text = text.trim().to_string();
+        if text.is_empty() {
+            return;
+        }
+        let kind_index = self
+            .items
+            .iter()
+            .filter(|i| matches!(i.kind, QueuedPromptKind::FollowUp))
+            .count();
+        let seq = (self.items.len() as u32).saturating_add(1);
+        self.items.push(QueuedPromptItem {
+            seq,
+            kind: QueuedPromptKind::FollowUp,
+            kind_index,
+            text,
+        });
+    }
+
+    /// Remove display index 0 and renumber; returns the removed item.
+    pub fn pop_front_local(&mut self) -> Option<QueuedPromptItem> {
+        self.remove_at_local(0)
+    }
+
+    /// Remove item at display index and renumber; returns the removed item.
+    pub fn remove_at_local(&mut self, display_index: usize) -> Option<QueuedPromptItem> {
+        if display_index >= self.items.len() {
+            return None;
+        }
+        let removed = self.items.remove(display_index);
+        for (i, item) in self.items.iter_mut().enumerate() {
+            item.seq = (i as u32).saturating_add(1);
+        }
+        Some(removed)
+    }
+
+    /// Compact badge text, e.g. `Q:3`, or empty when no queue.
+    #[cfg(test)]
+    pub fn badge_label(&self) -> Option<String> {
+        let n = self.len();
+        if n == 0 { None } else { Some(format!("Q:{n}")) }
+    }
 }
+
+/// Legacy alias used by shell quit helpers; same as [`PromptQueueView`].
+pub type PromptQueue = PromptQueueView;
 
 /// Merge adjacent high-frequency stream events so one UI tick applies fewer mutations.
 ///
@@ -285,7 +389,9 @@ impl TranscriptEventApplier {
             AgentUiEvent::Status(message) => self.push_status(messages, message.trim()),
             AgentUiEvent::ThinkingDelta(_)
             | AgentUiEvent::PlanConfirmationRequired(_)
-            | AgentUiEvent::UserQuestionRequired(_) => false,
+            | AgentUiEvent::UserQuestionRequired(_)
+            | AgentUiEvent::QueueUpdate { .. }
+            | AgentUiEvent::UserPromptCommitted { .. } => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).
             AgentUiEvent::ToolApprovalRequired(_) => false,
         }
@@ -771,21 +877,29 @@ mod tests {
     }
 
     #[test]
-    fn prompt_queue_skips_empty() {
-        let mut queue = PromptQueue::default();
-        queue.push("   ".into());
-        assert!(queue.pop_front().is_none());
-        queue.push("next".into());
-        assert_eq!(queue.pop_front().as_deref(), Some("next"));
-    }
-
-    #[test]
-    fn prompt_queue_clear_drops_queued_turns() {
-        let mut queue = PromptQueue::default();
-        queue.push("one".into());
-        queue.push("two".into());
+    fn prompt_queue_view_badge_and_replace() {
+        let mut queue = PromptQueueView::default();
+        assert!(queue.is_empty());
+        assert!(queue.badge_label().is_none());
+        queue.replace(vec![
+            QueuedPromptItem {
+                seq: 1,
+                kind: QueuedPromptKind::FollowUp,
+                kind_index: 0,
+                text: "first".into(),
+            },
+            QueuedPromptItem {
+                seq: 2,
+                kind: QueuedPromptKind::Steer,
+                kind_index: 0,
+                text: "second".into(),
+            },
+        ]);
+        assert_eq!(queue.len(), 2);
+        assert_eq!(queue.badge_label().as_deref(), Some("Q:2"));
+        assert_eq!(queue.items().first().map(|i| i.text.as_str()), Some("first"));
         queue.clear();
-        assert!(queue.pop_front().is_none());
+        assert!(queue.is_empty());
     }
 
     #[test]

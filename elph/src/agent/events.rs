@@ -23,6 +23,26 @@ impl SubagentUiPhase {
     }
 }
 
+/// Kind of prompt sitting in the agent harness queue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QueuedPromptKind {
+    /// Delivered after the current agent work finishes (Enter while busy).
+    FollowUp,
+    /// Mid-turn interjection / steering (Ctrl+Enter).
+    Steer,
+}
+
+/// One queued user prompt for StatusRow / queue manager UI.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueuedPromptItem {
+    /// 1-based index within the combined display list (follow-ups first, then steer).
+    pub seq: u32,
+    pub kind: QueuedPromptKind,
+    /// Index into the harness queue of this kind (for cancel/edit).
+    pub kind_index: usize,
+    pub text: String,
+}
+
 /// Live UI events emitted while an agent run is in progress.
 #[derive(Debug)]
 pub enum AgentUiEvent {
@@ -45,6 +65,15 @@ pub enum AgentUiEvent {
     },
     RunCompleted {
         elapsed_secs: f64,
+    },
+    /// Harness steer/follow-up queue snapshot (after enqueue, drain, cancel, or abort).
+    QueueUpdate {
+        items: Vec<QueuedPromptItem>,
+    },
+    /// A user message was committed by the agent loop (initial prompt, steer, or drained follow-up).
+    /// The TUI may skip rendering if it already echoed the prompt (idle submit / Ctrl+Enter).
+    UserPromptCommitted {
+        text: String,
     },
     PlanConfirmationRequired(PlanConfirmationRequest),
     ToolApprovalRequired(ToolApprovalRequest),

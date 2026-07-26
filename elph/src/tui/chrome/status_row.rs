@@ -9,6 +9,7 @@ use elph_tui::rgb;
 use iocraft::prelude::*;
 
 const IDLE_ACTION_HINT: &str = "Enter to send · Ctrl+D exit";
+const QUEUE_BADGE_HINT: &str = "Ctrl+Q queue";
 
 /// Paint refresh while busy (ms). Frame *phase* is wall-clock; this only schedules redraws.
 const STATUS_TICK_MS: u64 = 80;
@@ -33,6 +34,7 @@ const TIPS: &[&str] = &[
     "Brave mode skips tool-approval prompts",
     "Plan mode is for read-only exploration and planning",
     "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",
+    "While busy: Enter queues · Ctrl+Enter sends next queued · Ctrl+Q manages",
 ];
 
 use crate::tui::activity::{
@@ -60,6 +62,8 @@ pub struct StatusRowProps {
     pub quit_confirm_pending: bool,
     /// Mouse capture off — select mode is indicated in the footer (`sel | …`), not here.
     pub select_mode: bool,
+    /// Number of queued follow-up/steer prompts (0 hides badge).
+    pub queue_count: u32,
 }
 
 impl Default for StatusRowProps {
@@ -75,6 +79,7 @@ impl Default for StatusRowProps {
             idle_notice: None,
             quit_confirm_pending: false,
             select_mode: false,
+            queue_count: 0,
         }
     }
 }
@@ -149,8 +154,34 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
     let _select_mode = props.select_mode;
     let left_fg = Color::DarkGrey;
     let right_fg = Color::DarkGrey;
-    let left_line = if props.busy { activity_line } else { idle_line };
-    let right_line = if props.busy { busy_right_line } else { idle_right_line };
+    let queue_badge = if props.queue_count > 0 {
+        Some(format!("Q:{}", props.queue_count))
+    } else {
+        None
+    };
+    // Append compact queue chip after activity/tip; keep right cluster for timers/cancel.
+    let left_base = if props.busy { activity_line } else { idle_line };
+    let left_line = if let Some(badge) = queue_badge.as_ref() {
+        let max_left = (right_half as usize).saturating_sub(2).max(8);
+        let with_badge = format!("{left_base} · {badge}");
+        if with_badge.chars().count() <= max_left {
+            with_badge
+        } else {
+            // Prefer badge + short base so Q:n stays visible.
+            format!("{badge} · {left_base}").chars().take(max_left).collect()
+        }
+    } else {
+        left_base
+    };
+    let right_line = if props.busy {
+        if props.queue_count > 0 {
+            format!("{busy_right_line} · {QUEUE_BADGE_HINT}")
+        } else {
+            busy_right_line
+        }
+    } else {
+        idle_right_line
+    };
     let show_busy_spinner = props.busy;
 
     element! {
@@ -246,6 +277,8 @@ mod tests {
         assert!(joined.contains("Ctrl+S"));
         assert!(joined.contains("Shift+←/→") || joined.contains("selects in the prompt"));
         assert!(joined.contains("Ctrl+C"));
+        assert!(joined.contains("Ctrl+Enter") || joined.contains("interject"));
+        assert!(joined.contains("Ctrl+Q") || joined.contains("queue"));
         assert!(!joined.to_ascii_lowercase().contains("ctrl+c yanks"));
     }
 
