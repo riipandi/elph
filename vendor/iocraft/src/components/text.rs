@@ -202,6 +202,15 @@ impl<'a, 'b> TextDrawer<'a, 'b> {
         lines: impl IntoIterator<Item = &'c str>,
         style: CanvasTextStyle,
     ) {
+        self.append_lines_with_hyperlink(lines, style, None);
+    }
+
+    pub fn append_lines_with_hyperlink<'c>(
+        &mut self,
+        lines: impl IntoIterator<Item = &'c str>,
+        style: CanvasTextStyle,
+        hyperlink: Option<std::sync::Arc<str>>,
+    ) {
         let mut lines = lines.into_iter().peekable();
         while let Some(mut line) = lines.next() {
             if self.skip_leading_whitespace && !self.line_encountered_non_whitespace {
@@ -216,7 +225,9 @@ impl<'a, 'b> TextDrawer<'a, 'b> {
                     self.line_encountered_non_whitespace = true;
                 }
             }
-            self.drawer.canvas().set_text(self.x, self.y, line, style);
+            self.drawer
+                .canvas()
+                .set_text_with_hyperlink(self.x, self.y, line, style, hyperlink.clone());
             if lines.peek().is_some() {
                 self.y += 1;
                 self.x = self.x_offset;

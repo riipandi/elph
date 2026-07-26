@@ -16,6 +16,13 @@ fn span_to_mixed(span: &StyledSpan) -> MixedTextContent {
     if span.italic {
         part = part.italic();
     }
+    // Links stay clickable via OSC 8 / Cmd+click — do not paint underline.
+    if span.underline {
+        part = part.decoration(TextDecoration::Underline);
+    }
+    if let Some(href) = span.href.as_deref() {
+        part = part.hyperlink(std::sync::Arc::<str>::from(href));
+    }
     part
 }
 

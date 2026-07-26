@@ -532,12 +532,65 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
     }
 }
 
+/// Collapsed transcript parts: task verb + display target + optional openable path/URL.
+///
+/// When the target is an abbreviated path, [`CollapsedToolParts::detail_href`] still points
+/// at the original absolute/`file://` destination for OSC 8 clicks.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CollapsedToolParts {
+    pub verb: String,
+    pub detail: String,
+    /// `file://…` or `https://…` for the detail span; `None` when not a path/URL.
+    pub detail_href: Option<String>,
+}
+
 /// Collapsed transcript parts: task verb (for bold) + optional target (normal weight).
 pub fn format_collapsed_tool_parts(tool_name: &str, args_raw: &str) -> (String, String) {
+    let parts = format_collapsed_tool_parts_linked(tool_name, args_raw);
+    (parts.verb, parts.detail)
+}
+
+/// Like [`format_collapsed_tool_parts`], but keeps the original path for clickable headers.
+pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> CollapsedToolParts {
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
-    let target = collapsed_tool_target(tool_name, &params);
-    (verb, target)
+    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params);
+    CollapsedToolParts {
+        verb,
+        detail,
+        detail_href,
+    }
+}
+
+fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam]) -> (String, Option<String>) {
+    match tool_base_name(tool_name) {
+        "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
+            match find_param(params, &["path", "file"]) {
+                Some(path) => {
+                    let display = abbreviate_path(path, COLLAPSED_TARGET_MAX_CHARS);
+                    let href = elph_tui::components::markdown::path_to_file_url(path);
+                    (display, href)
+                }
+                None => (String::new(), None),
+            }
+        }
+        "web_fetch" => match find_param(params, &["url", "uri"]) {
+            Some(url) => {
+                let display = truncate_chars(url, COLLAPSED_TARGET_MAX_CHARS);
+                // Prefer the original URL as the OSC 8 target (even when the label is truncated).
+                let href = is_openable_web_url(url).then(|| url.to_string());
+                (display, href)
+            }
+            None => (String::new(), None),
+        }
+        _ => (collapsed_tool_target(tool_name, params), None),
+    }
+}
+
+/// Cheap openable-URL check — avoids pulling the `url` crate into the elph binary.
+fn is_openable_web_url(s: &str) -> bool {
+    let s = s.trim();
+    s.starts_with("https://") || s.starts_with("http://")
 }
 
 /// Collapsed transcript header: `Edit /U/a/D/elph/src/main.rs` (verb + concise target).
@@ -1138,6 +1191,34 @@ mod tests {
 
         let shell = format_collapsed_tool_label("shell_exec", r#"{"command":"cargo test -p elph"}"#);
         assert_eq!(shell, "Shell cargo test -p elph");
+    }
+
+    #[test]
+    fn collapsed_tool_parts_href_keeps_original_path_when_abbreviated() {
+        let path = "/opt/workspace/riipandi/elph/crates/elph/src/nama-file.ext";
+        let parts = format_collapsed_tool_parts_linked(
+            "edit_file",
+            &format!(r#"{{"path":"{path}"}}"#),
+        );
+        assert_eq!(parts.verb, "Edit");
+        // Display is abbreviated (no full intermediate dirs).
+        assert!(!parts.detail.contains("workspace"), "{}", parts.detail);
+        assert!(parts.detail.contains("nama-file.ext"), "{}", parts.detail);
+        // Click target is still the original path as file://.
+        let href = parts.detail_href.expect("detail_href");
+        assert!(href.starts_with("file://"), "{href}");
+        assert!(href.contains("nama-file.ext"), "{href}");
+        assert!(href.contains("workspace"), "{href}");
+        assert!(href.contains("riipandi"), "{href}");
+    }
+
+    #[test]
+    fn collapsed_web_fetch_href_keeps_full_url_when_truncated() {
+        let url = "https://example.com/very/long/path/that/will/be/truncated/for/display/page";
+        let parts = format_collapsed_tool_parts_linked("web_fetch", &format!(r#"{{"url":"{url}"}}"#));
+        assert_eq!(parts.verb, "Fetch");
+        assert!(parts.detail.chars().count() <= COLLAPSED_TARGET_MAX_CHARS);
+        assert_eq!(parts.detail_href.as_deref(), Some(url));
     }
 
     #[test]

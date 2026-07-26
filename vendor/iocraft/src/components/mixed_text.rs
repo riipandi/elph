@@ -26,6 +26,12 @@ pub struct MixedTextContent {
 
     /// Whether to invert the text's foreground and background colors.
     pub invert: bool,
+
+    /// OSC 8 hyperlink target (e.g. `https://…` or `file:///…`). When set, supporting
+    /// terminals make the text clickable (Cmd/Ctrl+click depending on the host).
+    /// No underline is applied automatically — use [`TextDecoration::Underline`] only if
+    /// you want a visible underline.
+    pub hyperlink: Option<std::sync::Arc<str>>,
 }
 
 impl MixedTextContent {
@@ -64,6 +70,12 @@ impl MixedTextContent {
     /// Returns a new [`MixedTextContent`] with inverted foreground and background colors.
     pub fn invert(mut self) -> Self {
         self.invert = true;
+        self
+    }
+
+    /// Returns a new [`MixedTextContent`] with an OSC 8 hyperlink target.
+    pub fn hyperlink(mut self, url: impl Into<std::sync::Arc<str>>) -> Self {
+        self.hyperlink = Some(url.into());
         self
     }
 }
@@ -181,10 +193,11 @@ impl Component for MixedText {
                     italic: content.italic,
                     invert: content.invert,
                 };
+                let link = content.hyperlink.clone();
                 if segments.peek().is_some() {
-                    drawer.append_lines([segment.text], style);
+                    drawer.append_lines_with_hyperlink([segment.text], style, link);
                 } else {
-                    drawer.append_lines([segment.text, ""], style);
+                    drawer.append_lines_with_hyperlink([segment.text, ""], style, link);
                 }
             }
         }

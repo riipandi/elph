@@ -14,7 +14,7 @@ mod table;
 mod theme;
 
 pub use layout::{markdown_document_row_count, markdown_source_row_count};
-pub use linkify::spans_with_links;
+pub use linkify::{path_to_file_url, spans_with_links};
 pub use model::{MarkdownDocument, MarkdownLine, MarkdownLineKind, MarkdownTable, StyledSpan};
 pub use parse::{parse_markdown_document, parse_markdown_document_with_theme};
 pub use parser_config::has_open_container_at as markdown_has_open_container_at;
@@ -99,5 +99,38 @@ mod tests {
             .find(|span| span.text.contains("https://elph.space"))
             .expect("url span");
         assert_eq!(url_span.color, MarkdownTheme::default().link);
+        assert!(!url_span.underline, "links must not paint underline");
+        assert_eq!(url_span.href.as_deref(), Some("https://elph.space"));
+    }
+
+    #[test]
+    fn markdown_link_uses_destination_as_href() {
+        let doc = parse_markdown_document("[docs](https://elph.space/guide)");
+        let line = doc.lines.first().expect("paragraph line");
+        let link_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("docs"))
+            .expect("link label span");
+        assert!(!link_span.underline, "links must not paint underline");
+        assert_eq!(link_span.href.as_deref(), Some("https://elph.space/guide"));
+        assert_eq!(link_span.color, MarkdownTheme::default().link);
+    }
+
+    #[test]
+    fn plain_path_gets_file_href() {
+        let doc = parse_markdown_document("open /tmp/demo/file.rs please");
+        let line = doc.lines.first().expect("paragraph line");
+        let path_span = line
+            .spans
+            .iter()
+            .find(|span| span.text.contains("file.rs"))
+            .expect("path span");
+        assert!(!path_span.underline, "paths must not paint underline");
+        assert!(
+            path_span.href.as_deref().is_some_and(|h| h.starts_with("file://") && h.contains("file.rs")),
+            "href={:?}",
+            path_span.href
+        );
     }
 }
