@@ -36,7 +36,6 @@ use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
 
-use crate::tui::clipboard::copy_to_clipboard;
 use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
 use crate::tui::file_picker::FilePickerKeyAction;
 use crate::tui::file_picker::{
@@ -87,9 +86,9 @@ use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
     EphemeralBanner, EphemeralBannerGeneration, QUIT_BUSY_NOTICE_KEY, TranscriptMessage, TranscriptPanel,
     TranscriptStyle, agent_mode_banner, agent_mode_busy_banner, api_error_banner, clear_ephemeral_banner,
-    clear_ephemeral_banner_if_generation, expire_ephemeral_banner, prompt_copy_banner, prompt_copy_failed_banner,
-    publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner, select_mode_on_banner, theme_mode_banner,
-    toggle_latest_collapsible_detail,
+    clear_ephemeral_banner_if_generation, clipboard_notice_banner, expire_ephemeral_banner, prompt_copy_banner,
+    prompt_copy_failed_banner, publish_ephemeral_banner, quit_busy_banner, select_mode_off_banner,
+    select_mode_on_banner, theme_mode_banner, toggle_latest_collapsible_detail,
 };
 use crate::tui::user_question::PendingUserQuestion;
 use crate::tui::user_question::{
@@ -102,6 +101,7 @@ use crate::tui::user_question_bar::{UserQuestionBar, UserQuestionView};
 use elph_agent::tools::fff_picker::MentionSearchIndex;
 use elph_tui::PaletteKeyInput;
 use elph_tui::components::ConfirmButtonFocus;
+use elph_tui::copy_to_clipboard;
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
@@ -623,6 +623,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut file_picker_index = hooks.use_state(|| 0usize);
     let mut file_picker_query = hooks.use_ref(String::new);
     let mut live_cursor = hooks.use_ref(|| 0usize);
+    // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
+    let mut clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
     let prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let mut styled_content = hooks.use_ref(String::new);
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
@@ -2298,7 +2300,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
                 }
-                // Ctrl+Y — copy full prompt draft to the system clipboard.
+                // Ctrl+Y — always copy the full prompt body (not the selection).
+                // Plain `y` yanks selected text in the Textarea (separate toast path).
                 (m, KeyCode::Char('y')) | (m, KeyCode::Char('Y'))
                     if m.contains(KeyModifiers::CONTROL)
                         && !m.contains(KeyModifiers::SHIFT)
@@ -2510,6 +2513,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 (m, KeyCode::Char('c'))
                     if m.contains(KeyModifiers::CONTROL) && !busy.get() && pending_tool_approval.read().is_none() =>
                 {
+                    // Ctrl+C always clears / cancels — never used for yank (`y` = selection, Ctrl+Y = full prompt).
                     if matches!(handle_prompt_interrupt_text(&draft_text), PromptInterrupt::Cleared) {
                         draft.set(String::new());
                         live_draft.set(String::new());
@@ -2523,6 +2527,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
         }
     });
+
+    // Drain plain-`y` selection yank toast from Textarea into the status-row ephemeral banner.
+    // Must run in the component body (not only a future tick) so the toast paints the same
+    // frame State is set.
+    {
+        let pending = clipboard_toast.read().clone();
+        if let Some(notice) = pending {
+            clipboard_toast.set(None);
+            let expire_tx = ephemeral_expire.read().tx.clone();
+            let banner = clipboard_notice_banner(&notice);
+            idle_status_notice.set(Some(IdleStatusNotice {
+                text: banner.text.clone(),
+                since: Instant::now(),
+            }));
+            show_ephemeral_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation, &expire_tx, banner);
+        }
+    }
 
     if should_exit.get() {
         let chrome = chrome_stats.read().clone();
@@ -3039,6 +3060,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 file_picker_active: Some(file_picker_active),
                 styled_content: Some(styled_content),
                 live_cursor: Some(live_cursor),
+                clipboard_toast: Some(clipboard_toast),
                 prompt_editor_mirror: Some(prompt_editor_mirror),
                 force_palette_sync: Some(force_palette_sync),
                 force_editor_clear: Some(force_editor_clear),

@@ -27,8 +27,9 @@ const TIPS: &[&str] = &[
     "!! runs a shell command without context",
     "@ opens the file picker to insert paths",
     "Ctrl+V pastes an image when the model supports vision",
-    "Ctrl+Y copies the full prompt to the clipboard",
-    "Ctrl+S toggles text selection (mouse capture on/off)",
+    "y copies selection · Ctrl+Y copies the full prompt",
+    "Shift+←/→ selects in the prompt · Esc clears the selection",
+    "Ctrl+S toggles native text select · Ctrl+C clears or cancels",
     "Brave mode skips tool-approval prompts",
     "Plan mode is for read-only exploration and planning",
     "Enter sends · Ctrl+D exits · Ctrl+C cancels a busy turn",
@@ -243,7 +244,9 @@ mod tests {
         let joined = TIPS.join("\n");
         assert!(joined.contains("Ctrl+Y"));
         assert!(joined.contains("Ctrl+S"));
-        assert!(joined.contains("text selection"));
+        assert!(joined.contains("Shift+←/→") || joined.contains("selects in the prompt"));
+        assert!(joined.contains("Ctrl+C"));
+        assert!(!joined.to_ascii_lowercase().contains("ctrl+c yanks"));
     }
 
     #[test]

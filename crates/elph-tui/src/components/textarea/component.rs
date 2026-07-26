@@ -7,7 +7,8 @@ use super::TextareaProps;
 use super::input::handle_textarea_terminal_event;
 use super::input::{TextareaInputContext, TextareaInputResult};
 use super::layout::{layout_cursor_for_viewport, layout_metrics_from_wrapped, layout_textarea_measured};
-use super::state::TextareaState;
+use super::state::{TextareaState, selection_display_rows};
+use crate::clipboard::{ClipboardNotice, copy_to_clipboard};
 use crate::components::scroll_bar::VerticalScrollbar;
 use crate::components::theme::resolve_ui_theme;
 use crate::input_prefix::{InputPrefixKind, PromptPrefixConfig, absorb_inline_triggers};
@@ -251,6 +252,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let on_file_picker_key = props.on_file_picker_key.take();
     let file_picker_key_handled = props.file_picker_key_handled;
     let prompt_editor_mirror = props.prompt_editor_mirror;
+    let clipboard_toast = props.clipboard_toast;
 
     // Flush raw paste-burst buffers after a typing gap so rapid keys are not lost when the
     // user stops (merge used to run only on the *next* keypress).
@@ -342,7 +344,15 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
     let inner_width = props.width.saturating_sub(h_pad);
     // Snapshot layout while the editor read guard is held, then drop it before registering
     // terminal hooks — otherwise key dispatch can block on `editor.write()` during render.
-    let (layout, rendered_text, text_wrap, content_scroll_offset, cursor_display_row, cursor_col_clamped) = {
+    let (
+        layout,
+        rendered_text,
+        selection_rows,
+        text_wrap,
+        content_scroll_offset,
+        cursor_display_row,
+        cursor_col_clamped,
+    ) = {
         let ed = editor.read();
         let _generation = generation.get();
         let layout_cursor = layout_cursor_for_viewport(&ed.text, ed.cursor);
@@ -367,9 +377,26 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         if let Some(mut mirror) = prompt_editor_mirror {
             mirror.set((ed.text.clone(), ed.cursor));
         }
+        let selection = ed.selection_range();
+        let has_active_selection = selection.is_some();
         let use_viewport_slice = styled_content.is_none() && ed.text.len() >= VIEWPORT_SLICE_MIN_CHARS;
         let visible_row_count = layout.viewport_height.saturating_add(1);
-        let (rendered_text, text_wrap, content_scroll_offset, cursor_display_row) = if use_viewport_slice {
+        // Prefer segmented selection paint when a range is active (a11y: high-contrast invert).
+        let selection_rows = if has_active_selection && styled_content.is_none() {
+            Some(selection_display_rows(
+                &ed.text,
+                &wrapped,
+                selection,
+                next_scroll,
+                visible_row_count,
+            ))
+        } else {
+            None
+        };
+        let (rendered_text, text_wrap, content_scroll_offset, cursor_display_row) = if selection_rows.is_some() {
+            // Selection path paints MixedText rows; plain fallback unused.
+            (String::new(), TextWrap::NoWrap, 0i32, cursor_row.saturating_sub(next_scroll))
+        } else if use_viewport_slice {
             let slice_key = (ed.text.clone(), next_scroll, visible_row_count);
             let content =
                 if viewport_cache.read().as_ref().is_some_and(|c| {
@@ -405,6 +432,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         (
             layout,
             rendered_text,
+            selection_rows,
             text_wrap,
             content_scroll_offset,
             cursor_display_row,
@@ -417,6 +445,7 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
         let mut value = value;
         let mut generation = generation;
         let mut on_submit = on_submit;
+        let clipboard_toast = clipboard_toast;
         let mut on_escape = on_escape;
         let mut on_file_picker_key = on_file_picker_key;
         let mut pending_esc = pending_esc;
@@ -573,7 +602,22 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                         value.set(ed.text.clone());
                     }
                 }
-                TextareaInputResult::Yank(_selected) => {
+                TextareaInputResult::Yank(selected) => {
+                    let notice = match copy_to_clipboard(&selected) {
+                        Ok(()) => ClipboardNotice::selection_copied(selected.chars().count()),
+                        Err(err) => {
+                            log::warn!("selection yank failed: {err}");
+                            ClipboardNotice::failed(err.to_string())
+                        }
+                    };
+                    // State wakes MainShell so the toast is painted on the next frame.
+                    if let Some(mut toast) = clipboard_toast {
+                        toast.set(Some(notice));
+                    }
+                    {
+                        let ed = editor.read();
+                        sync_live_draft(&ed.text, ed.cursor);
+                    }
                     generation.set(generation.get().wrapping_add(1));
                 }
                 TextareaInputResult::Ignored => {}
@@ -636,11 +680,49 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
                     } else {
                         None
                     })
-                    Text(
-                        content: rendered_text,
-                        wrap: text_wrap,
-                        color: text_color,
-                    )
+                    #( {
+                        let body: AnyElement<'static> = if let Some(rows) = selection_rows.as_ref() {
+                            // High-contrast selection: inverted spans (color + invert — not color alone).
+                            let row_elements: Vec<AnyElement<'static>> = rows
+                                .iter()
+                                .map(|segs| {
+                                    let contents: Vec<MixedTextContent> = segs
+                                        .iter()
+                                        .map(|(text, selected)| {
+                                            let mut content = MixedTextContent::new(text.clone()).color(text_color);
+                                            if *selected {
+                                                content = content.invert();
+                                            }
+                                            content
+                                        })
+                                        .collect();
+                                    element! {
+                                        MixedText(
+                                            contents: contents,
+                                            wrap: TextWrap::NoWrap,
+                                        )
+                                    }
+                                    .into()
+                                })
+                                .collect();
+                            element! {
+                                View(flex_direction: FlexDirection::Column, width: layout.input_width) {
+                                    #(row_elements)
+                                }
+                            }
+                            .into()
+                        } else {
+                            element! {
+                                Text(
+                                    content: rendered_text.clone(),
+                                    wrap: text_wrap,
+                                    color: text_color,
+                                )
+                            }
+                            .into()
+                        };
+                        body
+                    })
                 }
             }
             #(if layout.show_scrollbar {

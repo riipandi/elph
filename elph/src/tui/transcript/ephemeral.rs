@@ -143,11 +143,42 @@ pub fn prompt_copy_banner(char_count: usize) -> EphemeralBanner {
     }
 }
 
+/// Banner after plain `y` copies a visual selection in the prompt editor.
+pub fn selection_copy_banner(char_count: usize) -> EphemeralBanner {
+    let unit = if char_count == 1 { "char" } else { "chars" };
+    EphemeralBanner {
+        key: PROMPT_COPY_NOTICE_KEY,
+        // Plain-language status (not color-only) for screen readers linearizing the toast row.
+        text: format!("Copied selection ({char_count} {unit}) · y"),
+        kind: EphemeralBannerKind::Notice,
+        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+    }
+}
+
+/// Map a [`elph_tui::ClipboardNotice`] from the editor into a status-row ephemeral toast.
+pub fn clipboard_notice_banner(notice: &elph_tui::ClipboardNotice) -> EphemeralBanner {
+    match notice {
+        elph_tui::ClipboardNotice::Copied { label, char_count } if label == "selection" => {
+            selection_copy_banner(*char_count)
+        }
+        elph_tui::ClipboardNotice::Copied { label, char_count } => {
+            let unit = if *char_count == 1 { "char" } else { "chars" };
+            EphemeralBanner {
+                key: PROMPT_COPY_NOTICE_KEY,
+                text: format!("Copied {label} ({char_count} {unit})"),
+                kind: EphemeralBannerKind::Notice,
+                expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+            }
+        }
+        elph_tui::ClipboardNotice::Failed { .. } => prompt_copy_failed_banner(),
+    }
+}
+
 /// Banner when clipboard write fails.
 pub fn prompt_copy_failed_banner() -> EphemeralBanner {
     EphemeralBanner {
         key: PROMPT_COPY_NOTICE_KEY,
-        text: "Could not copy prompt · check clipboard access".to_string(),
+        text: "Could not copy to clipboard · check clipboard access".to_string(),
         kind: EphemeralBannerKind::Error,
         expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
     }
@@ -337,6 +368,21 @@ mod tests {
         let fail = prompt_copy_failed_banner();
         assert_eq!(fail.kind, EphemeralBannerKind::Error);
         assert!(fail.text.to_ascii_lowercase().contains("could not copy"));
+
+        let sel = selection_copy_banner(7);
+        assert_eq!(sel.key, PROMPT_COPY_NOTICE_KEY);
+        assert!(sel.text.contains("7"));
+        assert!(sel.text.to_ascii_lowercase().contains("selection"));
+        assert!(sel.text.contains('y'));
+        assert!(!sel.text.contains("Ctrl+Y"));
+
+        let from_notice = clipboard_notice_banner(&elph_tui::ClipboardNotice::selection_copied(3));
+        assert_eq!(from_notice.key, PROMPT_COPY_NOTICE_KEY);
+        assert!(from_notice.text.contains('3'));
+        assert_eq!(from_notice.kind, EphemeralBannerKind::Notice);
+
+        let fail_notice = clipboard_notice_banner(&elph_tui::ClipboardNotice::failed("denied"));
+        assert_eq!(fail_notice.kind, EphemeralBannerKind::Error);
     }
 
     #[test]

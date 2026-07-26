@@ -49,6 +49,8 @@ pub struct EditorProps {
     pub on_file_picker_key: HandlerMut<'static, PaletteKeyInput>,
     pub file_picker_key_handled: Option<Ref<bool>>,
     pub prompt_editor_mirror: Option<Ref<(String, usize)>>,
+    /// Selection yank toast (`y`) — shell drains into ephemeral banner.
+    pub clipboard_toast: Option<State<Option<elph_tui::ClipboardNotice>>>,
     /// Shown centered when the editor is blocked by an inline dialog.
     pub blocked_hint: Option<String>,
     /// Text-select mode: keep draft visible (dimmed), drop focus so input is paused.
@@ -155,6 +157,7 @@ pub fn Editor(props: &mut EditorProps) -> impl Into<AnyElement<'static>> {
                     live_cursor: props.live_cursor,
                     force_palette_sync: props.force_palette_sync,
                     force_clear: props.force_clear,
+                    clipboard_toast: props.clipboard_toast,
                     submit_on_enter: true,
                     on_submit: props.on_submit.take(),
                     on_escape: props.on_escape.take(),

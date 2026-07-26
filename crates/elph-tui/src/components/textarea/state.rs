@@ -380,7 +380,8 @@ impl TextareaState {
 }
 
 /// Build per-row text segments for selection highlighting (buffer offsets only — no borders).
-#[allow(dead_code)] // wired into selection rendering once transcript card integrates visual selection
+///
+/// Each row is a list of `(text, selected)` segments for mixed-style rendering.
 pub fn selection_display_rows(
     text: &str,
     layout: &WrappedTextLayout,

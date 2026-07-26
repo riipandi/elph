@@ -5,6 +5,7 @@
 //! @ref: https://opentui.com/docs/getting-started
 
 pub mod cli_progress;
+pub mod clipboard;
 pub mod color;
 pub mod components;
 pub mod input_prefix;
@@ -20,6 +21,7 @@ pub mod utils;
 
 pub use cli_progress::{CliProgress, CliSpinner};
 pub use cli_progress::{progress_enabled, progress_spinner};
+pub use clipboard::{ClipboardCopyStatus, ClipboardNotice, copy_to_clipboard, copy_with_status, read_from_clipboard};
 pub use color::{from_hex, from_rgb_fn, parse_color, parse_color_value, rgb};
 pub use components::*;
 pub use input_prefix::{
