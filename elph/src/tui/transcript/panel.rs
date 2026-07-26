@@ -36,6 +36,9 @@ pub struct TranscriptPanelProps {
     /// When false, mouse wheel is ignored (e.g. while a modal dialog owns scroll).
     /// Defaults to `true` so the transcript still scrolls while the prompt has focus.
     pub mouse_scroll: Option<bool>,
+    /// Native terminal text-select mode — hide the scrollbar so it does not interfere
+    /// with drag-to-select.
+    pub text_select_mode: bool,
 }
 
 struct TranscriptRenderCache {
@@ -231,6 +234,21 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     });
     let min_content_height = scroll_zone;
 
+    // In text-select mode: hide the iocraft scrollbar AND explicitly write spaces over
+    // the scrollbar column so stale canvas characters are not copied during native
+    // terminal drag-to-select.
+    let show_scrollbar = !props.text_select_mode;
+    let clear_scrollbar_text = if props.text_select_mode && scroll_zone > 0 {
+        let lines = scroll_zone as usize;
+        Some(if lines == 1 {
+            " ".to_string()
+        } else {
+            " \n".repeat(lines - 1) + " "
+        })
+    } else {
+        None
+    };
+
     let transcript_focused = props.has_focus;
     hooks.use_terminal_events({
         let mut scroll_handle = scroll_handle;
@@ -336,7 +354,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                     ScrollView(
                         handle: Some(scroll_handle),
                         scroll_step: TRANSCRIPT_SCROLL_STEP as u16,
-                        scrollbar: true,
+                        scrollbar: show_scrollbar,
                         scrollbar_thumb_color: SCROLLBAR_THUMB,
                         scrollbar_track_color: SCROLLBAR_TRACK,
                         keyboard_scroll: Some(false),
@@ -360,6 +378,23 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
                     }
                 }
                 #(sticky_overlay)
+                // Overwrite the scrollbar column with spaces so stale characters
+                // from the iocraft ScrollViewScrollbar canvas are never copied
+                // during native terminal text selection.
+                #(clear_scrollbar_text.as_ref().map(|text| {
+                    element! {
+                        View(
+                            position: Position::Absolute,
+                            right: 0,
+                            top: sticky_rows as i16,
+                            width: 1,
+                            height: scroll_zone,
+                            overflow: Overflow::Hidden,
+                        ) {
+                            Text(content: text.as_str())
+                        }
+                    }
+                }))
             }
         }
     }

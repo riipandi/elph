@@ -3459,6 +3459,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 has_focus: transcript_focused,
                 // Modal dialogs own the wheel; keep the transcript still underneath.
                 mouse_scroll: Some(!status_dialog_open),
+                text_select_mode: select_mode.get(),
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
