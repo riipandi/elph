@@ -139,24 +139,28 @@ pub fn embedding_dims(model: &ResolvedEmbeddingModel) -> u32 {
 ///
 /// Default model: **AllMiniLML6V2** (maps to `sentence-transformers/all-MiniLM-L6-v2`).
 /// Model weights download on first use into `HF_HOME` (override via [`EmbedOptions::cache_dir`]).
+///
+/// **Note:** This function uses `embed_anything`'s Candle-based `from_pretrained_hf` path, which
+/// requires models with PyTorch/safetensors weights. ONNX-only Q-variant models (`Xenova/`,
+/// `Qdrant/` repos) are not supported here — the `quantized` option is ignored for model resolution.
 #[cfg(feature = "embed")]
 pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
     use embed_anything::embeddings::embed::Embedder;
     use embed_anything::embeddings::local::text_embedding::ONNXModel;
 
     let model_name = options.model.unwrap_or_else(|| DEFAULT_EMBED_MODEL.to_string());
-    let resolved = resolve_embedding_model(&model_name, options.quantized).map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Candle's from_pretrained_hf cannot load ONNX-only Q-variant models (Xenova, Qdrant repos
+    // only have ONNX weights). Always resolve the non-quantized variant for Candle compatibility.
+    let resolved = resolve_embedding_model(&model_name, false).map_err(|e| anyhow::anyhow!("{e}"))?;
     let expected_dims = resolved.dimensions as usize;
     let hf_model_id = resolved.hf_model_id.clone();
 
-    let pooling = ONNXModel::from_str(alias_model_name(&model_name)).ok().and_then(|m| {
-        let m = if options.quantized {
-            prefer_quantized_variant(m)
-        } else {
-            m
-        };
-        m.get_default_pooling_method()
-    });
+    // Pooling strategy is identical between Q and non-Q variants for the same model.
+    let base_model = ONNXModel::from_str(alias_model_name(&model_name)).unwrap_or(
+        // Fallback to default catalog model if name doesn't match an alias.
+        ONNXModel::AllMiniLML6V2,
+    );
+    let pooling = base_model.get_default_pooling_method();
 
     if let Some(dir) = &options.cache_dir {
         set_hf_home(dir);

@@ -85,18 +85,16 @@ pub async fn slash_run(paths: &crate::platform::Paths, args: &str) -> Result<Str
             crate::memory::format::write_purge(&mut out, count, threshold);
             Ok(out)
         }
-        "help" | "h" | "--help" | "-h" => {
-            Ok(concat!(
-                "Memory commands:\n",
-                "  /memory status            Overview: counts, categories, top memories\n",
-                "  /memory list [category]   List all memories (optionally filter by category)\n",
-                "  /memory tasks [n]         Show last N tasks with retrievals and outcomes\n",
-                "  /memory log [n]           Compact timeline of tasks and memory events\n",
-                "  /memory search <query>    Semantic search across memories\n",
-                "  /memory purge [threshold] Delete memories below weight threshold\n",
-            )
-            .to_string())
-        }
+        "help" | "h" | "--help" | "-h" => Ok(concat!(
+            "Memory commands:\n",
+            "  /memory status            Overview: counts, categories, top memories\n",
+            "  /memory list [category]   List all memories (optionally filter by category)\n",
+            "  /memory tasks [n]         Show last N tasks with retrievals and outcomes\n",
+            "  /memory log [n]           Compact timeline of tasks and memory events\n",
+            "  /memory search <query>    Semantic search across memories\n",
+            "  /memory purge [threshold] Delete memories below weight threshold\n",
+        )
+        .to_string()),
         other => Err(format!("unknown memory subcommand: {other}. Try /memory help")),
     }
 }

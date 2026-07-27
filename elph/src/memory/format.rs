@@ -129,7 +129,10 @@ pub fn write_tasks(out: &mut String, tasks: &[TaskRecord]) {
         let when = t.started_at.map(time_ago).unwrap_or_else(|| "?".into());
         let desc = truncate(t.description.as_deref().unwrap_or(""), 100);
 
-        let _ = writeln!(out, "[{status}] score={score} | {tokens}tok, {calls}calls, {errors}err, {corr}corr | {when}");
+        let _ = writeln!(
+            out,
+            "[{status}] score={score} | {tokens}tok, {calls}calls, {errors}err, {corr}corr | {when}"
+        );
         let _ = writeln!(out, "  {desc}");
 
         for r in &t.retrievals {
@@ -181,13 +184,7 @@ pub fn write_search_results(out: &mut String, query: &str, memories: &[floppy::M
     let _ = writeln!(out, "Top {} results for \"{query}\":", memories.len());
     let _ = writeln!(out);
     for m in memories {
-        let _ = writeln!(
-            out,
-            "[{}] score={:.3} w={:.2}",
-            category_str(m.category),
-            m.score,
-            m.weight,
-        );
+        let _ = writeln!(out, "[{}] score={:.3} w={:.2}", category_str(m.category), m.score, m.weight,);
         let _ = writeln!(out, "  {}\n", truncate(&m.content, 200));
     }
 }

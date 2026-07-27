@@ -102,7 +102,9 @@ pub async fn create_coding_session_with_events(
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
-    let ctx = crate::memory::hooks::build_memories_context(options.paths).await.unwrap_or_default();
+    let ctx = crate::memory::hooks::build_memories_context(options.paths)
+        .await
+        .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
