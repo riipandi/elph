@@ -202,6 +202,7 @@ fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static
                 flex_direction: FlexDirection::Row,
                 flex_shrink: 0f32,
                 background_color: bg_color,
+                overflow: Overflow::Hidden,
             ) {
                 #(children)
             }
@@ -213,6 +214,7 @@ fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static
                 width: w,
                 flex_direction: FlexDirection::Row,
                 flex_shrink: 0f32,
+                overflow: Overflow::Hidden,
             ) {
                 #(children)
             }
@@ -235,15 +237,16 @@ pub fn render_unified_hunk(
     let mut elements: Vec<AnyElement<'static>> =
         Vec::with_capacity(hunk.lines.len() + if show_hunk_header { 1 } else { 0 });
 
-    // Hunk header
+    // Hunk header — truncate to row width so long file paths cannot overflow.
     if show_hunk_header {
         let header = format_hunk_header(hunk);
+        let header_text = truncate_to_width(&header, width.max(1) as usize);
         elements.push(diff_line_row(
             width,
             None,
             vec![
                 element! {
-                    Text(content: header, color: theme.accent, wrap: TextWrap::NoWrap)
+                    Text(content: header_text, color: theme.accent, wrap: TextWrap::NoWrap)
                 }
                 .into(),
             ],
@@ -252,7 +255,9 @@ pub fn render_unified_hunk(
 
     let num_width = line_numbers.gutter_width();
     // Content width = total width minus gutter and status prefix.
-    let content_width = width.saturating_sub(num_width.saturating_add(2)).max(8) as usize;
+    // Clamp to at least 1 so we never exceed the available row width (the old
+    // `.max(8)` could make content wider than the row on narrow terminals).
+    let content_width = width.saturating_sub(num_width.saturating_add(2)).max(1) as usize;
 
     for line in &hunk.lines {
         let tag = line.tag;
