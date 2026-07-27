@@ -93,7 +93,11 @@ async fn execute_read(
 
     Ok(AgentToolResult {
         content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(output))],
-        details: json!({ "truncation": truncation.truncated }),
+        details: json!({
+            "old_content": "",
+            "new_content": selected,
+            "file_path": absolute,
+        }),
         added_tool_names: None,
         terminate: None,
     })

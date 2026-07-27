@@ -58,16 +58,29 @@ impl ToolCardDetail {
         self.base_name() == "edit_file"
     }
 
-    /// Whether the card can render an embedded unified diff (edit_file + before/after text).
+    pub fn is_write_file(&self) -> bool {
+        self.base_name() == "write_file"
+    }
+
+    pub fn is_read_file(&self) -> bool {
+        self.base_name() == "read_file"
+    }
+
+    /// Whether this tool supports inline diff display (edit_file, write_file, read_file).
+    pub fn supports_inline_diff(&self) -> bool {
+        self.is_edit_file() || self.is_write_file() || self.is_read_file()
+    }
+
+    /// Whether the card can render an embedded unified diff (file tool + before/after text).
     pub fn has_inline_diff(&self) -> bool {
-        self.is_edit_file() && self.old_text.is_some() && self.new_text.is_some()
+        self.supports_inline_diff() && self.old_text.is_some() && self.new_text.is_some()
     }
 
     /// Pull `old_content` / `new_content` / `file_path` from tool-result `details` JSON.
     ///
     /// Returns `true` when an inline diff payload was installed.
     pub fn apply_tool_result_details(&mut self, details: &serde_json::Value) -> bool {
-        if !self.is_edit_file() {
+        if !self.supports_inline_diff() {
             return false;
         }
         let Some(old) = json_string_field(details, "old_content") else {
