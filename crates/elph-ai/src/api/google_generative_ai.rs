@@ -135,7 +135,12 @@ async fn run_google(
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let response = crate::api::common::send_with_abort(&options.base.signal, req).await?;
+    let response = crate::api::common::send_with_resilience(
+        &model.provider,
+        &options.base.signal,
+        req,
+    )
+    .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
 

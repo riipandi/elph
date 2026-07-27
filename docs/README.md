@@ -30,6 +30,7 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 | Local development       | [development.md](./development.md)                                   |
 | Agent memory            | [memory.md](./memory.md)                                             |
 | Dependency evaluation   | [consideration.md](./consideration.md)                               |
+| Resilience (CB/RL)      | [resilience.md](./resilience.md)                                     |
 | Platform limits         | [limitation.md](./limitation.md)                                     |
 | Pi → Elph port tracking | [porting/README.md](./porting/README.md)                             |
 

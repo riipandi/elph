@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
@@ -9,6 +10,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 use crate::api::http_proxy::resolve_http_proxy_url_for_target;
+use crate::resilience::{ResilienceError, ResilienceManager};
 use crate::types::{AssistantMessage, AssistantMessageEvent, Model, OnPayloadCallback, OnResponseCallback};
 use crate::types::{ProviderEnv, ProviderResponse, StopReason, StreamOptions};
 use crate::utils::error_body::{error_body_from_response, format_provider_error, normalize_provider_error};
@@ -169,4 +171,78 @@ pub async fn invoke_on_response_from_reqwest(
         headers: headers_to_record(response.headers()),
     };
     apply_on_response(callback, provider_response, model).await;
+}
+
+// ---------------------------------------------------------------------------
+// Resilience: rate limiter, circuit breaker, retry
+// ---------------------------------------------------------------------------
+
+/// Global resilience manager — lazily initialized with sensible defaults.
+static RESILIENCE: LazyLock<ResilienceManager> = LazyLock::new(ResilienceManager::with_defaults);
+
+/// Get a reference to the global resilience manager.
+pub fn resilience_manager() -> &'static ResilienceManager {
+    &RESILIENCE
+}
+
+/// Check rate limiter and circuit breaker before sending a request to a provider.
+///
+/// Returns `Ok(())` if the request can proceed.
+/// Returns `Err` with a descriptive message if blocked.
+pub fn check_provider_resilience(provider_id: &str) -> Result<()> {
+    RESILIENCE.check(provider_id).map_err(|e| match e {
+        ResilienceError::RateLimited => anyhow!("rate limited — too many requests to {provider_id}"),
+        ResilienceError::CircuitOpen => anyhow!("circuit breaker open — {provider_id} is failing"),
+    })
+}
+
+/// Record a successful call to a provider.
+pub fn record_provider_success(provider_id: &str) {
+    RESILIENCE.record_success(provider_id);
+}
+
+/// Record a failed call to a provider.
+pub fn record_provider_failure(provider_id: &str) {
+    RESILIENCE.record_failure(provider_id);
+}
+
+/// Send with abort + resilience checks.
+///
+/// Combines `check_provider_resilience()` with `send_with_abort()`.
+/// Records success/failure in the circuit breaker automatically.
+/// Abort errors are not counted as provider failures.
+pub async fn send_with_resilience(
+    provider_id: &str,
+    token: &Option<tokio_util::sync::CancellationToken>,
+    request: reqwest::RequestBuilder,
+) -> Result<reqwest::Response> {
+    check_provider_resilience(provider_id)?;
+    match send_with_abort(token, request).await {
+        Ok(response) => {
+            // Record success for 2xx; non-2xx handled by caller
+            if response.status().is_success() {
+                record_provider_success(provider_id);
+            }
+            Ok(response)
+        }
+        Err(e) => {
+            // Don't count abort errors as provider failures
+            if !is_abort_error(&e) {
+                record_provider_failure(provider_id);
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Record resilience outcome based on an HTTP response status.
+///
+/// Call this after processing the response to update the circuit breaker.
+/// 2xx = success, 429/5xx = failure.
+pub fn record_resilience_from_status(provider_id: &str, status: u16) {
+    if status == 429 || status >= 500 {
+        record_provider_failure(provider_id);
+    } else if (200..300).contains(&status) {
+        record_provider_success(provider_id);
+    }
 }
