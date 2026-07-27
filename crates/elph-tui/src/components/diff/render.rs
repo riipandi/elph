@@ -268,7 +268,10 @@ pub fn render_unified_hunk(
 
         // For syntax-highlighted lines, use MixedText; otherwise plain Text.
         if language.is_some() && !display_text.is_empty() {
-            let highlighted = highlight_diff_line(&format!("{prefix}{display_text}"), tag, language, theme);
+            // Truncate content before highlighting so highlighted output fits within
+            // the available width (content_width accounts for gutter + prefix).
+            let truncated = truncate_to_width(display_text, content_width);
+            let highlighted = highlight_diff_line(&format!("{prefix}{truncated}"), tag, language, theme);
 
             let mut row_children: Vec<AnyElement<'static>> = Vec::with_capacity(
                 1 + if line_numbers != DiffLineNumberStyle::None {
@@ -470,5 +473,28 @@ mod tests {
     #[test]
     fn truncate_to_width_zero() {
         assert_eq!(truncate_to_width("anything", 0), "");
+    }
+
+    #[test]
+    fn highlighted_diff_line_truncates_long_content() {
+        // Verify that highlighted diff lines truncate to content_width, not overflow.
+        let long_line = "a".repeat(200);
+        let old_text = format!("{long_line}\n");
+        let new_text = format!("x\n");
+        let result = compute_diff(&old_text, &new_text, 3);
+        let theme = UiTheme::default();
+        let width = 40u16;
+        // With Single line numbers (gutter=5) + prefix(2) = 7 chars reserved.
+        // content_width = 40 - 5 - 2 = 33. Long line should be truncated.
+        let elements =
+            render_unified_hunk(&result.hunks[0], Some("rust"), false, DiffLineNumberStyle::Single, theme, width);
+        assert!(!elements.is_empty());
+        // The rendered output should fit within the width (no overflow).
+        let rendered = element! { View(width: width) { #(elements) } }.to_string();
+        // Truncated line should contain ellipsis or fit within width.
+        assert!(
+            rendered.contains('…') || rendered.lines().all(|line| line.chars().count() <= width as usize),
+            "diff line should be truncated to fit width {width}"
+        );
     }
 }
