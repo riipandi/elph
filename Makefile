@@ -204,7 +204,9 @@ clean: ## Clean build artifacts and caches
 prepare: ## Install required toolchain
 	@command -v cargo-binstall >/dev/null 2>&1 || $(CARGO) install cargo-binstall --locked
 	@command -v cargo-bloat >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-bloat
+	@command -v cargo-deny >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-deny
 	@command -v cargo-nextest >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-nextest
+	@command -v cargo-machete >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-machete
 	@command -v cargo-llvm-cov >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-llvm-cov
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
