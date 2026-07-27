@@ -40,6 +40,22 @@ pub struct RunArgs {
     /// Auto-approve tool executions
     #[arg(short, long)]
     pub brave: bool,
+
+    /// Max retry attempts for provider API calls (default: 3)
+    #[arg(long = "max-retries", value_name = "N")]
+    pub max_retries: Option<u32>,
+
+    /// Max backoff delay in milliseconds for retries (default: 30000)
+    #[arg(long = "max-backoff-ms", value_name = "MS")]
+    pub max_backoff_ms: Option<u64>,
+
+    /// Circuit breaker failure threshold (default: 5)
+    #[arg(long = "circuit-threshold", value_name = "N")]
+    pub circuit_threshold: Option<u32>,
+
+    /// Circuit breaker recovery timeout in milliseconds (default: 30000)
+    #[arg(long = "circuit-timeout-ms", value_name = "MS")]
+    pub circuit_timeout_ms: Option<u64>,
 }
 
 pub fn handle(args: &RunArgs) -> ExitCode {
@@ -48,6 +64,9 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         help::cli_error("run requires a prompt");
         return EXIT_ERROR;
     }
+
+    // Initialize resilience manager with CLI overrides
+    init_resilience_from_args(args);
 
     let paths = match Paths::resolve() {
         Ok(p) => p,
@@ -93,5 +112,35 @@ pub fn handle(args: &RunArgs) -> ExitCode {
             help::cli_error(format!("run failed: {err}"));
             EXIT_ERROR
         }
+    }
+}
+
+/// Initialize the global resilience manager from CLI arguments.
+fn init_resilience_from_args(args: &RunArgs) {
+    use elph_ai::resilience::{ResilienceConfig, ResilienceManager, init_global_manager};
+    use std::time::Duration;
+
+    let mut config = ResilienceConfig::default();
+
+    if let Some(threshold) = args.circuit_threshold {
+        config = config.with_failure_threshold(threshold);
+    }
+    if let Some(timeout_ms) = args.circuit_timeout_ms {
+        config = config.with_recovery_timeout(Duration::from_millis(timeout_ms));
+    }
+    if let Some(retries) = args.max_retries {
+        config = config.with_max_retries(retries);
+    }
+    if let Some(max_backoff_ms) = args.max_backoff_ms {
+        config = config.with_backoff(Duration::from_millis(500), Duration::from_millis(max_backoff_ms));
+    }
+
+    // Only initialize if any override was provided
+    if args.circuit_threshold.is_some()
+        || args.circuit_timeout_ms.is_some()
+        || args.max_retries.is_some()
+        || args.max_backoff_ms.is_some()
+    {
+        init_global_manager(ResilienceManager::new(config));
     }
 }

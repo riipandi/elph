@@ -49,24 +49,52 @@ pub use rate_limiter::ProviderRateLimiter;
 // Global convenience functions (backed by a static ResilienceManager)
 // ---------------------------------------------------------------------------
 
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
-/// Global resilience manager — lazily initialized with sensible defaults.
-static GLOBAL_MANAGER: LazyLock<ResilienceManager> = LazyLock::new(ResilienceManager::with_defaults);
+/// Global resilience manager — initialized once, then immutable.
+///
+/// Use `init_global_manager()` to set custom config at startup.
+/// If not initialized, defaults are used on first access.
+static GLOBAL_MANAGER: OnceLock<ResilienceManager> = OnceLock::new();
+
+/// Initialize the global resilience manager with custom defaults.
+///
+/// Call this once at app startup (before any provider calls).
+/// If called multiple times, only the first call takes effect.
+pub fn init_global_manager(manager: ResilienceManager) {
+    log::info!("resilience: initializing global manager");
+    let _ = GLOBAL_MANAGER.set(manager);
+}
+
+/// Get the global resilience manager, initializing with defaults if needed.
+fn global_manager() -> &'static ResilienceManager {
+    GLOBAL_MANAGER.get_or_init(ResilienceManager::with_defaults)
+}
 
 /// Check rate limiter and circuit breaker before sending a request.
 pub fn check_provider_resilience(provider_id: &str) -> Result<(), ResilienceError> {
-    GLOBAL_MANAGER.check(provider_id)
+    match global_manager().check(provider_id) {
+        Ok(()) => Ok(()),
+        Err(ResilienceError::RateLimited) => {
+            log::warn!("resilience: rate limited — {provider_id}");
+            Err(ResilienceError::RateLimited)
+        }
+        Err(ResilienceError::CircuitOpen) => {
+            log::warn!("resilience: circuit breaker open — {provider_id}");
+            Err(ResilienceError::CircuitOpen)
+        }
+    }
 }
 
 /// Record a successful call to a provider.
 pub fn record_provider_success(provider_id: &str) {
-    GLOBAL_MANAGER.record_success(provider_id);
+    global_manager().record_success(provider_id);
 }
 
 /// Record a failed call to a provider.
 pub fn record_provider_failure(provider_id: &str) {
-    GLOBAL_MANAGER.record_failure(provider_id);
+    log::debug!("resilience: recording failure — {provider_id}");
+    global_manager().record_failure(provider_id);
 }
 
 #[cfg(test)]

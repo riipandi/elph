@@ -63,15 +63,19 @@ See [memory.md](./memory.md).
 
 ### `run`
 
-| Flag               | Description                    |
-| ------------------ | ------------------------------ |
-| `-m`, `--model`    | Model (`provider/model`)       |
-| `--output-format`  | Output format (default `text`) |
-| `-c`, `--continue` | Continue recent session        |
-| `-s`, `--session`  | Resume by session ID           |
-| `--fork`           | Fork before continue           |
-| `-f`, `--file`     | Attach files (repeatable)      |
-| `-b`, `--brave`    | Auto-approve tools             |
+| Flag                   | Description                       |
+| ---------------------- | --------------------------------- |
+| `-m`, `--model`        | Model (`provider/model`)          |
+| `--output-format`      | Output format (default `text`)    |
+| `-c`, `--continue`     | Continue recent session           |
+| `-s`, `--session`      | Resume by session ID              |
+| `--fork`               | Fork before continue              |
+| `-f`, `--file`         | Attach files (repeatable)         |
+| `-b`, `--brave`        | Auto-approve tools                |
+| `--max-retries`        | Max retry attempts (default 3)    |
+| `--max-backoff-ms`     | Max backoff delay in ms           |
+| `--circuit-threshold`  | Circuit breaker failure threshold |
+| `--circuit-timeout-ms` | Circuit breaker recovery timeout  |
 
 ### `provider`
 

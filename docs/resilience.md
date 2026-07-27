@@ -98,6 +98,15 @@ Provider names are uppercased with hyphens replaced by underscores. Examples:
 | `jina` (search)  | `ELPH_RATE_LIMIT_JINA_RPS`           |
 | `exa` (search)   | `ELPH_RATE_LIMIT_EXA_RPS`            |
 
+### CLI flags
+
+The `run` subcommand accepts flags to override resilience defaults:
+
+```bash
+elph run --max-retries 5 --max-backoff-ms 60000 "fix the bug"
+elph run --circuit-threshold 3 --circuit-timeout-ms 60000 "refactor"
+```
+
 ### Programmatic configuration
 
 ```rust
