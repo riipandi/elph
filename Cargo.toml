@@ -125,9 +125,9 @@ webpki-roots = "1.0.9"
 zstd = "0.13.3"
 
 [profile.release]
-opt-level = 2 # Optimization level: 2 = balanced runtime perf vs compile time
-lto = "thin" # Thin LTO: cross-crate inlining without full-program analysis cost
-codegen-units = 16 # Parallel codegen: 16 units = faster compile, minimal optimization loss
+opt-level = 1 # Optimization: level 2 = balanced, level 1 = faster compile, less optimization
+lto = false # Thin LTO: cross-crate inlining without full-program analysis cost (LTO is very expensive)
+codegen-units = 128 # Parallel codegen: 128 units = faster compile, minimal optimization loss
 panic = "abort" # panic=abort: removes unwind tables — smaller binary, cannot catch panics
 strip = "symbols" # Strip all symbols from final binary
 debug = false # No debug symbols in release

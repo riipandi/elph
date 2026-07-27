@@ -56,6 +56,10 @@ pub async fn create_coding_session_with_events(
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
+    // Wire floppy memory tools (memory_start_task, memory_end_task, etc.).
+    // Store initializes lazily on first tool call — no DB file check needed upfront.
+    tools.extend(crate::memory::tools::create_memory_tools(options.paths.clone()));
+
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
     tools.push(super::ask_user::create_ask_user_tool(ui_tx.clone()));
@@ -96,19 +100,34 @@ pub async fn create_coding_session_with_events(
     let agents_md = agents_md_for_cwd(options.cwd);
     let mode_for_prompt = Arc::clone(&mode_state);
 
+    // Build memory context from top-weighted memories for the system prompt.
+    // Lock errors are handled internally (logged + empty context returned).
+    let ctx = crate::memory::hooks::build_memories_context(options.paths)
+        .await
+        .unwrap_or_default();
+    let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
+
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
         let agents_md = agents_md.clone();
         let mode_state = Arc::clone(&mode_for_prompt);
+        let memory_section = injected_memory.clone();
         Box::pin(async move {
             let mode = *mode_state.lock().await;
             let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
-            build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), mode).unwrap_or_else(
-                |error| {
+            let mut prompt = build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), mode)
+                .unwrap_or_else(|error| {
                     log::warn!("coding system prompt render failed: {error}");
                     elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
-                },
-            )
+                });
+
+            // Append memory context section at the end of the system prompt.
+            if let Some(ref mem) = memory_section {
+                prompt.push_str("\n\n");
+                prompt.push_str(mem);
+            }
+
+            prompt
         })
     }));
 

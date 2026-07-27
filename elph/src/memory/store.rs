@@ -6,6 +6,11 @@ use floppy::{embedding_dims, resolve_embedding_model};
 
 use crate::platform::{Paths, Settings};
 
+/// Open a floppy memory store for the current project.
+///
+/// When `needs_embed` is true, the store is configured with a local embedding model
+/// (downloading model weights on first use). When false, a noop embedder is used
+/// for read-only operations (status, list, tasks, timeline, purge).
 pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
     std::fs::create_dir_all(paths.project_elph_dir())
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;

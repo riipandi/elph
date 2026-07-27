@@ -124,6 +124,7 @@ async fn handle_acp_slash_command(
         Some(SlashDispatch::Confetti { .. }) => {
             Err(anyhow::anyhow!("Confetti is a UI-only command and not available via ACP."))
         }
+        Some(SlashDispatch::Memory { .. }) => Err(anyhow::anyhow!("/memory is not available via ACP.")),
         Some(SlashDispatch::Extension { name, .. }) => {
             Err(anyhow::anyhow!("Extension command '{name}' is not available via ACP."))
         }

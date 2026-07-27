@@ -65,6 +65,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload resources"),
         builtin("quit", "Quit Elph"),
+        builtin_with_args("memory", "Agent memory store (floppy)", "status|list|tasks|log|search|purge"),
         builtin("help", "List commands"),
         builtin_with_args("tools", "Show active tools", "[json|list|table]"),
         builtin("system-prompt", "Show compiled system prompt"),
@@ -166,6 +167,10 @@ pub enum SlashDispatch {
     },
     Skill {
         name: String,
+        args: String,
+    },
+    /// Memory store commands (status, list, tasks, log, search, purge).
+    Memory {
         args: String,
     },
     OverlayNeeded(OverlayCommand),
@@ -303,6 +308,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
         "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
         "new" => Some(SlashDispatch::NewSession),
+        "memory" | "mem" => Some(SlashDispatch::Memory { args }),
         "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust"
         | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
         _ => None,
