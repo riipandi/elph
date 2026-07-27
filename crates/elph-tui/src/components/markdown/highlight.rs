@@ -14,8 +14,11 @@ pub fn highlight_code_block(language: Option<&str>, code: &str, theme: &Markdown
         return highlighted
             .into_iter()
             .map(|regions| {
+                // syntect emits line text with a trailing newline (LinesWithEndings); strip it
+                // so wrapped row counts and MixedText layout stay correct.
                 let spans: Vec<StyledSpan> = regions
                     .into_iter()
+                    .map(|(style, text)| (style, text.trim_end_matches(['\n', '\r']).to_string()))
                     .filter(|(_, text)| !text.is_empty())
                     .map(|(style, text)| syntect_to_styled_span(style, text, theme.body, theme.ui))
                     .collect();

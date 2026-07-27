@@ -2,11 +2,69 @@
 
 use crate::text_input_layout::WrappedTextLayout;
 use crate::wrapped_transcript_row_count;
+use unicode_width::UnicodeWidthChar;
 
 use super::blocks::CODE_VERTICAL_PADDING;
 use super::blocks::{code_content_width, segment_end, segment_gap_after};
 use super::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind};
 use super::table::markdown_table_row_count;
+
+/// Hanging-indent word wrap for a single code line.
+///
+/// Returns the `(start, end)` char ranges into `text` for each visual row. The first row uses the
+/// full `inner` width; continuation rows reserve the line's leading-whitespace run as a hanging
+/// indent, so wrapped code stays aligned under the original indentation.
+///
+/// Must stay in sync with [`super::render::wrap_code_spans`], which colors these same ranges.
+pub(crate) fn wrap_with_hanging_ranges(text: &str, inner: u16) -> Vec<(usize, usize)> {
+    let inner = inner.max(1) as usize;
+    if text.is_empty() {
+        return vec![(0, 0)];
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let char_width = |c: char| UnicodeWidthChar::width(c).unwrap_or(0);
+    let indent = chars
+        .iter()
+        .take_while(|c| **c == ' ')
+        .count()
+        .min(inner.saturating_sub(1));
+    let mut ranges: Vec<(usize, usize)> = Vec::new();
+    let mut row_start = 0usize;
+    let mut row_width = 0usize;
+    let mut last_space: Option<usize> = None;
+    let mut i = 0usize;
+    while i < chars.len() {
+        let c = chars[i];
+        let w = char_width(c);
+        let is_space = c == ' ';
+        let avail = if ranges.is_empty() { inner } else { inner - indent };
+        if row_width + w > avail && row_width > 0 {
+            if let Some(sp) = last_space {
+                ranges.push((row_start, sp + 1));
+                row_start = sp + 1;
+                row_width = 0;
+                last_space = None;
+                continue;
+            }
+            ranges.push((row_start, i));
+            row_start = i;
+            row_width = 0;
+            last_space = None;
+        }
+        row_width += w;
+        if is_space {
+            last_space = Some(i);
+        }
+        i += 1;
+    }
+    ranges.push((row_start, chars.len()));
+    ranges
+}
+
+/// Visual row count for one code line, honoring hanging-indent wrapping.
+pub(crate) fn code_line_row_count(text: &str, inner: u16) -> u16 {
+    wrap_with_hanging_ranges(text, inner).len().max(1) as u16
+}
 
 fn line_plain_text(line: &MarkdownLine) -> String {
     line.spans.iter().map(|span| span.text.as_str()).collect()
@@ -30,10 +88,10 @@ fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
     }
     if line.code_background {
         let inner = code_content_width(wrap_width);
-        return wrapped_line_row_count(&line_plain_text(line), inner).max(1);
+        return code_line_row_count(&line_plain_text(line), inner).max(1);
     }
     if matches!(line.kind, MarkdownLineKind::Code) {
-        return wrapped_line_row_count(&line_plain_text(line), wrap_width).max(1);
+        return code_line_row_count(&line_plain_text(line), wrap_width).max(1);
     }
     wrapped_line_row_count(&line_plain_text(line), wrap_width).max(1)
 }
