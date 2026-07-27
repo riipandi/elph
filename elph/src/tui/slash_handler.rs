@@ -16,6 +16,32 @@ use crate::platform::Paths;
 use crate::tui::confetti::confetti_mode_from_slash_args;
 
 use super::agent_bridge::SlashDispatcher;
+
+/// Handle `/memory` slash commands as a background task.
+///
+/// Memory operations are async (Turso DB) and must not block the TUI render loop.
+/// The result is delivered as a `Status` UI event when the background task completes.
+fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
+    let Some(paths) = ctx.paths else {
+        return SlashOutcome::Status("Project directory required for memory commands.".into());
+    };
+    let paths = paths.clone();
+    let args = args.to_string();
+    let ui_tx = ctx.agent_session.as_ref().map(|s| s.ui_event_sender());
+
+    tokio::spawn(async move {
+        let output = match crate::memory::slash_run(&paths, &args).await {
+            Ok(text) => text,
+            Err(err) => format!("memory error: {err}"),
+        };
+        if let Some(tx) = ui_tx {
+            let _ = tx.send(crate::agent::AgentUiEvent::Status(output));
+        }
+    });
+
+    SlashOutcome::BackgroundTask
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashOutcome {
     Quit,
@@ -64,6 +90,11 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         return SlashOutcome::SpawnAgentTurn;
     };
 
+    // Memory commands run without an agent session — dispatch immediately.
+    if let SlashDispatch::Memory { ref args } = dispatch {
+        return handle_memory_slash(ctx, args);
+    }
+
     match dispatch {
         SlashDispatch::Quit => SlashOutcome::Quit,
         SlashDispatch::NewSession => SlashOutcome::NewSession,
@@ -100,6 +131,8 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
+        // Handled by early return above — unreachable here.
+        SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
@@ -154,11 +187,6 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
     }
 }
 
-/// Whether the submitted slash line should appear as a user/meta card in the transcript.
-pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
-    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
-}
-
 /// Outcomes that only touch UI / local state and never start an agent turn.
 ///
 /// Safe to apply while `busy` (streaming); they must not call nested `try_block_on`
@@ -180,6 +208,11 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
     )
+}
+
+/// Whether the slash outcome should show an agent turn indicator.
+pub fn slash_echoes_prompt_in_transcript(outcome: &SlashOutcome) -> bool {
+    matches!(outcome, SlashOutcome::SpawnAgentTurn | SlashOutcome::BackgroundTask)
 }
 
 pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {

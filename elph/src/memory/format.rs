@@ -42,16 +42,17 @@ pub fn parse_category_filter(raw: &str) -> Option<MemoryCategory> {
     }
 }
 
-pub fn print_status(status: &StoreStatus) {
-    println!("floppy status:");
-    println!("  Memories:  {}", status.total_memories);
-    println!("  Tasks:     {}", status.completed_tasks);
+pub fn write_status(out: &mut String, status: &StoreStatus) {
+    use std::fmt::Write;
+    let _ = writeln!(out, "floppy status:");
+    let _ = writeln!(out, "  Memories:  {}", status.total_memories);
+    let _ = writeln!(out, "  Tasks:     {}", status.completed_tasks);
     let avg = if status.avg_task_score.is_finite() && status.total_tasks > 0 {
         format!("{:.3}", status.avg_task_score)
     } else {
         "N/A".into()
     };
-    println!("  Avg score: {avg}");
+    let _ = writeln!(out, "  Avg score: {avg}");
 
     if !status.categories.is_empty() {
         let cats = status
@@ -60,30 +61,34 @@ pub fn print_status(status: &StoreStatus) {
             .map(|c| format!("{}={}", category_str(c.category), c.count))
             .collect::<Vec<_>>()
             .join(", ");
-        println!("  By category: {cats}");
+        let _ = writeln!(out, "  By category: {cats}");
     }
 
     if !status.top_memories.is_empty() {
-        println!("\n  Top by weight:");
+        let _ = writeln!(out);
+        let _ = writeln!(out, "  Top by weight:");
         for m in &status.top_memories {
             let preview = truncate(&m.content, 70);
-            println!("    [w={:.2}, used={}x] {preview}", m.weight, m.retrieval_count);
+            let _ = writeln!(out, "    [w={:.2}, used={}x] {preview}", m.weight, m.retrieval_count);
         }
     }
 }
 
-pub fn print_memories(records: &[MemoryRecord], filter: Option<MemoryCategory>) {
+pub fn write_memories(out: &mut String, records: &[MemoryRecord], filter: Option<MemoryCategory>) {
+    use std::fmt::Write;
     if records.is_empty() {
         let label = filter.map(category_str).unwrap_or("all");
-        println!("No {label} memories found.");
+        let _ = writeln!(out, "No {label} memories found.");
         return;
     }
 
     let suffix = filter.map(|c| format!(" ({})", category_str(c))).unwrap_or_default();
-    println!("{} memories{suffix}:\n", records.len());
+    let _ = writeln!(out, "{} memories{suffix}:", records.len());
+    let _ = writeln!(out);
 
     for r in records {
-        println!(
+        let _ = writeln!(
+            out,
             "--- [{}] w={:.2} | used={}x | emb={} | {} ---",
             category_str(r.category),
             r.weight,
@@ -96,17 +101,19 @@ pub fn print_memories(records: &[MemoryRecord], filter: Option<MemoryCategory>) 
         } else {
             r.content.clone()
         };
-        println!("{body}\n");
+        let _ = writeln!(out, "{body}\n");
     }
 }
 
-pub fn print_tasks(tasks: &[TaskRecord]) {
+pub fn write_tasks(out: &mut String, tasks: &[TaskRecord]) {
+    use std::fmt::Write;
     if tasks.is_empty() {
-        println!("No tasks found.");
+        let _ = writeln!(out, "No tasks found.");
         return;
     }
 
-    println!("Last {} tasks:\n", tasks.len());
+    let _ = writeln!(out, "Last {} tasks:", tasks.len());
+    let _ = writeln!(out);
 
     for t in tasks {
         let status = match t.status {
@@ -122,14 +129,15 @@ pub fn print_tasks(tasks: &[TaskRecord]) {
         let when = t.started_at.map(time_ago).unwrap_or_else(|| "?".into());
         let desc = truncate(t.description.as_deref().unwrap_or(""), 100);
 
-        println!("[{status}] score={score} | {tokens}tok, {calls}calls, {errors}err, {corr}corr | {when}");
-        println!("  {desc}");
+        let _ = writeln!(out, "[{status}] score={score} | {tokens}tok, {calls}calls, {errors}err, {corr}corr | {when}");
+        let _ = writeln!(out, "  {desc}");
 
         for r in &t.retrievals {
             let rated = r.self_report.map(|s| format!(" rated={s}/3")).unwrap_or_default();
             let credit = r.credit.map(|c| format!(" credit={c:.2}")).unwrap_or_default();
             let sim = r.similarity.unwrap_or(0.0);
-            println!(
+            let _ = writeln!(
+                out,
                 "    -> [{}] sim={sim:.3}{rated}{credit} \"{}...\"",
                 category_str(r.category),
                 r.preview,
@@ -137,45 +145,92 @@ pub fn print_tasks(tasks: &[TaskRecord]) {
         }
 
         for c in &t.created_memories {
-            println!("    <- stored [{}] \"{}...\"", category_str(c.category), c.preview,);
+            let _ = writeln!(out, "    <- stored [{}] \"{}...\"", category_str(c.category), c.preview,);
         }
 
-        println!();
+        let _ = writeln!(out);
     }
 }
 
-pub fn print_timeline(events: &[TimelineEvent]) {
+pub fn write_timeline(out: &mut String, events: &[TimelineEvent]) {
+    use std::fmt::Write;
     if events.is_empty() {
-        println!("Timeline is empty.");
+        let _ = writeln!(out, "Timeline is empty.");
         return;
     }
 
-    println!("Timeline:\n");
+    let _ = writeln!(out, "Timeline:");
+    let _ = writeln!(out);
     for e in events {
         let when = time_ago(e.timestamp);
         let prefix = match e.kind {
             TimelineEventKind::Task => "TASK",
             TimelineEventKind::Memory => "MEM ",
         };
-        println!("{when:>8}  {prefix}  {}", e.summary);
+        let _ = writeln!(out, "{when:>8}  {prefix}  {}", e.summary);
     }
 }
 
-pub fn print_search_results(query: &str, memories: &[floppy::Memory]) {
+pub fn write_search_results(out: &mut String, query: &str, memories: &[floppy::Memory]) {
+    use std::fmt::Write;
     if memories.is_empty() {
-        println!("No relevant memories found.");
+        let _ = writeln!(out, "No relevant memories found.");
         return;
     }
 
-    println!("Top {} results for \"{query}\":\n", memories.len());
+    let _ = writeln!(out, "Top {} results for \"{query}\":", memories.len());
+    let _ = writeln!(out);
     for m in memories {
-        println!("[{}] score={:.3} w={:.2}", category_str(m.category), m.score, m.weight,);
-        println!("  {}\n", truncate(&m.content, 200));
+        let _ = writeln!(
+            out,
+            "[{}] score={:.3} w={:.2}",
+            category_str(m.category),
+            m.score,
+            m.weight,
+        );
+        let _ = writeln!(out, "  {}\n", truncate(&m.content, 200));
     }
 }
 
+pub fn write_purge(out: &mut String, count: u32, threshold: f64) {
+    use std::fmt::Write;
+    let _ = writeln!(out, "Purged {count} memories below weight {threshold}");
+}
+
+pub fn print_status(status: &StoreStatus) {
+    let mut buf = String::new();
+    write_status(&mut buf, status);
+    print!("{buf}");
+}
+
+pub fn print_memories(records: &[MemoryRecord], filter: Option<MemoryCategory>) {
+    let mut buf = String::new();
+    write_memories(&mut buf, records, filter);
+    print!("{buf}");
+}
+
+pub fn print_tasks(tasks: &[TaskRecord]) {
+    let mut buf = String::new();
+    write_tasks(&mut buf, tasks);
+    print!("{buf}");
+}
+
+pub fn print_timeline(events: &[TimelineEvent]) {
+    let mut buf = String::new();
+    write_timeline(&mut buf, events);
+    print!("{buf}");
+}
+
+pub fn print_search_results(query: &str, memories: &[floppy::Memory]) {
+    let mut buf = String::new();
+    write_search_results(&mut buf, query, memories);
+    print!("{buf}");
+}
+
 pub fn print_purge(count: u32, threshold: f64) {
-    println!("Purged {count} memories below weight {threshold}");
+    let mut buf = String::new();
+    write_purge(&mut buf, count, threshold);
+    print!("{buf}");
 }
 
 fn truncate(s: &str, max: usize) -> String {
