@@ -141,6 +141,13 @@ pub struct TranscriptMessage {
     /// Extra left inset (cells) for nested status rows (e.g. subagent depth). Indents the whole
     /// glyph+label row so the label is not padded with leading spaces.
     pub status_indent: u16,
+    /// Tree-drawing prefix for grouped status rows (e.g. `├─` / `└─`). Rendered before the
+    /// status glyph when set.
+    pub tree_prefix: Option<String>,
+    /// Subagent model id rendered as a grey tag (e.g. `deepseek-v4-flash`).
+    pub model_tag: Option<String>,
+    /// Subagent agent id rendered as a grey parenthesized tag (e.g. `agent_01`).
+    pub agent_tag: Option<String>,
 }
 
 impl TranscriptMessage {
@@ -158,6 +165,9 @@ impl TranscriptMessage {
             detail_expanded: true,
             status_detail: None,
             status_indent: 0,
+            tree_prefix: None,
+            model_tag: None,
+            agent_tag: None,
         }
     }
 
@@ -236,6 +246,9 @@ impl TranscriptMessage {
             detail_expanded: true,
             status_detail: None,
             status_indent: 0,
+            tree_prefix: None,
+            model_tag: None,
+            agent_tag: None,
         }
     }
 

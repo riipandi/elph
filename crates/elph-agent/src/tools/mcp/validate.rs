@@ -133,7 +133,7 @@ pub fn parse_and_validate_server_config_json(raw: &str) -> Result<super::config:
     // Accept bare server object or single-entry wrapper.
     if let Ok(server) = serde_json::from_value::<super::config::McpServerConfig>(value.clone()) {
         // Schema validates full document; for a bare server, wrap temporarily.
-        let wrapped = serde_json::json!({ "servers": { "_": value } });
+        let wrapped = serde_json::json!({ "mcpServers": { "_": value } });
         if let Err(e) = validate_mcp_config_value(&wrapped) {
             // Fall back to semantic-only if wrapper shape differs slightly from schema strictness
             // on the synthetic key — still enforce server semantic checks.
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn accepts_valid_stdio_config() {
         let raw = r#"{
-            "servers": {
+            "mcpServers": {
                 "fs": {
                     "type": "stdio",
                     "command": "npx",
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn rejects_unknown_root_property() {
-        let raw = r#"{ "servers": {}, "notAField": true }"#;
+        let raw = r#"{ "mcpServers": {}, "notAField": true }"#;
         let err = parse_and_validate_mcp_config(raw).unwrap_err();
         assert!(
             err.to_string().to_lowercase().contains("valid")
@@ -182,14 +182,14 @@ mod tests {
 
     #[test]
     fn rejects_http_without_url() {
-        let raw = r#"{ "servers": { "r": { "type": "http" } } }"#;
+        let raw = r#"{ "mcpServers": { "r": { "type": "http" } } }"#;
         assert!(parse_and_validate_mcp_config(raw).is_err());
     }
 
     #[test]
     fn rejects_empty_stdio_command_semantic() {
         let raw = r#"{
-            "servers": {
+            "mcpServers": {
                 "bad": { "type": "stdio", "command": "   " }
             }
         }"#;
@@ -203,7 +203,7 @@ mod tests {
     fn accepts_policy_and_sse() {
         let raw = r#"{
             "policy": { "default": "requireApproval", "allow": ["mcp_fs__*"] },
-            "servers": {
+            "mcpServers": {
                 "legacy": {
                     "type": "sse",
                     "url": "http://localhost:3000/sse",

@@ -7,7 +7,7 @@ use serde_json::Value;
 
 /// Normalize editor-style MCP JSON into Elph's canonical shape before schema validation.
 ///
-/// - `mcpServers` → `servers` (when `servers` is absent)
+/// - `servers` → `mcpServers` (when `mcpServers` is absent, old format)
 /// - infer `type: "http"` when a server has `url` but no `type`
 /// - infer `type: "stdio"` when a server has `command` but no `type`
 pub fn normalize_mcp_config_value(mut value: Value) -> Value {
@@ -15,13 +15,14 @@ pub fn normalize_mcp_config_value(mut value: Value) -> Value {
         return value;
     };
 
-    if !root.contains_key("servers")
-        && let Some(servers) = root.remove("mcpServers")
+    // If the old `servers` key is used, rename it to `mcpServers`.
+    if !root.contains_key("mcpServers")
+        && let Some(servers) = root.remove("servers")
     {
-        root.insert("servers".to_string(), servers);
+        root.insert("mcpServers".to_string(), servers);
     }
 
-    if let Some(servers) = root.get_mut("servers").and_then(Value::as_object_mut) {
+    if let Some(servers) = root.get_mut("mcpServers").and_then(Value::as_object_mut) {
         for server in servers.values_mut() {
             normalize_server_entry(server);
         }
@@ -82,20 +83,32 @@ mod tests {
             }
         });
         let normalized = normalize_mcp_config_value(raw);
-        let servers = normalized["servers"].as_object().expect("servers");
+        let servers = normalized["mcpServers"].as_object().expect("mcpServers");
         assert_eq!(servers["deepwiki"]["type"], "http");
         assert_eq!(servers["lightpanda"]["type"], "stdio");
-        assert!(normalized.get("mcpServers").is_none());
     }
 
     #[test]
-    fn keeps_native_servers_when_both_present() {
+    fn normalizes_old_servers_key_to_mcp_servers() {
         let raw = json!({
-            "servers": { "native": { "type": "http", "url": "https://example.com/mcp" } },
-            "mcpServers": { "ignored": { "url": "https://ignored.example/mcp" } }
+            "servers": {
+                "native": { "url": "https://example.com/mcp" }
+            }
         });
         let normalized = normalize_mcp_config_value(raw);
-        let servers = normalized["servers"].as_object().expect("servers");
+        assert!(normalized.get("servers").is_none());
+        let servers = normalized["mcpServers"].as_object().expect("mcpServers");
+        assert_eq!(servers["native"]["type"], "http");
+    }
+
+    #[test]
+    fn prefers_mcp_servers_when_both_present() {
+        let raw = json!({
+            "servers": { "ignored": { "url": "https://ignored.example/mcp" } },
+            "mcpServers": { "native": { "type": "http", "url": "https://example.com/mcp" } }
+        });
+        let normalized = normalize_mcp_config_value(raw);
+        let servers = normalized["mcpServers"].as_object().expect("mcpServers");
         assert_eq!(servers.len(), 1);
         assert!(servers.contains_key("native"));
     }

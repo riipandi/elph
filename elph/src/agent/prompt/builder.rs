@@ -37,7 +37,7 @@ pub fn build_coding_system_prompt(
     };
 
     let context = SystemPromptTemplateContext {
-        persona: "You are Elph, an interactive AI coding agent. Your main goal is to complete the user's request."
+        persona: "You are an expert AI coding assistant, operate in Elph CLI. Your main goal is to complete the user's request."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),

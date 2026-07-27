@@ -48,7 +48,7 @@ fn main() {
         env: BTreeMap::from([("DEBUG".into(), "1".into())]),
         cwd: Some("/tmp".into()),
         timeout_ms: Some(120_000),
-        disabled: false,
+        enable: true,
         policy: None,
     });
     println!("  custom stdio: command=uvx, env=1 var, timeout=120s");
@@ -61,7 +61,7 @@ fn main() {
         env: BTreeMap::new(),
         cwd: None,
         timeout_ms: None,
-        disabled: true,
+        enable: false,
         policy: None,
     });
     println!("  is_disabled: {}", disabled.is_disabled());
@@ -92,7 +92,7 @@ fn main() {
     println!("\n=== Enabled Servers ===");
     for (name, server) in config.enabled_servers() {
         println!(
-            "  {name}: {} — disabled={}, remote_url={:?}",
+            "  {name}: {} — enable={}, remote_url={:?}",
             server.kind_label(),
             server.is_disabled(),
             server.remote_url(),
@@ -120,7 +120,7 @@ fn main() {
         env: BTreeMap::new(),
         cwd: None,
         timeout_ms: Some(60_000),
-        disabled: false,
+        enable: true,
         policy: None,
     });
     let http_server = McpServerConfig::http("https://example.com/mcp");

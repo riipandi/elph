@@ -6,7 +6,11 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "servers": {
+        "$schema": {
+            "type": "string",
+            "description": "JSON Schema URL (editor autocompletion). Ignored at runtime."
+        },
+        "mcpServers": {
             "type": "object",
             "description": "Named MCP server definitions. Keys are stable server ids used for tool namespacing and CLI management.",
             "default": {},
@@ -29,10 +33,10 @@
             "minimum": 1,
             "description": "Per-operation timeout in milliseconds for list-tools and call-tool. Defaults to 60000 when omitted."
         },
-        "disabled": {
+        "enable": {
             "type": "boolean",
-            "default": false,
-            "description": "When true, the server is skipped during discovery and tool calls."
+            "default": true,
+            "description": "When false, the server is skipped during discovery and tool calls."
         },
         "policyAction": {
             "type": "string",
@@ -106,7 +110,7 @@
                     "minLength": 1
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
-                "disabled": { "$ref": "#/definitions/disabled" },
+                "enable": { "$ref": "#/definitions/enable" },
                 "policy": { "$ref": "#/definitions/policy" }
             }
         },
@@ -148,7 +152,7 @@
                     "description": "When both authToken/authTokenEnv and auth.json OAuth exist: error (fail), preferEnv (use env/inline), or preferOauth (use auth.json)."
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
-                "disabled": { "$ref": "#/definitions/disabled" },
+                "enable": { "$ref": "#/definitions/enable" },
                 "oauth": {
                     "type": "boolean",
                     "default": false,
@@ -192,7 +196,7 @@
                     "default": "error"
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
-                "disabled": { "$ref": "#/definitions/disabled" },
+                "enable": { "$ref": "#/definitions/enable" },
                 "oauth": {
                     "type": "boolean",
                     "default": false
@@ -213,7 +217,7 @@
                 "allow": ["mcp_fs__list*", "mcp_fs__read*"],
                 "deny": ["mcp_dangerous__*"]
             },
-            "servers": {
+            "mcpServers": {
                 "filesystem": {
                     "type": "stdio",
                     "command": "npx",

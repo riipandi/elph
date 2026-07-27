@@ -14,9 +14,7 @@ use crate::platform::Paths;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
-use super::subagent_display::{
-    format_subagent_status_detail, format_subagent_task_label, subagent_status_indent, subagent_status_key,
-};
+use super::subagent_display::{subagent_status_indent, subagent_status_key};
 use super::transcript::markdown::AssistantMarkdownBuffer;
 use super::transcript::{TranscriptMessage, TranscriptStyle};
 
@@ -348,6 +346,7 @@ pub struct TranscriptEventApplier {
     meta_started_at: Option<Instant>,
     show_thinking: bool,
     auto_expand_thinking: bool,
+    subagent_started_at: HashMap<String, Instant>,
 }
 
 impl TranscriptEventApplier {
@@ -360,6 +359,7 @@ impl TranscriptEventApplier {
             meta_started_at: None,
             show_thinking,
             auto_expand_thinking,
+            subagent_started_at: HashMap::new(),
         }
     }
 
@@ -428,7 +428,8 @@ impl TranscriptEventApplier {
                 task_name,
                 phase,
                 message,
-            } => self.upsert_subagent_status(messages, &agent_id, &agent_path, &task_name, phase, &message),
+                model,
+            } => self.upsert_subagent_status(messages, &agent_id, &agent_path, &task_name, phase, &message, &model),
             AgentUiEvent::GoalUpdated { objective, status } => {
                 if let (Some(objective), Some(status)) = (objective, status) {
                     self.push_status(messages, &format!("Goal ({status}): {objective}"))
@@ -492,7 +493,7 @@ impl TranscriptEventApplier {
         true
     }
 
-    /// Upsert one process-status row per subagent (glyph + role + short name + action + phase word).
+    /// Upsert one process-status row per subagent (tree format with model and duration).
     fn upsert_subagent_status(
         &mut self,
         messages: &mut Vec<TranscriptMessage>,
@@ -500,34 +501,149 @@ impl TranscriptEventApplier {
         agent_path: &str,
         task_name: &str,
         phase: SubagentUiPhase,
-        message: &str,
+        _message: &str,
+        model: &str,
     ) -> bool {
-        let key = subagent_status_key(agent_id);
-        // Task title (bold when finished) vs action/phase detail (always normal weight).
-        // Nesting indents the whole glyph+label row — not leading spaces in the title.
-        let content = format_subagent_task_label(task_name, agent_path, agent_id);
-        let status_detail = format_subagent_status_detail(message, phase);
-        let status_indent = subagent_status_indent(agent_path);
+        use std::time::Instant;
+
+        // Track start time on first Running transition for duration measurement.
+        let entering_running = phase == SubagentUiPhase::Running
+            && !messages
+                .iter()
+                .any(|m| m.startup_key.as_deref() == Some(&subagent_status_key(agent_id)));
+        if entering_running {
+            self.subagent_started_at.insert(agent_id.to_string(), Instant::now());
+        }
+
+        // Compute duration if agent just finished.
+        let finished = matches!(phase, SubagentUiPhase::Done | SubagentUiPhase::Error);
+        let duration = finished
+            .then(|| {
+                self.subagent_started_at
+                    .remove(agent_id)
+                    .map(crate::tui::chrome::format_elapsed_secs)
+            })
+            .flatten();
+
+        // Build content (without model) and model_tag separately for colored rendering.
+        let name = crate::tui::subagent_display::subagent_short_name(task_name, agent_path, agent_id);
+        let model_tag = if model.is_empty() {
+            None
+        } else {
+            Some(model.to_string())
+        };
+        let agent_tag = Some(agent_id.to_string());
+        let task_label = task_name.trim();
+        let name_from_task = !task_label.is_empty()
+            && !task_label.eq_ignore_ascii_case("default")
+            && !task_label.eq_ignore_ascii_case("agent");
+        let content = if name_from_task {
+            // Name derived from task_name (possibly truncated). Never duplicate task_label.
+            name.clone()
+        } else if !task_label.is_empty()
+            && !task_label.eq_ignore_ascii_case("default")
+            && !task_label.eq_ignore_ascii_case("agent")
+        {
+            // Name came from path tail / agent_id; append task_label for context.
+            format!("{name}  {task_label}")
+        } else {
+            name.clone()
+        };
+
+        let indent = subagent_status_indent(agent_path);
         let style = match phase {
             SubagentUiPhase::Pending | SubagentUiPhase::Running => TranscriptStyle::StatusRunning,
             SubagentUiPhase::Idle | SubagentUiPhase::Done => TranscriptStyle::StatusSuccess,
             SubagentUiPhase::Error => TranscriptStyle::StatusFailed,
         };
+
+        // Ensure the subagent header exists (upsert before first subagent).
+        self.upsert_subagent_header(messages);
+
+        // Upsert or create the subagent status row.
+        let key = subagent_status_key(agent_id);
         if let Some(existing) = messages
             .iter_mut()
-            .find(|message| message.startup_key.as_deref() == Some(key.as_str()))
+            .find(|m| m.startup_key.as_deref() == Some(key.as_str()))
         {
             existing.content = content;
-            existing.status_detail = Some(status_detail);
-            existing.status_indent = status_indent;
+            existing.model_tag = model_tag;
+            existing.agent_tag = agent_tag;
+            existing.status_detail = None;
+            existing.status_indent = indent;
             existing.style = style;
+            existing.duration_secs = duration;
             return true;
         }
         let mut row = TranscriptMessage::startup_status(key, content, style);
-        row.status_detail = Some(status_detail);
-        row.status_indent = status_indent;
+        row.model_tag = model_tag;
+        row.agent_tag = agent_tag;
+        row.status_detail = None;
+        row.status_indent = indent;
+        row.duration_secs = duration;
         messages.push(row);
+
+        // Recalculate tree prefixes now that we have a new row.
+        self.rebuild_subagent_tree(messages);
         true
+    }
+
+    /// Maintain a single header row ("○ Subagents running") as the first subagent-related message.
+    /// Creates it if missing; removes it when no subagent rows remain (handled outside this method).
+    fn upsert_subagent_header(&self, messages: &mut Vec<TranscriptMessage>) {
+        let has_header = messages
+            .iter()
+            .any(|m| m.startup_key.as_deref() == Some("subagent:header"));
+        if has_header {
+            return;
+        }
+        // Insert header at the start of the subagent block — right after the last non-subagent
+        // status row, or at the very end.
+        let insert_at = messages
+            .iter()
+            .rposition(|m| m.startup_key.as_deref().is_some_and(|k| k.starts_with("subagent:")))
+            .map(|pos| pos + 1)
+            .unwrap_or(messages.len());
+        // Status glyph is rendered by the card chrome — content is label-only.
+        let mut header =
+            TranscriptMessage::startup_status("subagent:header", "Subagents running", TranscriptStyle::StatusRunning);
+        header.detail_expanded = true;
+        messages.insert(insert_at, header);
+    }
+
+    /// Rebuild tree-drawing prefixes (`├─` / `└─`) for all subagent rows based on their
+    /// position among sibling subagents (same depth).
+    fn rebuild_subagent_tree(&self, messages: &mut Vec<TranscriptMessage>) {
+        // Collect indexes of subagent status rows (not the header).
+        let subagent_indexes: Vec<usize> = messages
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| {
+                m.startup_key
+                    .as_deref()
+                    .is_some_and(|k| k.starts_with("subagent:") && k != "subagent:header")
+            })
+            .map(|(i, _)| i)
+            .collect();
+
+        let count = subagent_indexes.len();
+        for (pos, &idx) in subagent_indexes.iter().enumerate() {
+            let tree_prefix = if pos == 0 {
+                // First child: tree branch connector; last may override below
+                "├─"
+            } else {
+                "├─"
+            };
+            // Last child gets the corner connector.
+            let tree_prefix = if pos == count.saturating_sub(1) {
+                "└─"
+            } else {
+                tree_prefix
+            };
+            if let Some(msg) = messages.get_mut(idx) {
+                msg.tree_prefix = Some(tree_prefix.to_string());
+            }
+        }
     }
 
     fn append_assistant(&mut self, messages: &mut Vec<TranscriptMessage>, delta: &str) -> bool {
@@ -860,7 +976,7 @@ mod tests {
     }
 
     #[test]
-    fn subagent_status_upserts_process_row_with_accessible_label() {
+    fn subagent_status_upserts_process_row_with_tree_format() {
         use crate::agent::SubagentUiPhase;
 
         let mut messages = Vec::new();
@@ -873,22 +989,23 @@ mod tests {
                 task_name: "worker-1".into(),
                 phase: SubagentUiPhase::Running,
                 message: "tool:read_file".into(),
+                model: "claude-sonnet-4".into(),
             },
         ));
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].style, TranscriptStyle::StatusRunning);
-        assert_eq!(messages[0].startup_key.as_deref(), Some("subagent:agent_01"));
-        assert!(messages[0].content.contains("Subagent worker-1"), "{}", messages[0].content);
-        assert!(
-            !messages[0].content.contains("Read"),
-            "task title only: {}",
-            messages[0].content
-        );
-        assert_eq!(
-            messages[0].status_detail.as_deref(),
-            Some("Read · running"),
-            "detail holds action/phase"
-        );
+        // First message is the header, second is the subagent row.
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].startup_key.as_deref(), Some("subagent:header"));
+        assert!(messages[0].content.contains("Subagents"));
+        assert_eq!(messages[1].style, TranscriptStyle::StatusRunning);
+        assert_eq!(messages[1].startup_key.as_deref(), Some("subagent:agent_01"));
+        // Content is name-only (model stored separately in model_tag).
+        assert_eq!(messages[1].content, "worker-1");
+        assert_eq!(messages[1].model_tag.as_deref(), Some("claude-sonnet-4"));
+        assert_eq!(messages[1].agent_tag.as_deref(), Some("agent_01"));
+        // Tree prefix set (only one agent → └─).
+        assert_eq!(messages[1].tree_prefix.as_deref(), Some("└─"));
+        // status_detail is None in tree mode.
+        assert_eq!(messages[1].status_detail, None);
 
         // Same agent tool update upserts in place (low noise).
         assert!(applier.apply(
@@ -899,10 +1016,11 @@ mod tests {
                 task_name: "worker-1".into(),
                 phase: SubagentUiPhase::Running,
                 message: "tool:shell_exec".into(),
+                model: "claude-sonnet-4".into(),
             },
         ));
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].status_detail.as_deref(), Some("Shell · running"));
+        assert_eq!(messages.len(), 2); // still header + row
+        assert_eq!(messages[1].status_detail, None);
 
         assert!(applier.apply(
             &mut messages,
@@ -912,11 +1030,13 @@ mod tests {
                 task_name: "worker-1".into(),
                 phase: SubagentUiPhase::Done,
                 message: String::new(),
+                model: "claude-sonnet-4".into(),
             },
         ));
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].style, TranscriptStyle::StatusSuccess);
-        assert_eq!(messages[0].status_detail.as_deref(), Some("done"));
+        assert_eq!(messages.len(), 2); // header + done row
+        assert_eq!(messages[1].style, TranscriptStyle::StatusSuccess);
+        assert_eq!(messages[1].status_detail, None);
+        assert!(messages[1].duration_secs.is_some());
     }
 
     #[test]
@@ -933,12 +1053,15 @@ mod tests {
                 task_name: String::new(),
                 phase: SubagentUiPhase::Running,
                 message: String::new(),
+                model: "claude-sonnet-4".into(),
             },
         );
+        // First message is the header.
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].startup_key.as_deref(), Some("subagent:header"));
         // Nesting pads the whole row (glyph+label); the title itself stays flush for tight glyph gap.
-        assert!(!messages[0].content.starts_with(' '), "{}", messages[0].content);
-        assert!(messages[0].content.starts_with("Subagent"), "{}", messages[0].content);
-        assert_eq!(messages[0].status_indent, 2); // depth 2 → one nest past main children
+        assert!(!messages[1].content.starts_with(' '), "{}", messages[1].content);
+        assert_eq!(messages[1].status_indent, 2); // depth 2 → one nest past main children
     }
 
     #[test]

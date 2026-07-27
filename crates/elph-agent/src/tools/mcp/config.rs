@@ -19,6 +19,11 @@ use super::policy::McpPolicyConfig;
 /// Default per-operation timeout when a server does not override it.
 pub const DEFAULT_OPERATION_TIMEOUT_SECS: u64 = 60;
 
+/// Serde default: enabled by default.
+fn default_true() -> bool {
+    true
+}
+
 /// Root MCP configuration.
 ///
 /// Typical locations:
@@ -27,8 +32,8 @@ pub const DEFAULT_OPERATION_TIMEOUT_SECS: u64 = 60;
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct McpConfig {
-    /// Named server definitions.
-    #[serde(default)]
+    /// Named server definitions (key is `mcpServers` in JSON).
+    #[serde(rename = "mcpServers", default)]
     pub servers: BTreeMap<String, McpServerConfig>,
     /// Global tool policy (merged with per-server `policy`).
     #[serde(default, skip_serializing_if = "McpPolicyConfig::is_empty")]
@@ -103,7 +108,7 @@ impl McpServerConfig {
             env: BTreeMap::new(),
             cwd: None,
             timeout_ms: None,
-            disabled: false,
+            enable: true,
             policy: None,
         })
     }
@@ -123,8 +128,8 @@ impl McpServerConfig {
 
     pub fn is_disabled(&self) -> bool {
         match self {
-            Self::Stdio(c) => c.disabled,
-            Self::Http(c) | Self::Sse(c) => c.disabled,
+            Self::Stdio(c) => !c.enable,
+            Self::Http(c) | Self::Sse(c) => !c.enable,
         }
     }
 
@@ -199,9 +204,9 @@ pub struct McpStdioConfig {
     /// Per-operation timeout in milliseconds (list tools, call tool).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
-    /// When true, the server is skipped during discovery and tool calls.
-    #[serde(default)]
-    pub disabled: bool,
+    /// When false, the server is skipped during discovery and tool calls.
+    #[serde(default = "default_true")]
+    pub enable: bool,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
@@ -259,9 +264,9 @@ pub struct McpHttpConfig {
     /// Per-operation timeout in milliseconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u64>,
-    /// When true, the server is skipped during discovery and tool calls.
-    #[serde(default)]
-    pub disabled: bool,
+    /// When false, the server is skipped during discovery and tool calls.
+    #[serde(default = "default_true")]
+    pub enable: bool,
     /// Prefer OAuth credentials from `mcp auth` (and run OAuth-aware transport).
     #[serde(default)]
     pub oauth: bool,
@@ -303,7 +308,7 @@ impl McpHttpConfig {
             auth_token: None,
             auth_token_env: None,
             timeout_ms: None,
-            disabled: false,
+            enable: true,
             oauth: false,
             oauth_scopes: Vec::new(),
             oauth_client_name: None,
@@ -402,7 +407,7 @@ mod tests {
     #[test]
     fn deserializes_stdio_and_http() {
         let json = r#"{
-            "servers": {
+            "mcpServers": {
                 "local": {
                     "type": "stdio",
                     "command": "npx",
@@ -426,7 +431,7 @@ mod tests {
     fn deserializes_sse_and_policy() {
         let json = r#"{
             "policy": { "default": "requireApproval", "allow": ["mcp_fs__*"] },
-            "servers": {
+            "mcpServers": {
                 "legacy": {
                     "type": "sse",
                     "url": "http://localhost:3000/sse",
@@ -452,7 +457,7 @@ mod tests {
                 env: BTreeMap::new(),
                 cwd: None,
                 timeout_ms: None,
-                disabled: true,
+                enable: false,
                 policy: None,
             }),
         );
@@ -471,7 +476,7 @@ mod tests {
         let home: McpConfig = serde_json::from_str(
             r#"{
             "policy": { "default": "requireApproval", "allow": ["mcp_home__*"] },
-            "servers": {
+            "mcpServers": {
                 "shared": { "type": "http", "url": "https://home.example/mcp" },
                 "home_only": { "type": "stdio", "command": "true" }
             }
@@ -481,8 +486,8 @@ mod tests {
         let project: McpConfig = serde_json::from_str(
             r#"{
             "policy": { "deny": ["mcp_danger__*"] },
-            "servers": {
-                "shared": { "type": "http", "url": "https://project.example/mcp", "disabled": true },
+            "mcpServers": {
+                "shared": { "type": "http", "url": "https://project.example/mcp", "enable": false },
                 "project_only": { "type": "stdio", "command": "npx" }
             }
         }"#,
@@ -496,7 +501,7 @@ mod tests {
         match merged.servers.get("shared") {
             Some(McpServerConfig::Http(c)) => {
                 assert_eq!(c.url, "https://project.example/mcp");
-                assert!(c.disabled);
+                assert!(c.enable == false); // disabled via `enable: false`
             }
             other => panic!("expected http shared, got {other:?}"),
         }

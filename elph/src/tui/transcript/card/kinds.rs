@@ -462,38 +462,165 @@ pub fn status_line_card(screen_width: u16, message: &TranscriptMessage, margin_b
     // Nested subagents indent the whole row (glyph + label) so the task title stays flush
     // to the marker — never pad the label string with leading spaces.
     let pad_left = chrome.padding_h.saturating_add(message.status_indent);
-    // Startup / MCP / subagent: normal weight + calmer status hues (not tool-card punch).
-    // Glyph + label share soft status color; detail/meta stay muted grey.
-    element! {
-        View(
-            width: chrome.outer_width,
-            background_color: Color::Reset,
-            border_style: BorderStyle::None,
-            margin_bottom: chrome.margin_bottom,
-            padding_left: pad_left,
-            padding_right: chrome.padding_h,
-            flex_direction: FlexDirection::Column,
-            gap: 0,
-        ) {
-            ProcessStatusRow(
-                status: status,
-                label: message.content.clone(),
-                detail: message.status_detail.clone().unwrap_or_default(),
-                duration_secs: None,
-                running_color: Some(STATUS_RUNNING_FG),
-                done_color: Some(STATUS_SUCCESS_FG),
-                failed_color: Some(STATUS_FAILED_FG),
-                queued_color: Some(STATUS_QUEUED_FG),
-                duration_color: Some(TOOL_ARGS_FG),
-                detail_color: Some(TOOL_ARGS_FG),
-                emphasize_running: false,
-                // Startup lines stay regular weight — bold is reserved for finished tool tasks.
-                emphasize_finished: false,
-                animate_running: false,
-            )
+    // Subagents with a tree prefix use a custom row layout (prefix + indicator + content).
+    let use_tree = message.tree_prefix.is_some();
+
+    if use_tree {
+        let tree_prefix = message.tree_prefix.as_deref().unwrap_or("");
+        // Tree branch color: dim grey, matching existing detail/meta hues.
+        let branch_fg = TOOL_ARGS_FG;
+        let is_running = message.style == TranscriptStyle::StatusRunning;
+        let indicator_color = match status {
+            ProcessStatus::Running => STATUS_RUNNING_FG,
+            ProcessStatus::Done => STATUS_SUCCESS_FG,
+            ProcessStatus::Failed => STATUS_FAILED_FG,
+            ProcessStatus::Queued => STATUS_QUEUED_FG,
+        };
+        // Build all row elements (prefix, indicator, label, model_tag, duration) in one vec
+        // so a single `#(row_elements)` expansion avoids macro issues with mixed #() types.
+        let mut row_elements: Vec<AnyElement<'static>> = Vec::with_capacity(8);
+        row_elements.push(element! { Text(content: tree_prefix, color: branch_fg, wrap: TextWrap::NoWrap) }.into());
+        row_elements.push(
+            element! {
+                ProcessStatusIndicator(
+                    status: status,
+                    color: Some(indicator_color),
+                    animate_running: is_running,
+                )
+            }
+            .into(),
+        );
+        // Label: split content on "  " when model_tag is present (name + grey model + optional task).
+        // Label: split content on "  " when model_tag present (name + grey tags + optional task).
+        let has_tags = message.model_tag.is_some() || message.agent_tag.is_some();
+        if has_tags {
+            let (name_part, task_part) = message
+                .content
+                .split_once("  ")
+                .map_or((message.content.as_str(), ""), |(n, t)| (n, t));
+            row_elements.push(
+                element! {
+                    Text(
+                        content: name_part.to_string(),
+                        color: TEXT_FG,
+                        weight: if !is_running { Weight::Bold } else { Weight::Normal },
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                .into(),
+            );
+            // Combined agent + model tag in grey: `(agent_id - model)`.
+            let combined_tag: Option<String> = match (message.agent_tag.as_deref(), message.model_tag.as_deref()) {
+                (Some(aid), Some(mid)) => Some(format!("({aid} - {mid})")),
+                (Some(aid), None) => Some(format!("({aid})")),
+                (None, Some(mid)) => Some(format!("({mid})")),
+                (None, None) => None,
+            };
+            if let Some(tag) = combined_tag {
+                row_elements.push(
+                    element! {
+                        Text(
+                            content: format!(" {}", tag),
+                            color: TOOL_ARGS_FG,
+                            weight: Weight::Normal,
+                            wrap: TextWrap::NoWrap,
+                        )
+                    }
+                    .into(),
+                );
+            }
+            // Optional task title after the tags.
+            if !task_part.is_empty() {
+                row_elements.push(
+                    element! {
+                        Text(
+                            content: format!("  {}", task_part),
+                            color: TEXT_FG,
+                            weight: if !is_running { Weight::Bold } else { Weight::Normal },
+                            wrap: TextWrap::NoWrap,
+                        )
+                    }
+                    .into(),
+                );
+            }
+        } else {
+            row_elements.push(
+                element! {
+                    Text(
+                        content: message.content.clone(),
+                        color: TEXT_FG,
+                        weight: if !is_running { Weight::Bold } else { Weight::Normal },
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                .into(),
+            );
         }
+        // Duration suffix.
+        if let Some(secs) = message.duration_secs {
+            let body = format_duration_secs(secs);
+            let suffix = format!(" {} {}", elph_tui::GLYPH_META_SEP, body);
+            row_elements.push(
+                element! {
+                    Text(content: suffix, color: TOOL_ARGS_FG, weight: Weight::Normal, wrap: TextWrap::NoWrap)
+                }
+                .into(),
+            );
+        }
+        element! {
+            View(
+                width: chrome.outer_width,
+                background_color: Color::Reset,
+                border_style: BorderStyle::None,
+                margin_bottom: chrome.margin_bottom,
+                padding_left: pad_left,
+                padding_right: chrome.padding_h,
+                flex_direction: FlexDirection::Column,
+                gap: 0,
+            ) {
+                View(
+                    flex_direction: FlexDirection::Row,
+                    gap: 1,
+                    align_items: AlignItems::Center,
+                    flex_shrink: 0f32,
+                ) {
+                    #(row_elements)
+                }
+            }
+        }
+        .into()
+    } else {
+        // Startup / MCP / subagent (no tree): normal weight + calmer status hues.
+        element! {
+            View(
+                width: chrome.outer_width,
+                background_color: Color::Reset,
+                border_style: BorderStyle::None,
+                margin_bottom: chrome.margin_bottom,
+                padding_left: pad_left,
+                padding_right: chrome.padding_h,
+                flex_direction: FlexDirection::Column,
+                gap: 0,
+            ) {
+                ProcessStatusRow(
+                    status: status,
+                    label: message.content.clone(),
+                    detail: message.status_detail.clone().unwrap_or_default(),
+                    duration_secs: message.duration_secs,
+                    running_color: Some(STATUS_RUNNING_FG),
+                    done_color: Some(STATUS_SUCCESS_FG),
+                    failed_color: Some(STATUS_FAILED_FG),
+                    queued_color: Some(STATUS_QUEUED_FG),
+                    duration_color: Some(TOOL_ARGS_FG),
+                    detail_color: Some(TOOL_ARGS_FG),
+                    emphasize_running: false,
+                    emphasize_finished: false,
+                    animate_running: false,
+                )
+            }
+        }
+        .into()
     }
-    .into()
 }
 
 pub fn tool_call_card(

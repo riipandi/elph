@@ -88,6 +88,8 @@ pub enum AgentUiEvent {
         phase: SubagentUiPhase,
         /// Short action (tool name, "done", error detail, …).
         message: String,
+        /// Model id shown in brackets, e.g. `claude-sonnet-4-20250514`.
+        model: String,
     },
     GoalUpdated {
         objective: Option<String>,

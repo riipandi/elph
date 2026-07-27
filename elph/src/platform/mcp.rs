@@ -215,13 +215,13 @@ mod tests {
         let paths = test_paths(&tmp);
 
         let home = parse_and_validate_mcp_config(
-            r#"{"servers":{"a":{"type":"stdio","command":"home"},"b":{"type":"stdio","command":"only-home"}}}"#,
+            r#"{"mcpServers":{"a":{"type":"stdio","command":"home"},"b":{"type":"stdio","command":"only-home"}}}"#,
         )
         .unwrap();
         save_layer(&paths, McpConfigScope::Home, &home).unwrap();
 
         let project = parse_and_validate_mcp_config(
-            r#"{"servers":{"a":{"type":"stdio","command":"project"},"c":{"type":"stdio","command":"only-project"}}}"#,
+            r#"{"mcpServers":{"a":{"type":"stdio","command":"project"},"c":{"type":"stdio","command":"only-project"}}}"#,
         )
         .unwrap();
         save_layer(&paths, McpConfigScope::Project, &project).unwrap();
@@ -268,10 +268,10 @@ mod tests {
         let paths = test_paths(&tmp);
 
         let home =
-            parse_and_validate_mcp_config(r#"{"servers":{"ok":{"type":"stdio","command":"home-bin"}}}"#).unwrap();
+            parse_and_validate_mcp_config(r#"{"mcpServers":{"ok":{"type":"stdio","command":"home-bin"}}}"#).unwrap();
         save_layer(&paths, McpConfigScope::Home, &home).unwrap();
 
-        std::fs::write(paths.project_mcp_config_path(), r#"{"servers":{"bad":{"type":"http"}}}"#).unwrap();
+        std::fs::write(paths.project_mcp_config_path(), r#"{"mcpServers":{"bad":{"type":"http"}}}"#).unwrap();
 
         let (merged, warnings) = load_config_best_effort(&paths);
         assert_eq!(merged.server_count(), 1);

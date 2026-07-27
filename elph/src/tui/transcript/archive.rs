@@ -83,6 +83,9 @@ impl ArchivedTranscriptMessage {
             detail_expanded: self.detail_expanded,
             status_detail: self.status_detail,
             status_indent: self.status_indent,
+            tree_prefix: None,
+            model_tag: None,
+            agent_tag: None,
         };
 
         if message.style == TranscriptStyle::Assistant {
