@@ -14,6 +14,14 @@ use super::circuit_breaker::ProviderCircuitBreaker;
 use super::config::ResilienceConfig;
 use super::rate_limiter::ProviderRateLimiter;
 
+/// Current epoch time in seconds.
+fn epoch_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
 /// Errors that can occur when checking resilience before a call.
 #[derive(Debug, Clone)]
 pub enum ResilienceError {
@@ -38,6 +46,7 @@ impl std::error::Error for ResilienceError {}
 struct ProviderState {
     limiter: ProviderRateLimiter,
     breaker: ProviderCircuitBreaker,
+    last_used: std::sync::atomic::AtomicU64,
 }
 
 /// Central manager for rate limiting and circuit breaking across all providers.
@@ -88,6 +97,7 @@ impl ResilienceManager {
         let state = Arc::new(ProviderState {
             limiter: ProviderRateLimiter::new(&config),
             breaker: ProviderCircuitBreaker::new(&config),
+            last_used: std::sync::atomic::AtomicU64::new(epoch_secs()),
         });
 
         providers.insert(provider_id.to_string(), Arc::clone(&state));
@@ -111,6 +121,11 @@ impl ResilienceManager {
     /// or `Err(ResilienceError)` if blocked.
     pub fn check(&self, provider_id: &str) -> Result<(), ResilienceError> {
         let state = self.get_or_init(provider_id);
+
+        // Update last_used timestamp
+        state
+            .last_used
+            .store(epoch_secs(), std::sync::atomic::Ordering::Relaxed);
 
         // 1. Check rate limiter (non-blocking)
         if !state.limiter.check() {
@@ -145,13 +160,30 @@ impl ResilienceManager {
     /// Record a successful call to the given provider.
     pub fn record_success(&self, provider_id: &str) {
         let state = self.get_or_init(provider_id);
+        state
+            .last_used
+            .store(epoch_secs(), std::sync::atomic::Ordering::Relaxed);
         state.breaker.on_success();
     }
 
     /// Record a failed call to the given provider.
     pub fn record_failure(&self, provider_id: &str) {
         let state = self.get_or_init(provider_id);
+        state
+            .last_used
+            .store(epoch_secs(), std::sync::atomic::Ordering::Relaxed);
         state.breaker.on_error();
+    }
+
+    /// Cleanup provider state that hasn't been used for longer than `max_age`.
+    pub fn cleanup_stale(&self, max_age: std::time::Duration) {
+        let mut providers = self.providers.write();
+        let now = epoch_secs();
+        let max_age_secs = max_age.as_secs();
+        providers.retain(|_, state| {
+            let last = state.last_used.load(std::sync::atomic::Ordering::Relaxed);
+            now.saturating_sub(last) < max_age_secs
+        });
     }
 
     /// Check, execute, and record in one call.

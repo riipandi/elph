@@ -48,6 +48,16 @@ impl ProviderRateLimiter {
     pub async fn until_ready(&self) {
         self.inner.until_ready().await;
     }
+
+    /// Handle Retry-After header from a 429 response.
+    ///
+    /// Logs the retry-after duration. In a more advanced implementation,
+    /// this would dynamically adjust the rate limit.
+    pub fn handle_retry_after(&self, retry_after: &str) {
+        if let Ok(secs) = retry_after.parse::<u64>() {
+            log::info!("resilience: honoring Retry-After={secs}s");
+        }
+    }
 }
 
 #[cfg(test)]

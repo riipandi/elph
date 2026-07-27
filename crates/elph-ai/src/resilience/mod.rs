@@ -37,12 +37,14 @@
 pub mod circuit_breaker;
 pub mod config;
 pub mod manager;
+pub mod metrics;
 pub mod rate_limiter;
 pub mod retry;
 
 pub use circuit_breaker::{CircuitBreakerError, ProviderCircuitBreaker};
 pub use config::ResilienceConfig;
 pub use manager::{ResilienceError, ResilienceManager};
+pub use metrics::{MetricsSnapshot, ResilienceMetrics};
 pub use rate_limiter::ProviderRateLimiter;
 
 // ---------------------------------------------------------------------------

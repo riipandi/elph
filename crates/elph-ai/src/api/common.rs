@@ -237,3 +237,91 @@ pub fn record_resilience_from_status(provider_id: &str, status: u16) {
         record_provider_success(provider_id);
     }
 }
+
+/// Send with resilience + automatic retry on transient failures.
+///
+/// Builds the request, then retries with exponential backoff on:
+/// - 429 (rate limited)
+/// - 5xx (server errors)
+/// - Connection/timeout errors
+///
+/// Abort errors are not retried.
+pub async fn send_with_resilience_retry(
+    provider_id: &str,
+    token: &Option<tokio_util::sync::CancellationToken>,
+    client: &reqwest::Client,
+    request: reqwest::RequestBuilder,
+    max_retries: u32,
+) -> Result<reqwest::Response> {
+    use std::time::Duration;
+
+    check_provider_resilience(provider_id)?;
+
+    // Build the request so we can clone it for retries
+    let built = request.build()?;
+
+    let mut last_err = None;
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            // Exponential backoff: 500ms, 1s, 2s, 4s, ...
+            let delay = Duration::from_millis(500 * 2u64.pow(attempt - 1));
+            tokio::time::sleep(delay).await;
+            log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
+        }
+
+        // Check abort before each attempt
+        if is_request_aborted(token) {
+            return Err(request_aborted_error());
+        }
+
+        // Clone the request for this attempt
+        let req_clone = match built.try_clone() {
+            Some(r) => r,
+            None => {
+                // Non-cloneable body (stream) — can't retry
+                return Err(anyhow!("cannot retry non-cloneable request body"));
+            }
+        };
+
+        // Execute with abort support — client.execute() returns a future directly
+        let result = match token {
+            Some(token) => {
+                let token = token.clone();
+                tokio::select! {
+                    result = client.execute(req_clone) => result.map_err(Into::into),
+                    _ = token.cancelled() => Err(request_aborted_error()),
+                }
+            }
+            None => client.execute(req_clone).await.map_err(Into::into),
+        };
+
+        match result {
+            Ok(response) => {
+                let status = response.status().as_u16();
+                if status == 429 || status >= 500 {
+                    // Transient error — record and retry
+                    record_provider_failure(provider_id);
+                    last_err = Some(anyhow!("HTTP {status}"));
+                    continue;
+                }
+                // Success or non-retryable error
+                if response.status().is_success() {
+                    record_provider_success(provider_id);
+                }
+                return Ok(response);
+            }
+            Err(e) => {
+                if is_abort_error(&e) {
+                    return Err(e);
+                }
+                // Connection/timeout error — retry
+                record_provider_failure(provider_id);
+                last_err = Some(e);
+                continue;
+            }
+        }
+    }
+
+    // All retries exhausted
+    Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted")))
+}
