@@ -5,18 +5,22 @@ description: >-
     Rust code for memory/resource leaks, deadlock risk, and data races, applying fixes and performance
     improvements. Use when user asks to verify build quality gates, prep Rust code for merge/release,
     or audit concurrency/memory safety in a Rust codebase. Consult current Rust docs (rust-lang.org, docs.rs)
-    and lint guidance to ensure fixes align with active best practices, not deprecated patterns.
+    and lint guidance to ensure fixes align with active best practices, not deprecated patterns. Flags
+    backward-compat/legacy code found during cleanup and asks the user before removing it.
 ---
 
 # Rust Verify & Harden
 
 ## Language
 
-Write skill reports, summaries, and any documentation edits in **English**.
+Split by destination:
+
+- **Skill reports, summaries, in-chat responses** — follow the language the user is currently using (Indonesian, English, etc). Code, identifiers, error messages, crate/lint names stay literal English.
+- **Any documentation edits written to files** (e.g. `docs/**`, code comments meant as permanent docs) — **always English**, regardless of chat language.
 
 ## Purpose
 
-Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper concurrency/memory safety + perf pass on the affected Rust code, applying contemporary idioms and patterns verified against live documentation.
+Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper concurrency/memory safety + perf pass on the affected Rust code, applying contemporary idioms and patterns verified against live documentation. Push toward cleaner code without silently deleting backward-compatibility or legacy paths — those go through the user first.
 
 ## Context & Documentation
 
@@ -84,6 +88,11 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
     - Keep the block minimal; add a `// SAFETY: ...` comment with DeepWiki-sourced rationale (reference RFC or Rustonomicon sections).
     - Flag it in the phase summary for extra review.
 
+10. **Legacy / backward-compat scan** (identify only, don't remove yet):
+    - While reading through touched files, flag: `#[deprecated]` items still called internally, `#[allow(dead_code)]` guarding old paths, versioned/duplicate fns (`_v1`/`_old`/`_legacy` suffixes), compat shims, feature flags gating a retired code path, or `#[cfg(...)]` blocks kept "just in case".
+    - Do **not** delete or refactor these away in Phase 1–3. Collect them into a list (path + one-line description) for the Phase 4 checkpoint.
+    - Straightforward modernization that doesn't touch a compat/legacy path (e.g. clippy fix, idiom update) proceeds normally — this scan only gates _removal or deep restructuring_ of legacy/back-compat code, not routine hardening.
+
 ### Phase 2 — Deep analysis (scope: files touched in phase 1 + direct callers/callees)
 
 **Query DeepWiki before analyzing each subcategory:**
@@ -122,7 +131,17 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
     - Don't require design restructuring (report those instead).
     - DeepWiki confirms the pattern is current best practice.
 
-### Phase 4 — Close out
+### Phase 4 — Legacy/back-compat checkpoint (ask before touching)
+
+1. If Phase 1's legacy scan found nothing: skip this phase silently.
+2. If it found items: present the list to the user (path + what it is + why it looks legacy/compat) and ask, per item or as a batch, whether to:
+    - **Remove** — drop the shim/dead path and update callers.
+    - **Keep** — leave as-is, don't touch.
+    - Use `ask_user_input_v0` for a quick single/multi-select when the choice is simple (remove/keep per item or for the batch); fall back to a plain question if the tradeoffs need more context than fits in short button labels.
+3. Only act on explicit answers. Don't assume "remove" from silence or from a general "clean this up" instruction given before the scan — legacy/compat removal always gets its own confirmation.
+4. Apply removals only for items the user approved; re-run `make check`/`make lint`/`make test` after removal.
+
+### Phase 5 — Close out
 
 1. **Re-run verification**:
     - `make check`, `make lint`, `make test` — all pass clean.
@@ -131,6 +150,7 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
     - **Files changed**: list with reason.
     - **Issues found** (by category): memory, deadlock, race, perf, etc.
     - **Fixes applied**: one-line rationale per fix, noting DeepWiki sources if consulted.
+    - **Legacy/back-compat**: what was found, what the user decided, what was actually removed/kept.
     - **`.unwrap()`/`unsafe` remaining**: list with justification or flag for review.
     - **Known risks**: unfixed issues and why.
     - **Edition/idiom notes**: confirm 2024/2021 compliance per DeepWiki guidance.
@@ -144,6 +164,7 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
 - **Zero `.unwrap()`/`unsafe` ideal**: Justify all remaining instances.
 - **Scope discipline**: Only touch files from phase 1 + direct neighbors.
 - **Risky changes**: Report instead of applying (behavior change, unclear intent, ownership restructuring).
+- **Legacy/back-compat is a risky change by default**: never remove `#[deprecated]` paths, compat shims, `_v1`/`_old` duplicates, or "just in case" `#[cfg(...)]` blocks without explicit per-item or per-batch user approval from Phase 4.
 - **No unprompted deps**: Don't add tools unless already present or explicitly approved.
 - **Git**: Commit/push only if explicitly instructed.
 
@@ -154,5 +175,6 @@ User: "run quality gates and audit concurrency issues in this Rust service"
 Agent workflow:
 
 1. Query DeepWiki: `"Rust 2024 edition best practices"`, `"Tokio concurrency patterns"`.
-2. Run phases 1–4, consulting DeepWiki at each step (clippy lints, async patterns, unsafe verification).
-3. Report summary with file:line refs, citing DeepWiki sources for each category of fixes (e.g., "DeepWiki: 'tokio::sync::Mutex vs std::sync::Mutex' — replaced std::sync::Mutex in async context").
+2. Run phases 1–3, consulting DeepWiki at each step (clippy lints, async patterns, unsafe verification); collect any legacy/back-compat findings without touching them.
+3. If legacy/back-compat code was found, ask the user remove vs keep (Phase 4) before acting on it.
+4. Report summary with file:line refs, citing DeepWiki sources for each category of fixes (e.g., "DeepWiki: 'tokio::sync::Mutex vs std::sync::Mutex' — replaced std::sync::Mutex in async context"), and note what happened with any legacy code.

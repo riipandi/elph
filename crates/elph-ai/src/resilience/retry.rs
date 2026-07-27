@@ -34,9 +34,7 @@ where
 {
     let backoff = backoff_from_config(config);
 
-    let result = (|| f()).retry(backoff).when(is_retryable).await;
-
-    result
+    (|| f()).retry(backoff).when(is_retryable).await
 }
 
 /// Execute a fallible async closure with retry, accepting `anyhow::Error`.
@@ -49,12 +47,10 @@ where
 {
     let backoff = backoff_from_config(config);
 
-    let result = (|| f())
+    (|| f())
         .retry(backoff)
         .when(|e: &anyhow::Error| is_anyhow_retryable(e))
-        .await;
-
-    result
+        .await
 }
 
 /// Simple heuristic for retryable anyhow errors.

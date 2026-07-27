@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn clone_shares_limiter() {
         let limiter = ProviderRateLimiter::with_params(100, 10);
-        let limiter2 = limiter.clone();
+        let _limiter2 = limiter.clone();
         // Both share the same token bucket
         assert!(limiter.check());
         // Second clone should see one less token

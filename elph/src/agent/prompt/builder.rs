@@ -77,7 +77,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are Elph, an interactive AI coding agent"));
+        assert!(prompt.contains("You are an expert AI coding assistant"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));

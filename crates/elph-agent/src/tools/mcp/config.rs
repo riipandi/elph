@@ -501,7 +501,7 @@ mod tests {
         match merged.servers.get("shared") {
             Some(McpServerConfig::Http(c)) => {
                 assert_eq!(c.url, "https://project.example/mcp");
-                assert!(c.enable == false); // disabled via `enable: false`
+                assert!(!c.enable); // disabled via `enable: false`
             }
             other => panic!("expected http shared, got {other:?}"),
         }

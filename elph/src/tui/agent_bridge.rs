@@ -495,6 +495,7 @@ impl TranscriptEventApplier {
     }
 
     /// Upsert one process-status row per subagent (tree format with model and duration).
+    #[allow(clippy::too_many_arguments)]
     fn upsert_subagent_status(
         &mut self,
         messages: &mut Vec<TranscriptMessage>,
@@ -614,6 +615,7 @@ impl TranscriptEventApplier {
 
     /// Rebuild tree-drawing prefixes (`├─` / `└─`) for all subagent rows based on their
     /// position among sibling subagents (same depth).
+    #[allow(clippy::ptr_arg)]
     fn rebuild_subagent_tree(&self, messages: &mut Vec<TranscriptMessage>) {
         // Collect indexes of subagent status rows (not the header).
         let subagent_indexes: Vec<usize> = messages

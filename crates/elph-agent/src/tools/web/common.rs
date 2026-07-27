@@ -58,68 +58,6 @@ pub async fn do_post_json(
     Ok(resp.json().await?)
 }
 
-// ---------------------------------------------------------------------------
-// Resilience-aware HTTP helpers
-// ---------------------------------------------------------------------------
-
-/// GET request with rate limiter and circuit breaker checks.
-///
-/// Checks resilience before sending. Records success/failure based on response.
-pub async fn do_get_with_resilience(
-    provider_id: &str,
-    client: &Client,
-    url: &str,
-    headers: &[(&str, &str)],
-) -> Result<String> {
-    elph_ai::resilience::check_provider_resilience(provider_id)?;
-    match do_get(client, url, headers).await {
-        Ok(body) => {
-            elph_ai::resilience::record_provider_success(provider_id);
-            Ok(body)
-        }
-        Err(e) => {
-            // Only record failure for server errors, not client errors
-            let msg = e.to_string();
-            if msg.starts_with("HTTP 429")
-                || msg.starts_with("HTTP 5")
-                || msg.contains("connection")
-                || msg.contains("timeout")
-            {
-                elph_ai::resilience::record_provider_failure(provider_id);
-            }
-            Err(e)
-        }
-    }
-}
-
-/// POST JSON request with rate limiter and circuit breaker checks.
-pub async fn do_post_json_with_resilience(
-    provider_id: &str,
-    client: &Client,
-    url: &str,
-    headers: &[(&str, &str)],
-    body: &serde_json::Value,
-) -> Result<serde_json::Value> {
-    elph_ai::resilience::check_provider_resilience(provider_id)?;
-    match do_post_json(client, url, headers, body).await {
-        Ok(val) => {
-            elph_ai::resilience::record_provider_success(provider_id);
-            Ok(val)
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            if msg.starts_with("HTTP 429")
-                || msg.starts_with("HTTP 5")
-                || msg.contains("connection")
-                || msg.contains("timeout")
-            {
-                elph_ai::resilience::record_provider_failure(provider_id);
-            }
-            Err(e)
-        }
-    }
-}
-
 /// Truncate at a Unicode scalar boundary (never mid-codepoint).
 pub(crate) fn truncate_at_chars(s: &str, max_chars: usize) -> String {
     if s.chars().count() <= max_chars {
