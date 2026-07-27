@@ -54,31 +54,33 @@ tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/t
 aes-gcm.workspace = true
 anyhow.workspace = true
 async-trait = "0.1"
+backon.workspace = true
 base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
 elph-exec.workspace = true
 elph-tui.workspace = true
+failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 fff-search = { workspace = true, optional = true }
 futures.workspace = true
+governor.workspace = true
 htmd.workspace = true
 http.workspace = true
 ignore.workspace = true
 jsonschema.workspace = true
 kalid.workspace = true
 log.workspace = true
-memchr.workspace = true
 logforth.workspace = true
+memchr.workspace = true
 memorable-ids.workspace = true
 minijinja = { workspace = true, optional = true, features = ["custom_syntax"] }
 obscura = { workspace = true, optional = true }
 parking_lot.workspace = true
 regex.workspace = true
 reqwest.workspace = true
-
 rmcp = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
