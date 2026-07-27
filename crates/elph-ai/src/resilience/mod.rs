@@ -45,6 +45,30 @@ pub use config::ResilienceConfig;
 pub use manager::{ResilienceError, ResilienceManager};
 pub use rate_limiter::ProviderRateLimiter;
 
+// ---------------------------------------------------------------------------
+// Global convenience functions (backed by a static ResilienceManager)
+// ---------------------------------------------------------------------------
+
+use std::sync::LazyLock;
+
+/// Global resilience manager — lazily initialized with sensible defaults.
+static GLOBAL_MANAGER: LazyLock<ResilienceManager> = LazyLock::new(ResilienceManager::with_defaults);
+
+/// Check rate limiter and circuit breaker before sending a request.
+pub fn check_provider_resilience(provider_id: &str) -> Result<(), ResilienceError> {
+    GLOBAL_MANAGER.check(provider_id)
+}
+
+/// Record a successful call to a provider.
+pub fn record_provider_success(provider_id: &str) {
+    GLOBAL_MANAGER.record_success(provider_id);
+}
+
+/// Record a failed call to a provider.
+pub fn record_provider_failure(provider_id: &str) {
+    GLOBAL_MANAGER.record_failure(provider_id);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

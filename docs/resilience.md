@@ -94,6 +94,9 @@ Provider names are uppercased with hyphens replaced by underscores. Examples:
 | `openai`         | `ELPH_RATE_LIMIT_OPENAI_RPS`         |
 | `google`         | `ELPH_RATE_LIMIT_GOOGLE_RPS`         |
 | `amazon-bedrock` | `ELPH_RATE_LIMIT_AMAZON_BEDROCK_RPS` |
+| `brave` (search) | `ELPH_RATE_LIMIT_BRAVE_RPS`          |
+| `jina` (search)  | `ELPH_RATE_LIMIT_JINA_RPS`           |
+| `exa` (search)   | `ELPH_RATE_LIMIT_EXA_RPS`            |
 
 ### Programmatic configuration
 
@@ -116,26 +119,18 @@ let manager = ResilienceManager::new(
 ### Provider API calls (`elph-ai`)
 
 The primary integration point is `api/common.rs`. All provider API implementations
-(Anthropic, OpenAI, Google, etc.) make HTTP calls through `send_with_abort()`.
-
-Integration flow:
-
-```
-1. Check rate limiter  →  Wait if needed
-2. Check circuit breaker →  Fail fast if open
-3. Send HTTP request
-4. On success →  Record success in circuit breaker
-5. On error →  Check if retryable →  Retry with backoff
-```
+(Anthropic, OpenAI, Google, etc.) make HTTP calls through `send_with_resilience()`.
 
 ### Web tools (`elph-agent`)
 
-`web_fetch` and `web_search` tools use `do_get()` / `do_post_json()` in
-`tools/web/common.rs`. Rate limiting prevents hitting search engine API quotas.
+`web_fetch` and `web_search` tools use resilience-aware HTTP helpers in
+`tools/web/common.rs`:
 
-### MCP connections (`elph-agent`)
-
-MCP server connections can be rate-limited to prevent overwhelming remote servers.
+- `do_get_with_resilience()` / `do_post_json_with_resilience()` — Check rate limiter
+  and circuit breaker before sending
+- `search_engine()` — Each search engine (Brave, Jina, Exa, etc.) is treated as a
+  separate provider with its own rate limiter and circuit breaker
+- `fetch_http()` — Uses the URL hostname as provider ID for per-domain rate limiting
 
 ## Error types
 

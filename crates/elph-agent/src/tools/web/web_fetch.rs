@@ -82,12 +82,29 @@ async fn fetch_url(raw_url: &str) -> anyhow::Result<FetchResult> {
 
 async fn fetch_http(parsed: &url::Url) -> anyhow::Result<FetchResult> {
     let client = http_client();
-    let resp = client
+    let provider_id = parsed
+        .host_str()
+        .unwrap_or("web-fetch")
+        .to_lowercase()
+        .replace('.', "-");
+
+    // Check resilience before fetching
+    elph_ai::resilience::check_provider_resilience(&provider_id)?;
+
+    let result = client
         .get(parsed.clone())
         .header("Accept", "text/html,application/json,text/plain,*/*")
         .header("User-Agent", USER_AGENT)
         .send()
-        .await?;
+        .await;
+
+    let resp = match result {
+        Ok(resp) => resp,
+        Err(e) => {
+            elph_ai::resilience::record_provider_failure(&provider_id);
+            return Err(e.into());
+        }
+    };
 
     let status = resp.status();
     let final_url = resp.url().to_string();
@@ -111,8 +128,15 @@ async fn fetch_http(parsed: &url::Url) -> anyhow::Result<FetchResult> {
     }
 
     if !status.is_success() {
+        let s = status.as_u16();
+        if s == 429 || s >= 500 {
+            elph_ai::resilience::record_provider_failure(&provider_id);
+        }
         return Err(anyhow::anyhow!("status {status}: {}", trim_body(&body)));
     }
+
+    // Record success for successful fetches
+    elph_ai::resilience::record_provider_success(&provider_id);
 
     if truncated {
         body.push_str("\n\n(output truncated)");

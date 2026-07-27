@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::LazyLock;
 
 use anyhow::Result;
 use anyhow::anyhow;
@@ -10,7 +9,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 use crate::api::http_proxy::resolve_http_proxy_url_for_target;
-use crate::resilience::{ResilienceError, ResilienceManager};
+use crate::resilience::ResilienceError;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Model, OnPayloadCallback, OnResponseCallback};
 use crate::types::{ProviderEnv, ProviderResponse, StopReason, StreamOptions};
 use crate::utils::error_body::{error_body_from_response, format_provider_error, normalize_provider_error};
@@ -177,20 +176,12 @@ pub async fn invoke_on_response_from_reqwest(
 // Resilience: rate limiter, circuit breaker, retry
 // ---------------------------------------------------------------------------
 
-/// Global resilience manager — lazily initialized with sensible defaults.
-static RESILIENCE: LazyLock<ResilienceManager> = LazyLock::new(ResilienceManager::with_defaults);
-
-/// Get a reference to the global resilience manager.
-pub fn resilience_manager() -> &'static ResilienceManager {
-    &RESILIENCE
-}
-
 /// Check rate limiter and circuit breaker before sending a request to a provider.
 ///
 /// Returns `Ok(())` if the request can proceed.
 /// Returns `Err` with a descriptive message if blocked.
 pub fn check_provider_resilience(provider_id: &str) -> Result<()> {
-    RESILIENCE.check(provider_id).map_err(|e| match e {
+    crate::resilience::check_provider_resilience(provider_id).map_err(|e| match e {
         ResilienceError::RateLimited => anyhow!("rate limited — too many requests to {provider_id}"),
         ResilienceError::CircuitOpen => anyhow!("circuit breaker open — {provider_id} is failing"),
     })
@@ -198,12 +189,12 @@ pub fn check_provider_resilience(provider_id: &str) -> Result<()> {
 
 /// Record a successful call to a provider.
 pub fn record_provider_success(provider_id: &str) {
-    RESILIENCE.record_success(provider_id);
+    crate::resilience::record_provider_success(provider_id);
 }
 
 /// Record a failed call to a provider.
 pub fn record_provider_failure(provider_id: &str) {
-    RESILIENCE.record_failure(provider_id);
+    crate::resilience::record_provider_failure(provider_id);
 }
 
 /// Send with abort + resilience checks.
