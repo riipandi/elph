@@ -759,9 +759,9 @@ impl TranscriptEventApplier {
             } else if let Some(secs) = crate::tui::transcript::duration_from_tool_details(details) {
                 message.duration_secs = Some(secs);
             }
-            // Collapse finished tools for a compact log — except edit_file with an inline
-            // diff payload, which stays expanded so the change is visible without a click.
-            message.detail_expanded = message.tool.as_ref().is_some_and(|t| t.has_inline_diff());
+            // Collapse all finished tools for a compact log (verb + target path in header).
+            // Click or Ctrl+O expands to show params, output, or inline diff.
+            message.detail_expanded = false;
             return true;
         }
         false
@@ -906,11 +906,12 @@ mod tests {
         assert_eq!(tool.old_text.as_deref(), Some("fn a() {}\n"));
         assert_eq!(tool.new_text.as_deref(), Some("fn a() { 1 }\n"));
         assert_eq!(tool.file_path.as_deref(), Some("/tmp/src/a.rs"));
-        // edit_file with diff stays expanded so the card shows the DiffView immediately.
-        assert!(messages[0].detail_expanded);
+        // edit_file with diff collapses like all other finished tools.
+        assert!(!messages[0].detail_expanded);
         assert!(tool.has_inline_diff());
-        assert!(messages[0].layout_text().lines().count() > 2);
-        assert!(!messages[0].is_tool_collapsed());
+        assert!(messages[0].is_tool_collapsed());
+        assert!(messages[0].layout_text().starts_with("✓ Edit "));
+        assert!(tool.inline_diff_body_rows() > 0, "diff data is preserved");
     }
 
     #[test]

@@ -757,17 +757,19 @@ pub fn tool_call_card(
                             .find(|p| p.key.as_deref() == Some("path"))
                             .map(|p| p.value.clone())
                     });
+                    // DiffView already has its own visual structure (line number gutter + prefix),
+                    // so no extra horizontal padding needed — the card and diff feel seamless.
                     Some(element! {
                         View(
                             width: inner_width,
                             padding_top: 1,
-                            padding_left: TOOL_RESULT_PAD_LEFT,
-                            padding_right: TOOL_RESULT_PAD_RIGHT,
+                            padding_left: 0,
+                            padding_right: 0,
                             flex_direction: FlexDirection::Column,
                             flex_shrink: 0f32,
                         ) {
                             DiffView(
-                                width: result_width,
+                                width: inner_width,
                                 height: 0u16,
                                 old_text: old_text,
                                 new_text: new_text,
