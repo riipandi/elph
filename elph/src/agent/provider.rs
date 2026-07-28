@@ -128,6 +128,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "MOONSHOT_API_KEY",
             default_model: "kimi-k2-0711-preview",
         }),
+        "neuralwatt" => Some(ProviderConfig {
+            label: "Neuralwatt",
+            api_key_env_key: "NEURALWATT_API_KEY",
+            default_model: "deepseek-v4-flash",
+        }),
         "nvidia" => Some(ProviderConfig {
             label: "NVIDIA NIM",
             api_key_env_key: "NVIDIA_API_KEY",
@@ -399,6 +404,7 @@ mod tests {
             "mistral",
             "moonshotai",
             "moonshotai-cn",
+            "neuralwatt",
             "nvidia",
             "openai",
             "openai-codex",

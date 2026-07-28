@@ -150,6 +150,7 @@ define_catalog!(MINIMAX_MODELS, "minimax.json");
 define_catalog!(MINIMAX_CN_MODELS, "minimax_cn.json");
 define_catalog!(MISTRAL_MODELS, "mistral.json");
 define_catalog!(MOONSHOTAI_MODELS, "moonshotai.json");
+define_catalog!(NEURALWATT_MODELS, "neuralwatt.json");
 define_catalog!(MOONSHOTAI_CN_MODELS, "moonshotai_cn.json");
 define_catalog!(NVIDIA_MODELS, "nvidia.json");
 define_catalog!(OPENAI_MODELS, "openai.json");
@@ -192,6 +193,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("mistral", MISTRAL_MODELS.as_slice()),
         ("moonshotai", MOONSHOTAI_MODELS.as_slice()),
         ("moonshotai-cn", MOONSHOTAI_CN_MODELS.as_slice()),
+        ("neuralwatt", NEURALWATT_MODELS.as_slice()),
         ("nvidia", NVIDIA_MODELS.as_slice()),
         ("openai", OPENAI_MODELS.as_slice()),
         ("openai-codex", OPENAI_CODEX_MODELS.as_slice()),

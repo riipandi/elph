@@ -432,6 +432,13 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
         ),
         simple_provider!(
+            "neuralwatt",
+            "Neuralwatt",
+            NEURALWATT_MODELS,
+            openai_completions_api,
+            (vec!["NEURALWATT_API_KEY"], "Neuralwatt API key")
+        ),
+        simple_provider!(
             "nvidia",
             "NVIDIA NIM",
             NVIDIA_MODELS,
