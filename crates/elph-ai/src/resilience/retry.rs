@@ -76,6 +76,9 @@ pub fn is_anyhow_retryable(error: &anyhow::Error) -> bool {
         || msg.contains("rate limit")
         || msg.contains("too many requests")
         || msg.contains("429")
+        // Non-standard / custom timeout codes
+        || msg.contains("446")
+        // Standard server error codes
         || msg.contains("500")
         || msg.contains("502")
         || msg.contains("503")
@@ -136,6 +139,11 @@ mod tests {
         assert!(is_anyhow_retryable(&anyhow::anyhow!("transport error")));
         assert!(is_anyhow_retryable(&anyhow::anyhow!("408 request timed out")));
         assert!(is_anyhow_retryable(&anyhow::anyhow!("request timed out")));
+
+        // Custom server codes
+        assert!(is_anyhow_retryable(&anyhow::anyhow!(
+            "446: Processing query timed out (14s elapsed)"
+        )));
     }
 
     #[tokio::test]
