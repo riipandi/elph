@@ -2937,6 +2937,7 @@ dependencies = [
  "libc",
  "log",
  "logforth",
+ "memorable-ids",
  "parking_lot",
  "rand 0.10.2",
  "regex",

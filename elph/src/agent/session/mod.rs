@@ -556,9 +556,10 @@ async fn generate_and_store_session_title(
     inherit_model: elph_ai::Model,
     title_model_setting: &str,
 ) -> Result<()> {
-    if harness.session_name().await.is_some() {
-        return Ok(());
-    }
+    // The title_generation_started AtomicBool (set during construction) ensures
+    // this runs at most once per session lifetime, so there is no secondary
+    // "already named" guard here — the memorable ID placeholder set at creation
+    // should be replaced by the LLM-generated title after the first turn.
 
     let branch = harness
         .session_branch_entries()

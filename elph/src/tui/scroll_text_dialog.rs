@@ -32,6 +32,9 @@ pub struct PendingScrollTextDialog {
     pub text: String,
     /// Outer width as % of terminal width (default [`DEFAULT_SCROLL_TEXT_WIDTH_PCT`]).
     pub width_pct: u8,
+    /// Optional explicit body height in rows. When `None`, height is auto-computed
+    /// from screen size (maximized). When `Some`, the dialog fits exactly that many rows.
+    pub body_height: Option<u16>,
 }
 
 impl PendingScrollTextDialog {
@@ -44,6 +47,7 @@ impl PendingScrollTextDialog {
             title: title.into(),
             text: text.into(),
             width_pct: clamp_scroll_text_width_pct(width_pct),
+            body_height: None,
         }
     }
 }
@@ -56,14 +60,17 @@ pub struct OpenScrollTextDialogArgs<'a> {
     pub text: String,
     /// Width percent; use [`DEFAULT_SCROLL_TEXT_WIDTH_PCT`] when omitted by callers.
     pub width_pct: u8,
+    /// Optional explicit body height in rows. When `None`, height auto-computes from screen.
+    pub body_height: Option<u16>,
 }
 
 pub fn open_scroll_text_dialog(args: OpenScrollTextDialogArgs<'_>) {
-    let pending = if args.width_pct == DEFAULT_SCROLL_TEXT_WIDTH_PCT {
+    let mut pending = if args.width_pct == DEFAULT_SCROLL_TEXT_WIDTH_PCT {
         PendingScrollTextDialog::open(args.title, args.text)
     } else {
         PendingScrollTextDialog::open_with_width(args.title, args.text, args.width_pct)
     };
+    pending.body_height = args.body_height;
     args.pending.set(Some(pending));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }

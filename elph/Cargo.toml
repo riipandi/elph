@@ -29,16 +29,17 @@ clap_complete.workspace = true
 crossterm.workspace = true
 elph-agent = { workspace = true, features = ["tracing", "builtin-tools", "mcp", "prompt-templates", "extensions"] }
 elph-ai = { workspace = true, features = ["tracing"] }
-floppy = { path = "../crates/floppy", version = "0.0.1", features = ["embed"] }
-git2 = { workspace = true, features = ["cred"] }
 elph-tui = { workspace = true }
+floppy = { path = "../crates/floppy", version = "0.0.1", features = ["embed"] }
 futures-util.workspace = true
+git2 = { workspace = true, features = ["cred"] }
 iocraft.workspace = true
 log.workspace = true
+logforth.workspace = true
+memorable-ids.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
-logforth.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true

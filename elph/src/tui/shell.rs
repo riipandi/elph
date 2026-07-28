@@ -2996,12 +2996,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
+                                // Compact dialog: narrower width and content-sized height.
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    width_pct: 50,
+                                    body_height: Some(body_height),
                                 });
                                 force_editor_clear.set(true);
                             }
@@ -3845,7 +3848,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .read()
         .as_ref()
         .map(|pending| -> AnyElement<'static> {
-            let (chrome, body_height) = system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct);
+            let (chrome, body_height) = if let Some(fixed) = pending.body_height {
+                // Fixed body height from caller (e.g. session info).
+                let outer = crate::tui::scroll_text_dialog::scroll_text_dialog_width(screen_width, pending.width_pct);
+                let chrome = elph_tui::components::DialogChrome {
+                    width: outer,
+                    slim_header: true,
+                    padding_horizontal: 1,
+                    min_content_height: fixed,
+                    ..Default::default()
+                };
+                (chrome, fixed)
+            } else {
+                system_prompt_dialog_chrome(screen_width, screen_height, pending.width_pct)
+            };
             let mut pending_system_prompt = pending_system_prompt;
             let mut draft = draft;
             let mut live_draft = live_draft;
@@ -4598,12 +4614,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
+                                // Compact dialog: narrower width and content-sized height.
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: crate::tui::scroll_text_dialog::DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    width_pct: 50,
+                                    body_height: Some(body_height),
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());

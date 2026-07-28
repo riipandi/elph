@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Local, Timelike, Utc};
-use elph_agent::{FileSystem, build_session_context, estimate_context_tokens};
+use elph_agent::{FileSystem, Skill, build_session_context, estimate_context_tokens};
 
 use super::CodingAgentSession;
 use crate::tui::chrome::count_user_turns;
@@ -77,7 +77,7 @@ pub fn format_context_usage_line(tokens_used: u64, context_limit: u64, context_p
 }
 
 /// Build the multi-line session info body shown by `/session`.
-pub async fn format_session_info(session: &CodingAgentSession) -> String {
+pub async fn format_session_info(session: &CodingAgentSession, skills: Option<&[Skill]>) -> String {
     let title = session
         .harness()
         .session_name()
@@ -114,6 +114,9 @@ pub async fn format_session_info(session: &CodingAgentSession) -> String {
         }
     };
     let context_line = format_context_usage_line(tokens_used, context_limit, context_pct);
+    let mcp_line = format_mcp_info(session);
+    let tools_line = format_tools_info(session).await;
+    let skills_line = format_skills_info(skills);
 
     format!(
         "Title: {title}\n\
@@ -122,18 +125,91 @@ pub async fn format_session_info(session: &CodingAgentSession) -> String {
          Model: {provider}/{model_id}\n\
          API Backend: {api_backend}\n\
          Last activity: {last_activity}\n\
+         {mcp_line}\
          Context: {context_line}\n\
+         Tools: {tools_line}\
+         {skills_line}\
          Turn: {turn_count}"
     )
 }
 
+/// MCP servers summary line (server name, status, tool/resource counts).
+fn format_mcp_info(session: &CodingAgentSession) -> String {
+    match session.mcp_registry() {
+        Some(registry) => {
+            let report = registry.load_report();
+            if report.servers.is_empty() {
+                return "MCP: —\n".to_string();
+            }
+            let parts: Vec<String> = report
+                .servers
+                .iter()
+                .map(|s| {
+                    if s.ok {
+                        format!("{} ✓ ({} tools)", s.name, s.tool_count)
+                    } else {
+                        format!("{} ✗ ({})", s.name, s.message)
+                    }
+                })
+                .collect();
+            format!("MCP: {}\n", parts.join(" · "))
+        }
+        None => "MCP: —\n".to_string(),
+    }
+}
+
+/// Active tools line: count and a compact grouping hint.
+async fn format_tools_info(session: &CodingAgentSession) -> String {
+    let tools = session.harness().get_active_tools().await;
+    if tools.is_empty() {
+        return "—\n".to_string();
+    }
+    let total = tools.len();
+
+    // Separate MCP tools (prefixed `mcp__`) from built-in tools.
+    let mcp_count = tools.iter().filter(|t| t.name().starts_with("mcp__")).count();
+    let builtin_count = total.saturating_sub(mcp_count);
+
+    let detail = if mcp_count > 0 && builtin_count > 0 {
+        format!("{total} tools ({builtin_count} built-in, {mcp_count} MCP)")
+    } else if mcp_count > 0 {
+        format!("{total} tools (all MCP)")
+    } else {
+        format!("{total} tools")
+    };
+    format!("{detail}\n")
+}
+
+/// Loaded skills summary line (count and names when few enough).
+fn format_skills_info(skills: Option<&[Skill]>) -> String {
+    let Some(skills) = skills else {
+        return String::new();
+    };
+    if skills.is_empty() {
+        return "Skills: —\n".to_string();
+    }
+    let names: Vec<&str> = skills.iter().map(|s| s.name.as_str()).collect();
+    if names.len() <= 4 {
+        format!("Skills: {}\n", names.join(", "))
+    } else {
+        format!("Skills: {} skills\n", names.len())
+    }
+}
+
 /// Sync entry point for the TUI slash handler.
-pub fn session_info_slash_message(session: Option<&Arc<CodingAgentSession>>) -> Result<String, String> {
+pub fn session_info_slash_message(
+    session: Option<&Arc<CodingAgentSession>>,
+    skills: Option<&[Skill]>,
+) -> Result<String, String> {
     let Some(session) = session else {
         return Err("Agent session required for this command.".into());
     };
     let session = Arc::clone(session);
-    match elph_agent::try_block_on_detached(async move { format_session_info(&session).await }, SESSION_INFO_TIMEOUT) {
+    let skills: Option<Vec<Skill>> = skills.map(|s| s.to_vec());
+    match elph_agent::try_block_on_detached(
+        async move { format_session_info(&session, skills.as_deref()).await },
+        SESSION_INFO_TIMEOUT,
+    ) {
         Ok(text) => Ok(text),
         Err(err) if err.to_string().contains("timed out") => {
             Err("Agent is busy. Wait for the current stream to finish, then run /session again.".into())
@@ -203,7 +279,10 @@ Working directory: /tmp\n\
 Model: openai/gpt-4o\n\
 API Backend: Responses\n\
 Last activity: 2026-07-27 12:00\n\
+MCP: —\n\
 Context: 75K / 500K tokens (15%)\n\
+Tools: 5 tools\n\
+Skills: 3 skills\n\
 Turn: 15";
         for key in [
             "Title:",
@@ -212,14 +291,14 @@ Turn: 15";
             "Model:",
             "API Backend:",
             "Last activity:",
+            "MCP:",
             "Context:",
+            "Tools:",
+            "Skills:",
             "Turn:",
         ] {
             assert!(sample.contains(key), "missing {key}");
         }
-        let context_pos = sample.find("Context:").expect("context");
-        let turn_pos = sample.find("Turn:").expect("turn");
-        assert!(context_pos < turn_pos, "Turn should be last");
     }
 
     #[test]

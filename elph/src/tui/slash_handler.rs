@@ -109,7 +109,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             Ok(text) => SlashOutcome::OpenSystemPromptDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
-        SlashDispatch::SessionInfo => match session_info_slash_message(ctx.agent_session.as_ref()) {
+        SlashDispatch::SessionInfo => match session_info_slash_message(ctx.agent_session.as_ref(), ctx.skills) {
             Ok(text) => SlashOutcome::OpenSessionInfoDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
