@@ -867,6 +867,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
     let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
     let mut shift_held = hooks.use_state(|| false);
+    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -986,6 +987,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
 
             poll_layout_screen_size(&mut layout_screen_size_for_loop);
+
+            // Safety timeout: auto-clear shift-held after 60s so the scrollbar never
+            // stays stuck hidden if Shift is released without a follow-up key event.
+            let shift_timed_out = shift_held.get()
+                && shift_last_pressed
+                    .read()
+                    .as_ref()
+                    .is_some_and(|last| last.elapsed() > Duration::from_secs(60));
+            if shift_timed_out {
+                shift_held.set(false);
+                shift_last_pressed.set(None);
+            }
 
             if bootstrap_phase.get() == BootstrapPhase::Pending && !bootstrap_worker_started.get() {
                 if let Some(config) = bootstrap_config.read().clone() {
@@ -1575,12 +1588,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             // Track whether Shift is held so the transcript can hide the scrollbar
             // during native text selection (similar to Ctrl+S toggle mode).
             // Only key events with Shift set it; only key events without Shift clear it.
-            // This avoids the scrollbar reappearing while Shift is held but no new
-            // key event fires (e.g. mouse-based text selection).
+            // Safety timeout in the main loop prevents stuck state (no key-up events
+            // from terminal when Shift is released without pressing another key).
             if modifiers.contains(KeyModifiers::SHIFT) {
                 shift_held.set(true);
+                shift_last_pressed.set(Some(Instant::now()));
             } else {
                 shift_held.set(false);
+                shift_last_pressed.set(None);
             }
 
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
