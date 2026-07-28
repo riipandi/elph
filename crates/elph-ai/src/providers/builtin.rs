@@ -13,7 +13,7 @@ use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
 use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api, bedrock_converse_stream_api};
 use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
-use crate::providers::adapter::{mixed_openai_apis, mistral_conversations_api, openai_codex_responses_api, openai_completions_api};
+use crate::providers::adapter::{mixed_gateway_apis, mixed_openai_apis, mistral_conversations_api, openai_codex_responses_api, openai_completions_api};
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {
@@ -223,6 +223,38 @@ pub fn openai_provider() -> Provider {
         models: OPENAI_MODELS.to_vec(),
         refresh_models: None,
         api: ProviderApi::Single(openai_responses_api()),
+    })
+}
+
+pub fn opencode_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "opencode".to_string(),
+        name: Some("OpenCode Zen".to_string()),
+        base_url: Some("https://opencode.ai/zen/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
+            oauth: None,
+        },
+        models: OPENCODE_MODELS.to_vec(),
+        refresh_models: None,
+        api: mixed_gateway_apis(),
+    })
+}
+
+pub fn opencode_go_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "opencode-go".to_string(),
+        name: Some("OpenCode Go".to_string()),
+        base_url: Some("https://opencode.ai/zen/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
+            oauth: None,
+        },
+        models: OPENCODE_GO_MODELS.to_vec(),
+        refresh_models: None,
+        api: mixed_openai_apis(),
     })
 }
 
@@ -492,6 +524,8 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
         kimi_coding_provider(),
+        opencode_provider(),
+        opencode_go_provider(),
         sumopod_provider(),
         simple_provider!(
             "xiaomi",

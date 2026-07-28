@@ -91,8 +91,9 @@ use crate::tui::status_dialog::{
     build_status_dialog_kind,
 };
 use crate::tui::provider_connect_dialog::{
-    OpenProviderConnectDialogArgs, PendingProviderConnectDialog, close_provider_connect_dialog,
-    open_provider_connect_dialog, get_provider_options, get_provider_at_index, provider_supports_oauth,
+    OpenProviderConnectDialogArgs, PendingProviderConnectDialog, ProviderConnectStep, ProviderConnectFocus,
+    close_provider_connect_dialog, open_provider_connect_dialog, get_provider_options, provider_supports_oauth,
+    provider_filter_seed, provider_list_nav_delta,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
@@ -914,6 +915,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let mut pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
     let mut provider_connect_selected = hooks.use_state(|| 0usize);
+    let mut provider_connect_filter = hooks.use_state(String::new);
     let mut provider_connect_api_key = hooks.use_state(String::new);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_ref(|| 0u32);
@@ -2901,90 +2903,183 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                 // ── Provider connect dialog ────────────────────────────────
                 if provider_connect_open {
-                    let selected_index = provider_connect_selected.read().clone();
-                    
+                    // Snapshot the current pending state for step determination
+                    let step = {
+                        let pending_ref = pending_provider_connect.read();
+                        pending_ref.as_ref().map(|p| p.step)
+                    };
+                    let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
+                    let is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
+
+                    // ── Esc ──────────────────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Esc {
-                        close_provider_connect_dialog(
-                            &mut pending_provider_connect,
-                            &mut provider_connect_selected,
-                            &mut provider_connect_api_key,
-                            &mut draft,
-                            &mut live_draft,
-                            &mut shell_focus,
-                            true,
-                        );
+                        if is_enter_api_key {
+                            // Back to provider selection
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                pending.step = ProviderConnectStep::SelectProvider;
+                                pending.input_focus = ProviderConnectFocus::List;
+                                let providers = get_provider_options();
+                                let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &pending.filter);
+                                pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+                            }
+                            provider_connect_api_key.set(String::new());
+                        } else {
+                            // Close dialog
+                            close_provider_connect_dialog(
+                                &mut pending_provider_connect,
+                                &mut provider_connect_selected,
+                                &mut provider_connect_filter,
+                                &mut provider_connect_api_key,
+                                &mut draft,
+                                &mut live_draft,
+                                &mut shell_focus,
+                                true,
+                            );
+                        }
                         return;
                     }
-                    
+
+                    // ── Enter (confirm) ──────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Enter {
-                        let selected_index = provider_connect_selected.read().clone();
-                        let api_key = provider_connect_api_key.read().clone();
-                        
-                        if let Some(provider) = get_provider_at_index(selected_index) {
-                            if provider_supports_oauth(&provider.id) {
-                                // OAuth flow - just close and trigger OAuth
-                                close_provider_connect_dialog(
-                                    &mut pending_provider_connect,
-                                    &mut provider_connect_selected,
-                                    &mut provider_connect_api_key,
-                                    &mut draft,
-                                    &mut live_draft,
-                                    &mut shell_focus,
-                                    false,
-                                );
-                                // TODO: Trigger OAuth flow for provider.id
-                                log::info!("Starting OAuth flow for provider: {}", provider.id);
-                            } else {
-                                // API key flow - save and close
-                                close_provider_connect_dialog(
-                                    &mut pending_provider_connect,
-                                    &mut provider_connect_selected,
-                                    &mut provider_connect_api_key,
-                                    &mut draft,
-                                    &mut live_draft,
-                                    &mut shell_focus,
-                                    false,
-                                );
-                                // TODO: Save API key for provider.id
-                                log::info!("Saving API key for provider: {} with key length: {}", provider.id, api_key.len());
+                        if is_select_provider {
+                            let providers = get_provider_options();
+                            let selected_idx = provider_connect_selected.read().clone();
+                            let current_filter = provider_connect_filter.read().clone();
+                            if let Some(provider) =
+                                crate::tui::provider_connect_dialog::get_filtered_provider_at(&providers, &current_filter, selected_idx)
+                            {
+                                if provider_supports_oauth(&provider.id) {
+                                    // OAuth — close and trigger OAuth
+                                    close_provider_connect_dialog(
+                                        &mut pending_provider_connect,
+                                        &mut provider_connect_selected,
+                                        &mut provider_connect_filter,
+                                        &mut provider_connect_api_key,
+                                        &mut draft,
+                                        &mut live_draft,
+                                        &mut shell_focus,
+                                        false,
+                                    );
+                                    log::info!("Starting OAuth flow for provider: {}", provider.id);
+                                } else {
+                                    // Transition to API key step
+                                    let pending_ref = &mut *pending_provider_connect.write();
+                                    if let Some(pending) = pending_ref {
+                                        pending.step = ProviderConnectStep::EnterApiKey;
+                                        pending.input_focus = ProviderConnectFocus::ApiKeyInput;
+                                        pending.api_key_input.clear();
+                                    }
+                                    provider_connect_api_key.set(String::new());
+                                }
+                            }
+                        } else if is_enter_api_key {
+                            let api_key = provider_connect_api_key.read().clone();
+                            let provider_id = {
+                                let pending_ref = pending_provider_connect.read();
+                                pending_ref.as_ref().and_then(|p| {
+                                    // Get provider id from the pending state (the one selected)
+                                    let providers = get_provider_options();
+                                    let filtered = crate::tui::provider_connect_dialog::filtered_providers(&providers, &p.filter);
+                                    filtered.get(p.selected_provider).map(|prov| prov.id.clone())
+                                })
+                            };
+                            // Close and save API key
+                            close_provider_connect_dialog(
+                                &mut pending_provider_connect,
+                                &mut provider_connect_selected,
+                                &mut provider_connect_filter,
+                                &mut provider_connect_api_key,
+                                &mut draft,
+                                &mut live_draft,
+                                &mut shell_focus,
+                                false,
+                            );
+                            if let Some(pid) = provider_id {
+                                log::info!("Saving API key for provider: {} with key length: {}", pid, api_key.len());
                             }
                         }
                         return;
                     }
-                    
-                    // Navigation
-                    if modifiers.is_empty() {
-                        match code {
-                            KeyCode::Up => {
-                                let new_index = selected_index.saturating_sub(1);
-                                provider_connect_selected.set(new_index);
-                                return;
-                            }
-                            KeyCode::Down => {
-                                let new_index = (selected_index + 1).min(get_provider_options().len().saturating_sub(1));
-                                provider_connect_selected.set(new_index);
-                                return;
-                            }
-                            KeyCode::Char(c) => {
-                                // For API key input when non-OAuth provider is selected
-                                if let Some(provider) = get_provider_at_index(selected_index) {
-                                    if !provider_supports_oauth(&provider.id) {
-                                        let mut current = provider_connect_api_key.read().clone();
-                                        current.push(c);
-                                        provider_connect_api_key.set(current);
-                                        return;
-                                    }
+
+                    // ── Character handling per-step ──────────────────────
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else if is_select_provider {
+                        // Step 1: Provider selection with fuzzy search
+                        let providers = get_provider_options();
+
+                        // Filter seeding (printable chars)
+                        if let Some(seed) = provider_filter_seed(modifiers, code) {
+                            use crate::tui::provider_connect_dialog::ProviderFilterSeed;
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let mut next = pending.filter.clone();
+                                if let ProviderFilterSeed::Append(ch) = seed {
+                                    next.push(ch);
                                 }
+                                pending.filter = next;
+                                provider_connect_filter.set(pending.filter.clone());
+                                let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &pending.filter);
+                                pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+                                provider_connect_selected.set(pending.selected_provider);
+                            }
+                            return;
+                        }
+
+                        // List navigation
+                        if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &pending.filter);
+                                if count > 0 {
+                                    let new_idx = ((pending.selected_provider as isize + delta).rem_euclid(count as isize)) as usize;
+                                    pending.selected_provider = new_idx;
+                                    provider_connect_selected.set(new_idx);
+                                }
+                            }
+                            return;
+                        }
+
+                        // Backspace trims filter
+                        if code == KeyCode::Backspace {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let mut next = pending.filter.clone();
+                                if next.pop().is_some() {
+                                    pending.filter = next;
+                                    provider_connect_filter.set(pending.filter.clone());
+                                    let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &pending.filter);
+                                    pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+                                    provider_connect_selected.set(pending.selected_provider);
+                                }
+                            }
+                            return;
+                        }
+                    } else if is_enter_api_key {
+                        // Step 2: API key text input
+                        match code {
+                            KeyCode::Char(c) => {
+                                let mut current = provider_connect_api_key.read().clone();
+                                current.push(c);
+                                let next = current.clone();
+                                provider_connect_api_key.set(current);
+                                let pending_ref = &mut *pending_provider_connect.write();
+                                if let Some(pending) = pending_ref {
+                                    pending.api_key_input = next;
+                                }
+                                return;
                             }
                             KeyCode::Backspace => {
-                                if let Some(provider) = get_provider_at_index(selected_index) {
-                                    if !provider_supports_oauth(&provider.id) {
-                                        let mut current = provider_connect_api_key.read().clone();
-                                        current.pop();
-                                        provider_connect_api_key.set(current);
-                                        return;
-                                    }
+                                let mut current = provider_connect_api_key.read().clone();
+                                current.pop();
+                                let next = current.clone();
+                                provider_connect_api_key.set(current);
+                                let pending_ref = &mut *pending_provider_connect.write();
+                                if let Some(pending) = pending_ref {
+                                    pending.api_key_input = next;
                                 }
+                                return;
                             }
                             _ => {}
                         }
@@ -3365,6 +3460,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 open_provider_connect_dialog(OpenProviderConnectDialogArgs {
                                     pending: &mut pending_provider_connect,
                                     selected: &mut provider_connect_selected,
+                                    filter: &mut provider_connect_filter,
                                     api_key_input: &mut provider_connect_api_key,
                                     draft: &mut draft,
                                     live_draft: &mut live_draft,
@@ -4280,8 +4376,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
         .or_else(|| {
             let selected = provider_connect_selected.clone();
+            let step = pending_provider_connect.read().as_ref().map(|p| p.step);
             build_provider_connect_dialog_kind(
                 pending_provider_connect.read().as_ref().and_then(|p| p.provider_id.clone()),
+                step,
                 selected,
                 provider_connect_open,
             )
@@ -4592,6 +4690,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 dialog: status_dialog,
                 approval_selected: Some(approval_selected),
                 approval_has_focus: approval_has_focus,
+                api_key_input: Some(provider_connect_api_key),
+                provider_connect_selected: Some(provider_connect_selected),
+                provider_connect_filter: Some(provider_connect_filter),
                 queue_count: queue_count,
                 on_queue_action: on_queue_action_click,
             )

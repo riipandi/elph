@@ -1,12 +1,23 @@
-//! `/provider connect` dialog — OAuth provider selection and API key input.
+//! `/provider connect` dialog — OAuth / API-key provider connection flow.
+//!
+//! Two-step dialog:
+//!   1. **SelectProvider** — pick a provider with fuzzy search (like the model selector).
+//!   2. **EnterApiKey** — (non-OAuth only) type the API key in a dedicated dialog.
 
-use elph_ai::{get_builtin_providers, builtin_oauth_provider_ids};
+use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
 use elph_tui::components::{DialogUserInputContent, SelectList, UiTheme};
 use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
+use crate::tui::slash_palette::fuzzy::{field_score, max_score};
+
+// ── Data types ───────────────────────────────────────────────────────
+
+const NAME_WEIGHT: i32 = 4;
+const ID_WEIGHT: i32 = 3;
+const SUPPLIER_WEIGHT: i32 = 1;
 
 /// Provider information for the selection list.
 #[derive(Debug, Clone)]
@@ -16,10 +27,41 @@ pub struct ProviderOption {
     pub supports_oauth: bool,
 }
 
+/// Dialog step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProviderConnectStep {
+    SelectProvider,
+    EnterApiKey,
+}
+
+/// Keyboard focus target within the provider dialog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ProviderConnectFocus {
+    #[default]
+    Search,
+    List,
+    ApiKeyInput,
+}
+
+/// Pending provider connection dialog state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingProviderConnectDialog {
+    pub step: ProviderConnectStep,
+    pub selected_provider: usize,
+    pub filter: String,
+    pub input_focus: ProviderConnectFocus,
+    pub api_key_input: String,
+    /// Provider ID to pre-select (from `/provider connect <id>`).
+    pub provider_id: Option<String>,
+    pub stashed_prompt_draft: Option<String>,
+}
+
+// ── Provider data helpers ────────────────────────────────────────────
+
 /// Get list of all providers with OAuth support info.
 pub fn get_provider_options() -> Vec<ProviderOption> {
     let oauth_provider_ids = builtin_oauth_provider_ids();
-    
+
     get_builtin_providers()
         .into_iter()
         .map(|id| ProviderOption {
@@ -32,7 +74,6 @@ pub fn get_provider_options() -> Vec<ProviderOption> {
 
 /// Format provider name for display.
 pub fn format_provider_name(id: &str) -> String {
-    // Map provider IDs to display names
     match id {
         "anthropic" => "Anthropic".to_string(),
         "openai" => "OpenAI".to_string(),
@@ -59,28 +100,70 @@ pub fn format_provider_name(id: &str) -> String {
     }
 }
 
-/// Footer hint for the provider connect dialog.
-pub fn provider_connect_footer_hint() -> String {
-    "↑↓ move · Enter select · Esc cancel".to_string()
+/// Check if provider supports OAuth.
+pub fn provider_supports_oauth(provider_id: &str) -> bool {
+    builtin_oauth_provider_ids().contains(&provider_id)
 }
 
-/// Pending provider connection dialog state.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PendingProviderConnectDialog {
-    /// Selected provider index in the list.
-    pub selected_provider: Option<usize>,
-    /// When a non-OAuth provider is selected, this holds the API key input.
-    pub api_key_input: Option<String>,
-    /// The provider ID being connected (if directly specified).
-    pub provider_id: Option<String>,
-    /// Prompt draft stashed while the dialog is open.
-    pub stashed_prompt_draft: Option<String>,
+// ── Fuzzy filtering (adapted from model_selector) ────────────────────
+
+fn provider_match_score(option: &ProviderOption, query: &str) -> Option<i32> {
+    let query = query.trim().to_ascii_lowercase();
+    if query.is_empty() {
+        return Some(0);
+    }
+
+    let mut best = field_score(&query, &option.name.to_ascii_lowercase(), NAME_WEIGHT, true);
+    best = max_score(best, field_score(&query, &option.id.to_ascii_lowercase(), ID_WEIGHT, true));
+
+    if option.supports_oauth {
+        best = max_score(
+            best,
+            field_score(&query, "oauth oauth2 sso", SUPPLIER_WEIGHT, false),
+        );
+    } else {
+        best = max_score(best, field_score(&query, "key api key apikey", SUPPLIER_WEIGHT, false));
+    }
+
+    best
 }
+
+pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<ProviderOption> {
+    let query = filter.trim();
+    if query.is_empty() {
+        return providers.to_vec();
+    }
+
+    let mut scored: Vec<(ProviderOption, i32)> = providers
+        .iter()
+        .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov.clone(), score)))
+        .collect();
+
+    scored.sort_by(|left, right| {
+        right
+            .1
+            .cmp(&left.1)
+            .then_with(|| left.0.name.cmp(&right.0.name))
+    });
+
+    scored.into_iter().map(|(prov, _)| prov).collect()
+}
+
+fn clamp_selected(selected: usize, count: usize) -> usize {
+    if count == 0 {
+        0
+    } else {
+        selected.min(count.saturating_sub(1))
+    }
+}
+
+// ── Dialog lifecycle functions ───────────────────────────────────────
 
 /// Arguments for [`open_provider_connect_dialog`].
 pub struct OpenProviderConnectDialogArgs<'a> {
     pub pending: &'a mut Ref<Option<PendingProviderConnectDialog>>,
     pub selected: &'a mut State<usize>,
+    pub filter: &'a mut State<String>,
     pub api_key_input: &'a mut State<String>,
     pub draft: &'a mut State<String>,
     pub live_draft: &'a mut Ref<String>,
@@ -88,38 +171,70 @@ pub struct OpenProviderConnectDialogArgs<'a> {
     pub provider_id: Option<String>,
 }
 
-/// Open the provider connect dialog.
+/// Open the provider connect dialog (step 1: SelectProvider).
 pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
     let stashed = {
         let current = args.live_draft.read().clone();
-        if current.trim().is_empty() { None } else { Some(current) }
+        if current.trim().is_empty() {
+            None
+        } else {
+            Some(current)
+        }
     };
     if stashed.is_some() {
         args.draft.set(String::new());
         args.live_draft.set(String::new());
     }
-    
+
     let provider_options = get_provider_options();
-    let initial_selected = args.provider_id.as_ref()
+    let initial_selected = args
+        .provider_id
+        .as_ref()
         .and_then(|id| provider_options.iter().position(|p| p.id == *id))
         .unwrap_or(0);
-    
+
     args.selected.set(initial_selected);
+    args.filter.set(String::new());
     args.api_key_input.set(String::new());
-    
+
     args.pending.set(Some(PendingProviderConnectDialog {
-        selected_provider: Some(initial_selected),
-        api_key_input: None,
+        step: ProviderConnectStep::SelectProvider,
+        selected_provider: initial_selected,
+        filter: String::new(),
+        input_focus: ProviderConnectFocus::List,
+        api_key_input: String::new(),
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
 
-/// Close the provider connect dialog.
+/// Transition from SelectProvider to EnterApiKey step.
+#[allow(dead_code)]
+pub fn transition_to_api_key_step(pending: &mut PendingProviderConnectDialog, providers: &[ProviderOption]) {
+    let filtered = filtered_providers(providers, &pending.filter);
+    if let Some(provider) = filtered.get(pending.selected_provider) {
+        if !provider.supports_oauth {
+            pending.step = ProviderConnectStep::EnterApiKey;
+            pending.input_focus = ProviderConnectFocus::ApiKeyInput;
+            pending.api_key_input.clear();
+        }
+    }
+}
+
+/// Transition from EnterApiKey back to SelectProvider step.
+#[allow(dead_code)]
+pub fn transition_to_select_provider_step(pending: &mut PendingProviderConnectDialog) {
+    pending.step = ProviderConnectStep::SelectProvider;
+    pending.input_focus = ProviderConnectFocus::List;
+    pending.api_key_input.clear();
+}
+
+/// Close the provider connect dialog and restore stashed draft.
 pub fn close_provider_connect_dialog(
     pending: &mut Ref<Option<PendingProviderConnectDialog>>,
     selected: &mut State<usize>,
+    filter: &mut State<String>,
     api_key_input: &mut State<String>,
     draft: &mut State<String>,
     live_draft: &mut Ref<String>,
@@ -128,8 +243,9 @@ pub fn close_provider_connect_dialog(
 ) {
     let stashed = pending.write().take().and_then(|p| p.stashed_prompt_draft);
     selected.set(0);
+    filter.set(String::new());
     api_key_input.set(String::new());
-    
+
     if restore_stash {
         if let Some(text) = stashed {
             draft.set(text.clone());
@@ -145,182 +261,221 @@ pub fn close_provider_connect_dialog(
     shell_focus.set(ShellFocus::Prompt);
 }
 
-/// Get the provider at a given index.
-pub fn get_provider_at_index(index: usize) -> Option<ProviderOption> {
-    get_provider_options().get(index).cloned()
+/// Get the provider at a given index from the **filtered** list.
+pub fn get_filtered_provider_at(providers: &[ProviderOption], filter: &str, index: usize) -> Option<ProviderOption> {
+    filtered_providers(providers, filter).get(index).cloned()
 }
 
-/// Check if provider supports OAuth.
-pub fn provider_supports_oauth(provider_id: &str) -> bool {
-    builtin_oauth_provider_ids().contains(&provider_id)
+/// Count providers matching the filter.
+pub fn count_filtered(providers: &[ProviderOption], filter: &str) -> usize {
+    filtered_providers(providers, filter).len()
 }
 
-/// Render the provider connect dialog.
+// ── Keyboard helpers (analogous to model_selector_shell) ─────────────
+
+/// How a list keystroke seeds the filter field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProviderFilterSeed {
+    FocusOnly,
+    Append(char),
+}
+
+/// Printable characters that seed the filter (like model selector).
+pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ProviderFilterSeed> {
+    if !modifiers.is_empty() {
+        return None;
+    }
+    match code {
+        KeyCode::Char('/') => Some(ProviderFilterSeed::FocusOnly),
+        KeyCode::Char(' ') => Some(ProviderFilterSeed::Append(' ')),
+        KeyCode::Char(c)
+            if (c.is_ascii_alphabetic() || c.is_ascii_digit()) =>
+        {
+            Some(ProviderFilterSeed::Append(c))
+        }
+        _ => None,
+    }
+}
+
+/// List navigation delta for `↑/↓` or `k/j`.
+pub fn provider_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> Option<isize> {
+    if !modifiers.is_empty() {
+        return None;
+    }
+    match code {
+        KeyCode::Up | KeyCode::Char('k') => Some(-1),
+        KeyCode::Down | KeyCode::Char('j') => Some(1),
+        _ => None,
+    }
+}
+
+/// Focus the filter / search field (used by shell keyboard handler).
+#[allow(dead_code)]
+pub fn focus_provider_search(
+    input_focus: &mut State<ProviderConnectFocus>,
+    pending: &mut PendingProviderConnectDialog,
+) {
+    input_focus.set(ProviderConnectFocus::Search);
+    pending.input_focus = ProviderConnectFocus::Search;
+}
+
+// ── Rendering ────────────────────────────────────────────────────────
+
+fn provider_select_footer_hint() -> String {
+    "↑↓ move · / search · Enter select · Esc cancel".to_string()
+}
+
+/// Render the provider connect dialog — dispatches to the correct step.
 pub fn render_provider_connect_dialog(
     screen_width: u16,
     has_focus: bool,
     selected: State<usize>,
+    filter: State<String>,
     api_key_input: State<String>,
+    step: ProviderConnectStep,
+) -> AnyElement<'static> {
+    match step {
+        ProviderConnectStep::SelectProvider => {
+            render_select_provider_step(screen_width, has_focus, selected, filter)
+        }
+        ProviderConnectStep::EnterApiKey => {
+            render_api_key_step(screen_width, has_focus, api_key_input)
+        }
+    }
+}
+
+/// Render step 1: provider selection with fuzzy search.
+fn render_select_provider_step(
+    screen_width: u16,
+    has_focus: bool,
+    selected: State<usize>,
+    filter: State<String>,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
-    
-    let provider_options = get_provider_options();
-    let options: Vec<SelectOption> = provider_options
+
+    let providers = get_provider_options();
+    let filtered = filtered_providers(&providers, &filter.read());
+
+    let options: Vec<SelectOption> = filtered
         .iter()
         .map(|p| {
-            let suffix = if p.supports_oauth { 
-                " (OAuth)".to_string() 
+            let suffix = if p.supports_oauth {
+                " (OAuth)"
             } else {
-                " (API Key)".to_string()
+                " (API Key)"
             };
             SelectOption::new(&format!("{}{}", p.name, suffix), &p.id)
         })
         .collect();
-    
-    let selected_idx = selected.get();
-    let selected_provider = provider_options.get(selected_idx);
-    let show_api_key_input = selected_provider.map_or(false, |p| !p.supports_oauth);
-    let api_key_label = selected_provider.map(|p| format!("Enter {} API Key:", p.name)).unwrap_or_default();
-    
+
+    // Re-clamp selected index
+    let _safe_selected = clamp_selected(selected.get(), filtered.len());
+    let total_count = providers.len();
+    let visible_count = filtered.len();
+    let count_label = if visible_count < total_count {
+        format!("{} of {} providers", visible_count, total_count)
+    } else {
+        format!("{} providers", total_count)
+    };
+
     let w = body_width;
     let hf = has_focus;
     let thm = theme;
-    
-    if show_api_key_input {
-        element! {
-            InlineDialogShell(
-                screen_width: screen_width,
-                title: "Connect Provider".to_string(),
-                has_focus: has_focus,
-                footer_hint: Some(provider_connect_footer_hint()),
-            ) {
-                View(
-                    width: w,
-                    flex_direction: FlexDirection::Column,
-                    flex_shrink: 0f32,
-                ) {
-                    View(
+
+    element! {
+        InlineDialogShell(
+            screen_width: screen_width,
+            title: "Connect Provider".to_string(),
+            has_focus: has_focus,
+            footer_hint: Some(provider_select_footer_hint()),
+        ) {
+            View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                // ── Search bar ──
+                View(width: w, flex_shrink: 0f32) {
+                    DialogUserInputContent(
                         width: w,
-                        flex_direction: FlexDirection::Column,
-                        flex_shrink: 0f32,
-                    ) {
-                        View(
-                            width: w,
-                            flex_shrink: 0f32,
-                            overflow: Overflow::Hidden,
-                        ) {
-                            Text(
-                                content: "Select a provider to connect:".to_string(),
-                                color: thm.text_secondary,
-                                wrap: TextWrap::Wrap,
-                            )
-                        }
-                        View(
-                            width: w,
-                            padding_top: 1,
-                            flex_shrink: 0f32,
-                        ) {
-                            SelectList(
-                                width: w,
-                                height: 8u16,
-                                options: options,
-                                selected_index: Some(selected.clone()),
-                                has_focus: hf,
-                                show_description: false,
-                                compact: true,
-                                theme: Some(thm),
-                            )
-                        }
-                    }
-                    View(
+                        value: Some(filter.clone()),
+                        has_focus: hf,
+                        theme: Some(thm),
+                        compact: true,
+                        show_prompt: true,
+                        question: "Search provider:".to_string(),
+                        show_footer_hint: false,
+                        dialog_chrome: true,
+                        on_submit: HandlerMut::default(),
+                        on_cancel: HandlerMut::default(),
+                    )
+                }
+                // ── Count label ──
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                    Text(content: count_label, color: thm.text_hint, wrap: TextWrap::NoWrap)
+                }
+                // ── Provider list ──
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                    SelectList(
                         width: w,
-                        flex_direction: FlexDirection::Column,
-                        flex_shrink: 0f32,
-                    ) {
-                        View(
-                            width: w,
-                            padding_top: 1,
-                            flex_shrink: 0f32,
-                        ) {
-                            Text(
-                                content: api_key_label,
-                                color: thm.text_secondary,
-                                wrap: TextWrap::Wrap,
-                            )
-                        }
-                        View(
-                            width: w,
-                            padding_top: 1,
-                            flex_shrink: 0f32,
-                        ) {
-                            DialogUserInputContent(
-                                width: w,
-                                value: Some(api_key_input.clone()),
-                                has_focus: hf,
-                                theme: Some(thm),
-                                compact: true,
-                                show_prompt: false,
-                                show_footer_hint: false,
-                                dialog_chrome: true,
-                                on_submit: HandlerMut::default(),
-                                on_cancel: HandlerMut::default(),
-                            )
-                        }
-                    }
+                        height: 8u16,
+                        options: options,
+                        selected_index: Some(selected.clone()),
+                        has_focus: hf,
+                        show_description: false,
+                        compact: true,
+                        theme: Some(thm),
+                    )
                 }
             }
         }
-        .into()
-    } else {
-        element! {
-            InlineDialogShell(
-                screen_width: screen_width,
-                title: "Connect Provider".to_string(),
-                has_focus: has_focus,
-                footer_hint: Some(provider_connect_footer_hint()),
-            ) {
-                View(
-                    width: w,
-                    flex_direction: FlexDirection::Column,
-                    flex_shrink: 0f32,
-                ) {
-                    View(
-                        width: w,
-                        flex_direction: FlexDirection::Column,
-                        flex_shrink: 0f32,
-                    ) {
-                        View(
-                            width: w,
-                            flex_shrink: 0f32,
-                            overflow: Overflow::Hidden,
-                        ) {
-                            Text(
-                                content: "Select a provider to connect:".to_string(),
-                                color: thm.text_secondary,
-                                wrap: TextWrap::Wrap,
-                            )
-                        }
-                        View(
-                            width: w,
-                            padding_top: 1,
-                            flex_shrink: 0f32,
-                        ) {
-                            SelectList(
-                                width: w,
-                                height: 8u16,
-                                options: options,
-                                selected_index: Some(selected.clone()),
-                                has_focus: hf,
-                                show_description: false,
-                                compact: true,
-                                theme: Some(thm),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        .into()
     }
+    .into()
+}
+
+/// Render step 2: dedicated API key input dialog.
+fn render_api_key_step(
+    screen_width: u16,
+    has_focus: bool,
+    api_key_input: State<String>,
+) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(screen_width);
+
+    // We don't know the provider name here without the pending state, but the
+    // footer hint is set dynamically when rendering. We use a generic label.
+    let w = body_width;
+    let hf = has_focus;
+    let thm = theme;
+
+    element! {
+        InlineDialogShell(
+            screen_width: screen_width,
+            title: "Enter API Key".to_string(),
+            has_focus: has_focus,
+            footer_hint: None::<String>,
+        ) {
+            View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                View(width: w, flex_shrink: 0f32) {
+                    Text(
+                        content: "Paste or type your API key below:".to_string(),
+                        color: thm.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                    DialogUserInputContent(
+                        width: w,
+                        value: Some(api_key_input.clone()),
+                        has_focus: hf,
+                        theme: Some(thm),
+                        compact: true,
+                        show_prompt: false,
+                        show_footer_hint: false,
+                        dialog_chrome: true,
+                        on_submit: HandlerMut::default(),
+                        on_cancel: HandlerMut::default(),
+                    )
+                }
+            }
+        }
+    }
+    .into()
 }

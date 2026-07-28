@@ -5,6 +5,7 @@ use iocraft::prelude::*;
 
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
+use crate::tui::provider_connect_dialog::ProviderConnectStep;
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, mode_change_footer_hint,
     mode_change_select_options, plan_confirmation_footer_hint, plan_confirmation_select_options,
@@ -334,6 +335,7 @@ pub enum StatusDialogKind {
     /// Provider connection dialog with OAuth or API key input.
     ProviderConnect {
         provider_id: Option<String>,
+        step: ProviderConnectStep,
     },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
@@ -369,6 +371,10 @@ pub struct StatusZoneProps {
     pub approval_selected: Option<State<usize>>,
     pub approval_has_focus: bool,
     pub api_key_input: Option<State<String>>,
+    /// Provider connect dialog selection state.
+    pub provider_connect_selected: Option<State<usize>>,
+    /// Provider connect dialog filter text.
+    pub provider_connect_filter: Option<State<String>>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -396,6 +402,8 @@ impl Default for StatusZoneProps {
             approval_selected: None,
             approval_has_focus: false,
             api_key_input: None,
+            provider_connect_selected: None,
+            provider_connect_filter: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
         }
@@ -462,8 +470,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
         Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
-        Some(StatusDialogKind::ProviderConnect { provider_id }) => {
-            Some(render_provider_connect_dialog(props, provider_id))
+        Some(StatusDialogKind::ProviderConnect { provider_id, step }) => {
+            Some(render_provider_connect_dialog(props, provider_id, step))
         }
         _ => None,
     };
@@ -473,18 +481,25 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
 
 /// Render the provider connect dialog.
-fn render_provider_connect_dialog(props: &mut StatusZoneProps, _provider_id: Option<String>) -> AnyElement<'static> {
+fn render_provider_connect_dialog(
+    props: &mut StatusZoneProps,
+    _provider_id: Option<String>,
+    step: ProviderConnectStep,
+) -> AnyElement<'static> {
     use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
-    
-    let selected = props.approval_selected.clone().expect("approval_selected should be set");
+
+    let selected = props
+        .provider_connect_selected
+        .clone()
+        .or_else(|| props.approval_selected.clone())
+        .expect("provider_connect_selected or approval_selected should be set");
     let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
-    
-    render_dialog(
-        props.screen_width,
-        props.approval_has_focus,
-        selected,
-        api_key_input,
-    )
+    let filter = props
+        .provider_connect_filter
+        .clone()
+        .expect("provider_connect_filter should be set");
+
+    render_dialog(props.screen_width, props.approval_has_focus, selected, filter, api_key_input, step)
 }
 
     element! {
@@ -550,11 +565,15 @@ pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
 /// Build the provider connect dialog when pending.
 pub fn build_provider_connect_dialog_kind(
     provider_id: Option<String>,
+    step: Option<ProviderConnectStep>,
     _selected: State<usize>,
     has_focus: bool,
 ) -> Option<StatusDialogKind> {
     if has_focus {
-        Some(StatusDialogKind::ProviderConnect { provider_id })
+        Some(StatusDialogKind::ProviderConnect {
+            provider_id,
+            step: step.unwrap_or(ProviderConnectStep::SelectProvider),
+        })
     } else {
         None
     }

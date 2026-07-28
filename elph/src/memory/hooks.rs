@@ -107,7 +107,8 @@ fn format_memory_context(memories: &[Memory]) -> String {
     lines.push("The following are relevant lessons retrieved from previous sessions:".to_string());
     for (i, mem) in memories.iter().enumerate() {
         let preview = if mem.content.len() > 200 {
-            format!("{}...", &mem.content[..200])
+            let truncated: String = mem.content.chars().take(200).collect();
+            format!("{truncated}...")
         } else {
             mem.content.clone()
         };
@@ -173,7 +174,9 @@ fn extract_usage_from_agent_message(msg: &elph_agent::AgentMessage) -> Option<Us
 fn format_tool_error_lesson(tool_name: &str, args: &Value) -> String {
     let args_preview = serde_json::to_string(args).unwrap_or_default();
     let args_short = if args_preview.len() > 300 {
-        format!("{}...", &args_preview[..300])
+        // Use char-counted truncation to avoid panicking on multi-byte UTF-8 boundaries.
+        let truncated: String = args_preview.chars().take(300).collect();
+        format!("{truncated}...")
     } else {
         args_preview
     };
@@ -479,7 +482,8 @@ pub async fn build_memories_context(paths: &Paths) -> Result<String> {
 
     for (i, mem) in top.iter().enumerate() {
         let preview = if mem.content.len() > 160 {
-            format!("{}...", &mem.content[..160])
+            let truncated: String = mem.content.chars().take(160).collect();
+            format!("{truncated}...")
         } else {
             mem.content.clone()
         };

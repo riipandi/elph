@@ -59,7 +59,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin("provider", "Manage providers (connect, disconnect)"),
+        builtin_with_args("provider", "Manage providers (connect, disconnect)", "connect|disconnect"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
@@ -241,6 +241,44 @@ const CONFETTI_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
+const MEMORY_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "status",
+        description: "Show memory status",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "List memory entries",
+    },
+    SlashArgCompletion {
+        value: "tasks",
+        description: "Show memory tasks",
+    },
+    SlashArgCompletion {
+        value: "log",
+        description: "Show memory log",
+    },
+    SlashArgCompletion {
+        value: "search",
+        description: "Search memory",
+    },
+    SlashArgCompletion {
+        value: "purge",
+        description: "Purge all memory",
+    },
+];
+
+const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "connect",
+        description: "Connect to an AI provider",
+    },
+    SlashArgCompletion {
+        value: "disconnect",
+        description: "Disconnect from an AI provider",
+    },
+];
+
 const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "status",
@@ -274,6 +312,8 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
         "tools" => Some(TOOLS_ARG_COMPLETIONS),
         "goal" | "goals" => Some(GOAL_ARG_COMPLETIONS),
         "confetti" | "conffety" | "confetty" => Some(CONFETTI_ARG_COMPLETIONS),
+        "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
+        "provider" => Some(PROVIDER_ARG_COMPLETIONS),
         _ => None,
     }
 }
@@ -528,6 +568,9 @@ mod tests {
     fn slash_arg_completions_cover_tools_and_goal() {
         assert!(slash_arg_completions("tools").is_some());
         assert!(slash_arg_completions("goal").is_some());
+        assert!(slash_arg_completions("memory").is_some());
+        assert!(slash_arg_completions("mem").is_some());
+        assert!(slash_arg_completions("provider").is_some());
         assert!(slash_arg_completions("model").is_none());
     }
 
