@@ -3037,6 +3037,7 @@ dependencies = [
  "schemars 1.2.1",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.19",

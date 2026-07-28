@@ -98,6 +98,19 @@ Tools are classified into permission levels. The `ToolPolicy` (`/elph/src/agent/
 
 **Source:** `/elph/src/agent/tool_policy.rs`
 
+## Memory hooks
+
+The agent runtime integrates with the floppy memory store through automatic hooks (`/elph/src/memory/hooks.rs`). These hooks run per-turn without user intervention:
+
+1. **Automatic Memory Recall** (`before_agent_start`) — semantic search injects top-weighted relevant memories into the system prompt.
+2. **Auto-Correction** (`before_agent_start` + `on_tool_result`) — detects user corrections and tool errors, persists them as correction/user memories.
+3. **Auto Task Lifecycle** (`before_agent_start` + `TurnEnd`) — auto-starts and auto-ends tasks at natural turn boundaries so weight training runs correctly.
+4. **Adaptive Recall Threshold** (P2) — dynamic threshold based on total memory count and weights.
+
+The hooks are registered via `register_automatic_memory_hooks()` in the agent harness. Memory operations use a timeout-based lock strategy to gracefully skip on database contention.
+
+**Source:** `/elph/src/memory/hooks.rs`, `/elph/src/agent/runtime.rs`
+
 ## MCP integration
 
 See [mcp-integration.md](mcp-integration.md) for full details.
@@ -105,7 +118,7 @@ See [mcp-integration.md](mcp-integration.md) for full details.
 The MCP tool registry (`tools/mcp/`) supports:
 
 - **Transport**: stdio child process, HTTP (Streamable HTTP), SSE
-- **Auth**: Bearer token (env or inline), OAuth with PKCE, encrypted `auth.json`
+- **Auth**: Bearer token (env or inline), OAuth with PKCE, encrypted `auth.json`, xAI device-code OAuth
 - **Policy engine**: per-server tool allow/deny/approval rules
 - **Hot reload**: `elph mcp reload` without restart
 - **Notifications**: server-initiated notifications via the registry

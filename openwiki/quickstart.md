@@ -85,6 +85,26 @@ The core agent runtime (`elph-agent`) implements a turn cycle:
 4. When model stops calling tools → persist history → emit turn completion
 5. Automatic compaction when limits are reached (~32 messages, ~512KB)
 
+### xAI provider and OAuth
+
+xAI (Grok) is now a first-class provider with both API key and OAuth authentication:
+
+- **Provider** (`xai_provider`): OpenAI-compatible endpoint at `https://api.x.ai/v1`, supports `openai-completions` and `openai-responses` APIs. Key: `XAI_API_KEY`.
+- **OAuth** (`xai_oauth`): Device-code flow for Grok models, ported from pi's `xai.ts`. Uses `XAI_API_KEY` for API access and OAuth for interactive login.
+
+**Source:** `crates/elph-ai/src/providers/xai.rs`, `crates/elph-ai/src/auth/oauth/xai.rs`
+
+### Memory hooks
+
+Automatic per-turn hooks integrate the floppy memory store with the agent loop:
+
+1. **Memory Recall** — semantic search injects relevant memories into the system prompt before each turn.
+2. **Auto-Correction** — detects user corrections and tool errors, persists as correction memories.
+3. **Task Lifecycle** — auto-starts and auto-ends tasks at natural turn boundaries for weight training.
+4. **Adaptive Threshold** — dynamic recall threshold based on memory count and weights.
+
+**Source:** `/elph/src/memory/hooks.rs`
+
 ## Documentation map
 
 | Page                                                     | Covers                                                             |

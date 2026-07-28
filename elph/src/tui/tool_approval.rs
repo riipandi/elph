@@ -163,7 +163,7 @@ pub const FEEDBACK_OPTIONS: &[(&str, &str, &str)] = &[
     (
         "💬 Join Community",
         "Open Buzz community",
-        "buzz://add-community?relay=wss%3A%2F%2Felph.communities.buzz.xyz%2F&name=elph",
+        "https://elph.communities.buzz.xyz/invite/v2.L0iCLgw6NSanQojj9em5j63xCRzuovvAljescKJ8drU",
     ),
 ];
 

@@ -72,14 +72,34 @@ elph completions bash    # Generate shell completions
 
 ### Slash commands
 
-| Command    | Description                                                             |
-| ---------- | ----------------------------------------------------------------------- |
-| `/new`     | Start a fresh session in-place (reloads resources, no exit + re-launch) |
-| `/compact` | Compact conversation history                                            |
-| `/goal`    | Manage goals/todos                                                      |
-| `/reload`  | Reload extensions and skills                                            |
+| Command     | Description                                                                      |
+| ----------- | -------------------------------------------------------------------------------- |
+| `/new`      | Start a fresh session in-place (reloads resources, no exit + re-launch)          |
+| `/compact`  | Compact conversation history                                                     |
+| `/goal`     | Manage goals/todos                                                               |
+| `/reload`   | Reload extensions and skills                                                     |
+| `/memory`   | Agent memory store (floppy): `status`, `list`, `tasks`, `log`, `search`, `purge` |
+| `/feedback` | Report a bug or join community (opens GitHub issue template chooser)             |
+| `/rename`   | Rename the current session (no arguments; opens rename dialog)                   |
 
 **Source:** `/elph/src/agent/slash_commands.rs`, `/elph/src/tui/slash_handler.rs`
+
+### `/feedback` — Bug reports and community
+
+The `/feedback` slash command opens a feedback dialog with two options:
+
+1. **Report a Bug** — opens `https://github.com/riipandi/elph/issues/new/choose` (GitHub issue template chooser)
+2. **Join Community** — opens the community link
+
+The dialog is rendered as a `StatusDialogKind::Feedback` in the TUI status zone. The `feedback` command is not available via ACP (agent client protocol).
+
+**Source:** `/elph/src/tui/tool_approval.rs`, `/elph/src/tui/status_dialog.rs`, `/elph/src/platform/acp/handler.rs`
+
+### `/memory` — Agent memory store
+
+The `/memory` slash command dispatches to the floppy memory store as a background task (async, non-blocking). Supported subcommands: `status`, `list`, `tasks`, `log`, `search`, `purge`. Memory operations require a project directory and are not available via ACP.
+
+**Source:** `/elph/src/agent/slash_commands.rs`, `/elph/src/tui/slash_handler.rs`, `/elph/src/platform/acp/handler.rs`
 
 ### BackgroundTask async dispatch
 
@@ -177,7 +197,7 @@ Settings are JSON with domain groups:
 | `ELPH_MCP_DISABLED`           | Skip MCP discovery                                   |
 | `ELPH_MCP_FETCH_TIMEOUT_SECS` | Per-server connection timeout                        |
 
-Provider keys are read from standard env vars: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEEK_API_KEY`, etc.
+Provider keys are read from standard env vars: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEEK_API_KEY`, `XAI_API_KEY`, etc.
 
 **Source:** `/docs/configuration.md`, `/elph/src/platform/paths.rs`
 

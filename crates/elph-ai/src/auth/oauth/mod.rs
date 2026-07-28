@@ -1,4 +1,4 @@
-//! OAuth flows for Anthropic, GitHub Copilot, and OpenAI Codex.
+//! OAuth flows for Anthropic, GitHub Copilot, OpenAI Codex, and xAI.
 
 mod anthropic;
 mod callback;
@@ -9,6 +9,7 @@ mod openai_codex;
 mod pages;
 mod pkce;
 mod registry;
+mod xai;
 
 pub use anthropic::{anthropic_oauth, anthropic_oauth_loader, login_anthropic, refresh_anthropic_token};
 pub use github_copilot::{get_github_copilot_base_url, github_copilot_oauth, github_copilot_oauth_loader};
@@ -23,3 +24,4 @@ pub use registry::{OAuthApiKeyResult, OAuthModifyModelsFn, OAuthProviderId, OAut
 pub use registry::{builtin_oauth_provider_ids, get_oauth_api_key, get_oauth_provider, get_oauth_providers};
 pub use registry::{github_copilot_catalog_models, oauth_provider_login, oauth_provider_modify_models};
 pub use registry::{oauth_provider_to_auth, refresh_oauth_token, register_oauth_provider, reset_oauth_providers};
+pub use xai::{xai_oauth, xai_oauth_loader};

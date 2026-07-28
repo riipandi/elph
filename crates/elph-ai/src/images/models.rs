@@ -2,89 +2,82 @@
 
 use std::collections::HashMap;
 
-use std::sync::LazyLock;
 use serde::Deserialize;
+use std::sync::LazyLock;
 
 use crate::types::{ImagesModel, ModelCost};
 
 #[derive(Debug, Deserialize)]
 struct RawImageModel {
-id: String,
-name: String,
-api: String,
-provider: String,
-#[serde(rename = "baseUrl")]
-base_url: String,
-input: Vec<String>,
-output: Vec<String>,
-cost: RawCost,
+    id: String,
+    name: String,
+    api: String,
+    provider: String,
+    #[serde(rename = "baseUrl")]
+    base_url: String,
+    input: Vec<String>,
+    output: Vec<String>,
+    cost: RawCost,
 }
 
 #[derive(Debug, Deserialize)]
 struct RawCost {
-input: f64,
-output: f64,
-#[serde(rename = "cacheRead")]
-cache_read: f64,
-#[serde(rename = "cacheWrite")]
-cache_write: f64,
+    input: f64,
+    output: f64,
+    #[serde(rename = "cacheRead")]
+    cache_read: f64,
+    #[serde(rename = "cacheWrite")]
+    cache_write: f64,
 }
 
 fn parse_image_models(json: &str) -> Vec<ImagesModel> {
-let raw: HashMap<String, RawImageModel> =
-serde_json::from_str(json).expect("invalid embedded image model catalog");
-raw.into_values().map(convert_image_model).collect()
+    let raw: HashMap<String, RawImageModel> = serde_json::from_str(json).expect("invalid embedded image model catalog");
+    raw.into_values().map(convert_image_model).collect()
 }
 
 fn convert_image_model(raw: RawImageModel) -> ImagesModel {
-ImagesModel {
-id: raw.id,
-name: raw.name,
-api: raw.api,
-provider: raw.provider,
-base_url: raw.base_url,
-input: raw.input,
-output: raw.output,
-cost: ModelCost {
-input: raw.cost.input,
-output: raw.cost.output,
-cache_read: raw.cost.cache_read,
-cache_write: raw.cost.cache_write,
-tiers: None,
-},
-headers: None,
-}
+    ImagesModel {
+        id: raw.id,
+        name: raw.name,
+        api: raw.api,
+        provider: raw.provider,
+        base_url: raw.base_url,
+        input: raw.input,
+        output: raw.output,
+        cost: ModelCost {
+            input: raw.cost.input,
+            output: raw.cost.output,
+            cache_read: raw.cost.cache_read,
+            cache_write: raw.cost.cache_write,
+            tiers: None,
+        },
+        headers: None,
+    }
 }
 
 macro_rules! define_image_catalog {
-($name:ident, $file:literal) => {
-pub static $name: LazyLock<Vec<ImagesModel>> = LazyLock::new(|| {
-parse_image_models(include_str!(concat!(
-env!("CARGO_MANIFEST_DIR"),
-"/models/images/",
-$file
-)))
-});
-};
+    ($name:ident, $file:literal) => {
+        pub static $name: LazyLock<Vec<ImagesModel>> = LazyLock::new(|| {
+            parse_image_models(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/models/images/", $file)))
+        });
+    };
 }
 
 define_image_catalog!(OPENROUTER_IMAGE_MODELS, "openrouter.json");
 
 pub fn all_builtin_image_models() -> HashMap<&'static str, &'static [ImagesModel]> {
-HashMap::from([
-        ("openrouter", OPENROUTER_IMAGE_MODELS.as_slice()),
-    ])
+    HashMap::from([("openrouter", OPENROUTER_IMAGE_MODELS.as_slice())])
 }
 
 pub fn get_builtin_image_models(provider: &str) -> Vec<ImagesModel> {
-all_builtin_image_models()
-.get(provider)
-.map(|models| models.to_vec())
-.unwrap_or_default()
+    all_builtin_image_models()
+        .get(provider)
+        .map(|models| models.to_vec())
+        .unwrap_or_default()
 }
 
 pub fn get_builtin_image_providers() -> Vec<&'static str> {
-let mut providers: Vec<_> = all_builtin_image_models().keys().copied().collect();
-providers.sort_unstable();
-providers
+    let mut providers: Vec<_> = all_builtin_image_models().keys().copied().collect();
+    providers.sort_unstable();
+    providers
 }

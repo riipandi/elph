@@ -134,7 +134,7 @@ elph/src/
 │   │   ├── handler.rs    # Prompt dispatch and slash command routing
 │   │   └── util.rs       # Notification chunking, event streaming, text extraction
 │   ├── exit_message.rs   # Exit message display
-│   └── provider.rs       # Provider config (added opencode-go)
+│   └── provider.rs       # Provider config (added opencode-go, sumopod, neuralwatt, qwen-token-plan, qwen-token-plan-cn, xai)
 │
 ├── memory/               # Agent memory
 │   ├── mod.rs
@@ -270,17 +270,30 @@ crates/elph-ai/src/
 │   ├── mod.rs
 │   ├── api_key.rs
 │   ├── env.rs
-│   ├── oauth.rs          # OAuth 2.1 + PKCE
+│   ├── oauth/          # OAuth 2.1 + PKCE
+│   │   ├── mod.rs
+│   │   ├── xai.rs      # xAI device-code OAuth flow
+│   │   └── ...
 │   └── store.rs          # Credential store
 │
-├── models/               # Model catalog
+├── models/               # Model catalog (JSON files + Rust catalog)
 │   ├── mod.rs
-│   └── builtin.json      # Built-in model definitions (JSON)
+│   ├── builtin.json      # Built-in model definitions (JSON)
+│   ├── index.json        # Master model catalog index
+│   ├── openrouter.json   # OpenRouter model catalog
+│   ├── sumopod.json      # Sumopod model catalog
+│   ├── neuralwatt.json   # Neuralwatt model catalog
+│   ├── qwen_token_plan.json      # Qwen Token Plan model catalog
+│   ├── qwen_token_plan_cn.json   # Qwen Token Plan (China) model catalog
+│   ├── pricing.rs        # Pricing enrichment module (per-model cost helpers)
+│   └── xai.rs            # xAI model definitions
 │
 ├── providers/            # Provider definitions
 │   ├── mod.rs
 │   ├── definitions.rs
-│   └── faux.rs           # Mock provider for testing
+│   ├── faux.rs           # Mock provider for testing
+│   ├── builtin.rs        # Built-in provider registry (30+ providers including xai)
+│   └── xai.rs            # xAI provider (Grok)
 │
 ├── images/               # Image generation
 ├── types/                # Core types

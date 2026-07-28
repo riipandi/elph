@@ -116,8 +116,9 @@ Shows:
 | Session preferences | `ctrl+,`       | Open session settings                                                              |
 | Queue manager       | `ctrl+q`       | Open/close numbered prompt queue (Send / Edit / Cancel queued items)               |
 | Interject prompt    | `ctrl+enter`   | If queue non-empty: send top item immediately. Else interject editor text mid-turn |
+| Feedback dialog     | `/feedback`    | Open bug report / community dialog (GitHub issue template chooser)                 |
 
-**Source:** `/elph/src/tui/focus.rs`, `/elph/src/tui/model_selector.rs`
+**Source:** `/elph/src/tui/focus.rs`, `/elph/src/tui/model_selector.rs`, `/elph/src/tui/tool_approval.rs`
 
 ## Theme system
 
