@@ -21,13 +21,13 @@ fn render_markdown_part(
     document: Option<&MarkdownDocument>,
     fallback_source: &str,
     fallback_foreground: Color,
-    width: u16,
+    _width: u16,
 ) -> MarkdownDocument {
     if let Some(doc) = document {
         return doc.clone();
     }
-    // Always render markdown tables properly, even without cache
-    // Parse the markdown to ensure tables are recognized and rendered correctly
+    // Always render markdown properly, even without cache
+    // Parse the markdown to ensure all elements (tables, codeblocks, etc.) are recognized
     let doc = parse_markdown_document(fallback_source);
     if doc.is_empty() {
         plain_text_document(fallback_source, fallback_foreground)
@@ -46,6 +46,8 @@ pub fn render_markdown_buffer(
     let width = width.max(1);
     let mut document = MarkdownDocument::default();
     let mut source_start = 0usize;
+
+    // Process all stable parts
     for part in &buffer.parts {
         let end = part.source_end.min(raw.len());
         let start = source_start.min(end);
@@ -58,23 +60,43 @@ pub fn render_markdown_buffer(
         document = merge_documents(document, part_doc);
         source_start = end;
     }
+
+    // Handle streaming tail with improved codeblock preservation
     let mut tail = buffer.tail(raw);
-    // Bound live paint cost: only the recent streaming tail is re-parsed each frame.
-    const TAIL_PAINT_MAX: usize = 4_000;
-    if tail.len() > TAIL_PAINT_MAX {
-        let start = tail
-            .char_indices()
-            .rev()
-            .nth(TAIL_PAINT_MAX.saturating_sub(1))
-            .map(|(i, _)| i)
-            .unwrap_or(0);
-        tail = &tail[start..];
+
+    // Check if we're in the middle of any fenced codeblock
+    let is_in_codeblock = {
+        let content_before_tail = &raw[..source_start];
+        content_before_tail.ends_with("```") || content_before_tail.ends_with("~~~")
+    };
+
+    // For codeblocks, preserve the entire remaining content to prevent truncation
+    if is_in_codeblock {
+        // Show the entire tail when in a codeblock to ensure complete display
+        // This prevents codeblocks from being cut off mid-stream
+        if !tail.is_empty() {
+            document = merge_documents(document, streaming_tail_document(tail));
+        }
+    } else {
+        // Regular content: use optimized tail rendering
+        const TAIL_PAINT_MAX: usize = 4_000;
+        if tail.len() > TAIL_PAINT_MAX {
+            let start = tail
+                .char_indices()
+                .rev()
+                .nth(TAIL_PAINT_MAX.saturating_sub(1))
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            tail = &tail[start..];
+        }
+        if !tail.is_empty() {
+            document = merge_documents(document, streaming_tail_document(tail));
+        }
     }
-    if !tail.is_empty() {
-        document = merge_documents(document, streaming_tail_document(tail));
-    }
+
     if document.is_empty() {
         return render_linkified_plain_text(raw, tail_foreground, width);
     }
+
     render_markdown_block(&document, width)
 }

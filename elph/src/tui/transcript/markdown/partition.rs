@@ -39,6 +39,7 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
 }
 
 /// Advance through fully closed fenced blocks that start at or after `boundary`.
+/// This ensures complete codeblocks are frozen as stable, preventing truncation.
 fn extend_past_closed_fences(raw: &str, boundary: usize, search_end: usize) -> usize {
     let mut end = boundary;
     let mut scan = boundary;
@@ -53,37 +54,65 @@ fn extend_past_closed_fences(raw: &str, boundary: usize, search_end: usize) -> u
         };
         let close = after_open + rel_close;
         let after_close = close + 3;
-        let block_end = raw[after_close..search_end]
-            .find('\n')
-            .map(|index| after_close + index + 1)
-            .unwrap_or(search_end);
+
+        // Include the entire codeblock including the closing fence
+        let block_end = after_close;
+
         if block_end > end {
             end = block_end;
         }
-        scan = block_end.max(after_close);
+        scan = block_end;
     }
     end
 }
 
 /// Cap parsing before an unclosed fenced code block.
+/// Improved to handle both ``` and ~~~ fences and ensure we don't cut in the middle of a codeblock.
 fn fence_safe_end(raw: &str) -> usize {
-    let mut count = 0usize;
-    let mut last_open = 0usize;
+    let mut open_fences: Vec<(usize, &str)> = Vec::new();
     let mut pos = 0usize;
+
+    // First pass: find all fence openings
     while let Some(rel) = raw[pos..].find("```") {
         let abs = pos + rel;
-        count += 1;
-        last_open = abs;
+        open_fences.push((abs, "```"));
         pos = abs + 3;
     }
+
     pos = 0;
     while let Some(rel) = raw[pos..].find("~~~") {
         let abs = pos + rel;
-        count += 1;
-        last_open = last_open.max(abs);
+        open_fences.push((abs, "~~~"));
         pos = abs + 3;
     }
-    if count % 2 == 1 { last_open } else { raw.len() }
+
+    // Sort by position
+    open_fences.sort_by_key(|&(pos, _)| pos);
+
+    // Find the last unclosed fence
+    let mut last_unclosed = 0usize;
+    for &(open_pos, fence_type) in &open_fences {
+        let fence_len = fence_type.len();
+        let after_open = open_pos + fence_len;
+
+        if let Some(rel_close) = raw[after_open..].find(fence_type) {
+            let close_pos = after_open + rel_close;
+            let after_close = close_pos + fence_len;
+            // This fence is closed, continue scanning
+            last_unclosed = after_close;
+        } else {
+            // Unclosed fence - stop at its opening
+            last_unclosed = open_pos;
+            break;
+        }
+    }
+
+    // If all fences are closed, return full length
+    if open_fences.is_empty() || open_fences.len() % 2 == 0 {
+        raw.len()
+    } else {
+        last_unclosed
+    }
 }
 
 fn has_unclosed_inline_markers(slice: &str) -> bool {
@@ -211,10 +240,20 @@ mod tests {
     #[test]
     fn closed_fence_stabilizes_without_trailing_paragraph_break() {
         let raw = "intro\n\n```rust\nlet x = 1;\n```\nnext line";
-        let fence_end = raw.find("```\nnext").map(|index| index + 4).expect("close fence");
+        let fence_close_pos = raw.find("```").expect("fence open");
+        let fence_open = fence_close_pos + 3; // After ```
+        let fence_close = raw[fence_open..]
+            .find("```")
+            .map(|i| fence_open + i)
+            .expect("fence close");
+        let fence_end = fence_close + 3; // After ```
+        let stable_boundary = find_stable_boundary(raw, false);
         assert!(
-            find_stable_boundary(raw, false) >= fence_end,
-            "expected stable prefix through closed fence"
+            stable_boundary >= fence_end,
+            "expected stable prefix through closed fence, got {} < {} (fence_end={})",
+            stable_boundary,
+            fence_end,
+            fence_end
         );
     }
 }
