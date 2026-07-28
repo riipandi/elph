@@ -2804,10 +2804,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let plan_file = pending.plan_file.clone();
                             let harness_choice = to_harness_choice(choice);
                             tokio::spawn(async move {
-                                if let Some(choice) = harness_choice {
-                                    if let Err(err) = session.resolve_plan_with_file(choice, plan_file).await {
-                                        log::error!("plan confirmation failed: {err}");
-                                    }
+                                if let Some(choice) = harness_choice
+                                    && let Err(err) = session.resolve_plan_with_file(choice, plan_file).await
+                                {
+                                    log::error!("plan confirmation failed: {err}");
                                 }
                             });
                         }

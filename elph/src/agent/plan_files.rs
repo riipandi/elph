@@ -79,7 +79,6 @@ mod tests {
     #[test]
     fn save_plan_to_disk_creates_file() {
         use std::path::Path;
-        use std::path::PathBuf;
         let tmp = tempfile::tempdir().expect("tempdir");
         let project = tmp.path().join("repo");
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), project.clone());
