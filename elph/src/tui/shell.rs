@@ -2914,11 +2914,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let pending_ref = pending_provider_connect.read();
                         pending_ref.as_ref().map(|p| p.step)
                     };
+                    let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
                     let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
+                    let _is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
+                    let _is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
 
                     // ── Esc ──────────────────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Esc {
-                        // Esc always closes the dialog from either step
+                        // Esc always closes the dialog from any step
                         close_provider_connect_dialog(
                             &mut pending_provider_connect,
                             &mut provider_connect_selected,
@@ -2935,6 +2938,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                     // ── Enter (confirm) ──────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Enter {
+                        if is_select_auth_method {
+                            // Confirm authentication method selection
+                            let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+                            let selected_idx = provider_connect_selected.read().clone();
+                            if auth_methods.get(selected_idx).is_some() {
+                                // Transition to provider selection
+                                if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                    pending.step = ProviderConnectStep::SelectProvider;
+                                    pending.selected_auth_method = selected_idx;
+                                    pending.input_focus = ProviderConnectFocus::List;
+                                    provider_connect_input_focus.set(ProviderConnectFocus::List);
+                                    provider_connect_selected.set(0);
+                                    provider_connect_filter.set(String::new());
+                                }
+                            }
+                            return;
+                        }
+
                         if is_select_provider {
                             // Only confirm when focus is on the list, not the search field
                             let focus = pending_provider_connect
@@ -2957,20 +2978,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 &current_filter,
                                 selected_idx,
                             ) {
-                                if provider_supports_oauth(&provider.id) {
-                                    // OAuth — close and trigger OAuth
-                                    close_provider_connect_dialog(
-                                        &mut pending_provider_connect,
-                                        &mut provider_connect_selected,
-                                        &mut provider_connect_filter,
-                                        &mut provider_connect_api_key,
-                                        &mut provider_connect_input_focus,
-                                        &mut draft,
-                                        &mut live_draft,
-                                        &mut shell_focus,
-                                        false,
-                                    );
-                                    log::info!("Starting OAuth flow for provider: {}", provider.id);
+                                let auth_method_idx = pending_provider_connect
+                                    .read()
+                                    .as_ref()
+                                    .map(|p| p.selected_auth_method)
+                                    .unwrap_or(0);
+                                let is_oauth_method = auth_method_idx == 0; // First method is OAuth
+                                
+                                if provider_supports_oauth(&provider.id) && is_oauth_method {
+                                    // OAuth — transition to OAuth device code step
+                                    if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                        pending.oauth_provider_name = format_provider_name(&provider.id);
+                                        pending.oauth_url = String::new(); // Will be filled by OAuth flow
+                                        pending.oauth_code = String::new();
+                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                        provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                        provider_connect_api_key.set(String::new());
+                                    }
                                 } else {
                                     // API Key: close provider selection, open dedicated API key dialog
                                     let provider_id = provider.id.clone();
@@ -2999,6 +3024,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         return;
+                    }
+
+                    // ── Character handling for auth method selection ─────
+                    if is_select_auth_method {
+                        if !modifiers.is_empty() {
+                            // Ignore modified keys
+                        } else {
+                            let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+                            
+                            // List navigation (↑↓ or j/k)
+                            if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                                let pending_ref = &mut *pending_provider_connect.write();
+                                if let Some(pending) = pending_ref {
+                                    let count = auth_methods.len();
+                                    if count > 0 {
+                                        let new_idx = ((pending.selected_auth_method as isize + delta)
+                                            .rem_euclid(count as isize)) as usize;
+                                        pending.selected_auth_method = new_idx;
+                                        provider_connect_selected.set(new_idx);
+                                    }
+                                }
+                                return;
+                            }
+                        }
                     }
 
                     // ── Character handling for provider selection ──────
@@ -4442,7 +4491,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .read()
                 .as_ref()
                 .map(|p| p.input_focus)
-                .unwrap_or(ProviderConnectFocus::List);
+                .unwrap_or(ProviderConnectFocus::AuthMethodList);
             build_provider_connect_dialog_kind(
                 pending_provider_connect
                     .read()

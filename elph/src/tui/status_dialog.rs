@@ -646,7 +646,7 @@ pub fn build_provider_connect_dialog_kind(
     if has_focus {
         Some(StatusDialogKind::ProviderConnect {
             provider_id,
-            step: step.unwrap_or(ProviderConnectStep::SelectProvider),
+            step: step.unwrap_or(ProviderConnectStep::SelectAuthMethod),
             input_focus,
         })
     } else {
