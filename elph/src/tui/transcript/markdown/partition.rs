@@ -67,52 +67,24 @@ fn extend_past_closed_fences(raw: &str, boundary: usize, search_end: usize) -> u
 }
 
 /// Cap parsing before an unclosed fenced code block.
-/// Improved to handle both ``` and ~~~ fences and ensure we don't cut in the middle of a codeblock.
 fn fence_safe_end(raw: &str) -> usize {
-    let mut open_fences: Vec<(usize, &str)> = Vec::new();
+    let mut count = 0usize;
+    let mut last_open = 0usize;
     let mut pos = 0usize;
-
-    // First pass: find all fence openings
     while let Some(rel) = raw[pos..].find("```") {
         let abs = pos + rel;
-        open_fences.push((abs, "```"));
+        count += 1;
+        last_open = abs;
         pos = abs + 3;
     }
-
     pos = 0;
     while let Some(rel) = raw[pos..].find("~~~") {
         let abs = pos + rel;
-        open_fences.push((abs, "~~~"));
+        count += 1;
+        last_open = last_open.max(abs);
         pos = abs + 3;
     }
-
-    // Sort by position
-    open_fences.sort_by_key(|&(pos, _)| pos);
-
-    // Find the last unclosed fence
-    let mut last_unclosed = 0usize;
-    for &(open_pos, fence_type) in &open_fences {
-        let fence_len = fence_type.len();
-        let after_open = open_pos + fence_len;
-
-        if let Some(rel_close) = raw[after_open..].find(fence_type) {
-            let close_pos = after_open + rel_close;
-            let after_close = close_pos + fence_len;
-            // This fence is closed, continue scanning
-            last_unclosed = after_close;
-        } else {
-            // Unclosed fence - stop at its opening
-            last_unclosed = open_pos;
-            break;
-        }
-    }
-
-    // If all fences are closed, return full length
-    if open_fences.is_empty() || open_fences.len() % 2 == 0 {
-        raw.len()
-    } else {
-        last_unclosed
-    }
+    if count % 2 == 1 { last_open } else { raw.len() }
 }
 
 fn has_unclosed_inline_markers(slice: &str) -> bool {
