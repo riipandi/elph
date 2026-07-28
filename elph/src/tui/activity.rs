@@ -361,6 +361,7 @@ mod tests {
                     id: "1".into(),
                     name: "read_file".into(),
                     args_summary: "{}".into(),
+                    user_shell: false,
                 },
                 false
             ),
@@ -372,6 +373,7 @@ mod tests {
                     id: "2".into(),
                     name: "wait_agent".into(),
                     args_summary: "{}".into(),
+                    user_shell: false,
                 },
                 false
             ),

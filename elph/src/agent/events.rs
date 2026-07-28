@@ -53,6 +53,8 @@ pub enum AgentUiEvent {
         id: String,
         name: String,
         args_summary: String,
+        /// User-initiated shell execution (`!`/`!!`) — output renders unlimited.
+        user_shell: bool,
     },
     ToolUpdate {
         id: String,

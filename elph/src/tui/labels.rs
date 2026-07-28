@@ -157,7 +157,7 @@ pub fn header_stats_label(
     context_limit: u64,
     display: &str,
 ) -> String {
-    let cost = format!("${cost_usd:.2}");
+    let cost = format!("${cost_usd:.4}");
     format!(
         "{cost} | {}",
         context_usage_label(tokens_used, context_pct, context_limit, display)

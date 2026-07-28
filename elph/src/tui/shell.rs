@@ -802,7 +802,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let startup_messages = props.startup_messages.clone();
     let mut messages = hooks.use_state(move || startup_messages);
     let startup_messages_arc = props.startup_messages.clone();
-    let messages_arc = hooks.use_ref(move || Arc::new(RwLock::new(startup_messages_arc)));
+    let mut messages_arc = hooks.use_ref(move || Arc::new(RwLock::new(startup_messages_arc)));
 
     let mut messages_revision = hooks.use_state(|| 0u64);
     let mut suppress_enter_newline = hooks.use_ref(|| false);
@@ -4194,13 +4194,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         id: tool_id.clone(),
                                         name: "shell_exec".into(),
                                         args_summary: shell_exec_args_summary(&body),
+                                        user_shell: true,
                                     },
                                 ) {
-                                    // Mark the tool message as user-initiated shell so rendering
-                                    // can show output without truncation limits.
-                                    if let Some(msg) = msgs.last_mut() {
-                                        msg.user_shell = true;
-                                    }
+                                    // Sync to shared arc so background ToolUpdate/ToolEnd
+                                    // (which read from messages_arc_inner) find the message.
+                                    *messages_arc.write().write().unwrap() = msgs.clone();
                                     messages_revision.set(messages_revision.get().wrapping_add(1));
                                 }
                             }

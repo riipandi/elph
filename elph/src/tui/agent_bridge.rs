@@ -364,6 +364,13 @@ impl TranscriptEventApplier {
         }
     }
 
+    /// Collapse the most recent expanded user-shell tool so new activity has room.
+    fn fold_user_shell(&mut self, messages: &mut [TranscriptMessage]) {
+        if let Some(msg) = messages.iter_mut().rev().find(|m| m.user_shell) {
+            msg.detail_expanded = false;
+        }
+    }
+
     fn finalize_thinking(&mut self, messages: &mut [TranscriptMessage]) {
         let Some(started) = self.thinking_started_at.take() else {
             return;
@@ -394,11 +401,13 @@ impl TranscriptEventApplier {
     }
 
     fn begin_thinking(&mut self, messages: &mut [TranscriptMessage]) {
+        self.fold_user_shell(messages);
         self.finalize_meta(messages);
         self.thinking_started_at = Some(Instant::now());
     }
 
     fn begin_assistant(&mut self, messages: &mut [TranscriptMessage]) {
+        self.fold_user_shell(messages);
         self.finalize_thinking(messages);
         self.finalize_meta(messages);
         self.assistant_started_at = Some(Instant::now());
@@ -414,7 +423,12 @@ impl TranscriptEventApplier {
         match event {
             AgentUiEvent::TextDelta(delta) => self.append_assistant(messages, &delta),
             AgentUiEvent::ThinkingDelta(delta) if self.show_thinking => self.append_thinking(messages, &delta),
-            AgentUiEvent::ToolStart { id, name, args_summary } => self.start_tool(messages, id, name, args_summary),
+            AgentUiEvent::ToolStart {
+                id,
+                name,
+                args_summary,
+                user_shell,
+            } => self.start_tool(messages, id, name, args_summary, user_shell),
             AgentUiEvent::ToolUpdate { id, output } => self.update_tool(messages, &id, &output),
             AgentUiEvent::ToolEnd {
                 id,
@@ -692,14 +706,18 @@ impl TranscriptEventApplier {
         id: String,
         name: String,
         args_summary: String,
+        user_shell: bool,
     ) -> bool {
+        self.fold_user_shell(messages);
         self.finalize_thinking(messages);
         self.finalize_assistant(messages);
         self.finalize_meta(messages);
         let index = messages.len();
         self.live_tool_indexes.insert(id.clone(), index);
         self.tool_started_at.insert(id, Instant::now());
-        messages.push(TranscriptMessage::tool_call(name, args_summary, TranscriptStyle::ToolRunning));
+        let mut msg = TranscriptMessage::tool_call(name, args_summary, TranscriptStyle::ToolRunning);
+        msg.user_shell = user_shell;
+        messages.push(msg);
         true
     }
 
@@ -759,9 +777,11 @@ impl TranscriptEventApplier {
             } else if let Some(secs) = crate::tui::transcript::duration_from_tool_details(details) {
                 message.duration_secs = Some(secs);
             }
-            // Collapse all finished tools for a compact log (verb + target path in header).
-            // Click or Ctrl+O expands to show params, output, or inline diff.
-            message.detail_expanded = false;
+            // Collapse finished tools for a compact log — user shell stays expanded so
+            // the full output remains visible until a new response replaces it.
+            if !message.user_shell {
+                message.detail_expanded = false;
+            }
             return true;
         }
         false
@@ -836,6 +856,7 @@ mod tests {
                 id: "t1".into(),
                 name: "read_file".into(),
                 args_summary: "main.rs".into(),
+                user_shell: false,
             },
         );
         assert_eq!(messages[0].style, TranscriptStyle::ToolRunning);
@@ -862,6 +883,7 @@ mod tests {
                 id: "t2".into(),
                 name: "shell_exec".into(),
                 args_summary: "npm test".into(),
+                user_shell: false,
             },
         );
         applier.apply(
@@ -887,6 +909,7 @@ mod tests {
                 id: "edit1".into(),
                 name: "edit_file".into(),
                 args_summary: r#"{"path":"src/a.rs"}"#.into(),
+                user_shell: false,
             },
         );
         applier.apply(
@@ -924,6 +947,7 @@ mod tests {
                 id: "r1".into(),
                 name: "read_file".into(),
                 args_summary: r#"{"path":"a.rs"}"#.into(),
+                user_shell: false,
             },
         );
         applier.apply(
@@ -949,6 +973,7 @@ mod tests {
                 id: "t3".into(),
                 name: "shell_exec".into(),
                 args_summary: r#"{"command":"cargo test"}"#.into(),
+                user_shell: false,
             },
         );
         applier.apply(
@@ -1078,6 +1103,7 @@ mod tests {
                 id: "t-dur".into(),
                 name: "grep".into(),
                 args_summary: "pattern".into(),
+                user_shell: false,
             },
         );
         std::thread::sleep(std::time::Duration::from_millis(120));
@@ -1228,6 +1254,7 @@ mod tests {
                 id: "t".into(),
                 name: "read_file".into(),
                 args_summary: "{}".into(),
+                user_shell: false,
             },
             AgentUiEvent::ToolUpdate {
                 id: "t".into(),

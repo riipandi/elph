@@ -92,7 +92,7 @@ pub fn fit_header_stats(
     display: &str,
     max_width: usize,
 ) -> String {
-    let cost = format!("${cost_usd:.2}");
+    let cost = format!("${cost_usd:.4}");
     let used = format_token_count(tokens_used);
     let pct_limit = context_pct_limit_label(context_pct, context_limit);
     let full = header_stats_from_chrome(
