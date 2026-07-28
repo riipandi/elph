@@ -178,6 +178,9 @@ pub struct DialogHeaderRowProps {
     pub theme: Option<UiTheme>,
     /// When set, the `[esc]` label is clickable and invokes this handler (mouse down).
     pub on_esc: HandlerMut<'static, ()>,
+    /// When `Some(handler)`, a `[copy]` label is shown before `[esc]` and invokes this handler (mouse down).
+    /// Used by scroll-text dialogs (system prompt, etc.) to copy body content to clipboard.
+    pub on_copy: Option<HandlerMut<'static, ()>>,
 }
 
 impl Default for DialogHeaderRowProps {
@@ -187,6 +190,7 @@ impl Default for DialogHeaderRowProps {
             header: DialogHeader::title("Dialog"),
             theme: None,
             on_esc: HandlerMut::default(),
+            on_copy: None,
         }
     }
 }
@@ -233,8 +237,9 @@ pub fn DialogHeaderRow(props: &mut DialogHeaderRowProps, hooks: Hooks) -> impl I
 
     let esc_hint = chrome.esc_hint.clone();
     let esc_color = chrome.muted_color;
-    // Mouse-only: keyboard Esc is still handled by the app shell.
-    let on_esc = props.on_esc.take();
+    // Mouse-only: keyboard Esc / Copy is still handled by the app shell.
+    let mut on_esc = props.on_esc.take();
+    let copy_handler = props.on_copy.take();
 
     element! {
         View(
@@ -246,12 +251,23 @@ pub fn DialogHeaderRow(props: &mut DialogHeaderRowProps, hooks: Hooks) -> impl I
             View(flex_grow: 1f32, flex_shrink: 1f32, min_width: 0) {
                 #(left)
             }
-            Button(handler: on_esc, has_focus: false) {
-                Text(
-                    content: esc_hint,
-                    color: esc_color,
-                    wrap: TextWrap::NoWrap,
-                )
+            View(flex_shrink: 0f32, flex_direction: FlexDirection::Row, gap: 1) {
+                #(copy_handler.map(|handler| element! {
+                    Button(handler: handler, has_focus: false) {
+                        Text(
+                            content: "[copy]",
+                            color: esc_color,
+                            wrap: TextWrap::NoWrap,
+                        )
+                    }
+                }))
+                Button(handler: on_esc.take(), has_focus: false) {
+                    Text(
+                        content: esc_hint,
+                        color: esc_color,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
             }
         }
     }

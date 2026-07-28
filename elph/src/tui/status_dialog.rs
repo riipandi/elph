@@ -5,7 +5,10 @@ use iocraft::prelude::*;
 
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
-use crate::tui::tool_approval::{PendingToolApproval, tool_approval_footer_hint, tool_approval_select_options};
+use crate::tui::tool_approval::{
+    PendingModeChange, PendingToolApproval, mode_change_footer_hint, mode_change_select_options,
+    tool_approval_footer_hint, tool_approval_select_options,
+};
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
 /// Max rows shown for the approval summary before the list.
@@ -160,6 +163,58 @@ fn render_tool_approval_dialog(
     .into()
 }
 
+fn render_mode_change_dialog(props: &mut StatusZoneProps, target_mode: &str, reason: &str) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(props.screen_width);
+    let mode_label = target_mode.to_ascii_uppercase();
+    let options = mode_change_select_options();
+
+    element! {
+        InlineDialogShell(
+            screen_width: props.screen_width,
+            title: format!("Switch to {mode_label} mode?"),
+            has_focus: props.approval_has_focus,
+            footer_hint: Some(mode_change_footer_hint()),
+        ) {
+            View(
+                width: body_width,
+                flex_direction: FlexDirection::Column,
+                gap: 1,
+                flex_shrink: 0f32,
+            ) {
+                View(
+                    width: body_width,
+                    flex_shrink: 0f32,
+                    overflow: Overflow::Hidden,
+                ) {
+                    Text(
+                        content: reason.to_string(),
+                        color: theme.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(
+                    width: body_width,
+                    padding_top: 1,
+                    flex_shrink: 0f32,
+                ) {
+                    SelectList(
+                        width: body_width,
+                        height: 4u16,
+                        options: options,
+                        selected_index: props.approval_selected,
+                        has_focus: props.approval_has_focus,
+                        show_description: false,
+                        compact: true,
+                        theme: Some(theme),
+                    )
+                }
+            }
+        }
+    }
+    .into()
+}
+
 /// Which action is highlighted on the selected queue row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PromptQueueAction {
@@ -203,6 +258,11 @@ pub enum StatusDialogKind {
     ToolApproval {
         tool_name: String,
         args_summary: String,
+    },
+    /// Mode-change approval dialog (Switch to Build/Brave).
+    ModeChange {
+        target_mode: String,
+        reason: String,
     },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
@@ -322,6 +382,9 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             tool_name,
             args_summary,
         }) => Some(render_tool_approval_dialog(props, &tool_name, &args_summary)),
+        Some(StatusDialogKind::ModeChange { target_mode, reason }) => {
+            Some(render_mode_change_dialog(props, &target_mode, &reason))
+        }
         _ => None,
     };
     let banner = props
@@ -361,6 +424,15 @@ pub fn build_status_dialog_kind(tool: Option<&PendingToolApproval>) -> Option<St
     Some(StatusDialogKind::ToolApproval {
         tool_name: pending.tool_name.clone(),
         args_summary: pending.args_summary.clone(),
+    })
+}
+
+/// Build the active mode-change dialog, if any.
+pub fn build_mode_change_dialog_kind(pending: Option<&PendingModeChange>) -> Option<StatusDialogKind> {
+    let pending = pending?;
+    Some(StatusDialogKind::ModeChange {
+        target_mode: pending.target_mode.clone(),
+        reason: pending.reason.clone(),
     })
 }
 

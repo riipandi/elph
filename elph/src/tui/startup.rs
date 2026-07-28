@@ -346,6 +346,12 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
     let session = Arc::new(session);
     let session_id = session.session_id().to_string();
 
+    // Give the session a memorable ID as an initial human-friendly name.
+    // This gets replaced by the LLM-generated title after the first turn.
+    if let Ok(memorable_id) = memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
+        let _ = session.harness().set_session_name(&memorable_id).await;
+    }
+
     // Load persisted chat history from the session branch (for --resume).
     let history_messages = load_chat_history(session.as_ref()).await;
 

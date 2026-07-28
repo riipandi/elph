@@ -27,6 +27,8 @@ pub struct DialogShellOverlayProps<'a> {
     pub theme: Option<UiTheme>,
     /// Click handler for the header `[esc]` label.
     pub on_esc: HandlerMut<'static, ()>,
+    /// When set, a `[copy]` label is shown before `[esc]` and invokes this handler.
+    pub on_copy: Option<HandlerMut<'static, ()>>,
     pub children: Vec<AnyElement<'a>>,
 }
 
@@ -39,6 +41,7 @@ impl<'a> Default for DialogShellOverlayProps<'a> {
             header: DialogHeader::title("Dialog"),
             theme: None,
             on_esc: HandlerMut::default(),
+            on_copy: None,
             children: Vec::new(),
         }
     }
@@ -54,6 +57,7 @@ pub fn DialogShellOverlay<'a>(props: &mut DialogShellOverlayProps<'a>, hooks: Ho
     let header = props.header.clone();
     let children = std::mem::take(&mut props.children);
     let on_esc = props.on_esc.take();
+    let on_copy = props.on_copy.take();
     element! {
         View(
             width: props.screen_width,
@@ -69,6 +73,7 @@ pub fn DialogShellOverlay<'a>(props: &mut DialogShellOverlayProps<'a>, hooks: Ho
                 header: header,
                 theme: Some(theme),
                 on_esc: on_esc,
+                on_copy: on_copy,
             ) {
                 #(children)
             }

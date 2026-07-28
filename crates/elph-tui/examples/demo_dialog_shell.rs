@@ -234,7 +234,7 @@ fn Gallery(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
             align_items: AlignItems::Center,
             padding: 2,
         ) {
-            DialogShell(chrome: chrome, header: header) {
+            DialogShell(chrome: chrome, header: header, on_copy: HandlerMut::default()) {
                 #(body)
             }
         }
