@@ -10,8 +10,12 @@ use crate::platform::Paths;
 
 /// Save plan text to `.elph/plans/plan-YYYYMMDD_HHmm.md` with YAML frontmatter.
 ///
+/// `session_id` is optional — when provided, it is stored in the `SessionID` field.
+/// For plans created before a session is ready (e.g. `ImplementFresh`), pass `None`
+/// and update the field later via [`update_plan_frontmatter`].
+///
 /// Returns the absolute path to the saved file.
-pub fn save_plan_to_disk(plan_text: &str, paths: &Paths) -> Result<String> {
+pub fn save_plan_to_disk(plan_text: &str, paths: &Paths, session_id: Option<&str>) -> Result<String> {
     let plans_dir = paths.plans_dir();
     fs::create_dir_all(&plans_dir).with_context(|| format!("Failed to create plans dir: {}", plans_dir.display()))?;
 
@@ -21,8 +25,12 @@ pub fn save_plan_to_disk(plan_text: &str, paths: &Paths) -> Result<String> {
     let filename = format!("plan-{timestamp}.md");
     let file_path = plans_dir.join(&filename);
 
+    let session_line = session_id
+        .filter(|s| !s.trim().is_empty())
+        .map(|sid| format!("SessionID: {sid}\n"))
+        .unwrap_or_default();
     let frontmatter = format!(
-        "---\nSubject: {subject}\nStatus: planned\nCreated: {}\nUpdated: {}\n---\n\n",
+        "---\nSubject: {subject}\n{session_line}Status: planned\nCreated: {}\nUpdated: {}\n---\n\n",
         now.format("%Y-%m-%d %H:%M"),
         now.format("%Y-%m-%d %H:%M"),
     );
@@ -40,13 +48,18 @@ pub fn save_plan_to_disk(plan_text: &str, paths: &Paths) -> Result<String> {
     Ok(canonical.to_string_lossy().to_string())
 }
 
-/// Update `Status` and `Updated` fields in a saved plan file's YAML frontmatter.
+/// Update `Status`, `Updated`, and optionally `SessionID` fields in a saved plan file's YAML frontmatter.
 ///
 /// Parses the frontmatter (delimited by `---` lines), replaces the target fields,
 /// and writes the file back preserving the body content.
 ///
 /// Returns an error if the file doesn't exist or has no valid frontmatter.
-pub fn update_plan_frontmatter(file_path: &str, new_status: &str, new_updated: &str) -> Result<()> {
+pub fn update_plan_frontmatter(
+    file_path: &str,
+    new_status: &str,
+    new_updated: &str,
+    session_id: Option<&str>,
+) -> Result<()> {
     let path = Path::new(file_path);
     if !path.exists() {
         anyhow::bail!("Plan file not found: {file_path}");
@@ -58,6 +71,7 @@ pub fn update_plan_frontmatter(file_path: &str, new_status: &str, new_updated: &
     let mut frontmatter_end: Option<usize> = None;
     let mut status_found = false;
     let mut updated_found = false;
+    let mut session_id_found = false;
 
     let mut i = 0;
     while i < lines.len() {
@@ -81,6 +95,12 @@ pub fn update_plan_frontmatter(file_path: &str, new_status: &str, new_updated: &
                 lines[i] = format!("Updated: {new_updated}");
                 updated_found = true;
             }
+            if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
+                if lines[i].starts_with("SessionID:") {
+                    lines[i] = format!("SessionID: {sid}");
+                    session_id_found = true;
+                }
+            }
         }
         i += 1;
     }
@@ -88,12 +108,17 @@ pub fn update_plan_frontmatter(file_path: &str, new_status: &str, new_updated: &
     let end = frontmatter_end.ok_or_else(|| anyhow::anyhow!("Plan file has no closing frontmatter delimiter"))?;
 
     // If fields were missing, append them before the closing `---`.
-    let mut insertions = Vec::new();
+    let mut insertions: Vec<String> = Vec::new();
     if !status_found {
         insertions.push(format!("Status: {new_status}"));
     }
     if !updated_found {
         insertions.push(format!("Updated: {new_updated}"));
+    }
+    if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
+        if !session_id_found {
+            insertions.push(format!("SessionID: {sid}"));
+        }
     }
     if !insertions.is_empty() {
         for (j, line) in insertions.into_iter().enumerate() {
@@ -248,17 +273,35 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), project.clone());
 
         let plan_text = "# Test Plan\nDo something";
-        let saved = save_plan_to_disk(plan_text, &paths).expect("save");
+        let saved = save_plan_to_disk(plan_text, &paths, Some("sess-abc123")).expect("save");
 
         let saved_path = Path::new(&saved);
         assert!(saved_path.exists(), "plan file exists");
 
         let contents = fs::read_to_string(saved_path).expect("read");
         assert!(contents.contains("Subject: Test Plan"));
+        assert!(contents.contains("SessionID: sess-abc123"));
         assert!(contents.contains("Status: planned"));
         assert!(contents.contains("Created:"));
         assert!(contents.contains("Updated:"));
         assert!(contents.contains(plan_text));
+    }
+
+    #[test]
+    fn save_plan_to_disk_without_session_id() {
+        use std::path::Path;
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let project = tmp.path().join("repo");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), project.clone());
+
+        let plan_text = "# No Session Plan\nJust testing";
+        let saved = save_plan_to_disk(plan_text, &paths, None).expect("save");
+
+        let saved_path = Path::new(&saved);
+        let contents = fs::read_to_string(saved_path).expect("read");
+        assert!(contents.contains("Subject: No Session Plan"));
+        assert!(contents.contains("Status: planned"));
+        assert!(!contents.contains("SessionID:")); // No SessionID line
     }
 
     #[test]
@@ -279,15 +322,41 @@ mod tests {
         );
         fs::write(&path, content).expect("write");
 
-        update_plan_frontmatter(&path_str, "in_progress", "2026-07-28 23:30").expect("update");
+        update_plan_frontmatter(&path_str, "in_progress", "2026-07-28 23:30", Some("sess-xyz")).expect("update");
 
         let updated = fs::read_to_string(&path).expect("read");
         assert!(updated.contains("Status: in_progress"));
         assert!(updated.contains("Updated: 2026-07-28 23:30"));
+        assert!(updated.contains("SessionID: sess-xyz"));
         assert!(updated.contains("Subject: Test")); // unchanged
         assert!(updated.contains("Created: 2026-07-28 23:00")); // unchanged
         assert!(updated.contains("## Step 1")); // body preserved
         assert!(updated.contains("Do the thing")); // body preserved
+    }
+
+    #[test]
+    fn update_plan_frontmatter_replaces_existing_session_id() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("plan-session.md");
+        let path_str = path.to_string_lossy().to_string();
+
+        let content = concat!(
+            "---\n",
+            "Subject: Test\n",
+            "SessionID: old-session\n",
+            "Status: planned\n",
+            "Created: 2026-07-28 23:00\n",
+            "Updated: 2026-07-28 23:00\n",
+            "---\n\n",
+            "Body\n",
+        );
+        fs::write(&path, content).expect("write");
+
+        update_plan_frontmatter(&path_str, "completed", "2026-07-29 00:00", Some("new-session-id")).expect("update");
+
+        let updated = fs::read_to_string(&path).expect("read");
+        assert!(updated.contains("SessionID: new-session-id"));
+        assert!(!updated.contains("SessionID: old-session"));
     }
 
     #[test]
@@ -300,7 +369,7 @@ mod tests {
         let content = "---\nSubject: Test\n---\n\nBody text\n";
         fs::write(&path, content).expect("write");
 
-        update_plan_frontmatter(&path_str, "completed", "2026-07-29 00:00").expect("update");
+        update_plan_frontmatter(&path_str, "completed", "2026-07-29 00:00", None).expect("update");
 
         let updated = fs::read_to_string(&path).expect("read");
         assert!(updated.contains("Status: completed"));
@@ -310,7 +379,7 @@ mod tests {
 
     #[test]
     fn update_plan_frontmatter_errors_on_missing_file() {
-        let result = update_plan_frontmatter("/nonexistent/plan.md", "done", "now");
+        let result = update_plan_frontmatter("/nonexistent/plan.md", "done", "now", None);
         assert!(result.is_err());
     }
 
@@ -321,7 +390,7 @@ mod tests {
         let path_str = path.to_string_lossy().to_string();
         fs::write(&path, "Just body text\n").expect("write");
 
-        let result = update_plan_frontmatter(&path_str, "done", "now");
+        let result = update_plan_frontmatter(&path_str, "done", "now", None);
         assert!(result.is_err());
     }
 }

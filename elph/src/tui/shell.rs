@@ -964,6 +964,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut turn_cancel_requested = hooks.use_ref(|| false);
     let mut pending_quit_confirm = hooks.use_ref(|| false);
     let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    // Path to the plan file being actively implemented (set on Implement, cleared on RunCompleted).
+    // Used to transition frontmatter `Status` from `in_progress` to `completed` when the turn finishes.
+    let mut active_plan_file = hooks.use_ref(|| None::<String>);
     // Fixed toast above status row (agent mode, quit-busy) — not in the scrollable transcript.
     // State (not Ref) so set/clear repaints without waiting for agent busy/stream updates.
     let mut ephemeral_banner = hooks.use_state(|| None::<EphemeralBanner>);
@@ -1384,7 +1387,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         // Save plan to disk FIRST so user can read it before deciding.
                         let plan_file = {
                             let paths = paths.read().clone();
-                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths)
+                            let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
+                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
                                 .map_err(|e| log::error!("Failed to save plan: {e}"))
                                 .ok()
                         };
@@ -1566,6 +1570,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             if run_completed {
                 pending_quit_confirm.set(false);
                 clear_quit_busy_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation);
+
+                // Transition plan from in_progress → completed (or leave as-is on cancel).
+                if !turn_cancel_requested.get() {
+                    if let Some(plan_path) = active_plan_file.write().take() {
+                        let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                        if let Err(err) =
+                            crate::agent::plan_files::update_plan_frontmatter(&plan_path, "completed", &now, None)
+                        {
+                            log::error!("Failed to mark plan as completed: {err}");
+                        }
+                    }
+                }
+
                 if let Some(turn_elapsed) = run_completed_elapsed {
                     session_elapsed_secs.set(accumulate_session_elapsed(session_elapsed_secs.get(), turn_elapsed));
                 }
@@ -1573,7 +1590,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 agent_turn_active.set(false);
                 busy_started_at.set(None);
                 activity_started_at.set(None);
-                activity_label.set("Thinking".to_string());
+                activity_label.set(String::new());
                 turn_token_tracker.set(None);
                 chrome_refresh_pending.set(true);
                 // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
@@ -2799,15 +2816,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
 
                         // Auto-update plan frontmatter: Status → in_progress when user picks Implement.
+                        // Track the active plan path so RunCompleted can transition to completed.
                         if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh)
                             && let Some(ref plan_path) = pending.plan_file
                         {
                             let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
                             if let Err(err) =
-                                crate::agent::plan_files::update_plan_frontmatter(plan_path, "in_progress", &now)
+                                crate::agent::plan_files::update_plan_frontmatter(plan_path, "in_progress", &now, None)
                             {
                                 log::error!("Failed to update plan frontmatter: {err}");
                             }
+                            active_plan_file.write().clone_from(&pending.plan_file);
                         }
 
                         // Resolve via session (triggers mode change + implement prompt).
