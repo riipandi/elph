@@ -456,6 +456,7 @@ impl TranscriptEventApplier {
             AgentUiEvent::ThinkingDelta(_)
             | AgentUiEvent::PlanConfirmationRequired(_)
             | AgentUiEvent::UserQuestionRequired(_)
+            | AgentUiEvent::ModeChangeRequired(_)
             | AgentUiEvent::QueueUpdate { .. }
             | AgentUiEvent::UserPromptCommitted { .. } => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).

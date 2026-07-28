@@ -28,6 +28,7 @@ pub fn coding_tool_exposure_policy() -> &'static ToolExposurePolicy {
             "web_search".into(),
             "diagnostics".into(),
             "ask_user_question".into(),
+            "request_mode_change".into(),
             "list_available_tools".into(),
         ],
         ..ToolExposurePolicy::default()

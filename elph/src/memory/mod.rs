@@ -4,8 +4,6 @@ pub mod hooks;
 pub(crate) mod store;
 pub mod tools;
 
-pub mod codegraph;
-
 pub use cmd::run;
 
 /// Run a memory slash command and return formatted output.

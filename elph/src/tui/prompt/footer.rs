@@ -33,7 +33,9 @@ pub struct FooterProps {
 struct FooterLeftParts {
     /// Agent mode (`Build`, `Plan`, …) — mode color.
     mode: String,
-    /// ` | provider/model (thinking)` — thinking-level color (includes leading separator).
+    /// ` | ` separator between mode and model — neutral white.
+    sep: String,
+    /// `provider/model (thinking)` — thinking-level color (no leading separator).
     model_thinking: String,
     /// ` | IMG` — always dimmed (includes leading separator when present).
     img: String,
@@ -141,7 +143,7 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
     }
 }
 
-/// Split a fitted left footer line into mode / model-thinking / IMG for coloring.
+/// Split a fitted left footer line into mode / sep / model-thinking / IMG for coloring.
 fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     let mode_s = footer_mode_label(mode);
     let mode_prefix = format!("{mode_s} | ");
@@ -150,6 +152,7 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     if left == mode_s {
         return FooterLeftParts {
             mode: mode_s,
+            sep: String::new(),
             model_thinking: String::new(),
             img: String::new(),
         };
@@ -160,20 +163,23 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
             // Degenerate: mode + IMG only (no model segment).
             return FooterLeftParts {
                 mode: mode_s,
+                sep: " | ".to_string(),
                 model_thinking: String::new(),
-                img: " | IMG".to_string(),
+                img: "IMG".to_string(),
             };
         }
         if let Some(model_part) = after_mode.strip_suffix(IMG_SUFFIX) {
             return FooterLeftParts {
                 mode: mode_s,
-                model_thinking: format!(" | {model_part}"),
+                sep: " | ".to_string(),
+                model_thinking: model_part.to_string(),
                 img: IMG_SUFFIX.to_string(),
             };
         }
         return FooterLeftParts {
             mode: mode_s,
-            model_thinking: format!(" | {after_mode}"),
+            sep: " | ".to_string(),
+            model_thinking: after_mode.to_string(),
             img: String::new(),
         };
     }
@@ -181,6 +187,7 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     if left.starts_with(&mode_s) {
         return FooterLeftParts {
             mode: left.to_string(),
+            sep: String::new(),
             model_thinking: String::new(),
             img: String::new(),
         };
@@ -190,6 +197,7 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     if let Some(model_part) = left.strip_suffix(IMG_SUFFIX) {
         return FooterLeftParts {
             mode: String::new(),
+            sep: String::new(),
             model_thinking: model_part.to_string(),
             img: IMG_SUFFIX.to_string(),
         };
@@ -197,12 +205,14 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     if left == "IMG" {
         return FooterLeftParts {
             mode: String::new(),
+            sep: String::new(),
             model_thinking: String::new(),
             img: "IMG".to_string(),
         };
     }
     FooterLeftParts {
         mode: String::new(),
+        sep: String::new(),
         model_thinking: left.to_string(),
         img: String::new(),
     }
@@ -274,6 +284,17 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                             weight: Weight::Bold,
                             wrap: TextWrap::NoWrap,
                             content: parts.mode.clone(),
+                        )
+                    }
+                    .into()
+                }))
+                #( (!parts.sep.is_empty()).then(|| -> AnyElement<'static> {
+                    // Separator stays neutral white, independent of agent mode or thinking color.
+                    element! {
+                        Text(
+                            color: if colored { Color::White } else { FOOTER_DIM_FG },
+                            wrap: TextWrap::NoWrap,
+                            content: parts.sep.clone(),
                         )
                     }
                     .into()
@@ -372,16 +393,19 @@ mod tests {
     fn split_footer_status_left_keeps_mode_model_and_dimmed_img() {
         let parts = split_footer_status_left(AgentMode::Plan, "Plan | opencode/deepseek-v4-flash (xhigh) | IMG");
         assert_eq!(parts.mode, "Plan");
-        assert_eq!(parts.model_thinking, " | opencode/deepseek-v4-flash (xhigh)");
+        assert_eq!(parts.sep, " | ");
+        assert_eq!(parts.model_thinking, "opencode/deepseek-v4-flash (xhigh)");
         assert_eq!(parts.img, " | IMG");
 
         let no_img = split_footer_status_left(AgentMode::Build, "Build | opencode/big-pickle (high)");
         assert_eq!(no_img.mode, "Build");
-        assert_eq!(no_img.model_thinking, " | opencode/big-pickle (high)");
+        assert_eq!(no_img.sep, " | ");
+        assert_eq!(no_img.model_thinking, "opencode/big-pickle (high)");
         assert!(no_img.img.is_empty());
 
         let mode_only = split_footer_status_left(AgentMode::Ask, "Ask");
         assert_eq!(mode_only.mode, "Ask");
+        assert!(mode_only.sep.is_empty());
         assert!(mode_only.model_thinking.is_empty());
         assert!(mode_only.img.is_empty());
     }

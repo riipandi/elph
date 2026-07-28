@@ -63,6 +63,7 @@ pub async fn create_coding_session_with_events(
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
     tools.push(super::ask_user::create_ask_user_tool(ui_tx.clone()));
+    tools.push(super::mode_change::create_mode_change_tool(ui_tx.clone()));
 
     let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
         (Arc::new(McpToolRegistry::empty()), Vec::new())

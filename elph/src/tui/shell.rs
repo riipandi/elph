@@ -857,6 +857,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut live_cursor = hooks.use_ref(|| 0usize);
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let mut clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
+    let mut pending_mode_change_req = hooks.use_ref(|| None::<String>);
     let mut prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let mut styled_content = hooks.use_ref(String::new);
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
@@ -1318,6 +1319,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         );
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_user_question.set(Some(pending));
+                        transcript_changed = true;
+                        continue;
+                    }
+
+                    if let AgentUiEvent::ModeChangeRequired(req) = event {
+                        use crate::agent::UserQuestionStep;
+                        let mode_label = req.target_mode.to_ascii_uppercase();
+                        let step = UserQuestionStep {
+                            id: "confirm".into(),
+                            question: format!("Switch to **{mode_label}** mode?\n\n{}", req.reason),
+                            options: None,
+                            allow_multiple: false,
+                            allow_custom: false,
+                            custom_label: "Other…".into(),
+                            default: Some("false".into()),
+                            required: true,
+                            min_length: None,
+                            pattern: None,
+                            tab_label: None,
+                        };
+                        let pending = PendingUserQuestion::from_request(crate::agent::UserQuestionRequest {
+                            steps: vec![step],
+                            response_tx: req.response_tx,
+                        });
+                        shell_focus.set(ShellFocus::StatusDialog);
+                        pending_user_question.set(Some(pending));
+                        pending_mode_change_req.set(Some(req.target_mode.clone()));
                         transcript_changed = true;
                         continue;
                     }
@@ -3862,58 +3890,87 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         answer: Some(question_answer),
                         input_focus: question_input_focus.get(),
                         has_focus: question_has_focus,
-                        on_confirm_yes: move |_| {
-                            let outcome = pending_user_question
-                                .write()
-                                .take()
-                                .map(|question| question.respond_confirm(true));
-                            if let Some(outcome) = outcome
-                                && let Some(summary) = apply_step_submit_outcome(
-                                    outcome,
-                                    &mut pending_user_question,
-                                    &mut question_selected,
-                                    &mut question_confirm_focus,
-                                    &mut question_answer,
-                                    &mut question_multi_checked,
-                                    &mut question_input_focus,
-                                    &mut shell_focus,
-                                    &mut activity_label,
-                                    &mut question_validation_error,
-                                )
-                            {
-                                push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
-                                );
+                        on_confirm_yes: {
+                            let mut pending_mode_change = pending_mode_change_req;
+                            let paths = paths.read().clone();
+                            let agent_session = agent_session.clone();
+                            let mut agent_mode = agent_mode;
+                            let thinking_level = thinking_level;
+                            move |_| {
+                                let outcome = pending_user_question
+                                    .write()
+                                    .take()
+                                    .map(|question| question.respond_confirm(true));
+                                if let Some(outcome) = outcome
+                                    && let Some(summary) = apply_step_submit_outcome(
+                                        outcome,
+                                        &mut pending_user_question,
+                                        &mut question_selected,
+                                        &mut question_confirm_focus,
+                                        &mut question_answer,
+                                        &mut question_multi_checked,
+                                        &mut question_input_focus,
+                                        &mut shell_focus,
+                                        &mut activity_label,
+                                        &mut question_validation_error,
+                                    )
+                                {
+                                    push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                    );
+                                }
+                                // Process pending mode change after question completes.
+                                if let Some(target_mode) = pending_mode_change.write().take() {
+                                    let mode = crate::agent::agent_mode_from_setting(&target_mode);
+                                    agent_mode.set(mode);
+                                    crate::tui::session_prefs::persist_session_prefs(
+                                        &paths, mode, thinking_level.get(),
+                                    );
+                                    if let Some(session) = agent_session.as_ref() {
+                                        let session = session.clone();
+                                        tokio::spawn(async move {
+                                            let _ = session.set_agent_mode(mode).await;
+                                        });
+                                    }
+                                    activity_label.set(
+                                        format!("Switched to {}", mode.label())
+                                    );
+                                }
                             }
                         },
-                        on_confirm_no: move |_| {
-                            let outcome = pending_user_question
-                                .write()
-                                .take()
-                                .map(|question| question.respond_confirm(false));
-                            if let Some(outcome) = outcome
-                                && let Some(summary) = apply_step_submit_outcome(
-                                    outcome,
-                                    &mut pending_user_question,
-                                    &mut question_selected,
-                                    &mut question_confirm_focus,
-                                    &mut question_answer,
-                                    &mut question_multi_checked,
-                                    &mut question_input_focus,
-                                    &mut shell_focus,
-                                    &mut activity_label,
-                                    &mut question_validation_error,
-                                )
-                            {
-                                push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                TranscriptMessage::text(summary, TranscriptStyle::Meta),
-                                );
+                        on_confirm_no: {
+                            let mut pending_mode_change = pending_mode_change_req;
+                            move |_| {
+                                let outcome = pending_user_question
+                                    .write()
+                                    .take()
+                                    .map(|question| question.respond_confirm(false));
+                                if let Some(outcome) = outcome
+                                    && let Some(summary) = apply_step_submit_outcome(
+                                        outcome,
+                                        &mut pending_user_question,
+                                        &mut question_selected,
+                                        &mut question_confirm_focus,
+                                        &mut question_answer,
+                                        &mut question_multi_checked,
+                                        &mut question_input_focus,
+                                        &mut shell_focus,
+                                        &mut activity_label,
+                                        &mut question_validation_error,
+                                    )
+                                {
+                                    push_transcript_message(
+                                    &mut messages,
+                                    &mut messages_revision,
+                                    &mut prompt_history,
+                                    TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                                    );
+                                }
+                                // Clear pending mode change on rejection.
+                                pending_mode_change.write().take();
                             }
                         },
                         on_text_submit: move |_| {

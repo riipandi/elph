@@ -98,6 +98,15 @@ pub enum AgentUiEvent {
         status: Option<String>,
     },
     UserQuestionRequired(UserQuestionRequest),
+    /// Agent requests a mode change (Ask/Plan → Build/Brave).
+    ModeChangeRequired(ModeChangeRequest),
+}
+
+#[derive(Debug)]
+pub struct ModeChangeRequest {
+    pub target_mode: String,
+    pub reason: String,
+    pub response_tx: tokio::sync::oneshot::Sender<String>,
 }
 
 #[derive(Debug, Clone)]
