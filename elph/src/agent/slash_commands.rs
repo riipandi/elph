@@ -51,7 +51,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
         builtin("copy", "Copy last agent message"),
-        builtin_with_args("rename", "Rename the current session", "[title]"),
+        builtin("rename", "Rename the current session"),
         builtin("session", "Show session info"),
         builtin("changelog", "Show changelog"),
         builtin("hotkeys", "Show keyboard shortcuts"),

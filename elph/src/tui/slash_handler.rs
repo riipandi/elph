@@ -7,9 +7,8 @@ use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 use crate::agent::{OverlayCommand, SlashDispatch};
 use crate::agent::{
-    confetti_mode_from_args, dispatch_slash_command, format_help_message, rename_session_title,
-    session_info_slash_message, session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message,
-    tools_slash_message,
+    confetti_mode_from_args, dispatch_slash_command, format_help_message, session_info_slash_message,
+    session_title_for_rename, slash_unimplemented_message, system_prompt_slash_message, tools_slash_message,
 };
 use crate::extensions::ExtensionHost;
 use crate::platform::Paths;
@@ -113,17 +112,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             Ok(text) => SlashOutcome::OpenSessionInfoDialog { text },
             Err(message) => SlashOutcome::Status(message),
         },
-        SlashDispatch::Rename { args } => {
+        SlashDispatch::Rename { .. } => {
             if ctx.agent_session.is_none() {
                 return SlashOutcome::Status("Agent session required for this command.".into());
-            }
-            // Non-empty args: save immediately without opening the dialog.
-            let trimmed = args.trim();
-            if !trimmed.is_empty() {
-                return match rename_session_title(ctx.agent_session.as_ref().expect("checked"), trimmed) {
-                    Ok(()) => SlashOutcome::Status(format!("Session renamed to “{trimmed}”.")),
-                    Err(message) => SlashOutcome::Status(message),
-                };
             }
             let initial = session_title_for_rename(ctx.agent_session.as_ref()).unwrap_or_default();
             SlashOutcome::OpenRenameDialog { initial }
