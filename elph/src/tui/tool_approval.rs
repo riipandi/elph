@@ -196,8 +196,8 @@ pub const PLAN_CONFIRM_DEFAULT_INDEX: usize = 0;
 /// Select-list rows for the plan-confirmation dialog.
 pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> {
     [
-        ("Implement", "Switch to Build mode and apply the plan"),
-        ("Implement fresh", "Clear conversation, then implement"),
+        ("Implement in this session", "Switch to Build mode and apply the plan"),
+        ("Implement in new session", "Clear conversation, then implement"),
         ("Stay in Plan", "Refine the plan further"),
         ("Revise", "Request changes to the plan"),
     ]
@@ -208,16 +208,16 @@ pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> 
 
 /// Footer hint for the plan-confirmation dialog.
 pub fn plan_confirmation_footer_hint() -> String {
-    "↑↓ move · Enter/1 implement · 2 fresh · 3 stay · 4 revise · Esc cancel".to_string()
+    "↑↓ move · Enter/1 this session · 2 new session · 3 stay · 4 revise · Esc cancel".to_string()
 }
 
 /// Map shortcut keys to plan-confirmation list indices.
 ///
-/// | Index | Choice          | Keys    |
-/// |-------|-----------------|---------|
-/// | 0     | Implement       | `1` `i` |
-/// | 1     | Implement fresh | `2` `f` |
-/// | 2     | Stay in Plan    | `3` `s` |
+/// | Index | Choice                 | Keys    |
+/// |-------|------------------------|---------|
+/// | 0     | Implement this session | `1` `i` |
+/// | 1     | Implement new session  | `2` `f` |
+/// | 2     | Stay in Plan           | `3` `s` |
 pub fn pick_plan_confirmation_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
     if !modifiers.is_empty() {
         return None;
@@ -401,8 +401,8 @@ mod tests {
     fn plan_confirmation_select_options_order() {
         let options = plan_confirmation_select_options();
         assert_eq!(options.len(), 4);
-        assert_eq!(options[0].name, "Implement");
-        assert_eq!(options[1].name, "Implement fresh");
+        assert_eq!(options[0].name, "Implement in this session");
+        assert_eq!(options[1].name, "Implement in new session");
         assert_eq!(options[2].name, "Stay in Plan");
         assert_eq!(options[3].name, "Revise");
     }
@@ -455,8 +455,8 @@ mod tests {
     #[test]
     fn plan_confirmation_footer_hint_includes_all_keys() {
         let hint = plan_confirmation_footer_hint();
-        assert!(hint.contains("1 implement"));
-        assert!(hint.contains("2 fresh"));
+        assert!(hint.contains("1 this session"));
+        assert!(hint.contains("2 new session"));
         assert!(hint.contains("3 stay"));
         assert!(hint.contains("4 revise"));
     }

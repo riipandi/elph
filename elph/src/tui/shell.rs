@@ -2754,10 +2754,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
 
                         let (style, detail) = match choice {
-                            PlanChoice::Implement => (TranscriptStyle::StatusSuccess, "Implementing plan…".to_string()),
-                            PlanChoice::ImplementFresh => {
-                                (TranscriptStyle::StatusSuccess, "Implementing plan (fresh context)…".to_string())
-                            }
+                            PlanChoice::Implement => (
+                                TranscriptStyle::StatusSuccess,
+                                "Switched to Build — implementing plan…".to_string(),
+                            ),
+                            PlanChoice::ImplementFresh => (
+                                TranscriptStyle::StatusSuccess,
+                                "Switched to Build — implementing plan (fresh context)…".to_string(),
+                            ),
                             PlanChoice::StayInPlan => {
                                 (TranscriptStyle::StatusFailed, "Stayed in Plan mode".to_string())
                             }
@@ -2774,6 +2778,26 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         messages_revision.set(messages_revision.get().wrapping_add(1));
+                        // Sync TUI mode state BEFORE spawning the async resolve — the session's
+                        // internal mode change (Build) doesn't emit an event back to the TUI.
+                        // The plan confirmation dialog IS the user's approval; no second dialog needed.
+                        if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh) {
+                            agent_mode.set(AgentMode::Build);
+                            // Show ephemeral banner about the mode switch.
+                            let expire_tx = ephemeral_expire.read().tx.clone();
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &expire_tx,
+                                EphemeralBanner {
+                                    key: "plan-implement",
+                                    text: "Switched to Build — implementing the approved plan.".to_string(),
+                                    kind: EphemeralBannerKind::Notice,
+                                    expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                                },
+                            );
+                        }
+
                         // Resolve via session (triggers mode change + implement prompt).
                         if let Some(session) = pending.session.as_ref() {
                             let session = session.clone();
@@ -2788,8 +2812,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             });
                         }
                         activity_label.set(match choice {
-                            PlanChoice::Implement => "Implementing plan…".to_string(),
-                            PlanChoice::ImplementFresh => "Implementing plan (fresh)…".to_string(),
+                            PlanChoice::Implement => "Switched to Build — implementing plan…".to_string(),
+                            PlanChoice::ImplementFresh => "Switched to Build — implementing plan (fresh)…".to_string(),
                             PlanChoice::StayInPlan => "Stayed in Plan mode".to_string(),
                             PlanChoice::RevisePlan => unreachable!(),
                         });
