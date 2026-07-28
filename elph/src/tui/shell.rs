@@ -4196,6 +4196,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         args_summary: shell_exec_args_summary(&body),
                                     },
                                 ) {
+                                    // Mark the tool message as user-initiated shell so rendering
+                                    // can show output without truncation limits.
+                                    if let Some(msg) = msgs.last_mut() {
+                                        msg.user_shell = true;
+                                    }
                                     messages_revision.set(messages_revision.get().wrapping_add(1));
                                 }
                             }

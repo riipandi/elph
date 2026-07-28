@@ -37,6 +37,7 @@ use super::frame::{
 use super::toggle_ctx::CollapsibleToggleCtx;
 use super::tool_format::{
     format_assistant_stream_body_display, format_thinking_body_display, format_tool_output_display,
+    format_tool_output_display_unlimited,
 };
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -652,7 +653,11 @@ pub fn tool_call_card(
         let inner_width = chrome_inner_width(&chrome).max(8);
         let show_detail = !collapsed;
         let output = if show_detail {
-            format_tool_output_display(&tool.output)
+            if message.user_shell {
+                format_tool_output_display_unlimited(&tool.output)
+            } else {
+                format_tool_output_display(&tool.output)
+            }
         } else {
             String::new()
         };

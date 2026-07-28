@@ -161,6 +161,8 @@ pub struct TranscriptMessage {
     pub model_tag: Option<String>,
     /// Subagent agent id rendered as a grey parenthesized tag (e.g. `agent_01`).
     pub agent_tag: Option<String>,
+    /// User-initiated shell execution (`!`/`!!`) — output renders without truncation limits.
+    pub user_shell: bool,
 }
 
 impl TranscriptMessage {
@@ -181,6 +183,7 @@ impl TranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_shell: false,
         }
     }
 
@@ -262,6 +265,7 @@ impl TranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_shell: false,
         }
     }
 

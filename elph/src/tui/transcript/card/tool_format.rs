@@ -49,22 +49,35 @@ pub fn format_tool_output_display(output: &str) -> String {
     if trimmed.is_empty() {
         return String::new();
     }
-    if trimmed.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
-        let lines: Vec<&str> = trimmed.lines().collect();
-        if lines.len() <= TOOL_OUTPUT_MAX_LINES {
-            return trimmed.to_string();
-        }
-        let mut body = lines
-            .iter()
-            .take(TOOL_OUTPUT_MAX_LINES)
-            .copied()
-            .collect::<Vec<_>>()
-            .join("\n");
-        body.push_str(&format!("\n… ({line_count} lines total)", line_count = lines.len()));
+    let lines: Vec<&str> = trimmed.lines().collect();
+    if lines.len() <= TOOL_OUTPUT_MAX_LINES && trimmed.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
+        return trimmed.to_string();
+    }
+    // Show tail (last N lines) so streaming output stays visible at the bottom.
+    let body = if lines.len() > TOOL_OUTPUT_MAX_LINES {
+        let skip = lines.len().saturating_sub(TOOL_OUTPUT_MAX_LINES);
+        let tail = lines[skip..].join("\n");
+        format!("… ({skip} lines before this)\n{tail}")
+    } else {
+        trimmed.to_string()
+    };
+    if body.chars().count() <= TOOL_OUTPUT_MAX_CHARS {
         return body;
     }
-    let truncated: String = trimmed.chars().take(TOOL_OUTPUT_MAX_CHARS.saturating_sub(1)).collect();
+    let keep = TOOL_OUTPUT_MAX_CHARS.saturating_sub(1).max(1);
+    let truncated: String = body.chars().take(keep).collect();
     format!("{truncated}…")
+}
+
+/// Render full tool output without any truncation — used for user-initiated shell (`!`/`!!`).
+pub fn format_tool_output_display_unlimited(output: &str) -> String {
+    let sanitized = sanitize_tool_body(output);
+    let trimmed = sanitized.trim();
+    if trimmed.is_empty() {
+        String::new()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn sanitize_tool_body(output: &str) -> String {
@@ -84,10 +97,12 @@ mod tests {
     }
 
     #[test]
-    fn tool_output_truncates_long_bodies() {
+    fn tool_output_shows_tail_with_count() {
         let long = "line\n".repeat(20);
         let display = format_tool_output_display(&long);
-        assert!(display.contains("lines total"));
+        assert!(display.contains("lines before this"), "{display}");
+        // Tail: should contain the last few lines
+        assert!(display.contains("line\nline\nline\nline\nline"), "{display}");
     }
 
     #[test]
