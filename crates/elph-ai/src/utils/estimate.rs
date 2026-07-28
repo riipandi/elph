@@ -271,8 +271,8 @@ fn estimate_other_segment(segment: &str) -> u64 {
         return 1;
     }
 
-    // 6. Default: ~6 chars per token (calibrated to o200k_base).
-    char_count.div_ceil(6)
+    // 6. Default: ~5 chars per token (tuned for mixed system prompt + conversation).
+    char_count.div_ceil(5)
 }
 
 // ---------------------------------------------------------------------------
