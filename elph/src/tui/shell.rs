@@ -866,6 +866,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut mention_index_requested = hooks.use_ref(|| false);
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
     let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
+    let mut shift_held = hooks.use_state(|| false);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -1569,6 +1570,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             };
             if kind == KeyEventKind::Release {
                 return;
+            }
+
+            // Track whether Shift is held so the transcript can hide the scrollbar
+            // during native text selection (similar to Ctrl+S toggle mode).
+            // Only key events with Shift set it; only key events without Shift clear it.
+            // This avoids the scrollbar reappearing while Shift is held but no new
+            // key event fires (e.g. mouse-based text selection).
+            if modifiers.contains(KeyModifiers::SHIFT) {
+                shift_held.set(true);
+            } else {
+                shift_held.set(false);
             }
 
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
@@ -3881,7 +3893,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 has_focus: transcript_focused,
                 // Modal dialogs own the wheel; keep the transcript still underneath.
                 mouse_scroll: Some(!status_dialog_open),
-                text_select_mode: select_mode.get(),
+                text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
 
@@ -4139,7 +4151,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 prompt_history_snapshot: prompt_history_snapshot,
                 prompt_history_selected: Some(prompt_history_index),
                 editor_overlay: editor_overlay,
-                text_select_mode: select_mode.get(),
+                text_select_mode: select_mode.get() || shift_held.get(),
                 blocked_hint: if system_prompt_open {
                     Some("Viewing system prompt — Esc to close".to_string())
                 } else if user_question_open {

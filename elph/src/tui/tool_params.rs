@@ -813,17 +813,6 @@ pub fn tool_params_display_row_count(raw: &str, width: u16) -> u16 {
     params_display_row_count(&parse_tool_params(raw), width, display_value)
 }
 
-/// Wrapped rows for the compact approval preview (includes the "+N more" line when present).
-#[cfg(test)]
-pub fn tool_params_approval_row_count(raw: &str, width: u16) -> u16 {
-    let preview = tool_params_for_approval(raw);
-    let mut rows = params_display_row_count(&preview.visible, width, display_approval_value);
-    if preview.hidden_count > 0 {
-        rows = rows.saturating_add(1);
-    }
-    rows
-}
-
 fn show_key_column(params: &[ToolParam]) -> bool {
     params.len() > 1
         || params
