@@ -176,6 +176,7 @@ impl SlashDispatcher {
                 | SlashDispatch::Rename { .. }
                 | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Feedback
+                | SlashDispatch::ProviderConnect { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}

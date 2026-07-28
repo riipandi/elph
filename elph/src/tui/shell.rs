@@ -87,7 +87,12 @@ use crate::tui::startup::{
 };
 use crate::tui::status_dialog::{
     PromptQueueAction, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
-    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_status_dialog_kind,
+    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_connect_dialog_kind,
+    build_status_dialog_kind,
+};
+use crate::tui::provider_connect_dialog::{
+    OpenProviderConnectDialogArgs, PendingProviderConnectDialog, close_provider_connect_dialog,
+    open_provider_connect_dialog, get_provider_options, get_provider_at_index, provider_supports_oauth,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
@@ -907,6 +912,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
     let mut rename_value = hooks.use_state(String::new);
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
+    let mut pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
+    let mut provider_connect_selected = hooks.use_state(|| 0usize);
+    let mut provider_connect_api_key = hooks.use_state(String::new);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_ref(|| 0u32);
 
@@ -1923,6 +1931,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let confetti_open = pending_confetti.read().is_some();
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
+            let provider_connect_open = pending_provider_connect.read().is_some();
             let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
                 || pending_mode_change.read().is_some()
@@ -1934,6 +1943,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || system_prompt_open
                 || rename_open
                 || confetti_open
+                || provider_connect_open
                 || queue_manager_is_open;
 
             if status_dialog_open {
@@ -2889,6 +2899,98 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 }
 
+                // ── Provider connect dialog ────────────────────────────────
+                if provider_connect_open {
+                    let selected_index = provider_connect_selected.read().clone();
+                    
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_provider_connect_dialog(
+                            &mut pending_provider_connect,
+                            &mut provider_connect_selected,
+                            &mut provider_connect_api_key,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            true,
+                        );
+                        return;
+                    }
+                    
+                    if modifiers.is_empty() && code == KeyCode::Enter {
+                        let selected_index = provider_connect_selected.read().clone();
+                        let api_key = provider_connect_api_key.read().clone();
+                        
+                        if let Some(provider) = get_provider_at_index(selected_index) {
+                            if provider_supports_oauth(&provider.id) {
+                                // OAuth flow - just close and trigger OAuth
+                                close_provider_connect_dialog(
+                                    &mut pending_provider_connect,
+                                    &mut provider_connect_selected,
+                                    &mut provider_connect_api_key,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    false,
+                                );
+                                // TODO: Trigger OAuth flow for provider.id
+                                log::info!("Starting OAuth flow for provider: {}", provider.id);
+                            } else {
+                                // API key flow - save and close
+                                close_provider_connect_dialog(
+                                    &mut pending_provider_connect,
+                                    &mut provider_connect_selected,
+                                    &mut provider_connect_api_key,
+                                    &mut draft,
+                                    &mut live_draft,
+                                    &mut shell_focus,
+                                    false,
+                                );
+                                // TODO: Save API key for provider.id
+                                log::info!("Saving API key for provider: {} with key length: {}", provider.id, api_key.len());
+                            }
+                        }
+                        return;
+                    }
+                    
+                    // Navigation
+                    if modifiers.is_empty() {
+                        match code {
+                            KeyCode::Up => {
+                                let new_index = selected_index.saturating_sub(1);
+                                provider_connect_selected.set(new_index);
+                                return;
+                            }
+                            KeyCode::Down => {
+                                let new_index = (selected_index + 1).min(get_provider_options().len().saturating_sub(1));
+                                provider_connect_selected.set(new_index);
+                                return;
+                            }
+                            KeyCode::Char(c) => {
+                                // For API key input when non-OAuth provider is selected
+                                if let Some(provider) = get_provider_at_index(selected_index) {
+                                    if !provider_supports_oauth(&provider.id) {
+                                        let mut current = provider_connect_api_key.read().clone();
+                                        current.push(c);
+                                        provider_connect_api_key.set(current);
+                                        return;
+                                    }
+                                }
+                            }
+                            KeyCode::Backspace => {
+                                if let Some(provider) = get_provider_at_index(selected_index) {
+                                    if !provider_supports_oauth(&provider.id) {
+                                        let mut current = provider_connect_api_key.read().clone();
+                                        current.pop();
+                                        provider_connect_api_key.set(current);
+                                        return;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 let option_nav = {
                     let pending_ref = pending_user_question.read();
                     match (pending_ref.as_ref(), question_option_nav_delta(modifiers, code)) {
@@ -3256,6 +3358,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 *pending_feedback.write() = true;
                                 approval_selected.set(FEEDBACK_DEFAULT_INDEX);
                                 shell_focus.set(ShellFocus::StatusDialog);
+                                suppress_enter_newline.set(true);
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenProviderConnectDialog { provider_id } => {
+                                open_provider_connect_dialog(OpenProviderConnectDialogArgs {
+                                    pending: &mut pending_provider_connect,
+                                    selected: &mut provider_connect_selected,
+                                    api_key_input: &mut provider_connect_api_key,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    provider_id,
+                                });
+                                approval_selected.set(0);
                                 suppress_enter_newline.set(true);
                                 force_editor_clear.set(true);
                             }
@@ -3857,6 +3973,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let system_prompt_open = pending_system_prompt.read().is_some();
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
+    let provider_connect_open = pending_provider_connect.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
@@ -3868,6 +3985,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || system_prompt_open
         || rename_open
         || confetti_open
+        || provider_connect_open
         || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
@@ -3878,14 +3996,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         && !system_prompt_open
         && !rename_open
         && !confetti_open
-        && !scoped_models_open;
+        && !scoped_models_open
+        && !provider_connect_open;
     let scoped_models_has_focus = scoped_models_open
         && !user_question_open
         && !system_prompt_open
         && !rename_open
         && !confetti_open
-        && !model_selector_open;
-    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
+        && !model_selector_open
+        && !provider_connect_open;
+    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open && !provider_connect_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
@@ -4158,6 +4278,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
         .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
         .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
+        .or_else(|| {
+            let selected = provider_connect_selected.clone();
+            build_provider_connect_dialog_kind(
+                pending_provider_connect.read().as_ref().and_then(|p| p.provider_id.clone()),
+                selected,
+                provider_connect_open,
+            )
+        })
         .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),
@@ -4814,6 +4942,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
+                            }
+                            SlashOutcome::OpenProviderConnectDialog { .. } => {
+                                // Handled by the dialog opening logic above
                             }
                             SlashOutcome::OpenModelSelector { filter } => {
                                 let settings = Settings::load(&paths_snapshot).ok();

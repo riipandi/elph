@@ -13,7 +13,7 @@ use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
 use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api, bedrock_converse_stream_api};
 use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
-use crate::providers::adapter::{mixed_openai_apis, openai_codex_responses_api, openai_completions_api};
+use crate::providers::adapter::{mixed_openai_apis, mistral_conversations_api, openai_codex_responses_api, openai_completions_api};
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {
@@ -356,6 +356,70 @@ pub fn xai_provider() -> Provider {
     })
 }
 
+pub fn mistral_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "mistral".to_string(),
+        name: Some("Mistral".to_string()),
+        base_url: Some("https://api.mistral.ai/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Mistral API key", vec!["MISTRAL_API_KEY"])),
+            oauth: None,
+        },
+        models: MISTRAL_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(mistral_conversations_api()),
+    })
+}
+
+pub fn neuralwatt_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "neuralwatt".to_string(),
+        name: Some("Neuralwatt".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Neuralwatt API key", vec!["NEURALWATT_API_KEY"])),
+            oauth: None,
+        },
+        models: NEURALWATT_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+pub fn nvidia_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "nvidia".to_string(),
+        name: Some("NVIDIA NIM".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("NVIDIA API key", vec!["NVIDIA_API_KEY"])),
+            oauth: None,
+        },
+        models: NVIDIA_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+pub fn sumopod_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "sumopod".to_string(),
+        name: Some("Sumopod".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Sumopod API key", vec!["SUMOPOD_AI_API_KEY"])),
+            oauth: None,
+        },
+        models: SUMOPOD_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
 pub fn builtin_providers() -> Vec<Provider> {
     vec![
         amazon_bedrock_provider(),
@@ -414,6 +478,9 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["HF_TOKEN"], "Hugging Face token")
         ),
+        mistral_provider(),
+        neuralwatt_provider(),
+        nvidia_provider(),
         hyper_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
@@ -425,6 +492,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
         kimi_coding_provider(),
+        sumopod_provider(),
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",

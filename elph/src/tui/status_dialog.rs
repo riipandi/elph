@@ -331,6 +331,10 @@ pub enum StatusDialogKind {
     },
     /// Feedback dialog (Report a Bug / Join Community).
     Feedback,
+    /// Provider connection dialog with OAuth or API key input.
+    ProviderConnect {
+        provider_id: Option<String>,
+    },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -364,6 +368,7 @@ pub struct StatusZoneProps {
     pub dialog: Option<StatusDialogKind>,
     pub approval_selected: Option<State<usize>>,
     pub approval_has_focus: bool,
+    pub api_key_input: Option<State<String>>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -390,6 +395,7 @@ impl Default for StatusZoneProps {
             dialog: None,
             approval_selected: None,
             approval_has_focus: false,
+            api_key_input: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
         }
@@ -456,12 +462,30 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
         Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
+        Some(StatusDialogKind::ProviderConnect { provider_id }) => {
+            Some(render_provider_connect_dialog(props, provider_id))
+        }
         _ => None,
     };
     let banner = props
         .ephemeral_banner
         .as_ref()
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
+
+/// Render the provider connect dialog.
+fn render_provider_connect_dialog(props: &mut StatusZoneProps, _provider_id: Option<String>) -> AnyElement<'static> {
+    use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
+    
+    let selected = props.approval_selected.clone().expect("approval_selected should be set");
+    let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
+    
+    render_dialog(
+        props.screen_width,
+        props.approval_has_focus,
+        selected,
+        api_key_input,
+    )
+}
 
     element! {
         View(
@@ -521,6 +545,19 @@ pub fn build_plan_confirmation_dialog_kind(
 /// Build the feedback dialog when pending.
 pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
     if active { Some(StatusDialogKind::Feedback) } else { None }
+}
+
+/// Build the provider connect dialog when pending.
+pub fn build_provider_connect_dialog_kind(
+    provider_id: Option<String>,
+    _selected: State<usize>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if has_focus {
+        Some(StatusDialogKind::ProviderConnect { provider_id })
+    } else {
+        None
+    }
 }
 
 /// Render the feedback dialog with Report a Bug and Join Community options.

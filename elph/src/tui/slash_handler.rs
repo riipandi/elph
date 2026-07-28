@@ -71,6 +71,10 @@ pub enum SlashOutcome {
     },
     /// Open feedback dialog (Report a Bug / Join Community).
     OpenFeedbackDialog,
+    /// Open provider connection dialog with OAuth or API key input.
+    OpenProviderConnectDialog {
+        provider_id: Option<String>,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -125,10 +129,12 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
         SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
+        SlashDispatch::ProviderConnect { provider_id } => SlashOutcome::OpenProviderConnectDialog { provider_id },
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
+            OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
@@ -202,6 +208,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
             | SlashOutcome::OpenFeedbackDialog
+            | SlashOutcome::OpenProviderConnectDialog { .. }
     )
 }
 
@@ -216,6 +223,7 @@ pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
         OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
         OverlayCommand::Tree => "/tree overlay not yet implemented".into(),
         OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
+        OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
 }
 

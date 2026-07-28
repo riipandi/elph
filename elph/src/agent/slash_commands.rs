@@ -133,6 +133,7 @@ pub enum OverlayCommand {
     ScopedModels,
     Tree,
     Resume,
+    ProviderConnect { provider_id: Option<String> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,6 +178,10 @@ pub enum SlashDispatch {
     OverlayNeeded(OverlayCommand),
     /// Open feedback dialog (Report a Bug / Join Community).
     Feedback,
+    /// Open provider connection dialog with OAuth or API key input.
+    ProviderConnect {
+        provider_id: Option<String>,
+    },
     Unimplemented(String),
 }
 
@@ -313,8 +318,20 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
-        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust"
-        | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
+        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
+            Some(SlashDispatch::Unimplemented(format!("/{name}")))
+        }
+        "provider" => {
+            if args.trim().is_empty() {
+                Some(SlashDispatch::ProviderConnect { provider_id: None })
+            } else if args.starts_with("connect") {
+                let provider_id = args.trim_start_matches("connect").trim().to_string();
+                let provider_id = if provider_id.is_empty() { None } else { Some(provider_id) };
+                Some(SlashDispatch::ProviderConnect { provider_id })
+            } else {
+                Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
+            }
+        }
         _ => None,
     }
 }
@@ -382,14 +399,18 @@ mod tests {
     }
 
     #[test]
-    fn provider_subcommands_are_unimplemented() {
+    fn provider_connect_dispatch() {
         assert_eq!(
             dispatch_slash_command("/provider connect", None, None, None),
-            Some(SlashDispatch::Unimplemented("/provider".into()))
+            Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
         assert_eq!(
             dispatch_slash_command("/provider connect anthropic", None, None, None),
-            Some(SlashDispatch::Unimplemented("/provider".into()))
+            Some(SlashDispatch::ProviderConnect { provider_id: Some("anthropic".to_string()) })
+        );
+        assert_eq!(
+            dispatch_slash_command("/provider", None, None, None),
+            Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
     }
 

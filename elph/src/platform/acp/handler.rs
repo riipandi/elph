@@ -138,6 +138,9 @@ async fn handle_acp_slash_command(
         Some(SlashDispatch::Feedback) => Err(anyhow::anyhow!(
             "Command '/feedback' opens a browser dialog and is not available via ACP."
         )),
+        Some(SlashDispatch::ProviderConnect { .. }) => Err(anyhow::anyhow!(
+            "Command '/provider connect' opens a provider selection dialog and is not available via ACP."
+        )),
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))
         }

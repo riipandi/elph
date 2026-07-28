@@ -18,6 +18,7 @@ mod model_selector_bar;
 mod model_selector_shell;
 mod prompt;
 mod prompt_history;
+mod provider_connect_dialog;
 mod rename_dialog;
 mod scoped_models;
 mod scoped_models_bar;
