@@ -13,7 +13,10 @@ use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
 use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api, bedrock_converse_stream_api};
 use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
-use crate::providers::adapter::{mixed_gateway_apis, mixed_openai_apis, mistral_conversations_api, openai_codex_responses_api, openai_completions_api};
+use crate::providers::adapter::{
+    mistral_conversations_api, mixed_gateway_apis, mixed_openai_apis, openai_codex_responses_api,
+    openai_completions_api,
+};
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {

@@ -1,11 +1,13 @@
 //! Tool-approval dialog below the status row (ask-user prompts use [`super::user_question_bar`] above).
 
-use elph_tui::components::{SELECT_LIST_AUTO_HEIGHT, SelectList, UiTheme, select_list_total_rows};
+use elph_tui::components::{
+    DialogUserInputContent, SELECT_LIST_AUTO_HEIGHT, SelectList, UiTheme, select_list_total_rows,
+};
 use iocraft::prelude::*;
 
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
-use crate::tui::provider_connect_dialog::ProviderConnectStep;
+use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, mode_change_footer_hint,
     mode_change_select_options, plan_confirmation_footer_hint, plan_confirmation_select_options,
@@ -336,6 +338,12 @@ pub enum StatusDialogKind {
     ProviderConnect {
         provider_id: Option<String>,
         step: ProviderConnectStep,
+        input_focus: ProviderConnectFocus,
+    },
+    /// Dedicated API key input dialog (separate from provider selection).
+    ProviderApiKey {
+        provider_id: String,
+        provider_name: String,
     },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
@@ -375,6 +383,8 @@ pub struct StatusZoneProps {
     pub provider_connect_selected: Option<State<usize>>,
     /// Provider connect dialog filter text.
     pub provider_connect_filter: Option<State<String>>,
+    /// Provider connect dialog input focus.
+    pub provider_connect_input_focus: Option<State<ProviderConnectFocus>>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -404,6 +414,7 @@ impl Default for StatusZoneProps {
             api_key_input: None,
             provider_connect_selected: None,
             provider_connect_filter: None,
+            provider_connect_input_focus: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
         }
@@ -470,9 +481,15 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
         Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
-        Some(StatusDialogKind::ProviderConnect { provider_id, step }) => {
-            Some(render_provider_connect_dialog(props, provider_id, step))
-        }
+        Some(StatusDialogKind::ProviderConnect {
+            provider_id,
+            step,
+            input_focus,
+        }) => Some(render_provider_connect_dialog(props, provider_id, step, input_focus)),
+        Some(StatusDialogKind::ProviderApiKey {
+            provider_id,
+            provider_name,
+        }) => Some(render_provider_api_key_dialog(props, &provider_id, &provider_name)),
         _ => None,
     };
     let banner = props
@@ -480,27 +497,82 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         .as_ref()
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
 
-/// Render the provider connect dialog.
-fn render_provider_connect_dialog(
-    props: &mut StatusZoneProps,
-    _provider_id: Option<String>,
-    step: ProviderConnectStep,
-) -> AnyElement<'static> {
-    use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
+    /// Render the provider connect dialog.
+    fn render_provider_connect_dialog(
+        props: &mut StatusZoneProps,
+        _provider_id: Option<String>,
+        step: ProviderConnectStep,
+        input_focus: ProviderConnectFocus,
+    ) -> AnyElement<'static> {
+        use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
 
-    let selected = props
-        .provider_connect_selected
-        .clone()
-        .or_else(|| props.approval_selected.clone())
-        .expect("provider_connect_selected or approval_selected should be set");
-    let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
-    let filter = props
-        .provider_connect_filter
-        .clone()
-        .expect("provider_connect_filter should be set");
+        let selected = props
+            .provider_connect_selected
+            .clone()
+            .or_else(|| props.approval_selected.clone())
+            .expect("provider_connect_selected or approval_selected should be set");
+        let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
+        let filter = props
+            .provider_connect_filter
+            .clone()
+            .expect("provider_connect_filter should be set");
 
-    render_dialog(props.screen_width, props.approval_has_focus, selected, filter, api_key_input, step)
-}
+        render_dialog(
+            props.screen_width,
+            props.approval_has_focus,
+            selected,
+            filter,
+            api_key_input,
+            step,
+            input_focus,
+        )
+    }
+
+    /// Render the dedicated API key input dialog.
+    fn render_provider_api_key_dialog(
+        props: &mut StatusZoneProps,
+        _provider_id: &str,
+        provider_name: &str,
+    ) -> AnyElement<'static> {
+        let theme = UiTheme::default();
+        let body_width = inline_body_width(props.screen_width);
+        let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
+
+        element! {
+            InlineDialogShell(
+                screen_width: props.screen_width,
+                title: format!("API Key \u{2014} {}", provider_name),
+                has_focus: props.approval_has_focus,
+                footer_hint: Some(format!("Enter confirm \u{00B7} Esc cancel \u{00B7} Provider: {}", provider_name)),
+            ) {
+                View(width: body_width, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                    View(width: body_width, flex_shrink: 0f32) {
+                        Text(
+                            content: format!("Enter your API key for {}:", provider_name),
+                            color: theme.text_secondary,
+                            wrap: TextWrap::Wrap,
+                        )
+                    }
+                    View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
+                        DialogUserInputContent(
+                            width: body_width,
+                            placeholder: format!("sk-... ({} API key)", provider_name),
+                            value: Some(api_key_input),
+                            has_focus: props.approval_has_focus,
+                            theme: Some(theme),
+                            compact: true,
+                            show_prompt: false,
+                            show_footer_hint: false,
+                            dialog_chrome: true,
+                            on_submit: HandlerMut::default(),
+                            on_cancel: HandlerMut::default(),
+                        )
+                    }
+                }
+            }
+        }
+        .into()
+    }
 
     element! {
         View(
@@ -568,11 +640,29 @@ pub fn build_provider_connect_dialog_kind(
     step: Option<ProviderConnectStep>,
     _selected: State<usize>,
     has_focus: bool,
+    input_focus: ProviderConnectFocus,
 ) -> Option<StatusDialogKind> {
     if has_focus {
         Some(StatusDialogKind::ProviderConnect {
             provider_id,
             step: step.unwrap_or(ProviderConnectStep::SelectProvider),
+            input_focus,
+        })
+    } else {
+        None
+    }
+}
+
+/// Build the dedicated API key input dialog when pending.
+pub fn build_provider_api_key_dialog_kind(
+    pending: Option<&PendingProviderApiKeyDialog>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if has_focus {
+        let pending = pending?;
+        Some(StatusDialogKind::ProviderApiKey {
+            provider_id: pending.provider_id.clone(),
+            provider_name: pending.provider_name.clone(),
         })
     } else {
         None

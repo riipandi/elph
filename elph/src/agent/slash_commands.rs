@@ -366,7 +366,11 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                 Some(SlashDispatch::ProviderConnect { provider_id: None })
             } else if args.starts_with("connect") {
                 let provider_id = args.trim_start_matches("connect").trim().to_string();
-                let provider_id = if provider_id.is_empty() { None } else { Some(provider_id) };
+                let provider_id = if provider_id.is_empty() {
+                    None
+                } else {
+                    Some(provider_id)
+                };
                 Some(SlashDispatch::ProviderConnect { provider_id })
             } else {
                 Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
@@ -446,7 +450,9 @@ mod tests {
         );
         assert_eq!(
             dispatch_slash_command("/provider connect anthropic", None, None, None),
-            Some(SlashDispatch::ProviderConnect { provider_id: Some("anthropic".to_string()) })
+            Some(SlashDispatch::ProviderConnect {
+                provider_id: Some("anthropic".to_string())
+            })
         );
         assert_eq!(
             dispatch_slash_command("/provider", None, None, None),

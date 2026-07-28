@@ -56,6 +56,14 @@ pub struct PendingProviderConnectDialog {
     pub stashed_prompt_draft: Option<String>,
 }
 
+/// Pending API key input dialog state (separate from provider selection).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingProviderApiKeyDialog {
+    pub provider_id: String,
+    pub provider_name: String,
+    pub stashed_prompt_draft: Option<String>,
+}
+
 // ── Provider data helpers ────────────────────────────────────────────
 
 /// Get list of all providers with OAuth support info.
@@ -117,10 +125,7 @@ fn provider_match_score(option: &ProviderOption, query: &str) -> Option<i32> {
     best = max_score(best, field_score(&query, &option.id.to_ascii_lowercase(), ID_WEIGHT, true));
 
     if option.supports_oauth {
-        best = max_score(
-            best,
-            field_score(&query, "oauth oauth2 sso", SUPPLIER_WEIGHT, false),
-        );
+        best = max_score(best, field_score(&query, "oauth oauth2 sso", SUPPLIER_WEIGHT, false));
     } else {
         best = max_score(best, field_score(&query, "key api key apikey", SUPPLIER_WEIGHT, false));
     }
@@ -139,12 +144,7 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
         .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov.clone(), score)))
         .collect();
 
-    scored.sort_by(|left, right| {
-        right
-            .1
-            .cmp(&left.1)
-            .then_with(|| left.0.name.cmp(&right.0.name))
-    });
+    scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.name.cmp(&right.0.name)));
 
     scored.into_iter().map(|(prov, _)| prov).collect()
 }
@@ -165,6 +165,7 @@ pub struct OpenProviderConnectDialogArgs<'a> {
     pub selected: &'a mut State<usize>,
     pub filter: &'a mut State<String>,
     pub api_key_input: &'a mut State<String>,
+    pub input_focus: &'a mut State<ProviderConnectFocus>,
     pub draft: &'a mut State<String>,
     pub live_draft: &'a mut Ref<String>,
     pub shell_focus: &'a mut State<ShellFocus>,
@@ -175,11 +176,7 @@ pub struct OpenProviderConnectDialogArgs<'a> {
 pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
     let stashed = {
         let current = args.live_draft.read().clone();
-        if current.trim().is_empty() {
-            None
-        } else {
-            Some(current)
-        }
+        if current.trim().is_empty() { None } else { Some(current) }
     };
     if stashed.is_some() {
         args.draft.set(String::new());
@@ -196,6 +193,7 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
     args.selected.set(initial_selected);
     args.filter.set(String::new());
     args.api_key_input.set(String::new());
+    args.input_focus.set(ProviderConnectFocus::List);
 
     args.pending.set(Some(PendingProviderConnectDialog {
         step: ProviderConnectStep::SelectProvider,
@@ -236,6 +234,7 @@ pub fn close_provider_connect_dialog(
     selected: &mut State<usize>,
     filter: &mut State<String>,
     api_key_input: &mut State<String>,
+    input_focus: &mut State<ProviderConnectFocus>,
     draft: &mut State<String>,
     live_draft: &mut Ref<String>,
     shell_focus: &mut State<ShellFocus>,
@@ -244,6 +243,66 @@ pub fn close_provider_connect_dialog(
     let stashed = pending.write().take().and_then(|p| p.stashed_prompt_draft);
     selected.set(0);
     filter.set(String::new());
+    api_key_input.set(String::new());
+    input_focus.set(ProviderConnectFocus::default());
+
+    if restore_stash {
+        if let Some(text) = stashed {
+            draft.set(text.clone());
+            live_draft.set(text);
+        } else {
+            draft.set(String::new());
+            live_draft.set(String::new());
+        }
+    } else {
+        draft.set(String::new());
+        live_draft.set(String::new());
+    }
+    shell_focus.set(ShellFocus::Prompt);
+}
+
+/// Arguments for [`open_provider_api_key_dialog`].
+pub struct OpenProviderApiKeyDialogArgs<'a> {
+    pub pending: &'a mut Ref<Option<PendingProviderApiKeyDialog>>,
+    pub api_key_input: &'a mut State<String>,
+    pub draft: &'a mut State<String>,
+    pub live_draft: &'a mut Ref<String>,
+    pub shell_focus: &'a mut State<ShellFocus>,
+    pub provider_id: String,
+    pub provider_name: String,
+}
+
+/// Open a dedicated API key input dialog (separate from the provider selector).
+pub fn open_provider_api_key_dialog(args: OpenProviderApiKeyDialogArgs<'_>) {
+    let stashed = {
+        let current = args.live_draft.read().clone();
+        if current.trim().is_empty() { None } else { Some(current) }
+    };
+    if stashed.is_some() {
+        args.draft.set(String::new());
+        args.live_draft.set(String::new());
+    }
+
+    args.api_key_input.set(String::new());
+
+    args.pending.set(Some(PendingProviderApiKeyDialog {
+        provider_id: args.provider_id,
+        provider_name: args.provider_name,
+        stashed_prompt_draft: stashed,
+    }));
+    args.shell_focus.set(ShellFocus::StatusDialog);
+}
+
+/// Close the API key dialog and restore stashed draft.
+pub fn close_provider_api_key_dialog(
+    pending: &mut Ref<Option<PendingProviderApiKeyDialog>>,
+    api_key_input: &mut State<String>,
+    draft: &mut State<String>,
+    live_draft: &mut Ref<String>,
+    shell_focus: &mut State<ShellFocus>,
+    restore_stash: bool,
+) {
+    let stashed = pending.write().take().and_then(|p| p.stashed_prompt_draft);
     api_key_input.set(String::new());
 
     if restore_stash {
@@ -289,7 +348,8 @@ pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<Pr
         KeyCode::Char('/') => Some(ProviderFilterSeed::FocusOnly),
         KeyCode::Char(' ') => Some(ProviderFilterSeed::Append(' ')),
         KeyCode::Char(c)
-            if (c.is_ascii_alphabetic() || c.is_ascii_digit()) =>
+            if (c.is_ascii_alphabetic() || c.is_ascii_digit())
+                && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') =>
         {
             Some(ProviderFilterSeed::Append(c))
         }
@@ -310,13 +370,39 @@ pub fn provider_list_nav_delta(modifiers: KeyModifiers, code: KeyCode) -> Option
 }
 
 /// Focus the filter / search field (used by shell keyboard handler).
-#[allow(dead_code)]
 pub fn focus_provider_search(
     input_focus: &mut State<ProviderConnectFocus>,
     pending: &mut PendingProviderConnectDialog,
 ) {
     input_focus.set(ProviderConnectFocus::Search);
     pending.input_focus = ProviderConnectFocus::Search;
+}
+
+/// Focus the provider list (used by shell keyboard handler).
+pub fn focus_provider_list(input_focus: &mut State<ProviderConnectFocus>, pending: &mut PendingProviderConnectDialog) {
+    input_focus.set(ProviderConnectFocus::List);
+    pending.input_focus = ProviderConnectFocus::List;
+}
+
+/// Only confirm a provider selection when focus is on the list (not the search field).
+pub fn provider_confirm_on_enter(focus: ProviderConnectFocus) -> bool {
+    focus == ProviderConnectFocus::List
+}
+
+/// Apply a filter seed keystroke: focus search, optionally append a character.
+pub fn apply_provider_filter_seed(
+    seed: ProviderFilterSeed,
+    filter: &mut State<String>,
+    input_focus: &mut State<ProviderConnectFocus>,
+    pending: &mut PendingProviderConnectDialog,
+) {
+    focus_provider_search(input_focus, pending);
+    if let ProviderFilterSeed::Append(ch) = seed {
+        let mut next = filter.read().clone();
+        next.push(ch);
+        filter.set(next.clone());
+        pending.filter = next;
+    }
 }
 
 // ── Rendering ────────────────────────────────────────────────────────
@@ -333,14 +419,13 @@ pub fn render_provider_connect_dialog(
     filter: State<String>,
     api_key_input: State<String>,
     step: ProviderConnectStep,
+    input_focus: ProviderConnectFocus,
 ) -> AnyElement<'static> {
     match step {
         ProviderConnectStep::SelectProvider => {
-            render_select_provider_step(screen_width, has_focus, selected, filter)
+            render_select_provider_step(screen_width, has_focus, selected, filter, input_focus)
         }
-        ProviderConnectStep::EnterApiKey => {
-            render_api_key_step(screen_width, has_focus, api_key_input)
-        }
+        ProviderConnectStep::EnterApiKey => render_api_key_step(screen_width, has_focus, api_key_input),
     }
 }
 
@@ -350,6 +435,7 @@ fn render_select_provider_step(
     has_focus: bool,
     selected: State<usize>,
     filter: State<String>,
+    input_focus: ProviderConnectFocus,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
@@ -360,11 +446,7 @@ fn render_select_provider_step(
     let options: Vec<SelectOption> = filtered
         .iter()
         .map(|p| {
-            let suffix = if p.supports_oauth {
-                " (OAuth)"
-            } else {
-                " (API Key)"
-            };
+            let suffix = if p.supports_oauth { " (OAuth)" } else { " (API Key)" };
             SelectOption::new(&format!("{}{}", p.name, suffix), &p.id)
         })
         .collect();
@@ -379,8 +461,11 @@ fn render_select_provider_step(
         format!("{} providers", total_count)
     };
 
+    // Like model_selector_bar: visually distinguish search vs list focus
+    let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
+    let list_focused = has_focus && input_focus == ProviderConnectFocus::List;
+
     let w = body_width;
-    let hf = has_focus;
     let thm = theme;
 
     element! {
@@ -396,7 +481,7 @@ fn render_select_provider_step(
                     DialogUserInputContent(
                         width: w,
                         value: Some(filter.clone()),
-                        has_focus: hf,
+                        has_focus: search_focused,
                         theme: Some(thm),
                         compact: true,
                         show_prompt: true,
@@ -418,7 +503,7 @@ fn render_select_provider_step(
                         height: 8u16,
                         options: options,
                         selected_index: Some(selected.clone()),
-                        has_focus: hf,
+                        has_focus: list_focused,
                         show_description: false,
                         compact: true,
                         theme: Some(thm),
@@ -431,11 +516,7 @@ fn render_select_provider_step(
 }
 
 /// Render step 2: dedicated API key input dialog.
-fn render_api_key_step(
-    screen_width: u16,
-    has_focus: bool,
-    api_key_input: State<String>,
-) -> AnyElement<'static> {
+fn render_api_key_step(screen_width: u16, has_focus: bool, api_key_input: State<String>) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
