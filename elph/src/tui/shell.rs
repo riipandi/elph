@@ -2798,6 +2798,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             );
                         }
 
+                        // Auto-update plan frontmatter: Status → in_progress when user picks Implement.
+                        if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh)
+                            && let Some(ref plan_path) = pending.plan_file
+                        {
+                            let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                            if let Err(err) =
+                                crate::agent::plan_files::update_plan_frontmatter(plan_path, "in_progress", &now)
+                            {
+                                log::error!("Failed to update plan frontmatter: {err}");
+                            }
+                        }
+
                         // Resolve via session (triggers mode change + implement prompt).
                         if let Some(session) = pending.session.as_ref() {
                             let session = session.clone();

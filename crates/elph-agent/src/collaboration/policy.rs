@@ -103,12 +103,14 @@ pub fn is_read_only_mcp_tool(name: &str) -> bool {
         || lower.ends_with("_read")
 }
 
-/// Tools for writing plan files to `.elph/plans/*` (available in Plan mode).
+/// Plan-mode tools for writing to `.elph/plans/*`.
 ///
-/// Usage of these tools outside `.elph/plans/*` is prohibited and enforced via
-/// system prompt guidance.
+/// Deprecated — system now handles plan file creation via `save_plan_to_disk`.
+/// Kept as empty matcher so callers still compile; returns false for all tools
+/// so they fall through to `is_mutating_tool` / `is_plan_mode_tool` filtering.
 fn is_plan_file_tool(name: &str) -> bool {
-    matches!(name, "write_file" | "edit_file" | "create_dir")
+    let _ = name;
+    false
 }
 
 pub fn is_plan_mode_tool(name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
@@ -155,16 +157,14 @@ pub fn filter_active_tools(
 
 /// Whether a tool call should be blocked in Plan mode.
 ///
-/// Plan file tools (`write_file`, `edit_file`, `create_dir`) are allowed in Plan mode
-/// for saving plan-related content to `.elph/plans/*` (enforced via system prompt guidance).
+/// Plan mode is read-only. Mutating tools are blocked — the agent must use
+/// `<proposed_plan>` tags to propose plans; the system handles file creation
+/// via `save_plan_to_disk`.
 pub fn plan_mode_blocks_tool(mode: CollaborationMode, tool_name: &str, policy: Option<&ToolExposurePolicy>) -> bool {
     if mode != CollaborationMode::Plan {
         return false;
     }
-    // Plan file tools are allowed in Plan mode.
-    if is_plan_file_tool(tool_name) {
-        return false;
-    }
+    // Plan mode is read-only — all mutating tools are blocked.
     is_mutating_tool(tool_name, policy) || !is_plan_mode_tool(tool_name, policy)
 }
 
@@ -189,13 +189,14 @@ mod tests {
             "create_dir".into(),
             "grep".into(),
         ];
-        // Plan file tools (write_file, edit_file, create_dir) are now allowed in Plan mode;
-        // only shell_exec should be filtered out.
+        // Plan mode is read-only — write_file, edit_file, create_dir, shell_exec all blocked.
         let filtered = filter_active_tools(CollaborationMode::Plan, &all, None);
-        assert!(filtered.contains(&"write_file".to_string()));
-        assert!(filtered.contains(&"edit_file".to_string()));
-        assert!(filtered.contains(&"create_dir".to_string()));
+        assert!(!filtered.contains(&"write_file".to_string()));
+        assert!(!filtered.contains(&"edit_file".to_string()));
+        assert!(!filtered.contains(&"create_dir".to_string()));
         assert!(!filtered.contains(&"shell_exec".to_string()));
+        assert!(filtered.contains(&"read_file".to_string()));
+        assert!(filtered.contains(&"grep".to_string()));
     }
 
     #[test]
@@ -205,17 +206,18 @@ mod tests {
     }
 
     #[test]
-    fn plan_mode_includes_plan_file_tools() {
-        assert!(is_plan_mode_tool("write_file", None));
-        assert!(is_plan_mode_tool("edit_file", None));
-        assert!(is_plan_mode_tool("create_dir", None));
+    fn plan_mode_rejects_file_tools() {
+        // System now handles plan file creation — write/edit/create_dir are blocked.
+        assert!(!is_plan_mode_tool("write_file", None));
+        assert!(!is_plan_mode_tool("edit_file", None));
+        assert!(!is_plan_mode_tool("create_dir", None));
     }
 
     #[test]
-    fn plan_file_tools_not_blocked_in_plan_mode() {
-        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
-        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "edit_file", None));
-        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "create_dir", None));
+    fn plan_mode_blocks_file_tools() {
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "edit_file", None));
+        assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "create_dir", None));
     }
 
     #[test]
