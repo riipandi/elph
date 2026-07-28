@@ -17,6 +17,35 @@ use tokio_util::sync::CancellationToken;
 use crate::agent::harness::utils::truncate::GREP_MAX_LINE_LENGTH;
 use crate::agent::harness::utils::truncate::truncate_line;
 
+/// Output formatting mode for grep search results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GrepOutputMode {
+    /// Standard `file:line:content` format (default).
+    Standard,
+    /// Only list file paths with matches (like `-l`).
+    FilesWithMatches,
+    /// Show match count per file (like `-c`).
+    Count,
+}
+
+/// Options for formatting grep search output.
+#[derive(Debug, Clone)]
+pub struct GrepOutputOptions {
+    /// Which output mode to use.
+    pub mode: GrepOutputMode,
+    /// Line-length truncation in standard mode.
+    pub max_line_length: usize,
+}
+
+impl Default for GrepOutputOptions {
+    fn default() -> Self {
+        Self {
+            mode: GrepOutputMode::Standard,
+            max_line_length: GREP_MAX_LINE_LENGTH,
+        }
+    }
+}
+
 pub fn build_picker(base_path: &str) -> Result<FilePicker> {
     let mut picker = FilePicker::new(FilePickerOptions {
         base_path: base_path.to_string(),
@@ -71,20 +100,54 @@ pub fn build_grep_mode(pattern: &str, literal: bool, ignore_case: bool) -> (Stri
     }
 }
 
+/// Build search options from user-provided parameters.
+#[allow(clippy::too_many_arguments)]
 pub fn build_grep_options(
     limit: usize,
+    max_matches_per_file: Option<usize>,
     mode: GrepMode,
     ignore_case: bool,
+    before_context: usize,
+    after_context: usize,
     abort: Arc<AtomicBool>,
 ) -> GrepSearchOptions {
     GrepSearchOptions {
         page_limit: limit,
+        max_matches_per_file: max_matches_per_file.unwrap_or(0),
         mode,
         smart_case: !ignore_case,
+        before_context,
+        after_context,
         trim_whitespace: false,
         abort_signal: Some(abort),
         ..Default::default()
     }
+}
+
+/// Apply word-regexp boundaries to a pattern.
+pub fn make_word_regexp(pattern: &str) -> String {
+    // Strip any (?i) prefix and re-apply after wrapping
+    let (prefix, inner) = if let Some(rest) = pattern.strip_prefix("(?i)") {
+        ("(?i)", rest)
+    } else {
+        ("", pattern)
+    };
+    format!("{prefix}\\b{}\\b", inner)
+}
+
+/// Escape regex special characters for literal matching.
+fn escape_regex_literal(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if matches!(
+            ch,
+            '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '~' | '-'
+        ) {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
 }
 
 pub fn build_find_glob_pattern(pattern: &str) -> String {
@@ -102,23 +165,105 @@ pub fn build_find_options(limit: usize) -> FuzzySearchOptions<'static> {
     }
 }
 
-pub fn format_grep_output(picker: &FilePicker, result: &GrepResult<'_>) -> (Vec<String>, bool) {
+/// Format grep search output according to the given options.
+pub fn format_grep_output_ex(
+    picker: &FilePicker,
+    result: &GrepResult<'_>,
+    options: &GrepOutputOptions,
+) -> (Vec<String>, bool) {
     let base = normalize_path(picker.base_path());
     let mut lines = Vec::with_capacity(result.matches.len());
     let mut lines_truncated = false;
 
-    for grep_match in &result.matches {
-        let file = result.files[grep_match.file_index];
-        let relative = file.relative_path(picker);
-        let absolute = join_paths(&base, &relative);
-        let (rendered, truncated) = truncate_line(&grep_match.line_content, GREP_MAX_LINE_LENGTH);
-        if truncated {
-            lines_truncated = true;
+    match options.mode {
+        GrepOutputMode::Standard => {
+            let mut current_file_index = None;
+            for grep_match in &result.matches {
+                let file = result.files[grep_match.file_index];
+                let relative = file.relative_path(picker);
+                let absolute = join_paths(&base, &relative);
+
+                // Print file header when switching files
+                if current_file_index != Some(grep_match.file_index) {
+                    if current_file_index.is_some() && !grep_match.context_before.is_empty() {
+                        lines.push(String::new());
+                    }
+                    current_file_index = Some(grep_match.file_index);
+                }
+
+                // Context before
+                for ctx_line in &grep_match.context_before {
+                    let (rendered, truncated) = truncate_line(ctx_line, options.max_line_length);
+                    if truncated {
+                        lines_truncated = true;
+                    }
+                    lines.push(format!(
+                        "{absolute}:{}-{}",
+                        grep_match
+                            .line_number
+                            .saturating_sub(grep_match.context_before.len() as u64)
+                            + 1,
+                        rendered
+                    ));
+                }
+
+                // Match line
+                let (rendered, truncated) = truncate_line(&grep_match.line_content, options.max_line_length);
+                if truncated {
+                    lines_truncated = true;
+                }
+                lines.push(format!("{}:{}:{}", absolute, grep_match.line_number, rendered));
+
+                // Context after
+                for ctx_line in &grep_match.context_after {
+                    let (rendered, truncated) = truncate_line(ctx_line, options.max_line_length);
+                    if truncated {
+                        lines_truncated = true;
+                    }
+                    lines.push(format!("{absolute}:{}-{}", grep_match.line_number + 1, rendered));
+                }
+
+                // Blank line separator between match groups when context is present
+                if !grep_match.context_before.is_empty() || !grep_match.context_after.is_empty() {
+                    lines.push(String::new());
+                }
+            }
         }
-        lines.push(format!("{}:{}:{}", absolute, grep_match.line_number, rendered));
+        GrepOutputMode::FilesWithMatches => {
+            let mut seen_files = std::collections::BTreeSet::new();
+            for grep_match in &result.matches {
+                let file = result.files[grep_match.file_index];
+                let relative = file.relative_path(picker);
+                let absolute = join_paths(&base, &relative);
+                seen_files.insert(absolute);
+            }
+            lines.extend(seen_files.into_iter());
+        }
+        GrepOutputMode::Count => {
+            let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+            for grep_match in &result.matches {
+                let file = result.files[grep_match.file_index];
+                let relative = file.relative_path(picker);
+                let absolute = join_paths(&base, &relative);
+                *counts.entry(absolute).or_insert(0) += 1;
+            }
+            let mut total = 0;
+            for (path, count) in &counts {
+                lines.push(format!("{path}:{count}"));
+                total += count;
+            }
+            if counts.len() > 1 {
+                lines.push(format!("total:{total}"));
+            }
+        }
     }
 
     (lines, lines_truncated)
+}
+
+/// Legacy wrapper that uses standard output mode.
+pub fn format_grep_output(picker: &FilePicker, result: &GrepResult<'_>) -> (Vec<String>, bool) {
+    format_grep_output_ex(picker, result, &GrepOutputOptions::default())
 }
 
 pub fn run_with_abort_signal<T>(
@@ -159,20 +304,6 @@ fn join_paths(base: &str, relative: &str) -> String {
     } else {
         format!("{base}/{relative}")
     }
-}
-
-fn escape_regex_literal(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for ch in text.chars() {
-        if matches!(
-            ch,
-            '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '~' | '-'
-        ) {
-            out.push('\\');
-        }
-        out.push(ch);
-    }
-    out
 }
 
 pub fn resolve_search_base(absolute_path: &str, is_file: bool) -> String {
@@ -355,5 +486,23 @@ mod mention_tests {
         assert_eq!(format_directory_path("src"), "src/");
         assert_eq!(format_directory_path("src/"), "src/");
         assert_eq!(format_directory_path("src//"), "src/");
+    }
+
+    #[test]
+    fn make_word_regexp_wraps_boundaries() {
+        assert_eq!(make_word_regexp("foo"), "\\bfoo\\b");
+        assert_eq!(make_word_regexp(r"(?i)hello"), r"(?i)\bhello\b");
+    }
+
+    #[test]
+    fn escape_regex_literal_escapes_special_chars() {
+        let escaped = escape_regex_literal("fn main()");
+        assert_eq!(escaped, r"fn main\(\)");
+    }
+
+    #[test]
+    fn grep_output_mode_default_is_standard() {
+        let opts = GrepOutputOptions::default();
+        assert_eq!(opts.mode, GrepOutputMode::Standard);
     }
 }
