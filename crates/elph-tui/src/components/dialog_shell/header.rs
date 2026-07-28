@@ -239,9 +239,7 @@ pub fn DialogHeaderRow(props: &mut DialogHeaderRowProps, hooks: Hooks) -> impl I
     let esc_color = chrome.muted_color;
     // Mouse-only: keyboard Esc / Copy is still handled by the app shell.
     let mut on_esc = props.on_esc.take();
-    let mut on_copy = props.on_copy.take();
-
-    let copy_handler = on_copy.take();
+    let copy_handler = props.on_copy.take();
 
     element! {
         View(
