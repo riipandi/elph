@@ -86,15 +86,16 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusZone, build_prompt_queue_dialog_kind, build_status_dialog_kind,
+    PromptQueueAction, StatusZone, build_mode_change_dialog_kind, build_prompt_queue_dialog_kind,
+    build_status_dialog_kind,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
 };
-use crate::tui::tool_approval::PendingToolApproval;
 use crate::tui::tool_approval::{
-    TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, pick_tool_approval_index_from_key, tool_approval_transcript_key,
+    PendingModeChange, PendingToolApproval, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index,
+    pick_mode_change_index_from_key, pick_tool_approval_index_from_key, tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
@@ -859,7 +860,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut live_cursor = hooks.use_ref(|| 0usize);
     // Plain-`y` selection yank toast from Textarea — drained into ephemeral banner.
     let mut clipboard_toast = hooks.use_state(|| None::<elph_tui::ClipboardNotice>);
-    let mut pending_mode_change_req = hooks.use_ref(|| None::<String>);
+    let mut pending_mode_change = hooks.use_ref(|| None::<PendingModeChange>);
     let mut prompt_editor_mirror = hooks.use_ref(|| (String::new(), 0usize));
     let mut styled_content = hooks.use_ref(String::new);
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
@@ -1346,28 +1347,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let _ = req.response_tx.send("false".to_string());
                             continue;
                         }
-                        use crate::agent::UserQuestionStep;
                         let mode_label = req.target_mode.to_ascii_uppercase();
-                        let step = UserQuestionStep {
-                            id: "confirm".into(),
-                            question: format!("Switch to **{mode_label}** mode?\n\n{}", req.reason),
-                            options: None,
-                            allow_multiple: false,
-                            allow_custom: false,
-                            custom_label: "Other…".into(),
-                            default: Some("false".into()),
-                            required: true,
-                            min_length: None,
-                            pattern: None,
-                            tab_label: None,
-                        };
-                        let pending = PendingUserQuestion::from_request(crate::agent::UserQuestionRequest {
-                            steps: vec![step],
-                            response_tx: req.response_tx,
-                        });
+                        activity_label.set(format!("Approve: switch to {mode_label}"));
+                        approval_selected.set(0);
                         shell_focus.set(ShellFocus::StatusDialog);
-                        pending_user_question.set(Some(pending));
-                        pending_mode_change_req.set(Some(req.target_mode.clone()));
+                        pending_mode_change.set(Some(PendingModeChange {
+                            target_mode: req.target_mode.clone(),
+                            reason: req.reason.clone(),
+                            response_tx: req.response_tx,
+                        }));
+                        // Push a status row for the transcript.
+                        {
+                            let mut msgs = messages_arc_inner.write().unwrap();
+                            let key = "mode-change:pending".to_string();
+                            let mut row = TranscriptMessage::startup_status(
+                                key,
+                                format!("Switch to {mode_label} mode?"),
+                                TranscriptStyle::StatusRunning,
+                            );
+                            row.status_detail = Some(req.reason);
+                            msgs.push(row);
+                        }
                         transcript_changed = true;
                         continue;
                     }
@@ -1858,6 +1858,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let scoped_models_open = pending_scoped_models.read().is_some();
             let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
+                || pending_mode_change.read().is_some()
                 || pending_user_question.read().is_some()
                 || model_selector_open
                 || scoped_models_open
@@ -2585,6 +2586,75 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     return;
                 }
 
+                // ── Mode Change approval (approve/deny) ──────────────────────
+                let mode_change_choice = {
+                    let user_question_active = pending_user_question.read().is_some();
+                    if pending_mode_change.read().is_some() && !user_question_active {
+                        if modifiers.is_empty() && code == KeyCode::Esc {
+                            Some(false)
+                        } else {
+                            pick_mode_change_index_from_key(modifiers, code)
+                                .or_else(|| {
+                                    (modifiers.is_empty() && code == KeyCode::Enter)
+                                        .then(|| match approval_selected.get() {
+                                            0 => Some(0),
+                                            _ => Some(1),
+                                        })
+                                        .flatten()
+                                })
+                                .map(|idx| idx == 0)
+                        }
+                    } else {
+                        None
+                    }
+                };
+                if let Some(approved) = mode_change_choice {
+                    if let Some(pending) = pending_mode_change.write().take() {
+                        let mode = crate::agent::agent_mode_from_setting(&pending.target_mode);
+                        let mode_label = pending.target_mode.to_ascii_uppercase();
+                        // Apply mode before responding (fixes race: policy must be updated
+                        // before the agent continues its turn).
+                        agent_mode.set(mode);
+                        // Update the transcript status row.
+                        {
+                            let mut msgs = messages.write();
+                            let key = "mode-change:pending";
+                            let (style, detail) = if approved {
+                                (TranscriptStyle::StatusSuccess, format!("Switched to {mode_label}"))
+                            } else {
+                                (TranscriptStyle::StatusFailed, format!("Stayed in {mode_label}"))
+                            };
+                            if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key)) {
+                                row.content = "Mode change".to_string();
+                                row.status_detail = Some(detail);
+                                row.style = style;
+                            }
+                        }
+                        messages_revision.set(messages_revision.get().wrapping_add(1));
+                        if let Some(session) = agent_session.as_ref() {
+                            let session = session.clone();
+                            let mode_for_session = mode;
+                            let pending_for_response = pending;
+                            tokio::spawn(async move {
+                                if let Err(err) = session.set_agent_mode(mode_for_session).await {
+                                    log::warn!("mode change failed: {err}");
+                                }
+                                // Respond AFTER mode is applied so the policy is up-to-date.
+                                pending_for_response.respond(approved);
+                            });
+                        } else {
+                            pending.respond(approved);
+                        }
+                        crate::tui::session_prefs::persist_session_prefs(&paths, mode, thinking_level.get());
+                        activity_label.set(match approved {
+                            true => format!("Switched to {}", mode.label()),
+                            false => format!("Stayed in {}", agent_mode.get().label()),
+                        });
+                    }
+                    shell_focus.set(ShellFocus::Prompt);
+                    return;
+                }
+
                 let option_nav = {
                     let pending_ref = pending_user_question.read();
                     match (pending_ref.as_ref(), question_option_nav_delta(modifiers, code)) {
@@ -3295,6 +3365,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if m.contains(KeyModifiers::CONTROL)
                         && !m.contains(KeyModifiers::ALT)
                         && pending_tool_approval.read().is_none()
+                        && pending_mode_change.read().is_none()
                         && pending_user_question.read().is_none()
                         && pending_model_selector.read().is_none()
                         && pending_scoped_models.read().is_none()
@@ -3358,6 +3429,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     queue_manager_selected.set(0);
                     if let Some(pending) = pending_tool_approval.write().take() {
                         pending.respond(ToolApprovalChoice::Reject);
+                    }
+                    if let Some(mode_change) = pending_mode_change.write().take() {
+                        mode_change.respond(false);
                     }
                     if let Some(question) = pending_user_question.write().take() {
                         question.cancel();
@@ -3537,6 +3611,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let confetti_open = pending_confetti.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
+        || pending_mode_change.read().is_some()
         || user_question_open
         || model_selector_open
         || scoped_models_open
@@ -3563,7 +3638,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
-    let approval_has_focus = pending_tool_approval.read().is_some()
+    let approval_has_focus = (pending_tool_approval.read().is_some() || pending_mode_change.read().is_some())
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
@@ -3797,14 +3872,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Depend on queue_ui_revision so Ref-backed queue mutations re-render the list/badge.
     let _queue_ui_revision = queue_ui_revision.get();
     // Tool approval takes precedence over the prompt-queue list (visible whenever non-empty).
-    let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref()).or_else(|| {
-        build_prompt_queue_dialog_kind(
-            prompt_queue.read().items(),
-            queue_manager_selected.get(),
-            queue_manager_action.get(),
-            queue_manager_is_open,
-        )
-    });
+    let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref())
+        .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
+        .or_else(|| {
+            build_prompt_queue_dialog_kind(
+                prompt_queue.read().items(),
+                queue_manager_selected.get(),
+                queue_manager_action.get(),
+                queue_manager_is_open,
+            )
+        });
     let queue_count = prompt_queue.read().len() as u32;
     let draft_for_palette = compose_palette_draft(input_prefix_kind.get(), &live_draft.read());
     let draft_body = live_draft.read().clone();
@@ -3926,11 +4003,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         input_focus: question_input_focus.get(),
                         has_focus: question_has_focus,
                         on_confirm_yes: {
-                            let mut pending_mode_change = pending_mode_change_req;
-                            let paths = paths.read().clone();
-                            let agent_session = agent_session.clone();
-                            let mut agent_mode = agent_mode;
-                            let thinking_level = thinking_level;
                             move |_| {
                                 let outcome = pending_user_question
                                     .write()
@@ -3957,27 +4029,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                     );
                                 }
-                                // Process pending mode change after question completes.
-                                if let Some(target_mode) = pending_mode_change.write().take() {
-                                    let mode = crate::agent::agent_mode_from_setting(&target_mode);
-                                    agent_mode.set(mode);
-                                    crate::tui::session_prefs::persist_session_prefs(
-                                        &paths, mode, thinking_level.get(),
-                                    );
-                                    if let Some(session) = agent_session.as_ref() {
-                                        let session = session.clone();
-                                        tokio::spawn(async move {
-                                            let _ = session.set_agent_mode(mode).await;
-                                        });
-                                    }
-                                    activity_label.set(
-                                        format!("Switched to {}", mode.label())
-                                    );
-                                }
                             }
                         },
                         on_confirm_no: {
-                            let mut pending_mode_change = pending_mode_change_req;
                             move |_| {
                                 let outcome = pending_user_question
                                     .write()
@@ -4004,8 +4058,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
                                     );
                                 }
-                                // Clear pending mode change on rejection.
-                                pending_mode_change.write().take();
                             }
                         },
                         on_text_submit: move |_| {

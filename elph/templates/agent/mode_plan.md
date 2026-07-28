@@ -12,3 +12,4 @@ Workflow:
    ...markdown plan...
    </proposed_plan>
    Do not begin implementation until the user confirms the plan.
+4. When ready to implement, use `request_mode_change` to switch to **Build** mode (not Brave).

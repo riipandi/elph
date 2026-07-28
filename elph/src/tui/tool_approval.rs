@@ -1,4 +1,6 @@
 //! Tool approval state and keyboard helpers.
+//!
+//! Also handles mode-change dialogs (same approval-style UI pattern).
 
 use elph_tui::types::SelectOption;
 use iocraft::prelude::{KeyCode, KeyModifiers};
@@ -94,9 +96,108 @@ pub fn choice_at_index(index: usize) -> Option<ToolApprovalChoice> {
     }
 }
 
+// ── Mode-change dialog (simple approve/deny) ──────────────────────────
+
+/// Pending mode-change request retained in shell state until the user responds.
+pub struct PendingModeChange {
+    pub target_mode: String,
+    pub reason: String,
+    pub response_tx: tokio::sync::oneshot::Sender<String>,
+}
+
+impl PendingModeChange {
+    pub fn respond(self, approved: bool) {
+        let _ = self
+            .response_tx
+            .send(if approved { "true" } else { "false" }.to_string());
+    }
+}
+
+/// Default selected row when the mode-change dialog opens (Approve).
+#[allow(dead_code)]
+pub const MODE_CHANGE_DEFAULT_INDEX: usize = 0;
+
+/// Select-list rows for the mode-change dialog.
+pub fn mode_change_select_options() -> Vec<SelectOption> {
+    [("Approve", "Switch to this mode"), ("Deny", "Keep current mode")]
+        .into_iter()
+        .map(|(name, detail)| SelectOption::new(name, detail))
+        .collect()
+}
+
+/// Footer hint for the mode-change dialog.
+pub fn mode_change_footer_hint() -> String {
+    "↑↓ move · Enter/y approve · n/Esc deny".to_string()
+}
+
+/// Map shortcut keys to mode-change list indices.
+///
+/// | Index | Choice    | Keys    |
+/// |-------|-----------|---------|
+/// | 0     | Approve   | `y` `1` |
+/// | 1     | Deny      | `n` `2` |
+pub fn pick_mode_change_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
+    if !modifiers.is_empty() {
+        return None;
+    }
+    match code {
+        KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('1') => Some(0),
+        KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Char('2') => Some(1),
+        _ => None,
+    }
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mode_change_select_options_order() {
+        let options = mode_change_select_options();
+        assert_eq!(options.len(), 2);
+        assert_eq!(options[0].name, "Approve");
+        assert_eq!(options[1].name, "Deny");
+    }
+
+    #[test]
+    fn mode_change_keys_match_table() {
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('y')), Some(0));
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('n')), Some(1));
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('1')), Some(0));
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('2')), Some(1));
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('Y')), Some(0));
+        assert_eq!(pick_mode_change_index_from_key(KeyModifiers::NONE, KeyCode::Char('N')), Some(1));
+    }
+
+    #[test]
+    fn mode_change_footer_hint_includes_keys() {
+        let hint = mode_change_footer_hint();
+        assert!(hint.contains("y approve"));
+        assert!(hint.contains("n/Esc deny"));
+    }
+
+    #[test]
+    fn pending_mode_change_sends_true_or_false() {
+        let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let pending = PendingModeChange {
+            target_mode: "build".into(),
+            reason: "need to edit".into(),
+            response_tx: tx,
+        };
+        pending.respond(true);
+        assert_eq!(rx.try_recv().unwrap(), "true");
+
+        let (tx, mut rx) = tokio::sync::oneshot::channel();
+        let pending = PendingModeChange {
+            target_mode: "build".into(),
+            reason: "need to edit".into(),
+            response_tx: tx,
+        };
+        pending.respond(false);
+        assert_eq!(rx.try_recv().unwrap(), "false");
+    }
 
     #[test]
     fn choice_at_index_maps_four_actions() {
