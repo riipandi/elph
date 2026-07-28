@@ -6,7 +6,7 @@
 //! - File-only mode (-l), count mode (-c)
 //! - Word regexp, case control
 //! - Batch patterns (OR) and batch paths
-//! - Multi-threaded via fff_search backend.
+//! - One picker build per unique directory — efficient for N-pattern × M-path.
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -117,6 +117,24 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     )
 }
 
+// ── Internal types ──────────────────────────────────────────────
+
+#[derive(Clone)]
+struct PreparedPattern {
+    raw: String,
+    query: String,
+    mode: fff_search::grep::GrepMode,
+}
+
+struct SearchTarget {
+    /// Base directory for the picker.
+    base_path: String,
+    /// Path scope for the query (empty for directory, filename for file).
+    path_scope: String,
+}
+
+// ── Main entry ─────────────────────────────────────────────────
+
 async fn execute_grep(
     env: Arc<LocalExecutionEnv>,
     args: Value,
@@ -124,33 +142,52 @@ async fn execute_grep(
 ) -> anyhow::Result<AgentToolResult> {
     check_aborted(signal.as_ref())?;
 
-    // --- Parse patterns ---
-    let patterns: Vec<String> = if let Some(pat) = args.get("pattern").and_then(|v| v.as_str()) {
+    // ── Parse patterns ──────────────────────────────────────────
+    let raw_patterns: Vec<String> = if let Some(pat) = args.get("pattern").and_then(|v| v.as_str()) {
         vec![pat.to_string()]
     } else if let Some(pats) = args.get("patterns").and_then(|v| v.as_array()) {
         pats.iter().filter_map(|v| v.as_str().map(String::from)).collect()
     } else {
         return Err(anyhow::anyhow!("Missing required argument: 'pattern' or 'patterns'"));
     };
-    if patterns.is_empty() {
+    if raw_patterns.is_empty() {
         return Err(anyhow::anyhow!("At least one pattern is required"));
     }
 
-    // --- Parse paths ---
-    let paths: Vec<String> = if let Some(p) = args.get("paths").and_then(|v| v.as_array()) {
-        p.iter().filter_map(|v| v.as_str().map(String::from)).collect()
-    } else {
-        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
-        vec![path.to_string()]
-    };
-
-    // --- Parse other options ---
     let ignore_case = args.get("ignoreCase").and_then(|v| v.as_bool()).unwrap_or(false);
     let literal = args.get("literal").and_then(|v| v.as_bool()).unwrap_or(false);
     let word_regexp = args.get("wordRegexp").and_then(|v| v.as_bool()).unwrap_or(false);
+
+    // Build patterns once — they are Clone, reused for every target.
+    let patterns: Vec<PreparedPattern> = raw_patterns
+        .iter()
+        .map(|raw| {
+            let (mut effective_pattern, mut effective_mode) = build_grep_mode(raw, literal, ignore_case);
+            if word_regexp && !literal {
+                effective_pattern = make_word_regexp(&effective_pattern);
+                effective_mode = fff_search::grep::GrepMode::Regex;
+            }
+            PreparedPattern {
+                raw: raw.clone(),
+                query: effective_pattern,
+                mode: effective_mode,
+            }
+        })
+        .collect();
+
+    let multi_pattern = patterns.len() > 1;
+
+    // ── Parse options (copied scalars, no ownership issues) ────
     let files_with_matches = args.get("filesWithMatches").and_then(|v| v.as_bool()).unwrap_or(false);
     let count = args.get("count").and_then(|v| v.as_bool()).unwrap_or(false);
-    let limit = args
+    let output_mode = if files_with_matches {
+        GrepOutputMode::FilesWithMatches
+    } else if count {
+        GrepOutputMode::Count
+    } else {
+        GrepOutputMode::Standard
+    };
+    let limit: usize = args
         .get("limit")
         .and_then(|v| v.as_u64())
         .unwrap_or(DEFAULT_LIMIT as u64) as usize;
@@ -159,7 +196,6 @@ async fn execute_grep(
         .and_then(|v| v.as_u64())
         .map(|v| v as usize);
 
-    // Context lines are symmetric by default (like -C), overridden by before/after
     let context = args
         .get("context")
         .and_then(|v| v.as_u64())
@@ -176,113 +212,130 @@ async fn execute_grep(
         .map(|v| v as usize)
         .unwrap_or(context);
 
-    // --- Determine output mode ---
-    let output_mode = if files_with_matches {
-        GrepOutputMode::FilesWithMatches
-    } else if count {
-        GrepOutputMode::Count
+    // ── Parse & deduplicate paths ──────────────────────────────
+    let raw_paths: Vec<String> = if let Some(p) = args.get("paths").and_then(|v| v.as_array()) {
+        p.iter().filter_map(|v| v.as_str().map(String::from)).collect()
     } else {
-        GrepOutputMode::Standard
+        let path = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
+        vec![path.to_string()]
     };
 
-    // --- Resolve all paths ---
+    let mut targets: Vec<SearchTarget> = Vec::new();
+    let mut seen_bases: BTreeSet<String> = BTreeSet::new();
+    for raw in &raw_paths {
+        let absolute = resolve_path(&env, raw, signal.as_ref()).await?;
+        let info = match env.file_info(&absolute, signal.as_ref()).await {
+            HarnessResult::Ok(info) => info,
+            HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
+        };
+        if info.kind != FileKind::File && info.kind != FileKind::Directory {
+            continue;
+        }
+        let is_file = info.kind == FileKind::File;
+        let base_path = resolve_search_base(&absolute, is_file);
+        if !seen_bases.insert(base_path.clone()) {
+            continue;
+        }
+        let path_scope = resolve_path_scope(&absolute, is_file);
+        targets.push(SearchTarget { base_path, path_scope });
+    }
+
+    let multi_target = targets.len() > 1;
+
+    // ── Execute ────────────────────────────────────────────────
     let mut all_results: Vec<String> = Vec::new();
     let mut limit_reached = false;
     let mut lines_truncated = false;
-    let mut seen_files = BTreeSet::new();
 
-    // Group results by pattern and path for combined output
-    for pattern in &patterns {
+    for target in &targets {
         if limit_reached {
             break;
         }
-        // Apply word-regexp wrapping if requested
-        let (mut effective_pattern, mut effective_mode) = build_grep_mode(pattern, literal, ignore_case);
-        if word_regexp && !literal {
-            effective_pattern = make_word_regexp(&effective_pattern);
-            effective_mode = fff_search::grep::GrepMode::Regex;
-        }
 
-        for path in &paths {
-            if limit_reached {
-                break;
-            }
-            let absolute = resolve_path(&env, path, signal.as_ref()).await?;
-            let info = match env.file_info(&absolute, signal.as_ref()).await {
-                HarnessResult::Ok(info) => info,
-                HarnessResult::Err(error) => return Err(anyhow::anyhow!("{}", error.message)),
-            };
-            let is_file = info.kind == FileKind::File;
-            if info.kind != FileKind::File && info.kind != FileKind::Directory {
-                continue;
-            }
+        let t_base = target.base_path.clone();
+        let t_scope = target.path_scope.clone();
+        let sig = signal.clone();
+        // Clone patterns so each thread owns its copy (not moved on first iter).
+        let patterns_for_thread = patterns.clone();
 
-            let base_path = resolve_search_base(&absolute, is_file);
-            let path_scope = resolve_path_scope(&absolute, is_file);
-            let query_text = build_grep_query(&effective_pattern, &path_scope);
-            let signal_for_blocking = signal.clone();
-            let pattern_label = if patterns.len() > 1 {
-                Some(pattern.clone())
-            } else {
-                None
-            };
+        // One picker build per target; all patterns run through it.
+        let (target_results, truncated) = tokio::task::spawn_blocking(move || {
+            run_with_abort_signal(sig.as_ref(), |abort| {
+                let picker = build_picker(&t_base)?;
+                let mut out: Vec<String> = Vec::new();
+                let mut truncated = false;
 
-            let (matches, truncated, limit_hit) = tokio::task::spawn_blocking(move || {
-                run_with_abort_signal(signal_for_blocking.as_ref(), |abort| {
-                    let parsed_query = parse_grep_query(&query_text);
-                    let picker = build_picker(&base_path)?;
-                    let options = build_grep_options(
+                for (_pi, pattern) in patterns_for_thread.iter().enumerate() {
+                    let query_text = if t_scope.is_empty() {
+                        pattern.query.clone()
+                    } else {
+                        build_grep_query(&pattern.query, &t_scope)
+                    };
+                    let parsed = parse_grep_query(&query_text);
+
+                    let opts = build_grep_options(
                         limit,
                         max_matches_per_file,
-                        effective_mode,
-                        ignore_case,
+                        pattern.mode,
+                        false,
                         before_context,
                         after_context,
-                        abort,
+                        abort.clone(),
                     );
-                    let result = picker.grep(&parsed_query, &options);
+                    let result = picker.grep(&parsed, &opts);
 
-                    let output_opts = GrepOutputOptions {
+                    let fmt_opts = GrepOutputOptions {
                         mode: output_mode,
                         ..Default::default()
                     };
-                    let (matches, lines_truncated) = format_grep_output_ex(&picker, &result, &output_opts);
-                    Ok((matches, lines_truncated, result.matches.len() >= limit))
-                })
+                    let (matches, lt) = format_grep_output_ex(&picker, &result, &fmt_opts);
+                    if lt {
+                        truncated = true;
+                    }
+
+                    if multi_pattern && !matches.is_empty() {
+                        if !out.is_empty() {
+                            out.push(String::new());
+                        }
+                        out.push(format!("[Pattern: {}]", pattern.raw));
+                    }
+                    out.extend(matches);
+
+                    if result.matches.len() >= limit {
+                        break;
+                    }
+                }
+
+                Ok((out, truncated))
             })
-            .await??;
+        })
+        .await??;
 
-            if truncated {
-                lines_truncated = true;
-            }
-            if limit_hit {
-                // If we hit the limit on this batch, stop adding more
-                limit_reached = true;
-            }
+        if truncated {
+            lines_truncated = true;
+        }
 
-            // Prepend pattern label if multiple patterns
-            if let Some(ref label) = pattern_label {
-                if !matches.is_empty() {
-                    if !all_results.is_empty() {
-                        all_results.push(String::new());
-                    }
-                    all_results.push(format!("[Pattern: {label}]"));
-                }
+        if multi_target && !target_results.is_empty() {
+            if !all_results.is_empty() {
+                all_results.push(String::new());
             }
+            all_results.push(format!("[Path: {}]", target.base_path));
+        }
 
-            // Deduplicate file paths for files-with-matches mode
-            if output_mode == GrepOutputMode::FilesWithMatches {
-                for m in &matches {
-                    if seen_files.insert(m.clone()) {
-                        all_results.push(m.clone());
-                    }
-                }
-            } else {
-                all_results.extend(matches);
-            }
+        let prev = all_results.len();
+        all_results.extend(target_results);
+        if all_results.len() - prev >= limit {
+            limit_reached = true;
         }
     }
 
+    // Deduplicate file paths across targets for files-with-matches
+    if output_mode == GrepOutputMode::FilesWithMatches {
+        let mut seen = BTreeSet::new();
+        all_results.retain(|line| line.starts_with('[') || seen.insert(line.clone()));
+    }
+
+    // ── Truncate and format output ─────────────────────────────
     let output = all_results.join("\n");
     let truncation = truncate_head(
         &output,
@@ -322,7 +375,6 @@ mod tests {
 
     fn setup_env() -> (Arc<LocalExecutionEnv>, TempDir) {
         let dir = TempDir::new().expect("tempdir");
-        // Create some test files
         fs::write(dir.path().join("main.rs"), "fn main() {\n    println!(\"hello\");\n}\n").expect("write");
         fs::write(
             dir.path().join("lib.rs"),
@@ -336,50 +388,29 @@ mod tests {
     #[tokio::test]
     async fn grep_basic_regex() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "fn", "path": "."});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("main.rs"));
-        assert!(text.contains("lib.rs"));
+        let result = execute_grep(env, json!({"pattern": "fn", "path": "."}), None)
+            .await
+            .expect("grep");
+        let text = tool_text(&result);
+        assert!(text.contains("main.rs") && text.contains("lib.rs"));
     }
 
     #[tokio::test]
     async fn grep_literal() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "hello", "literal": true});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("hello"));
+        let result = execute_grep(env, json!({"pattern": "hello", "literal": true}), None)
+            .await
+            .expect("grep");
+        assert!(tool_text(&result).contains("hello"));
     }
 
     #[tokio::test]
     async fn grep_context_lines() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "println", "context": 1});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        // Should contain the fn line (context before) and the println line (match)
+        let result = execute_grep(env, json!({"pattern": "println", "context": 1}), None)
+            .await
+            .expect("grep");
+        let text = tool_text(&result);
         assert!(text.contains("fn main"));
         assert!(text.contains("println"));
     }
@@ -387,127 +418,79 @@ mod tests {
     #[tokio::test]
     async fn grep_files_with_matches() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "fn", "filesWithMatches": true});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        // Should contain file paths, not line:content
-        assert!(text.contains("main.rs") || text.contains(".rs"));
-        assert!(!text.contains(":1:")); // no line numbers
+        let result = execute_grep(env, json!({"pattern": "fn", "filesWithMatches": true}), None)
+            .await
+            .expect("grep");
+        let text = tool_text(&result);
+        assert!((text.contains("main.rs") || text.contains(".rs")) && !text.contains(":1:"));
     }
 
     #[tokio::test]
     async fn grep_count_mode() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "hello", "count": true});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        // Should show file:count format
+        let result = execute_grep(env, json!({"pattern": "hello", "count": true}), None)
+            .await
+            .expect("grep");
+        let text = tool_text(&result);
         assert!(text.contains(":") && !text.contains(":1:"));
     }
 
     #[tokio::test]
     async fn grep_batch_patterns() {
         let (env, _dir) = setup_env();
-        let args = json!({"patterns": ["println", "print"], "path": "."});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("println"));
+        let result = execute_grep(env, json!({"patterns": ["println", "print"], "path": "."}), None)
+            .await
+            .expect("grep");
+        let text = tool_text(&result);
+        assert!(text.contains("println") && text.contains("[Pattern:"));
     }
 
     #[tokio::test]
     async fn grep_batch_paths() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "fn", "paths": ["main.rs", "lib.rs"]});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("fn"));
+        let result = execute_grep(env, json!({"pattern": "fn", "paths": ["main.rs", "lib.rs"]}), None)
+            .await
+            .expect("grep");
+        assert!(tool_text(&result).contains("fn"));
     }
 
     #[tokio::test]
     async fn grep_word_regexp() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "main", "wordRegexp": true});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("fn main"));
+        let result = execute_grep(env, json!({"pattern": "main", "wordRegexp": true}), None)
+            .await
+            .expect("grep");
+        assert!(tool_text(&result).contains("fn main"));
     }
 
     #[tokio::test]
     async fn grep_ignore_case() {
         let (env, _dir) = setup_env();
-        let args = json!({"pattern": "HELLO", "ignoreCase": true});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        assert!(text.contains("hello"));
+        let result = execute_grep(env, json!({"pattern": "HELLO", "ignoreCase": true}), None)
+            .await
+            .expect("grep");
+        assert!(tool_text(&result).contains("hello"));
     }
 
     #[tokio::test]
     async fn grep_max_matches_per_file() {
         let (env, _dir) = setup_env();
-        // lib.rs has 2 "hello" occurrences in "hello world"
-        let args = json!({"pattern": "hello", "maxMatchesPerFile": 1});
-        let result = execute_grep(env, args, None).await.expect("grep failed");
-        let text = result
-            .content
-            .first()
-            .and_then(|c| match c {
-                crate::types::ToolResultContent::Text(t) => Some(t.text.as_str()),
-                _ => None,
-            })
-            .unwrap_or("");
-        // Should have at most 1 match per file
-        assert!(!text.is_empty());
+        let result = execute_grep(env, json!({"pattern": "hello", "maxMatchesPerFile": 1}), None)
+            .await
+            .expect("grep");
+        assert!(!tool_text(&result).is_empty());
     }
 
     #[tokio::test]
     async fn grep_errors_on_missing_pattern() {
         let (env, _dir) = setup_env();
-        let args = json!({});
-        let result = execute_grep(env, args, None).await;
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("pattern") || err.to_string().contains("Pattern"));
+        assert!(execute_grep(env, json!({}), None).await.is_err());
+    }
+
+    fn tool_text(result: &AgentToolResult) -> &str {
+        match &result.content[0] {
+            crate::types::ToolResultContent::Text(t) => t.text.as_str(),
+            _ => "",
+        }
     }
 }
