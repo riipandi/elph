@@ -147,10 +147,10 @@ fn flatten_catalog_json(nested: Value) -> Value {
             for (api_type, models) in groups {
                 if let Value::Object(models_map) = models {
                     for (mid, mut model) in models_map {
-                        if let Value::Object(ref mut fields) = model {
-                            if !fields.contains_key("api") {
-                                fields.insert("api".to_string(), Value::String(api_type.clone()));
-                            }
+                        if let Value::Object(ref mut fields) = model
+                            && !fields.contains_key("api")
+                        {
+                            fields.insert("api".to_string(), Value::String(api_type.clone()));
                         }
                         merged.insert(mid, model);
                     }

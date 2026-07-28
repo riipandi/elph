@@ -147,7 +147,7 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 304
+        "count": 303
     },
     {
         "providerId": "qwen-token-plan",
@@ -158,6 +158,11 @@
         "providerId": "qwen-token-plan-cn",
         "rustMod": "qwen_token_plan_cn",
         "count": 15
+    },
+    {
+        "providerId": "sumopod",
+        "rustMod": "sumopod",
+        "count": 48
     },
     {
         "providerId": "together",

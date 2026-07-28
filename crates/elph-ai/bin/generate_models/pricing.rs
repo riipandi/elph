@@ -119,26 +119,23 @@ fn lookup_models_dev(
     provider_id: &str,
     models_dev: &HashMap<String, Value>,
 ) -> Option<(f64, f64, f64)> {
-    // Build a list of possible models.dev provider keys
     let candidates = provider_candidates(provider_id);
 
     for key in &candidates {
-        if let Some(prov) = models_dev.get(*key) {
-            if let Some(models) = prov.get("models").and_then(|m| m.as_object()) {
-                if let Some(model) = models.get(model_id) {
-                    if let Some(cost) = model.get("cost") {
-                        let inp = cost.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let outp = cost.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                        let cached = cost
-                            .get("cache_read")
-                            .or_else(|| cost.get("cacheRead"))
-                            .and_then(|v| v.as_f64())
-                            .unwrap_or(0.0);
-                        if inp > 0.0 || outp > 0.0 {
-                            return Some((inp, outp, cached));
-                        }
-                    }
-                }
+        if let Some(prov) = models_dev.get(*key)
+            && let Some(models) = prov.get("models").and_then(|m| m.as_object())
+            && let Some(model) = models.get(model_id)
+            && let Some(cost) = model.get("cost")
+        {
+            let inp = cost.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let outp = cost.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            let cached = cost
+                .get("cache_read")
+                .or_else(|| cost.get("cacheRead"))
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0);
+            if inp > 0.0 || outp > 0.0 {
+                return Some((inp, outp, cached));
             }
         }
     }
@@ -247,20 +244,19 @@ fn enrich_file(
         }
 
         // 1. Try models.dev pricing
-        if let Some((inp, outp, cached)) = lookup_models_dev(model_id, provider_id, models_dev) {
-            if update_model_cost(path, model_id, inp, outp, cached, "models.dev")? {
-                updated += 1;
-                continue;
-            }
+        if let Some((inp, outp, cached)) = lookup_models_dev(model_id, provider_id, models_dev)
+            && update_model_cost(path, model_id, inp, outp, cached, "models.dev")?
+        {
+            updated += 1;
+            continue;
         }
 
         // 2. Try live provider pricing
-        if let Some(prices) = live_pricing.get(provider_id) {
-            if let Some(&(inp, outp, cached)) = prices.get(model_id) {
-                if update_model_cost(path, model_id, inp, outp, cached, "live API")? {
-                    updated += 1;
-                }
-            }
+        if let Some(prices) = live_pricing.get(provider_id)
+            && let Some(&(inp, outp, cached)) = prices.get(model_id)
+            && update_model_cost(path, model_id, inp, outp, cached, "live API")?
+        {
+            updated += 1;
         }
     }
 
