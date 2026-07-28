@@ -160,7 +160,18 @@ fn find_param<'a>(params: &'a [ToolParam], keys: &[&str]) -> Option<&'a str> {
 }
 
 fn collapse_whitespace(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
+    let mut result = String::with_capacity(text.len());
+    let mut first = true;
+    for word in text.split_whitespace() {
+        if first {
+            result.push_str(word);
+            first = false;
+        } else {
+            result.push(' ');
+            result.push_str(word);
+        }
+    }
+    result
 }
 
 /// Max display width for collapsed path / target segments.
@@ -517,12 +528,11 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) 
                     return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
                 }
                 // Try "questions" array
-                if let Some(Value::Array(items)) = map.get("questions") {
-                    if let Some(first) = items.first() {
-                        if let Some(q) = first.get("question").and_then(|v| v.as_str()) {
-                            return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
-                        }
-                    }
+                if let Some(Value::Array(items)) = map.get("questions")
+                    && let Some(first) = items.first()
+                    && let Some(q) = first.get("question").and_then(|v| v.as_str())
+                {
+                    return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
                 }
             }
             // Fallback: use params
@@ -711,12 +721,11 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
                 return Some(truncate_chars(&collapse_whitespace(text), 72));
             }
             if let Some(text) = find_param(params, &["questions"]) {
-                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(text) {
-                    if let Some(first) = items.first() {
-                        if let Some(q) = first.get("question").and_then(|v| v.as_str()) {
-                            return Some(truncate_chars(&collapse_whitespace(q), 72));
-                        }
-                    }
+                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(text)
+                    && let Some(first) = items.first()
+                    && let Some(q) = first.get("question").and_then(|v| v.as_str())
+                {
+                    return Some(truncate_chars(&collapse_whitespace(q), 72));
                 }
                 return Some(truncate_chars(&collapse_whitespace(text), 72));
             }
