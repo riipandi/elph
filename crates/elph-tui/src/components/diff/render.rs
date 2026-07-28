@@ -193,7 +193,7 @@ fn lineno_str(lineno: Option<usize>) -> String {
 
 /// One full-width row so parent flex row (e.g. ScrollView content) cannot
 /// concatenate lines side-by-side into a single unreadable strip.
-fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static>>) -> AnyElement<'static> {
+pub(crate) fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static>>) -> AnyElement<'static> {
     let w = width.max(1);
     if let Some(bg_color) = bg {
         element! {

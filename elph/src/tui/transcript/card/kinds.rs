@@ -757,6 +757,12 @@ pub fn tool_call_card(
                             .find(|p| p.key.as_deref() == Some("path"))
                             .map(|p| p.value.clone())
                     });
+                    // Read is not a change — show file content with line numbers only, no +/-.
+                    let (old_text, new_text) = if tool.is_read_file() {
+                        (new_text.clone(), new_text)
+                    } else {
+                        (old_text, new_text)
+                    };
                     // DiffView already has its own visual structure (line number gutter + prefix),
                     // so no extra horizontal padding needed — the card and diff feel seamless.
                     Some(element! {

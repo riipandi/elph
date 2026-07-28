@@ -32,9 +32,11 @@ use super::scroll_box::ScrollBox;
 use super::theme::{UiTheme, resolve_ui_theme};
 
 use compute::compute_diff;
+use highlight::highlight_diff_line;
 use highlight::language_from_file_path;
 pub use render::DiffLineNumberStyle;
-use render::{render_unified_hunk, side_by_side_lines};
+use render::{diff_line_row, render_unified_hunk, side_by_side_lines};
+use similar::ChangeTag;
 
 /// Default cap for embedded / transcript diff bodies (rows, including headers).
 pub const EMBEDDED_DIFF_MAX_LINES: usize = 20;
@@ -236,16 +238,58 @@ pub fn DiffView(props: &DiffViewProps, hooks: Hooks) -> impl Into<AnyElement<'st
             }
         }
 
-        // Fallback: if no hunks (identical content), show a single line
+        // Fallback: if no hunks (identical content), render all lines as Equal so the
+        // content is visible with line numbers and no +/- markers (e.g. read_file).
         if result.hunks.is_empty() {
-            elements.push(
-                element! {
-                    View(width: w, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
-                        Text(content: "(no changes)", color: theme.text_muted, wrap: TextWrap::NoWrap)
+            let content = if !props.new_text.is_empty() {
+                &props.new_text
+            } else if !props.old_text.is_empty() {
+                &props.old_text
+            } else {
+                ""
+            };
+            if content.is_empty() {
+                elements.push(
+                    element! {
+                        View(width: w, flex_direction: FlexDirection::Row, flex_shrink: 0f32) {
+                            Text(content: "(no changes)", color: theme.text_muted, wrap: TextWrap::NoWrap)
+                        }
                     }
+                    .into(),
+                );
+            } else {
+                for (i, line) in content.lines().enumerate() {
+                    let lineno = i + 1;
+                    let num_str = props.line_numbers.format(ChangeTag::Equal, Some(lineno), Some(lineno));
+                    let mut row_children: Vec<AnyElement<'static>> = Vec::with_capacity(2);
+                    if props.line_numbers != DiffLineNumberStyle::None {
+                        row_children.push(
+                            element! {
+                                Text(content: num_str, color: theme.text_hint, wrap: TextWrap::NoWrap)
+                            }
+                            .into(),
+                        );
+                    }
+                    if props.syntax_highlight && language_ref.is_some() && !line.is_empty() {
+                        let highlighted =
+                            highlight_diff_line(&format!("  {line}"), ChangeTag::Equal, language_ref, theme);
+                        row_children.push(
+                            element! {
+                                MixedText(contents: highlighted, wrap: TextWrap::NoWrap)
+                            }
+                            .into(),
+                        );
+                    } else {
+                        row_children.push(
+                            element! {
+                                Text(content: line.to_string(), color: theme.text_primary, wrap: TextWrap::NoWrap)
+                            }
+                            .into(),
+                        );
+                    }
+                    elements.push(diff_line_row(w, None, row_children));
                 }
-                .into(),
-            );
+            }
         }
 
         elements
