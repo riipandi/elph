@@ -75,7 +75,7 @@ pub fn update_plan_frontmatter(
 
     let mut i = 0;
     while i < lines.len() {
-        let trimmed = lines[i].trim().to_string();
+        let trimmed = lines[i].trim();
         if trimmed == "---" {
             if !in_frontmatter {
                 in_frontmatter = true;
@@ -95,11 +95,11 @@ pub fn update_plan_frontmatter(
                 lines[i] = format!("Updated: {new_updated}");
                 updated_found = true;
             }
-            if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
-                if lines[i].starts_with("SessionID:") {
-                    lines[i] = format!("SessionID: {sid}");
-                    session_id_found = true;
-                }
+            if let Some(sid) = session_id.filter(|s| !s.trim().is_empty())
+                && lines[i].starts_with("SessionID:")
+            {
+                lines[i] = format!("SessionID: {sid}");
+                session_id_found = true;
             }
         }
         i += 1;
@@ -115,10 +115,10 @@ pub fn update_plan_frontmatter(
     if !updated_found {
         insertions.push(format!("Updated: {new_updated}"));
     }
-    if let Some(sid) = session_id.filter(|s| !s.trim().is_empty()) {
-        if !session_id_found {
-            insertions.push(format!("SessionID: {sid}"));
-        }
+    if let Some(sid) = session_id.filter(|s| !s.trim().is_empty())
+        && !session_id_found
+    {
+        insertions.push(format!("SessionID: {sid}"));
     }
     if !insertions.is_empty() {
         for (j, line) in insertions.into_iter().enumerate() {

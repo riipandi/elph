@@ -1572,14 +1572,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 clear_quit_busy_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation);
 
                 // Transition plan from in_progress → completed (or leave as-is on cancel).
-                if !turn_cancel_requested.get() {
-                    if let Some(plan_path) = active_plan_file.write().take() {
-                        let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
-                        if let Err(err) =
-                            crate::agent::plan_files::update_plan_frontmatter(&plan_path, "completed", &now, None)
-                        {
-                            log::error!("Failed to mark plan as completed: {err}");
-                        }
+                if !turn_cancel_requested.get()
+                    && let Some(plan_path) = active_plan_file.write().take()
+                {
+                    let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                    if let Err(err) =
+                        crate::agent::plan_files::update_plan_frontmatter(&plan_path, "completed", &now, None)
+                    {
+                        log::error!("Failed to mark plan as completed: {err}");
                     }
                 }
 
