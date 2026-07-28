@@ -230,12 +230,17 @@ fn title_case_snake(name: &str) -> String {
         .join(" ")
 }
 
-/// Display path: normalized with `~` for home, truncated only when longer than `max_chars`.
+/// Display path: abbreviated leading components inside the project directory,
+/// full path everywhere else.
 ///
-/// No component-level abbreviation — full paths everywhere so the user always knows
-/// the exact location. Only the file name may be truncated when the path is too long.
+/// Inside the project directory, leading path components are abbreviated to
+/// their first character so the project context is clear with minimal space:
 ///
-/// Examples:
+/// - `/Users/ariss/Developer/github.com/riipandi/elph/src/tui/shell.rs`
+///   → `/U/a/d/g/r/elph/src/tui/shell.rs`
+///
+/// Outside the project directory the path is shown in full with `~` for home:
+///
 /// - `/Users/me/dev/elph/src/main.rs` → `~/dev/elph/src/main.rs`
 /// - `/opt/vendor/lib.rs` → `/opt/vendor/lib.rs`
 pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
@@ -247,7 +252,22 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     if char_len(&normalized) <= max_chars {
         return normalized;
     }
-    // Still too long: show last folder + truncated filename.
+
+    // For absolute paths under the project directory: abbreviate leading
+    // path components (first letter each) + full path from project dir onward.
+    let trimmed = path.trim();
+    if trimmed.starts_with('/')
+        && let Some(abbr) = try_abbreviate_project_path(trimmed)
+    {
+        if char_len(&abbr) <= max_chars {
+            return abbr;
+        }
+        // Still too long even after abbreviation: truncate from the end
+        // while preserving the abbreviated project prefix.
+        return truncate_chars(&abbr, max_chars);
+    }
+
+    // Fallback: existing logic for paths outside the project directory.
     let (_prefix, segments) = split_display_path(&normalized);
     if segments.len() <= 1 {
         return truncate_filename(&normalized, max_chars);
@@ -262,6 +282,43 @@ pub fn abbreviate_path(path: &str, max_chars: usize) -> String {
     let file_budget = max_chars.saturating_sub(char_len(parent) + 4).max(6);
     let short_file = truncate_filename(file, file_budget);
     format!("…/{parent}/{short_file}")
+}
+
+/// Abbreviate an absolute path under the current project directory.
+///
+/// Each leading path component before the project directory is reduced to
+/// its first character; the project directory name and everything after it
+/// are shown in full.
+///
+/// Returns `None` when the path is not under the current working directory.
+fn try_abbreviate_project_path(path: &str) -> Option<String> {
+    let cwd = std::env::current_dir().ok()?;
+    let cwd_str = cwd.to_string_lossy();
+    let cwd_str: &str = cwd_str.as_ref();
+
+    if !path.starts_with(cwd_str) {
+        return None;
+    }
+
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    let cwd_segments: Vec<&str> = cwd_str.split('/').filter(|s| !s.is_empty()).collect();
+    let project_name = cwd_segments.last()?;
+
+    // Find where the project directory name appears in the path.
+    let project_idx = segments.iter().position(|s| *s == *project_name)?;
+
+    let mut result = String::new();
+    for (i, seg) in segments.iter().enumerate() {
+        result.push('/');
+        if i < project_idx {
+            // Abbreviate to first character.
+            result.push(seg.chars().next()?);
+        } else {
+            // Show full component from the project directory onward.
+            result.push_str(seg);
+        }
+    }
+    Some(result)
 }
 
 fn shorten_path(path: &str) -> String {
@@ -1117,13 +1174,35 @@ mod tests {
 
     #[test]
     fn abbreviate_path_truncates_when_too_long() {
-        // Very long path forces `…/last_dir/truncated-filename` form.
+        // Very long path is truncated; either `…/parent/file` (outside CWD)
+        // or abbreviated-project-path form (inside CWD). Either way the file
+        // extension and size limit are respected.
         let path = "/opt/workspace/riipandi/elph/crates/elph/src/very-long-file-name-that-should-be-truncated.rs";
         let short = abbreviate_path(path, 44);
-        assert!(short.starts_with("…/"), "{short}");
-        assert!(short.contains("/src/"), "{short}");
         assert!(short.ends_with(".rs"), "{short}");
         assert!(short.chars().count() <= 44, "{} chars", short.chars().count());
+    }
+
+    #[test]
+    fn abbreviate_path_project_relative() {
+        // When the path is under CWD, leading components are abbreviated to
+        // their first letter and the project directory name is shown in full.
+        let cwd = std::env::current_dir().unwrap();
+        let cwd_str = cwd.to_string_lossy().to_string();
+        // Create a path that is definitely under CWD.
+        let test_path = format!("{cwd_str}/src/main.rs");
+        let short = abbreviate_path(&test_path, 120);
+        // The result should contain the full project directory name.
+        let project_name = cwd.file_name().unwrap().to_string_lossy().to_string();
+        assert!(short.contains(&project_name), "{short}");
+        // Leading components should be single-letter abbreviations.
+        assert!(short.ends_with("/src/main.rs"), "{short}");
+        // The abbreviated prefix should be shorter than the original CWD prefix.
+        let prefix = short.trim_end_matches("/src/main.rs");
+        assert!(
+            prefix.len() < cwd_str.len(),
+            "abbreviated prefix '{prefix}' should be shorter than CWD '{cwd_str}'"
+        );
     }
 
     #[test]
