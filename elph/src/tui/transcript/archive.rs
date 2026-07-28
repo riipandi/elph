@@ -89,6 +89,7 @@ impl ArchivedTranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_pinned: false,
             user_shell: self.user_shell,
         };
 

@@ -365,8 +365,9 @@ impl TranscriptEventApplier {
     }
 
     /// Collapse the most recent expanded user-shell tool so new activity has room.
+    /// Respects `user_pinned`: if the user manually toggled the card, leave it alone.
     fn fold_user_shell(&mut self, messages: &mut [TranscriptMessage]) {
-        if let Some(msg) = messages.iter_mut().rev().find(|m| m.user_shell) {
+        if let Some(msg) = messages.iter_mut().rev().find(|m| m.user_shell && !m.user_pinned) {
             msg.detail_expanded = false;
         }
     }
@@ -378,7 +379,10 @@ impl TranscriptEventApplier {
         if let Some(index) = last_message_index(messages, TranscriptStyle::Thinking) {
             messages[index].duration_secs = Some(format_elapsed_secs(started));
             // Collapse by default so the transcript stays compact after the stream ends.
-            messages[index].detail_expanded = self.auto_expand_thinking;
+            // Respect user_pinned: if the user manually expanded the card, keep it expanded.
+            if !messages[index].user_pinned {
+                messages[index].detail_expanded = self.auto_expand_thinking;
+            }
         }
     }
 
@@ -780,7 +784,8 @@ impl TranscriptEventApplier {
             }
             // Collapse finished tools for a compact log — user shell stays expanded so
             // the full output remains visible until a new response replaces it.
-            if !message.user_shell {
+            // Respect user_pinned: if the user manually toggled the card, leave it alone.
+            if !message.user_shell && !message.user_pinned {
                 message.detail_expanded = false;
             }
             return true;
