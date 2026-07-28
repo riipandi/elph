@@ -246,6 +246,7 @@ pub struct MainShellProps {
     pub execution_env: Arc<LocalExecutionEnv>,
     pub paths: Paths,
     pub file_picker_show_hidden: bool,
+    pub allow_mode_change_while_busy: bool,
     pub initial_git_footer: Option<GitFooterInfo>,
 }
 
@@ -275,6 +276,7 @@ impl Default for MainShellProps {
             execution_env: Arc::new(LocalExecutionEnv::new(".")),
             paths: Paths::resolve().expect("resolve elph paths"),
             file_picker_show_hidden: false,
+            allow_mode_change_while_busy: true,
             initial_git_footer: None,
         }
     }
@@ -863,6 +865,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
     let mut mention_index_requested = hooks.use_ref(|| false);
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
+    let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
+    let mut shift_held = hooks.use_state(|| false);
+    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -982,6 +987,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
 
             poll_layout_screen_size(&mut layout_screen_size_for_loop);
+
+            // Safety timeout: auto-clear shift-held after 60s so the scrollbar never
+            // stays stuck hidden if Shift is released without a follow-up key event.
+            let shift_timed_out = shift_held.get()
+                && shift_last_pressed
+                    .read()
+                    .as_ref()
+                    .is_some_and(|last| last.elapsed() > Duration::from_secs(60));
+            if shift_timed_out {
+                shift_held.set(false);
+                shift_last_pressed.set(None);
+            }
 
             if bootstrap_phase.get() == BootstrapPhase::Pending && !bootstrap_worker_started.get() {
                 if let Some(config) = bootstrap_config.read().clone() {
@@ -1324,6 +1341,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
 
                     if let AgentUiEvent::ModeChangeRequired(req) = event {
+                        if busy.get() && !allow_mode_change_while_busy.get() {
+                            // Auto-reject mode change while busy when setting disallows it.
+                            let _ = req.response_tx.send("false".to_string());
+                            continue;
+                        }
                         use crate::agent::UserQuestionStep;
                         let mode_label = req.target_mode.to_ascii_uppercase();
                         let step = UserQuestionStep {
@@ -1561,6 +1583,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             };
             if kind == KeyEventKind::Release {
                 return;
+            }
+
+            // Track whether Shift is held so the transcript can hide the scrollbar
+            // during native text selection (similar to Ctrl+S toggle mode).
+            // Only key events with Shift set it; only key events without Shift clear it.
+            // Safety timeout in the main loop prevents stuck state (no key-up events
+            // from terminal when Shift is released without pressing another key).
+            if modifiers.contains(KeyModifiers::SHIFT) {
+                shift_held.set(true);
+                shift_last_pressed.set(Some(Instant::now()));
+            } else {
+                shift_held.set(false);
+                shift_last_pressed.set(None);
             }
 
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
@@ -3200,7 +3235,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         && !palette_tab_reserved
                         && (matches!(code, KeyCode::BackTab) || m.contains(KeyModifiers::SHIFT)) =>
                 {
-                    if busy.get() {
+                    if busy.get() && !allow_mode_change_while_busy.get() {
                         // Block mode changes during stream/tool work; toast clears async (TTL).
                         let expire_tx = ephemeral_expire.read().tx.clone();
                         show_ephemeral_banner(
@@ -3231,8 +3266,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
                 }
-                // Ctrl+` / Ctrl+~: cycle thinking level.
-                (m, KeyCode::Char('`')) | (m, KeyCode::Char('~')) if m.contains(KeyModifiers::CONTROL) => {
+                // Ctrl+.: cycle thinking level.
+                (m, KeyCode::Char('.')) if m.contains(KeyModifiers::CONTROL) => {
                     let next = thinking_level.get().next();
                     thinking_level.set(next);
                     persist_session_prefs(&paths, agent_mode.get(), next);
@@ -3873,7 +3908,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 has_focus: transcript_focused,
                 // Modal dialogs own the wheel; keep the transcript still underneath.
                 mouse_scroll: Some(!status_dialog_open),
-                text_select_mode: select_mode.get(),
+                text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
 
@@ -4131,7 +4166,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 prompt_history_snapshot: prompt_history_snapshot,
                 prompt_history_selected: Some(prompt_history_index),
                 editor_overlay: editor_overlay,
-                text_select_mode: select_mode.get(),
+                text_select_mode: select_mode.get() || shift_held.get(),
                 blocked_hint: if system_prompt_open {
                     Some("Viewing system prompt — Esc to close".to_string())
                 } else if user_question_open {

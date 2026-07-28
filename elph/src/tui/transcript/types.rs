@@ -149,6 +149,9 @@ pub struct TranscriptMessage {
     /// Collapsible detail body (thinking / tool args+output). Live work starts expanded; finished
     /// blocks collapse by default and can be toggled (e.g. Ctrl+O).
     pub detail_expanded: bool,
+    /// User has manually toggled this card's expanded state. When `true`, auto-collapse
+    /// (finalize_thinking, fold_user_shell) is skipped so the user's choice persists.
+    pub user_pinned: bool,
     /// Secondary status-row text (action / phase); rendered normal-weight next to bold task title.
     pub status_detail: Option<String>,
     /// Extra left inset (cells) for nested status rows (e.g. subagent depth). Indents the whole
@@ -183,6 +186,7 @@ impl TranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_pinned: false,
             user_shell: false,
         }
     }
@@ -265,6 +269,7 @@ impl TranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_pinned: false,
             user_shell: false,
         }
     }
@@ -548,6 +553,9 @@ pub fn toggle_collapsible_detail_at(messages: &mut [TranscriptMessage], index: u
         return false;
     }
     message.detail_expanded = !message.detail_expanded;
+    // Mark as user-pinned so auto-collapse (finalize_thinking, fold_user_shell)
+    // does not override the user's choice during ongoing streaming.
+    message.user_pinned = true;
     true
 }
 

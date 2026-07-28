@@ -18,7 +18,7 @@ const STATUS_TICK_MS: u64 = 80;
 const TIPS: &[&str] = &[
     "Tab toggles prompt / transcript focus",
     "Shift+Tab cycles agent mode (Build · Plan · Ask · Brave)",
-    "Ctrl+~ cycles thinking level (Ctrl+` works too)",
+    "Ctrl+. cycles thinking level",
     "Ctrl+L opens the model picker · Ctrl+P cycles scoped models",
     "Shift+↑↓ scrolls the transcript",
     "Esc returns to the prompt · type while reading to jump back",

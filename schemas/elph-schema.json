@@ -70,6 +70,11 @@
                 },
                 "filePicker": {
                     "$ref": "#/definitions/filePicker"
+                },
+                "allowModeChangeWhileBusy": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, allow mode changes (keyboard shortcut and agent request) while the agent is busy streaming or running tools."
                 }
             }
         },
