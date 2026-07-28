@@ -219,18 +219,17 @@ pub async fn register_automatic_memory_hooks(harness: &AgentHarness<SessionDirSt
                 let system_prompt = event.system_prompt.clone();
                 Box::pin(async move {
                     // --- Step 1: detect user corrections (side-effect) ---
-                    if is_user_correction(&prompt).is_some() {
-                        if let Ok(cell) = ensure_recall_store(&paths).await {
-                            if let Some(store) = cell.lock().await.as_ref() {
-                                let lesson = format!("User correction: {}", prompt.trim());
-                                let _ = store
-                                    .report_user_input(ReportUserInput {
-                                        lesson,
-                                        source: UserInputSource::UserCorrection,
-                                    })
-                                    .await;
-                            }
-                        }
+                    if is_user_correction(&prompt).is_some()
+                        && let Ok(cell) = ensure_recall_store(&paths).await
+                        && let Some(store) = cell.lock().await.as_ref()
+                    {
+                        let lesson = format!("User correction: {}", prompt.trim());
+                        let _ = store
+                            .report_user_input(ReportUserInput {
+                                lesson,
+                                source: UserInputSource::UserCorrection,
+                            })
+                            .await;
                     }
 
                     // --- Step 2: skip short queries (greetings, noise) ---
@@ -329,18 +328,18 @@ pub async fn register_automatic_memory_hooks(harness: &AgentHarness<SessionDirSt
                     let lesson = format_tool_error_lesson(&tool_name, &args);
                     let what_failed = format!("Tool execution error: {tool_name}");
 
-                    if let Ok(cell) = ensure_recall_store(&paths).await {
-                        if let Some(store) = cell.lock().await.as_ref() {
-                            let _ = store
-                                .report_correction(ReportCorrectionInput {
-                                    lesson,
-                                    what_failed,
-                                    what_worked: "unknown".into(),
-                                    tokens_wasted: None,
-                                    tools_wasted: None,
-                                })
-                                .await;
-                        }
+                    if let Ok(cell) = ensure_recall_store(&paths).await
+                        && let Some(store) = cell.lock().await.as_ref()
+                    {
+                        let _ = store
+                            .report_correction(ReportCorrectionInput {
+                                lesson,
+                                what_failed,
+                                what_worked: "unknown".into(),
+                                tokens_wasted: None,
+                                tools_wasted: None,
+                            })
+                            .await;
                     }
                     None // pass result through unchanged
                 })
@@ -395,10 +394,10 @@ pub async fn register_automatic_memory_hooks(harness: &AgentHarness<SessionDirSt
                         self_report: None,
                     };
 
-                    if let Ok(cell) = ensure_recall_store(&paths).await {
-                        if let Some(store) = cell.lock().await.as_ref() {
-                            let _ = store.end_task(&task_id, input).await;
-                        }
+                    if let Ok(cell) = ensure_recall_store(&paths).await
+                        && let Some(store) = cell.lock().await.as_ref()
+                    {
+                        let _ = store.end_task(&task_id, input).await;
                     }
                 })
             }
