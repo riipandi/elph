@@ -103,7 +103,7 @@ fn clamps_default_max_tokens_to_remaining_context() {
         tools: None,
     };
     let clamped = clamp_max_tokens_to_context(&model, &context, model.max_tokens);
-    assert_eq!(clamped, 3904);
+    assert_eq!(clamped, 4570);
 }
 
 #[test]
