@@ -4,8 +4,6 @@ pub mod hooks;
 pub(crate) mod store;
 pub mod tools;
 
-pub mod codegraph;
-
 pub use cmd::run;
 
 /// Run a memory slash command and return formatted output.
@@ -101,8 +99,6 @@ pub async fn slash_run(paths: &crate::platform::Paths, args: &str) -> Result<Str
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn slash_subcommand_parsing() {
         // Just test that the dispatch pattern works — actual DB tests are heavier.

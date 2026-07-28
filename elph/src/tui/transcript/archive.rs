@@ -38,6 +38,8 @@ pub struct ArchivedTranscriptMessage {
     pub status_detail: Option<String>,
     #[serde(default)]
     pub status_indent: u16,
+    #[serde(default)]
+    pub user_shell: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +66,7 @@ impl From<&TranscriptMessage> for ArchivedTranscriptMessage {
             detail_expanded: message.detail_expanded,
             status_detail: message.status_detail.clone(),
             status_indent: message.status_indent,
+            user_shell: message.user_shell,
         }
     }
 }
@@ -86,6 +89,7 @@ impl ArchivedTranscriptMessage {
             tree_prefix: None,
             model_tag: None,
             agent_tag: None,
+            user_shell: self.user_shell,
         };
 
         if message.style == TranscriptStyle::Assistant {

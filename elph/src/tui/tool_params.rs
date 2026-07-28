@@ -160,7 +160,18 @@ fn find_param<'a>(params: &'a [ToolParam], keys: &[&str]) -> Option<&'a str> {
 }
 
 fn collapse_whitespace(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
+    let mut result = String::with_capacity(text.len());
+    let mut first = true;
+    for word in text.split_whitespace() {
+        if first {
+            result.push_str(word);
+            first = false;
+        } else {
+            result.push(' ');
+            result.push_str(word);
+        }
+    }
+    result
 }
 
 /// Max display width for collapsed path / target segments.
@@ -435,7 +446,7 @@ fn truncate_filename(name: &str, max_chars: usize) -> String {
     truncate_chars(name, max_chars)
 }
 
-fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
+fn collapsed_tool_target(tool_name: &str, params: &[ToolParam], args_raw: &str) -> String {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             find_param(params, &["path", "file"])
@@ -509,9 +520,27 @@ fn collapsed_tool_target(tool_name: &str, params: &[ToolParam]) -> String {
         "spawn_agent" => find_param(params, &["task_name", "prompt", "task", "message", "goal"])
             .map(|text| truncate_chars(&collapse_whitespace(text), COLLAPSED_TARGET_MAX_CHARS))
             .unwrap_or_default(),
-        "ask_user" | "ask_user_question" => find_param(params, &["question", "questions"])
-            .map(|text| truncate_chars(text, COLLAPSED_TARGET_MAX_CHARS))
-            .unwrap_or_default(),
+        "ask_user" | "ask_user_question" => {
+            // Parse raw JSON directly to extract question text (bypasses array flattening)
+            if let Ok(Value::Object(map)) = serde_json::from_str::<Value>(args_raw) {
+                // Try "question" field first
+                if let Some(q) = map.get("question").and_then(|v| v.as_str()) {
+                    return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
+                }
+                // Try "questions" array
+                if let Some(Value::Array(items)) = map.get("questions")
+                    && let Some(first) = items.first()
+                    && let Some(q) = first.get("question").and_then(|v| v.as_str())
+                {
+                    return truncate_chars(&collapse_whitespace(q), COLLAPSED_TARGET_MAX_CHARS);
+                }
+            }
+            // Fallback: use params
+            if let Some(text) = find_param(params, &["question", "questions"]) {
+                return truncate_chars(&collapse_whitespace(text), COLLAPSED_TARGET_MAX_CHARS);
+            }
+            String::new()
+        }
         _ => {
             // Prefer a known summary path; otherwise first scalar value.
             if let Some(summary) = summarize_known_tool(tool_name, params) {
@@ -554,7 +583,7 @@ pub fn format_collapsed_tool_parts(tool_name: &str, args_raw: &str) -> (String, 
 pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> CollapsedToolParts {
     let verb = tool_display_verb(tool_name);
     let params = parse_tool_params(args_raw);
-    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params);
+    let (detail, detail_href) = collapsed_tool_target_linked(tool_name, &params, args_raw);
     CollapsedToolParts {
         verb,
         detail,
@@ -562,7 +591,7 @@ pub fn format_collapsed_tool_parts_linked(tool_name: &str, args_raw: &str) -> Co
     }
 }
 
-fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam]) -> (String, Option<String>) {
+fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam], args_raw: &str) -> (String, Option<String>) {
     match tool_base_name(tool_name) {
         "read_file" | "edit_file" | "write_file" | "list_dir" | "delete_path" | "create_dir" => {
             match find_param(params, &["path", "file"]) {
@@ -583,7 +612,7 @@ fn collapsed_tool_target_linked(tool_name: &str, params: &[ToolParam]) -> (Strin
             }
             None => (String::new(), None),
         },
-        _ => (collapsed_tool_target(tool_name, params), None),
+        _ => (collapsed_tool_target(tool_name, params, args_raw), None),
     }
 }
 
@@ -687,7 +716,21 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
         "web_fetch" => find_param(params, &["url", "uri"]).map(|url| truncate_chars(url, 72)),
         "spawn_agent" => find_param(params, &["prompt", "task", "message", "goal"])
             .map(|text| truncate_chars(&collapse_whitespace(text), 72)),
-        "ask_user" => find_param(params, &["question", "questions"]).map(|text| truncate_chars(text, 72)),
+        "ask_user" | "ask_user_question" => {
+            if let Some(text) = find_param(params, &["question"]) {
+                return Some(truncate_chars(&collapse_whitespace(text), 72));
+            }
+            if let Some(text) = find_param(params, &["questions"]) {
+                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(text)
+                    && let Some(first) = items.first()
+                    && let Some(q) = first.get("question").and_then(|v| v.as_str())
+                {
+                    return Some(truncate_chars(&collapse_whitespace(q), 72));
+                }
+                return Some(truncate_chars(&collapse_whitespace(text), 72));
+            }
+            None
+        }
         _ => None,
     }
 }
@@ -1293,5 +1336,33 @@ mod tests {
         let raw = format!(r#"{{"command":"{}"}}"#, "word ".repeat(40));
         let rows = tool_approval_summary_row_count("shell_exec", &raw, 30);
         assert!(rows <= APPROVAL_SUMMARY_MAX_ROWS);
+    }
+
+    #[test]
+    fn ask_user_question_shows_question_text_not_json() {
+        // Single question - should extract just the question text
+        let label = format_collapsed_tool_label(
+            "ask_user_question",
+            r#"{"question":"Optimasi mana yang ingin diimplementasikan?"}"#,
+        );
+        assert_eq!(label, "Ask Optimasi mana yang ingin diimplementasikan?");
+        assert!(!label.contains('{'));
+        assert!(!label.contains('}'));
+        assert!(!label.contains('"'));
+
+        // Multiple questions array - should extract first question
+        let label2 = format_collapsed_tool_label(
+            "ask_user_question",
+            r#"{"questions":[{"question":"First question?"},{"question":"Second question?"}]}"#,
+        );
+        assert_eq!(label2, "Ask First question?");
+        assert!(!label2.contains('{'));
+
+        // Long question gets truncated
+        let long_q = "A".repeat(100);
+        let label3 = format_collapsed_tool_label("ask_user_question", &format!(r#"{{"question":"{}"}}"#, long_q));
+        assert!(label3.starts_with("Ask "));
+        assert!(label3.contains('…'));
+        assert!(label3.chars().count() <= 50); // "Ask " + 44 chars max
     }
 }

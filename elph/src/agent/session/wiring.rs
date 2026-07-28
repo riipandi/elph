@@ -177,6 +177,7 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
                 id: tool_call_id,
                 name: tool_name,
                 args_summary,
+                user_shell: false,
             });
         }
         AgentEvent::ToolExecutionUpdate {

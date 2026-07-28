@@ -9,6 +9,7 @@ use reqwest::Client;
 use serde_json::Value;
 
 use crate::api::http_proxy::resolve_http_proxy_url_for_target;
+use crate::resilience::ResilienceError;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Model, OnPayloadCallback, OnResponseCallback};
 use crate::types::{ProviderEnv, ProviderResponse, StopReason, StreamOptions};
 use crate::utils::error_body::{error_body_from_response, format_provider_error, normalize_provider_error};
@@ -169,4 +170,158 @@ pub async fn invoke_on_response_from_reqwest(
         headers: headers_to_record(response.headers()),
     };
     apply_on_response(callback, provider_response, model).await;
+}
+
+// ---------------------------------------------------------------------------
+// Resilience: rate limiter, circuit breaker, retry
+// ---------------------------------------------------------------------------
+
+/// Check rate limiter and circuit breaker before sending a request to a provider.
+///
+/// Returns `Ok(())` if the request can proceed.
+/// Returns `Err` with a descriptive message if blocked.
+pub fn check_provider_resilience(provider_id: &str) -> Result<()> {
+    crate::resilience::check_provider_resilience(provider_id).map_err(|e| match e {
+        ResilienceError::RateLimited => anyhow!("rate limited — too many requests to {provider_id}"),
+        ResilienceError::CircuitOpen => anyhow!("circuit breaker open — {provider_id} is failing"),
+    })
+}
+
+/// Record a successful call to a provider.
+pub fn record_provider_success(provider_id: &str) {
+    crate::resilience::record_provider_success(provider_id);
+}
+
+/// Record a failed call to a provider.
+pub fn record_provider_failure(provider_id: &str) {
+    crate::resilience::record_provider_failure(provider_id);
+}
+
+/// Send with abort + resilience checks.
+///
+/// Combines `check_provider_resilience()` with `send_with_abort()`.
+/// Records success/failure in the circuit breaker automatically.
+/// Abort errors are not counted as provider failures.
+pub async fn send_with_resilience(
+    provider_id: &str,
+    token: &Option<tokio_util::sync::CancellationToken>,
+    request: reqwest::RequestBuilder,
+) -> Result<reqwest::Response> {
+    check_provider_resilience(provider_id)?;
+    match send_with_abort(token, request).await {
+        Ok(response) => {
+            // Record success for 2xx; non-2xx handled by caller
+            if response.status().is_success() {
+                record_provider_success(provider_id);
+            }
+            Ok(response)
+        }
+        Err(e) => {
+            // Don't count abort errors as provider failures
+            if !is_abort_error(&e) {
+                record_provider_failure(provider_id);
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Record resilience outcome based on an HTTP response status.
+///
+/// Call this after processing the response to update the circuit breaker.
+/// 2xx = success, 429/5xx = failure.
+pub fn record_resilience_from_status(provider_id: &str, status: u16) {
+    if status == 429 || status >= 500 {
+        record_provider_failure(provider_id);
+    } else if (200..300).contains(&status) {
+        record_provider_success(provider_id);
+    }
+}
+
+/// Send with resilience + automatic retry on transient failures.
+///
+/// Builds the request, then retries with exponential backoff on:
+/// - 429 (rate limited)
+/// - 5xx (server errors)
+/// - Connection/timeout errors
+///
+/// Abort errors are not retried.
+pub async fn send_with_resilience_retry(
+    provider_id: &str,
+    token: &Option<tokio_util::sync::CancellationToken>,
+    client: &reqwest::Client,
+    request: reqwest::RequestBuilder,
+    max_retries: u32,
+) -> Result<reqwest::Response> {
+    use std::time::Duration;
+
+    check_provider_resilience(provider_id)?;
+
+    // Build the request so we can clone it for retries
+    let built = request.build()?;
+
+    let mut last_err = None;
+    for attempt in 0..=max_retries {
+        if attempt > 0 {
+            // Exponential backoff: 500ms, 1s, 2s, 4s, ...
+            let delay = Duration::from_millis(500 * 2u64.pow(attempt - 1));
+            tokio::time::sleep(delay).await;
+            log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
+        }
+
+        // Check abort before each attempt
+        if is_request_aborted(token) {
+            return Err(request_aborted_error());
+        }
+
+        // Clone the request for this attempt
+        let req_clone = match built.try_clone() {
+            Some(r) => r,
+            None => {
+                // Non-cloneable body (stream) — can't retry
+                return Err(anyhow!("cannot retry non-cloneable request body"));
+            }
+        };
+
+        // Execute with abort support — client.execute() returns a future directly
+        let result = match token {
+            Some(token) => {
+                let token = token.clone();
+                tokio::select! {
+                    result = client.execute(req_clone) => result.map_err(Into::into),
+                    _ = token.cancelled() => Err(request_aborted_error()),
+                }
+            }
+            None => client.execute(req_clone).await.map_err(Into::into),
+        };
+
+        match result {
+            Ok(response) => {
+                let status = response.status().as_u16();
+                if status == 429 || status >= 500 {
+                    // Transient error — record and retry
+                    record_provider_failure(provider_id);
+                    last_err = Some(anyhow!("HTTP {status}"));
+                    continue;
+                }
+                // Success or non-retryable error
+                if response.status().is_success() {
+                    record_provider_success(provider_id);
+                }
+                return Ok(response);
+            }
+            Err(e) => {
+                if is_abort_error(&e) {
+                    return Err(e);
+                }
+                // Connection/timeout error — retry
+                record_provider_failure(provider_id);
+                last_err = Some(e);
+                continue;
+            }
+        }
+    }
+
+    // All retries exhausted
+    Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted")))
 }

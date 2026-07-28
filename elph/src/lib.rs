@@ -1,10 +1,10 @@
 pub mod agent;
 pub mod cli;
+pub mod codegraph;
 pub mod command;
 pub mod extensions;
 pub mod memory;
 pub mod platform;
-pub mod prompt;
 pub mod skills;
 pub mod tui;
 pub mod types;

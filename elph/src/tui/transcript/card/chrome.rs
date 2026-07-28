@@ -14,6 +14,9 @@ pub const COLORED_CARD_PAD_H: u16 = COLORED_CARD_PAD + 1;
 pub const PROCESS_LOG_PAD_H: u16 = COLORED_CARD_PAD;
 /// Extra left inset for tool-call result body (args / output / diff) under the header.
 pub const TOOL_RESULT_PAD_LEFT: u16 = 2;
+/// Extra right inset for tool-call result body — mirrors left pad so diff / output
+/// content stays symmetrically framed inside the card.
+pub const TOOL_RESULT_PAD_RIGHT: u16 = 2;
 pub const COLORED_CARD_GAP: u16 = 1;
 pub const FLUSH_CARD_PAD: u16 = 0;
 pub const FLUSH_CARD_GAP: u16 = 0;

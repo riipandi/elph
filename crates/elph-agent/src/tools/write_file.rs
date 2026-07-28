@@ -53,8 +53,26 @@ async fn execute_write(
 
     let absolute = resolve_path(&env, path, signal.as_ref()).await?;
     ensure_parent_dir(&env, &absolute, signal.as_ref()).await?;
+
+    // Read existing content before writing (for diff display)
+    let old_content = match env.read_text_file(&absolute, signal.as_ref()).await {
+        HarnessResult::Ok(content) => content,
+        HarnessResult::Err(_) => String::new(), // File doesn't exist or can't be read
+    };
+
     match FileSystem::write_file(env.as_ref(), &absolute, content.as_bytes(), signal.as_ref()).await {
-        HarnessResult::Ok(()) => Ok(AgentToolResult::text(format!("Wrote {} bytes to {path}", content.len()))),
+        HarnessResult::Ok(()) => Ok(AgentToolResult {
+            content: vec![crate::types::ToolResultContent::Text(elph_ai::TextContent::new(
+                format!("Wrote {} bytes to {path}", content.len()),
+            ))],
+            details: json!({
+                "old_content": old_content,
+                "new_content": content,
+                "file_path": absolute,
+            }),
+            added_tool_names: None,
+            terminate: None,
+        }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }
 }

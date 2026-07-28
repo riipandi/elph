@@ -193,7 +193,7 @@ fn lineno_str(lineno: Option<usize>) -> String {
 
 /// One full-width row so parent flex row (e.g. ScrollView content) cannot
 /// concatenate lines side-by-side into a single unreadable strip.
-fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static>>) -> AnyElement<'static> {
+pub(crate) fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static>>) -> AnyElement<'static> {
     let w = width.max(1);
     if let Some(bg_color) = bg {
         element! {
@@ -202,6 +202,7 @@ fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static
                 flex_direction: FlexDirection::Row,
                 flex_shrink: 0f32,
                 background_color: bg_color,
+                overflow: Overflow::Hidden,
             ) {
                 #(children)
             }
@@ -213,6 +214,7 @@ fn diff_line_row(width: u16, bg: Option<Color>, children: Vec<AnyElement<'static
                 width: w,
                 flex_direction: FlexDirection::Row,
                 flex_shrink: 0f32,
+                overflow: Overflow::Hidden,
             ) {
                 #(children)
             }
@@ -235,15 +237,16 @@ pub fn render_unified_hunk(
     let mut elements: Vec<AnyElement<'static>> =
         Vec::with_capacity(hunk.lines.len() + if show_hunk_header { 1 } else { 0 });
 
-    // Hunk header
+    // Hunk header — truncate to row width so long file paths cannot overflow.
     if show_hunk_header {
         let header = format_hunk_header(hunk);
+        let header_text = truncate_to_width(&header, width.max(1) as usize);
         elements.push(diff_line_row(
             width,
             None,
             vec![
                 element! {
-                    Text(content: header, color: theme.accent, wrap: TextWrap::NoWrap)
+                    Text(content: header_text, color: theme.accent, wrap: TextWrap::NoWrap)
                 }
                 .into(),
             ],
@@ -252,7 +255,9 @@ pub fn render_unified_hunk(
 
     let num_width = line_numbers.gutter_width();
     // Content width = total width minus gutter and status prefix.
-    let content_width = width.saturating_sub(num_width.saturating_add(2)).max(8) as usize;
+    // Clamp to at least 1 so we never exceed the available row width (the old
+    // `.max(8)` could make content wider than the row on narrow terminals).
+    let content_width = width.saturating_sub(num_width.saturating_add(2)).max(1) as usize;
 
     for line in &hunk.lines {
         let tag = line.tag;
@@ -268,7 +273,10 @@ pub fn render_unified_hunk(
 
         // For syntax-highlighted lines, use MixedText; otherwise plain Text.
         if language.is_some() && !display_text.is_empty() {
-            let highlighted = highlight_diff_line(&format!("{prefix}{display_text}"), tag, language, theme);
+            // Truncate content before highlighting so highlighted output fits within
+            // the available width (content_width accounts for gutter + prefix).
+            let truncated = truncate_to_width(display_text, content_width);
+            let highlighted = highlight_diff_line(&format!("{prefix}{truncated}"), tag, language, theme);
 
             let mut row_children: Vec<AnyElement<'static>> = Vec::with_capacity(
                 1 + if line_numbers != DiffLineNumberStyle::None {
@@ -470,5 +478,28 @@ mod tests {
     #[test]
     fn truncate_to_width_zero() {
         assert_eq!(truncate_to_width("anything", 0), "");
+    }
+
+    #[test]
+    fn highlighted_diff_line_truncates_long_content() {
+        // Verify that highlighted diff lines truncate to content_width, not overflow.
+        let long_line = "a".repeat(200);
+        let old_text = format!("{long_line}\n");
+        let new_text = format!("x\n");
+        let result = compute_diff(&old_text, &new_text, 3);
+        let theme = UiTheme::default();
+        let width = 40u16;
+        // With Single line numbers (gutter=5) + prefix(2) = 7 chars reserved.
+        // content_width = 40 - 5 - 2 = 33. Long line should be truncated.
+        let elements =
+            render_unified_hunk(&result.hunks[0], Some("rust"), false, DiffLineNumberStyle::Single, theme, width);
+        assert!(!elements.is_empty());
+        // The rendered output should fit within the width (no overflow).
+        let rendered = element! { View(width: width) { #(elements) } }.to_string();
+        // Truncated line should contain ellipsis or fit within width.
+        assert!(
+            rendered.contains('…') || rendered.lines().all(|line| line.chars().count() <= width as usize),
+            "diff line should be truncated to fit width {width}"
+        );
     }
 }

@@ -28,7 +28,7 @@ use super::super::types::{
 };
 use super::chrome::{
     ASK_USER_ANSWER_SECTION_GAP, COLORED_CARD_PAD, FLUSH_CARD_PAD, PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP,
-    TOOL_OUTPUT_SECTION_GAP, TOOL_RESULT_PAD_LEFT, TranscriptCardChrome,
+    TOOL_OUTPUT_SECTION_GAP, TOOL_RESULT_PAD_LEFT, TOOL_RESULT_PAD_RIGHT, TranscriptCardChrome,
 };
 use super::frame::{
     assistant_message_elements, render_flush_card, render_invisible_tinted_card, render_tinted_card,
@@ -37,6 +37,7 @@ use super::frame::{
 use super::toggle_ctx::CollapsibleToggleCtx;
 use super::tool_format::{
     format_assistant_stream_body_display, format_thinking_body_display, format_tool_output_display,
+    format_tool_output_display_unlimited,
 };
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -652,7 +653,11 @@ pub fn tool_call_card(
         let inner_width = chrome_inner_width(&chrome).max(8);
         let show_detail = !collapsed;
         let output = if show_detail {
-            format_tool_output_display(&tool.output)
+            if message.user_shell {
+                format_tool_output_display_unlimited(&tool.output)
+            } else {
+                format_tool_output_display(&tool.output)
+            }
         } else {
             String::new()
         };
@@ -682,8 +687,12 @@ pub fn tool_call_card(
         };
         // Wait: click only when finished and there is result body text.
         let clickable = message.is_collapsible_detail();
-        // Result body (args / output / diff) sits one cell in from the header glyph column.
-        let result_width = inner_width.saturating_sub(TOOL_RESULT_PAD_LEFT).max(8);
+        // Result body (args / output / diff) sits one cell in from the header glyph column,
+        // with matching right padding so content stays symmetrically framed inside the card.
+        let result_width = inner_width
+            .saturating_sub(TOOL_RESULT_PAD_LEFT)
+            .saturating_sub(TOOL_RESULT_PAD_RIGHT)
+            .max(8);
         return element! {
             View(
                 width: chrome.outer_width,
@@ -714,6 +723,7 @@ pub fn tool_call_card(
                             width: inner_width,
                             padding_top: 1,
                             padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_right: TOOL_RESULT_PAD_RIGHT,
                             flex_shrink: 0f32,
                         ) {
                             AskUserToolCardView(
@@ -728,6 +738,7 @@ pub fn tool_call_card(
                             width: inner_width,
                             padding_top: 1,
                             padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_right: TOOL_RESULT_PAD_RIGHT,
                             flex_shrink: 0f32,
                         ) {
                             ToolParamsView(
@@ -751,16 +762,25 @@ pub fn tool_call_card(
                             .find(|p| p.key.as_deref() == Some("path"))
                             .map(|p| p.value.clone())
                     });
+                    // Read is not a change — show file content with line numbers only, no +/-.
+                    let (old_text, new_text) = if tool.is_read_file() {
+                        (new_text.clone(), new_text)
+                    } else {
+                        (old_text, new_text)
+                    };
+                    // DiffView already has its own visual structure (line number gutter + prefix),
+                    // so no extra horizontal padding needed — the card and diff feel seamless.
                     Some(element! {
                         View(
                             width: inner_width,
                             padding_top: 1,
-                            padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_left: 0,
+                            padding_right: 0,
                             flex_direction: FlexDirection::Column,
                             flex_shrink: 0f32,
                         ) {
                             DiffView(
-                                width: result_width,
+                                width: inner_width,
                                 height: 0u16,
                                 old_text: old_text,
                                 new_text: new_text,
@@ -791,6 +811,7 @@ pub fn tool_call_card(
                             width: 100pct,
                             padding_top: output_gap,
                             padding_left: TOOL_RESULT_PAD_LEFT,
+                            padding_right: TOOL_RESULT_PAD_RIGHT,
                             flex_direction: FlexDirection::Column,
                             gap: 0,
                         ) {

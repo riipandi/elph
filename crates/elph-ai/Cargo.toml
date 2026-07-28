@@ -26,14 +26,17 @@ aws-sdk-bedrockruntime.workspace = true
 aws-smithy-runtime-api.workspace = true
 aws-smithy-types.workspace = true
 axum = { workspace = true, features = ["query"] }
+backon.workspace = true
 base64.workspace = true
 chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 eventsource-stream.workspace = true
+failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
 fastrace-reqwest = { workspace = true, optional = true }
 futures-util.workspace = true
 futures.workspace = true
+governor.workspace = true
 http.workspace = true
 image.workspace = true
 jsonschema.workspace = true

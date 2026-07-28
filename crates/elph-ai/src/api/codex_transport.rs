@@ -15,7 +15,6 @@ use crate::api::websocket_connect::WsStream;
 use crate::api::websocket_connect::connect_websocket_with_proxy;
 use crate::types::ProviderEnv;
 
-use crate::api::common::send_with_abort;
 use crate::api::sse::for_each_sse_json_event;
 use tokio_util::sync::CancellationToken;
 
@@ -748,7 +747,7 @@ async fn collect_codex_sse_events(
     for (k, v) in headers {
         req = req.header(k, v);
     }
-    let response = send_with_abort(signal, req).await?;
+    let response = crate::api::common::send_with_resilience("openai-codex", signal, req).await?;
     let response = crate::api::common::check_response_ok(response).await?;
     let mut events = Vec::new();
     for_each_sse_json_event(response, signal, |event| {

@@ -8,7 +8,7 @@ use serde_json::json;
 
 use crate::api::azure_base_url::{build_default_azure_base_url, normalize_azure_base_url};
 use crate::api::common::{apply_on_payload, build_http_client_for_target, finish_stream_error};
-use crate::api::common::{invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers, send_with_abort};
+use crate::api::common::{invoke_on_response_from_reqwest, is_request_aborted, merge_model_headers};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::openai_responses_shared::ResponsesStreamState;
 use crate::api::openai_responses_shared::process_responses_stream_event;
@@ -120,7 +120,14 @@ async fn run_azure(
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let response = send_with_abort(&options.base.signal, req).await?;
+    let response = crate::api::common::send_with_resilience_retry(
+        &model.provider,
+        &options.base.signal,
+        &client,
+        req,
+        options.base.max_retries.unwrap_or(3),
+    )
+    .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
     let response = crate::api::common::check_response_ok(response).await?;
 

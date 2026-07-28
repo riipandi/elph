@@ -3,6 +3,7 @@
 use iocraft::prelude::*;
 
 use super::blocks::{CODE_BLOCK_INSET_H, CODE_BLOCK_INSET_V, code_content_width, segment_end, segment_gap_after};
+use super::layout::wrap_with_hanging_ranges;
 use super::linkify::spans_with_links;
 use super::model::{MarkdownDocument, MarkdownLine, MarkdownLineKind, StyledSpan};
 use super::table::render_markdown_table;
@@ -26,18 +27,96 @@ fn span_to_mixed(span: &StyledSpan) -> MixedTextContent {
     part
 }
 
-fn line_to_mixed_contents(line: &MarkdownLine) -> Vec<MixedTextContent> {
-    line.spans.iter().map(span_to_mixed).collect()
+fn line_spans_to_mixed(span: &[StyledSpan]) -> Vec<MixedTextContent> {
+    span.iter().map(span_to_mixed).collect()
+}
+
+/// Re-color the char range `[start, end)` of `spans`' concatenated text into styled spans.
+///
+/// Used to paint one visual row of a wrapped code line while keeping each token's color.
+fn recolor_range(spans: &[StyledSpan], start: usize, end: usize) -> Vec<StyledSpan> {
+    let mut out = Vec::new();
+    let mut pos = 0usize;
+    for span in spans {
+        let slen = span.text.chars().count();
+        let s_start = pos;
+        let s_end = pos + slen;
+        pos = s_end;
+        if s_end <= start || s_start >= end {
+            continue;
+        }
+        let cs = s_start.max(start);
+        let ce = s_end.min(end);
+        let char_start = cs - s_start;
+        let char_end = ce - s_start;
+        if char_end <= char_start {
+            continue;
+        }
+        let sub: String = span.text.chars().skip(char_start).take(char_end - char_start).collect();
+        if sub.is_empty() {
+            continue;
+        }
+        out.push(StyledSpan {
+            text: sub,
+            color: span.color,
+            weight: span.weight,
+            italic: span.italic,
+            underline: span.underline,
+            href: span.href.clone(),
+        });
+    }
+    out
+}
+
+/// Wrap a code line's styled spans to `inner` columns, preserving the line's leading whitespace
+/// as a hanging indent on continuation rows. Each returned sub-vector is one visual row. Mirrors
+/// [`super::layout::wrap_with_hanging_ranges`], which measures the same rows.
+fn wrap_code_spans(spans: &[StyledSpan], inner: u16, body: Color) -> Vec<Vec<StyledSpan>> {
+    let inner = inner.max(1);
+    let plain: String = spans.iter().map(|s| s.text.as_str()).collect();
+    let indent = plain
+        .chars()
+        .take_while(|c| *c == ' ')
+        .count()
+        .min((inner as usize).saturating_sub(1));
+    let indent_str = " ".repeat(indent);
+    let ranges = wrap_with_hanging_ranges(&plain, inner);
+    ranges
+        .iter()
+        .enumerate()
+        .map(|(ri, &(start, end))| {
+            let mut row = recolor_range(spans, start, end);
+            if ri > 0 {
+                row.insert(0, StyledSpan::plain(indent_str.clone(), body));
+            }
+            row
+        })
+        .collect()
 }
 
 fn render_mixed_line(line: &MarkdownLine, width: u16, wrap: TextWrap, margin_bottom: u16) -> AnyElement<'static> {
-    let contents = line_to_mixed_contents(line);
+    let contents = line_spans_to_mixed(&line.spans);
     element! {
         View(width: width, margin_bottom: margin_bottom, flex_shrink: 0f32) {
             MixedText(contents: contents, wrap: wrap)
         }
     }
     .into()
+}
+
+/// Render the wrapped visual rows of one parsed code line as non-wrapping `MixedText` views.
+fn render_code_line_rows(line: &MarkdownLine, row_width: u16, theme: &MarkdownTheme) -> Vec<AnyElement<'static>> {
+    wrap_code_spans(&line.spans, row_width, theme.body)
+        .into_iter()
+        .map(|row_spans| {
+            element! {
+                View(width: row_width, flex_shrink: 0f32) {
+                    MixedText(contents: line_spans_to_mixed(&row_spans), wrap: TextWrap::NoWrap)
+                }
+            }
+            .into()
+        })
+        .collect()
 }
 
 fn render_code_block(
@@ -48,12 +127,10 @@ fn render_code_block(
 ) -> AnyElement<'static> {
     let use_card = lines.iter().any(|line| line.code_background);
     if !use_card {
-        if lines.len() == 1 {
-            return render_mixed_line(&lines[0], width, TextWrap::Wrap, margin_bottom);
-        }
+        // No card background (single-line fences): render wrapped rows inline at full width.
         let row_elements: Vec<AnyElement<'static>> = lines
             .iter()
-            .map(|line| render_mixed_line(line, width, TextWrap::Wrap, 0))
+            .flat_map(|line| render_code_line_rows(line, width, theme))
             .collect();
         return element! {
             View(
@@ -72,17 +149,7 @@ fn render_code_block(
     let inner_width = code_content_width(width);
     let row_elements: Vec<AnyElement<'static>> = lines
         .iter()
-        .map(|line| {
-            element! {
-                View(width: inner_width, flex_shrink: 0f32) {
-                    MixedText(
-                        contents: line_to_mixed_contents(line),
-                        wrap: TextWrap::Wrap,
-                    )
-                }
-            }
-            .into()
-        })
+        .flat_map(|line| render_code_line_rows(line, inner_width, theme))
         .collect();
     element! {
         View(
@@ -317,7 +384,44 @@ pub fn render_linkified_plain_text(text: &str, foreground: Color, width: u16) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::markdown::layout::code_line_row_count;
     use crate::components::markdown::{markdown_document_row_count, parse_markdown_document};
+
+    #[test]
+    fn wrap_code_spans_preserves_hanging_indent() {
+        let body =
+            "    let value = a_really_long_variable_name_that_exceeds_the_wrap_width_and_should_wrap_now = compute();";
+        let spans = vec![StyledSpan::plain(body, Color::Reset)];
+        let rows = wrap_code_spans(&spans, 24, Color::Reset);
+        assert!(rows.len() >= 2, "long line should wrap: {rows:?}");
+        // First row keeps the 4-space leading indent from the source line.
+        let first: String = rows[0].iter().map(|s| s.text.as_str()).collect();
+        assert!(first.starts_with("    let value ="), "first row: {first:?}");
+        // Every continuation row must carry the same hanging indent.
+        for (i, row) in rows.iter().enumerate().skip(1) {
+            let text: String = row.iter().map(|s| s.text.as_str()).collect();
+            assert!(text.starts_with("    "), "continuation {i} not indented: {text:?}");
+        }
+        // Measure must agree with the rendered visual-row count.
+        assert_eq!(rows.len(), code_line_row_count(body, 24) as usize);
+    }
+
+    #[test]
+    fn code_block_measure_matches_rendered_rows() {
+        let long = "let value = some_very_long_variable_name_that_exceeds_the_wrap_width_by_a_lot_and_should_wrap = compute();";
+        let src = format!(
+            "Intro text.\n\n```rust\nfn main() {{\n    let x: i32 = 42;\n    {long}\n    println!(\"{{x}}\");\n}}\n```\n\nAfter."
+        );
+        let doc = parse_markdown_document(&src);
+        let block = render_markdown_block(&doc, 60);
+        let rendered = element! { View(width: 60) { #(vec![block]) } }.to_string();
+        let rendered_rows = rendered.lines().count();
+        let measured = markdown_document_row_count(&doc, 60);
+        assert_eq!(
+            rendered_rows, measured as usize,
+            "measured rows ({measured}) must match rendered rows ({rendered_rows})"
+        );
+    }
 
     #[test]
     fn code_block_groups_into_single_background_view() {

@@ -5,17 +5,21 @@ description: >-
     Compare upstream pi-ai / pi-agent-core CHANGELOGs and source against elph-ai /
     elph-agent: (1) what upstream has that elph still lacks, (2) how Elph-only
     features diverge in design and wiring. Prefer reverse-chronological timeline
-    prose over tables. Write all skill output and docs in English.
-    Use for port gap audit, upstream drift, parity check, Elph extension diff,
-    implementation delta, changelog walk, selisih implementasi, or /pi-port-gap.
+    prose over tables. Persisted docs are always English; in-chat reports follow
+    the user's current language. Use for port gap audit, upstream drift, parity
+    check, Elph extension diff, implementation delta, changelog walk, selisih
+    implementasi, or /pi-port-gap.
 ---
 
 # Pi Port Gap Analysis
 
 ## Language
 
-**Always write skill output, report sections, and any updates to `docs/porting/*` in English** (e.g. _behavior_, _serialize_, _catalog_).
-Keep paths, commits, symbols, and upstream package names literal. Indonesian (or other) user prompts are fine as input; respond in English unless the user explicitly asks for another language.
+Split by destination:
+
+- **Persisted docs** (`docs/porting/*.md` updates, Phase 5) — **always English**, no exceptions. Keep paths, commits, symbols, and upstream package names literal.
+- **In-chat report** (Phase 6 deliverable, printed directly in the conversation) — **match the language the user is currently using** in the prompt (Indonesian, English, etc). Keep paths, commits, symbols, upstream package names, and code/technical identifiers literal/English regardless of chat language (e.g. _behavior_, _serialize_, _catalog_ stay as-is).
+- If the user explicitly asks for a specific language for either destination, that overrides the default above.
 
 ## Goal
 
@@ -132,11 +136,11 @@ Depth targets when present: MCP (+ auth/crypto), goals, subagent, plugins, built
 
 ### Phase 5 — Persist docs (only if the user asks)
 
-Append under a timeline heading in `docs/porting/pi-ai.md` / `pi-agent.md` (see report template). Update the baseline paragraph in `docs/porting/README.md` if the upstream commit advanced. Prefer prose timeline entries over new table rows. Use English in all written docs.
+Append under a timeline heading in `docs/porting/pi-ai.md` / `pi-agent.md` (see report template). Update the baseline paragraph in `docs/porting/README.md` if the upstream commit advanced. Prefer prose timeline entries over new table rows. **Always English**, regardless of the language the conversation was conducted in.
 
 ### Phase 6 — Deliverable order
 
-Always ship in this order (English headings; keep paths/commits literal):
+Always ship in this order in-chat, in the user's current language (paths/commits/symbols stay literal):
 
 1. **Summary** — gap counts by priority, headline Elph deltas, top next step
 2. **Upstream gap** — CHANGELOG timeline (`pi-ai`, then `pi-agent`)
@@ -162,7 +166,7 @@ cargo test -p elph-agent --lib
 
 ## Rules
 
-- **English** for all reports and doc edits produced by this skill.
+- **Persisted docs always English**; **in-chat reports follow the user's current chat language**.
 - **Two lenses always** — upstream gap **and** Elph implementation delta; never only one.
 - **Timeline-first** — changelog walk is the spine of the gap section.
 - **Readable reports** — short sections, tagged bullets; no status/audit/gap tables.
