@@ -58,16 +58,18 @@ Stops sending requests to a failing provider, giving it time to recover.
 - **Recovery**: Exponential backoff from 1s to recovery timeout (default: 30s)
 - **Half-open**: Allows probe requests; success closes the circuit
 
-### 3. Retry (`backon`)
+### 3. Retry (`backon` + manual loop)
 
 Automatically retries transient failures with exponential backoff + jitter.
 
 - **Strategy**: Exponential backoff with jitter
 - **Max retries**: 3 (configurable)
 - **Backoff range**: 500ms → 30s (configurable)
-- **Retryable errors**: 429, 5xx, timeout, connection errors
-- **Non-retryable**: 4xx (except 429), billing/quota errors
-- **Implementation**: `send_with_resilience_retry()` builds request, clones for retries
+- **Retryable HTTP statuses**: 408, 409, 429, 5xx
+- **Retryable errors**: Timeout, connection errors, body transport/decoding errors ("error decoding response body")
+- **Non-retryable**: 4xx (except 408, 409, 429), billing/quota errors
+- **Body error handling**: Error response bodies are read inside the retry loop — if `response.text().await` fails with a transport/decoding error, the request is automatically retried
+- **Implementation**: `send_with_resilience_retry()` in `api/common.rs` builds the request, clones for retries, and validates both HTTP status and response body integrity
 
 ## Configuration
 
@@ -148,8 +150,18 @@ send_with_resilience_retry(provider_id, signal, client, req, max_retries)
         │
         ├── client.execute(req_clone)    ← HTTP call
         │
-        ├── On 429/5xx: record failure, retry with backoff
-        └── On success: record success, return response
+        ├── On success (2xx):
+        │   └── record success, return response (body untouched for SSE)
+        │
+        ├── On error (4xx/5xx):
+        │   ├── response.text().await    ← read error body
+        │   ├── Transport/decoding error → retry (key fix for "error decoding response body")
+        │   ├── 408, 409, 429, 5xx      → retry with backoff
+        │   ├── Body matches retryable pattern → retry
+        │   └── Non-retryable (401, 403, etc.) → return error immediately
+        │
+        └── On reqwest error (connection/timeout):
+            └── retry with backoff
 ```
 
 ### Web tools (`elph-agent`)

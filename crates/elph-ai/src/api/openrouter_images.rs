@@ -6,8 +6,9 @@ use anyhow::anyhow;
 use serde_json::Value;
 use serde_json::json;
 
-use crate::api::common::{apply_on_payload, build_http_client_for_target, invoke_on_response_from_reqwest};
-use crate::api::common::{merge_model_headers, with_trace_headers};
+use crate::api::common::{
+    apply_on_payload, build_http_client_for_target, invoke_on_response_from_reqwest, merge_model_headers,
+};
 use crate::types::StopReason;
 use crate::types::{AssistantImages, ContentBlock, ImagesContext, ImagesModel, ImagesOptions, ProviderImages};
 use crate::utils::error_body::{format_provider_error, normalize_provider_error};
@@ -134,17 +135,14 @@ async fn run_generate(
     for (k, v) in &headers {
         req = req.header(k, v);
     }
-    let req = with_trace_headers(req);
-    let response = match &options.signal {
-        Some(token) => {
-            let token = token.clone();
-            tokio::select! {
-                result = req.send() => result?,
-                _ = token.cancelled() => return Err(anyhow!("Request aborted")),
-            }
-        }
-        None => req.send().await?,
-    };
+    let response = crate::api::common::send_with_resilience_retry(
+        &model.provider,
+        &options.signal,
+        &client,
+        req,
+        options.max_retries.unwrap_or(3),
+    )
+    .await?;
     invoke_on_response_from_reqwest(
         options.on_response.as_ref(),
         &response,
@@ -167,7 +165,6 @@ async fn run_generate(
         },
     )
     .await;
-    let response = crate::api::common::check_response_ok(response).await?;
     let body: Value = response.json().await?;
 
     let mut output = AssistantImages {

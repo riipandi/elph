@@ -57,6 +57,9 @@ static RETRYABLE: LazyLock<Regex> = LazyLock::new(|| {
         "you can retry your request",
         "try your request again",
         "please retry your request",
+        "error.?decoding.?response.?body",
+        "transport.?error",
+        "408",
     ])
 });
 

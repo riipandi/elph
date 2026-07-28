@@ -569,7 +569,6 @@ async fn run_bedrock_bearer(
     )
     .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
-    let response = crate::api::common::check_response_ok(response).await?;
     for_each_sse_json_event(response, &options.base.signal, |event| {
         process_bedrock_sse_event(&event, stream, output, model, blocks)
     })

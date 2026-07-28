@@ -747,8 +747,7 @@ async fn collect_codex_sse_events(
     for (k, v) in headers {
         req = req.header(k, v);
     }
-    let response = crate::api::common::send_with_resilience("openai-codex", signal, req).await?;
-    let response = crate::api::common::check_response_ok(response).await?;
+    let response = crate::api::common::send_with_resilience_retry("openai-codex", signal, client, req, 3).await?;
     let mut events = Vec::new();
     for_each_sse_json_event(response, signal, |event| {
         events.push(event);

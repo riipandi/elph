@@ -241,9 +241,13 @@ pub fn record_resilience_from_status(provider_id: &str, status: u16) {
 /// Send with resilience + automatic retry on transient failures.
 ///
 /// Builds the request, then retries with exponential backoff on:
-/// - 429 (rate limited)
+/// - 429, 408, 409 (client errors that are retryable)
 /// - 5xx (server errors)
 /// - Connection/timeout errors
+/// - Body transport/decoding errors (e.g. "error decoding response body")
+///
+/// For non-2xx responses, the error body is read inside the retry loop so
+/// transport errors during body consumption also trigger retries.
 ///
 /// Abort errors are not retried.
 pub async fn send_with_resilience_retry(
@@ -260,11 +264,11 @@ pub async fn send_with_resilience_retry(
     // Build the request so we can clone it for retries
     let built = request.build()?;
 
-    let mut last_err = None;
+    let mut last_err: Option<anyhow::Error> = None;
     for attempt in 0..=max_retries {
         if attempt > 0 {
             // Exponential backoff: 500ms, 1s, 2s, 4s, ...
-            let delay = Duration::from_millis(500 * 2u64.pow(attempt - 1));
+            let delay = Duration::from_millis(500 * 2u64.pow(attempt.saturating_sub(1)));
             tokio::time::sleep(delay).await;
             log::debug!("resilience: retrying {provider_id} (attempt {attempt}/{max_retries})");
         }
@@ -297,18 +301,44 @@ pub async fn send_with_resilience_retry(
 
         match result {
             Ok(response) => {
-                let status = response.status().as_u16();
-                if status == 429 || status >= 500 {
-                    // Transient error — record and retry
+                let status_code = response.status();
+
+                // 2xx — success, body untouched for SSE streaming
+                if status_code.is_success() {
+                    record_provider_success(provider_id);
+                    return Ok(response);
+                }
+
+                // Read the error body — this can fail with transport/decoding errors
+                let body = match response.text().await {
+                    Ok(text) => text,
+                    Err(e) => {
+                        // Transport error while reading body (e.g. "error decoding response body")
+                        // This is retryable — the body was corrupted during transfer
+                        record_provider_failure(provider_id);
+                        last_err = Some(anyhow::Error::from(e));
+                        continue;
+                    }
+                };
+
+                let code = status_code.as_u16();
+
+                // Determine if this error is retryable
+                let is_retryable = code == 429
+                    || code >= 500
+                    || code == 408  // Request Timeout
+                    || code == 409  // Conflict (sometimes transient)
+                    || crate::resilience::retry::is_anyhow_retryable(&anyhow::anyhow!("{code}: {body}"));
+
+                if is_retryable {
                     record_provider_failure(provider_id);
-                    last_err = Some(anyhow!("HTTP {status}"));
+                    last_err = Some(anyhow!("HTTP {code}: {body}"));
                     continue;
                 }
-                // Success or non-retryable error
-                if response.status().is_success() {
-                    record_provider_success(provider_id);
-                }
-                return Ok(response);
+
+                // Non-retryable error — fail immediately
+                record_provider_failure(provider_id);
+                return Err(anyhow!("{code}: {body}"));
             }
             Err(e) => {
                 if is_abort_error(&e) {
@@ -323,5 +353,5 @@ pub async fn send_with_resilience_retry(
     }
 
     // All retries exhausted
-    Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted")))
+    Err(last_err.unwrap_or_else(|| anyhow!("max retries exhausted for {provider_id}")))
 }
