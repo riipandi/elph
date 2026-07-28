@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://github.com/riipandi/elph/schemas/elph-schema.json",
+    "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
     "description": "User preferences for the Elph coding agent, grouped by domain (ui, session, models, provider, memory). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults ← home ← project (project wins per nested key). Runtime saves write the home layer only. Flat legacy keys are migrated on load; unknown keys are ignored.",
     "type": "object",

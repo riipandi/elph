@@ -7,7 +7,8 @@ use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, mode_change_footer_hint, mode_change_select_options,
-    tool_approval_footer_hint, tool_approval_select_options,
+    plan_confirmation_footer_hint, plan_confirmation_select_options, tool_approval_footer_hint,
+    tool_approval_select_options,
 };
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
@@ -163,6 +164,64 @@ fn render_tool_approval_dialog(
     .into()
 }
 
+fn render_plan_confirmation_dialog(props: &mut StatusZoneProps, plan_text: &str) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(props.screen_width);
+    let options = plan_confirmation_select_options();
+    // Show first 8 lines of the plan, truncated per line.
+    let plan_preview: String = plan_text
+        .lines()
+        .take(8)
+        .map(|line| elph_tui::utils::truncate_with_ellipsis(line, body_width as usize))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    element! {
+        InlineDialogShell(
+            screen_width: props.screen_width,
+            title: "Plan confirmation".to_string(),
+            has_focus: props.approval_has_focus,
+            footer_hint: Some(plan_confirmation_footer_hint()),
+        ) {
+            View(
+                width: body_width,
+                flex_direction: FlexDirection::Column,
+                gap: 1,
+                flex_shrink: 0f32,
+            ) {
+                View(
+                    width: body_width,
+                    flex_shrink: 0f32,
+                    overflow: Overflow::Hidden,
+                ) {
+                    Text(
+                        content: plan_preview,
+                        color: theme.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(
+                    width: body_width,
+                    padding_top: 1,
+                    flex_shrink: 0f32,
+                ) {
+                    SelectList(
+                        width: body_width,
+                        height: 4u16,
+                        options: options,
+                        selected_index: props.approval_selected,
+                        has_focus: props.approval_has_focus,
+                        show_description: false,
+                        compact: true,
+                        theme: Some(theme),
+                    )
+                }
+            }
+        }
+    }
+    .into()
+}
+
 fn render_mode_change_dialog(props: &mut StatusZoneProps, target_mode: &str, reason: &str) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
@@ -263,6 +322,12 @@ pub enum StatusDialogKind {
     ModeChange {
         target_mode: String,
         reason: String,
+    },
+    /// Plan confirmation dialog (Implement / Implement fresh / Stay in Plan).
+    PlanConfirmation {
+        #[allow(dead_code)]
+        plan_id: String,
+        plan_text: String,
     },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
@@ -385,6 +450,9 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         Some(StatusDialogKind::ModeChange { target_mode, reason }) => {
             Some(render_mode_change_dialog(props, &target_mode, &reason))
         }
+        Some(StatusDialogKind::PlanConfirmation { plan_text, .. }) => {
+            Some(render_plan_confirmation_dialog(props, &plan_text))
+        }
         _ => None,
     };
     let banner = props
@@ -433,6 +501,17 @@ pub fn build_mode_change_dialog_kind(pending: Option<&PendingModeChange>) -> Opt
     Some(StatusDialogKind::ModeChange {
         target_mode: pending.target_mode.clone(),
         reason: pending.reason.clone(),
+    })
+}
+
+/// Build the active plan-confirmation dialog, if any.
+pub fn build_plan_confirmation_dialog_kind(
+    pending: Option<&crate::tui::tool_approval::PendingPlanConfirmation>,
+) -> Option<StatusDialogKind> {
+    let pending = pending?;
+    Some(StatusDialogKind::PlanConfirmation {
+        plan_id: pending.plan_id.clone(),
+        plan_text: pending.plan_text.clone(),
     })
 }
 

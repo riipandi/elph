@@ -86,16 +86,18 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusZone, build_mode_change_dialog_kind, build_prompt_queue_dialog_kind,
-    build_status_dialog_kind,
+    PromptQueueAction, StatusZone, build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind,
+    build_prompt_queue_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::{
-    PendingModeChange, PendingToolApproval, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index,
-    pick_mode_change_index_from_key, pick_tool_approval_index_from_key, tool_approval_transcript_key,
+    PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation, PendingToolApproval, PlanChoice,
+    TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, pick_mode_change_index_from_key,
+    pick_plan_confirmation_index_from_key, pick_tool_approval_index_from_key, plan_choice_at_index,
+    plan_confirmation_transcript_key, to_harness_choice, tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
@@ -854,6 +856,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut event_applier =
         hooks.use_ref(|| TranscriptEventApplier::new(props.show_thinking, props.auto_expand_thinking));
     let mut pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
+    let mut pending_plan_confirmation = hooks.use_ref(|| None::<PendingPlanConfirmation>);
     let mut pending_user_question = hooks.use_ref(|| None::<PendingUserQuestion>);
     let mut slash_commands = hooks.use_state(|| props.slash_commands.clone());
     let mut prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
@@ -1377,6 +1380,31 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         continue;
                     }
 
+                    if let AgentUiEvent::PlanConfirmationRequired(req) = event {
+                        activity_label.set("Plan proposed".to_string());
+                        approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
+                        shell_focus.set(ShellFocus::StatusDialog);
+                        pending_plan_confirmation.set(Some(PendingPlanConfirmation {
+                            plan_id: req.plan_id.clone(),
+                            plan_text: req.plan_text.clone(),
+                            session: agent_session_for_loop.clone(),
+                        }));
+                        // Push a status row for the transcript.
+                        {
+                            let mut msgs = messages_arc_inner.write().unwrap();
+                            let key = plan_confirmation_transcript_key();
+                            let mut row = TranscriptMessage::startup_status(
+                                key,
+                                "Plan confirmation".to_string(),
+                                TranscriptStyle::StatusRunning,
+                            );
+                            row.status_detail = Some("Review the proposed plan".to_string());
+                            msgs.push(row);
+                        }
+                        transcript_changed = true;
+                        continue;
+                    }
+
                     if let AgentUiEvent::QueueUpdate { items } = event {
                         prompt_queue.write().replace(items);
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
@@ -1870,6 +1898,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
                 || pending_mode_change.read().is_some()
+                || pending_plan_confirmation.read().is_some()
                 || pending_user_question.read().is_some()
                 || model_selector_open
                 || scoped_models_open
@@ -2667,6 +2696,65 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     return;
                 }
 
+                // ── Plan Confirmation ──────────────────────────────────────
+                let plan_choice = {
+                    if pending_plan_confirmation.read().is_some() {
+                        if modifiers.is_empty() && code == KeyCode::Esc {
+                            Some(PlanChoice::StayInPlan)
+                        } else if let Some(idx) = pick_plan_confirmation_index_from_key(modifiers, code) {
+                            plan_choice_at_index(idx)
+                        } else if modifiers.is_empty() && code == KeyCode::Enter {
+                            plan_choice_at_index(approval_selected.get())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                };
+                if let Some(choice) = plan_choice {
+                    if let Some(pending) = pending_plan_confirmation.write().take() {
+                        let key = plan_confirmation_transcript_key();
+                        let (style, detail) = match choice {
+                            PlanChoice::Implement => (TranscriptStyle::StatusSuccess, "Implementing plan…".to_string()),
+                            PlanChoice::ImplementFresh => {
+                                (TranscriptStyle::StatusSuccess, "Implementing plan (fresh context)…".to_string())
+                            }
+                            PlanChoice::StayInPlan => {
+                                (TranscriptStyle::StatusFailed, "Stayed in Plan mode".to_string())
+                            }
+                        };
+                        // Update transcript status row.
+                        {
+                            let mut msgs = messages.write();
+                            if let Some(row) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                            {
+                                row.content = "Plan confirmation".to_string();
+                                row.status_detail = Some(detail);
+                                row.style = style;
+                            }
+                        }
+                        messages_revision.set(messages_revision.get().wrapping_add(1));
+                        // Resolve via session (this triggers mode change + implement prompt).
+                        if let Some(session) = pending.session.as_ref() {
+                            let session = session.clone();
+                            let harness_choice = to_harness_choice(choice);
+                            tokio::spawn(async move {
+                                if let Err(err) = session.resolve_plan(harness_choice).await {
+                                    log::error!("plan confirmation failed: {err}");
+                                }
+                            });
+                        }
+                        activity_label.set(match choice {
+                            PlanChoice::Implement => "Implementing plan…".to_string(),
+                            PlanChoice::ImplementFresh => "Implementing plan (fresh)…".to_string(),
+                            PlanChoice::StayInPlan => "Stayed in Plan mode".to_string(),
+                        });
+                    }
+                    shell_focus.set(ShellFocus::Prompt);
+                    return;
+                }
+
                 let option_nav = {
                     let pending_ref = pending_user_question.read();
                     match (pending_ref.as_ref(), question_option_nav_delta(modifiers, code)) {
@@ -3450,6 +3538,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if let Some(mode_change) = pending_mode_change.write().take() {
                         mode_change.respond(false);
                     }
+                    let _ = pending_plan_confirmation.write().take();
                     if let Some(question) = pending_user_question.write().take() {
                         question.cancel();
                     }
@@ -3630,6 +3719,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
+        || pending_plan_confirmation.read().is_some()
         || user_question_open
         || model_selector_open
         || scoped_models_open
@@ -3656,7 +3746,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
-    let approval_has_focus = (pending_tool_approval.read().is_some() || pending_mode_change.read().is_some())
+    let approval_has_focus = (pending_tool_approval.read().is_some()
+        || pending_mode_change.read().is_some()
+        || pending_plan_confirmation.read().is_some())
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
@@ -3921,6 +4013,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Tool approval takes precedence over the prompt-queue list (visible whenever non-empty).
     let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref())
         .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
+        .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
         .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),

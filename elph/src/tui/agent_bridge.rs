@@ -15,6 +15,7 @@ use crate::platform::Paths;
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
 use super::subagent_display::{subagent_status_indent, subagent_status_key};
+use super::tool_approval::strip_plan_tags;
 use super::transcript::markdown::AssistantMarkdownBuffer;
 use super::transcript::{TranscriptMessage, TranscriptStyle};
 
@@ -672,10 +673,16 @@ impl TranscriptEventApplier {
         if delta.is_empty() {
             return false;
         }
+        // Strip protocol tags (<proposed_plan> / </proposed_plan>) from display text.
+        let cleaned = strip_plan_tags(delta);
+        if cleaned.is_empty() {
+            // Tag-only delta — swallow entirely (no visible text).
+            return false;
+        }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Assistant
         {
-            last.content.push_str(delta);
+            last.content.push_str(&cleaned);
             return true;
         }
         if let Some(last) = messages.last_mut()
