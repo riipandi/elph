@@ -1381,12 +1381,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
 
                     if let AgentUiEvent::PlanConfirmationRequired(req) = event {
+                        // Save plan to disk FIRST so user can read it before deciding.
+                        let plan_file = {
+                            let paths = paths.read().clone();
+                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths)
+                                .map_err(|e| log::error!("Failed to save plan: {e}"))
+                                .ok()
+                        };
+
                         activity_label.set("Plan proposed".to_string());
                         approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_plan_confirmation.set(Some(PendingPlanConfirmation {
                             plan_id: req.plan_id.clone(),
                             plan_text: req.plan_text.clone(),
+                            plan_file,
                             session: agent_session_for_loop.clone(),
                         }));
                         // Push a status row for the transcript.
@@ -2715,6 +2724,35 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 if let Some(choice) = plan_choice {
                     if let Some(pending) = pending_plan_confirmation.write().take() {
                         let key = plan_confirmation_transcript_key();
+
+                        // Revise: clear pending plan and let the user type revision feedback.
+                        if choice == PlanChoice::RevisePlan {
+                            // Clear the harness's pending plan so the agent can propose a new one.
+                            if let Some(session) = pending.session.as_ref() {
+                                let session = session.clone();
+                                tokio::spawn(async move {
+                                    if let Err(err) = session.clear_pending_plan().await {
+                                        log::error!("clear pending plan failed: {err}");
+                                    }
+                                });
+                            }
+                            // Update transcript row to show cancelled.
+                            {
+                                let mut msgs = messages.write();
+                                if let Some(row) =
+                                    msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                                {
+                                    row.content = "Plan confirmation".to_string();
+                                    row.status_detail = Some("Revising plan…".to_string());
+                                    row.style = TranscriptStyle::StatusFailed;
+                                }
+                            }
+                            messages_revision.set(messages_revision.get().wrapping_add(1));
+                            activity_label.set("Revised plan requested".to_string());
+                            shell_focus.set(ShellFocus::Prompt);
+                            return;
+                        }
+
                         let (style, detail) = match choice {
                             PlanChoice::Implement => (TranscriptStyle::StatusSuccess, "Implementing plan…".to_string()),
                             PlanChoice::ImplementFresh => {
@@ -2723,6 +2761,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             PlanChoice::StayInPlan => {
                                 (TranscriptStyle::StatusFailed, "Stayed in Plan mode".to_string())
                             }
+                            PlanChoice::RevisePlan => unreachable!(), // handled above
                         };
                         // Update transcript status row.
                         {
@@ -2735,13 +2774,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         messages_revision.set(messages_revision.get().wrapping_add(1));
-                        // Resolve via session (this triggers mode change + implement prompt).
+                        // Resolve via session (triggers mode change + implement prompt).
                         if let Some(session) = pending.session.as_ref() {
                             let session = session.clone();
+                            let plan_file = pending.plan_file.clone();
                             let harness_choice = to_harness_choice(choice);
                             tokio::spawn(async move {
-                                if let Err(err) = session.resolve_plan(harness_choice).await {
-                                    log::error!("plan confirmation failed: {err}");
+                                if let Some(choice) = harness_choice {
+                                    if let Err(err) = session.resolve_plan_with_file(choice, plan_file).await {
+                                        log::error!("plan confirmation failed: {err}");
+                                    }
                                 }
                             });
                         }
@@ -2749,6 +2791,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             PlanChoice::Implement => "Implementing plan…".to_string(),
                             PlanChoice::ImplementFresh => "Implementing plan (fresh)…".to_string(),
                             PlanChoice::StayInPlan => "Stayed in Plan mode".to_string(),
+                            PlanChoice::RevisePlan => unreachable!(),
                         });
                     }
                     shell_focus.set(ShellFocus::Prompt);

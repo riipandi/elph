@@ -60,17 +60,38 @@ where
         };
 
         match choice {
-            PlanConfirmationChoice::StayInPlan => {}
+            PlanConfirmationChoice::StayInPlan => {
+                // Clear pending so the agent can propose a fresh plan on the next turn.
+                *self.shared.pending_plan.lock().await = None;
+            }
             PlanConfirmationChoice::Implement => {
                 self.set_collaboration_mode(CollaborationMode::Default).await?;
-                self.prompt(implement_prompt(&pending.plan_text), None).await?;
+                self.prompt(implement_prompt(&pending.plan_text, pending.plan_file.as_deref()), None)
+                    .await?;
             }
             PlanConfirmationChoice::ImplementFresh => {
                 self.set_collaboration_mode(CollaborationMode::Default).await?;
                 self.fork_fresh_plan_branch(&pending.plan_text).await?;
-                self.prompt(implement_prompt(&pending.plan_text), None).await?;
+                self.prompt(implement_prompt(&pending.plan_text, pending.plan_file.as_deref()), None)
+                    .await?;
             }
         }
+        Ok(())
+    }
+
+    /// Store a plan file path on the currently pending plan so `implement_prompt`
+    /// can reference it instead of embedding the full plan text.
+    pub async fn set_plan_file_path(&self, path: String) -> HarnessOpResult<()> {
+        if let Some(pending) = self.shared.pending_plan.lock().await.as_mut() {
+            pending.plan_file = Some(path);
+        }
+        Ok(())
+    }
+
+    /// Clear any pending plan confirmation (used when the user chooses "Revise"
+    /// so the agent can propose a revised plan).
+    pub async fn clear_pending_plan(&self) -> HarnessOpResult<()> {
+        *self.shared.pending_plan.lock().await = None;
         Ok(())
     }
 
@@ -117,6 +138,7 @@ where
         *self.shared.pending_plan.lock().await = Some(PendingPlanConfirmation {
             plan_id: plan_id.clone(),
             plan_text: plan_text.clone(),
+            plan_file: None,
         });
 
         self.shared

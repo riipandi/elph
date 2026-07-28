@@ -139,7 +139,7 @@ Let me start with step 1.";
 
     // ── 9. implement_prompt ──
     println!("\n=== Implement Prompt ===");
-    let implement = implement_prompt("Implement the changes described in the plan above");
+    let implement = implement_prompt("Implement the changes described in the plan above", None);
     println!("  implement prompt:\n{implement}");
 
     println!("\nDone.");

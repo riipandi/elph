@@ -207,7 +207,7 @@ fn render_plan_confirmation_dialog(props: &mut StatusZoneProps, plan_text: &str)
                 ) {
                     SelectList(
                         width: body_width,
-                        height: 4u16,
+                        height: 5u16,
                         options: options,
                         selected_index: props.approval_selected,
                         has_focus: props.approval_has_focus,

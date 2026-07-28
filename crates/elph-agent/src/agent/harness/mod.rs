@@ -156,6 +156,8 @@ struct PendingPlanConfirmation {
     #[allow(dead_code)]
     plan_id: String,
     plan_text: String,
+    /// Optional path to the saved plan file on disk (`.elph/plans/plan-*.md`).
+    plan_file: Option<String>,
 }
 
 struct HarnessShared<S>

@@ -8,6 +8,7 @@ pub mod mcp_bootstrap;
 pub(crate) mod mode_change;
 mod model_registry;
 mod overlays;
+pub(crate) mod plan_files;
 mod prompt;
 mod provider;
 mod resource_loader;

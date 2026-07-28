@@ -490,6 +490,33 @@ impl CodingAgentSession {
         Ok(())
     }
 
+    /// Resolve plan confirmation with an optional saved plan file path.
+    ///
+    /// Stores the file path on the harness's pending plan so the implement prompt
+    /// references the saved file instead of embedding the full plan text.
+    pub async fn resolve_plan_with_file(
+        &self,
+        choice: PlanConfirmationChoice,
+        plan_file: Option<String>,
+    ) -> Result<()> {
+        if let Some(ref path) = plan_file {
+            self.harness
+                .set_plan_file_path(path.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+        }
+        self.resolve_plan(choice).await
+    }
+
+    /// Clear the pending plan on the harness (used when user chooses Revise
+    /// so the agent can propose a revised plan).
+    pub async fn clear_pending_plan(&self) -> Result<()> {
+        self.harness
+            .clear_pending_plan()
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+    }
+
     async fn apply_agent_mode(&self, mode: AgentMode) -> Result<()> {
         reconcile_harness_tools(&self.harness, mode, self.mcp_registry().as_deref()).await?;
         // Best-effort cache refresh so `/system-prompt` stays available without nesting

@@ -160,6 +160,9 @@ use crate::agent::PlanConfirmationRequest;
 pub struct PendingPlanConfirmation {
     pub plan_id: String,
     pub plan_text: String,
+    /// Path to the saved plan file on disk (`.elph/plans/plan-*.md`), set before
+    /// the confirmation dialog is shown so the user can read the file.
+    pub plan_file: Option<String>,
     pub session: Option<std::sync::Arc<crate::agent::CodingAgentSession>>,
 }
 
@@ -168,6 +171,7 @@ impl From<PlanConfirmationRequest> for PendingPlanConfirmation {
         Self {
             plan_id: req.plan_id,
             plan_text: req.plan_text,
+            plan_file: None,
             session: None,
         }
     }
@@ -182,6 +186,8 @@ pub enum PlanChoice {
     ImplementFresh,
     /// Stay in Plan mode for refinement.
     StayInPlan,
+    /// Request changes: clear pending plan and let the agent propose a revised version.
+    RevisePlan,
 }
 
 /// Default selected index when the plan-confirmation dialog opens (Implement).
@@ -193,6 +199,7 @@ pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> 
         ("Implement", "Switch to Build mode and apply the plan"),
         ("Implement fresh", "Clear conversation, then implement"),
         ("Stay in Plan", "Refine the plan further"),
+        ("Revise", "Request changes to the plan"),
     ]
     .into_iter()
     .map(|(name, detail)| elph_tui::types::SelectOption::new(name, detail))
@@ -201,7 +208,7 @@ pub fn plan_confirmation_select_options() -> Vec<elph_tui::types::SelectOption> 
 
 /// Footer hint for the plan-confirmation dialog.
 pub fn plan_confirmation_footer_hint() -> String {
-    "↑↓ move · Enter/1 implement · 2 fresh · 3 stay · Esc cancel".to_string()
+    "↑↓ move · Enter/1 implement · 2 fresh · 3 stay · 4 revise · Esc cancel".to_string()
 }
 
 /// Map shortcut keys to plan-confirmation list indices.
@@ -225,6 +232,9 @@ pub fn pick_plan_confirmation_index_from_key(modifiers: KeyModifiers, code: KeyC
         iocraft::prelude::KeyCode::Char('3')
         | iocraft::prelude::KeyCode::Char('s')
         | iocraft::prelude::KeyCode::Char('S') => Some(2),
+        iocraft::prelude::KeyCode::Char('4')
+        | iocraft::prelude::KeyCode::Char('r')
+        | iocraft::prelude::KeyCode::Char('R') => Some(3),
         _ => None,
     }
 }
@@ -235,16 +245,18 @@ pub fn plan_choice_at_index(index: usize) -> Option<PlanChoice> {
         0 => Some(PlanChoice::Implement),
         1 => Some(PlanChoice::ImplementFresh),
         2 => Some(PlanChoice::StayInPlan),
+        3 => Some(PlanChoice::RevisePlan),
         _ => None,
     }
 }
 
 /// Map PlanChoice to harness PlanConfirmationChoice.
-pub fn to_harness_choice(choice: PlanChoice) -> elph_agent::PlanConfirmationChoice {
+pub fn to_harness_choice(choice: PlanChoice) -> Option<elph_agent::PlanConfirmationChoice> {
     match choice {
-        PlanChoice::Implement => elph_agent::PlanConfirmationChoice::Implement,
-        PlanChoice::ImplementFresh => elph_agent::PlanConfirmationChoice::ImplementFresh,
-        PlanChoice::StayInPlan => elph_agent::PlanConfirmationChoice::StayInPlan,
+        PlanChoice::Implement => Some(elph_agent::PlanConfirmationChoice::Implement),
+        PlanChoice::ImplementFresh => Some(elph_agent::PlanConfirmationChoice::ImplementFresh),
+        PlanChoice::StayInPlan => Some(elph_agent::PlanConfirmationChoice::StayInPlan),
+        PlanChoice::RevisePlan => None,
     }
 }
 
@@ -388,10 +400,11 @@ mod tests {
     #[test]
     fn plan_confirmation_select_options_order() {
         let options = plan_confirmation_select_options();
-        assert_eq!(options.len(), 3);
+        assert_eq!(options.len(), 4);
         assert_eq!(options[0].name, "Implement");
         assert_eq!(options[1].name, "Implement fresh");
         assert_eq!(options[2].name, "Stay in Plan");
+        assert_eq!(options[3].name, "Revise");
     }
 
     #[test]
@@ -420,22 +433,32 @@ mod tests {
             pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('s')),
             Some(2)
         );
+        assert_eq!(
+            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('4')),
+            Some(3)
+        );
+        assert_eq!(
+            pick_plan_confirmation_index_from_key(KeyModifiers::NONE, KeyCode::Char('r')),
+            Some(3)
+        );
     }
 
     #[test]
-    fn plan_choice_maps_all_three_options() {
+    fn plan_choice_maps_all_four_options() {
         assert_eq!(plan_choice_at_index(0), Some(PlanChoice::Implement));
         assert_eq!(plan_choice_at_index(1), Some(PlanChoice::ImplementFresh));
         assert_eq!(plan_choice_at_index(2), Some(PlanChoice::StayInPlan));
-        assert_eq!(plan_choice_at_index(3), None);
+        assert_eq!(plan_choice_at_index(3), Some(PlanChoice::RevisePlan));
+        assert_eq!(plan_choice_at_index(4), None);
     }
 
     #[test]
-    fn plan_confirmation_footer_hint_includes_keys() {
+    fn plan_confirmation_footer_hint_includes_all_keys() {
         let hint = plan_confirmation_footer_hint();
         assert!(hint.contains("1 implement"));
         assert!(hint.contains("2 fresh"));
         assert!(hint.contains("3 stay"));
+        assert!(hint.contains("4 revise"));
     }
 
     #[test]

@@ -44,6 +44,11 @@ impl Paths {
         self.inner.project_dir.join(PROJECT_DIR_NAME)
     }
 
+    /// `PROJECT_DIR/.elph/plans/` — saved approved plan files.
+    pub fn plans_dir(&self) -> PathBuf {
+        self.project_elph_dir().join("plans")
+    }
+
     /// Project-local floppy store (Turso DB).
     pub fn memory_db_path(&self) -> PathBuf {
         self.project_elph_dir().join("store.db")
