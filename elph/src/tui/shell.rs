@@ -326,6 +326,9 @@ struct PromptQueueActionCtx<'a> {
     queue_manager_open: &'a mut State<bool>,
     queue_manager_selected: &'a mut State<usize>,
     queue_manager_action: &'a mut State<PromptQueueAction>,
+    /// Shared arc for transcript messages — pre-echoed prompts are written here too
+    /// so the arc-to-state sync never loses them.
+    messages_arc: &'a mut Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
 }
 
 /// Close the queue manager and return focus to the prompt.
@@ -360,6 +363,8 @@ fn apply_prompt_queue_action(
             ctx.queue_ui_revision.set(ctx.queue_ui_revision.get().wrapping_add(1));
             let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
             submitted.submitted_at = Some(chrono::Utc::now());
+            // Sync to shared arc so the arc-to-state sync doesn't lose this pre-echoed prompt.
+            ctx.messages_arc.write().write().unwrap().push(submitted.clone());
             push_transcript_message(ctx.messages, ctx.messages_revision, ctx.prompt_history, submitted);
             ctx.pre_echoed_user_prompts
                 .set(ctx.pre_echoed_user_prompts.get().saturating_add(1));
@@ -1574,6 +1579,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         let cwd_for_keys = cwd.clone();
         let mut messages = messages;
         let mut messages_revision = messages_revision;
+        // Copy for terminal-events closure so pre-echo paths can sync to the shared arc.
+        let mut messages_arc = messages_arc;
         move |event| {
             let TerminalEvent::Key(KeyEvent {
                 code, kind, modifiers, ..
@@ -1742,6 +1749,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if let Some(session) = agent_session.as_ref() {
                         let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
+                        // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
+                        messages_arc.write().write().unwrap().push(submitted.clone());
                         push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if agent_turn_active.get() {
@@ -1784,6 +1793,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                         let mut submitted = TranscriptMessage::text(item.text.clone(), TranscriptStyle::User);
                         submitted.submitted_at = Some(chrono::Utc::now());
+                        // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
+                        messages_arc.write().write().unwrap().push(submitted.clone());
                         push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if let Some(session) = agent_session.as_ref() {
@@ -1954,6 +1965,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 queue_manager_open: &mut queue_manager_open,
                                 queue_manager_selected: &mut queue_manager_selected,
                                 queue_manager_action: &mut queue_manager_action,
+                                messages_arc: &mut messages_arc,
                             },
                         );
                         // Send while idle: interject spawn runs the turn; mark shell busy UI only.
@@ -2932,6 +2944,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
+                                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
+                                messages_arc.write().write().unwrap().push(submitted.clone());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(
@@ -3533,6 +3547,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 queue_manager_open: &mut queue_manager_open,
                 queue_manager_selected: &mut queue_manager_selected,
                 queue_manager_action: &mut queue_manager_action,
+                messages_arc: &mut messages_arc,
             },
         );
         if mark_busy_for_idle.is_some() {
@@ -4421,6 +4436,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             );
                             if submitted.style.is_user_input_card() {
                                 submitted.submitted_at = Some(chrono::Utc::now());
+                                // Sync to shared arc so the arc-to-state sync never loses this pre-echoed prompt.
+                                messages_arc.write().write().unwrap().push(submitted.clone());
                                 pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                             }
                             push_transcript_message(
