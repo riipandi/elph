@@ -116,6 +116,10 @@ pub struct UiSettings {
     pub colored_status_footer: bool,
     #[serde(default)]
     pub file_picker: FilePickerSettings,
+    /// When true, allow mode changes (keyboard shortcut and agent request)
+    /// while the agent is busy streaming or running tools.
+    #[serde(default = "default_true")]
+    pub allow_mode_change_while_busy: bool,
 }
 
 impl Default for UiSettings {
@@ -129,6 +133,7 @@ impl Default for UiSettings {
             footer_token_display: default_footer_token_display(),
             colored_status_footer: true,
             file_picker: FilePickerSettings::default(),
+            allow_mode_change_while_busy: true,
         }
     }
 }

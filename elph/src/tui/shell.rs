@@ -246,6 +246,7 @@ pub struct MainShellProps {
     pub execution_env: Arc<LocalExecutionEnv>,
     pub paths: Paths,
     pub file_picker_show_hidden: bool,
+    pub allow_mode_change_while_busy: bool,
     pub initial_git_footer: Option<GitFooterInfo>,
 }
 
@@ -275,6 +276,7 @@ impl Default for MainShellProps {
             execution_env: Arc::new(LocalExecutionEnv::new(".")),
             paths: Paths::resolve().expect("resolve elph paths"),
             file_picker_show_hidden: false,
+            allow_mode_change_while_busy: true,
             initial_git_footer: None,
         }
     }
@@ -863,6 +865,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut mention_index = hooks.use_ref(|| None::<Arc<MentionSearchIndex>>);
     let mut mention_index_requested = hooks.use_ref(|| false);
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
+    let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -1324,6 +1327,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
 
                     if let AgentUiEvent::ModeChangeRequired(req) = event {
+                        if busy.get() && !allow_mode_change_while_busy.get() {
+                            // Auto-reject mode change while busy when setting disallows it.
+                            let _ = req.response_tx.send("false".to_string());
+                            continue;
+                        }
                         use crate::agent::UserQuestionStep;
                         let mode_label = req.target_mode.to_ascii_uppercase();
                         let step = UserQuestionStep {
@@ -3200,7 +3208,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         && !palette_tab_reserved
                         && (matches!(code, KeyCode::BackTab) || m.contains(KeyModifiers::SHIFT)) =>
                 {
-                    if busy.get() {
+                    if busy.get() && !allow_mode_change_while_busy.get() {
                         // Block mode changes during stream/tool work; toast clears async (TTL).
                         let expire_tx = ephemeral_expire.read().tx.clone();
                         show_ephemeral_banner(

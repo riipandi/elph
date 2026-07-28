@@ -145,6 +145,7 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         execution_env: execution_env,
         paths: paths,
         file_picker_show_hidden: settings.ui.file_picker.show_hidden_files,
+        allow_mode_change_while_busy: settings.ui.allow_mode_change_while_busy,
         initial_git_footer: git_footer,
     ))
     .render_loop()
