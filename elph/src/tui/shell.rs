@@ -4450,14 +4450,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     .and_then(|p| p.provider_id.clone()),
                 step,
                 selected,
-                provider_connect_open,
+                approval_has_focus,
                 input_focus,
             )
         })
         .or_else(|| {
             build_provider_api_key_dialog_kind(
                 pending_provider_api_key.read().as_ref(),
-                pending_provider_api_key.read().is_some(),
+                approval_has_focus,
             )
         })
         .or_else(|| {
@@ -5121,8 +5121,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
-                            SlashOutcome::OpenProviderConnectDialog { .. } => {
-                                // Handled by the dialog opening logic above
+                            SlashOutcome::OpenProviderConnectDialog { provider_id } => {
+                                open_provider_connect_dialog(OpenProviderConnectDialogArgs {
+                                    pending: &mut pending_provider_connect,
+                                    selected: &mut provider_connect_selected,
+                                    filter: &mut provider_connect_filter,
+                                    api_key_input: &mut provider_connect_api_key,
+                                    input_focus: &mut provider_connect_input_focus,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    provider_id,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                suppress_enter_newline.set(true);
+                                return;
                             }
                             SlashOutcome::OpenModelSelector { filter } => {
                                 let settings = Settings::load(&paths_snapshot).ok();

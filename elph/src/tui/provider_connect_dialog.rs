@@ -11,6 +11,7 @@ use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
+use crate::tui::model_selector::model_selector_list_viewport_height;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
 // ── Data types ───────────────────────────────────────────────────────
@@ -414,6 +415,7 @@ fn provider_select_footer_hint() -> String {
 /// Render the provider connect dialog — dispatches to the correct step.
 pub fn render_provider_connect_dialog(
     screen_width: u16,
+    screen_height: u16,
     has_focus: bool,
     selected: State<usize>,
     filter: State<String>,
@@ -423,15 +425,18 @@ pub fn render_provider_connect_dialog(
 ) -> AnyElement<'static> {
     match step {
         ProviderConnectStep::SelectProvider => {
-            render_select_provider_step(screen_width, has_focus, selected, filter, input_focus)
+            render_select_provider_step(screen_width, screen_height, has_focus, selected, filter, input_focus)
         }
-        ProviderConnectStep::EnterApiKey => render_api_key_step(screen_width, has_focus, api_key_input),
+        ProviderConnectStep::EnterApiKey => {
+            render_api_key_step(screen_width, screen_height, has_focus, api_key_input)
+        }
     }
 }
 
 /// Render step 1: provider selection with fuzzy search.
 fn render_select_provider_step(
     screen_width: u16,
+    screen_height: u16,
     has_focus: bool,
     selected: State<usize>,
     filter: State<String>,
@@ -465,6 +470,9 @@ fn render_select_provider_step(
     let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
     let list_focused = has_focus && input_focus == ProviderConnectFocus::List;
 
+    // Use dynamic height calculation like model selector
+    let list_height = model_selector_list_viewport_height(screen_width, screen_height);
+
     let w = body_width;
     let thm = theme;
 
@@ -480,7 +488,7 @@ fn render_select_provider_step(
                 View(width: w, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
-                        value: Some(filter.clone()),
+                        value: Some(filter),
                         has_focus: search_focused,
                         theme: Some(thm),
                         compact: true,
@@ -500,7 +508,7 @@ fn render_select_provider_step(
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     SelectList(
                         width: w,
-                        height: 8u16,
+                        height: list_height,
                         options: options,
                         selected_index: Some(selected.clone()),
                         has_focus: list_focused,
@@ -516,7 +524,12 @@ fn render_select_provider_step(
 }
 
 /// Render step 2: dedicated API key input dialog.
-fn render_api_key_step(screen_width: u16, has_focus: bool, api_key_input: State<String>) -> AnyElement<'static> {
+fn render_api_key_step(
+    screen_width: u16,
+    _screen_height: u16,
+    has_focus: bool,
+    api_key_input: State<String>,
+) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
@@ -544,7 +557,7 @@ fn render_api_key_step(screen_width: u16, has_focus: bool, api_key_input: State<
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
-                        value: Some(api_key_input.clone()),
+                        value: Some(api_key_input),
                         has_focus: hf,
                         theme: Some(thm),
                         compact: true,

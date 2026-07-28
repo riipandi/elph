@@ -519,6 +519,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
 
         render_dialog(
             props.screen_width,
+            props.screen_height,
             props.approval_has_focus,
             selected,
             filter,
