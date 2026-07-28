@@ -158,7 +158,7 @@ pub const FEEDBACK_OPTIONS: &[(&str, &str, &str)] = &[
     (
         "🐛 Report a Bug",
         "Open GitHub issue tracker",
-        "https://github.com/riipandi/elph/issues/new?template=bug_report.md",
+        "https://github.com/riipandi/elph/issues/new/choose",
     ),
     (
         "💬 Join Community",
