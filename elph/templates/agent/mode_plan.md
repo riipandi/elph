@@ -1,7 +1,6 @@
-# Plan mode
-
 You are in **Plan mode**. Do not edit files, run shell commands, or apply patches.
 Allowed: reading files, search, listing, web fetch/search, diagnostics, and asking the user clarifying questions. Mutating tools are not available in this mode.
+
 Workflow:
 
 1. Ground yourself in the repository and environment.

@@ -653,31 +653,31 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
         }
         "read_file" | "list_dir" | "delete_path" | "create_dir" => {
             // Check batch paths first
-            if let Some(paths) = find_param(params, &["paths"]) {
-                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(paths) {
-                    let count = items.len();
-                    if let Some(first) = items.first().and_then(|v| v.as_str()) {
-                        if count > 1 {
-                            return Some(format!("{} +{} more", shorten_path(first), count - 1));
-                        }
-                        return Some(shorten_path(first));
-                    }
+            if let Some(Value::Array(items)) =
+                find_param(params, &["paths"]).and_then(|p| serde_json::from_str::<Value>(p).ok())
+            {
+                let count = items.len();
+                if let Some(first) = items.first().and_then(|v| v.as_str()) {
+                    return if count > 1 {
+                        Some(format!("{} +{} more", shorten_path(first), count - 1))
+                    } else {
+                        Some(shorten_path(first))
+                    };
                 }
             }
             // Check ranges
-            if let Some(_ranges) = find_param(params, &["ranges"]) {
-                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(_ranges) {
-                    let count = items.len();
-                    if count > 1 {
-                        // Show the first path + count
-                        if let Some(first) = items.first().and_then(|r| r.get("path").and_then(|v| v.as_str())) {
-                            return Some(format!("{} ranges in {} +{} more", count, shorten_path(first), count - 1));
-                        }
-                        return Some(format!("{} ranges", count));
-                    }
+            if let Some(Value::Array(items)) =
+                find_param(params, &["ranges"]).and_then(|r| serde_json::from_str::<Value>(r).ok())
+            {
+                let count = items.len();
+                if count > 1 {
                     if let Some(first) = items.first().and_then(|r| r.get("path").and_then(|v| v.as_str())) {
-                        return Some(format!("range in {}", shorten_path(first)));
+                        return Some(format!("{} ranges in {} +{} more", count, shorten_path(first), count - 1));
                     }
+                    return Some(format!("{} ranges", count));
+                }
+                if let Some(first) = items.first().and_then(|r| r.get("path").and_then(|v| v.as_str())) {
+                    return Some(format!("range in {}", shorten_path(first)));
                 }
             }
             find_param(params, &["path", "file"]).map(shorten_path)
@@ -692,17 +692,19 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
             let mut parts: Vec<String> = Vec::new();
 
             // Pattern (single or batch)
-            if let Some(pats) = find_param(params, &["patterns"]) {
-                if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(pats) {
-                    if !items.is_empty() {
-                        let first = items.first().and_then(|v| v.as_str()).unwrap_or("");
-                        parts.push(if items.len() > 1 {
-                            format!("{} |…", truncate_chars(first, 28))
-                        } else {
-                            truncate_chars(first, 48).to_string()
-                        });
-                    }
-                }
+            if let Some(items) = find_param(params, &["patterns"])
+                .and_then(|p| serde_json::from_str::<Value>(p).ok())
+                .and_then(|v| match v {
+                    Value::Array(a) if !a.is_empty() => Some(a),
+                    _ => None,
+                })
+            {
+                let first = items.first().and_then(|v| v.as_str()).unwrap_or("");
+                parts.push(if items.len() > 1 {
+                    format!("{} |…", truncate_chars(first, 28))
+                } else {
+                    truncate_chars(first, 48).to_string()
+                });
             } else if let Some(pat) = find_param(params, &["pattern", "query"]) {
                 parts.push(truncate_chars(pat, 48).to_string());
             }
@@ -723,19 +725,19 @@ fn summarize_known_tool(tool_name: &str, params: &[ToolParam]) -> Option<String>
             }
 
             // Output mode flags
-            if find_param(params, &["filesWithMatches"]).map_or(false, |v| v == "true") {
+            if find_param(params, &["filesWithMatches"]) == Some("true") {
                 parts.push("files".into());
             }
-            if find_param(params, &["count"]).map_or(false, |v| v == "true") {
+            if find_param(params, &["count"]) == Some("true") {
                 parts.push("count".into());
             }
-            if find_param(params, &["wordRegexp"]).map_or(false, |v| v == "true") {
+            if find_param(params, &["wordRegexp"]) == Some("true") {
                 parts.push("word".into());
             }
-            if find_param(params, &["literal"]).map_or(false, |v| v == "true") {
+            if find_param(params, &["literal"]) == Some("true") {
                 parts.push("literal".into());
             }
-            if find_param(params, &["ignoreCase"]).map_or(false, |v| v == "true") {
+            if find_param(params, &["ignoreCase"]) == Some("true") {
                 parts.push("no-case".into());
             }
 

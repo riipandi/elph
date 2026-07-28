@@ -104,7 +104,7 @@ async fn execute_read(
     for (i, request) in requests.iter().enumerate() {
         let absolute = resolve_path(&env, &request.path, signal.as_ref()).await?;
         if is_probably_image(&absolute) {
-            all_outputs.push(format!("[{}] Read image file (content omitted)", &request.path));
+            all_outputs.push(format!("[{}] Read image file (content omitted)", request.path));
             continue;
         }
 

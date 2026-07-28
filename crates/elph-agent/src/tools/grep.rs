@@ -265,13 +265,14 @@ async fn execute_grep(
                 let mut out: Vec<String> = Vec::new();
                 let mut truncated = false;
 
-                for (_pi, pattern) in patterns_for_thread.iter().enumerate() {
-                    let query_text = if t_scope.is_empty() {
-                        pattern.query.clone()
+                for pattern in patterns_for_thread.iter() {
+                    // Borrow when no scope; allocate when scope needed.
+                    let query_cow = if t_scope.is_empty() {
+                        std::borrow::Cow::Borrowed(&pattern.query)
                     } else {
-                        build_grep_query(&pattern.query, &t_scope)
+                        std::borrow::Cow::Owned(build_grep_query(&pattern.query, &t_scope))
                     };
-                    let parsed = parse_grep_query(&query_text);
+                    let parsed = parse_grep_query(&query_cow);
 
                     let opts = build_grep_options(
                         limit,

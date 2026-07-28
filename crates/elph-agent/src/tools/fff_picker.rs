@@ -191,20 +191,15 @@ pub fn format_grep_output_ex(
                     current_file_index = Some(grep_match.file_index);
                 }
 
-                // Context before
-                for ctx_line in &grep_match.context_before {
+                // Context before — each line gets its correct line number
+                let ctx_before_count = grep_match.context_before.len();
+                for (ctx_i, ctx_line) in grep_match.context_before.iter().enumerate() {
                     let (rendered, truncated) = truncate_line(ctx_line, options.max_line_length);
                     if truncated {
                         lines_truncated = true;
                     }
-                    lines.push(format!(
-                        "{absolute}:{}-{}",
-                        grep_match
-                            .line_number
-                            .saturating_sub(grep_match.context_before.len() as u64)
-                            + 1,
-                        rendered
-                    ));
+                    let ctx_line_num = grep_match.line_number.saturating_sub((ctx_before_count - ctx_i) as u64);
+                    lines.push(format!("{absolute}:{ctx_line_num}:{rendered}"));
                 }
 
                 // Match line
@@ -214,13 +209,14 @@ pub fn format_grep_output_ex(
                 }
                 lines.push(format!("{}:{}:{}", absolute, grep_match.line_number, rendered));
 
-                // Context after
-                for ctx_line in &grep_match.context_after {
+                // Context after — each line gets its correct line number
+                for (ctx_i, ctx_line) in grep_match.context_after.iter().enumerate() {
                     let (rendered, truncated) = truncate_line(ctx_line, options.max_line_length);
                     if truncated {
                         lines_truncated = true;
                     }
-                    lines.push(format!("{absolute}:{}-{}", grep_match.line_number + 1, rendered));
+                    let ctx_line_num = grep_match.line_number + 1 + ctx_i as u64;
+                    lines.push(format!("{absolute}:{ctx_line_num}:{rendered}"));
                 }
 
                 // Blank line separator between match groups when context is present
@@ -237,7 +233,7 @@ pub fn format_grep_output_ex(
                 let absolute = join_paths(&base, &relative);
                 seen_files.insert(absolute);
             }
-            lines.extend(seen_files.into_iter());
+            lines.extend(seen_files);
         }
         GrepOutputMode::Count => {
             let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
