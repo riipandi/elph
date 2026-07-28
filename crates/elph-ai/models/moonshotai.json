@@ -234,12 +234,14 @@
         "api": "openai-completions",
         "baseUrl": "https://api.moonshot.ai/v1",
         "compat": {
+            "deferredToolsMode": "kimi",
             "maxTokensField": "max_tokens",
+            "requiresReasoningContentOnAssistantMessages": true,
             "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
+            "supportsReasoningEffort": true,
             "supportsStore": false,
             "supportsStrictMode": false,
-            "thinkingFormat": "deepseek"
+            "thinkingFormat": "openai"
         },
         "contextWindow": 1048576,
         "cost": {
@@ -253,6 +255,15 @@
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "moonshotai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

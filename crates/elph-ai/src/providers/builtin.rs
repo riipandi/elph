@@ -471,6 +471,20 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["OGW_API_KEY", "OPENGATEWAY_API_KEY"], "OpenGateway API key")
         ),
         simple_provider!(
+            "qwen-token-plan",
+            "Qwen Token Plan",
+            QWEN_TOKEN_PLAN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
+        ),
+        simple_provider!(
+            "qwen-token-plan-cn",
+            "Qwen Token Plan (China)",
+            QWEN_TOKEN_PLAN_CN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
+        ),
+        simple_provider!(
             "openrouter",
             "OpenRouter",
             OPENROUTER_MODELS,

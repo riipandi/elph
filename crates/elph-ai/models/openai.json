@@ -2,6 +2,9 @@
     "gpt-4": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 8192,
         "cost": {
             "cacheRead": 0,
@@ -19,6 +22,9 @@
     "gpt-4-turbo": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -36,6 +42,9 @@
     "gpt-4.1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.5,
@@ -53,6 +62,9 @@
     "gpt-4.1-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.1,
@@ -70,6 +82,9 @@
     "gpt-4.1-nano": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.025,
@@ -87,6 +102,9 @@
     "gpt-4o": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
@@ -104,6 +122,9 @@
     "gpt-4o-2024-05-13": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -121,6 +142,9 @@
     "gpt-4o-2024-08-06": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
@@ -138,6 +162,9 @@
     "gpt-4o-2024-11-20": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
@@ -155,6 +182,9 @@
     "gpt-4o-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.075,
@@ -172,6 +202,10 @@
     "gpt-5": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -186,12 +220,22 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-chat-latest": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.125,
@@ -212,6 +256,10 @@
     "gpt-5-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.025,
@@ -226,12 +274,22 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-nano": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.005,
@@ -246,12 +304,22 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-pro": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0,
@@ -266,12 +334,22 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -286,12 +364,22 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": "none"
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
         }
     },
     "gpt-5.2": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -306,6 +394,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -313,6 +406,10 @@
     "gpt-5.2-chat-latest": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -327,6 +424,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -334,6 +436,10 @@
     "gpt-5.2-pro": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0,
@@ -348,6 +454,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -355,6 +466,10 @@
     "gpt-5.3-chat-latest": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -376,6 +491,10 @@
     "gpt-5.3-codex": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -390,6 +509,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -397,6 +521,10 @@
     "gpt-5.3-codex-spark": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -411,6 +539,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -419,6 +552,8 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 272000,
@@ -444,6 +579,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -452,6 +592,8 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 400000,
@@ -468,6 +610,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -475,6 +622,10 @@
     "gpt-5.4-nano": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
@@ -489,6 +640,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -497,6 +653,8 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 1050000,
@@ -522,6 +680,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -530,6 +693,8 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 272000,
@@ -555,6 +720,10 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
@@ -563,6 +732,10 @@
     "gpt-5.5-pro": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0,
@@ -586,7 +759,10 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
             "low": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -596,6 +772,9 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsExplicitPromptCacheMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 272000,
@@ -621,7 +800,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -630,6 +813,9 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsExplicitPromptCacheMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 272000,
@@ -655,7 +841,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -664,6 +854,9 @@
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
         "compat": {
+            "supportsExplicitPromptCacheMode": true,
+            "supportsOpenAIGrammarTools": true,
+            "supportsStrictMode": true,
             "supportsToolSearch": true
         },
         "contextWindow": 272000,
@@ -689,7 +882,11 @@
         "provider": "openai",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": "none",
             "xhigh": "xhigh"
         }
@@ -697,6 +894,9 @@
     "gpt-realtime-2.1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.4,
@@ -709,11 +909,23 @@
         "maxTokens": 32000,
         "name": "GPT-Realtime-2.1",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "o1": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 7.5,
@@ -726,11 +938,23 @@
         "maxTokens": 100000,
         "name": "o1",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o1-pro": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0,
@@ -743,11 +967,23 @@
         "maxTokens": 100000,
         "name": "o1-pro",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
@@ -760,11 +996,23 @@
         "maxTokens": 100000,
         "name": "o3",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.55,
@@ -777,11 +1025,23 @@
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-pro": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0,
@@ -794,11 +1054,23 @@
         "maxTokens": 100000,
         "name": "o3-pro",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o4-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.openai.com/v1",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.275,
@@ -811,6 +1083,15 @@
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "openai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

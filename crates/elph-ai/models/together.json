@@ -327,6 +327,37 @@
             "minimal": null
         }
     },
+    "moonshotai/Kimi-K3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.together.ai/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsLongCacheRetention": false,
+            "supportsReasoningEffort": false,
+            "supportsStore": false,
+            "supportsStrictMode": false,
+            "thinkingFormat": "together"
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "moonshotai/Kimi-K3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "together",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "low": null,
+            "medium": null,
+            "minimal": null
+        }
+    },
     "nvidia/nemotron-3-ultra-550b-a55b": {
         "api": "openai-completions",
         "baseUrl": "https://api.together.ai/v1",
@@ -384,8 +415,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "openai/gpt-oss-20b": {
@@ -414,8 +450,13 @@
         "provider": "together",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": null,
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "thinkingmachines/Inkling": {

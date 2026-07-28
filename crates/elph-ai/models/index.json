@@ -2,7 +2,7 @@
     {
         "providerId": "amazon-bedrock",
         "rustMod": "amazon_bedrock",
-        "count": 115
+        "count": 114
     },
     {
         "providerId": "ant-ling",
@@ -27,7 +27,7 @@
     {
         "providerId": "cloudflare-ai-gateway",
         "rustMod": "cloudflare_ai_gateway",
-        "count": 42
+        "count": 43
     },
     {
         "providerId": "cloudflare-workers-ai",
@@ -67,7 +67,7 @@
     {
         "providerId": "huggingface",
         "rustMod": "huggingface",
-        "count": 50
+        "count": 51
     },
     {
         "providerId": "hyper",
@@ -110,9 +110,14 @@
         "count": 10
     },
     {
+        "providerId": "neuralwatt",
+        "rustMod": "neuralwatt",
+        "count": 14
+    },
+    {
         "providerId": "nvidia",
         "rustMod": "nvidia",
-        "count": 18
+        "count": 30
     },
     {
         "providerId": "openai",
@@ -127,7 +132,7 @@
     {
         "providerId": "opencode",
         "rustMod": "opencode",
-        "count": 58
+        "count": 59
     },
     {
         "providerId": "opencode-go",
@@ -142,12 +147,22 @@
     {
         "providerId": "openrouter",
         "rustMod": "openrouter",
-        "count": 276
+        "count": 304
+    },
+    {
+        "providerId": "qwen-token-plan",
+        "rustMod": "qwen_token_plan",
+        "count": 15
+    },
+    {
+        "providerId": "qwen-token-plan-cn",
+        "rustMod": "qwen_token_plan_cn",
+        "count": 15
     },
     {
         "providerId": "together",
         "rustMod": "together",
-        "count": 16
+        "count": 17
     },
     {
         "providerId": "vercel-ai-gateway",
@@ -157,7 +172,7 @@
     {
         "providerId": "xai",
         "rustMod": "xai",
-        "count": 8
+        "count": 3
     },
     {
         "providerId": "xiaomi",

@@ -92,6 +92,9 @@
     "anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.1,
@@ -126,6 +129,9 @@
     "anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
@@ -143,6 +149,9 @@
     "anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
@@ -202,26 +211,12 @@
             "xhigh": "xhigh"
         }
     },
-    "anthropic.claude-opus-5": {
-        "api": "bedrock-converse-stream",
-        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
-        "contextWindow": 1000000,
-        "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
-        },
-        "id": "anthropic.claude-opus-5",
-        "input": ["text", "image"],
-        "maxTokens": 128000,
-        "name": "Claude Opus 5",
-        "provider": "amazon-bedrock",
-        "reasoning": true
-    },
     "anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
@@ -239,6 +234,9 @@
     "anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
@@ -259,6 +257,9 @@
     "anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -280,6 +281,9 @@
     "au.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.1,
@@ -297,6 +301,9 @@
     "au.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 1.65,
@@ -350,11 +357,18 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5 (AU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "au.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
@@ -372,6 +386,9 @@
     "au.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.33,
@@ -392,6 +409,9 @@
     "au.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -430,6 +450,9 @@
     "deepseek.v3-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 163840,
         "cost": {
             "cacheRead": 0,
@@ -447,6 +470,9 @@
     "deepseek.v3.2": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 163840,
         "cost": {
             "cacheRead": 0,
@@ -486,6 +512,9 @@
     "eu.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.11,
@@ -503,6 +532,9 @@
     "eu.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.55,
@@ -520,6 +552,9 @@
     "eu.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.55,
@@ -594,11 +629,18 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "eu.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.33,
@@ -616,6 +658,9 @@
     "eu.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.33,
@@ -636,6 +681,9 @@
     "eu.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.eu-central-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.22,
@@ -679,6 +727,9 @@
     "global.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.1,
@@ -696,6 +747,9 @@
     "global.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
@@ -713,6 +767,9 @@
     "global.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
@@ -787,11 +844,18 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "global.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
@@ -809,6 +873,9 @@
     "global.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
@@ -829,6 +896,9 @@
     "global.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -850,6 +920,9 @@
     "google.gemma-3-27b-it": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0,
@@ -884,6 +957,9 @@
     "jp.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.1,
@@ -955,11 +1031,18 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5 (JP)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "jp.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
@@ -977,6 +1060,9 @@
     "jp.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
@@ -997,6 +1083,9 @@
     "jp.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -1154,6 +1243,9 @@
     "mistral.devstral-2-123b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0,
@@ -1171,6 +1263,9 @@
     "mistral.magistral-small-2509": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1188,6 +1283,9 @@
     "mistral.ministral-3-14b-instruct": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1205,6 +1303,9 @@
     "mistral.ministral-3-3b-instruct": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0,
@@ -1222,6 +1323,9 @@
     "mistral.ministral-3-8b-instruct": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1239,6 +1343,9 @@
     "mistral.mistral-large-3-675b-instruct": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0,
@@ -1273,6 +1380,9 @@
     "mistral.voxtral-mini-3b-2507": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1290,6 +1400,9 @@
     "mistral.voxtral-small-24b-2507": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 32000,
         "cost": {
             "cacheRead": 0,
@@ -1307,6 +1420,9 @@
     "moonshot.kimi-k2-thinking": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262143,
         "cost": {
             "cacheRead": 0,
@@ -1324,6 +1440,9 @@
     "moonshotai.kimi-k2.5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262143,
         "cost": {
             "cacheRead": 0,
@@ -1341,6 +1460,9 @@
     "nvidia.nemotron-nano-12b-v2": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1358,6 +1480,9 @@
     "nvidia.nemotron-nano-3-30b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1375,6 +1500,9 @@
     "nvidia.nemotron-nano-9b-v2": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1392,6 +1520,9 @@
     "nvidia.nemotron-super-3-120b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0,
@@ -1409,6 +1540,9 @@
     "openai.gpt-5.4": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.275,
@@ -1429,6 +1563,9 @@
     "openai.gpt-5.5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.55,
@@ -1449,6 +1586,9 @@
     "openai.gpt-5.6-luna": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.1,
@@ -1469,6 +1609,9 @@
     "openai.gpt-5.6-sol": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.5,
@@ -1489,6 +1632,9 @@
     "openai.gpt-5.6-terra": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.25,
@@ -1509,6 +1655,9 @@
     "openai.gpt-oss-120b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1526,6 +1675,9 @@
     "openai.gpt-oss-120b-1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1543,6 +1695,9 @@
     "openai.gpt-oss-20b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1560,6 +1715,9 @@
     "openai.gpt-oss-20b-1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1577,6 +1735,9 @@
     "openai.gpt-oss-safeguard-120b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1594,6 +1755,9 @@
     "openai.gpt-oss-safeguard-20b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0,
@@ -1611,6 +1775,9 @@
     "qwen.qwen3-235b-a22b-2507-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0,
@@ -1628,6 +1795,9 @@
     "qwen.qwen3-32b-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 16384,
         "cost": {
             "cacheRead": 0,
@@ -1645,6 +1815,9 @@
     "qwen.qwen3-coder-30b-a3b-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0,
@@ -1662,6 +1835,9 @@
     "qwen.qwen3-coder-480b-a35b-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0,
@@ -1679,6 +1855,9 @@
     "qwen.qwen3-coder-next": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0,
@@ -1696,6 +1875,9 @@
     "qwen.qwen3-next-80b-a3b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0,
@@ -1713,6 +1895,9 @@
     "qwen.qwen3-vl-235b-a22b": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0,
@@ -1752,6 +1937,9 @@
     "us.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.1,
@@ -1786,6 +1974,9 @@
     "us.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
@@ -1803,6 +1994,9 @@
     "us.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
@@ -1877,11 +2071,18 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "us.anthropic.claude-sonnet-4-5-20250929-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.3,
@@ -1899,6 +2100,9 @@
     "us.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.3,
@@ -1919,6 +2123,9 @@
     "us.anthropic.claude-sonnet-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -2025,6 +2232,9 @@
     "xai.grok-4.3": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
@@ -2042,6 +2252,9 @@
     "zai.glm-4.7": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 204800,
         "cost": {
             "cacheRead": 0,
@@ -2059,6 +2272,9 @@
     "zai.glm-4.7-flash": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0,
@@ -2076,6 +2292,9 @@
     "zai.glm-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "compat": {
+            "supportsStrictMode": true
+        },
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0,

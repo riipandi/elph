@@ -141,6 +141,7 @@ build-elph-tui-examples: ## Build all elph-tui examples
 
 generate-models: ## Regenerate elph-ai model catalogs (pi packages/ai; ARGS=--skip-scripts)
 	@$(CARGO) run -p elph-ai --bin generate-models -- all $(ARGS)
+	@bunx --silent oxfmt crates/elph-ai/models/
 
 # ─── Cross-Compilation ─────────────────────────────────────────────────────────
 # Output: release/archives/ and release/binaries/ (+ SHA256SUMS each)

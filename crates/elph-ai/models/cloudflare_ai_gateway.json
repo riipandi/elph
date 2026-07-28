@@ -301,6 +301,32 @@
             "xhigh": "xhigh"
         }
     },
+    "claude-opus-5": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "sendSessionAffinityHeaders": true,
+            "supportsTemperature": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5,
+            "output": 25
+        },
+        "id": "claude-opus-5",
+        "input": ["text", "image"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "cloudflare-ai-gateway",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
+    },
     "claude-sonnet-4": {
         "api": "anthropic-messages",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/anthropic",
@@ -461,6 +487,9 @@
     "gpt-5.1": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.13,
@@ -475,12 +504,21 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1-codex": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -495,12 +533,21 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.2": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -515,6 +562,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -522,6 +574,9 @@
     "gpt-5.2-codex": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -536,6 +591,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -543,6 +603,9 @@
     "gpt-5.3-codex": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -557,6 +620,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -564,6 +632,9 @@
     "gpt-5.4": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
@@ -578,6 +649,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -585,6 +661,9 @@
     "gpt-5.5": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -599,6 +678,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -606,6 +690,9 @@
     "gpt-5.6-luna": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
@@ -620,7 +707,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -628,6 +719,9 @@
     "gpt-5.6-sol": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -642,7 +736,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -650,6 +748,9 @@
     "gpt-5.6-terra": {
         "api": "openai-responses",
         "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/openai",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
@@ -664,7 +765,11 @@
         "provider": "cloudflare-ai-gateway",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -684,7 +789,16 @@
         "maxTokens": 100000,
         "name": "o1",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3": {
         "api": "openai-responses",
@@ -701,7 +815,16 @@
         "maxTokens": 100000,
         "name": "o3",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-mini": {
         "api": "openai-responses",
@@ -718,7 +841,16 @@
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-pro": {
         "api": "openai-responses",
@@ -735,7 +867,16 @@
         "maxTokens": 100000,
         "name": "o3-pro",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o4-mini": {
         "api": "openai-responses",
@@ -752,7 +893,16 @@
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "cloudflare-ai-gateway",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "workers-ai/@cf/moonshotai/kimi-k2.5": {
         "api": "openai-completions",

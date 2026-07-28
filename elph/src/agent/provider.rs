@@ -168,6 +168,16 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "OPENROUTER_API_KEY",
             default_model: "anthropic/claude-sonnet-4",
         }),
+        "qwen-token-plan" => Some(ProviderConfig {
+            label: "Qwen Token Plan",
+            api_key_env_key: "QWEN_TOKEN_PLAN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
+        "qwen-token-plan-cn" => Some(ProviderConfig {
+            label: "Qwen Token Plan (China)",
+            api_key_env_key: "QWEN_TOKEN_PLAN_CN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
         "together" => Some(ProviderConfig {
             label: "Together AI",
             api_key_env_key: "TOGETHER_API_KEY",
@@ -412,6 +422,8 @@ mod tests {
             "opencode-go",
             "opengateway",
             "openrouter",
+            "qwen-token-plan",
+            "qwen-token-plan-cn",
             "together",
             "vercel-ai-gateway",
             "xai",

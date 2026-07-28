@@ -20,7 +20,16 @@
         "maxTokens": 16384,
         "name": "Gemma 4 26B A4B IT",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/ibm-granite/granite-4.0-h-micro": {
         "api": "openai-completions",
@@ -135,7 +144,16 @@
         "maxTokens": 256000,
         "name": "Kimi K2.6",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/moonshotai/kimi-k2.7-code": {
         "api": "openai-completions",
@@ -158,7 +176,16 @@
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/nvidia/nemotron-3-120b-a12b": {
         "api": "openai-completions",
@@ -181,7 +208,16 @@
         "maxTokens": 256000,
         "name": "Nemotron 3 Super 120B",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -204,7 +240,16 @@
         "maxTokens": 16384,
         "name": "GPT OSS 120B",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -273,7 +318,16 @@
         "maxTokens": 131072,
         "name": "GLM-4.7-Flash",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/zai-org/glm-5.2": {
         "api": "openai-completions",
@@ -296,6 +350,15 @@
         "maxTokens": 262144,
         "name": "Glm 5.2",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

@@ -150,8 +150,8 @@ define_catalog!(MINIMAX_MODELS, "minimax.json");
 define_catalog!(MINIMAX_CN_MODELS, "minimax_cn.json");
 define_catalog!(MISTRAL_MODELS, "mistral.json");
 define_catalog!(MOONSHOTAI_MODELS, "moonshotai.json");
-define_catalog!(NEURALWATT_MODELS, "neuralwatt.json");
 define_catalog!(MOONSHOTAI_CN_MODELS, "moonshotai_cn.json");
+define_catalog!(NEURALWATT_MODELS, "neuralwatt.json");
 define_catalog!(NVIDIA_MODELS, "nvidia.json");
 define_catalog!(OPENAI_MODELS, "openai.json");
 define_catalog!(OPENAI_CODEX_MODELS, "openai_codex.json");
@@ -159,6 +159,8 @@ define_catalog!(OPENCODE_MODELS, "opencode.json");
 define_catalog!(OPENCODE_GO_MODELS, "opencode_go.json");
 define_catalog!(OPENGATEWAY_MODELS, "opengateway.json");
 define_catalog!(OPENROUTER_MODELS, "openrouter.json");
+define_catalog!(QWEN_TOKEN_PLAN_MODELS, "qwen_token_plan.json");
+define_catalog!(QWEN_TOKEN_PLAN_CN_MODELS, "qwen_token_plan_cn.json");
 define_catalog!(TOGETHER_MODELS, "together.json");
 define_catalog!(VERCEL_AI_GATEWAY_MODELS, "vercel_ai_gateway.json");
 define_catalog!(XAI_MODELS, "xai.json");
@@ -201,6 +203,8 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("opencode-go", OPENCODE_GO_MODELS.as_slice()),
         ("opengateway", OPENGATEWAY_MODELS.as_slice()),
         ("openrouter", OPENROUTER_MODELS.as_slice()),
+        ("qwen-token-plan", QWEN_TOKEN_PLAN_MODELS.as_slice()),
+        ("qwen-token-plan-cn", QWEN_TOKEN_PLAN_CN_MODELS.as_slice()),
         ("together", TOGETHER_MODELS.as_slice()),
         ("vercel-ai-gateway", VERCEL_AI_GATEWAY_MODELS.as_slice()),
         ("xai", XAI_MODELS.as_slice()),
