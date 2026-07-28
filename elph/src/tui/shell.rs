@@ -3239,8 +3239,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
                 }
-                // Ctrl+` / Ctrl+~: cycle thinking level.
-                (m, KeyCode::Char('`')) | (m, KeyCode::Char('~')) if m.contains(KeyModifiers::CONTROL) => {
+                // Ctrl+.: cycle thinking level.
+                (m, KeyCode::Char('.')) if m.contains(KeyModifiers::CONTROL) => {
                     let next = thinking_level.get().next();
                     thinking_level.set(next);
                     persist_session_prefs(&paths, agent_mode.get(), next);
