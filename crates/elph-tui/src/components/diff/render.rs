@@ -485,7 +485,7 @@ mod tests {
         // Verify that highlighted diff lines truncate to content_width, not overflow.
         let long_line = "a".repeat(200);
         let old_text = format!("{long_line}\n");
-        let new_text = format!("x\n");
+        let new_text = "x\n".to_string();
         let result = compute_diff(&old_text, &new_text, 3);
         let theme = UiTheme::default();
         let width = 40u16;

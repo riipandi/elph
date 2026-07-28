@@ -91,6 +91,11 @@ pub fn is_anyhow_retryable(error: &anyhow::Error) -> bool {
         || msg.contains("timed out")
         || msg.contains("socket hang up")
         || msg.contains("fetch failed")
+        // Transport / body decoding errors (reqwest)
+        || msg.contains("error decoding response body")
+        || msg.contains("transport error")
+        || msg.contains("408")
+        || msg.contains("request timed out")
 }
 
 #[cfg(test)]
@@ -122,6 +127,15 @@ mod tests {
         assert!(!is_anyhow_retryable(&anyhow::anyhow!("quota exceeded")));
         assert!(!is_anyhow_retryable(&anyhow::anyhow!("billing error")));
         assert!(!is_anyhow_retryable(&anyhow::anyhow!("invalid api key")));
+
+        // Transport / body decoding errors
+        assert!(is_anyhow_retryable(&anyhow::anyhow!(
+            "Transport error: error decoding response body"
+        )));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("error decoding response body")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("transport error")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("408 request timed out")));
+        assert!(is_anyhow_retryable(&anyhow::anyhow!("request timed out")));
     }
 
     #[tokio::test]

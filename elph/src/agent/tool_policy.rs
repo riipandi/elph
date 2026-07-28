@@ -245,11 +245,19 @@ mod tests {
     }
 
     #[test]
-    fn plan_mode_hides_edit_tools() {
-        let all = vec!["read_file".into(), "edit_file".into(), "web_search".into()];
+    fn plan_mode_allows_plan_file_tools() {
+        let all = vec![
+            "read_file".into(),
+            "edit_file".into(),
+            "write_file".into(),
+            "create_dir".into(),
+            "web_search".into(),
+        ];
         let active = AgentModePolicy::active_tool_names_for_mode(AgentMode::Plan, &all, None);
         assert!(active.contains(&"web_search".to_string()));
-        assert!(!active.contains(&"edit_file".to_string()));
+        assert!(active.contains(&"edit_file".to_string()));
+        assert!(active.contains(&"write_file".to_string()));
+        assert!(active.contains(&"create_dir".to_string()));
     }
 
     #[tokio::test]

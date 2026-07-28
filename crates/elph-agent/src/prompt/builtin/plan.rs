@@ -17,6 +17,18 @@ pub fn plan_mode_system_prompt() -> &'static str {
 }
 
 /// User message sent when the user confirms a proposed plan for implementation.
-pub fn implement_prompt(plan_text: &str) -> String {
-    format!("Implement this plan:\n\n{plan_text}")
+///
+/// When `plan_file` is `Some(path)`, the agent is instructed to read the plan
+/// from the saved file and update its frontmatter fields (`Status`, `Updated`)
+/// as work progresses. Otherwise the plan text is embedded inline.
+pub fn implement_prompt(plan_text: &str, plan_file: Option<&str>) -> String {
+    if let Some(file_path) = plan_file {
+        format!(
+            "The plan has been approved and saved to:\n{file_path}\n\n\
+             Read the plan file and implement it step by step. \
+             Update the plan file's frontmatter `Status` and `Updated` fields as you make progress."
+        )
+    } else {
+        format!("Implement this plan:\n\n{plan_text}")
+    }
 }

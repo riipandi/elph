@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://github.com/riipandi/elph/schemas/mcp-schema.json",
+    "$id": "https://elph.space/mcp-schema.json",
     "title": "Elph MCP configuration",
     "description": "MCP server definitions for Elph. Home: ~/.elph/mcp.json; project override: <project>/.elph/mcp.json (merged on load, project wins). Supports stdio, streamable HTTP, and legacy SSE; policy; OAuth. Matches elph_agent::mcp::McpConfig.",
     "type": "object",

@@ -15,7 +15,8 @@ pub fn mode_tool_guidance(mode: AgentMode) -> &'static str {
         }
         AgentMode::Brave => "Mode: Brave — full tool access without approval prompts. Use mutating tools responsibly.",
         AgentMode::Plan => {
-            "Mode: Plan — read-only exploration only. Use web_search, read_file, grep, and similar tools to research. \
+            "Mode: Plan — read-only exploration. Use web_search, read_file, grep, and similar tools to research. \
+             You may also use write_file, edit_file, and create_dir to save plan files to `.elph/plans/*`. \
              Wrap your implementation plan in <proposed_plan>...</proposed_plan> for user confirmation before editing. \
              When ready to implement, request mode change to Build (not Brave)."
         }

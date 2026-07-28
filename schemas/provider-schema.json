@@ -1,5 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://elph.space/provider-schema.json",
     "title": "Elph AI provider configuration",
     "description": "One provider per JSON file in ~/.elph/providers. The provider id is the filename without .json. Toggle availability with elph provider enable/disable and elph provider model enable/disable.",
     "type": "object",

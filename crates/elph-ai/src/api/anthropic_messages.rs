@@ -170,7 +170,6 @@ async fn run_anthropic_stream(
     )
     .await?;
     invoke_on_response_from_reqwest(options.base.on_response.as_ref(), &response, model).await;
-    let response = crate::api::common::check_response_ok(response).await?;
 
     stream.push(AssistantMessageEvent::Start {
         partial: output.clone(),

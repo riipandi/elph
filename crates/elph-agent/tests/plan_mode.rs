@@ -35,8 +35,11 @@ fn extract_proposed_plan_parses_block() {
 
 #[test]
 fn plan_mode_blocks_write_tool() {
-    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
+    // write_file is now allowed in Plan mode as a plan file tool (restricted to .elph/plans/*).
+    assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "write_file", None));
     assert!(!plan_mode_blocks_tool(CollaborationMode::Default, "write_file", None));
+    // shell_exec remains blocked.
+    assert!(plan_mode_blocks_tool(CollaborationMode::Plan, "shell_exec", None));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -75,7 +78,7 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         .map(|t| t.name().to_string())
         .collect();
     assert!(active.contains(&"read_file".to_string()));
-    assert!(!active.contains(&"write_file".to_string()));
+    assert!(active.contains(&"write_file".to_string())); // plan file tool
     assert!(!active.contains(&"shell_exec".to_string()));
 }
 

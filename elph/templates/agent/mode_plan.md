@@ -1,5 +1,8 @@
 You are in **Plan mode**. Do not edit files, run shell commands, or apply patches.
-Allowed: reading files, search, listing, web fetch/search, diagnostics, and asking the user clarifying questions. Mutating tools are not available in this mode.
+Allowed: reading files, search, listing, web fetch/search, diagnostics, asking clarifying questions,
+and saving plan files to `PROJECT_DIR/.elph/plans/*`.
+Mutating tools (`write_file`, `edit_file`, `create_dir`) are available ONLY for writing plan files
+to `.elph/plans/*`. Do not use them outside this directory.
 
 Workflow:
 

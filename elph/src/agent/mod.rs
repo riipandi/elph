@@ -8,6 +8,7 @@ pub mod mcp_bootstrap;
 pub(crate) mod mode_change;
 mod model_registry;
 mod overlays;
+pub(crate) mod plan_files;
 mod prompt;
 mod provider;
 mod resource_loader;
@@ -24,7 +25,7 @@ mod tools_catalog;
 mod tools_slash;
 
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
-pub use events::{ModeChangeRequest, QueuedPromptItem, QueuedPromptKind};
+pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
 pub use mcp_bootstrap::{discover_mcp_registry, wire_mcp_into_session};
 pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};

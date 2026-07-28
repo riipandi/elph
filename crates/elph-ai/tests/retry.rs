@@ -38,3 +38,20 @@ fn treats_service_unavailable_as_retryable() {
 fn treats_billing_errors_as_non_retryable() {
     assert!(!is_retryable(&error_assistant_message("billing hard limit reached")));
 }
+
+#[test]
+fn classifies_transport_error_as_retryable() {
+    assert!(is_retryable(&error_assistant_message(
+        "Transport error: error decoding response body"
+    )));
+}
+
+#[test]
+fn classifies_body_decode_error_as_retryable() {
+    assert!(is_retryable(&error_assistant_message("error decoding response body")));
+}
+
+#[test]
+fn classifies_408_as_retryable() {
+    assert!(is_retryable(&error_assistant_message("408 Request Timeout")));
+}
