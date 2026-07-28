@@ -1,5 +1,6 @@
 //! Context token estimation and cut-point selection.
 
+use elph_ai::utils::estimate::count_tokens_text;
 use elph_ai::{AssistantContentBlock, Message, StopReason, Usage};
 use serde_json::Value;
 
@@ -7,8 +8,6 @@ pub use crate::agent::harness::types::CompactionSettings;
 
 use crate::session::types::SessionTreeEntry;
 use crate::types::{AgentMessage, CustomAgentMessage};
-
-const ESTIMATED_IMAGE_CHARS: usize = 4800;
 
 fn safe_json_stringify(value: &Value) -> String {
     serde_json::to_string(value).unwrap_or_else(|_| "[unserializable]".to_string())
@@ -126,58 +125,58 @@ pub fn should_compact(context_tokens: u64, context_window: u64, settings: Compac
     context_tokens > context_window.saturating_sub(settings.reserve_tokens)
 }
 
-fn estimate_text_and_image_content_chars(content: &str) -> usize {
-    content.chars().count()
-}
+// Image tokens estimated separately — not subject to the char-based heuristic.
+const ESTIMATED_IMAGE_TOKENS: u64 = 1200;
 
-fn estimate_blocks_chars(blocks: &[elph_ai::ContentBlock]) -> usize {
-    let mut chars = 0usize;
-    for block in blocks {
-        match block {
-            elph_ai::ContentBlock::Text { text } => chars += text.chars().count(),
-            elph_ai::ContentBlock::Image { .. } => chars += ESTIMATED_IMAGE_CHARS,
-        }
-    }
-    chars
-}
-
-/// Estimate token count for one message using a conservative character heuristic.
+/// Estimate token count for one message using the tokenx heuristic.
 pub fn estimate_tokens(message: &AgentMessage) -> u64 {
-    let chars = match message {
+    match message {
         AgentMessage::Llm(llm) => match llm.as_ref() {
             Message::User { content, .. } => match content {
-                elph_ai::UserContent::Text(text) => estimate_text_and_image_content_chars(text),
-                elph_ai::UserContent::Blocks(blocks) => estimate_blocks_chars(blocks),
+                elph_ai::UserContent::Text(text) => count_tokens_text(text),
+                elph_ai::UserContent::Blocks(blocks) => blocks
+                    .iter()
+                    .map(|b| match b {
+                        elph_ai::ContentBlock::Text { text } => count_tokens_text(text),
+                        elph_ai::ContentBlock::Image { .. } => ESTIMATED_IMAGE_TOKENS,
+                    })
+                    .sum(),
             },
-            Message::Assistant(assistant) => {
-                let mut chars = 0usize;
-                for block in &assistant.content {
-                    match block {
-                        AssistantContentBlock::Text(text) => chars += text.text.chars().count(),
-                        AssistantContentBlock::Thinking(thinking) => {
-                            chars += thinking.thinking.chars().count();
-                        }
-                        AssistantContentBlock::ToolCall(tool_call) => {
-                            chars += tool_call.name.chars().count()
-                                + safe_json_stringify(&tool_call.arguments).chars().count();
-                        }
+            Message::Assistant(assistant) => assistant
+                .content
+                .iter()
+                .map(|block| match block {
+                    AssistantContentBlock::Text(text) => count_tokens_text(&text.text),
+                    AssistantContentBlock::Thinking(thinking) => count_tokens_text(&thinking.thinking),
+                    AssistantContentBlock::ToolCall(tool_call) => {
+                        count_tokens_text(&tool_call.name)
+                            + count_tokens_text(&tool_call.id)
+                            + count_tokens_text(&safe_json_stringify(&tool_call.arguments))
                     }
-                }
-                chars
-            }
-            Message::ToolResult { content, .. } => estimate_blocks_chars(content),
+                })
+                .sum(),
+            Message::ToolResult { content, .. } => content
+                .iter()
+                .map(|b| match b {
+                    elph_ai::ContentBlock::Text { text } => count_tokens_text(text),
+                    elph_ai::ContentBlock::Image { .. } => ESTIMATED_IMAGE_TOKENS,
+                })
+                .sum(),
         },
         AgentMessage::Custom(CustomAgentMessage::ShellExecExecution { command, output, .. }) => {
-            command.chars().count() + output.as_ref().map(|s| s.chars().count()).unwrap_or(0)
+            let mut total = count_tokens_text(command);
+            if let Some(out) = output.as_ref() {
+                total += count_tokens_text(out);
+            }
+            total
         }
         AgentMessage::Custom(CustomAgentMessage::BranchSummary { summary, .. })
-        | AgentMessage::Custom(CustomAgentMessage::CompactionSummary { summary, .. }) => summary.chars().count(),
+        | AgentMessage::Custom(CustomAgentMessage::CompactionSummary { summary, .. }) => count_tokens_text(summary),
         AgentMessage::Custom(CustomAgentMessage::Custom { content, .. }) => content
             .as_str()
-            .map(estimate_text_and_image_content_chars)
-            .unwrap_or_else(|| content.to_string().chars().count()),
-    };
-    chars.div_ceil(4) as u64
+            .map(count_tokens_text)
+            .unwrap_or_else(|| count_tokens_text(&serde_json::to_string(content).unwrap_or_default())),
+    }
 }
 
 fn find_valid_cut_points(entries: &[SessionTreeEntry], start_index: usize, end_index: usize) -> Vec<usize> {

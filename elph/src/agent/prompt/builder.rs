@@ -71,11 +71,13 @@ mod tests {
         let prompt = build_coding_system_prompt(
             Path::new("/tmp/project"),
             &AgentHarnessResources::default(),
-            &["read_file".to_string()],
+            &["read_file", "write_file", "grep", "list_dir", "shell_exec"].map(String::from),
             None,
             AgentMode::Build,
         )
         .expect("prompt");
+
+        assert!(prompt.contains("You are an expert AI coding assistant"));
 
         assert!(prompt.contains("You are an expert AI coding assistant"));
         assert!(prompt.contains("Working directory: /tmp/project"));

@@ -39,6 +39,7 @@ pub fn find_stable_boundary(raw: &str, force_flush: bool) -> usize {
 }
 
 /// Advance through fully closed fenced blocks that start at or after `boundary`.
+/// This ensures complete codeblocks are frozen as stable, preventing truncation.
 fn extend_past_closed_fences(raw: &str, boundary: usize, search_end: usize) -> usize {
     let mut end = boundary;
     let mut scan = boundary;
@@ -53,14 +54,14 @@ fn extend_past_closed_fences(raw: &str, boundary: usize, search_end: usize) -> u
         };
         let close = after_open + rel_close;
         let after_close = close + 3;
-        let block_end = raw[after_close..search_end]
-            .find('\n')
-            .map(|index| after_close + index + 1)
-            .unwrap_or(search_end);
+
+        // Include the entire codeblock including the closing fence
+        let block_end = after_close;
+
         if block_end > end {
             end = block_end;
         }
-        scan = block_end.max(after_close);
+        scan = block_end;
     }
     end
 }
@@ -211,10 +212,20 @@ mod tests {
     #[test]
     fn closed_fence_stabilizes_without_trailing_paragraph_break() {
         let raw = "intro\n\n```rust\nlet x = 1;\n```\nnext line";
-        let fence_end = raw.find("```\nnext").map(|index| index + 4).expect("close fence");
+        let fence_close_pos = raw.find("```").expect("fence open");
+        let fence_open = fence_close_pos + 3; // After ```
+        let fence_close = raw[fence_open..]
+            .find("```")
+            .map(|i| fence_open + i)
+            .expect("fence close");
+        let fence_end = fence_close + 3; // After ```
+        let stable_boundary = find_stable_boundary(raw, false);
         assert!(
-            find_stable_boundary(raw, false) >= fence_end,
-            "expected stable prefix through closed fence"
+            stable_boundary >= fence_end,
+            "expected stable prefix through closed fence, got {} < {} (fence_end={})",
+            stable_boundary,
+            fence_end,
+            fence_end
         );
     }
 }

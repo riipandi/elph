@@ -1,8 +1,284 @@
 //! Context token estimation with optional reuse of last assistant usage.
+//!
+//! The core token-counting function [`count_tokens_text`] is a port of
+//! [`tokenx`](https://github.com/johannschopplich/tokenx): a heuristic
+//! estimator calibrated against OpenAI's `o200k_base` encoding with ~96 %
+//! accuracy and zero dependencies (std only).
 
 use crate::types::{AssistantContentBlock, ContentBlock, Context, Message, StopReason, Tool, UserContent};
 
-const CHARS_PER_TOKEN: f64 = 4.0;
+// ---------------------------------------------------------------------------
+// Tokenx algorithm — grouped per segment
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq)]
+enum SegKind {
+    Whitespace,
+    Punctuation,
+    Other,
+}
+
+fn seg_kind(c: char) -> SegKind {
+    if c.is_whitespace() {
+        SegKind::Whitespace
+    } else if matches!(
+        c,
+        '.' | ','
+            | '!'
+            | '?'
+            | ';'
+            | ':'
+            | '('
+            | ')'
+            | '{'
+            | '}'
+            | '['
+            | ']'
+            | '<'
+            | '>'
+            | '/'
+            | '\\'
+            | '|'
+            | '@'
+            | '#'
+            | '$'
+            | '%'
+            | '^'
+            | '&'
+            | '*'
+            | '+'
+            | '='
+            | '`'
+            | '~'
+            | '"'
+            | '_'
+            | '-'
+    ) {
+        SegKind::Punctuation
+    } else {
+        SegKind::Other
+    }
+}
+
+/// Fast token count estimation — tokenx algorithm port.
+///
+/// Splits text by whitespace/punctuation boundaries and applies heuristics
+/// per segment with multi-language support.
+pub fn count_tokens_text(text: &str) -> u64 {
+    if text.is_empty() {
+        return 0;
+    }
+
+    let mut total = 0u64;
+    let chars: Vec<char> = text.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let kind = seg_kind(chars[i]);
+        let mut j = i + 1;
+        while j < chars.len() && seg_kind(chars[j]) == kind {
+            j += 1;
+        }
+
+        total += match kind {
+            SegKind::Whitespace => {
+                // Structural whitespace (indentation/blank lines) costs 1 token.
+                if chars[i..j].contains(&'\n') { 1 } else { 0 }
+            }
+            SegKind::Punctuation => {
+                let len = j - i;
+                match len {
+                    0 => 0,
+                    1..=3 => 1,
+                    _ => (len as u64).div_ceil(2),
+                }
+            }
+            SegKind::Other => {
+                let segment: String = chars[i..j].iter().collect();
+                estimate_other_segment(&segment)
+            }
+        };
+
+        i = j;
+    }
+
+    total
+}
+
+// ---- Language helpers ----------------------------------------------------
+
+fn has_cjk(text: &str) -> bool {
+    text.chars().any(|c| {
+        let cp = c as u32;
+        matches!(cp,
+            // CJK Unified Ideographs & Extensions
+            0x4E00..=0x9FFF | 0x3400..=0x4DBF |
+            // CJK Symbols, Hiragana, Katakana
+            0x3000..=0x30FF |
+            // Fullwidth forms
+            0xFF00..=0xFFEF |
+            // CJK Radicals, Strokes, Compatibility
+            0x2E80..=0x2EFF | 0x31C0..=0x31EF |
+            0x3200..=0x32FF | 0x3300..=0x33FF |
+            // Hangul (Korean)
+            0xAC00..=0xD7AF | 0x1100..=0x11FF |
+            0x3130..=0x318F | 0xA960..=0xA97F | 0xD7B0..=0xD7FF
+        )
+    })
+}
+
+fn is_kana(c: char) -> bool {
+    let cp = c as u32;
+    (0x3040..=0x30FF).contains(&cp) // Hiragana + Katakana
+}
+
+fn estimate_cjk_segment(segment: &str) -> u64 {
+    let (kana, other) = segment
+        .chars()
+        .fold((0u64, 0u64), |(k, o), c| if is_kana(c) { (k + 1, o) } else { (k, o + 1) });
+    // Kana: 1.35 chars/token (multi-character particles/words).
+    // Other CJK: 1 char ≈ 1 token (conservative upper bound).
+    other + ((kana as f64) / 1.35).ceil() as u64
+}
+
+fn is_emoji_char(c: char) -> bool {
+    let cp = c as u32;
+    // Major emoji ranges (covers the vast majority of everyday emoji).
+    (0x2600..=0x27BF).contains(&cp)   // Misc Symbols, Dingbats
+        || (0x1F300..=0x1F9FF).contains(&cp) // Misc Symbols, Emoticons, SMP
+        || (0x1FA00..=0x1FAFF).contains(&cp) // Chess, Symbols Extended-A
+        || cp == 0x200D // Zero Width Joiner (ZWJ sequences)
+        || cp == 0xFE0F // Variation Selector-16 (emoji style)
+        || (0x231A..=0x23FA).contains(&cp) // Misc Technical (watch, clocks…)
+}
+
+/// Check if the segment consists entirely of emoji characters.
+fn is_pure_emoji(segment: &str) -> bool {
+    let mut non_empty = false;
+    for c in segment.chars() {
+        if !is_emoji_char(c) {
+            return false;
+        }
+        non_empty = true;
+    }
+    non_empty
+}
+
+// Language-specific pattern checks (order matches tokenx — first match wins).
+fn detect_language_ratio(segment: &str) -> Option<f64> {
+    // 1. German umlauts
+    if segment.chars().any(|c| matches!(c, 'ä' | 'ö' | 'ü' | 'ß' | 'ẞ')) {
+        return Some(2.6);
+    }
+    // 2. French / Spanish accented
+    if segment.chars().any(|c| {
+        matches!(
+            c,
+            'é' | 'è'
+                | 'ê'
+                | 'ë'
+                | 'à'
+                | 'â'
+                | 'î'
+                | 'ï'
+                | 'ô'
+                | 'û'
+                | 'ù'
+                | 'ÿ'
+                | 'ç'
+                | 'œ'
+                | 'æ'
+                | 'á'
+                | 'í'
+                | 'ó'
+                | 'ú'
+                | 'ñ'
+        )
+    }) {
+        return Some(3.0);
+    }
+    // 3. Slavic accented
+    if segment.chars().any(|c| {
+        matches!(
+            c,
+            'ą' | 'ć'
+                | 'ę'
+                | 'ł'
+                | 'ń'
+                | 'ś'
+                | 'ź'
+                | 'ż'
+                | 'ě'
+                | 'š'
+                | 'č'
+                | 'ř'
+                | 'ž'
+                | 'ý'
+                | 'ů'
+                | 'ď'
+                | 'ť'
+                | 'ň'
+        )
+    }) {
+        return Some(2.5);
+    }
+    // 4. Cyrillic
+    if segment.chars().any(|c| {
+        let cp = c as u32;
+        (0x0430..=0x044F).contains(&cp) || cp == 0x0451
+    }) {
+        return Some(4.0);
+    }
+    // 5. Greek accented
+    if segment.chars().any(|c| {
+        let cp = c as u32;
+        (0x03AC..=0x03CE).contains(&cp)
+    }) {
+        return Some(2.75);
+    }
+    None
+}
+
+/// Count tokens for an "Other"-type segment (word, CJK, number, …).
+fn estimate_other_segment(segment: &str) -> u64 {
+    let char_count = segment.chars().count() as u64;
+    if char_count == 0 {
+        return 0;
+    }
+
+    // 1. Pure emoji → 0.75 chars/token (~1.33 tokens per emoji).
+    if is_pure_emoji(segment) {
+        return ((char_count as f64) / 0.75).ceil() as u64;
+    }
+
+    // 2. Language-specific heuristics (accented Latin, Cyrillic, Greek).
+    if let Some(ratio) = detect_language_ratio(segment) {
+        return ((char_count as f64) / ratio).ceil() as u64;
+    }
+
+    // 3. CJK — separate Kana from other CJK characters.
+    if has_cjk(segment) {
+        return estimate_cjk_segment(segment);
+    }
+
+    // 4. Pure numeric → ceil(digits / 3).
+    if segment.bytes().all(|b| b.is_ascii_digit()) {
+        return char_count.div_ceil(3);
+    }
+
+    // 5. Very short words (≤3 chars) cost at least 1 token.
+    if char_count <= 3 {
+        return 1;
+    }
+
+    // 6. Default: ~5 chars per token (tuned for mixed system prompt + conversation).
+    char_count.div_ceil(5)
+}
+
+// ---------------------------------------------------------------------------
+// Pre-existing context-token-estimation API (unchanged except for the
+// inner heuristic which now delegates to `count_tokens_text`).
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ContextTokenEstimate {
@@ -13,7 +289,7 @@ pub struct ContextTokenEstimate {
 }
 
 fn estimate_text_tokens(text: &str) -> u32 {
-    (text.chars().count() as f64 / CHARS_PER_TOKEN).ceil() as u32
+    count_tokens_text(text) as u32
 }
 
 fn estimate_message_tokens(message: &Message) -> u32 {

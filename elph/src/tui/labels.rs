@@ -116,7 +116,7 @@ pub fn footer_git_stats_label(git: Option<&GitFooterInfo>) -> Option<String> {
     git.map(|git| format_worktree_stats(git.files_added, git.lines_added, git.files_deleted, git.lines_deleted))
 }
 
-/// Compact token count: `999`, `272K`, `1M`, `1.5M` (capital K/M).
+/// Compact token count: `999`, `5K`, `272K`, `1M`, `1.5M` (capital K/M).
 pub fn format_token_count(n: u64) -> String {
     const MILLION: u64 = 1_000_000;
     const THOUSAND: u64 = 1_000;

@@ -38,10 +38,10 @@ pub fn segment_end(lines: &[MarkdownLine], start: usize) -> usize {
     }
     if line.code_background || line.kind == MarkdownLineKind::Code {
         let mut index = start + 1;
-        while index < lines.len()
-            && (lines[index].code_background || lines[index].kind == MarkdownLineKind::Code)
-            && !lines[index].is_blank()
-        {
+        // Include all contiguous code/background lines, including blank lines.
+        // A blank line inside a code block is just an empty code line — not a
+        // segment boundary. Only stop when we hit a non-code, non-background line.
+        while index < lines.len() && (lines[index].code_background || lines[index].kind == MarkdownLineKind::Code) {
             index += 1;
         }
         return index;

@@ -103,7 +103,10 @@ fn clamps_default_max_tokens_to_remaining_context() {
         tools: None,
     };
     let clamped = clamp_max_tokens_to_context(&model, &context, model.max_tokens);
-    assert_eq!(clamped, 3904);
+    // 8000 'x' chars estimated as 1600 tokens (8000/5 via tokenx heuristic)
+    // available = 10000 - 1600 - 4096 = 4304
+    // clamped = min(8000, 4304) = 4304
+    assert_eq!(clamped, 4304);
 }
 
 #[test]

@@ -225,8 +225,9 @@ fn compaction_entry(
 
 #[test]
 fn estimate_tokens_uses_char_heuristic() {
-    assert_eq!(estimate_tokens(&user_message("12345678")), 2);
-    assert_eq!(estimate_tokens(&assistant_message("1234", None)), 1);
+    // Tokenx: pure numeric → ceil(chars/3)
+    assert_eq!(estimate_tokens(&user_message("12345678")), 3);
+    assert_eq!(estimate_tokens(&assistant_message("1234", None)), 2);
 }
 
 #[test]
