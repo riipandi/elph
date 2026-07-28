@@ -45,29 +45,6 @@
         "provider": "fireworks",
         "reasoning": true
     },
-    "accounts/fireworks/models/glm-5p1": {
-        "api": "anthropic-messages",
-        "baseUrl": "https://api.fireworks.ai/inference",
-        "compat": {
-            "sendSessionAffinityHeaders": true,
-            "supportsCacheControlOnTools": false,
-            "supportsEagerToolInputStreaming": false,
-            "supportsLongCacheRetention": false
-        },
-        "contextWindow": 202800,
-        "cost": {
-            "cacheRead": 0.26,
-            "cacheWrite": 0,
-            "input": 1.4,
-            "output": 4.4
-        },
-        "id": "accounts/fireworks/models/glm-5p1",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM 5.1",
-        "provider": "fireworks",
-        "reasoning": true
-    },
     "accounts/fireworks/models/glm-5p2": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
@@ -89,11 +66,13 @@
         "provider": "fireworks",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
             "low": "high",
             "max": "max",
             "medium": "high",
             "minimal": null,
-            "off": "none"
+            "off": "none",
+            "xhigh": null
         }
     },
     "accounts/fireworks/models/gpt-oss-120b": {
@@ -188,6 +167,29 @@
         "provider": "fireworks",
         "reasoning": true
     },
+    "accounts/fireworks/models/kimi-k3": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.fireworks.ai/inference",
+        "compat": {
+            "sendSessionAffinityHeaders": true,
+            "supportsCacheControlOnTools": false,
+            "supportsEagerToolInputStreaming": false,
+            "supportsLongCacheRetention": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "accounts/fireworks/models/kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "fireworks",
+        "reasoning": true
+    },
     "accounts/fireworks/models/minimax-m2p7": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.fireworks.ai/inference",
@@ -257,29 +259,6 @@
         "provider": "fireworks",
         "reasoning": true
     },
-    "accounts/fireworks/routers/glm-5p1-fast": {
-        "api": "anthropic-messages",
-        "baseUrl": "https://api.fireworks.ai/inference",
-        "compat": {
-            "sendSessionAffinityHeaders": true,
-            "supportsCacheControlOnTools": false,
-            "supportsEagerToolInputStreaming": false,
-            "supportsLongCacheRetention": false
-        },
-        "contextWindow": 202800,
-        "cost": {
-            "cacheRead": 0.52,
-            "cacheWrite": 0,
-            "input": 2.8,
-            "output": 8.8
-        },
-        "id": "accounts/fireworks/routers/glm-5p1-fast",
-        "input": ["text"],
-        "maxTokens": 131072,
-        "name": "GLM 5.1 Fast",
-        "provider": "fireworks",
-        "reasoning": true
-    },
     "accounts/fireworks/routers/glm-5p2-fast": {
         "api": "openai-completions",
         "baseUrl": "https://api.fireworks.ai/inference/v1",
@@ -301,11 +280,13 @@
         "provider": "fireworks",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
             "low": "high",
             "max": "max",
             "medium": "high",
             "minimal": null,
-            "off": "none"
+            "off": "none",
+            "xhigh": null
         }
     },
     "accounts/fireworks/routers/kimi-k2p6-fast": {
@@ -374,6 +355,29 @@
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.7 Code Fast",
+        "provider": "fireworks",
+        "reasoning": true
+    },
+    "accounts/fireworks/routers/kimi-k3-fast": {
+        "api": "anthropic-messages",
+        "baseUrl": "https://api.fireworks.ai/inference",
+        "compat": {
+            "sendSessionAffinityHeaders": true,
+            "supportsCacheControlOnTools": false,
+            "supportsEagerToolInputStreaming": false,
+            "supportsLongCacheRetention": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.45,
+            "cacheWrite": 0,
+            "input": 4.5,
+            "output": 22.5
+        },
+        "id": "accounts/fireworks/routers/kimi-k3-fast",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3 Fast",
         "provider": "fireworks",
         "reasoning": true
     }

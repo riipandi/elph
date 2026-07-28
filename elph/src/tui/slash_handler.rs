@@ -69,6 +69,8 @@ pub enum SlashOutcome {
     PlayConfetti {
         mode: crate::tui::confetti::ConfettiMode,
     },
+    /// Open feedback dialog (Report a Bug / Join Community).
+    OpenFeedbackDialog,
 }
 
 pub struct SlashContext<'a> {
@@ -122,6 +124,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Confetti { args } => SlashOutcome::PlayConfetti {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
+        SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -198,6 +201,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::PlayConfetti { .. }
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
+            | SlashOutcome::OpenFeedbackDialog
     )
 }
 

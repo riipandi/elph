@@ -128,6 +128,11 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             api_key_env_key: "MOONSHOT_API_KEY",
             default_model: "kimi-k2-0711-preview",
         }),
+        "neuralwatt" => Some(ProviderConfig {
+            label: "Neuralwatt",
+            api_key_env_key: "NEURALWATT_API_KEY",
+            default_model: "deepseek-v4-flash",
+        }),
         "nvidia" => Some(ProviderConfig {
             label: "NVIDIA NIM",
             api_key_env_key: "NVIDIA_API_KEY",
@@ -162,6 +167,21 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
             label: "OpenRouter",
             api_key_env_key: "OPENROUTER_API_KEY",
             default_model: "anthropic/claude-sonnet-4",
+        }),
+        "qwen-token-plan" => Some(ProviderConfig {
+            label: "Qwen Token Plan",
+            api_key_env_key: "QWEN_TOKEN_PLAN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
+        "qwen-token-plan-cn" => Some(ProviderConfig {
+            label: "Qwen Token Plan (China)",
+            api_key_env_key: "QWEN_TOKEN_PLAN_CN_API_KEY",
+            default_model: "qwen3.7-plus",
+        }),
+        "sumopod" => Some(ProviderConfig {
+            label: "Sumopod",
+            api_key_env_key: "SUMOPOD_AI_API_KEY",
+            default_model: "claude-sonnet-4-6",
         }),
         "together" => Some(ProviderConfig {
             label: "Together AI",
@@ -399,6 +419,7 @@ mod tests {
             "mistral",
             "moonshotai",
             "moonshotai-cn",
+            "neuralwatt",
             "nvidia",
             "openai",
             "openai-codex",
@@ -406,6 +427,9 @@ mod tests {
             "opencode-go",
             "opengateway",
             "openrouter",
+            "qwen-token-plan",
+            "qwen-token-plan-cn",
+            "sumopod",
             "together",
             "vercel-ai-gateway",
             "xai",

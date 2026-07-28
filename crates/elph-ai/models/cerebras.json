@@ -18,7 +18,16 @@
         "maxTokens": 40960,
         "name": "Gemma 4 31B IT",
         "provider": "cerebras",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
+        }
     },
     "gpt-oss-120b": {
         "api": "openai-completions",
@@ -39,7 +48,16 @@
         "maxTokens": 40960,
         "name": "GPT OSS 120B",
         "provider": "cerebras",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "zai-glm-4.7": {
         "api": "openai-completions",
@@ -60,6 +78,15 @@
         "maxTokens": 40960,
         "name": "Z.AI GLM-4.7",
         "provider": "cerebras",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
+        }
     }
 }

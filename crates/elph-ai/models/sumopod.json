@@ -1,0 +1,1010 @@
+{
+    "claude-fable-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 1.0,
+            "cacheWrite": 0,
+            "input": 10.0,
+            "output": 50.0
+        },
+        "id": "claude-fable-5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-fable-5",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "claude-haiku-4-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0,
+            "input": 1.0,
+            "output": 5.0
+        },
+        "id": "claude-haiku-4-5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-haiku-4-5",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "claude-opus-4-7": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-7",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-opus-4-7",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "claude-opus-4-8": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-8",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-opus-4-8",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "claude-sonnet-4-6": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "claude-sonnet-4-6",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-sonnet-4-6",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "claude-sonnet-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2.0,
+            "output": 10.0
+        },
+        "id": "claude-sonnet-5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "claude-sonnet-5",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0,
+            "input": 0.16,
+            "output": 0.32
+        },
+        "id": "deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "deepseek-v4-flash",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.004,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 0.95
+        },
+        "id": "deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "deepseek-v4-pro",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gemini/gemini-3-flash-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "id": "gemini/gemini-3-flash-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gemini/gemini-3-flash-preview",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gemini/gemini-3.1-flash-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "gemini/gemini-3.1-flash-lite",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gemini/gemini-3.1-flash-lite",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gemini/gemini-3.1-pro-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0,
+            "input": 2.0,
+            "output": 12.0
+        },
+        "id": "gemini/gemini-3.1-pro-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gemini/gemini-3.1-pro-preview",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gemini/gemini-3.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.5,
+            "output": 9.0
+        },
+        "id": "gemini/gemini-3.5-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gemini/gemini-3.5-flash",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gemini/gemini-embedding-001": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 2048,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0,
+            "input": 0.15,
+            "output": 0.0
+        },
+        "id": "gemini/gemini-embedding-001",
+        "input": ["text"],
+        "maxTokens": 2048,
+        "name": "gemini/gemini-embedding-001",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.12,
+            "cacheWrite": 0,
+            "input": 0.6,
+            "output": 2.0
+        },
+        "id": "glm-5",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "glm-5",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "glm-5-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0,
+            "input": 1.2,
+            "output": 4.0
+        },
+        "id": "glm-5-turbo",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "glm-5-turbo",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "glm-5.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0,
+            "input": 1.4,
+            "output": 4.4
+        },
+        "id": "glm-5.1",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "glm-5.1",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.195,
+            "cacheWrite": 0,
+            "input": 1.05,
+            "output": 3.3
+        },
+        "id": "glm-5.2",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "glm-5.2",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "glm-5v-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.26,
+            "cacheWrite": 0,
+            "input": 1.2,
+            "output": 4.0
+        },
+        "id": "glm-5v-turbo",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "glm-5v-turbo",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-4.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 0,
+            "input": 2.0,
+            "output": 8.0
+        },
+        "id": "gpt-4.1",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-4.1",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gpt-4.1-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0,
+            "input": 0.4,
+            "output": 1.6
+        },
+        "id": "gpt-4.1-mini",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-4.1-mini",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gpt-4.1-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1047576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.1,
+            "output": 0.4
+        },
+        "id": "gpt-4.1-nano",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-4.1-nano",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gpt-4o": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 1.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 10.0
+        },
+        "id": "gpt-4o",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-4o",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gpt-4o-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0,
+            "input": 0.15,
+            "output": 0.6
+        },
+        "id": "gpt-4o-mini",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-4o-mini",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "gpt-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 10.0
+        },
+        "id": "gpt-5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-5-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "id": "gpt-5-mini",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5-mini",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-5-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 272000,
+        "cost": {
+            "cacheRead": 0.005,
+            "cacheWrite": 0,
+            "input": 0.05,
+            "output": 0.4
+        },
+        "id": "gpt-5-nano",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5-nano",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-5.4": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.25,
+            "cacheWrite": 0,
+            "input": 2.5,
+            "output": 15.0
+        },
+        "id": "gpt-5.4",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5.4",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-5.4-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.075,
+            "cacheWrite": 0,
+            "input": 0.75,
+            "output": 4.5
+        },
+        "id": "gpt-5.4-mini",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5.4-mini",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "gpt-5.4-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0,
+            "input": 0.2,
+            "output": 1.25
+        },
+        "id": "gpt-5.4-nano",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "gpt-5.4-nano",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "hy3": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.033,
+            "cacheWrite": 0,
+            "input": 0.13,
+            "output": 0.53
+        },
+        "id": "hy3",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "hy3",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "kimi-k2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262100,
+        "cost": {
+            "cacheRead": 0.14,
+            "cacheWrite": 0,
+            "input": 0.67,
+            "output": 3.39
+        },
+        "id": "kimi-k2.6",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "kimi-k2.6",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "kimi-k2.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 262100,
+        "cost": {
+            "cacheRead": 0.19,
+            "cacheWrite": 0,
+            "input": 0.95,
+            "output": 4.0
+        },
+        "id": "kimi-k2.7",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "kimi-k2.7",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.15,
+            "cacheWrite": 0,
+            "input": 1.5,
+            "output": 7.5
+        },
+        "id": "kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "kimi-k3",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1100000,
+        "cost": {
+            "cacheRead": 0.003,
+            "cacheWrite": 0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "mimo-v2.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "mimo-v2.5",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1100000,
+        "cost": {
+            "cacheRead": 0.004,
+            "cacheWrite": 0,
+            "input": 0.43,
+            "output": 0.87
+        },
+        "id": "mimo-v2.5-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "mimo-v2.5-pro",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "MiniMax-M2.7-highspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.03,
+            "cacheWrite": 0,
+            "input": 0.03,
+            "output": 0.12
+        },
+        "id": "MiniMax-M2.7-highspeed",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax-M2.7-highspeed",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "MiniMax-M3": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.06,
+            "cacheWrite": 0,
+            "input": 0.3,
+            "output": 1.2
+        },
+        "id": "MiniMax-M3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "MiniMax-M3",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "qwen3.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "qwen3.6-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "qwen3.6-flash",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "qwen3.6-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "id": "qwen3.6-plus",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "qwen3.6-plus",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.125,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 3.75
+        },
+        "id": "qwen3.7-max",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "qwen3.7-max",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.032,
+            "cacheWrite": 0,
+            "input": 0.32,
+            "output": 1.28
+        },
+        "id": "qwen3.7-plus",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "qwen3.7-plus",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "qwen3.8-max-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.13,
+            "cacheWrite": 0,
+            "input": 1.25,
+            "output": 3.75
+        },
+        "id": "qwen3.8-max-preview",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "qwen3.8-max-preview",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "seed-2-0-code": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "id": "seed-2-0-code",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "seed-2-0-code",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "seed-2-0-lite": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 224000,
+        "cost": {
+            "cacheRead": 0.05,
+            "cacheWrite": 0,
+            "input": 0.25,
+            "output": 2.0
+        },
+        "id": "seed-2-0-lite",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "seed-2-0-lite",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "seed-2-0-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 224000,
+        "cost": {
+            "cacheRead": 0.02,
+            "cacheWrite": 0,
+            "input": 0.1,
+            "output": 0.4
+        },
+        "id": "seed-2-0-mini",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "seed-2-0-mini",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "seed-2-0-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0,
+            "input": 0.5,
+            "output": 3.0
+        },
+        "id": "seed-2-0-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "seed-2-0-pro",
+        "provider": "sumopod",
+        "reasoning": true
+    },
+    "text-embedding-3-large": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 8191,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0,
+            "input": 0.13,
+            "output": 0.0
+        },
+        "id": "text-embedding-3-large",
+        "input": ["text"],
+        "maxTokens": 8191,
+        "name": "text-embedding-3-large",
+        "provider": "sumopod",
+        "reasoning": false
+    },
+    "text-embedding-3-small": {
+        "api": "openai-completions",
+        "baseUrl": "https://ai.sumopod.com/v1",
+        "compat": {
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 8191,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0,
+            "input": 0.02,
+            "output": 0.0
+        },
+        "id": "text-embedding-3-small",
+        "input": ["text"],
+        "maxTokens": 8191,
+        "name": "text-embedding-3-small",
+        "provider": "sumopod",
+        "reasoning": false
+    }
+}

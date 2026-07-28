@@ -86,18 +86,19 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusZone, build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind,
-    build_prompt_queue_dialog_kind, build_status_dialog_kind,
+    PromptQueueAction, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
+    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::{
-    PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation, PendingToolApproval, PlanChoice,
-    TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, pick_mode_change_index_from_key,
-    pick_plan_confirmation_index_from_key, pick_tool_approval_index_from_key, plan_choice_at_index,
-    plan_confirmation_transcript_key, to_harness_choice, tool_approval_transcript_key,
+    FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation,
+    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, feedback_url_at_index, open_url,
+    pick_feedback_index_from_key, pick_mode_change_index_from_key, pick_plan_confirmation_index_from_key,
+    pick_tool_approval_index_from_key, plan_choice_at_index, plan_confirmation_transcript_key, to_harness_choice,
+    tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
@@ -857,6 +858,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         hooks.use_ref(|| TranscriptEventApplier::new(props.show_thinking, props.auto_expand_thinking));
     let mut pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
     let mut pending_plan_confirmation = hooks.use_ref(|| None::<PendingPlanConfirmation>);
+    let mut pending_feedback = hooks.use_ref(|| false);
     let mut pending_user_question = hooks.use_ref(|| None::<PendingUserQuestion>);
     let mut slash_commands = hooks.use_state(|| props.slash_commands.clone());
     let mut prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
@@ -964,6 +966,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut turn_cancel_requested = hooks.use_ref(|| false);
     let mut pending_quit_confirm = hooks.use_ref(|| false);
     let mut turn_token_tracker = hooks.use_ref(|| None::<TurnTokenTracker>);
+    // Path to the plan file being actively implemented (set on Implement, cleared on RunCompleted).
+    // Used to transition frontmatter `Status` from `in_progress` to `completed` when the turn finishes.
+    let mut active_plan_file = hooks.use_ref(|| None::<String>);
     // Fixed toast above status row (agent mode, quit-busy) — not in the scrollable transcript.
     // State (not Ref) so set/clear repaints without waiting for agent busy/stream updates.
     let mut ephemeral_banner = hooks.use_state(|| None::<EphemeralBanner>);
@@ -1384,7 +1389,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         // Save plan to disk FIRST so user can read it before deciding.
                         let plan_file = {
                             let paths = paths.read().clone();
-                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths)
+                            let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
+                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
                                 .map_err(|e| log::error!("Failed to save plan: {e}"))
                                 .ok()
                         };
@@ -1566,6 +1572,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             if run_completed {
                 pending_quit_confirm.set(false);
                 clear_quit_busy_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation);
+
+                // Transition plan from in_progress → completed (or leave as-is on cancel).
+                if !turn_cancel_requested.get()
+                    && let Some(plan_path) = active_plan_file.write().take()
+                {
+                    let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                    if let Err(err) =
+                        crate::agent::plan_files::update_plan_frontmatter(&plan_path, "completed", &now, None)
+                    {
+                        log::error!("Failed to mark plan as completed: {err}");
+                    }
+                }
+
                 if let Some(turn_elapsed) = run_completed_elapsed {
                     session_elapsed_secs.set(accumulate_session_elapsed(session_elapsed_secs.get(), turn_elapsed));
                 }
@@ -1573,7 +1592,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 agent_turn_active.set(false);
                 busy_started_at.set(None);
                 activity_started_at.set(None);
-                activity_label.set("Thinking".to_string());
+                activity_label.set(String::new());
                 turn_token_tracker.set(None);
                 chrome_refresh_pending.set(true);
                 // Follow-up prompts are drained inside the harness agent loop; no TUI re-spawn.
@@ -1908,6 +1927,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let status_dialog_open = pending_tool_approval.read().is_some()
                 || pending_mode_change.read().is_some()
                 || pending_plan_confirmation.read().is_some()
+                || *pending_feedback.read()
                 || pending_user_question.read().is_some()
                 || model_selector_open
                 || scoped_models_open
@@ -2798,6 +2818,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             );
                         }
 
+                        // Auto-update plan frontmatter: Status → in_progress when user picks Implement.
+                        // Track the active plan path so RunCompleted can transition to completed.
+                        if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh)
+                            && let Some(ref plan_path) = pending.plan_file
+                        {
+                            let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                            if let Err(err) =
+                                crate::agent::plan_files::update_plan_frontmatter(plan_path, "in_progress", &now, None)
+                            {
+                                log::error!("Failed to update plan frontmatter: {err}");
+                            }
+                            active_plan_file.write().clone_from(&pending.plan_file);
+                        }
+
                         // Resolve via session (triggers mode change + implement prompt).
                         if let Some(session) = pending.session.as_ref() {
                             let session = session.clone();
@@ -2820,6 +2854,39 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                     shell_focus.set(ShellFocus::Prompt);
                     return;
+                }
+
+                // ── Feedback dialog (Report a Bug / Join Community) ────────
+                if *pending_feedback.read() {
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        *pending_feedback.write() = false;
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    if modifiers.is_empty() && code == KeyCode::Enter {
+                        let index = approval_selected.get();
+                        if let Some(url) = feedback_url_at_index(index) {
+                            let url = url.to_string();
+                            std::thread::spawn(move || {
+                                let _ = open_url(&url);
+                            });
+                        }
+                        *pending_feedback.write() = false;
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
+                    if let Some(index) = pick_feedback_index_from_key(modifiers, code) {
+                        approval_selected.set(index);
+                        if let Some(url) = feedback_url_at_index(index) {
+                            let url = url.to_string();
+                            std::thread::spawn(move || {
+                                let _ = open_url(&url);
+                            });
+                        }
+                        *pending_feedback.write() = false;
+                        shell_focus.set(ShellFocus::Prompt);
+                        return;
+                    }
                 }
 
                 let option_nav = {
@@ -3183,6 +3250,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     mode,
                                 });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenFeedbackDialog => {
+                                *pending_feedback.write() = true;
+                                approval_selected.set(FEEDBACK_DEFAULT_INDEX);
+                                shell_focus.set(ShellFocus::StatusDialog);
+                                suppress_enter_newline.set(true);
                                 force_editor_clear.set(true);
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
@@ -3787,6 +3861,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
+        || *pending_feedback.read()
         || user_question_open
         || model_selector_open
         || scoped_models_open
@@ -3815,7 +3890,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
-        || pending_plan_confirmation.read().is_some())
+        || pending_plan_confirmation.read().is_some()
+        || *pending_feedback.read())
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
@@ -4081,6 +4157,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref())
         .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
         .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
+        .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
         .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),
@@ -4828,6 +4905,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     mode,
                                 });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenFeedbackDialog => {
+                                *pending_feedback.write() = true;
+                                approval_selected.set(FEEDBACK_DEFAULT_INDEX);
+                                shell_focus.set(ShellFocus::StatusDialog);
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

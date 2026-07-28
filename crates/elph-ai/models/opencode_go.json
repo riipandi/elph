@@ -110,12 +110,16 @@
             "max": "max",
             "medium": null,
             "minimal": null,
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "grok-4.5": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/go/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession"
+        },
         "contextWindow": 500000,
         "cost": {
             "cacheRead": 0.5,
@@ -128,7 +132,16 @@
         "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "hy3": {
         "api": "openai-completions",
@@ -150,7 +163,16 @@
         "maxTokens": 64000,
         "name": "Hy3",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
+        }
     },
     "kimi-k2.6": {
         "api": "openai-completions",
@@ -224,7 +246,16 @@
         "maxTokens": 131072,
         "name": "Kimi K3 (2x usage)",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5": {
         "api": "openai-completions",

@@ -6,9 +6,9 @@ use iocraft::prelude::*;
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::tool_approval::{
-    PendingModeChange, PendingToolApproval, mode_change_footer_hint, mode_change_select_options,
-    plan_confirmation_footer_hint, plan_confirmation_select_options, tool_approval_footer_hint,
-    tool_approval_select_options,
+    PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, mode_change_footer_hint,
+    mode_change_select_options, plan_confirmation_footer_hint, plan_confirmation_select_options,
+    tool_approval_footer_hint, tool_approval_select_options,
 };
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
@@ -329,6 +329,8 @@ pub enum StatusDialogKind {
         plan_id: String,
         plan_text: String,
     },
+    /// Feedback dialog (Report a Bug / Join Community).
+    Feedback,
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -453,6 +455,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         Some(StatusDialogKind::PlanConfirmation { plan_text, .. }) => {
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
+        Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
         _ => None,
     };
     let banner = props
@@ -513,6 +516,62 @@ pub fn build_plan_confirmation_dialog_kind(
         plan_id: pending.plan_id.clone(),
         plan_text: pending.plan_text.clone(),
     })
+}
+
+/// Build the feedback dialog when pending.
+pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
+    if active { Some(StatusDialogKind::Feedback) } else { None }
+}
+
+/// Render the feedback dialog with Report a Bug and Join Community options.
+fn render_feedback_dialog(props: &mut StatusZoneProps) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(props.screen_width);
+    let options = feedback_select_options();
+
+    element! {
+        InlineDialogShell(
+            screen_width: props.screen_width,
+            title: "Feedback".to_string(),
+            has_focus: props.approval_has_focus,
+            footer_hint: Some(feedback_footer_hint()),
+        ) {
+            View(
+                width: body_width,
+                flex_direction: FlexDirection::Column,
+                flex_shrink: 0f32,
+            ) {
+                View(
+                    width: body_width,
+                    flex_shrink: 0f32,
+                    overflow: Overflow::Hidden,
+                ) {
+                    Text(
+                        content: "How can you help improve Elph?".to_string(),
+                        color: theme.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(
+                    width: body_width,
+                    padding_top: 1,
+                    flex_shrink: 0f32,
+                ) {
+                    SelectList(
+                        width: body_width,
+                        height: 4u16,
+                        options: options,
+                        selected_index: props.approval_selected,
+                        has_focus: props.approval_has_focus,
+                        show_description: false,
+                        compact: true,
+                        theme: Some(theme),
+                    )
+                }
+            }
+        }
+    }
+    .into()
 }
 
 /// Build prompt-queue list when there are items (always visible above StatusRow while queued).

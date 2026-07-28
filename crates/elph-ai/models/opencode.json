@@ -173,6 +173,10 @@
     "claude-opus-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://opencode.ai/zen",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsTemperature": false
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
@@ -185,7 +189,11 @@
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "claude-sonnet-4": {
         "api": "anthropic-messages",
@@ -296,7 +304,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-flash-free": {
@@ -326,7 +336,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -357,7 +369,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3-flash": {
@@ -528,11 +542,24 @@
         "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-5": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.107,
@@ -547,12 +574,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-codex": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.107,
@@ -567,12 +604,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-nano": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.005,
@@ -587,12 +634,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.107,
@@ -607,12 +664,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1-codex": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.107,
@@ -627,12 +694,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1-codex-max": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -647,12 +724,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
         }
     },
     "gpt-5.1-codex-mini": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.025,
@@ -667,12 +754,22 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.2": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -687,6 +784,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -694,6 +796,10 @@
     "gpt-5.2-codex": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -708,6 +814,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -715,6 +826,10 @@
     "gpt-5.3-codex": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -729,6 +844,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -736,6 +856,10 @@
     "gpt-5.4": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.25,
@@ -750,6 +874,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -757,6 +886,10 @@
     "gpt-5.4-mini": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.075,
@@ -771,6 +904,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -778,6 +916,10 @@
     "gpt-5.4-nano": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
@@ -792,6 +934,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -799,6 +946,10 @@
     "gpt-5.4-pro": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 30,
@@ -813,6 +964,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -820,6 +976,10 @@
     "gpt-5.5": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -834,6 +994,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -841,6 +1006,10 @@
     "gpt-5.5-pro": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 30,
@@ -855,7 +1024,10 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
             "low": null,
+            "max": null,
+            "medium": "medium",
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -864,6 +1036,10 @@
     "gpt-5.6-luna": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
@@ -878,7 +1054,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -886,6 +1066,10 @@
     "gpt-5.6-sol": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -900,7 +1084,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -908,6 +1096,10 @@
     "gpt-5.6-terra": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession",
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
@@ -922,7 +1114,11 @@
         "provider": "opencode",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -930,6 +1126,9 @@
     "grok-4.5": {
         "api": "openai-responses",
         "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "sessionAffinityFormat": "openai-nosession"
+        },
         "contextWindow": 500000,
         "cost": {
             "cacheRead": 0.5,
@@ -942,7 +1141,16 @@
         "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "grok-build-0.1": {
         "api": "openai-completions",
@@ -1043,6 +1251,37 @@
         "provider": "opencode",
         "reasoning": true
     },
+    "kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://opencode.ai/zen/v1",
+        "compat": {
+            "maxTokensField": "max_tokens",
+            "supportsDeveloperRole": false,
+            "supportsStore": false
+        },
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "kimi-k3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "opencode",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "laguna-s-2.1-free": {
         "api": "openai-completions",
         "baseUrl": "https://opencode.ai/zen/v1",
@@ -1063,7 +1302,16 @@
         "maxTokens": 32000,
         "name": "Laguna S 2.1 Free",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "ling-3.0-flash-free": {
         "api": "openai-completions",
@@ -1085,7 +1333,16 @@
         "maxTokens": 32768,
         "name": "Ling-3.0-flash Free",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5-free": {
         "api": "openai-completions",
@@ -1218,7 +1475,16 @@
         "maxTokens": 64000,
         "name": "North Mini Code Free",
         "provider": "opencode",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
+        }
     },
     "qwen3.5-plus": {
         "api": "anthropic-messages",

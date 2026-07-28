@@ -1,3 +1,12 @@
+//! Model catalog generator. Reads flattened model JSON from the upstream pi-ai data
+//! directory (`src/providers/data/*.json`) and writes them as embedded catalog files.
+//!
+//! Each data JSON is keyed by API type, with models nested inside:
+//! ```json
+//! { "openai-completions": { "model-id": { ... } } }
+//! ```
+//! The generator merges all API groups into a single flat object per provider.
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
@@ -7,8 +16,8 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::common::{CATALOG_CHAT_SCRIPT, CATALOG_MODELS_SUFFIX};
-use super::common::{run_catalog_npm_script, ts_catalog_to_json};
+use super::common::CATALOG_CHAT_SCRIPT;
+use super::common::run_catalog_npm_script;
 
 #[derive(Serialize)]
 pub struct CatalogIndexEntry {
@@ -40,36 +49,47 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         run_catalog_npm_script(&options.catalog_dir, "generate-models")?;
     }
 
-    let providers_dir = options.catalog_dir.join("src/providers");
-    if !providers_dir.is_dir() {
-        bail!("missing catalog source providers directory at {}", providers_dir.display());
+    let data_dir = options.catalog_dir.join("src/providers/data");
+    if !data_dir.is_dir() {
+        bail!("missing catalog data directory at {}", data_dir.display());
     }
 
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
 
     let mut catalogs: BTreeMap<String, (String, Value)> = BTreeMap::new();
-    for entry in fs::read_dir(&providers_dir).context("read catalog providers directory")? {
+    for entry in fs::read_dir(&data_dir).context("read catalog data directory")? {
         let entry = entry?;
         let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
         let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        let Some(provider_id) = file_name.strip_suffix(CATALOG_MODELS_SUFFIX) else {
+        let Some(provider_id) = file_name.strip_suffix(".json") else {
             continue;
         };
+        // Skip the manifest file if present
+        if provider_id.starts_with('.') {
+            continue;
+        }
+
         let rust_mod = provider_id.replace('-', "_");
-        let ts = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
-        let json = ts_catalog_to_json(&ts).with_context(|| format!("convert {}", path.display()))?;
-        let count = json.as_object().map(|m| m.len()).unwrap_or(0);
+        let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+        let json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
+
+        // Flatten: merge all api-grouped sub-objects into one (mirrors flattenModelCatalog).
+        let flattened = flatten_catalog_json(json);
+        let count = flattened.as_object().map(|m| m.len()).unwrap_or(0);
         if count == 0 {
             continue;
         }
-        catalogs.insert(provider_id.to_string(), (rust_mod, json));
+        catalogs.insert(provider_id.to_string(), (rust_mod, flattened));
         println!("Converted {provider_id}: {count} models");
     }
 
     if catalogs.is_empty() {
-        bail!("no model catalog files found under {}", providers_dir.display());
+        bail!("no model catalog data files found under {}", data_dir.display());
     }
 
     let mut index = Vec::new();
@@ -111,9 +131,40 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
     Ok(())
 }
 
+/// Flatten a nested `{ api_type: { model_id: model } }` structure into
+/// a flat `{ model_id: model }` object, injecting the `api` field from the key.
+///
+/// This mirrors the JavaScript `flattenModelCatalog` function from pi-ai:
+/// ```js
+/// flattenModelCatalog(provider, groups) {
+///   return Object.assign({}, ...Object.values(groups));
+/// }
+/// ```
+fn flatten_catalog_json(nested: Value) -> Value {
+    match nested {
+        Value::Object(groups) => {
+            let mut merged = serde_json::Map::new();
+            for (api_type, models) in groups {
+                if let Value::Object(models_map) = models {
+                    for (mid, mut model) in models_map {
+                        if let Value::Object(ref mut fields) = model
+                            && !fields.contains_key("api")
+                        {
+                            fields.insert("api".to_string(), Value::String(api_type.clone()));
+                        }
+                        merged.insert(mid, model);
+                    }
+                }
+            }
+            Value::Object(merged)
+        }
+        other => other,
+    }
+}
+
 /// Merge local-only `models/*.json` catalogs (Hyper, Kilo, OpenGateway, …) into the index.
 ///
-/// Upstream pi regen only writes providers from the catalog TypeScript tree; Elph-only JSON
+/// Upstream pi only writes providers present in its data directory; Elph-only JSON
 /// files already on disk must stay registered in `index.json` / `catalog.rs`.
 fn merge_local_only_catalogs(models_dir: &std::path::Path, index: &mut Vec<CatalogIndexEntry>) -> Result<()> {
     let known: std::collections::HashSet<String> = index.iter().map(|e| e.rust_mod.clone()).collect();
@@ -133,7 +184,6 @@ fn merge_local_only_catalogs(models_dir: &std::path::Path, index: &mut Vec<Catal
         if rust_mod == "index" || known.contains(rust_mod) {
             continue;
         }
-        // Skip non-catalog helpers (e.g. nested dirs are already filtered by is_file).
         let raw = fs::read_to_string(&path).with_context(|| format!("read local catalog {}", path.display()))?;
         let json: Value =
             serde_json::from_str(&raw).with_context(|| format!("parse local catalog {}", path.display()))?;
@@ -155,6 +205,10 @@ fn merge_local_only_catalogs(models_dir: &std::path::Path, index: &mut Vec<Catal
     }
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// catalog.rs rendering
+// ---------------------------------------------------------------------------
 
 fn render_chat_catalog_rs(index: &[CatalogIndexEntry]) -> String {
     let mut out = String::from(

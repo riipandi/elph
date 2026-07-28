@@ -337,7 +337,16 @@
         "maxTokens": 32768,
         "name": "Qwen3.5-397B-A17B",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "none",
+            "xhigh": null
+        }
     },
     "Qwen/Qwen3.5-9B": {
         "api": "openai-completions",
@@ -437,7 +446,16 @@
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "none",
+            "xhigh": "xhigh"
+        }
     },
     "XiaomiMiMo/MiMo-V2.5-Pro": {
         "api": "openai-completions",
@@ -457,7 +475,16 @@
         "maxTokens": 131072,
         "name": "MiMo-V2.5-Pro",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": "none",
+            "xhigh": "xhigh"
+        }
     },
     "deepseek-ai/DeepSeek-R1": {
         "api": "openai-completions",
@@ -557,7 +584,16 @@
         "maxTokens": 393216,
         "name": "DeepSeek V4 Pro",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "google/gemma-4-26B-A4B-it": {
         "api": "openai-completions",
@@ -739,6 +775,35 @@
         "provider": "huggingface",
         "reasoning": true
     },
+    "moonshotai/Kimi-K3": {
+        "api": "openai-completions",
+        "baseUrl": "https://router.huggingface.co/v1",
+        "compat": {
+            "supportsDeveloperRole": false
+        },
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 3,
+            "output": 15
+        },
+        "id": "moonshotai/Kimi-K3",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "huggingface",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
         "baseUrl": "https://router.huggingface.co/v1",
@@ -757,7 +822,16 @@
         "maxTokens": 32768,
         "name": "GPT OSS 120B",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai/gpt-oss-20b": {
         "api": "openai-completions",
@@ -777,7 +851,16 @@
         "maxTokens": 32768,
         "name": "GPT OSS 20B",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "stepfun-ai/Step-3.5-Flash": {
         "api": "openai-completions",
@@ -817,7 +900,16 @@
         "maxTokens": 256000,
         "name": "Step 3.7 Flash",
         "provider": "huggingface",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "zai-org/GLM-4.5": {
         "api": "openai-completions",

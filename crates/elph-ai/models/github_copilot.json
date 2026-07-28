@@ -177,6 +177,10 @@
     "claude-opus-5": {
         "api": "anthropic-messages",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "forceAdaptiveThinking": true,
+            "supportsTemperature": false
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
@@ -195,7 +199,11 @@
         "maxTokens": 64000,
         "name": "Claude Opus 5",
         "provider": "github-copilot",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "max": "max",
+            "xhigh": "xhigh"
+        }
     },
     "claude-sonnet-4": {
         "api": "anthropic-messages",
@@ -378,7 +386,16 @@
             "cacheRead": 0.2,
             "cacheWrite": 0,
             "input": 2,
-            "output": 12
+            "output": 12,
+            "tiers": [
+                {
+                    "cacheRead": 0.4,
+                    "cacheWrite": 0,
+                    "input": 4,
+                    "inputTokensAbove": 200000,
+                    "output": 18
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -452,6 +469,9 @@
     "gpt-5-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 264000,
         "cost": {
             "cacheRead": 0.025,
@@ -472,13 +492,21 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": "low",
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.2": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -507,6 +535,9 @@
     "gpt-5.2-codex": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -535,6 +566,9 @@
     "gpt-5.3-codex": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.175,
@@ -555,6 +589,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -563,12 +601,24 @@
     "gpt-5.4": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 0,
             "input": 2.5,
-            "output": 15
+            "output": 15,
+            "tiers": [
+                {
+                    "cacheRead": 0.5,
+                    "cacheWrite": 0,
+                    "input": 5,
+                    "inputTokensAbove": 272000,
+                    "output": 22.5
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -583,6 +633,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -591,6 +645,9 @@
     "gpt-5.4-mini": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.075,
@@ -611,6 +668,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -619,6 +680,9 @@
     "gpt-5.4-nano": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
@@ -647,12 +711,24 @@
     "gpt-5.5": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 0,
             "input": 5,
-            "output": 30
+            "output": 30,
+            "tiers": [
+                {
+                    "cacheRead": 1,
+                    "cacheWrite": 0,
+                    "input": 10,
+                    "inputTokensAbove": 272000,
+                    "output": 45
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -667,6 +743,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -675,12 +755,24 @@
     "gpt-5.6-luna": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
             "input": 1,
-            "output": 6
+            "output": 6,
+            "tiers": [
+                {
+                    "cacheRead": 0.2,
+                    "cacheWrite": 2.5,
+                    "input": 2,
+                    "inputTokensAbove": 200000,
+                    "output": 9
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -695,7 +787,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -704,12 +799,24 @@
     "gpt-5.6-sol": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
             "input": 5,
-            "output": 30
+            "output": 30,
+            "tiers": [
+                {
+                    "cacheRead": 1,
+                    "cacheWrite": 12.5,
+                    "input": 10,
+                    "inputTokensAbove": 272000,
+                    "output": 45
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -724,7 +831,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -733,12 +843,24 @@
     "gpt-5.6-terra": {
         "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
             "cacheWrite": 3.125,
             "input": 2.5,
-            "output": 15
+            "output": 15,
+            "tiers": [
+                {
+                    "cacheRead": 0.5,
+                    "cacheWrite": 6.25,
+                    "input": 5,
+                    "inputTokensAbove": 272000,
+                    "output": 22.5
+                }
+            ]
         },
         "headers": {
             "Copilot-Integration-Id": "vscode-chat",
@@ -753,7 +875,10 @@
         "provider": "github-copilot",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
             "max": "max",
+            "medium": "medium",
             "minimal": "low",
             "off": null,
             "xhigh": "xhigh"
@@ -788,13 +913,8 @@
         "reasoning": true
     },
     "mai-code-1-flash-picker": {
-        "api": "openai-completions",
+        "api": "openai-responses",
         "baseUrl": "https://api.individual.githubcopilot.com",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.075,
@@ -813,6 +933,15 @@
         "maxTokens": 128000,
         "name": "MAI-Code-1-Flash",
         "provider": "github-copilot",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

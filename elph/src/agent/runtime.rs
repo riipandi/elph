@@ -154,6 +154,12 @@ pub async fn create_coding_session_with_events(
     })
     .map_err(|e| anyhow::anyhow!("{e}"))?;
 
+    // Wire automatic memory hooks (per-turn recall, auto-correction, auto task lifecycle).
+    // Runs best-effort: errors are logged and don't prevent session startup.
+    if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, options.paths).await {
+        log::warn!("automatic memory hooks: {err:#}");
+    }
+
     let harness = Arc::new(harness);
 
     let session = CodingAgentSession::new(CodingAgentSessionParams {

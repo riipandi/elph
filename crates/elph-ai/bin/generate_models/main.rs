@@ -7,14 +7,17 @@
 //!   make generate-models
 //!   make generate-models ARGS="--skip-scripts"
 //!   cargo run -p elph-ai --bin generate-models -- chat
+//!   cargo run -p elph-ai --bin generate-models -- chat --enrich-pricing
+//!   cargo run -p elph-ai --bin generate-models -- enrich
 //!   cargo run -p elph-ai --bin generate-models -- image
 //!   cargo run -p elph-ai --bin generate-models -- test-image
 //!   cargo run -p elph-ai --bin generate-models -- all
-//!   cargo run -p elph-ai --bin generate-models -- all --skip-scripts
+//!   cargo run -p elph-ai --bin generate-models -- all --skip-scripts --enrich-pricing
 
 mod chat;
 mod common;
 mod image;
+mod pricing;
 mod test_image;
 
 use std::path::PathBuf;
@@ -27,6 +30,7 @@ use chat::generate_chat;
 use common::default_catalog_dir;
 use image::ImageOptions;
 use image::generate_image;
+use pricing::run_enrich;
 use test_image::TestImageOptions;
 use test_image::generate_test_image;
 
@@ -48,7 +52,9 @@ enum Command {
     Image(ImageCmd),
     /// Generate tests/data/red-circle.png test fixture
     TestImage(TestImageCmd),
-    /// Run chat, image, and test-image
+    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
+    Enrich(EnrichCmd),
+    /// Run chat, image, test-image, and pricing enrichment
     All(AllCmd),
 }
 
@@ -71,6 +77,17 @@ struct ChatCmd {
     /// Only write JSON catalogs; skip regenerating src/models/catalog.rs
     #[arg(long)]
     no_regenerate_catalog: bool,
+
+    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
+    #[arg(long)]
+    enrich_pricing: bool,
+}
+
+#[derive(Parser, Debug)]
+struct EnrichCmd {
+    /// Output directory for JSON catalogs (default: crates/elph-ai/models)
+    #[arg(long)]
+    models_dir: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -110,6 +127,10 @@ struct AllCmd {
 
     #[arg(long)]
     no_regenerate_catalog: bool,
+
+    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
+    #[arg(long)]
+    enrich_pricing: bool,
 }
 
 fn main() -> Result<()> {
@@ -118,13 +139,20 @@ fn main() -> Result<()> {
     let catalog_dir = default_catalog_dir(&crate_root);
 
     match args.command {
-        Command::Chat(cmd) => generate_chat(ChatOptions {
-            catalog_dir,
-            skip_scripts: cmd.skip.skip_scripts,
-            models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
-            catalog_rs: crate_root.join("src/models/catalog.rs"),
-            no_regenerate_catalog: cmd.no_regenerate_catalog,
-        }),
+        Command::Chat(cmd) => {
+            generate_chat(ChatOptions {
+                catalog_dir,
+                skip_scripts: cmd.skip.skip_scripts,
+                models_dir: cmd.models_dir.clone().unwrap_or_else(|| crate_root.join("models")),
+                catalog_rs: crate_root.join("src/models/catalog.rs"),
+                no_regenerate_catalog: cmd.no_regenerate_catalog,
+            })?;
+            if cmd.enrich_pricing {
+                let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
+                run_enrich(&models_dir)?;
+            }
+            Ok(())
+        }
         Command::Image(cmd) => generate_image(ImageOptions {
             catalog_dir,
             skip_scripts: cmd.skip.skip_scripts,
@@ -137,11 +165,15 @@ fn main() -> Result<()> {
                 .output
                 .unwrap_or_else(|| crate_root.join("tests/data/red-circle.png")),
         }),
+        Command::Enrich(cmd) => {
+            let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
+            run_enrich(&models_dir)
+        }
         Command::All(cmd) => {
             generate_chat(ChatOptions {
                 catalog_dir: catalog_dir.clone(),
                 skip_scripts: cmd.skip.skip_scripts,
-                models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
+                models_dir: cmd.models_dir.clone().unwrap_or_else(|| crate_root.join("models")),
                 catalog_rs: crate_root.join("src/models/catalog.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
             })?;
@@ -156,7 +188,12 @@ fn main() -> Result<()> {
                 output: cmd
                     .test_image_output
                     .unwrap_or_else(|| crate_root.join("tests/data/red-circle.png")),
-            })
+            })?;
+            if cmd.enrich_pricing {
+                let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
+                run_enrich(&models_dir)?;
+            }
+            Ok(())
         }
     }
 }

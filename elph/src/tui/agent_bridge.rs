@@ -175,6 +175,7 @@ impl SlashDispatcher {
                 | SlashDispatch::SessionInfo
                 | SlashDispatch::Rename { .. }
                 | SlashDispatch::Confetti { .. }
+                | SlashDispatch::Feedback
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}

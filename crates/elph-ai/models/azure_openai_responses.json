@@ -172,6 +172,9 @@
     "gpt-5": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -192,6 +195,9 @@
     "gpt-5-chat-latest": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.125,
@@ -212,6 +218,9 @@
     "gpt-5-mini": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.025,
@@ -232,6 +241,9 @@
     "gpt-5-nano": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.005,
@@ -252,6 +264,9 @@
     "gpt-5-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0,
@@ -272,6 +287,9 @@
     "gpt-5.1": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
@@ -292,6 +310,9 @@
     "gpt-5.2": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -313,6 +334,9 @@
     "gpt-5.2-chat-latest": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -334,6 +358,9 @@
     "gpt-5.2-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0,
@@ -355,6 +382,9 @@
     "gpt-5.3-chat-latest": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -376,6 +406,9 @@
     "gpt-5.3-codex": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
@@ -397,6 +430,9 @@
     "gpt-5.3-codex-spark": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
@@ -418,6 +454,9 @@
     "gpt-5.4": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
@@ -439,6 +478,9 @@
     "gpt-5.4-mini": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.075,
@@ -460,6 +502,9 @@
     "gpt-5.4-nano": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
@@ -481,6 +526,9 @@
     "gpt-5.4-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0,
@@ -502,6 +550,9 @@
     "gpt-5.5": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -523,6 +574,9 @@
     "gpt-5.5-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0,
@@ -546,6 +600,9 @@
     "gpt-5.6-luna": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.1,
@@ -568,6 +625,9 @@
     "gpt-5.6-sol": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
@@ -590,6 +650,9 @@
     "gpt-5.6-terra": {
         "api": "azure-openai-responses",
         "baseUrl": "",
+        "compat": {
+            "supportsOpenAIGrammarTools": true
+        },
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,

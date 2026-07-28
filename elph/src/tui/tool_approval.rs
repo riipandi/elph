@@ -148,6 +148,89 @@ pub fn pick_mode_change_index_from_key(modifiers: KeyModifiers, code: KeyCode) -
     }
 }
 
+// ── Feedback dialog ───────────────────────────────────────────────────
+
+/// Default selected index when the feedback dialog opens (Report a Bug).
+pub const FEEDBACK_DEFAULT_INDEX: usize = 0;
+
+/// Feedback options: (label, description, URL).
+pub const FEEDBACK_OPTIONS: &[(&str, &str, &str)] = &[
+    (
+        "🐛 Report a Bug",
+        "Open GitHub issue tracker",
+        "https://github.com/riipandi/elph/issues/new/choose",
+    ),
+    (
+        "💬 Join Community",
+        "Open Buzz community",
+        "buzz://add-community?relay=wss%3A%2F%2Felph.communities.buzz.xyz%2F&name=elph",
+    ),
+];
+
+/// Select-list rows for the feedback dialog.
+pub fn feedback_select_options() -> Vec<elph_tui::types::SelectOption> {
+    FEEDBACK_OPTIONS
+        .iter()
+        .map(|(name, detail, _)| elph_tui::types::SelectOption::new(*name, *detail))
+        .collect()
+}
+
+/// Footer hint for the feedback dialog.
+pub fn feedback_footer_hint() -> String {
+    "↑↓ move · Enter open in browser · Esc cancel".to_string()
+}
+
+/// Map shortcut keys to feedback list indices.
+pub fn pick_feedback_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
+    if !modifiers.is_empty() {
+        return None;
+    }
+    match code {
+        KeyCode::Char('1') => Some(0),
+        KeyCode::Char('2') => Some(1),
+        _ => None,
+    }
+}
+
+/// Get the URL for a given feedback list index.
+pub fn feedback_url_at_index(index: usize) -> Option<&'static str> {
+    FEEDBACK_OPTIONS.get(index).map(|(_, _, url)| *url)
+}
+
+/// Open a URL in the default browser.
+pub fn open_url(url: &str) -> Result<(), String> {
+    let status = {
+        #[cfg(target_os = "macos")]
+        {
+            std::process::Command::new("open").arg(url).status()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            std::process::Command::new("xdg-open").arg(url).status()
+        }
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("cmd")
+                .args(["/C", "start", "", url])
+                .status()
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+        {
+            let _ = url;
+            return Err("opening a browser is not supported on this platform".to_string());
+        }
+    };
+    status
+        .map_err(|e| format!("failed to open browser: {e}"))
+        .and_then(|s| {
+            if s.success() {
+                Ok(())
+            } else {
+                Err(format!("browser process exited with: {s}"))
+            }
+        })
+}
+
 // ── Plan confirmation dialog ──────────────────────────────────────────
 
 use crate::agent::PlanConfirmationRequest;

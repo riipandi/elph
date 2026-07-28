@@ -25,8 +25,14 @@ pub fn implement_prompt(plan_text: &str, plan_file: Option<&str>) -> String {
     if let Some(file_path) = plan_file {
         format!(
             "The plan has been approved and saved to:\n{file_path}\n\n\
-             Read the plan file and implement it step by step. \
-             Update the plan file's frontmatter `Status` and `Updated` fields as you make progress."
+             The frontmatter has been auto-updated to `Status: in_progress`.\n\n\
+             Read the plan file and implement it step by step. As you complete tasks,\n\
+             use `edit_file` to update the plan file's frontmatter:\n\
+             1. Change `Status: in_progress` → `Status: completed` (when fully done).\n\
+             2. Change `Updated: <old>` → `Updated: YYYY-MM-DD HH:MM` (current datetime).\n\
+             \n\
+             Only edit the frontmatter lines; keep the plan body intact.\n\
+             Do not create additional plan files — modify the existing one."
         )
     } else {
         format!("Implement this plan:\n\n{plan_text}")

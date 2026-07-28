@@ -66,6 +66,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("reload", "Reload resources"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)", "status|list|tasks|log|search|purge"),
+        builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
         builtin_with_args("tools", "Show active tools", "[json|list|table]"),
         builtin("system-prompt", "Show compiled system prompt"),
@@ -174,6 +175,8 @@ pub enum SlashDispatch {
         args: String,
     },
     OverlayNeeded(OverlayCommand),
+    /// Open feedback dialog (Report a Bug / Join Community).
+    Feedback,
     Unimplemented(String),
 }
 
@@ -285,7 +288,7 @@ pub fn confetti_mode_from_args(args: &str) -> &'static str {
 pub fn slash_palette_submit_on_enter(command_name: &str) -> bool {
     matches!(
         command_name,
-        "model" | "scoped-models" | "tree" | "resume" | "session" | "rename" | "system-prompt"
+        "model" | "scoped-models" | "tree" | "resume" | "session" | "rename" | "system-prompt" | "feedback"
     )
 }
 
@@ -308,6 +311,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "tree" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Tree)),
         "resume" => Some(SlashDispatch::OverlayNeeded(OverlayCommand::Resume)),
         "new" => Some(SlashDispatch::NewSession),
+        "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
         "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust"
         | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),

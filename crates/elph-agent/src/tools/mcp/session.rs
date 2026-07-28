@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::bail;
 use anyhow::{Context, Result};
@@ -258,25 +259,68 @@ impl McpServerSession {
     }
 
     async fn call_tool_inner(&self, tool_name: &str, args: Value) -> Result<CallToolResult> {
+        let op_timeout = self.config.operation_timeout();
         let ctx = self.connect_ctx();
-        let mut guard = self.client.lock().await;
-        Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
-        let client = guard.as_ref().context("MCP client missing")?;
-        match call_tool_on_client(client, tool_name, args.clone()).await {
-            Ok(result) => Ok(result),
-            Err(first_error) => {
-                log::warn!(
-                    "MCP call_tool failed; reconnecting once: server={} tool={tool_name} error={first_error}",
+        let tool_name = tool_name.to_string();
+
+        let max_attempts = 3;
+        let mut last_err: Option<anyhow::Error> = None;
+
+        for attempt in 1..=max_attempts {
+            if attempt > 1 {
+                let delay = Duration::from_millis(500 * 2u64.pow(attempt as u32 - 2));
+                log::debug!(
+                    "MCP retry: server={} tool={tool_name} attempt={attempt}/{max_attempts} backoff={delay:?}",
                     self.name
                 );
-                Self::drop_client_locked(&mut guard).await;
-                Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
-                let client = guard.as_ref().context("MCP client missing after reconnect")?;
-                call_tool_on_client(client, tool_name, args)
-                    .await
-                    .with_context(|| format!("MCP server \"{}\" after reconnect: {first_error}", self.name))
+                tokio::time::sleep(delay).await;
             }
+
+            // Scope the lock guard so it's released between retries
+            let result = {
+                let mut guard = self.client.lock().await;
+
+                // Drop and reconnect on retry
+                if attempt > 1 {
+                    log::warn!(
+                        "MCP call_tool reconnecting: server={} tool={tool_name} attempt={attempt}",
+                        self.name
+                    );
+                    Self::drop_client_locked(&mut guard).await;
+                }
+
+                Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+                let client = guard.as_ref().context("MCP client missing")?;
+
+                match tokio::time::timeout(op_timeout, call_tool_on_client(client, &tool_name, args.clone())).await {
+                    Ok(Ok(result)) => return Ok(result),
+                    Ok(Err(e)) => Err(e),
+                    Err(_) => Err(anyhow::anyhow!("timed out after {op_timeout:?}")),
+                }
+            };
+
+            // Use shared retryable classification from elph-ai
+            let err = result.as_ref().unwrap_err();
+            if elph_ai::resilience::retry::is_anyhow_retryable(err) {
+                last_err = result.err();
+                log::warn!(
+                    "MCP call_tool failed; retrying: server={} tool={tool_name} attempt={attempt} error={}",
+                    self.name,
+                    last_err.as_ref().unwrap(),
+                );
+                continue;
+            }
+
+            // Non-retryable — fail immediately
+            return result;
         }
+
+        Err(last_err.unwrap_or_else(|| {
+            anyhow::anyhow!(
+                "MCP call_tool failed after {max_attempts} attempts: server={} tool={tool_name}",
+                self.name
+            )
+        }))
     }
 
     /// Close the session (best-effort).

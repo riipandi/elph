@@ -45,7 +45,7 @@ memchr.workspace = true
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, features = ["blocking"] }
 rustls.workspace = true
 schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }
