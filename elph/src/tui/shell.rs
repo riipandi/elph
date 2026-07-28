@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
 use elph_agent::{LocalExecutionEnv, PromptTemplate, Skill};
@@ -801,6 +801,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut input_prefix_kind = hooks.use_ref(InputPrefixKind::default);
     let startup_messages = props.startup_messages.clone();
     let mut messages = hooks.use_state(move || startup_messages);
+    let startup_messages_arc = props.startup_messages.clone();
+    let messages_arc = hooks.use_ref(move || Arc::new(RwLock::new(startup_messages_arc)));
+
     let mut messages_revision = hooks.use_state(|| 0u64);
     let mut suppress_enter_newline = hooks.use_ref(|| false);
     let mut slash_palette_active = hooks.use_ref(|| false);
@@ -969,6 +972,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let cwd_for_loop = cwd.clone();
     let extension_host_for_loop = extension_host.clone();
     let mut layout_screen_size_for_loop = layout_screen_size;
+    // Clone the Arc into the async future so event processing writes to
+    // messages_arc (no State dirty marks) instead of messages State.
+    let messages_arc_inner: Arc<RwLock<Vec<TranscriptMessage>>> = messages_arc.read().clone();
+
     hooks.use_future(async move {
         loop {
             tokio::time::sleep(Duration::from_millis(SHELL_TICK_MS)).await;
@@ -1275,7 +1282,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
                         {
-                            let mut msgs = messages.write();
+                            let mut msgs = messages_arc_inner.write().unwrap();
                             // Process status line (colored, consistent gaps) — not a flush Meta dump.
                             let key = tool_approval_transcript_key(&tool_call_id);
                             if let Some(existing) =
@@ -1342,12 +1349,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         } else {
                             let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(
-                                &mut messages,
-                                &mut messages_revision,
-                                &mut prompt_history,
-                                submitted,
-                            );
+                            // Write to arc directly (no State dirty mark);
+                            // sync to messages State happens at end of tick.
+                            {
+                                let mut msgs = messages_arc_inner.write().unwrap();
+                                if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
+                                    crate::tui::prompt_history::push_history_entry_styled(
+                                        &mut prompt_history.write(),
+                                        &submitted.content,
+                                        submitted.style,
+                                    );
+                                }
+                                msgs.push(submitted);
+                            }
                             transcript_changed = true;
                         }
                         continue;
@@ -1357,7 +1371,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         activity_label.set(label);
                     }
                     {
-                        let mut msgs = messages.write();
+                        let mut msgs = messages_arc_inner.write().unwrap();
                         if event_applier.write().apply(&mut msgs, event) {
                             transcript_changed = true;
                         }
@@ -1368,7 +1382,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             while let Ok(event) = user_shell_channel.write().rx.try_recv() {
                 match event {
                     UserShellEvent::ToolUpdate { id, chunk } => {
-                        let mut msgs = messages.write();
+                        let mut msgs = messages_arc_inner.write().unwrap();
                         if event_applier
                             .write()
                             .apply(&mut msgs, AgentUiEvent::ToolUpdate { id, output: chunk })
@@ -1386,7 +1400,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     } => {
                         let is_error = !cancelled && exit_code != Some(0);
                         {
-                            let mut msgs = messages.write();
+                            let mut msgs = messages_arc_inner.write().unwrap();
                             if event_applier.write().apply(
                                 &mut msgs,
                                 AgentUiEvent::ToolEnd {
@@ -1440,6 +1454,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             if transcript_changed {
+                // Sync the arc to State at controlled interval (one dirty per tick
+                // instead of per-token). Panel reads from the arc directly.
+                *messages.write() = messages_arc_inner.read().unwrap().clone();
                 transcript_pending.set(true);
             }
 
@@ -3829,6 +3846,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 // Modal dialogs own the wheel; keep the transcript still underneath.
                 mouse_scroll: Some(!status_dialog_open),
                 text_select_mode: select_mode.get(),
+                streaming_active: Some(busy.get()),
+                messages_arc: Some(messages_arc.read().clone()),
+
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
