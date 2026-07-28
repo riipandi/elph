@@ -159,6 +159,7 @@ define_catalog!(OPENCODE_MODELS, "opencode.json");
 define_catalog!(OPENCODE_GO_MODELS, "opencode_go.json");
 define_catalog!(OPENGATEWAY_MODELS, "opengateway.json");
 define_catalog!(OPENROUTER_MODELS, "openrouter.json");
+define_catalog!(SUMOPOD_MODELS, "sumopod.json");
 define_catalog!(QWEN_TOKEN_PLAN_MODELS, "qwen_token_plan.json");
 define_catalog!(QWEN_TOKEN_PLAN_CN_MODELS, "qwen_token_plan_cn.json");
 define_catalog!(TOGETHER_MODELS, "together.json");
@@ -205,6 +206,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("openrouter", OPENROUTER_MODELS.as_slice()),
         ("qwen-token-plan", QWEN_TOKEN_PLAN_MODELS.as_slice()),
         ("qwen-token-plan-cn", QWEN_TOKEN_PLAN_CN_MODELS.as_slice()),
+        ("sumopod", SUMOPOD_MODELS.as_slice()),
         ("together", TOGETHER_MODELS.as_slice()),
         ("vercel-ai-gateway", VERCEL_AI_GATEWAY_MODELS.as_slice()),
         ("xai", XAI_MODELS.as_slice()),

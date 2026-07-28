@@ -492,6 +492,13 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["OPENROUTER_API_KEY"], "OpenRouter API key")
         ),
         simple_provider!(
+            "sumopod",
+            "Sumopod",
+            SUMOPOD_MODELS,
+            openai_completions_api,
+            (vec!["SUMOPOD_AI_API_KEY"], "Sumopod API key")
+        ),
+        simple_provider!(
             "together",
             "Together AI",
             TOGETHER_MODELS,
