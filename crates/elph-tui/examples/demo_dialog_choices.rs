@@ -258,7 +258,7 @@ fn Gallery(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
             padding: 2,
             gap: 1,
         ) {
-            DialogShell(chrome: chrome, header: header_for(active)) {
+            DialogShell(chrome: chrome, header: header_for(active), on_copy: HandlerMut::default()) {
                 #(body)
             }
             View(

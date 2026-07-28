@@ -3867,6 +3867,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut live_draft = live_draft;
             let mut shell_focus = shell_focus;
             let mut force_editor_clear = force_editor_clear;
+            let text_for_copy = pending.text.clone();
+            let mut copy_banner = ephemeral_banner;
+            let mut copy_banner_gen = ephemeral_banner_generation;
+            let copy_expire = ephemeral_expire;
             element! {
                 ScrollTextDialogOverlay(
                     screen_width: screen_width,
@@ -3887,6 +3891,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut force_editor_clear,
                         );
                     },
+                    on_copy: Some(HandlerMut::from(move |_| {
+                        let text = &text_for_copy;
+                        let banner = match copy_to_clipboard(text) {
+                            Ok(()) => prompt_copy_banner(text.chars().count()),
+                            Err(err) => {
+                                log::warn!("copy system prompt failed: {err}");
+                                prompt_copy_failed_banner()
+                            }
+                        };
+                        let expire_tx = copy_expire.read().tx.clone();
+                        show_ephemeral_banner(&mut copy_banner, &mut copy_banner_gen, &expire_tx, banner);
+                    })),
                 )
             }
             .into()

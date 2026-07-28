@@ -185,6 +185,8 @@ pub struct ScrollTextDialogOverlayProps {
     pub theme: Option<UiTheme>,
     /// Click on header `[esc]` (keyboard Esc is still handled by the shell).
     pub on_esc: HandlerMut<'static, ()>,
+    /// When `Some(handler)`, a `[copy]` button appears in the header next to `[esc]`.
+    pub on_copy: Option<HandlerMut<'static, ()>>,
 }
 
 impl Default for ScrollTextDialogOverlayProps {
@@ -201,6 +203,7 @@ impl Default for ScrollTextDialogOverlayProps {
             has_focus: false,
             theme: None,
             on_esc: HandlerMut::default(),
+            on_copy: None,
         }
     }
 }
@@ -336,6 +339,7 @@ pub fn ScrollTextDialogOverlay(
     let header = DialogHeader::title(props.title.clone());
     let needs_scrollbar = scroll_text_needs_scrollbar(&props.text, body_width, props.body_height);
     let on_esc = props.on_esc.take();
+    let on_copy = props.on_copy.take();
     let body = render_scroll_text_body(&props.text, body_width, theme);
 
     // Shell owns ↑/↓ / PgUp / PgDn via the shared handle (keyboard_scroll off → no double step).
@@ -355,6 +359,7 @@ pub fn ScrollTextDialogOverlay(
             header: header,
             theme: Some(theme),
             on_esc: on_esc,
+            on_copy: on_copy,
         ) {
             View(
                 width: body_width,
