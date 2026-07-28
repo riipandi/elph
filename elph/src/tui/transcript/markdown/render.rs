@@ -1,7 +1,10 @@
 //! Paint cached markdown documents into transcript cards.
 
 use elph_tui::MarkdownDocument;
-use elph_tui::{plain_text_document, render_linkified_plain_text, render_markdown_block, streaming_tail_document};
+use elph_tui::{
+    parse_markdown_document, plain_text_document, render_linkified_plain_text, render_markdown_block,
+    streaming_tail_document,
+};
 use iocraft::prelude::*;
 
 use super::buffer::AssistantMarkdownBuffer;
@@ -13,17 +16,24 @@ fn merge_documents(mut base: MarkdownDocument, extension: MarkdownDocument) -> M
     base.normalize()
 }
 
-/// Render one stable markdown slice from cache (falls back to linkified plain text).
+/// Render one stable markdown slice from cache (falls back to markdown rendering).
 fn render_markdown_part(
     document: Option<&MarkdownDocument>,
     fallback_source: &str,
     fallback_foreground: Color,
-    _width: u16,
+    width: u16,
 ) -> MarkdownDocument {
     if let Some(doc) = document {
         return doc.clone();
     }
-    plain_text_document(fallback_source, fallback_foreground)
+    // Always render markdown tables properly, even without cache
+    // Parse the markdown to ensure tables are recognized and rendered correctly
+    let doc = parse_markdown_document(fallback_source);
+    if doc.is_empty() {
+        plain_text_document(fallback_source, fallback_foreground)
+    } else {
+        doc.normalize()
+    }
 }
 
 /// Render assistant markdown (stable prefix + streaming tail) as one iocraft block.
