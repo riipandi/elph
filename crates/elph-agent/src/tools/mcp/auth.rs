@@ -110,12 +110,16 @@ pub fn auth_store_path(config_dir: &Path) -> PathBuf {
 /// Root document of `auth.json` as stored on disk.
 ///
 /// Each MCP server entry is an AES-256-GCM string with the `enc:` prefix.
+/// Provider API key credentials live under the `providers` map.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStoreFile {
     /// Map of MCP server name → encrypted credential string (`enc:…`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub mcp: BTreeMap<String, Value>,
+    /// Map of provider ID → encrypted API key string (`enc:…`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub providers: BTreeMap<String, Value>,
 }
 
 impl AuthStoreFile {
@@ -152,6 +156,29 @@ impl AuthStoreFile {
 
     pub fn contains_server(&self, server_name: &str) -> bool {
         self.mcp.contains_key(server_name)
+    }
+
+    /// Set (encrypted) provider credential. Caller must hold the lock.
+    pub fn set_provider_credential(&mut self, provider_id: &str, encrypted: String) {
+        self.providers
+            .insert(provider_id.to_string(), Value::String(encrypted));
+    }
+
+    /// Get (encrypted) provider credential.
+    pub fn get_provider_credential(&self, provider_id: &str) -> Option<&str> {
+        self.providers
+            .get(provider_id)
+            .and_then(|v| v.as_str())
+    }
+
+    /// Remove a provider credential. Returns `true` if it existed.
+    pub fn remove_provider_credential(&mut self, provider_id: &str) -> bool {
+        self.providers.remove(provider_id).is_some()
+    }
+
+    /// List all provider IDs that have stored credentials.
+    pub fn provider_ids(&self) -> Vec<String> {
+        self.providers.keys().cloned().collect()
     }
 }
 

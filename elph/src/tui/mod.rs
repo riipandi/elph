@@ -19,6 +19,7 @@ mod model_selector_shell;
 mod prompt;
 mod prompt_history;
 mod provider_connect_dialog;
+mod provider_credential_store;
 mod rename_dialog;
 mod scoped_models;
 mod scoped_models_bar;

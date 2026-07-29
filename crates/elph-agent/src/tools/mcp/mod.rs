@@ -38,6 +38,7 @@ mod session;
 mod sse;
 #[cfg(feature = "mcp")]
 mod store_lock;
+pub use store_lock::{lock_auth_store, AuthStoreGuard};
 #[cfg(feature = "mcp")]
 mod truncate;
 #[cfg(feature = "mcp")]

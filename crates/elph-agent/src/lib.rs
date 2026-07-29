@@ -455,11 +455,15 @@ pub use tools::mcp::list_tools;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::list_tools_for_server;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::lock_auth_store;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent_with_limit;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_tool_requires_approval;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::AuthStoreGuard;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::parse_and_validate_mcp_config;
 #[cfg(feature = "mcp")]

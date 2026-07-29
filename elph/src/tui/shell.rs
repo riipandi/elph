@@ -25,6 +25,7 @@ use crate::platform::handle_prompt_interrupt_text;
 use crate::platform::{Paths, PromptInterrupt, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
+use crate::utils::path::AppPaths;
 
 use crate::tui::activity::TurnTokenTracker;
 use crate::tui::activity::{
@@ -130,6 +131,51 @@ use elph_agent::tools::fff_picker::MentionSearchIndex;
 use elph_tui::PaletteKeyInput;
 use elph_tui::components::ConfirmButtonFocus;
 use elph_tui::copy_to_clipboard;
+
+// ── OAuth dialog events ──────────────────────────────────────────────
+
+/// Events sent from the OAuth flow to the provider connect dialog.
+enum OAuthDialogEvent {
+    DeviceCode { url: String, code: String },
+}
+
+/// AuthLoginCallbacks implementation that forwards events via an mpsc channel.
+struct OAuthLoginCallbacksImpl {
+    tx: tokio::sync::mpsc::UnboundedSender<OAuthDialogEvent>,
+}
+
+impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
+    fn prompt(
+        &self,
+        _prompt: elph_ai::auth::AuthPrompt,
+    ) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
+        Box::pin(async { Err(anyhow::anyhow!("Unexpected prompt during OAuth flow")) })
+    }
+
+    fn notify(&self, event: elph_ai::auth::AuthEvent) {
+        match event {
+            elph_ai::auth::AuthEvent::DeviceCode {
+                user_code,
+                verification_uri,
+                ..
+            } => {
+                let _ = self.tx.send(OAuthDialogEvent::DeviceCode {
+                    url: verification_uri,
+                    code: user_code,
+                });
+            }
+            elph_ai::auth::AuthEvent::AuthUrl { url, .. } => {
+                let _ = self.tx.send(OAuthDialogEvent::DeviceCode {
+                    url: url.clone(),
+                    code: String::new(),
+                });
+            }
+            _ => {}
+        }
+    }
+}
+
+// ── Constants ────────────────────────────────────────────────────────
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
@@ -2989,35 +3035,122 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
                                     let provider_name = format_provider_name(&provider.id);
-                                    
-                                    // Trigger OAuth flow using elph-ai's OAuth infrastructure
+                                    let auth_store_path = paths.auth_store_path();
+
                                     log::info!("Starting OAuth flow for provider: {}", provider_id);
-                                    
+
                                     // Transition to OAuth device code step
                                     if let Some(ref mut pending) = *pending_provider_connect.write() {
                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
                                         pending.oauth_provider_name = format!("Login to {}", provider_name);
-                                        pending.oauth_url = String::new(); // Will be filled by OAuth flow
-                                        pending.oauth_code = String::new(); // Will be filled by OAuth flow
+                                        pending.oauth_url = String::new();
+                                        pending.oauth_code = String::new();
                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                         provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
                                     }
-                                    
-                                    // Start the OAuth flow in the background
-                                    // This would normally use the elph-ai OAuth callbacks
-                                    // For now, we need to integrate with the existing OAuth infrastructure
-                                    let provider_id_oauth = provider_id.clone();
-                                    
-                                    // Spawn a task to handle the OAuth flow
+
+                                    // Channel to push OAuth events back to the dialog state
+                                    let (oauth_event_tx, mut oauth_event_rx) =
+                                        tokio::sync::mpsc::unbounded_channel::<OAuthDialogEvent>();
+
+                                    // Store the sender so the spawned task can notify us
+                                    let provider_id_for_task = provider_id.clone();
+                                    let provider_name_for_task = provider_name.clone();
+                                    let mut pending_ref = pending_provider_connect.clone();
+                                    let auth_store_path_for_task = auth_store_path.clone();
+
                                     tokio::spawn(async move {
-                                        // TODO: Integrate with elph-ai's OAuth infrastructure
-                                        // This should:
-                                        // 1. Call the OAuth provider's login method
-                                        // 2. Get the device code info
-                                        // 3. Update the pending state with URL and code
-                                        // 4. Poll for token completion
-                                        // 5. Store the credential when complete
-                                        log::warn!("OAuth flow integration not yet complete for provider: {}", provider_id_oauth);
+                                        // Build AuthLoginCallbacks that sends events through the channel
+                                        let callbacks = Arc::new(OAuthLoginCallbacksImpl {
+                                            tx: oauth_event_tx,
+                                        });
+
+                                        match elph_ai::oauth_provider_login(&provider_id_for_task, callbacks).await {
+                                            Ok(credential) => {
+                                                log::info!(
+                                                    "OAuth login succeeded for provider: {}",
+                                                    provider_id_for_task
+                                                );
+
+                                                // Derive API key from OAuth credential
+                                                match elph_ai::get_oauth_api_key(&provider_id_for_task, credential.clone()).await {
+                                                    Ok(api_key_result) => {
+                                                        // OAuth credentials are stored differently — they provide
+                                                        // access tokens that auto-refresh. For now we save the
+                                                        // access token as an encrypted API key as a fallback,
+                                                        // but the real OAuth flow stores tokens in-memory.
+                                                        log::info!(
+                                                            "OAuth login complete for {} — token expires at {}",
+                                                            provider_id_for_task,
+                                                            api_key_result.new_credentials.expires,
+                                                        );
+
+                                                        // Update dialog state to show completion
+                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                            pending.step = ProviderConnectStep::SelectProvider;
+                                                            pending.oauth_url = format!(
+                                                                "✓ Authenticated as {}",
+                                                                provider_name_for_task
+                                                            );
+                                                            pending.oauth_code = String::new();
+                                                        }
+
+                                                        // Store OAuth credential in auth.json for persistence
+                                                        // The credential store in elph-ai handles runtime access
+                                                        if let Ok(json) = serde_json::to_string(&credential) {
+                                                            let _ = crate::tui::provider_credential_store::save_provider_credential(
+                                                                &auth_store_path_for_task,
+                                                                &format!("oauth:{}", provider_id_for_task),
+                                                                &json,
+                                                            ).await;
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        log::error!(
+                                                            "Failed to derive API key from OAuth for {}: {}",
+                                                            provider_id_for_task, e
+                                                        );
+                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                            pending.oauth_url = format!("OAuth error: {e}");
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                log::error!("OAuth login failed for {}: {}", provider_id_for_task, e);
+                                                if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                    pending.oauth_url = format!("OAuth failed: {e}");
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // Process any events that arrived before the spawn
+                                    while let Ok(event) = oauth_event_rx.try_recv() {
+                                        if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                            match event {
+                                                OAuthDialogEvent::DeviceCode { url, code } => {
+                                                    pending.oauth_url = url;
+                                                    pending.oauth_code = code;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Read incoming OAuth events in a background task
+                                    // to keep the dialog updated
+                                    let mut pending_ref = pending_provider_connect.clone();
+                                    tokio::spawn(async move {
+                                        while let Some(event) = oauth_event_rx.recv().await {
+                                            if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                match event {
+                                                    OAuthDialogEvent::DeviceCode { url, code } => {
+                                                        pending.oauth_url = url;
+                                                        pending.oauth_code = code;
+                                                    }
+                                                }
+                                            }
+                                        }
                                     });
                                 } else {
                                     // API Key: close provider selection, open dedicated API key dialog
@@ -3188,7 +3321,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             false,
                         );
                         if let Some(pid) = provider_id {
-                            log::info!("Saving API key for provider: {} with key length: {}", pid, api_key.len());
+                            let api_key = api_key.clone();
+                            let auth_store_path = paths.auth_store_path();
+                            tokio::spawn(async move {
+                                match crate::tui::provider_credential_store::save_provider_credential(
+                                    &auth_store_path, &pid, &api_key
+                                ).await {
+                                    Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
+                                    Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                                }
+                            });
                         }
                         return;
                     }

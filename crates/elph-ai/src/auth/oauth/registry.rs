@@ -200,7 +200,7 @@ pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, crede
 }
 
 pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
-    vec!["anthropic", "github-copilot", "hyper", "openai-codex"]
+    vec!["anthropic", "github-copilot", "hyper", "openai-codex", "xai"]
 }
 
 pub fn github_copilot_catalog_models() -> Vec<Model> {

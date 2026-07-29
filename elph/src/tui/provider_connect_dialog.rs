@@ -16,7 +16,16 @@ use iocraft::prelude::*;
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
 use crate::tui::model_selector::model_selector_list_viewport_height;
+use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
+
+use std::path::PathBuf;
+
+/// Default auth store path under `~/.elph/auth.json`.
+fn default_auth_store_path() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join(".elph").join("auth.json")
+}
 
 // ── Data types ───────────────────────────────────────────────────────
 
@@ -156,36 +165,32 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 }
 
 /// Check if provider has stored API key in auth.json
-fn has_stored_api_key(_provider_id: &str) -> bool {
-    // This would check auth.json for encrypted API keys
-    // For now, return false to simplify the implementation
-    // TODO: Implement actual auth.json reading
-    false
+fn has_stored_api_key(provider_id: &str) -> bool {
+    let auth_store_path = default_auth_store_path();
+    has_provider_credential(&auth_store_path, provider_id)
 }
 
-/// Save API key to auth.json with encryption (async)
-/// This is a placeholder for the actual implementation
+/// Get the auth store path for provider credentials.
+fn auth_store_path() -> std::path::PathBuf {
+    default_auth_store_path()
+}
+
+/// Save API key to auth.json with encryption
 pub async fn save_provider_api_key(provider_id: &str, api_key: String) -> anyhow::Result<()> {
-    log::info!("Saving encrypted API key for provider: {}", provider_id);
-    
-    // TODO: Implement encryption and storage using elph-agent's crypto module
-    // The crypto module is currently private, so we need to either:
-    // 1. Make it public in elph-agent
-    // 2. Create a public encryption wrapper
-    // 3. Use environment variables as a fallback
-    
-    // For now, just log the operation
-    log::info!("API key ({} chars) would be encrypted and saved to auth.json", api_key.len());
-    Ok(())
+    let path = auth_store_path();
+    crate::tui::provider_credential_store::save_provider_credential(&path, provider_id, &api_key).await
 }
 
-/// Load and decrypt API key from auth.json (async)
-/// This is a placeholder for the actual implementation
+/// Load and decrypt API key from auth.json
 pub async fn load_provider_api_key(provider_id: &str) -> anyhow::Result<Option<String>> {
-    log::info!("Loading encrypted API key for provider: {}", provider_id);
-    
-    // TODO: Implement decryption and loading using elph-agent's crypto module
-    Ok(None)
+    let path = auth_store_path();
+    crate::tui::provider_credential_store::load_provider_credential(&path, provider_id).await
+}
+
+/// Remove stored API key for a provider
+pub async fn remove_provider_api_key(provider_id: &str) -> anyhow::Result<bool> {
+    let path = auth_store_path();
+    crate::tui::provider_credential_store::remove_provider_credential(&path, provider_id).await
 }
 
 /// Get list of all providers with OAuth support info and configuration status.
