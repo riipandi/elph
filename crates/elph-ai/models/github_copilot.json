@@ -202,6 +202,7 @@
         "reasoning": true,
         "thinkingLevelMap": {
             "max": "max",
+            "minimal": "minimal",
             "xhigh": "xhigh"
         }
     },

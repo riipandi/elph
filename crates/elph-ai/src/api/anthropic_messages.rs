@@ -353,6 +353,8 @@ fn process_anthropic_sse_event(
                 let stop_details = event.pointer("/delta/stop_details");
                 let result = map_stop_reason(reason, stop_details);
                 output.stop_reason = result.stop_reason;
+                // Expose the stop reason as soon as it's known mid-stream.
+                output.pending_stop_reason = Some(result.stop_reason);
                 if let Some(message) = result.error_message {
                     output.error_message = Some(message);
                 }

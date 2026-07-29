@@ -46,7 +46,6 @@ use std::sync::Arc;
 use elph_ai::Tool;
 use serde_json::Value;
 
-use crate::runtime::local_env::LocalExecutionEnv;
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 
 #[cfg(feature = "tools-collaboration")]
@@ -87,7 +86,10 @@ pub fn simple_tool(
     + Sync
     + 'static,
 ) -> AgentTool {
-    let execute_fn: ToolExecuteFn = Arc::new(move |id, args, _signal, _on_update| execute(id, args));
+    let execute_fn: ToolExecuteFn = Arc::new(move |id, args, _signal, _on_update, _context| {
+        let fut = execute(id, args);
+        Box::pin(fut)
+    });
     AgentTool {
         tool,
         label: label.into(),

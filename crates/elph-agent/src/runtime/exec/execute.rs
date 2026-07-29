@@ -8,6 +8,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::prompt::encoding::PromptEncodingConfig;
 use crate::prompt::encoding::apply_to_tool_result;
+use crate::tools::types::ToolContext;
 use crate::types::{AfterToolCallContext, AfterToolCallResult, AgentContext, AgentLoopConfig, AgentToolResult};
 
 use super::{ExecutedToolCallOutcome, FinalizedToolCall, PreparedToolCall};
@@ -17,6 +18,7 @@ pub(super) async fn execute_prepared_tool_call(
     prepared: &PreparedToolCall,
     signal: Option<CancellationToken>,
     emit: &super::super::AgentEventCallback,
+    tool_context: &ToolContext,
 ) -> ExecutedToolCallOutcome {
     let update_tx: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
     let on_update = {
@@ -42,7 +44,15 @@ pub(super) async fn execute_prepared_tool_call(
     };
 
     let started = std::time::Instant::now();
-    match (prepared.tool.execute)(prepared.tool_call.id.clone(), prepared.args.clone(), signal, Some(on_update)).await {
+    match (prepared.tool.execute)(
+        prepared.tool_call.id.clone(),
+        prepared.args.clone(),
+        signal,
+        Some(on_update),
+        tool_context.clone(),
+    )
+    .await
+    {
         Ok(result) => {
             update_tx.store(false, Ordering::Relaxed);
             ExecutedToolCallOutcome {

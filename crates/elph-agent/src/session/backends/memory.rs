@@ -5,13 +5,14 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::session::id::{generate_entry_id, generate_session_id};
-use crate::session::storage_utils::{append_to_index, build_index, create_leaf_entry, find_entries, get_path_to_root};
-use crate::session::types::SessionError;
-use crate::session::types::SessionErrorCode;
-use crate::session::types::SessionIndex;
-use crate::session::types::SessionMetadata;
-use crate::session::types::SessionStorage;
-use crate::session::types::SessionTreeEntry;
+use crate::session::storage_utils::{
+    append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
+    get_path_to_root, get_path_to_root_or_compaction,
+};
+use crate::session::types::{
+    CheckpointTail, CursorPosition, SessionError, SessionErrorCode, SessionIndex, SessionMetadata, SessionStatistics,
+    SessionStorage, SessionTreeEntry,
+};
 
 #[derive(Clone)]
 pub struct InMemorySessionStorage {
@@ -107,8 +108,48 @@ impl SessionStorage for InMemorySessionStorage {
         get_path_to_root(&index.by_id, leaf_id)
     }
 
+    async fn get_path_to_root_or_compaction(
+        &self,
+        leaf_id: Option<&str>,
+    ) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        let index = self.index.lock().await;
+        get_path_to_root_or_compaction(&index.by_id, leaf_id)
+    }
+
     async fn get_entries(&self) -> Vec<SessionTreeEntry> {
         let index = self.index.lock().await;
         index.entries.clone()
+    }
+
+    async fn get_entries_cursor(&self, cursor: &CursorPosition) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        let index = self.index.lock().await;
+        get_entries_cursor(&index.entries, cursor)
+    }
+
+    async fn get_statistics(&self) -> SessionStatistics {
+        let index = self.index.lock().await;
+        compute_statistics(&index)
+    }
+
+    async fn store_checkpoint_tail(&mut self, tail: CheckpointTail) -> Result<String, SessionError> {
+        let mut index = self.index.lock().await;
+        let root_id = tail.root_id.clone();
+        index.checkpoints.insert(root_id.clone(), tail);
+        Ok(root_id)
+    }
+
+    async fn load_checkpoint_tail(&self, root_id: &str) -> Result<Option<CheckpointTail>, SessionError> {
+        let index = self.index.lock().await;
+        Ok(index.checkpoints.get(root_id).cloned())
+    }
+
+    async fn list_checkpoint_tails(&self) -> Vec<String> {
+        let index = self.index.lock().await;
+        index.checkpoints.keys().cloned().collect()
+    }
+
+    async fn get_name(&self) -> Option<String> {
+        let index = self.index.lock().await;
+        index.name.clone()
     }
 }

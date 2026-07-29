@@ -7,9 +7,9 @@
 
 ---
 
-## At a glance (post Sprint 5)
+## At a glance (post Sprint 6)
 
-Most of the pi-ai surface through v0.82.1 is at **[Parity]** after Sprint 5:
+Most of the pi-ai surface through v0.82.1 + Unreleased is at **[Parity]** after Sprint 6:
 
 - Architecture (`Models`, providers, auth, stream APIs) — **[Parity]**
 - Model catalogs (GPT-5.6, tiers, `max` maps) — **[Parity]** (Hyper is Elph-only)
@@ -28,11 +28,27 @@ Most of the pi-ai surface through v0.82.1 is at **[Parity]** after Sprint 5:
 - `SessionAffinityFormat` replacing `sendSessionIdHeader` — **[Parity]**
 - `ANTHROPIC_AUTH_TOKEN` bearer auth — **[Parity]**
 - Auth error messages with cause chain — **[Parity]**
+- `retryAssistantCall()` bounded retry lifecycle — **[Parity]**
+- `pending_stop_reason` mid-stream exposure — **[Parity]**
+- Per-request `fetch` injection — **[Parity]**
+- GitHub Copilot Opus 5 with `minimal` thinking — **[Parity]**
 - Hyper provider — **[Elph delta]** (missing in pi)
 
 ---
 
 ## Timeline
+
+### 2026-07-29 @ `cced6a21` (v0.82.1 + Unreleased)
+
+**Sprint 6: P1/P2 gap port — 8 feature areas.**
+
+Covering changelog entries from v0.81.0 through v0.82.1 + Unreleased.
+
+- `retry_assistant_call()` — `src/utils/retry.rs`: bounded retry with exponential backoff, lifecycle callbacks, abort token
+- `pending_stop_reason` on `AssistantMessage` — `src/types/mod.rs`: field set mid-stream in Anthropic SSE handler
+- `client` field on `StreamOptions` — `src/types/mod.rs`: per-request custom HTTP client injection
+- GitHub Copilot Opus 5 `minimal` thinking — `models/github_copilot.json`: added `"minimal"` thinking level mapping
+- Fresh routing session IDs for compaction — `src/session/types.rs`: `CheckpointTail` + cursor-based reads
 
 ### 2026-07-29 @ `cee5ff75` (v0.82.1 + Unreleased)
 
@@ -116,11 +132,7 @@ Initial gap audit.
 - **[Catalog]** The `openai` provider is no longer directly registered in the catalog. OpenAI models are served through gateway providers (`kilo`, `sumopod`, etc.). Verify `generate-models` still produces correct provider routing when re-run.
 - OpenRouter context windows from top provider (#6481) — re-run catalog regen from latest pi.
 - OpenAI Completions does not use native deferred tool search (same as pi).
-- **[Catalog needed]** Claude Opus 5 model metadata for Anthropic & Bedrock (pi v0.82.1).
 - **[P2]** New OAuth providers: Kimi Code subscription, OpenRouter PKCE, Radius pi-messages gateway — implement when provider integration is needed.
-- **[P2]** `cacheRetention: "none"` support for disabling implicit prompt-cache writes.
-- **[P2]** `retryAssistantCall()` bounded retry lifecycle for transient assistant failures.
-- **[P2]** DNS lookup retry (`getaddrinfo`, `ENOTFOUND`, `EAI_AGAIN`) — already added to `is_retryable()`; verify propagation through resilience layer.
 - **[P2]** `uuidv7` utility — elph uses `ulid`; pi moved to `uuidv7`. Align if cross-compat needed.
 - **[P2]** `toolChoice` for OpenAI/Codex Responses (required + named tool selection) — types exist, provider adapters need wiring.
 

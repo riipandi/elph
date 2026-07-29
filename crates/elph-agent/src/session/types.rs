@@ -323,6 +323,60 @@ pub struct SessionIndex {
     pub by_id: HashMap<String, SessionTreeEntry>,
     pub labels_by_id: HashMap<String, String>,
     pub leaf_id: Option<String>,
+    pub checkpoints: HashMap<String, CheckpointTail>,
+    pub name: Option<String>,
+}
+
+/// Statistics about a session's contents.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SessionStatistics {
+    /// Total number of entries in the session.
+    pub total_entries: u64,
+    /// Number of message entries.
+    pub message_count: u64,
+    /// Number of compaction entries.
+    pub compaction_count: u64,
+    /// Number of branch summary entries.
+    pub branch_summary_count: u64,
+    /// Approximate token count if known, or 0.
+    pub approximate_tokens: u64,
+    /// Session name, if set.
+    pub name: Option<String>,
+}
+
+/// A cursor position for reading entries in batches.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CursorPosition {
+    /// The ID of the entry to start from (exclusive).
+    pub after_id: String,
+    /// Maximum number of entries to return.
+    pub limit: u32,
+}
+
+/// A self-contained checkpoint representing a retained compaction tail.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckpointTail {
+    /// The root entry ID of this checkpoint.
+    pub root_id: String,
+    /// Entries comprising the checkpoint tail.
+    pub entries: Vec<SessionTreeEntry>,
+    /// The leaf ID at the time of checkpoint creation.
+    pub leaf_id: Option<String>,
+    /// Timestamp when the checkpoint was created.
+    pub created_at: String,
+}
+
+/// Retry lifecycle events for compaction and branch-summary operations.
+#[derive(Debug, Clone)]
+pub enum CompactionRetryEvent {
+    /// Compaction attempt starting.
+    Attempt { attempt: u32, max_retries: u32 },
+    /// Compaction failed, will retry.
+    Retry { attempt: u32, error: String, delay_ms: u64 },
+    /// Compaction succeeded after retries.
+    Recovered { attempt: u32 },
+    /// Compaction permanently failed.
+    Failed { error: String },
 }
 
 pub trait SessionStorage: Send + Sync {
@@ -345,9 +399,59 @@ pub trait SessionStorage: Send + Sync {
         entry_type: &'a str,
     ) -> impl Future<Output = Vec<SessionTreeEntry>> + Send + use<'a, Self>;
     fn get_label<'a>(&'a self, id: &'a str) -> impl Future<Output = Option<String>> + Send + use<'a, Self>;
-    fn get_path_to_root<'a>(
+
+    /// Get the path from the leaf to the root, or the nearest compaction.
+    /// Returns entries from the compaction boundary (or root) up to the leaf.
+    /// This is the v2 API replacing `get_path_to_root` — it stops at compaction
+    /// boundaries to avoid loading the full session history.
+    fn get_path_to_root_or_compaction<'a>(
         &'a self,
         leaf_id: Option<&'a str>,
     ) -> impl Future<Output = Result<Vec<SessionTreeEntry>, SessionError>> + Send + use<'a, Self>;
+
+    /// Get all entries (legacy — prefer cursor-based reads for large sessions).
     fn get_entries<'a>(&'a self) -> impl Future<Output = Vec<SessionTreeEntry>> + Send + use<'a, Self>;
+
+    /// Read entries in batches using a cursor.
+    /// Returns entries after `after_id` (exclusive), up to `limit` entries.
+    fn get_entries_cursor<'a>(
+        &'a self,
+        cursor: &'a CursorPosition,
+    ) -> impl Future<Output = Result<Vec<SessionTreeEntry>, SessionError>> + Send + use<'a, Self>;
+
+    /// Get session statistics (counts, name, approximate tokens).
+    fn get_statistics<'a>(&'a self) -> impl Future<Output = SessionStatistics> + Send + use<'a, Self>;
+
+    /// Store a compaction tail as a self-contained checkpoint.
+    /// Returns the checkpoint ID on success.
+    fn store_checkpoint_tail<'a>(
+        &'a mut self,
+        tail: CheckpointTail,
+    ) -> impl Future<Output = Result<String, SessionError>> + Send + use<'a, Self>;
+
+    /// Load a previously stored checkpoint tail by root ID.
+    fn load_checkpoint_tail<'a>(
+        &'a self,
+        root_id: &'a str,
+    ) -> impl Future<Output = Result<Option<CheckpointTail>, SessionError>> + Send + use<'a, Self>;
+
+    /// List all stored checkpoint root IDs.
+    fn list_checkpoint_tails<'a>(&'a self) -> impl Future<Output = Vec<String>> + Send + use<'a, Self>;
+
+    /// Session name (optional, for display/labeling).
+    fn get_name<'a>(&'a self) -> impl Future<Output = Option<String>> + Send + use<'a, Self> {
+        async { None }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Default implementations for backward compatibility
+    // ---------------------------------------------------------------------------
+
+    /// Get path to root (default implementation delegates to `get_path_to_root_or_compaction`).
+    fn get_path_to_root<'a>(
+        &'a self,
+        leaf_id: Option<&'a str>,
+    ) -> impl Future<Output = Result<Vec<SessionTreeEntry>, SessionError>> + Send + use<'a, Self> {
+        self.get_path_to_root_or_compaction(leaf_id)
+    }
 }

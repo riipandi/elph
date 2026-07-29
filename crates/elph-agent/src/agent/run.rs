@@ -170,6 +170,9 @@ impl Agent {
             after_tool_call: self.after_tool_call.clone(),
             stream_fn: Some(self.stream_fn.clone()),
             prompt_encoding: self.prompt_encoding.clone(),
+            tool_context: crate::tools::types::ToolContext::new(std::sync::Arc::new(
+                crate::runtime::local_env::LocalExecutionEnv::new("."),
+            )),
         }
     }
 

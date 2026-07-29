@@ -2,7 +2,10 @@
 
 use crate::messages::now_iso_timestamp;
 use crate::session::context::build_session_context;
-use crate::session::types::{SessionContext, SessionError, SessionErrorCode, SessionStorage, SessionTreeEntry};
+use crate::session::types::{
+    CheckpointTail, CursorPosition, SessionContext, SessionError, SessionErrorCode, SessionStatistics, SessionStorage,
+    SessionTreeEntry,
+};
 use crate::types::AgentMessage;
 
 pub struct Session<S: SessionStorage> {
@@ -36,6 +39,44 @@ impl<S: SessionStorage> Session<S> {
 
     pub fn storage_mut(&mut self) -> &mut S {
         &mut self.storage
+    }
+
+    // -----------------------------------------------------------------------
+    // SessionStorage v2 API passthrough methods
+    // -----------------------------------------------------------------------
+
+    /// Get the path from the leaf to the root, or stop at the nearest compaction boundary.
+    pub async fn branch_or_compaction(&self, from_id: Option<&str>) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        let leaf_id = match from_id {
+            Some(id) => Some(id.to_string()),
+            None => self.storage.get_leaf_id().await?,
+        };
+        self.storage.get_path_to_root_or_compaction(leaf_id.as_deref()).await
+    }
+
+    /// Read entries after a cursor position (cursor-based pagination).
+    pub async fn entries_cursor(&self, cursor: &CursorPosition) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        self.storage.get_entries_cursor(cursor).await
+    }
+
+    /// Get session statistics.
+    pub async fn statistics(&self) -> SessionStatistics {
+        self.storage.get_statistics().await
+    }
+
+    /// Store a compaction tail checkpoint.
+    pub async fn store_checkpoint(&mut self, tail: CheckpointTail) -> Result<String, SessionError> {
+        self.storage.store_checkpoint_tail(tail).await
+    }
+
+    /// Load a compaction tail checkpoint by root ID.
+    pub async fn load_checkpoint(&self, root_id: &str) -> Result<Option<CheckpointTail>, SessionError> {
+        self.storage.load_checkpoint_tail(root_id).await
+    }
+
+    /// List all stored checkpoint root IDs.
+    pub async fn checkpoint_tails(&self) -> Vec<String> {
+        self.storage.list_checkpoint_tails().await
     }
 
     pub async fn leaf_id(&self) -> Result<Option<String>, SessionError> {

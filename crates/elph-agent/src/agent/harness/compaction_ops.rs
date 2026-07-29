@@ -10,16 +10,126 @@ use crate::agent::harness::types::CompactResult;
 use crate::agent::harness::types::SessionBeforeCompactEvent;
 use crate::compaction::DEFAULT_COMPACTION_SETTINGS;
 use crate::compaction::{compact, prepare_compaction};
-use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
+use crate::session::types::{CompactionRetryEvent, HasSessionId, SessionStorage, SessionTreeEntry};
 
 use super::helpers::{compaction_error, module_to_compact_result, session_error};
 use super::{AgentHarness, HarnessOpResult};
+
+/// Default retry configuration for compaction operations.
+const COMPACTION_MAX_RETRIES: u32 = 3;
+const COMPACTION_RETRY_BASE_DELAY_MS: u64 = 1000;
 
 impl<S> AgentHarness<S>
 where
     S: SessionStorage + Clone + Send + Sync + 'static,
     S::Metadata: HasSessionId + Send + Sync,
 {
+    /// Compact with retry lifecycle support.
+    ///
+    /// Retries on transient failures with exponential backoff,
+    /// emitting lifecycle events via the hook system.
+    async fn compact_with_retry(
+        &self,
+        preparation: crate::compaction::CompactionPreparation,
+        model: &elph_ai::Model,
+        effective_custom_instructions: Option<&str>,
+        from_hook: Option<CompactResult>,
+    ) -> HarnessOpResult<CompactResult> {
+        if let Some(result) = from_hook {
+            return Ok(result);
+        }
+
+        let thinking = self.shared.thinking_level.lock().await.to_stream_reasoning();
+        let max_retries = COMPACTION_MAX_RETRIES;
+        let mut last_error = None;
+
+        for attempt in 1..=max_retries {
+            // Emit retry lifecycle event
+            if attempt > 1 {
+                self.shared
+                    .hooks
+                    .emit_subscriber(
+                        crate::agent::harness::hooks::AgentHarnessEvent::Own(AgentHarnessOwnEvent::CompactionRetry(
+                            CompactionRetryEvent::Attempt { attempt, max_retries },
+                        )),
+                        None,
+                    )
+                    .await
+                    .ok();
+            }
+
+            let module_result = compact(
+                preparation.clone(),
+                &self.shared.models,
+                model,
+                effective_custom_instructions,
+                None,
+                thinking.clone(),
+            )
+            .await;
+
+            match module_result {
+                Ok(result) => {
+                    if attempt > 1 {
+                        self.shared
+                            .hooks
+                            .emit_subscriber(
+                                crate::agent::harness::hooks::AgentHarnessEvent::Own(
+                                    AgentHarnessOwnEvent::CompactionRetry(CompactionRetryEvent::Recovered { attempt }),
+                                ),
+                                None,
+                            )
+                            .await
+                            .ok();
+                    }
+                    return Ok(module_to_compact_result(result));
+                }
+                Err(error) => {
+                    let error_msg = error.to_string();
+                    last_error = Some(error_msg.clone());
+
+                    if attempt < max_retries {
+                        let delay_ms = COMPACTION_RETRY_BASE_DELAY_MS * (1u64 << (attempt - 1));
+                        self.shared
+                            .hooks
+                            .emit_subscriber(
+                                crate::agent::harness::hooks::AgentHarnessEvent::Own(
+                                    AgentHarnessOwnEvent::CompactionRetry(CompactionRetryEvent::Retry {
+                                        attempt,
+                                        error: error_msg,
+                                        delay_ms,
+                                    }),
+                                ),
+                                None,
+                            )
+                            .await
+                            .ok();
+                        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+                    }
+                }
+            }
+        }
+
+        // All retries exhausted
+        let error_msg = last_error.unwrap_or_else(|| "Unknown compaction error".to_string());
+        self.shared
+            .hooks
+            .emit_subscriber(
+                crate::agent::harness::hooks::AgentHarnessEvent::Own(AgentHarnessOwnEvent::CompactionRetry(
+                    CompactionRetryEvent::Failed {
+                        error: error_msg.clone(),
+                    },
+                )),
+                None,
+            )
+            .await
+            .ok();
+        Err(AgentHarnessError::new(
+            AgentHarnessErrorCode::Compaction,
+            format!("Compaction failed after {max_retries} retries: {error_msg}"),
+        ))
+    }
+
     pub async fn compact(&self, custom_instructions: Option<&str>) -> HarnessOpResult<CompactResult> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
             return Err(AgentHarnessError::new(
@@ -72,22 +182,10 @@ where
             .as_ref()
             .and_then(|r| r.custom_instructions.clone())
             .or_else(|| custom_instructions.map(str::to_string));
-        let compact_result = if let Some(result) = from_hook.clone() {
-            result
-        } else {
-            let thinking = self.shared.thinking_level.lock().await.to_stream_reasoning();
-            let module_result = compact(
-                preparation,
-                &self.shared.models,
-                &model,
-                effective_custom_instructions.as_deref(),
-                None,
-                thinking,
-            )
-            .await
-            .map_err(compaction_error)?;
-            module_to_compact_result(module_result)
-        };
+
+        let compact_result = self
+            .compact_with_retry(preparation, &model, effective_custom_instructions.as_deref(), from_hook.clone())
+            .await?;
 
         // No-op result (nothing worth compacting) — skip appending a Compaction entry
         // so subsequent /compact calls can still find work to do.

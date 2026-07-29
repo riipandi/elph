@@ -39,6 +39,8 @@ pub use types::SessionError;
 pub use types::SessionErrorCode;
 pub use types::SessionMetadata;
 pub use types::SessionModelRef;
+pub use types::SessionStatistics;
 pub use types::SessionStorage;
 pub use types::SessionTreeEntry;
 pub use types::TursoSessionMetadata;
+pub use types::{CheckpointTail, CursorPosition};

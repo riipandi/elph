@@ -8,6 +8,7 @@ use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use crate::session::SessionTreeEntry;
+use crate::session::types::CompactionRetryEvent;
 use crate::types::{AgentMessage, AgentThinkingLevel, ToolResultContent};
 
 use super::options::{AgentHarnessResources, AgentHarnessStreamOptions, CompactionSettings};
@@ -337,6 +338,8 @@ pub enum AgentHarnessOwnEvent {
     ThinkingLevelUpdate(ThinkingLevelUpdateEvent),
     ToolsUpdate(ToolsUpdateEvent),
     ResourcesUpdate(ResourcesUpdateEvent),
+    /// Compaction retry lifecycle event.
+    CompactionRetry(CompactionRetryEvent),
 }
 
 impl AgentHarnessOwnEvent {
@@ -362,6 +365,7 @@ impl AgentHarnessOwnEvent {
             Self::ThinkingLevelUpdate(_) => "thinking_level_update",
             Self::ToolsUpdate(_) => "tools_update",
             Self::ResourcesUpdate(_) => "resources_update",
+            Self::CompactionRetry(_) => "compaction_retry",
         }
     }
 }

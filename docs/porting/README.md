@@ -12,6 +12,7 @@ Avoid packing status into wide tables.
 - **[pi-ai.md](./pi-ai.md)** — `@earendil-works/pi-ai` (`packages/ai`) → `crates/elph-ai`
 - **[pi-agent.md](./pi-agent.md)** — `@earendil-works/pi-agent-core` (`packages/agent`) → `crates/elph-agent`
 - **[pi-coding-agent.md](./pi-coding-agent.md)** — `@earendil-works/pi-coding-agent` (`packages/coding-agent`) → `elph/` (product CLI + TUI)
+- **[feature-comparison.md](./feature-comparison.md)** — Detailed feature-by-feature table across all four crates
 
 ## Why these docs exist
 
@@ -23,14 +24,14 @@ Upstream projects move quickly. Each page records:
 
 ## Baseline (pi libraries)
 
-Last documented **2026-07-29T20:00:00Z**.
+Last documented **2026-07-29T19:50:00Z**.
 
 - **Upstream:** https://github.com/earendil-works/pi
 - **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
-- **Snapshot commit:** `cee5ff75` (_ref: remove openclaw reference from readme_)
+- **Snapshot commit:** `cced6a21` (_fix(coding-agent): stop loading AGENTS.md twice in nested git worktrees_)
 - **Package version:** `0.82.1` (released 2026-07-25) + **Unreleased** on `main`
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
-- **Last library implementation pass:** 2026-07-29 — Sprint 5: pi-ai gap port (usage metadata, ModelsStore, constrainedSampling, retry patterns, auth correctness, contentText, CredentialStore.list)
+- **Last library implementation pass:** 2026-07-29 — Sprint 6: P1/P2 gap port (AgentHarnessTool, SessionStorage v2, compaction retry, Opus 5, fetch injection, stop reason, retryAssistantCall)
 - **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
 
 ## Status tags
@@ -74,6 +75,21 @@ Use these inline in prose (not table cells):
 - **`CredentialStore.list()`** — async non-secret credential enumeration
 - **Auth correctness** — `ANTHROPIC_AUTH_TOKEN` bearer header for Anthropic-compatible gateways; `ModelsError` display includes cause chain
 - **`SessionAffinityFormat`** enum replacing `sendSessionIdHeader` boolean
+
+Details in [pi-ai.md](./pi-ai.md) and [pi-agent.md](./pi-agent.md).
+
+### 2026-07-29 — Sprint 6: P1/P2 gap port (8 feature areas)
+
+**Scope:** `elph-ai` + `elph-agent` library crates. Upstream commit `cced6a21`.
+
+- **`AgentHarnessTool` + `toolContext` (P1)** — pi v0.82.0 pattern: `ToolContext` struct replaces captured `Arc<LocalExecutionEnv>` in tool factories. New `AgentHarnessTool` trait, `context_aware_tool()` helper. `ToolExecuteFn` signature extended with `ToolContext`. Threaded through `AgentLoopConfig`, `execute_prepared_tool_call`, and dispatch. `shell_exec` migrated to context-aware execution.
+- **`SessionStorage` API v2 (P1)** — pi v0.81.0 breaking changes: `SessionStatistics`, `CursorPosition`, `CheckpointTail` types. New trait methods: `get_path_to_root_or_compaction()`, `get_entries_cursor()`, `get_statistics()`, `store_checkpoint_tail()`, `load_checkpoint_tail()`, `list_checkpoint_tails()`, `get_name()`. All three backends (InMemory, SessionDir, Turso) implemented.
+- **Compaction retry lifecycle (P2)** — pi v0.81.1: `compact_with_retry()` with exponential backoff (1s, 2s, 4s, max 3 retries). `CompactionRetryEvent` enum with `Attempt`/`Retry`/`Recovered`/`Failed` variants. Events emitted via `AgentHarnessOwnEvent`.
+- **GitHub Copilot Opus 5 `minimal` thinking (P1)** — Added `"minimal": "minimal"` thinking level mapping to `claude-opus-5` model in `github_copilot.json`.
+- **Per-request fetch injection (P2)** — pi Unreleased: `client: Option<reqwest::Client>` field on `StreamOptions`; propagated through `simple_options`.
+- **Pending stop reason while streaming (P2)** — pi Unreleased: `pending_stop_reason: Option<StopReason>` on `AssistantMessage`. Set mid-stream in Anthropic SSE handler when `delta/stop_reason` is received.
+- **`retryAssistantCall()` (P2)** — pi v0.82.0: bounded retry for transient assistant failures with exponential backoff, lifecycle callbacks, and abort token support. Uses `is_transient_error()` for error classification.
+- **Fresh routing session IDs for compaction (P2)** — pi v0.82.0: compaction and branch-summary requests use fresh routing session IDs through the checkpoint tail mechanism.
 
 Details in [pi-ai.md](./pi-ai.md) and [pi-agent.md](./pi-agent.md).
 

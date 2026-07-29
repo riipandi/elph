@@ -1,6 +1,10 @@
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::sync::LazyLock;
 
 use regex::Regex;
+use tokio_util::sync::CancellationToken;
 
 use crate::types::AssistantMessage;
 
@@ -125,4 +129,56 @@ pub fn is_transient_error(text: &str) -> bool {
         return false;
     }
     RETRYABLE.is_match(text)
+}
+
+/// Retry an assistant call with bounded exponential backoff and lifecycle callbacks.
+///
+/// Retries on transient errors (network, 5xx, rate limits) up to `max_retries` times.
+/// Backoff starts at 1s and doubles each attempt, capped at 30s.
+/// The `on_retry` callback receives the retry count (1-based) and the error message.
+/// An `abort_token` can be provided to cancel the retry loop early.
+#[allow(clippy::type_complexity)]
+pub async fn retry_assistant_call(
+    max_retries: u32,
+    operation: impl Fn() -> Pin<Box<dyn Future<Output = Result<AssistantMessage, String>> + Send>>,
+    on_retry: Option<Arc<dyn Fn(u32, &str) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>>,
+    abort_token: Option<CancellationToken>,
+) -> Result<AssistantMessage, String> {
+    let mut attempt = 0u32;
+    loop {
+        // Check abort before each attempt.
+        if let Some(ref token) = abort_token
+            && token.is_cancelled()
+        {
+            return Err("Request aborted".to_string());
+        }
+
+        let result = operation().await;
+
+        match result {
+            Ok(msg) => return Ok(msg),
+            Err(err) => {
+                if attempt >= max_retries || !is_transient_error(&err) {
+                    return Err(err);
+                }
+                attempt += 1;
+
+                // Fire lifecycle callback.
+                if let Some(ref cb) = on_retry {
+                    cb(attempt, &err).await;
+                }
+
+                // Check abort before sleeping.
+                if let Some(ref token) = abort_token
+                    && token.is_cancelled()
+                {
+                    return Err("Request aborted".to_string());
+                }
+
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s.
+                let delay_ms = std::cmp::min(1000u64 * 2u64.pow(attempt - 1), 30_000);
+                tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+            }
+        }
+    }
 }

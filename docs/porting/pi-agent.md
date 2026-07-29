@@ -8,19 +8,32 @@
 
 ---
 
-## At a glance (post Sprint 5)
+## At a glance (post Sprint 6)
 
 - Core agent + agent loop — **[Parity]**
 - `AgentThinkingLevel::Max` — **[Parity]**
 - `added_tool_names` on tool results + loop — **[Parity]**
 - Session entry transforms / projectors — **[Parity]**
 - Compaction estimate timestamp gate (#6464) — **[Parity]**
-- Usage metadata on tool results — **[Parity]** (Sprint 5: `AgentToolResult.usage` + `Message::ToolResult` propagation)
+- Usage metadata on tool results — **[Parity]**
+- `AgentHarnessTool` + `toolContext` replacing `ExecutionEnv` — **[Parity]**
+- `SessionStorage` API v2 with cursor/checkpoint/stats — **[Parity]**
+- Compaction retry policy + lifecycle events — **[Parity]**
+- Fresh routing session IDs for compaction — **[Parity]**
 - Goals / MCP / subagent / plugins / tools — **[Elph delta]** (product modules; not pi-agent gaps)
 
 ---
 
 ## Timeline
+
+### 2026-07-29 @ `cced6a21` (v0.82.1 + Unreleased)
+
+**Sprint 6: P1/P2 gap port — 4 feature areas.**
+
+- **`AgentHarnessTool` + `toolContext`** — pi v0.82.0 breaking change: `ToolContext` struct in `tools/types.rs` carries `Arc<LocalExecutionEnv>`, `cwd`, `is_plan_mode`. `ToolExecuteFn` signature extended. `context_aware_tool()` helper. Threaded through `AgentLoopConfig`, `execute_prepared_tool_call`, and all dispatch paths. `shell_exec` migrated to context-aware execution; other tools can migrate incrementally.
+- **`SessionStorage` API v2** — pi v0.81.0 breaking change: `get_path_to_root_or_compaction()`, `get_entries_cursor()`, `get_statistics()`, `store_checkpoint_tail()`, `load_checkpoint_tail()`, `list_checkpoint_tails()`, `get_name()`. All three backends (InMemory, SessionDir, Turso) updated. `Session::branch_or_compaction()`, `entries_cursor()`, `statistics()`, `store_checkpoint()`, `load_checkpoint()`, `checkpoint_tails()` passthrough methods.
+- **Compaction retry lifecycle** — pi v0.81.1: `compact_with_retry()` in `compaction_ops.rs` with exponential backoff (1s, 2s, 4s, max 3 retries). `CompactionRetryEvent` enum (Attempt/Retry/Recovered/Failed) on `AgentHarnessOwnEvent`.
+- **Fresh routing session IDs for compaction** — pi v0.82.0: `CheckpointTail` mechanism stores compaction checkpoints with root IDs, enabling cursor-based reads from compaction boundaries.
 
 ### 2026-07-29 @ `cee5ff75` (v0.82.1 + Unreleased)
 
@@ -52,6 +65,11 @@ Initial gap audit.
 - `SessionContextBuildOptions` — `src/session/context.rs`
 - `entry_transforms` / `entry_projectors` — `build_session_context_with_options`, `Session::build_context_with_options`
 - Timestamp-aware last usage — `src/compaction/estimation.rs`
+- `ToolContext` + `AgentHarnessTool` — `src/tools/types.rs` (Sprint 6)
+- `SessionStorage` API v2 — `src/session/types.rs` + backends (Sprint 6)
+- `compact_with_retry()` — `src/agent/harness/compaction_ops.rs` (Sprint 6)
+- `CompactionRetryEvent` — `src/agent/harness/types/events.rs` (Sprint 6)
+- `CheckpointTail` mechanism — `src/session/types.rs` + `storage_utils.rs` (Sprint 6)
 
 ---
 
@@ -59,11 +77,7 @@ Initial gap audit.
 
 - **[P2]** Split-turn summary serialization regression (#5536) — confirm coverage; elph already runs history then turn-prefix summaries sequentially in `compaction/compact.rs`.
 - **[P2 / N/A]** JSONL v3 header custom `metadata` — only if interop with pi coding-agent JSONL is required (elph uses session_dir layout).
-- **[Gap P1]** `AgentHarnessTool` + `toolContext` — pi v0.82.0 replaced `ExecutionEnv` with application-defined tool contexts. Elph-agent still uses `LocalExecutionEnv`; product tools need convergence.
-- **[Gap P1]** `SessionStorage` API v2 — pi v0.81.0 broke the interface with `getPathToRootOrCompaction()`, cursor-based reads, and checkpoint tails. Elph `session/` module API predates this.
-- **[Gap P1]** `AgentHarnessTool` context-aware tools (`read`/`write`/`edit`/`bash`) — pi ships these as library; elph-agent has product-level equivalents in `src/tools/`.
-- **[Gap P2]** Retry policy + lifecycle events for compaction/branch-summary (pi v0.81.1).
-- **[Gap P2]** Fresh routing session IDs for compaction with cache disabled (pi v0.82.0).
+- **[P2]** `AgentHarnessTool` migration for remaining tools — `shell_exec` migrated; `read_file`, `edit_file`, `write_file`, `grep`, `find_path`, `list_dir`, `copy_path`, `create_dir`, `delete_path`, `move_path`, `web_*` still use `simple_tool` wrapper (compatible via `_context` parameter).
 - Product modules (goals, MCP, subagent, tools, …) — Elph-only; not pi-agent gaps.
 
 ---

@@ -89,6 +89,9 @@ pub struct StreamOptions {
     pub on_payload: Option<OnPayloadCallback>,
     pub on_response: Option<OnResponseCallback>,
     pub signal: Option<tokio_util::sync::CancellationToken>,
+    /// Custom HTTP client for per-request fetch injection.
+    /// When set, provider adapters use this client instead of building their own.
+    pub client: Option<reqwest::Client>,
 }
 
 pub type OnPayloadCallback =
@@ -304,6 +307,10 @@ pub struct AssistantMessage {
     pub diagnostics: Option<Vec<AssistantMessageDiagnostic>>,
     pub usage: Usage,
     pub stop_reason: StopReason,
+    /// Stop reason known mid-stream, before the stream completes.
+    /// Set when a provider emits a stop reason delta (e.g. Anthropic `delta/stop_reason`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending_stop_reason: Option<StopReason>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
     pub timestamp: i64,
@@ -330,6 +337,7 @@ impl AssistantMessage {
             diagnostics: None,
             usage: Usage::default(),
             stop_reason: StopReason::Stop,
+            pending_stop_reason: None,
             error_message: None,
             timestamp: chrono::Utc::now().timestamp_millis(),
         }

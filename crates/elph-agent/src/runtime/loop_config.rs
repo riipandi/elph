@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::messages::types::AgentMessage;
 use crate::prompt::encoding::PromptEncodingConfig;
-use crate::tools::types::{AgentTool, AgentToolResult, ToolResultContent};
+use crate::tools::types::{AgentTool, AgentToolResult, ToolContext, ToolResultContent};
 use crate::types::enums::{AgentThinkingLevel, ToolExecutionMode};
 
 pub type StreamFn =
@@ -134,6 +134,9 @@ pub struct AgentLoopConfig {
     pub after_tool_call: Option<AfterToolCallFn>,
     pub stream_fn: Option<StreamFn>,
     pub prompt_encoding: PromptEncodingConfig,
+    /// Application-defined tool context injected at execution time.
+    /// Replaces captured `Arc<LocalExecutionEnv>` in tool factories.
+    pub tool_context: ToolContext,
 }
 
 #[derive(Debug, Clone)]

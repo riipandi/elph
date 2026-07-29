@@ -167,6 +167,10 @@ where
             thinking_budgets: None,
         };
 
+        // ToolContext is constructed synchronously with a default plan mode.
+        // The actual plan mode check is done by the before_tool_call hook.
+        let tool_context = crate::tools::types::ToolContext::new(self.shared.env.clone()).with_plan_mode(false);
+
         AgentLoopConfig {
             model,
             stream_options,
@@ -182,6 +186,7 @@ where
             after_tool_call,
             stream_fn: Some(self.create_stream_fn(turn_state)),
             prompt_encoding: PromptEncodingConfig::from_env(),
+            tool_context,
         }
     }
 
