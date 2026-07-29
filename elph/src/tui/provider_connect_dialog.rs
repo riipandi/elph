@@ -22,6 +22,7 @@ use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::time::Instant;
 
 /// Default auth store path under `~/.elph/auth.json`.
 fn default_auth_store_path() -> PathBuf {
@@ -97,6 +98,8 @@ pub struct PendingProviderConnectDialog {
     /// Provider ID to pre-select (from `/provider connect <id>`).
     pub provider_id: Option<String>,
     pub stashed_prompt_draft: Option<String>,
+    /// Timestamp used to suppress accidental Enter repeats from the slash-submit key.
+    pub opened_at: Instant,
     /// Set to true when OAuth flow completes — main loop will close the dialog.
     pub done: bool,
     /// True right after `open_provider_connect_dialog` sets up the dialog.
@@ -410,6 +413,7 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         oauth_provider_name: String::new(),
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
+        opened_at: Instant::now(),
         done: false,
         fresh_open: true,
     }));

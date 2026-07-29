@@ -678,7 +678,6 @@ pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
 pub fn build_provider_connect_dialog_kind(
     provider_id: Option<String>,
     step: Option<ProviderConnectStep>,
-    _selected: State<usize>,
     has_focus: bool,
     input_focus: ProviderConnectFocus,
     selected_auth_method: usize,
@@ -687,10 +686,11 @@ pub fn build_provider_connect_dialog_kind(
     oauth_provider_name: String,
     fresh_open: bool,
 ) -> Option<StatusDialogKind> {
+    let step = step?;
     if has_focus {
         Some(StatusDialogKind::ProviderConnect {
             provider_id,
-            step: step.unwrap_or(ProviderConnectStep::SelectAuthMethod),
+            step,
             input_focus,
             selected_auth_method,
             oauth_url,
@@ -957,5 +957,22 @@ mod tests {
         let summary = format_tool_approval_summary("shell_exec", &long_args_json());
         let plan = tool_approval_layout_plan(80, 24, &summary, body_width);
         assert!(plan.list_height == SELECT_LIST_AUTO_HEIGHT || plan.list_height >= list_rows.min(3));
+    }
+
+    #[test]
+    fn provider_connect_dialog_requires_pending_step_even_when_focused() {
+        let dialog = build_provider_connect_dialog_kind(
+            None,
+            None,
+            true,
+            ProviderConnectFocus::AuthMethodList,
+            0,
+            String::new(),
+            String::new(),
+            String::new(),
+            false,
+        );
+
+        assert!(dialog.is_none());
     }
 }

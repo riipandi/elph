@@ -3002,6 +3002,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                     // ── Enter (confirm) ──────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Enter {
+                        if kind != KeyEventKind::Press {
+                            return;
+                        }
+                        if pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|pending| pending.fresh_open)
+                            .unwrap_or(false)
+                        {
+                            if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                pending.fresh_open = false;
+                            }
+                            return;
+                        }
                         if is_select_auth_method {
                             // Confirm authentication method selection
                             let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
@@ -3349,6 +3363,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                     // Enter — save API key
                     if modifiers.is_empty() && code == KeyCode::Enter {
+                        if kind != KeyEventKind::Press {
+                            return;
+                        }
                         let api_key = provider_connect_api_key.read().clone();
                         let provider_id = pending_provider_api_key.read().as_ref().map(|p| p.provider_id.clone());
                         close_provider_api_key_dialog(
@@ -4692,28 +4709,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
         .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
         .or_else(|| {
-            let selected = provider_connect_selected.clone();
-            let step = pending_provider_connect.read().as_ref().map(|p| p.step);
-            let input_focus = pending_provider_connect
-                .read()
-                .as_ref()
-                .map(|p| p.input_focus)
-                .unwrap_or(ProviderConnectFocus::AuthMethodList);
             let pending = pending_provider_connect.read();
             let pending_ref = pending.as_ref();
+            let provider_id = pending_ref.and_then(|p| p.provider_id.clone());
+            let step = pending_ref.map(|p| p.step);
+            let input_focus = pending_ref
+                .map(|p| p.input_focus)
+                .unwrap_or(ProviderConnectFocus::AuthMethodList);
             let oauth_url = pending_ref.map(|p| p.oauth_url.clone()).unwrap_or_default();
             let oauth_code = pending_ref.map(|p| p.oauth_code.clone()).unwrap_or_default();
             let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
             let selected_auth_method = pending_ref.map(|p| p.selected_auth_method).unwrap_or(0);
             let fresh_open = pending_ref.map(|p| p.fresh_open).unwrap_or(false);
             drop(pending);
-            build_provider_connect_dialog_kind(
-                pending_provider_connect
-                    .read()
-                    .as_ref()
-                    .and_then(|p| p.provider_id.clone()),
+
+            let dialog = build_provider_connect_dialog_kind(
+                provider_id,
                 step,
-                selected,
                 approval_has_focus,
                 input_focus,
                 selected_auth_method,
@@ -4721,7 +4733,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 oauth_code,
                 oauth_provider_name,
                 fresh_open,
-            )
+            );
+            if fresh_open
+                && let Some(ref mut pending) = *pending_provider_connect.write()
+            {
+                pending.fresh_open = false;
+            }
+            dialog
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
         .or_else(|| {
