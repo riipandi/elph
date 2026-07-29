@@ -74,6 +74,7 @@ async fn execute_write(
             }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }

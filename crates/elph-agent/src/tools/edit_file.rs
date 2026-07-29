@@ -82,6 +82,7 @@ async fn execute_edit(
             }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }

@@ -27,6 +27,7 @@ pub fn create_mode_change_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Ag
     elph_agent::simple_tool(
         Tool {
             name: "request_mode_change".into(),
+                constrained_sampling: None,
             description: "Ask the user for permission to switch the agent mode. Use this when you need to execute commands or make file changes but the current mode restricts those actions. \
                           /!\\ If you are already in Build mode, do NOT call this tool — just use the mutating tool directly and wait for the permission dialog. \
                           Only request Brave mode for high-volume repetitive tasks; for everything else, Build mode with per-tool approval is the correct choice."

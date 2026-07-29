@@ -356,6 +356,7 @@ mod tests {
         simple_tool(
             Tool {
                 name: name.into(),
+                constrained_sampling: None,
                 description: description.into(),
                 parameters: serde_json::json!({"type": "object", "properties": {}}),
             },

@@ -488,7 +488,6 @@ impl McpToolRegistry {
                 Tool {
                     name: desc.exposed_name.clone(),
                     constrained_sampling: None,
-
                     description: desc.description.clone(),
                     parameters: desc.parameters.clone(),
                 },
@@ -522,6 +521,7 @@ impl McpToolRegistry {
         simple_tool(
             Tool {
                 name,
+                constrained_sampling: None,
                 description: format!("[MCP:{server}] List resources available on this MCP server"),
                 parameters: json!({ "type": "object", "properties": {} }),
             },
@@ -556,6 +556,7 @@ impl McpToolRegistry {
         simple_tool(
             Tool {
                 name,
+                constrained_sampling: None,
                 description: format!("[MCP:{server}] Read a resource by URI from this MCP server"),
                 parameters: json!({
                     "type": "object",
@@ -588,6 +589,7 @@ impl McpToolRegistry {
         simple_tool(
             Tool {
                 name,
+                constrained_sampling: None,
                 description: format!("[MCP:{server}] List prompt templates on this MCP server"),
                 parameters: json!({ "type": "object", "properties": {} }),
             },
@@ -621,6 +623,7 @@ impl McpToolRegistry {
         simple_tool(
             Tool {
                 name,
+                constrained_sampling: None,
                 description: format!("[MCP:{server}] Fetch a prompt template with optional arguments"),
                 parameters: json!({
                     "type": "object",

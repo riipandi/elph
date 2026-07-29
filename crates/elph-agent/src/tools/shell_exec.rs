@@ -123,6 +123,7 @@ async fn execute_shell_exec(
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 
