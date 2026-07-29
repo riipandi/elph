@@ -102,7 +102,6 @@ pub struct PendingProviderApiKeyDialog {
 /// Authentication method options.
 #[derive(Debug, Clone)]
 pub struct AuthMethodOption {
-    pub id: String,
     pub name: String,
     #[allow(dead_code)]
     pub description: String,
@@ -112,12 +111,10 @@ pub struct AuthMethodOption {
 pub fn get_auth_methods() -> Vec<AuthMethodOption> {
     vec![
         AuthMethodOption {
-            id: "oauth".to_string(),
             name: "Sign in with an account".to_string(),
             description: "OAuth login for supported providers".to_string(),
         },
         AuthMethodOption {
-            id: "api_key".to_string(),
             name: "Sign in with an API key".to_string(),
             description: "Manually enter an API key".to_string(),
         },
@@ -557,16 +554,20 @@ pub fn apply_provider_filter_seed(
 
 // ── Rendering ────────────────────────────────────────────────────────
 
-fn provider_select_footer_hint() -> String {
-    "↑↓ move · / search · Enter select · Esc cancel".to_string()
-}
-
-fn auth_method_footer_hint() -> String {
+fn auth_method_footer() -> String {
     "↑↓ move · Enter select · Esc cancel".to_string()
 }
 
-fn oauth_device_code_footer_hint() -> String {
-    "Ctrl+O — open in browser · Esc — cancel".to_string()
+fn provider_select_footer() -> String {
+    "↑↓ navigate · / filter · Enter confirm · Esc cancel".to_string()
+}
+
+fn oauth_device_code_footer() -> String {
+    "Ctrl+O open · Esc cancel".to_string()
+}
+
+fn api_key_footer(provider_name: &str) -> String {
+    format!("Enter confirm · Esc cancel · Provider: {provider_name}")
 }
 
 /// Render step 1: authentication method selection.
@@ -581,44 +582,31 @@ fn render_select_auth_method_step(
     let body_width = inline_body_width(screen_width);
 
     let auth_methods = get_auth_methods();
-    // Auto-height — only 2 items, no need for a large viewport
-    let list_height = 0u16;
-
     let options: Vec<SelectOption> = auth_methods
         .iter()
-        .map(|m| SelectOption::new(&m.name, &m.id))
+        .map(|m| SelectOption::new(&m.name, ""))
         .collect();
 
-    let list_focused = has_focus;
-
     let w = body_width;
-    let thm = theme;
 
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: "Select authentication method".to_string(),
+            title: "Authentication method".to_string(),
             has_focus: has_focus,
-            footer_hint: Some(auth_method_footer_hint()),
+            footer_hint: Some(auth_method_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
-                    Text(
-                        content: "Choose how you want to authenticate with the provider:".to_string(),
-                        color: thm.text_secondary,
-                        wrap: TextWrap::Wrap,
-                    )
-                }
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     SelectList(
                         width: w,
-                        height: list_height,
+                        height: 0u16,
                         options: options,
                         selected_index: Some(selected),
-                        has_focus: list_focused,
+                        has_focus: has_focus,
                         show_description: false,
                         compact: true,
-                        theme: Some(thm),
+                        theme: Some(theme),
                     )
                 }
             }
@@ -652,12 +640,12 @@ pub fn render_provider_connect_dialog(
             render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
         }
         ProviderConnectStep::EnterApiKey => {
-            render_api_key_step(screen_width, screen_height, has_focus, api_key_input)
+            render_api_key_step(screen_width, screen_height, has_focus, api_key_input, provider_name)
         }
     }
 }
 
-/// Render step 1: provider selection with fuzzy search.
+/// Render step 2: provider selection with fuzzy search.
 fn render_select_provider_step(
     screen_width: u16,
     screen_height: u16,
@@ -677,9 +665,9 @@ fn render_select_provider_step(
         .map(|p| {
             let description = match &p.config_status {
                 ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
-                ProviderConfigStatus::ApiKeyConfigured => "API key configured".to_string(),
+                ProviderConfigStatus::ApiKeyConfigured => "key configured".to_string(),
                 ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
-                ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {}", var),
+                ProviderConfigStatus::EnvVarConfigured(var) => var.clone(),
             };
             let description_color = match &p.config_status {
                 ProviderConfigStatus::Unconfigured => Some(theme.text_hint),
@@ -693,7 +681,6 @@ fn render_select_provider_step(
         })
         .collect();
 
-    // Use a fixed viewport-capped height so the dialog never grows too tall.
     let viewport_cap = model_selector_list_viewport_height(screen_width, screen_height) as usize;
     let list_height = viewport_cap as u16;
     let total_count = providers.len();
@@ -713,30 +700,31 @@ fn render_select_provider_step(
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: "Select provider to configure".to_string(),
+            title: "Configure provider".to_string(),
             has_focus: has_focus,
-            footer_hint: Some(provider_select_footer_hint()),
+            footer_hint: Some(provider_select_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
-                // ── Search bar ──
+                // ── Count label ──
                 View(width: w, flex_shrink: 0f32) {
+                    Text(content: count_label, color: thm.text_muted, wrap: TextWrap::NoWrap)
+                }
+                // ── Search bar (matches model selector pattern) ──
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
                         value: Some(filter),
                         has_focus: search_focused,
                         theme: Some(thm),
                         compact: true,
-                        show_prompt: true,
-                        question: "Search provider:".to_string(),
+                        show_prompt: false,
+                        placeholder: "Filter providers…".to_string(),
+                        show_placeholder_when_focused: true,
                         show_footer_hint: false,
                         dialog_chrome: true,
                         on_submit: HandlerMut::default(),
                         on_cancel: HandlerMut::default(),
                     )
-                }
-                // ── Count label ──
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(content: count_label, color: thm.text_hint, wrap: TextWrap::NoWrap)
                 }
                 // ── Provider list ──
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
@@ -758,7 +746,7 @@ fn render_select_provider_step(
     .into()
 }
 
-/// Render step 3: OAuth device code input dialog.
+/// Render step 3: OAuth device code.
 fn render_oauth_device_code_step(
     screen_width: u16,
     _screen_height: u16,
@@ -776,39 +764,22 @@ fn render_oauth_device_code_step(
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: provider_name,
+            title: format!("{provider_name} · OAuth"),
             has_focus: has_focus,
-            footer_hint: Some(oauth_device_code_footer_hint()),
+            footer_hint: Some(oauth_device_code_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
-                    Text(
-                        content: oauth_url,
-                        color: thm.text_primary,
-                        weight: Weight::Bold,
-                        wrap: TextWrap::NoWrap,
-                    )
+                    Text(content: "Open the URL and enter the code:".to_string(), color: thm.text_secondary, wrap: TextWrap::Wrap)
                 }
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(
-                        content: "Cmd+click to open".to_string(),
-                        color: thm.text_secondary,
-                        wrap: TextWrap::NoWrap,
-                    )
+                    Text(content: oauth_url, color: thm.text_primary, weight: Weight::Bold, wrap: TextWrap::Wrap)
                 }
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(
-                        content: format!("Enter code: {}", oauth_code),
-                        color: thm.text_secondary,
-                        wrap: TextWrap::NoWrap,
-                    )
+                    Text(content: format!("Code: {oauth_code}"), color: thm.accent_soft, weight: Weight::Bold, wrap: TextWrap::NoWrap)
                 }
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(
-                        content: "Waiting for authentication...".to_string(),
-                        color: thm.text_muted,
-                        wrap: TextWrap::NoWrap,
-                    )
+                    Text(content: "Waiting for authentication…".to_string(), color: thm.text_muted, wrap: TextWrap::NoWrap)
                 }
             }
         }
@@ -816,18 +787,17 @@ fn render_oauth_device_code_step(
     .into()
 }
 
-/// Render step 4: dedicated API key input dialog.
+/// Render step 4: API key input.
 fn render_api_key_step(
     screen_width: u16,
     _screen_height: u16,
     has_focus: bool,
     api_key_input: State<String>,
+    provider_name: String,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
-    // We don't know the provider name here without the pending state, but the
-    // footer hint is set dynamically when rendering. We use a generic label.
     let w = body_width;
     let hf = has_focus;
     let thm = theme;
@@ -835,14 +805,14 @@ fn render_api_key_step(
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: "Enter API Key".to_string(),
+            title: format!("API key · {provider_name}"),
             has_focus: has_focus,
-            footer_hint: None::<String>,
+            footer_hint: Some(api_key_footer(&provider_name)),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
                     Text(
-                        content: "Paste or type your API key below:".to_string(),
+                        content: format!("Paste your API key for {provider_name}:"),
                         color: thm.text_secondary,
                         wrap: TextWrap::Wrap,
                     )
@@ -850,6 +820,7 @@ fn render_api_key_step(
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
+                        placeholder: format!("sk-… ({provider_name} API key)"),
                         value: Some(api_key_input),
                         has_focus: hf,
                         theme: Some(thm),

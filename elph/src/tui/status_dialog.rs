@@ -571,14 +571,14 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         element! {
             InlineDialogShell(
                 screen_width: props.screen_width,
-                title: format!("API Key \u{2014} {}", provider_name),
+                title: format!("API key · {provider_name}"),
                 has_focus: props.approval_has_focus,
-                footer_hint: Some(format!("Enter confirm \u{00B7} Esc cancel \u{00B7} Provider: {}", provider_name)),
+                footer_hint: Some(format!("Enter confirm · Esc cancel · Provider: {provider_name}")),
             ) {
                 View(width: body_width, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                     View(width: body_width, flex_shrink: 0f32) {
                         Text(
-                            content: format!("Enter your API key for {}:", provider_name),
+                            content: format!("Paste your API key for {provider_name}:"),
                             color: theme.text_secondary,
                             wrap: TextWrap::Wrap,
                         )
@@ -586,7 +586,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                     View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
                         DialogUserInputContent(
                             width: body_width,
-                            placeholder: format!("sk-... ({} API key)", provider_name),
+                            placeholder: format!("sk-… ({provider_name} API key)"),
                             value: Some(api_key_input),
                             has_focus: props.approval_has_focus,
                             theme: Some(theme),
