@@ -3495,6 +3495,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                 // ── Provider disconnect dialog ─────────────────────────
                 if provider_disconnect_open {
+                    let opened_at = pending_provider_disconnect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.opened_at)
+                        .unwrap_or(Instant::now());
+                    // Guard: suppress Enter that leaks from the slash-submit keystroke
+                    let enter_ok = kind == KeyEventKind::Press
+                        && opened_at.elapsed() > Duration::from_millis(200);
+
                     let has_any = pending_provider_disconnect
                         .read()
                         .as_ref()
@@ -3532,7 +3541,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
 
                     // Enter: delete selected credential
-                    if modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                    if modifiers.is_empty() && code == KeyCode::Enter && enter_ok {
                         let (provider_id, index) = {
                             let pending = pending_provider_disconnect.read();
                             let pending = pending.as_ref();
