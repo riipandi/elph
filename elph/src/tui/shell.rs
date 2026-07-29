@@ -145,10 +145,7 @@ struct OAuthLoginCallbacksImpl {
 }
 
 impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
-    fn prompt(
-        &self,
-        _prompt: elph_ai::auth::AuthPrompt,
-    ) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
+    fn prompt(&self, _prompt: elph_ai::auth::AuthPrompt) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
         Box::pin(async { Err(anyhow::anyhow!("Unexpected prompt during OAuth flow")) })
     }
 
@@ -4689,15 +4686,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .unwrap_or(ProviderConnectFocus::AuthMethodList);
             let pending = pending_provider_connect.read();
             let pending_ref = pending.as_ref();
-            let oauth_url = pending_ref
-                .map(|p| p.oauth_url.clone())
-                .unwrap_or_default();
-            let oauth_code = pending_ref
-                .map(|p| p.oauth_code.clone())
-                .unwrap_or_default();
-            let oauth_provider_name = pending_ref
-                .map(|p| p.oauth_provider_name.clone())
-                .unwrap_or_default();
+            let oauth_url = pending_ref.map(|p| p.oauth_url.clone()).unwrap_or_default();
+            let oauth_code = pending_ref.map(|p| p.oauth_code.clone()).unwrap_or_default();
+            let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
             drop(pending);
             build_provider_connect_dialog_kind(
                 pending_provider_connect
@@ -4713,12 +4704,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 oauth_provider_name,
             )
         })
-        .or_else(|| {
-            build_provider_api_key_dialog_kind(
-                pending_provider_api_key.read().as_ref(),
-                approval_has_focus,
-            )
-        })
+        .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
         .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),

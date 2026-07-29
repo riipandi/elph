@@ -335,6 +335,8 @@ pub use tools::mcp::Aes256Key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::AuthStoreFile;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::AuthStoreGuard;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
@@ -462,8 +464,6 @@ pub use tools::mcp::mcp_result_to_agent;
 pub use tools::mcp::mcp_result_to_agent_with_limit;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_tool_requires_approval;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::AuthStoreGuard;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::parse_and_validate_mcp_config;
 #[cfg(feature = "mcp")]

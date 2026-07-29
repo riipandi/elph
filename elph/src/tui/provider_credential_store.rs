@@ -20,17 +20,11 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use elph_agent::{
-    Aes256Key, decrypt_string_async, default_auth_key_path, encrypt_string_async, is_encrypted_value,
-};
-use elph_agent::{lock_auth_store, AuthStoreFile};
+use elph_agent::{Aes256Key, decrypt_string_async, default_auth_key_path, encrypt_string_async, is_encrypted_value};
+use elph_agent::{AuthStoreFile, lock_auth_store};
 
 /// Save an encrypted API key for a provider to `auth.json`.
-pub async fn save_provider_credential(
-    auth_store_path: &Path,
-    provider_id: &str,
-    api_key: &str,
-) -> anyhow::Result<()> {
+pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str, api_key: &str) -> anyhow::Result<()> {
     let key_path = default_auth_key_path(auth_store_path);
     let key = Aes256Key::load_or_create(key_path)
         .await
@@ -62,10 +56,7 @@ pub async fn save_provider_credential(
 }
 
 /// Load a decrypted API key for a specific provider from `auth.json`.
-pub async fn load_provider_credential(
-    auth_store_path: &Path,
-    provider_id: &str,
-) -> anyhow::Result<Option<String>> {
+pub async fn load_provider_credential(auth_store_path: &Path, provider_id: &str) -> anyhow::Result<Option<String>> {
     let file = AuthStoreFile::load_from_path(auth_store_path)
         .await
         .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
@@ -93,9 +84,7 @@ pub async fn load_provider_credential(
 
 /// Load all stored provider credentials from `auth.json`, returning
 /// `(provider_id, decrypted_api_key)` pairs.
-pub async fn load_all_provider_credentials(
-    auth_store_path: &Path,
-) -> anyhow::Result<Vec<(String, String)>> {
+pub async fn load_all_provider_credentials(auth_store_path: &Path) -> anyhow::Result<Vec<(String, String)>> {
     let file = AuthStoreFile::load_from_path(auth_store_path)
         .await
         .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
@@ -131,10 +120,7 @@ pub async fn load_all_provider_credentials(
 }
 
 /// Remove a stored provider credential from `auth.json`.
-pub async fn remove_provider_credential(
-    auth_store_path: &Path,
-    provider_id: &str,
-) -> anyhow::Result<bool> {
+pub async fn remove_provider_credential(auth_store_path: &Path, provider_id: &str) -> anyhow::Result<bool> {
     let _guard = lock_auth_store(auth_store_path)
         .await
         .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;

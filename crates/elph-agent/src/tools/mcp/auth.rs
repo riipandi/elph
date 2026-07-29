@@ -160,15 +160,12 @@ impl AuthStoreFile {
 
     /// Set (encrypted) provider credential. Caller must hold the lock.
     pub fn set_provider_credential(&mut self, provider_id: &str, encrypted: String) {
-        self.providers
-            .insert(provider_id.to_string(), Value::String(encrypted));
+        self.providers.insert(provider_id.to_string(), Value::String(encrypted));
     }
 
     /// Get (encrypted) provider credential.
     pub fn get_provider_credential(&self, provider_id: &str) -> Option<&str> {
-        self.providers
-            .get(provider_id)
-            .and_then(|v| v.as_str())
+        self.providers.get(provider_id).and_then(|v| v.as_str())
     }
 
     /// Remove a provider credential. Returns `true` if it existed.

@@ -580,9 +580,8 @@ pub fn provider_select_list_viewport_height(screen_width: u16, screen_height: u1
     let theme = UiTheme::default();
     let chrome = DialogChrome::from_theme(theme, screen_width);
     let max_body = dialog_max_content_height(screen_height, &chrome, 12);
-    (list_viewport_cap(screen_height)
-        .min(max_body.saturating_sub(PROVIDER_SELECT_LIST_FIXED_ROWS) as usize) as u16)
-    .max(4)
+    (list_viewport_cap(screen_height).min(max_body.saturating_sub(PROVIDER_SELECT_LIST_FIXED_ROWS) as usize) as u16)
+        .max(4)
 }
 
 // ── Rendering ────────────────────────────────────────────────────────
@@ -617,7 +616,7 @@ fn render_select_auth_method_step(
     let auth_methods = get_auth_methods();
     let options: Vec<SelectOption> = auth_methods
         .iter()
-        .map(|m| SelectOption::new(&m.name, ""))
+        .map(|m| SelectOption::new(&m.name, &m.description))
         .collect();
 
     let w = body_width;
@@ -629,19 +628,19 @@ fn render_select_auth_method_step(
             has_focus: has_focus,
             footer_hint: Some(auth_method_footer()),
         ) {
-            View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
-                View(width: w, flex_shrink: 0f32) {
-                    SelectList(
-                        width: w,
-                        height: 0u16,
-                        options: options,
-                        selected_index: Some(selected),
-                        has_focus: has_focus,
-                        show_description: false,
-                        compact: true,
-                        theme: Some(theme),
-                    )
-                }
+            View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
+                SelectList(
+                    width: w,
+                    height: 0u16,
+                    options: options,
+                    selected_index: Some(selected),
+                    has_focus: has_focus,
+                    show_description: true,
+                    inline_description: true,
+                    compact: true,
+                    hide_more_overflow: true,
+                    theme: Some(theme),
+                )
             }
         }
     }
@@ -695,6 +694,27 @@ fn render_select_provider_step(
 
     let total_count = providers.len();
     let visible_count = filtered.len();
+    let options: Vec<SelectOption> = filtered
+        .iter()
+        .map(|p| {
+            let description = match &p.config_status {
+                ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
+                ProviderConfigStatus::ApiKeyConfigured => "API key configured".to_string(),
+                ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
+                ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
+            };
+            let description_color = match &p.config_status {
+                ProviderConfigStatus::Unconfigured => Some(theme.text_hint),
+                _ => Some(theme.text_muted),
+            };
+            SelectOption {
+                name: p.name.clone(),
+                description,
+                description_color,
+            }
+        })
+        .collect();
+
     let count_label = if visible_count < total_count {
         format!("{} of {} providers", visible_count, total_count)
     } else {
@@ -707,21 +727,6 @@ fn render_select_provider_step(
 
     let w = body_width;
     let thm = theme;
-
-    // Map providers to ModelRow format so we can use the same ModelOptionList
-    // as the model selector, for identical rendering.
-    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered
-        .iter()
-        .map(|p| crate::tui::model_selector::ModelRow {
-            value: p.id.clone(),
-            name: p.name.clone(),
-            provider_id: String::new(),
-            model_id: p.name.clone(),
-            context_k: 0,
-            reasoning: false,
-            images: false,
-        })
-        .collect();
 
     element! {
         InlineDialogShell(
@@ -756,13 +761,16 @@ fn render_select_provider_step(
                 }
                 // ── Provider list ──
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
-                    crate::tui::model_option_list::ModelOptionList(
+                    SelectList(
                         width: w,
                         height: list_height,
-                        models: model_rows,
-                        show_provider_hint: false,
+                        options: options,
                         selected_index: Some(selected.clone()),
                         has_focus: list_focused,
+                        show_description: true,
+                        inline_description: true,
+                        compact: true,
+                        hide_more_overflow: true,
                         theme: Some(thm),
                     )
                 }
