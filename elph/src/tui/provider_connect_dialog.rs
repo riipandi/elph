@@ -822,6 +822,9 @@ fn render_oauth_device_code_step(
     let w = body_width;
     let thm = theme;
 
+    // Determine if this is a prompt requiring text input (vs device code display)
+    let is_prompt = oauth_url.contains("GitHub Enterprise") || oauth_url.contains("enter value manually");
+
     element! {
         InlineDialogShell(
             screen_width: screen_width,
@@ -831,16 +834,31 @@ fn render_oauth_device_code_step(
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
-                    Text(content: "Open the URL and enter the code:".to_string(), color: thm.text_secondary, wrap: TextWrap::Wrap)
+                    Text(content: if is_prompt { "Enter the requested information:" } else { "Open the URL and enter the code:" }.to_string(), color: thm.text_secondary, wrap: TextWrap::Wrap)
                 }
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     Text(content: oauth_url, color: thm.text_primary, weight: Weight::Bold, wrap: TextWrap::Wrap)
                 }
+                // Show device code when present
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(content: format!("Code: {oauth_code}"), color: thm.accent_soft, weight: Weight::Bold, wrap: TextWrap::NoWrap)
+                    Text(
+                        content: if !is_prompt && !oauth_code.is_empty() { format!("Code: {oauth_code}") } else { String::new() },
+                        color: thm.accent_soft,
+                        weight: Weight::Bold,
+                        wrap: TextWrap::NoWrap,
+                    )
                 }
+                // Text input prompt
+                View(width: w, padding_top: 2, flex_shrink: 0f32) {
+                    Text(
+                        content: if oauth_code.is_empty() { "> Enter text and press Enter to submit…".to_string() } else { format!("> {oauth_code}") },
+                        color: if has_focus { thm.text_primary } else { thm.text_muted },
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                // Status message
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(content: "Waiting for authentication…".to_string(), color: thm.text_muted, wrap: TextWrap::NoWrap)
+                    Text(content: if !is_prompt { "Waiting for authentication…" } else { "Type your response and press Enter" }.to_string(), color: thm.text_muted, wrap: TextWrap::NoWrap)
                 }
             }
         }

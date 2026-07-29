@@ -15,7 +15,8 @@ use crate::agent::harness::utils::shell_output::{ShellCaptureOptions, execute_sh
 use crate::agent::harness::utils::truncate::{DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES};
 use crate::runtime::local_env::LocalExecutionEnv;
 use crate::tools::common::{check_aborted, resolve_path};
-use crate::types::{AgentTool, AgentToolResult, ToolContext, ToolExecuteFn, ToolResultContent, ToolUpdateCallback};
+use crate::tools::types::ToolContext;
+use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn, ToolResultContent, ToolUpdateCallback};
 use elph_ai::TextContent;
 
 /// Create a shell_exec tool that uses ToolContext for execution.

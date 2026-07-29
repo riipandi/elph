@@ -52,6 +52,14 @@ pub struct Cli {
     #[arg(short = 'V', long = "version", help = "Print version information")]
     pub version: bool,
 
+    /// Continue last session for the current working directory
+    #[arg(
+        short = 'c',
+        long = "continue",
+        help = "Continue last session for the current working directory"
+    )]
+    pub continue_session: bool,
+
     /// Resume a specific session by ID (interactive TUI)
     #[arg(long = "resume", value_name = "SESSION_ID")]
     pub resume: Option<String>,

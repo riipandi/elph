@@ -48,6 +48,7 @@ use std::sync::Arc;
 use elph_ai::Tool;
 use serde_json::Value;
 
+use crate::runtime::local_env::LocalExecutionEnv;
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn};
 
 #[cfg(feature = "tools-collaboration")]

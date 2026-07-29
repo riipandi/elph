@@ -88,7 +88,7 @@ fn followup_task_tool(control: Arc<AgentControl>) -> AgentTool {
 
 fn wait_agent_tool(control: Arc<AgentControl>) -> AgentTool {
     let execute_fn: ToolExecuteFn =
-        Arc::new(move |_id, args, signal, _on_update| wait_agent_exec(control.clone(), args, signal));
+        Arc::new(move |_id, args, signal, _on_update, _context| wait_agent_exec(control.clone(), args, signal));
     AgentTool {
         tool: elph_ai::Tool {
             name: "wait_agent".into(),

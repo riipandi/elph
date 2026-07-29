@@ -136,9 +136,31 @@ use elph_tui::copy_to_clipboard;
 // ── OAuth dialog events ──────────────────────────────────────────────
 
 /// Events sent from the OAuth flow to the provider connect dialog.
+#[derive(Debug, Clone)]
 enum OAuthDialogEvent {
-    DeviceCode { url: String, code: String },
+    DeviceCode {
+        url: String,
+        code: String,
+    },
+    /// Prompt the user for text input (e.g. GitHub Copilot enterprise URL).
+    PromptText {
+        id: u64,
+        message: String,
+        placeholder: Option<String>,
+    },
+    /// Prompt the user to paste a manual authorization code / redirect URL.
+    PromptManualCode {
+        id: u64,
+        message: String,
+        placeholder: Option<String>,
+    },
 }
+
+/// Global store for OAuth prompt response channels.
+/// Keyed by prompt_id, value is the oneshot sender to deliver the response.
+static OAUTH_PROMPT_STORE: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashMap<u64, tokio::sync::oneshot::Sender<String>>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
 
 /// AuthLoginCallbacks implementation that forwards events via an mpsc channel.
 struct OAuthLoginCallbacksImpl {
@@ -146,8 +168,58 @@ struct OAuthLoginCallbacksImpl {
 }
 
 impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
-    fn prompt(&self, _prompt: elph_ai::auth::AuthPrompt) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
-        Box::pin(async { Err(anyhow::anyhow!("Unexpected prompt during OAuth flow")) })
+    fn prompt(&self, prompt: elph_ai::auth::AuthPrompt) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
+        let tx = self.tx.clone();
+        let prompt_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+
+        // Send the prompt event through the channel so the UI can show it.
+        match &prompt {
+            elph_ai::auth::AuthPrompt::Text { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptText {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::ManualCode { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptManualCode {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::Secret { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptText {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::Select { message, .. } => {
+                let _ = tx.send(OAuthDialogEvent::PromptText {
+                    id: prompt_id,
+                    message: format!("{message} (select not supported, enter value manually)"),
+                    placeholder: None,
+                });
+            }
+        }
+
+        Box::pin(async move {
+            let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+            // Use std::sync::Mutex::lock() — held briefly, dropped before await.
+            {
+                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                store.insert(prompt_id, response_tx);
+            }
+
+            match response_rx.await {
+                Ok(response) => Ok(response),
+                Err(_) => Err(anyhow::anyhow!("OAuth prompt cancelled")),
+            }
+        })
     }
 
     fn notify(&self, event: elph_ai::auth::AuthEvent) {
@@ -2999,6 +3071,29 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
+                    // ── Enter in OAuth device code step: submit prompt response ──
+                    // Must be checked BEFORE the main Enter handler to avoid conflicts.
+                    if is_oauth_device_code && modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                        let response = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.oauth_code.clone())
+                            .unwrap_or_default();
+                        if !response.is_empty() {
+                            log::info!("OAuth prompt response submitted: {}", response);
+                            let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                            if let Some(prompt_id) = store.keys().next().cloned() {
+                                if let Some(tx) = store.remove(&prompt_id) {
+                                    let _ = tx.send(response);
+                                }
+                            }
+                            if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                pending.oauth_code.clear();
+                            }
+                        }
+                        return;
+                    }
+
                     // ── Enter (confirm) ──────────────────────────────────
                     if modifiers.is_empty() && code == KeyCode::Enter {
                         if kind != KeyEventKind::Press {
@@ -3078,6 +3173,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 if provider.supports_oauth && provider_supports_oauth(&provider.id) && is_oauth_method {
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
+                                    let provider_name = format_provider_name(&provider_id);
                                     let auth_store_path = paths.auth_store_path();
 
                                     log::info!("Starting OAuth flow for provider: {}", provider_id);
@@ -3172,6 +3268,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                     pending.oauth_url = url;
                                                     pending.oauth_code = code;
                                                 }
+                                                OAuthDialogEvent::PromptText { id, message, placeholder } => {
+                                                    pending.oauth_url = message.clone();
+                                                    pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                }
+                                                OAuthDialogEvent::PromptManualCode { id, message, placeholder } => {
+                                                    pending.oauth_url = message.clone();
+                                                    pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                }
                                             }
                                         }
                                     }
@@ -3179,6 +3285,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     // Read incoming OAuth events in a background task
                                     // to keep the dialog updated
                                     let mut pending_ref = pending_provider_connect;
+                                    let provider_name_for_task = provider_name.clone();
                                     tokio::spawn(async move {
                                         while let Some(event) = oauth_event_rx.recv().await {
                                             if let Some(pending) = pending_ref.write().as_mut() {
@@ -3186,6 +3293,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                     OAuthDialogEvent::DeviceCode { url, code } => {
                                                         pending.oauth_url = url;
                                                         pending.oauth_code = code;
+                                                    }
+                                                    OAuthDialogEvent::PromptText { id, message, placeholder } => {
+                                                        pending.oauth_url = message.clone();
+                                                        pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                    }
+                                                    OAuthDialogEvent::PromptManualCode { id, message, placeholder } => {
+                                                        pending.oauth_url = message.clone();
+                                                        pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
                                                     }
                                                 }
                                             }
