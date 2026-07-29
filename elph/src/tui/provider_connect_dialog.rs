@@ -9,8 +9,7 @@
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
-use elph_tui::components::{DialogChrome, DialogUserInputContent, SelectList, UiTheme, dialog_max_content_height};
-use elph_tui::types::SelectOption;
+use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
 
 use crate::tui::slash_palette::list_viewport_cap;
@@ -572,10 +571,10 @@ pub fn apply_provider_filter_seed(
 
 // ── Viewport height (mirrors model_selector_list_viewport_height) ────
 
-/// Fixed rows above the provider SelectList (count label, search bar, paddings).
+/// Fixed rows above the provider ModelOptionList (count label, search bar, paddings).
 pub const PROVIDER_SELECT_LIST_FIXED_ROWS: u16 = 4;
 
-/// Capped viewport height for the provider SelectList, computed from terminal size.
+/// Capped viewport height for the provider ModelOptionList, computed from terminal size.
 pub fn provider_select_list_viewport_height(screen_width: u16, screen_height: u16) -> u16 {
     let theme = UiTheme::default();
     let chrome = DialogChrome::from_theme(theme, screen_width);
@@ -614,10 +613,21 @@ fn render_select_auth_method_step(
     let body_width = inline_body_width(screen_width);
 
     let auth_methods = get_auth_methods();
-    let options: Vec<SelectOption> = auth_methods
+
+    // Map to ModelRow + custom_hints for consistent rendering with provider step.
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = auth_methods
         .iter()
-        .map(|m| SelectOption::new(&m.name, &m.description))
+        .map(|m| crate::tui::model_selector::ModelRow {
+            value: m.name.clone(),
+            name: m.name.clone(),
+            provider_id: String::new(),
+            model_id: m.name.clone(),
+            context_k: 0,
+            reasoning: false,
+            images: false,
+        })
         .collect();
+    let desc_hints: Vec<String> = auth_methods.iter().map(|m| m.description.clone()).collect();
 
     let w = body_width;
 
@@ -629,15 +639,14 @@ fn render_select_auth_method_step(
             footer_hint: Some(auth_method_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
-                SelectList(
+                crate::tui::model_option_list::ModelOptionList(
                     width: w,
                     height: 0u16,
-                    options: options,
+                    models: model_rows,
+                    show_provider_hint: false,
+                    custom_hints: desc_hints,
                     selected_index: Some(selected),
                     has_focus: has_focus,
-                    show_description: true,
-                    inline_description: true,
-                    compact: true,
                     theme: Some(theme),
                 )
             }
@@ -654,6 +663,7 @@ pub fn render_provider_connect_dialog(
     selected: State<usize>,
     filter: State<String>,
     api_key_input: State<String>,
+    selected_auth_method: usize,
     oauth_url: String,
     oauth_code: String,
     provider_name: String,
@@ -665,7 +675,15 @@ pub fn render_provider_connect_dialog(
             render_select_auth_method_step(screen_width, screen_height, has_focus, selected, input_focus)
         }
         ProviderConnectStep::SelectProvider => {
-            render_select_provider_step(screen_width, screen_height, has_focus, selected, filter, input_focus)
+            render_select_provider_step(
+                screen_width,
+                screen_height,
+                has_focus,
+                selected,
+                filter,
+                input_focus,
+                selected_auth_method,
+            )
         }
         ProviderConnectStep::OAuthDeviceCode => {
             render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
@@ -684,11 +702,18 @@ fn render_select_provider_step(
     selected: State<usize>,
     filter: State<String>,
     input_focus: ProviderConnectFocus,
+    selected_auth_method: usize,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
+    let is_oauth_method = selected_auth_method == 0;
     let providers = get_provider_options();
+    let providers: Vec<ProviderOption> = if is_oauth_method {
+        providers.into_iter().filter(|p| p.supports_oauth).collect()
+    } else {
+        providers
+    };
     let filtered = filtered_providers(&providers, &filter.read());
 
     let total_count = providers.len();

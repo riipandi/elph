@@ -3240,22 +3240,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         } else {
                             let providers = get_provider_options();
 
-                            // List navigation (↑↓ or j/k) — always works, sets focus to list
-                            if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                            // Arrow keys move focus to the list (selection is handled by ModelOptionList)
+                            if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
                                 let pending_ref = &mut *pending_provider_connect.write();
                                 if let Some(pending) = pending_ref {
-                                    let count = crate::tui::provider_connect_dialog::count_filtered(
-                                        &providers,
-                                        &pending.filter,
-                                    );
-                                    if count > 0 {
-                                        let new_idx = ((pending.selected_provider as isize + delta)
-                                            .rem_euclid(count as isize))
-                                            as usize;
-                                        pending.selected_provider = new_idx;
-                                        provider_connect_selected.set(new_idx);
-                                    }
-                                    // Arrow navigation moves focus to the list
                                     focus_provider_list(&mut provider_connect_input_focus, pending);
                                 }
                                 return;
@@ -4689,6 +4677,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let oauth_url = pending_ref.map(|p| p.oauth_url.clone()).unwrap_or_default();
             let oauth_code = pending_ref.map(|p| p.oauth_code.clone()).unwrap_or_default();
             let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
+            let selected_auth_method = pending_ref.map(|p| p.selected_auth_method).unwrap_or(0);
             drop(pending);
             build_provider_connect_dialog_kind(
                 pending_provider_connect
@@ -4699,6 +4688,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 selected,
                 approval_has_focus,
                 input_focus,
+                selected_auth_method,
                 oauth_url,
                 oauth_code,
                 oauth_provider_name,
