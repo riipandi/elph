@@ -3600,6 +3600,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                             });
 
+                            // Push transcript notification immediately
+                            let provider_name = format_provider_name(&pid);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(
+                                    format!("Signed out from {provider_name}"),
+                                    TranscriptStyle::Meta,
+                                ),
+                            );
+
                             // Remove from list and adjust selection
                             if let Some(pending) = pending_provider_disconnect.write().as_mut() {
                                 pending.provider_ids.remove(index);

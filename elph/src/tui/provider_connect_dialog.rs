@@ -1129,6 +1129,8 @@ pub struct PendingProviderDisconnectDialog {
     pub stashed_prompt_draft: Option<String>,
     pub opened_at: Instant,
     pub done: bool,
+    /// Notification text to push to transcript when the dialog closes.
+    pub notification_text: Option<String>,
 }
 
 /// Arguments for [`open_provider_disconnect_dialog`].
@@ -1165,6 +1167,7 @@ pub fn open_provider_disconnect_dialog(args: OpenProviderDisconnectDialogArgs<'_
         stashed_prompt_draft: stashed,
         opened_at: Instant::now(),
         done: false,
+        notification_text: None,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
