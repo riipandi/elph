@@ -9,7 +9,7 @@
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
-use elph_tui::components::{DialogChrome, DialogUserInputContent, SelectList, UiTheme, dialog_max_content_height};
+use elph_tui::components::{DialogUserInputContent, SelectList, UiTheme};
 use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
@@ -325,20 +325,26 @@ fn clamp_selected(selected: usize, count: usize) -> usize {
 // ── Provider dialog viewport height ──────────────────────────────────
 
 /// Rows reserved in the provider selector body above the scrollable provider list.
-const PROVIDER_CONNECT_LIST_FIXED_ROWS: u16 = 3; // count label + search bar + gap
+const PROVIDER_CONNECT_LIST_FIXED_ROWS: u16 = 1; // search bar only (count label merged into placeholder, no gap)
 
 /// Max visible items in the provider picker (larger than model selector since it's an inline dialog).
 const PROVIDER_CONNECT_MAX_VISIBLE_ROWS: u16 = 12;
 
-/// Viewport height for the provider list — computed for the inline dialog shell
-/// which has a smaller effective vertical margin than the centered model selector.
-pub fn provider_connect_list_viewport_height(screen_width: u16, screen_height: u16) -> u16 {
-    let theme = UiTheme::default();
-    let chrome = DialogChrome::from_theme(theme, screen_width);
-    let max_body = dialog_max_content_height(screen_height, &chrome, 6);
-    (PROVIDER_CONNECT_MAX_VISIBLE_ROWS as usize)
-        .min(max_body.saturating_sub(PROVIDER_CONNECT_LIST_FIXED_ROWS) as usize)
-        .max(4) as u16
+/// Viewport height for the provider list — computed directly from screen height
+/// for the InlineDialogShell (which has different chrome than the centered DialogShell).
+pub fn provider_connect_list_viewport_height(_screen_width: u16, screen_height: u16) -> u16 {
+    // Reserve rows for the prompt area below the dialog (~1/4 of screen, min 6)
+    let prompt_rows = (screen_height / 4).clamp(6, 14);
+    // Fixed chrome outside the list body:
+    //   InlineDialogShell: title(1) + divider(1) + footer gap(1) + footer hint(1) + border(2) = 6
+    //   Body fixed: search bar(1) = 1
+    let fixed_rows: u16 = 7;
+
+    screen_height
+        .saturating_sub(prompt_rows)
+        .saturating_sub(fixed_rows)
+        .max(4)
+        .min(PROVIDER_CONNECT_MAX_VISIBLE_ROWS)
 }
 
 // ── Dialog lifecycle functions ───────────────────────────────────────
@@ -720,10 +726,10 @@ fn render_select_provider_step(
     let list_height = viewport_cap as u16;
     let total_count = providers.len();
     let visible_count = filtered.len();
-    let count_label = if visible_count < total_count {
-        format!("{} of {} providers", visible_count, total_count)
+    let placeholder = if visible_count < total_count {
+        format!("Filter {} of {} providers…", visible_count, total_count)
     } else {
-        format!("{} providers", total_count)
+        format!("Filter {} providers…", total_count)
     };
 
     let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
@@ -740,11 +746,7 @@ fn render_select_provider_step(
             footer_hint: Some(provider_select_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
-                // ── Count label ──
-                View(width: w, flex_shrink: 0f32) {
-                    Text(content: count_label, color: thm.text_muted, wrap: TextWrap::NoWrap)
-                }
-                // ── Search bar (tight, no gap) ──
+                // ── Search bar with count label integrated into placeholder ──
                 View(width: w, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
@@ -753,7 +755,7 @@ fn render_select_provider_step(
                         theme: Some(thm),
                         compact: true,
                         show_prompt: false,
-                        placeholder: "Filter providers…".to_string(),
+                        placeholder: placeholder,
                         show_placeholder_when_focused: true,
                         show_footer_hint: false,
                         dialog_chrome: true,
@@ -761,8 +763,8 @@ fn render_select_provider_step(
                         on_cancel: HandlerMut::default(),
                     )
                 }
-                // ── Provider list (with small gap from search) ──
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                // ── Provider list ──
+                View(width: w, flex_shrink: 0f32) {
                     SelectList(
                         width: w,
                         height: list_height,
