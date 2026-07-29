@@ -25,6 +25,8 @@ pub struct SelectListProps {
     pub theme: Option<UiTheme>,
     /// Tighter row inset and inter-row gap for inline shell dialogs.
     pub compact: bool,
+    /// Render description on the same line as the name (instead of below it).
+    pub inline_description: bool,
     pub on_change: HandlerMut<'static, usize>,
 }
 
@@ -335,7 +337,69 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
             } else {
                 list_row_desc_style(theme, selected_row)
             };
+            let desc_color = opt.description_color.unwrap_or(desc_color);
             let show_desc = show_description && !opt.description.is_empty();
+
+            let inner_content: AnyElement<'static> = if props.inline_description && show_desc {
+                // Inline: name and hint on the same row
+                let desc_w = (content_width / 3).max(12).min(20);
+                let name_w = content_width.saturating_sub(desc_w).saturating_sub(1).max(4);
+                element! {
+                    View(
+                        width: content_width,
+                        flex_direction: FlexDirection::Row,
+                        gap: 1,
+                        flex_shrink: 0f32,
+                        align_items: AlignItems::Center,
+                    ) {
+                        View(width: name_w, flex_shrink: 0f32) {
+                            Text(
+                                content: opt.name.clone(),
+                                color: name_color,
+                                weight: name_weight,
+                                wrap: TextWrap::NoWrap,
+                            )
+                        }
+                        View(width: desc_w, flex_shrink: 0f32) {
+                            Text(
+                                content: opt.description.clone(),
+                                color: desc_color,
+                                wrap: TextWrap::NoWrap,
+                            )
+                        }
+                    }
+                }
+                .into()
+            } else {
+                // Classic: name above, description below
+                element! {
+                    View(
+                        width: content_width,
+                        flex_direction: FlexDirection::Column,
+                        gap: 0,
+                        flex_shrink: 0f32,
+                    ) {
+                        Text(
+                            content: opt.name.clone(),
+                            color: name_color,
+                            weight: name_weight,
+                            wrap: TextWrap::NoWrap,
+                        )
+                        #(if show_desc {
+                            Some(element! {
+                                Text(
+                                    content: opt.description.clone(),
+                                    color: desc_color,
+                                    wrap: TextWrap::Wrap,
+                                )
+                            })
+                        } else {
+                            None
+                        })
+                    }
+                }
+                .into()
+            };
 
             rows.push(
                 element! {
@@ -359,30 +423,7 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
                                 wrap: TextWrap::NoWrap,
                             )
                         }
-                        View(
-                            width: content_width,
-                            flex_direction: FlexDirection::Column,
-                            gap: 0,
-                            flex_shrink: 0f32,
-                        ) {
-                            Text(
-                                content: opt.name.clone(),
-                                color: name_color,
-                                weight: name_weight,
-                                wrap: TextWrap::NoWrap,
-                            )
-                            #(if show_desc {
-                                Some(element! {
-                                    Text(
-                                        content: opt.description.clone(),
-                                        color: desc_color,
-                                        wrap: TextWrap::Wrap,
-                                    )
-                                })
-                            } else {
-                                None
-                            })
-                        }
+                        #(inner_content)
                     }
                 }
                 .into(),

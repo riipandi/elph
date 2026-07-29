@@ -2962,7 +2962,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     };
                     let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
                     let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
-                    let _is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
+                    let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
                     let _is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
 
                     // ── Esc ──────────────────────────────────────────────
@@ -3100,7 +3100,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                         if let Ok(json) = serde_json::to_string(&credential) {
                                                             let _ = crate::tui::provider_credential_store::save_provider_credential(
                                                                 &auth_store_path_for_task,
-                                                                &format!("oauth:{}", provider_id_for_task),
+                                                                &provider_id_for_task,
                                                                 &json,
                                                             ).await;
                                                         }
@@ -3178,6 +3178,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     });
                                 }
                             }
+                        }
+                        return;
+                    }
+
+                    // ── Ctrl+O: open OAuth URL in browser ──────────────
+                    if is_oauth_device_code
+                        && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META)
+                        && (modifiers == KeyModifiers::CONTROL && matches!(code, KeyCode::Char('o') | KeyCode::Char('O')))
+                    {
+                        let url = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.oauth_url.clone())
+                            .unwrap_or_default();
+                        if !url.is_empty() {
+                            std::thread::spawn(move || {
+                                let _ = open_url(&url);
+                            });
                         }
                         return;
                     }
@@ -4657,6 +4675,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .as_ref()
                 .map(|p| p.input_focus)
                 .unwrap_or(ProviderConnectFocus::AuthMethodList);
+            let pending = pending_provider_connect.read();
+            let pending_ref = pending.as_ref();
+            let oauth_url = pending_ref
+                .map(|p| p.oauth_url.clone())
+                .unwrap_or_default();
+            let oauth_code = pending_ref
+                .map(|p| p.oauth_code.clone())
+                .unwrap_or_default();
+            let oauth_provider_name = pending_ref
+                .map(|p| p.oauth_provider_name.clone())
+                .unwrap_or_default();
+            drop(pending);
             build_provider_connect_dialog_kind(
                 pending_provider_connect
                     .read()
@@ -4666,6 +4696,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 selected,
                 approval_has_focus,
                 input_focus,
+                oauth_url,
+                oauth_code,
+                oauth_provider_name,
             )
         })
         .or_else(|| {
@@ -4984,6 +5017,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 provider_connect_selected: Some(provider_connect_selected),
                 provider_connect_filter: Some(provider_connect_filter),
                 provider_connect_input_focus: Some(provider_connect_input_focus),
+                provider_connect_oauth_url: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_url.clone())
+                        .unwrap_or_default(),
+                ),
+                provider_connect_oauth_code: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_code.clone())
+                        .unwrap_or_default(),
+                ),
+                provider_connect_oauth_provider_name: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_provider_name.clone())
+                        .unwrap_or_default(),
+                ),
                 queue_count: queue_count,
                 on_queue_action: on_queue_action_click,
             )

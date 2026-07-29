@@ -48,6 +48,7 @@ pub enum ProviderConfigStatus {
     Unconfigured,
     #[allow(dead_code)]
     ApiKeyConfigured,
+    OAuthConfigured,
     EnvVarConfigured(String), // Environment variable name
 }
 
@@ -148,17 +149,41 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
         "cerebras" => "CEREBRAS_API_KEY",
         "kilo" => "KILO_API_KEY",
         "faux" => "FAUX_API_KEY",
-        _ => return ProviderConfigStatus::Unconfigured,
+        _ => return check_stored_credential(provider_id),
     };
 
     if std::env::var(env_var).is_ok() {
         return ProviderConfigStatus::EnvVarConfigured(env_var.to_string());
     }
 
-    // Check if there's stored API key configuration in auth.json
-    // This is a placeholder - actual implementation would read from auth.json
-    if has_stored_api_key(provider_id) {
-        return ProviderConfigStatus::ApiKeyConfigured;
+    check_stored_credential(provider_id)
+}
+
+/// Check auth.json for any stored credential (API key or OAuth token).
+fn check_stored_credential(provider_id: &str) -> ProviderConfigStatus {
+    if !has_stored_api_key(provider_id) {
+        return ProviderConfigStatus::Unconfigured;
+    }
+
+    // Check if the stored credential is an OAuth token (starts with {)
+    // Simple heuristic: OAuth credentials are JSON objects, API keys are plain strings
+    let auth_store_path = default_auth_store_path();
+    if !auth_store_path.exists() {
+        return ProviderConfigStatus::Unconfigured;
+    }
+    if let Ok(bytes) = std::fs::read(&auth_store_path) {
+        if let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes) {
+            if let Some(enc) = file.get_provider_credential(provider_id) {
+                // If it's encrypted, we can't tell the type without decrypting.
+                // Use a heuristic: API keys are typically short strings, OAuth blobs are longer JSON.
+                // For safety, check if the credential was stored via OAuth flow by looking it up.
+                if enc.len() > 100 {
+                    // Longer encrypted values likely contain OAuth credential JSON
+                    return ProviderConfigStatus::OAuthConfigured;
+                }
+                return ProviderConfigStatus::ApiKeyConfigured;
+            }
+        }
     }
 
     ProviderConfigStatus::Unconfigured
@@ -541,13 +566,13 @@ fn auth_method_footer_hint() -> String {
 }
 
 fn oauth_device_code_footer_hint() -> String {
-    "Esc cancel".to_string()
+    "Ctrl+O — open in browser · Esc — cancel".to_string()
 }
 
 /// Render step 1: authentication method selection.
 fn render_select_auth_method_step(
     screen_width: u16,
-    screen_height: u16,
+    _screen_height: u16,
     has_focus: bool,
     selected: State<usize>,
     _input_focus: ProviderConnectFocus,
@@ -556,7 +581,8 @@ fn render_select_auth_method_step(
     let body_width = inline_body_width(screen_width);
 
     let auth_methods = get_auth_methods();
-    let list_height = model_selector_list_viewport_height(screen_width, screen_height);
+    // Auto-height — only 2 items, no need for a large viewport
+    let list_height = 0u16;
 
     let options: Vec<SelectOption> = auth_methods
         .iter()
@@ -649,17 +675,27 @@ fn render_select_provider_step(
     let options: Vec<SelectOption> = filtered
         .iter()
         .map(|p| {
-            let status_suffix = match &p.config_status {
-                ProviderConfigStatus::Unconfigured => " • unconfigured".to_string(),
-                ProviderConfigStatus::ApiKeyConfigured => " • API key configured".to_string(),
-                ProviderConfigStatus::EnvVarConfigured(var) => format!(" ✓ env: {}", var),
+            let description = match &p.config_status {
+                ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
+                ProviderConfigStatus::ApiKeyConfigured => "API key configured".to_string(),
+                ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
+                ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {}", var),
             };
-            SelectOption::new(format!("{}{}", p.name, status_suffix), &p.id)
+            let description_color = match &p.config_status {
+                ProviderConfigStatus::Unconfigured => Some(theme.text_hint),
+                _ => Some(theme.text_muted),
+            };
+            SelectOption {
+                name: p.name.clone(),
+                description,
+                description_color,
+            }
         })
         .collect();
 
-    // Re-clamp selected index
-    let _safe_selected = clamp_selected(selected.get(), filtered.len());
+    // Use a fixed viewport-capped height so the dialog never grows too tall.
+    let viewport_cap = model_selector_list_viewport_height(screen_width, screen_height) as usize;
+    let list_height = viewport_cap as u16;
     let total_count = providers.len();
     let visible_count = filtered.len();
     let count_label = if visible_count < total_count {
@@ -668,12 +704,8 @@ fn render_select_provider_step(
         format!("{} providers", total_count)
     };
 
-    // Like model_selector_bar: visually distinguish search vs list focus
     let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
     let list_focused = has_focus && input_focus == ProviderConnectFocus::List;
-
-    // Use dynamic height calculation like model selector
-    let list_height = model_selector_list_viewport_height(screen_width, screen_height);
 
     let w = body_width;
     let thm = theme;
@@ -714,7 +746,8 @@ fn render_select_provider_step(
                         options: options,
                         selected_index: Some(selected.clone()),
                         has_focus: list_focused,
-                        show_description: false,
+                        show_description: true,
+                        inline_description: true,
                         compact: true,
                         theme: Some(thm),
                     )

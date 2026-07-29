@@ -339,6 +339,9 @@ pub enum StatusDialogKind {
         provider_id: Option<String>,
         step: ProviderConnectStep,
         input_focus: ProviderConnectFocus,
+        oauth_url: String,
+        oauth_code: String,
+        oauth_provider_name: String,
     },
     /// Dedicated API key input dialog (separate from provider selection).
     ProviderApiKey {
@@ -385,6 +388,12 @@ pub struct StatusZoneProps {
     pub provider_connect_filter: Option<State<String>>,
     /// Provider connect dialog input focus.
     pub provider_connect_input_focus: Option<State<ProviderConnectFocus>>,
+    /// Provider connect OAuth URL (shown on the OAuth device code step).
+    pub provider_connect_oauth_url: Option<String>,
+    /// Provider connect OAuth code (shown on the OAuth device code step).
+    pub provider_connect_oauth_code: Option<String>,
+    /// Provider connect OAuth provider name (shown on the OAuth device code step).
+    pub provider_connect_oauth_provider_name: Option<String>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -415,6 +424,9 @@ impl Default for StatusZoneProps {
             provider_connect_selected: None,
             provider_connect_filter: None,
             provider_connect_input_focus: None,
+            provider_connect_oauth_url: None,
+            provider_connect_oauth_code: None,
+            provider_connect_oauth_provider_name: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
         }
@@ -485,7 +497,18 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             provider_id,
             step,
             input_focus,
-        }) => Some(render_provider_connect_dialog(props, provider_id, step, input_focus)),
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+        }) => Some(render_provider_connect_dialog(
+            props,
+            provider_id,
+            step,
+            input_focus,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+        )),
         Some(StatusDialogKind::ProviderApiKey {
             provider_id,
             provider_name,
@@ -503,6 +526,9 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         _provider_id: Option<String>,
         step: ProviderConnectStep,
         input_focus: ProviderConnectFocus,
+        oauth_url: String,
+        oauth_code: String,
+        oauth_provider_name: String,
     ) -> AnyElement<'static> {
         use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
 
@@ -516,12 +542,6 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             .provider_connect_filter
             .clone()
             .expect("provider_connect_filter should be set");
-        
-        // For OAuth, we need to pass the OAuth state from the shell
-        // For now, use empty strings as placeholders - will be updated with proper state integration
-        let oauth_url = String::new();
-        let oauth_code = String::new();
-        let provider_name = String::new();
 
         render_dialog(
             props.screen_width,
@@ -532,7 +552,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             api_key_input,
             oauth_url,
             oauth_code,
-            provider_name,
+            oauth_provider_name,
             step,
             input_focus,
         )
@@ -651,12 +671,18 @@ pub fn build_provider_connect_dialog_kind(
     _selected: State<usize>,
     has_focus: bool,
     input_focus: ProviderConnectFocus,
+    oauth_url: String,
+    oauth_code: String,
+    oauth_provider_name: String,
 ) -> Option<StatusDialogKind> {
     if has_focus {
         Some(StatusDialogKind::ProviderConnect {
             provider_id,
             step: step.unwrap_or(ProviderConnectStep::SelectAuthMethod),
             input_focus,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
         })
     } else {
         None
