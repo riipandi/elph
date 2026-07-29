@@ -9,12 +9,14 @@
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
-use elph_tui::components::{DialogUserInputContent, SelectList, UiTheme};
+use elph_tui::components::{DialogChrome, DialogUserInputContent, SelectList, UiTheme, dialog_max_content_height};
 use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
+use crate::tui::slash_palette::list_viewport_cap;
+
 use crate::tui::focus::ShellFocus;
-use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
+use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
@@ -322,31 +324,6 @@ fn clamp_selected(selected: usize, count: usize) -> usize {
     }
 }
 
-// ── Provider dialog viewport height ──────────────────────────────────
-
-/// Rows reserved in the provider selector body above the scrollable provider list.
-const PROVIDER_CONNECT_LIST_FIXED_ROWS: u16 = 1; // search bar only (count label merged into placeholder, no gap)
-
-/// Max visible items in the provider picker (larger than model selector since it's an inline dialog).
-const PROVIDER_CONNECT_MAX_VISIBLE_ROWS: u16 = 12;
-
-/// Viewport height for the provider list — computed directly from screen height
-/// for the InlineDialogShell (which has different chrome than the centered DialogShell).
-pub fn provider_connect_list_viewport_height(_screen_width: u16, screen_height: u16) -> u16 {
-    // Reserve rows for the prompt area below the dialog (~1/4 of screen, min 6)
-    let prompt_rows = (screen_height / 4).clamp(6, 14);
-    // Fixed chrome outside the list body:
-    //   InlineDialogShell: title(1) + divider(1) + footer gap(1) + footer hint(1) + border(2) = 6
-    //   Body fixed: search bar(1) = 1
-    let fixed_rows: u16 = 7;
-
-    screen_height
-        .saturating_sub(prompt_rows)
-        .saturating_sub(fixed_rows)
-        .max(4)
-        .min(PROVIDER_CONNECT_MAX_VISIBLE_ROWS)
-}
-
 // ── Dialog lifecycle functions ───────────────────────────────────────
 
 /// Arguments for [`open_provider_connect_dialog`].
@@ -593,6 +570,21 @@ pub fn apply_provider_filter_seed(
     }
 }
 
+// ── Viewport height (mirrors model_selector_list_viewport_height) ────
+
+/// Fixed rows above the provider SelectList (count label, search bar, paddings).
+pub const PROVIDER_SELECT_LIST_FIXED_ROWS: u16 = 4;
+
+/// Capped viewport height for the provider SelectList, computed from terminal size.
+pub fn provider_select_list_viewport_height(screen_width: u16, screen_height: u16) -> u16 {
+    let theme = UiTheme::default();
+    let chrome = DialogChrome::from_theme(theme, screen_width);
+    let max_body = dialog_max_content_height(screen_height, &chrome, 12);
+    (list_viewport_cap(screen_height)
+        .min(max_body.saturating_sub(PROVIDER_SELECT_LIST_FIXED_ROWS) as usize) as u16)
+    .max(4)
+}
+
 // ── Rendering ────────────────────────────────────────────────────────
 
 fn auth_method_footer() -> String {
@@ -701,42 +693,35 @@ fn render_select_provider_step(
     let providers = get_provider_options();
     let filtered = filtered_providers(&providers, &filter.read());
 
-    let options: Vec<SelectOption> = filtered
-        .iter()
-        .map(|p| {
-            let description = match &p.config_status {
-                ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
-                ProviderConfigStatus::ApiKeyConfigured => "key configured".to_string(),
-                ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
-                ProviderConfigStatus::EnvVarConfigured(var) => var.clone(),
-            };
-            let description_color = match &p.config_status {
-                ProviderConfigStatus::Unconfigured => Some(theme.text_hint),
-                _ => Some(theme.text_muted),
-            };
-            SelectOption {
-                name: p.name.clone(),
-                description,
-                description_color,
-            }
-        })
-        .collect();
-
-    let viewport_cap = provider_connect_list_viewport_height(screen_width, screen_height) as usize;
-    let list_height = viewport_cap as u16;
     let total_count = providers.len();
     let visible_count = filtered.len();
-    let placeholder = if visible_count < total_count {
-        format!("Filter {} of {} providers…", visible_count, total_count)
+    let count_label = if visible_count < total_count {
+        format!("{} of {} providers", visible_count, total_count)
     } else {
-        format!("Filter {} providers…", total_count)
+        format!("{} providers", total_count)
     };
 
     let search_focused = has_focus && input_focus == ProviderConnectFocus::Search;
     let list_focused = has_focus && input_focus == ProviderConnectFocus::List;
+    let list_height = provider_select_list_viewport_height(screen_width, screen_height);
 
     let w = body_width;
     let thm = theme;
+
+    // Map providers to ModelRow format so we can use the same ModelOptionList
+    // as the model selector, for identical rendering.
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered
+        .iter()
+        .map(|p| crate::tui::model_selector::ModelRow {
+            value: p.id.clone(),
+            name: p.name.clone(),
+            provider_id: String::new(),
+            model_id: p.name.clone(),
+            context_k: 0,
+            reasoning: false,
+            images: false,
+        })
+        .collect();
 
     element! {
         InlineDialogShell(
@@ -745,9 +730,15 @@ fn render_select_provider_step(
             has_focus: has_focus,
             footer_hint: Some(provider_select_footer()),
         ) {
-            View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
-                // ── Search bar with count label integrated into placeholder ──
-                View(width: w, flex_shrink: 0f32) {
+            View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
+                // ── Count label (mirrors model selector) ──
+                Text(
+                    content: count_label,
+                    color: thm.text_muted,
+                    wrap: TextWrap::NoWrap,
+                )
+                // ── Search bar ──
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
                         value: Some(filter),
@@ -755,7 +746,7 @@ fn render_select_provider_step(
                         theme: Some(thm),
                         compact: true,
                         show_prompt: false,
-                        placeholder: placeholder,
+                        placeholder: "Filter providers…".to_string(),
                         show_placeholder_when_focused: true,
                         show_footer_hint: false,
                         dialog_chrome: true,
@@ -764,16 +755,14 @@ fn render_select_provider_step(
                     )
                 }
                 // ── Provider list ──
-                View(width: w, flex_shrink: 0f32) {
-                    SelectList(
+                View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
+                    crate::tui::model_option_list::ModelOptionList(
                         width: w,
                         height: list_height,
-                        options: options,
+                        models: model_rows,
+                        show_provider_hint: false,
                         selected_index: Some(selected.clone()),
                         has_focus: list_focused,
-                        show_description: true,
-                        inline_description: true,
-                        compact: true,
                         theme: Some(thm),
                     )
                 }

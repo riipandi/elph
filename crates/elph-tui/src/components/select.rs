@@ -28,6 +28,8 @@ pub struct SelectListProps {
     /// Render description on the same line as the name (instead of below it).
     pub inline_description: bool,
     pub on_change: HandlerMut<'static, usize>,
+    /// Suppress "↑ N more / ↓ N more" overflow indicators (like ModelOptionList).
+    pub hide_more_overflow: bool,
 }
 
 fn select_row_surface(theme: UiTheme, selected: bool, compact: bool) -> Color {
@@ -305,7 +307,7 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
         );
     } else {
         let hidden_above = select_hidden_rows_above(window_start, &row_counts);
-        if hidden_above > 0 {
+        if !props.hide_more_overflow && hidden_above > 0 {
             rows.push(
                 element! {
                     Text(
@@ -432,12 +434,16 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
         }
 
         let rows_before = select_hidden_rows_above(window_start, &row_counts);
-        let rows_shown = used_rows.saturating_sub(usize::from(hidden_above > 0));
+        let rows_shown = if props.hide_more_overflow {
+            used_rows
+        } else {
+            used_rows.saturating_sub(usize::from(hidden_above > 0))
+        };
         let hidden_below = row_counts
             .iter()
             .sum::<usize>()
             .saturating_sub(rows_before + rows_shown);
-        if hidden_below > 0 {
+        if !props.hide_more_overflow && hidden_below > 0 {
             rows.push(
                 element! {
                     Text(
