@@ -638,7 +638,6 @@ fn render_select_auth_method_step(
                     show_description: true,
                     inline_description: true,
                     compact: true,
-                    hide_more_overflow: true,
                     theme: Some(theme),
                 )
             }
@@ -694,27 +693,6 @@ fn render_select_provider_step(
 
     let total_count = providers.len();
     let visible_count = filtered.len();
-    let options: Vec<SelectOption> = filtered
-        .iter()
-        .map(|p| {
-            let description = match &p.config_status {
-                ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
-                ProviderConfigStatus::ApiKeyConfigured => "API key configured".to_string(),
-                ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
-                ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
-            };
-            let description_color = match &p.config_status {
-                ProviderConfigStatus::Unconfigured => Some(theme.text_hint),
-                _ => Some(theme.text_muted),
-            };
-            SelectOption {
-                name: p.name.clone(),
-                description,
-                description_color,
-            }
-        })
-        .collect();
-
     let count_label = if visible_count < total_count {
         format!("{} of {} providers", visible_count, total_count)
     } else {
@@ -727,6 +705,30 @@ fn render_select_provider_step(
 
     let w = body_width;
     let thm = theme;
+
+    // Map providers to ModelRow + custom_hints for ModelOptionList (same rendering
+    // as the model selector — no "xx more" indicators, fixed viewport with overflow).
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered
+        .iter()
+        .map(|p| crate::tui::model_selector::ModelRow {
+            value: p.id.clone(),
+            name: p.name.clone(),
+            provider_id: String::new(),
+            model_id: p.name.clone(),
+            context_k: 0,
+            reasoning: false,
+            images: false,
+        })
+        .collect();
+    let config_hints: Vec<String> = filtered
+        .iter()
+        .map(|p| match &p.config_status {
+            ProviderConfigStatus::Unconfigured => "unconfigured".into(),
+            ProviderConfigStatus::ApiKeyConfigured => "API key configured".into(),
+            ProviderConfigStatus::OAuthConfigured => "OAuth configured".into(),
+            ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
+        })
+        .collect();
 
     element! {
         InlineDialogShell(
@@ -761,16 +763,14 @@ fn render_select_provider_step(
                 }
                 // ── Provider list ──
                 View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
-                    SelectList(
+                    crate::tui::model_option_list::ModelOptionList(
                         width: w,
                         height: list_height,
-                        options: options,
+                        models: model_rows,
+                        show_provider_hint: false,
+                        custom_hints: config_hints,
                         selected_index: Some(selected.clone()),
                         has_focus: list_focused,
-                        show_description: true,
-                        inline_description: true,
-                        compact: true,
-                        hide_more_overflow: true,
                         theme: Some(thm),
                     )
                 }
