@@ -9,13 +9,12 @@
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
-use elph_tui::components::{DialogUserInputContent, SelectList, UiTheme};
+use elph_tui::components::{DialogChrome, DialogUserInputContent, SelectList, UiTheme, dialog_max_content_height};
 use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, inline_body_width};
-use crate::tui::model_selector::model_selector_list_viewport_height;
 use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
@@ -321,6 +320,25 @@ fn clamp_selected(selected: usize, count: usize) -> usize {
     } else {
         selected.min(count.saturating_sub(1))
     }
+}
+
+// ── Provider dialog viewport height ──────────────────────────────────
+
+/// Rows reserved in the provider selector body above the scrollable provider list.
+const PROVIDER_CONNECT_LIST_FIXED_ROWS: u16 = 3; // count label + search bar + gap
+
+/// Max visible items in the provider picker (larger than model selector since it's an inline dialog).
+const PROVIDER_CONNECT_MAX_VISIBLE_ROWS: u16 = 12;
+
+/// Viewport height for the provider list — computed for the inline dialog shell
+/// which has a smaller effective vertical margin than the centered model selector.
+pub fn provider_connect_list_viewport_height(screen_width: u16, screen_height: u16) -> u16 {
+    let theme = UiTheme::default();
+    let chrome = DialogChrome::from_theme(theme, screen_width);
+    let max_body = dialog_max_content_height(screen_height, &chrome, 6);
+    (PROVIDER_CONNECT_MAX_VISIBLE_ROWS as usize)
+        .min(max_body.saturating_sub(PROVIDER_CONNECT_LIST_FIXED_ROWS) as usize)
+        .max(4) as u16
 }
 
 // ── Dialog lifecycle functions ───────────────────────────────────────
@@ -698,7 +716,7 @@ fn render_select_provider_step(
         })
         .collect();
 
-    let viewport_cap = model_selector_list_viewport_height(screen_width, screen_height) as usize;
+    let viewport_cap = provider_connect_list_viewport_height(screen_width, screen_height) as usize;
     let list_height = viewport_cap as u16;
     let total_count = providers.len();
     let visible_count = filtered.len();
@@ -726,8 +744,8 @@ fn render_select_provider_step(
                 View(width: w, flex_shrink: 0f32) {
                     Text(content: count_label, color: thm.text_muted, wrap: TextWrap::NoWrap)
                 }
-                // ── Search bar (matches model selector pattern) ──
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                // ── Search bar (tight, no gap) ──
+                View(width: w, flex_shrink: 0f32) {
                     DialogUserInputContent(
                         width: w,
                         value: Some(filter),
@@ -743,7 +761,7 @@ fn render_select_provider_step(
                         on_cancel: HandlerMut::default(),
                     )
                 }
-                // ── Provider list ──
+                // ── Provider list (with small gap from search) ──
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     SelectList(
                         width: w,
