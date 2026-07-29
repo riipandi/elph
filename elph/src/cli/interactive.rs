@@ -254,21 +254,25 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                 }
                 AuthPrompt::ManualCode { message, placeholder } => {
                     let message = message.clone();
-                    let placeholder = placeholder.clone();
+                    let _placeholder = placeholder.clone();
                     println!();
-                    println!("{}", message);
-                    tokio::task::spawn_blocking(move || {
-                        let mut input = Text::new("Enter code:");
-                        if let Some(ref ph) = placeholder {
-                            input = input.with_placeholder(ph);
-                        }
-                        input
-                            .with_help_message("Paste the code from the browser · Esc to cancel")
-                            .prompt()
-                            .map_err(|e| anyhow::anyhow!("{e}"))
-                    })
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{e}"))?
+                    println!("{message}");
+                    // Use tokio::io::stdin so this future is cancellable
+                    // by tokio::select! in the OAuth flow (e.g. OpenRouter
+                    // callback server completes first).
+                    use std::io::Write;
+                    use tokio::io::AsyncBufReadExt;
+                    let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
+                    let mut line = String::new();
+                    print!("Enter code: ");
+                    std::io::stdout().flush().ok();
+                    reader.read_line(&mut line).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+                    let trimmed = line.trim().to_string();
+                    if trimmed.is_empty() {
+                        Err(anyhow::anyhow!("Cancelled"))
+                    } else {
+                        Ok(trimmed)
+                    }
                 }
             }
         })
