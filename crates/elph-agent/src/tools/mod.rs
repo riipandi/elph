@@ -34,6 +34,8 @@ mod delete_path;
 #[cfg(feature = "tools-move-path")]
 mod move_path;
 
+mod file_mutation_queue;
+mod image;
 mod list_available_tools;
 
 #[cfg(feature = "mcp")]
@@ -58,10 +60,12 @@ pub use create_dir::create_create_dir_tool;
 pub use delete_path::create_delete_path_tool;
 #[cfg(feature = "tools-edit-file")]
 pub use edit_file::create_edit_file_tool;
+pub use file_mutation_queue::FileMutationQueue;
 #[cfg(feature = "tools-find-path")]
 pub use find_path::create_find_path_tool;
 #[cfg(feature = "tools-grep")]
 pub use grep::create_grep_tool;
+pub use image::create_image_tool;
 pub use list_available_tools::create_list_available_tools;
 #[cfg(feature = "tools-list-dir")]
 pub use list_dir::create_list_dir_tool;

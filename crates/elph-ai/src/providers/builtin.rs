@@ -5,7 +5,9 @@ use std::sync::Arc;
 
 use crate::auth::env_api_key_auth;
 use crate::auth::oauth::openai_codex_oauth;
-use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent};
+use crate::auth::oauth::{
+    anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent, kimi_oauth,
+};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
 use crate::models::catalog::*;
 use crate::models::{CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi};
@@ -354,7 +356,7 @@ pub fn kimi_coding_provider() -> Provider {
         headers: None,
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth("Moonshot API key", vec!["MOONSHOT_API_KEY"])),
-            oauth: None,
+            oauth: Some(kimi_oauth()),
         },
         models: KIMI_CODING_MODELS.to_vec(),
         refresh_models: None,

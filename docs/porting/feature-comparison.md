@@ -1,6 +1,6 @@
 # Feature Comparison: pi (TypeScript) vs Elph (Rust)
 
-**Snapshot:** pi `cced6a21` (v0.82.1 + Unreleased) · Elph `7ac3955` (Sprint 6)
+**Snapshot:** pi `cced6a21` (v0.82.1 + Unreleased) · Elph `7ac3955` (Sprint 6 + Sprint 7)
 
 Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent-core` → `crates/elph-agent`.
 
@@ -37,7 +37,7 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | Mistral Conversations   | `api/mistral-conversations.ts`   | `src/api/mistral_conversations.rs`   | **[Parity]** |
 | Cloudflare              | `api/cloudflare.ts`              | `src/api/cloudflare.rs`              | **[Parity]** |
 | OpenRouter Images       | `api/openrouter-images.ts`       | `src/api/openrouter_images.rs`       | **[Parity]** |
-| pi-messages gateway     | `api/pi-messages.ts`             | —                                    | **[Gap P2]** |
+| pi-messages gateway     | `api/pi-messages.ts`             | `src/api/pi_messages.rs`             | **[Parity]** |
 | GitHub Copilot headers  | `api/github-copilot-headers.ts`  | `src/api/github_copilot_headers.rs`  | **[Parity]** |
 | OpenAI prompt cache     | `api/openai-prompt-cache.ts`     | `src/api/openai_prompt_cache.rs`     | **[Parity]** |
 | Constrained sampling    | `api/constrained-sampling.ts`    | `src/types/mod.rs`                   | **[Parity]** |
@@ -58,9 +58,9 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | OpenAI Codex OAuth                        | `auth/oauth/openai-codex-oauth.ts`   | `src/auth/oauth/openai_codex.rs`                 | **[Parity]**     |
 | GitHub Copilot OAuth                      | `auth/oauth/github-copilot-oauth.ts` | `src/auth/oauth/` (via `github_copilot_oauth()`) | **[Parity]**     |
 | Hyper OAuth (Elph-only)                   | —                                    | `src/auth/oauth/hyper.rs`                        | **[Elph delta]** |
-| Kimi Code OAuth                           | v0.82.0                              | —                                                | **[Gap P2]**     |
-| OpenRouter OAuth PKCE                     | v0.82.0                              | —                                                | **[Gap P2]**     |
-| Radius OAuth gateway                      | `auth/oauth/radius.ts`               | —                                                | **[Gap P2]**     |
+| Kimi Code OAuth                           | v0.82.0                              | `src/auth/oauth/kimi.rs`                         | **[Parity]**     |
+| OpenRouter OAuth PKCE                     | v0.82.0                              | `src/auth/oauth/openrouter.rs`                   | **[Parity]**     |
+| Radius OAuth gateway                      | `auth/oauth/radius.ts`               | `src/auth/oauth/radius.rs`                       | **[Parity]**     |
 | `env_api_key_auth`                        | `env-api-keys.ts`                    | `src/auth/helpers.rs`                            | **[Parity]**     |
 | Bun OAuth server                          | `bun-oauth.ts`                       | `src/auth/oauth/` (PKCE module)                  | **[Parity]**     |
 
@@ -206,7 +206,7 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | `InMemorySessionStorage`           | `harness/session/memory-storage.ts` | `src/session/backends/memory.rs`              | **[Parity]**     |
 | `SessionDirStorage`                | —                                   | `src/session/backends/session_dir/storage.rs` | **[Elph delta]** |
 | `TursoSessionStorage`              | —                                   | `src/session/backends/turso.rs`               | **[Elph delta]** |
-| `JsonlSessionStorage`              | `harness/session/jsonl-storage.ts`  | —                                             | **[Gap P2]**     |
+| `JsonlSessionStorage`              | `harness/session/jsonl-storage.ts`  | `src/session/backends/jsonl.rs`               | **[Parity]**     |
 | `SessionMetadata`                  | `harness/session/session.ts`        | `src/session/types.rs`                        | **[Parity]**     |
 | `SessionTreeEntry`                 | `harness/session/session.ts`        | `src/session/types.rs`                        | **[Parity]**     |
 | `SessionIndex`                     | `harness/session/session.ts`        | `src/session/types.rs`                        | **[Parity]**     |
@@ -245,8 +245,8 @@ Mapping: `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent
 | Collaboration tools                                   | —                                      | `src/tools/collaboration.rs`              | **[Elph delta]** |
 | `fff_picker` (grep output)                            | —                                      | `src/tools/fff_picker.rs`                 | **[Elph delta]** |
 | Path utils                                            | `harness/tools/path-utils.ts`          | `src/tools/common.rs`                     | **[Parity]**     |
-| File mutation queue                                   | `harness/tools/file-mutation-queue.ts` | —                                         | **[Gap P2]**     |
-| Image tool                                            | `harness/tools/image.ts`               | —                                         | **[Gap P2]**     |
+| File mutation queue                                   | `harness/tools/file-mutation-queue.ts` | `src/tools/file_mutation_queue.rs`        | **[Parity]**     |
+| Image tool                                            | `harness/tools/image.ts`               | `src/tools/image.rs`                      | **[Parity]**     |
 | Shell output capture                                  | `harness/utils/shell-output.ts`        | `src/agent/harness/utils/shell_output.rs` | **[Parity]**     |
 | Truncation                                            | `harness/utils/truncate.ts`            | `src/agent/harness/utils/truncate.rs`     | **[Parity]**     |
 

@@ -12,6 +12,7 @@ pub mod types;
 
 pub use backends::InMemorySessionOptions;
 pub use backends::InMemorySessionStorage;
+pub use backends::JsonlSessionStorage;
 pub use backends::SessionDirCreateOptions;
 pub use backends::SessionDirStorage;
 pub use backends::TursoSessionStorage;

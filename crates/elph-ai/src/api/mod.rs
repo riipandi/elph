@@ -22,6 +22,7 @@ pub mod openai_prompt_cache;
 pub mod openai_responses;
 pub mod openai_responses_shared;
 pub mod openrouter_images;
+pub mod pi_messages;
 pub mod simple_options;
 pub mod sse;
 pub mod transform_messages;
@@ -38,6 +39,7 @@ pub use openai_codex_responses::{OpenAICodexResponsesApi, OpenAICodexResponsesOp
 pub use openai_completions::{OpenAICompletionsApi, OpenAICompletionsOptions};
 pub use openai_responses::{OpenAIResponsesApi, OpenAIResponsesOptions};
 pub use openrouter_images::OpenRouterImagesApi;
+pub use pi_messages::PiMessagesApi;
 
 use crate::types::ProviderStreams;
 
@@ -53,6 +55,7 @@ pub fn builtin_apis() -> Vec<(&'static str, Box<dyn ProviderStreams>)> {
         ("google-vertex", Box::new(GoogleVertexApi)),
         ("mistral-conversations", Box::new(MistralConversationsApi)),
         ("bedrock-converse-stream", Box::new(BedrockConverseStreamApi)),
+        ("pi-messages", Box::new(PiMessagesApi)),
     ]
 }
 

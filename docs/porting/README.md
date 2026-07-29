@@ -31,7 +31,7 @@ Last documented **2026-07-29T19:50:00Z**.
 - **Snapshot commit:** `cced6a21` (_fix(coding-agent): stop loading AGENTS.md twice in nested git worktrees_)
 - **Package version:** `0.82.1` (released 2026-07-25) + **Unreleased** on `main`
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
-- **Last library implementation pass:** 2026-07-29 — Sprint 6: P1/P2 gap port (AgentHarnessTool, SessionStorage v2, compaction retry, Opus 5, fetch injection, stop reason, retryAssistantCall)
+- **Last library implementation pass:** 2026-07-29 — Sprint 7: remaining P2 gap port (Kimi OAuth, OpenRouter OAuth, Radius OAuth, pi-messages, JsonlSessionStorage, file mutation queue, image tool)
 - **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
 
 ## Status tags
@@ -91,7 +91,19 @@ Details in [pi-ai.md](./pi-ai.md) and [pi-agent.md](./pi-agent.md).
 - **`retryAssistantCall()` (P2)** — pi v0.82.0: bounded retry for transient assistant failures with exponential backoff, lifecycle callbacks, and abort token support. Uses `is_transient_error()` for error classification.
 - **Fresh routing session IDs for compaction (P2)** — pi v0.82.0: compaction and branch-summary requests use fresh routing session IDs through the checkpoint tail mechanism.
 
-Details in [pi-ai.md](./pi-ai.md) and [pi-agent.md](./pi-agent.md).
+### 2026-07-29 — Sprint 7: remaining P2 gap port (7 feature areas)
+
+**Scope:** `elph-ai` + `elph-agent` library crates.
+
+- **Kimi Code OAuth (P2)** — `elph-ai/src/auth/oauth/kimi.rs`: device code flow, token refresh, registered in OAuth registry and `kimi_coding_provider()`.
+- **OpenRouter OAuth PKCE (P2)** — `elph-ai/src/auth/oauth/openrouter.rs`: PKCE login, API key minting, token refresh, registered in OAuth registry.
+- **Radius OAuth gateway (P2)** — `elph-ai/src/auth/oauth/radius.rs`: PKCE login for Inflection AI pi-messages gateway, registered in OAuth registry.
+- **pi-messages gateway API (P2)** — `elph-ai/src/api/pi_messages.rs`: `PiMessagesApi` implementing `ProviderStreams`, registered in built-in API registry.
+- **JsonlSessionStorage (P2)** — `elph-agent/src/session/backends/jsonl.rs`: JSONL-backed session storage backend, implementing full `SessionStorage` v2 API.
+- **File mutation queue (P2)** — `elph-agent/src/tools/file_mutation_queue.rs`: `FileMutationQueue` for serializing file mutations with apply/rollback support.
+- **Image tool (P2)** — `elph-agent/src/tools/image.rs`: `create_image_tool()` for reading image metadata, supporting PNG/JPG/GIF/WebP/BMP/SVG formats.
+
+Details in [feature-comparison.md](./feature-comparison.md).
 
 ### 2026-07-29 — Rust verify & harden + dead code cleanup
 
