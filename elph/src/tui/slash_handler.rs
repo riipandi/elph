@@ -75,6 +75,10 @@ pub enum SlashOutcome {
     OpenProviderConnectDialog {
         provider_id: Option<String>,
     },
+    /// Open provider disconnect dialog to remove stored credentials.
+    OpenProviderDisconnectDialog {
+        provider_id: Option<String>,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -130,6 +134,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         },
         SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
         SlashDispatch::ProviderConnect { provider_id } => SlashOutcome::OpenProviderConnectDialog { provider_id },
+        SlashDispatch::ProviderDisconnect { provider_id } => SlashOutcome::OpenProviderDisconnectDialog { provider_id },
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -209,6 +214,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::Quit
             | SlashOutcome::OpenFeedbackDialog
             | SlashOutcome::OpenProviderConnectDialog { .. }
+            | SlashOutcome::OpenProviderDisconnectDialog { .. }
     )
 }
 

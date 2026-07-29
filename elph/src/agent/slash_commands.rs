@@ -184,6 +184,10 @@ pub enum SlashDispatch {
     ProviderConnect {
         provider_id: Option<String>,
     },
+    /// Open provider disconnect dialog to remove stored credentials.
+    ProviderDisconnect {
+        provider_id: Option<String>,
+    },
     Unimplemented(String),
 }
 
@@ -361,9 +365,7 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
         "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
-        "logout" => {
-            Some(SlashDispatch::Unimplemented("provider disconnect".to_string()))
-        }
+        "logout" => Some(SlashDispatch::ProviderDisconnect { provider_id: None }),
         "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
             Some(SlashDispatch::Unimplemented(format!("/{name}")))
         }
@@ -378,6 +380,14 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                     Some(provider_id)
                 };
                 Some(SlashDispatch::ProviderConnect { provider_id })
+            } else if args.starts_with("disconnect") {
+                let provider_id = args.trim_start_matches("disconnect").trim().to_string();
+                let provider_id = if provider_id.is_empty() {
+                    None
+                } else {
+                    Some(provider_id)
+                };
+                Some(SlashDispatch::ProviderDisconnect { provider_id })
             } else {
                 Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
             }

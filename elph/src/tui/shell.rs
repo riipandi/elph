@@ -64,9 +64,12 @@ use crate::tui::prompt_history::{
 };
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
-    PendingProviderConnectDialog, ProviderConnectFocus, ProviderConnectStep, apply_provider_filter_seed,
-    close_provider_api_key_dialog, close_provider_connect_dialog, focus_provider_list, format_provider_name,
+    PendingProviderConnectDialog, PendingProviderDisconnectDialog,
+    ProviderConnectFocus, ProviderConnectStep, apply_provider_filter_seed,
+    close_provider_api_key_dialog, close_provider_connect_dialog, close_provider_disconnect_dialog,
+    focus_provider_list, format_provider_name,
     get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
+    open_provider_disconnect_dialog,
     provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed, provider_list_nav_delta,
     provider_supports_oauth,
 };
@@ -95,7 +98,7 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
     build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
     build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
@@ -1038,7 +1041,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut rename_value = hooks.use_state(String::new);
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
     let mut pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
+    let mut pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
     let mut pending_provider_api_key = hooks.use_ref(|| None::<PendingProviderApiKeyDialog>);
+    let mut provider_disconnect_selected = hooks.use_state(|| 0usize);
     let mut provider_connect_selected = hooks.use_state(|| 0usize);
     let mut provider_connect_filter = hooks.use_state(String::new);
     let mut provider_connect_api_key = hooks.use_state(String::new);
@@ -1128,6 +1133,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let cwd_for_loop = cwd.clone();
     let extension_host_for_loop = extension_host.clone();
     let mut pending_provider_connect_for_tick = pending_provider_connect;
+    let mut pending_provider_disconnect_for_tick = pending_provider_disconnect;
     let mut provider_connect_api_key_for_tick = provider_connect_api_key;
     let mut provider_connect_input_focus_for_tick = provider_connect_input_focus;
     let mut shell_focus_for_tick = shell_focus;
@@ -1284,9 +1290,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             chrome_tick.set(chrome_tick.get().wrapping_add(1));
 
             // ── OAuth completed: close dialog ──────────────────────────
-            // The keyboard handler also checks this, but Kimi's device-code
-            // flow completes without any user keypress, so the tick loop
-            // must detect done and close the dialog.
             if pending_provider_connect_for_tick
                 .read()
                 .as_ref()
@@ -1295,6 +1298,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 pending_provider_connect_for_tick.set(None);
                 provider_connect_api_key_for_tick.set(String::new());
                 provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
+                shell_focus_for_tick.set(ShellFocus::Prompt);
+            }
+
+            // ── Provider disconnect completed: close dialog ─────────────
+            if pending_provider_disconnect_for_tick
+                .read()
+                .as_ref()
+                .is_some_and(|p| p.done)
+            {
+                pending_provider_disconnect_for_tick.set(None);
                 shell_focus_for_tick.set(ShellFocus::Prompt);
             }
 
@@ -2079,6 +2092,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
             let provider_connect_open = pending_provider_connect.read().is_some();
+            let provider_disconnect_open = pending_provider_disconnect.read().is_some();
             let provider_api_key_open = pending_provider_api_key.read().is_some();
             let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
@@ -2092,6 +2106,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || rename_open
                 || confetti_open
                 || provider_connect_open
+                || provider_disconnect_open
                 || provider_api_key_open
                 || queue_manager_is_open;
 
@@ -3049,12 +3064,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 }
 
                 // ── Provider connect dialog ────────────────────────────────
+                let step = {
+                    let pending_ref = pending_provider_connect.read();
+                    pending_ref.as_ref().map(|p| p.step)
+                };
+                let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
+                let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
+                let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
+                let is_oauth_select = step == Some(ProviderConnectStep::OAuthSelect);
+
                 if provider_connect_open {
-                    // Snapshot the current pending state for step determination
-                    let step = {
-                        let pending_ref = pending_provider_connect.read();
-                        pending_ref.as_ref().map(|p| p.step)
-                    };
 
                     // ── OAuth completed: close dialog, clear draft ─────
                     let oauth_done = pending_provider_connect.read().as_ref().map(|p| p.done).unwrap_or(false);
@@ -3074,10 +3093,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         return;
                     }
 
-                    let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
-                    let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
-                    let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
-                    let is_oauth_select = step == Some(ProviderConnectStep::OAuthSelect);
                     let _is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
 
                     // ── Esc ──────────────────────────────────────────────
@@ -3476,110 +3491,196 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                         return;
                     }
+                }
 
-                    // ── Ctrl+O: open OAuth URL in browser ──────────────
-                    if is_oauth_device_code
-                        && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META)
-                        && (modifiers == KeyModifiers::CONTROL && matches!(code, KeyCode::Char('o') | KeyCode::Char('O')))
-                    {
-                        let url = pending_provider_connect
-                            .read()
-                            .as_ref()
-                            .map(|p| p.oauth_url.clone())
-                            .unwrap_or_default();
-                        if !url.is_empty() {
-                            std::thread::spawn(move || {
-                                let _ = open_url(&url);
-                            });
+                // ── Provider disconnect dialog ─────────────────────────
+                if provider_disconnect_open {
+                    let has_any = pending_provider_disconnect
+                        .read()
+                        .as_ref()
+                        .map(|p| !p.provider_ids.is_empty())
+                        .unwrap_or(false);
+
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_provider_disconnect_dialog(
+                            &mut pending_provider_disconnect,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+
+                    if !has_any {
+                        return;
+                    }
+
+                    // List navigation (↑↓ or j/k)
+                    if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                        let pending_ref = &mut *pending_provider_disconnect.write();
+                        if let Some(pending) = pending_ref {
+                            let count = pending.provider_ids.len();
+                            if count > 0 {
+                                pending.selected_index = ((pending.selected_index as isize + delta)
+                                    .rem_euclid(count as isize)) as usize;
+                                provider_disconnect_selected.set(pending.selected_index);
+                            }
                         }
                         return;
                     }
 
-                    // ── Character handling for auth method selection ─────
-                    if is_select_auth_method {
-                        if !modifiers.is_empty() {
-                            // Ignore modified keys
-                        } else {
-                            let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+                    // Enter: delete selected credential
+                    if modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                        let (provider_id, index) = {
+                            let pending = pending_provider_disconnect.read();
+                            let pending = pending.as_ref();
+                            let id = pending.and_then(|p| p.provider_ids.get(p.selected_index).cloned());
+                            let ix = pending.map(|p| p.selected_index).unwrap_or(0);
+                            (id, ix)
+                        };
 
-                            // List navigation (↑↓ or j/k)
-                            if let Some(delta) = provider_list_nav_delta(modifiers, code) {
-                                let pending_ref = &mut *pending_provider_connect.write();
-                                if let Some(pending) = pending_ref {
-                                    let count = auth_methods.len();
-                                    if count > 0 {
-                                        let new_idx = ((pending.selected_auth_method as isize + delta)
-                                            .rem_euclid(count as isize)) as usize;
-                                        pending.selected_auth_method = new_idx;
-                                        provider_connect_selected.set(new_idx);
+                        if let Some(pid) = provider_id {
+                            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                            let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                            let pid_for_task = pid.clone();
+                            tokio::spawn(async move {
+                                match crate::tui::provider_credential_store::delete_provider_credential(
+                                    &auth_store_path,
+                                    &pid_for_task,
+                                ).await
+                                {
+                                    Ok(true) => {
+                                        log::info!("Removed credentials for provider: {}", pid_for_task);
+                                    }
+                                    Ok(false) => {
+                                        log::info!("No credentials to remove for provider: {}", pid_for_task);
+                                    }
+                                    Err(e) => {
+                                        log::error!("Failed to remove credentials for {}: {}", pid_for_task, e);
                                     }
                                 }
-                                return;
+                            });
+
+                            // Remove from list and adjust selection
+                            if let Some(pending) = pending_provider_disconnect.write().as_mut() {
+                                pending.provider_ids.remove(index);
+                                if !pending.provider_ids.is_empty() {
+                                    pending.selected_index = pending.selected_index.min(pending.provider_ids.len().saturating_sub(1));
+                                    provider_disconnect_selected.set(pending.selected_index);
+                                } else {
+                                    pending.selected_index = 0;
+                                    pending.done = true;
+                                }
                             }
                         }
+                        return;
                     }
+                }
 
-                    // ── Character handling for provider selection ──────
-                    if is_select_provider {
-                        if !modifiers.is_empty() {
-                            // Ignore modified keys
-                        } else {
-                            let auth_method_idx = pending_provider_connect
-                                .read()
-                                .as_ref()
-                                .map(|p| p.selected_auth_method)
-                                .unwrap_or(0);
-                            let providers =
-                                get_provider_options_for_auth_method(provider_auth_method_from_index(auth_method_idx));
+                // ── Ctrl+O: open OAuth URL in browser ──────────────
+                if is_oauth_device_code
+                    && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META)
+                    && (modifiers == KeyModifiers::CONTROL && matches!(code, KeyCode::Char('o') | KeyCode::Char('O')))
+                {
+                    let url = pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_url.clone())
+                        .unwrap_or_default();
+                    if !url.is_empty() {
+                        std::thread::spawn(move || {
+                            let _ = open_url(&url);
+                        });
+                    }
+                    return;
+                }
 
-                            // Arrow keys move focus to the list (selection is handled by ModelOptionList)
-                            if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
-                                let pending_ref = &mut *pending_provider_connect.write();
-                                if let Some(pending) = pending_ref {
-                                    focus_provider_list(&mut provider_connect_input_focus, pending);
+                // ── Character handling for auth method selection ─────
+                if is_select_auth_method {
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else {
+                        let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+
+                        // List navigation (↑↓ or j/k)
+                        if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let count = auth_methods.len();
+                                if count > 0 {
+                                    let new_idx = ((pending.selected_auth_method as isize + delta)
+                                        .rem_euclid(count as isize)) as usize;
+                                    pending.selected_auth_method = new_idx;
+                                    provider_connect_selected.set(new_idx);
                                 }
-                                return;
                             }
+                            return;
+                        }
+                    }
+                }
 
-                            // Filter seeding (printable chars including /)
-                            if let Some(seed) = provider_filter_seed(modifiers, code) {
-                                let pending_ref = &mut *pending_provider_connect.write();
-                                if let Some(pending) = pending_ref {
-                                    apply_provider_filter_seed(
-                                        seed,
-                                        &mut provider_connect_filter,
-                                        &mut provider_connect_input_focus,
-                                        pending,
-                                    );
+                // ── Character handling for provider selection ──────
+                if is_select_provider {
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else {
+                        let auth_method_idx = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.selected_auth_method)
+                            .unwrap_or(0);
+                        let providers =
+                            get_provider_options_for_auth_method(provider_auth_method_from_index(auth_method_idx));
+
+                        // Arrow keys move focus to the list (selection is handled by ModelOptionList)
+                        if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                focus_provider_list(&mut provider_connect_input_focus, pending);
+                            }
+                            return;
+                        }
+
+                        // Filter seeding (printable chars including /)
+                        if let Some(seed) = provider_filter_seed(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                apply_provider_filter_seed(
+                                    seed,
+                                    &mut provider_connect_filter,
+                                    &mut provider_connect_input_focus,
+                                    pending,
+                                );
+                                let count = crate::tui::provider_connect_dialog::count_filtered(
+                                    &providers,
+                                    &pending.filter,
+                                );
+                                pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+                                provider_connect_selected.set(pending.selected_provider);
+                            }
+                            return;
+                        }
+
+                        // Backspace trims filter — from either search or list focus
+                        if code == KeyCode::Backspace {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let mut next = pending.filter.clone();
+                                if next.pop().is_some() {
+                                    pending.filter = next;
+                                    provider_connect_filter.set(pending.filter.clone());
                                     let count = crate::tui::provider_connect_dialog::count_filtered(
                                         &providers,
                                         &pending.filter,
                                     );
-                                    pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+                                    pending.selected_provider =
+                                        pending.selected_provider.min(count.saturating_sub(1));
                                     provider_connect_selected.set(pending.selected_provider);
                                 }
-                                return;
                             }
-
-                            // Backspace trims filter — from either search or list focus
-                            if code == KeyCode::Backspace {
-                                let pending_ref = &mut *pending_provider_connect.write();
-                                if let Some(pending) = pending_ref {
-                                    let mut next = pending.filter.clone();
-                                    if next.pop().is_some() {
-                                        pending.filter = next;
-                                        provider_connect_filter.set(pending.filter.clone());
-                                        let count = crate::tui::provider_connect_dialog::count_filtered(
-                                            &providers,
-                                            &pending.filter,
-                                        );
-                                        pending.selected_provider =
-                                            pending.selected_provider.min(count.saturating_sub(1));
-                                        provider_connect_selected.set(pending.selected_provider);
-                                    }
-                                }
-                                return;
-                            }
+                            return;
                         }
                     }
                 }
@@ -4035,6 +4136,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     provider_id,
                                 });
+                                approval_selected.set(0);
+                                suppress_enter_newline.set(true);
+                                force_editor_clear.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
+                                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                                let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                                open_provider_disconnect_dialog(
+                                    crate::tui::provider_connect_dialog::OpenProviderDisconnectDialogArgs {
+                                        pending: &mut pending_provider_disconnect,
+                                        auth_store_path: &auth_store_path,
+                                        draft: &mut draft,
+                                        live_draft: &mut live_draft,
+                                        shell_focus: &mut shell_focus,
+                                        provider_id,
+                                    },
+                                );
                                 approval_selected.set(0);
                                 suppress_enter_newline.set(true);
                                 force_editor_clear.set(true);
@@ -4639,6 +4758,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
+    let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
@@ -4652,6 +4772,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || rename_open
         || confetti_open
         || provider_connect_open
+        || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open;
     let prompt_focused =
@@ -4664,15 +4785,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         && !rename_open
         && !confetti_open
         && !scoped_models_open
-        && !provider_connect_open;
+        && !provider_connect_open
+        && !provider_disconnect_open;
     let scoped_models_has_focus = scoped_models_open
         && !user_question_open
         && !system_prompt_open
         && !rename_open
         && !confetti_open
         && !model_selector_open
-        && !provider_connect_open;
-    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open && !provider_connect_open;
+        && !provider_connect_open
+        && !provider_disconnect_open;
+    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open && !provider_connect_open && !provider_disconnect_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
@@ -4680,6 +4803,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || pending_plan_confirmation.read().is_some()
         || *pending_feedback.read()
         || provider_connect_open
+        || provider_disconnect_open
         || provider_api_key_open)
         && !user_question_open
         && !model_selector_open
@@ -4988,6 +5112,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
         .or_else(|| {
+            let pending = pending_provider_disconnect.read();
+            pending.as_ref().map(|p| {
+                StatusDialogKind::ProviderDisconnect {
+                    provider_ids: p.provider_ids.clone(),
+                }
+            })
+        })
+        .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),
                 queue_manager_selected.get(),
@@ -5295,6 +5427,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 approval_has_focus: approval_has_focus,
                 api_key_input: Some(provider_connect_api_key),
                 provider_connect_selected: Some(provider_connect_selected),
+                provider_disconnect_selected: Some(provider_disconnect_selected),
                 provider_connect_filter: Some(provider_connect_filter),
                 provider_connect_input_focus: Some(provider_connect_input_focus),
                 provider_connect_oauth_url: Some(
@@ -5681,6 +5814,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     provider_id,
                                 });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
+                                let auth_store_path = paths_snapshot.auth_store_path();
+                                open_provider_disconnect_dialog(
+                                    crate::tui::provider_connect_dialog::OpenProviderDisconnectDialogArgs {
+                                        pending: &mut pending_provider_disconnect,
+                                        auth_store_path: &auth_store_path,
+                                        draft: &mut draft,
+                                        live_draft: &mut live_draft,
+                                        shell_focus: &mut shell_focus,
+                                        provider_id,
+                                    },
+                                );
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

@@ -62,3 +62,40 @@ pub fn has_provider_credential(auth_store_path: &Path, provider_id: &str) -> boo
     };
     file.get_provider_credential(provider_id).is_some()
 }
+
+/// Delete a provider credential from `auth.json`. Returns true if removed.
+pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &str) -> anyhow::Result<bool> {
+    if !has_provider_credential(auth_store_path, provider_id) {
+        return Ok(false);
+    }
+    let _guard = lock_auth_store(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;
+    let mut file = AuthStoreFile::load_from_path(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
+    let removed = file.remove_provider_credential(provider_id);
+    file.save_to_path_unlocked(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
+    if removed {
+        log::info!("Removed credential for provider: {provider_id}");
+    }
+    Ok(removed)
+}
+
+/// List all provider IDs with stored credentials in `auth.json`.
+pub fn list_providers_with_credentials(auth_store_path: &Path) -> Vec<String> {
+    if !auth_store_path.exists() {
+        return Vec::new();
+    }
+    let Ok(bytes) = std::fs::read(auth_store_path) else {
+        return Vec::new();
+    };
+    let Ok(file) = serde_json::from_slice::<AuthStoreFile>(&bytes) else {
+        return Vec::new();
+    };
+    let mut ids = file.provider_ids();
+    ids.sort();
+    ids
+}

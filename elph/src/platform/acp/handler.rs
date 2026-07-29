@@ -141,6 +141,9 @@ async fn handle_acp_slash_command(
         Some(SlashDispatch::ProviderConnect { .. }) => Err(anyhow::anyhow!(
             "Command '/provider connect' opens a provider selection dialog and is not available via ACP."
         )),
+        Some(SlashDispatch::ProviderDisconnect { .. }) => Err(anyhow::anyhow!(
+            "Command '/provider disconnect' opens a provider selection dialog and is not available via ACP."
+        )),
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))
         }

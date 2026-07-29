@@ -22,7 +22,7 @@ use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// Default auth store path under `~/.elph/auth.json`.
@@ -1113,4 +1113,156 @@ mod tests {
         assert!(openai_codex.supports_oauth);
         assert!(!openai_codex.supports_api_key);
     }
+}
+
+// ── Provider disconnect dialog ────────────────────────────────────
+
+/// Pending provider disconnect dialog state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PendingProviderDisconnectDialog {
+    /// IDs of providers with stored credentials.
+    pub provider_ids: Vec<String>,
+    /// Selected index in the list.
+    pub selected_index: usize,
+    /// Provider ID to pre-select (from `/provider disconnect <id>`).
+    pub provider_id: Option<String>,
+    pub stashed_prompt_draft: Option<String>,
+    pub opened_at: Instant,
+    pub done: bool,
+}
+
+/// Arguments for [`open_provider_disconnect_dialog`].
+pub struct OpenProviderDisconnectDialogArgs<'a> {
+    pub pending: &'a mut Ref<Option<PendingProviderDisconnectDialog>>,
+    pub auth_store_path: &'a Path,
+    pub draft: &'a mut State<String>,
+    pub live_draft: &'a mut Ref<String>,
+    pub shell_focus: &'a mut State<ShellFocus>,
+    pub provider_id: Option<String>,
+}
+
+/// Open the provider disconnect dialog showing providers with stored credentials.
+pub fn open_provider_disconnect_dialog(args: OpenProviderDisconnectDialogArgs<'_>) {
+    let stashed = {
+        let current = args.live_draft.read().clone();
+        if current.trim().is_empty() { None } else { Some(current) }
+    };
+    if stashed.is_some() {
+        args.draft.set(String::new());
+        args.live_draft.set(String::new());
+    }
+
+    let mut provider_ids = super::provider_credential_store::list_providers_with_credentials(args.auth_store_path);
+    // Pre-select if a specific provider was given
+    let selected_index = args.provider_id.as_ref()
+        .and_then(|pid| provider_ids.iter().position(|id| id == pid))
+        .unwrap_or(0);
+
+    args.pending.set(Some(PendingProviderDisconnectDialog {
+        provider_ids,
+        selected_index,
+        provider_id: args.provider_id,
+        stashed_prompt_draft: stashed,
+        opened_at: Instant::now(),
+        done: false,
+    }));
+    args.shell_focus.set(ShellFocus::StatusDialog);
+}
+
+/// Close the provider disconnect dialog and restore stashed draft.
+pub fn close_provider_disconnect_dialog(
+    pending: &mut Ref<Option<PendingProviderDisconnectDialog>>,
+    draft: &mut State<String>,
+    live_draft: &mut Ref<String>,
+    shell_focus: &mut State<ShellFocus>,
+    restore_stash: bool,
+) {
+    let stashed = pending.write().take().and_then(|p| p.stashed_prompt_draft);
+    if restore_stash {
+        if let Some(text) = stashed {
+            draft.set(text.clone());
+            live_draft.set(text);
+        } else {
+            draft.set(String::new());
+            live_draft.set(String::new());
+        }
+    } else {
+        draft.set(String::new());
+        live_draft.set(String::new());
+    }
+    shell_focus.set(ShellFocus::Prompt);
+}
+
+/// Render the provider disconnect dialog.
+pub fn render_provider_disconnect_dialog(
+    screen_width: u16,
+    screen_height: u16,
+    has_focus: bool,
+    provider_ids: Vec<String>,
+    selected_index: usize,
+) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(screen_width);
+
+    let w = body_width;
+    let thm = theme;
+
+    let has_any = !provider_ids.is_empty();
+    let count_label = if has_any {
+        format!("{} provider(s) with stored credentials", provider_ids.len())
+    } else {
+        "No stored credentials found".to_string()
+    };
+
+    let footer = if has_any {
+        "↑↓ navigate · Enter disconnect · Esc cancel".to_string()
+    } else {
+        "Esc cancel".to_string()
+    };
+
+    // Build the list as a single text block
+    let mut list_text = String::new();
+    for (i, id) in provider_ids.iter().enumerate() {
+        let prefix = if i == selected_index { "❯ " } else { "  " };
+        list_text.push_str(&format!("{}{}\n", prefix, format_provider_name(id)));
+    }
+    let list_text = list_text.trim_end().to_string();
+
+    element! {
+        InlineDialogShell(
+            screen_width: screen_width,
+            title: "Disconnect provider".to_string(),
+            has_focus: has_focus,
+            footer_hint: Some(footer),
+        ) {
+            View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                View(width: w, flex_shrink: 0f32) {
+                    Text(
+                        content: count_label,
+                        color: thm.text_muted,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                View(width: w, padding_top: if has_any { OPTIONS_LIST_TOP_GAP } else { 0u16 }, flex_shrink: 0f32) {
+                    Text(
+                        content: list_text,
+                        color: thm.text_primary,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                View(width: w, padding_top: 1, flex_shrink: 0f32) {
+                    Text(
+                        content: if has_any {
+                            "Select a provider and press Enter to remove its stored credentials."
+                        } else {
+                            ""
+                        }.to_string(),
+                        color: thm.text_muted,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+            }
+        }
+    }
+    .into()
 }

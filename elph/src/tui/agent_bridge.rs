@@ -177,6 +177,7 @@ impl SlashDispatcher {
                 | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Feedback
                 | SlashDispatch::ProviderConnect { .. }
+                | SlashDispatch::ProviderDisconnect { .. }
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}

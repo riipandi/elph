@@ -354,6 +354,10 @@ pub enum StatusDialogKind {
         provider_id: String,
         provider_name: String,
     },
+    /// Provider disconnect dialog (remove stored credentials).
+    ProviderDisconnect {
+        provider_ids: Vec<String>,
+    },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -394,6 +398,8 @@ pub struct StatusZoneProps {
     pub provider_connect_filter: Option<State<String>>,
     /// Provider connect dialog input focus.
     pub provider_connect_input_focus: Option<State<ProviderConnectFocus>>,
+    /// Provider disconnect dialog selection state.
+    pub provider_disconnect_selected: Option<State<usize>>,
     /// Provider connect OAuth URL (shown on the OAuth device code step).
     pub provider_connect_oauth_url: Option<String>,
     /// Provider connect OAuth code (shown on the OAuth device code step).
@@ -428,6 +434,7 @@ impl Default for StatusZoneProps {
             approval_has_focus: false,
             api_key_input: None,
             provider_connect_selected: None,
+            provider_disconnect_selected: None,
             provider_connect_filter: None,
             provider_connect_input_focus: None,
             provider_connect_oauth_url: None,
@@ -531,6 +538,21 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             provider_id,
             provider_name,
         }) => Some(render_provider_api_key_dialog(props, &provider_id, &provider_name)),
+        Some(StatusDialogKind::ProviderDisconnect { provider_ids }) => {
+            let selected_index = props
+                .provider_disconnect_selected
+                .or(props.provider_connect_selected)
+                .or(props.approval_selected)
+                .map(|s| s.get())
+                .unwrap_or(0);
+            Some(crate::tui::provider_connect_dialog::render_provider_disconnect_dialog(
+                props.screen_width,
+                props.screen_height,
+                props.approval_has_focus,
+                provider_ids,
+                selected_index,
+            ))
+        }
         _ => None,
     };
     let banner = props
