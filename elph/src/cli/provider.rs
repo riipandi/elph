@@ -10,6 +10,8 @@ use super::interactive;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, get_provider_options};
 use crate::tui::provider_credential_store::save_provider_credential;
+use crate::tui::provider_credential_store::save_provider_env_ref;
+use crate::agent::provider::provider_config;
 use crate::utils::path::AppPaths;
 
 // ── Style helpers ────────────────────────────────────────────────────
@@ -51,6 +53,9 @@ pub enum ProviderCommands {
     Connect {
         /// Provider ID to connect (e.g. anthropic, openai-codex, github-copilot)
         provider: Option<String>,
+        /// Register an environment variable instead of entering a key. Must be used with --provider.
+        #[arg(long, value_name = "VAR")]
+        env: Option<String>,
     },
     /// Sign out from an AI provider and clear stored credentials
     Disconnect {
@@ -71,7 +76,7 @@ pub fn handle(args: &ProviderArgs) -> ExitCode {
 
     match cmd {
         ProviderCommands::List { json } => handle_list(json),
-        ProviderCommands::Connect { provider } => handle_connect(provider.as_deref()),
+        ProviderCommands::Connect { provider, env } => handle_connect(provider.as_deref(), env.as_deref()),
         ProviderCommands::Disconnect { provider } => handle_disconnect(provider.as_deref()),
         ProviderCommands::Update { provider_id } => handle_update(provider_id.as_deref()),
     }
@@ -184,7 +189,7 @@ fn resolve_provider_by_id<'a>(
     Some((provider, method))
 }
 
-fn handle_connect(provider: Option<&str>) -> ExitCode {
+fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
     let paths = match resolve_paths() {
         Ok(p) => p,
         Err(e) => return e,
@@ -192,6 +197,43 @@ fn handle_connect(provider: Option<&str>) -> ExitCode {
 
     let auth_store_path = paths.auth_store_path();
     let all_providers = get_provider_options();
+
+    // ── Environment variable reference ─────────────────────────────────
+    if let Some(env_var_name) = env_var {
+        let Some(pid) = provider else {
+            eprintln!("{}", err("The --env flag requires --provider."));
+            return EXIT_ERROR;
+        };
+
+        // Validate the env var is actually set
+        if std::env::var(env_var_name).is_err() {
+            eprintln!("{}", err(format!("Environment variable '{env_var_name}' is not set.")));
+            return EXIT_ERROR;
+        }
+
+        let Some(_) = all_providers.iter().find(|p| p.id == pid) else {
+            eprintln!("{}", err(format!("Unknown provider: {pid}")));
+            return EXIT_ERROR;
+        };
+
+        let auth_store = auth_store_path.clone();
+        let pid_owned = pid.to_string();
+        let env_owned = env_var_name.to_string();
+        let name = provider_config(pid).map(|c| c.label).unwrap_or(pid);
+        match run_async(move || {
+            let rt = new_rt();
+            rt.block_on(save_provider_env_ref(&auth_store, &pid_owned, &env_owned))
+        }) {
+            Ok(()) => {
+                println!("{}", ok(format!("Registered {name} to read credential from env: {env_var_name}.")));
+                return EXIT_SUCCESS;
+            }
+            Err(e) => {
+                eprintln!("{}", err(format!("Failed to register env ref for '{pid}': {e}")));
+                return EXIT_ERROR;
+            }
+        }
+    }
 
     // If a specific provider was given, resolve it directly.
     let (selected_provider, auth_method) = if let Some(pid) = provider {

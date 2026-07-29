@@ -135,6 +135,7 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
         SlashDispatch::ProviderConnect { provider_id } => SlashOutcome::OpenProviderConnectDialog { provider_id },
         SlashDispatch::ProviderDisconnect { provider_id } => SlashOutcome::OpenProviderDisconnectDialog { provider_id },
+        SlashDispatch::ProviderList => SlashOutcome::Status(provider_list_slash_message()),
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -231,6 +232,36 @@ pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
         OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
         OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
+}
+
+pub fn provider_list_slash_message() -> String {
+    use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
+
+    let providers = get_provider_options();
+    let mut configured: Vec<_> = providers.iter().filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured)).collect();
+    configured.sort_by_key(|p| &p.id);
+
+    let mut lines = vec![format!("{} configured provider(s):\n", configured.len())];
+
+    if configured.is_empty() {
+        lines.push("  (none)".into());
+        lines.push(String::new());
+        lines.push("Tip: Use /provider connect or `elph provider connect <id> --env <VAR>` to register a provider.".into());
+        return lines.join("\n");
+    }
+
+    let max_id = configured.iter().map(|p| p.id.len()).max().unwrap_or(0);
+    for p in configured {
+        let status = match &p.config_status {
+            ProviderConfigStatus::ApiKeyConfigured => "API key".into(),
+            ProviderConfigStatus::OAuthConfigured => "OAuth".into(),
+            ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
+            ProviderConfigStatus::Unconfigured => unreachable!(),
+        };
+        lines.push(format!("  {:<max_id$}  {}", p.id, status, max_id = max_id));
+    }
+
+    lines.join("\n")
 }
 
 #[cfg(test)]

@@ -107,6 +107,13 @@ pub fn auth_store_path(config_dir: &Path) -> PathBuf {
 // On-disk format (multi-server, encrypted entries)
 // ---------------------------------------------------------------------------
 
+/// Prefix for env-var reference entries stored in the providers map.
+///
+/// An entry like `"openai": "env:OPENAI_API_KEY"` means "read the credential
+/// from the `OPENAI_API_KEY` environment variable." These entries are **not**
+/// encrypted — they are references, not secrets.
+pub const ENV_REF_PREFIX: &str = "env:";
+
 /// Root document of `auth.json` as stored on disk.
 ///
 /// Each MCP server entry is an AES-256-GCM string with the `enc:` prefix.
@@ -176,6 +183,23 @@ impl AuthStoreFile {
     /// List all provider IDs that have stored credentials.
     pub fn provider_ids(&self) -> Vec<String> {
         self.providers.keys().cloned().collect()
+    }
+
+    /// Check if a provider entry is an env-var reference (`env:VAR_NAME`, not `enc:…`).
+    pub fn is_env_ref(&self, provider_id: &str) -> bool {
+        self.providers
+            .get(provider_id)
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| s.starts_with(ENV_REF_PREFIX) && !s.starts_with(ENC_PREFIX))
+    }
+
+    /// Extract the env var name from an `env:…` entry, e.g. `"env:OPENAI_API_KEY"` → `"OPENAI_API_KEY"`.
+    pub fn env_var_name(&self, provider_id: &str) -> Option<String> {
+        self.providers
+            .get(provider_id)
+            .and_then(|v| v.as_str())
+            .filter(|s| s.starts_with(ENV_REF_PREFIX) && !s.starts_with(ENC_PREFIX))
+            .map(|s| s[ENV_REF_PREFIX.len()..].to_string())
     }
 }
 

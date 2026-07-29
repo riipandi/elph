@@ -1024,6 +1024,8 @@ mod tests {
             false,
             Vec::new(),
             0,
+            false,
+            String::new(),
         );
 
         assert!(dialog.is_none());

@@ -18,7 +18,6 @@ use crate::tui::slash_palette::list_viewport_cap;
 
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
-use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
 use std::collections::HashSet;
@@ -161,88 +160,40 @@ pub fn provider_auth_method_from_index(index: usize) -> ProviderAuthMethod {
 }
 
 /// Check if a provider has configuration.
+///
+/// Only consults `auth.json` — providers not registered there are treated as
+/// unconfigured even if an env var is set in the process environment.
+/// Register env-var providers with: `elph provider connect <id> --env <VAR>`.
 fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
-    // Check environment variables first
-    let env_var = match provider_id {
-        "anthropic" => "ANTHROPIC_API_KEY",
-        "openai" => "OPENAI_API_KEY",
-        "openai-codex" => "OPENAI_API_KEY",
-        "github-copilot" => "GITHUB_TOKEN",
-        "hyper" => "HYPER_API_KEY",
-        "xai" => "XAI_API_KEY",
-        "google" => "GOOGLE_API_KEY",
-        "google-vertex" => "GOOGLE_VERTEX_API_KEY",
-        "amazon-bedrock" => "AWS_ACCESS_KEY_ID",
-        "cloudflare-ai-gateway" => "CLOUDFLARE_API_TOKEN",
-        "cloudflare-workers-ai" => "CLOUDFLARE_API_TOKEN",
-        "fireworks" => "FIREWORKS_API_KEY",
-        "groq" => "GROQ_API_KEY",
-        "deepseek" => "DEEPSEEK_API_KEY",
-        "huggingface" => "HUGGINGFACE_API_KEY",
-        "kimi-coding" => "KIMI_API_KEY",
-        "xiaomi" => "XIAOMI_API_KEY",
-        "zai" => "ZAI_API_KEY",
-        "cerebras" => "CEREBRAS_API_KEY",
-        "kilo" => "KILO_API_KEY",
-        "faux" => "FAUX_API_KEY",
-        _ => return check_stored_credential(provider_id),
-    };
-
-    if std::env::var(env_var).is_ok() {
-        return ProviderConfigStatus::EnvVarConfigured(env_var.to_string());
-    }
-
-    check_stored_credential(provider_id)
-}
-
-/// Check auth.json for any stored credential (API key or OAuth token).
-fn check_stored_credential(provider_id: &str) -> ProviderConfigStatus {
-    // Normalize: strip legacy "oauth:" prefix if present
-    let normalized = provider_id.strip_prefix("oauth:").unwrap_or(provider_id);
-
-    if !has_stored_api_key(normalized) {
-        // Also check legacy prefixed key
-        let prefixed = format!("oauth:{normalized}");
-        if has_stored_api_key(&prefixed) {
-            // Found with prefixed key — treat as configured (migration on next save)
-            return ProviderConfigStatus::ApiKeyConfigured;
-        }
-        return ProviderConfigStatus::Unconfigured;
-    }
-
-    // Determine the type of stored credential (API key vs OAuth blob).
     let auth_store_path = default_auth_store_path();
-    if !auth_store_path.exists() {
-        return ProviderConfigStatus::Unconfigured;
-    }
+
     if let Ok(bytes) = std::fs::read(&auth_store_path)
         && let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes)
     {
-        if let Some(enc) = file.get_provider_credential(normalized) {
-            // If it's encrypted, we can't tell the type without decrypting.
-            // Use a heuristic: API keys are typically short strings, OAuth blobs are longer JSON.
-            // For safety, check if the credential was stored via OAuth flow by looking it up.
-            if enc.len() > 100 {
-                // Longer encrypted values likely contain OAuth credential JSON
+        if let Some(entry) = file.get_provider_credential(provider_id) {
+            // env ref entries are stored as plaintext "env:VAR_NAME" (not encrypted)
+            if entry.starts_with(elph_agent::ENV_REF_PREFIX) && !entry.starts_with(elph_agent::ENC_PREFIX) {
+                let var_name = &entry[elph_agent::ENV_REF_PREFIX.len()..];
+                if std::env::var(var_name).is_ok() {
+                    return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
+                }
+                return ProviderConfigStatus::Unconfigured;
+            }
+
+            if entry.len() > 100 {
                 return ProviderConfigStatus::OAuthConfigured;
             }
             return ProviderConfigStatus::ApiKeyConfigured;
         }
 
-        // Also check legacy prefixed key as fallback
-        let prefixed = format!("oauth:{normalized}");
+        // Check legacy prefixed key
+        let prefixed = format!("oauth:{provider_id}");
         if let Some(_enc) = file.get_provider_credential(&prefixed) {
             return ProviderConfigStatus::OAuthConfigured;
         }
     }
 
     ProviderConfigStatus::Unconfigured
-}
-
-/// Check if provider has stored API key in auth.json
-fn has_stored_api_key(provider_id: &str) -> bool {
-    let auth_store_path = default_auth_store_path();
-    has_provider_credential(&auth_store_path, provider_id)
 }
 
 /// Get list of all providers with OAuth support info and configuration status.

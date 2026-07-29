@@ -15,7 +15,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use elph_agent::{Aes256Key, default_auth_key_path, encrypt_string_async, is_encrypted_value};
-use elph_agent::{AuthStoreFile, lock_auth_store};
+use elph_agent::{AuthStoreFile, ENV_REF_PREFIX, lock_auth_store};
 
 /// Save an encrypted API key for a provider to `auth.json`.
 pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str, api_key: &str) -> anyhow::Result<()> {
@@ -46,6 +46,30 @@ pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str,
         .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
 
     log::debug!("Saved encrypted API key for provider: {provider_id}");
+    Ok(())
+}
+
+/// Save an env-var reference for a provider to `auth.json` (plaintext, not encrypted).
+///
+/// The entry is stored as `"provider_id": "env:VAR_NAME"` — it references a
+/// process environment variable, not a literal secret.
+pub async fn save_provider_env_ref(auth_store_path: &Path, provider_id: &str, env_var: &str) -> anyhow::Result<()> {
+    let _guard = lock_auth_store(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("lock auth store: {e}"))?;
+
+    let mut file = AuthStoreFile::load_from_path(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
+
+    file.providers
+        .insert(provider_id.to_string(), serde_json::Value::String(format!("{}{}", ENV_REF_PREFIX, env_var)));
+
+    file.save_to_path_unlocked(auth_store_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
+
+    log::debug!("Saved env ref for provider: {provider_id} -> {env_var}");
     Ok(())
 }
 

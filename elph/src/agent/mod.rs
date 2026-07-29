@@ -10,7 +10,7 @@ mod model_registry;
 mod overlays;
 pub(crate) mod plan_files;
 mod prompt;
-mod provider;
+pub(crate) mod provider;
 mod resource_loader;
 mod run_mode;
 mod runtime;

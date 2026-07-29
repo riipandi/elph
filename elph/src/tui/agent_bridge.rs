@@ -178,6 +178,7 @@ impl SlashDispatcher {
                 | SlashDispatch::Feedback
                 | SlashDispatch::ProviderConnect { .. }
                 | SlashDispatch::ProviderDisconnect { .. }
+                | SlashDispatch::ProviderList
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}

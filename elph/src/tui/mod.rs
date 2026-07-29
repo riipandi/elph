@@ -28,7 +28,7 @@ mod scroll_text_dialog;
 mod session_prefs;
 mod shell;
 mod shell_submit;
-mod slash_handler;
+pub(crate) mod slash_handler;
 mod slash_palette;
 mod startup;
 mod status_dialog;

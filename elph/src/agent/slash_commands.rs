@@ -58,7 +58,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args("provider", "Manage providers (connect, disconnect)", "connect|disconnect"),
+        builtin_with_args("provider", "Manage providers (connect, disconnect, list)", "connect|disconnect|list"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
@@ -187,6 +187,8 @@ pub enum SlashDispatch {
     ProviderDisconnect {
         provider_id: Option<String>,
     },
+    /// List configured providers in the transcript.
+    ProviderList,
     Unimplemented(String),
 }
 
@@ -281,6 +283,10 @@ const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "disconnect",
         description: "Disconnect from an AI provider",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "List configured providers",
     },
 ];
 
@@ -387,6 +393,8 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                     Some(provider_id)
                 };
                 Some(SlashDispatch::ProviderDisconnect { provider_id })
+            } else if args.starts_with("list") || args.trim() == "ls" {
+                Some(SlashDispatch::ProviderList)
             } else {
                 Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
             }

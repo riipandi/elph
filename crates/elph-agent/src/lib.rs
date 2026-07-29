@@ -353,6 +353,8 @@ pub use tools::mcp::DEFAULT_OPERATION_TIMEOUT_SECS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::ENC_PREFIX;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::ENV_REF_PREFIX;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::FileCredentialStore;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::FileCredentialStoreBuilder;
