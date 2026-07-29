@@ -101,6 +101,8 @@ pub fn echo_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "echo".into(),
+            constrained_sampling: None,
+
             description: "Echo text".into(),
             parameters: serde_json::json!({
                 "type": "object",

@@ -15,6 +15,7 @@ fn serializes_nested_tool_parameters_as_plain_json() {
         }],
         tools: Some(vec![Tool {
             name: "inspect_schema".to_string(),
+            constrained_sampling: None,
             description: "Inspect the schema".to_string(),
             parameters: json!({
                 "type": "object",

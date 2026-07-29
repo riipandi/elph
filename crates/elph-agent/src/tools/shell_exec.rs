@@ -23,6 +23,8 @@ pub fn create_shell_exec_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     AgentTool {
         tool: Tool {
             name: "shell_exec".into(),
+            constrained_sampling: None,
+
             description: format!(
                 "Execute a shell command in the current working directory. Output truncated to last {DEFAULT_MAX_LINES} lines or {}/KB.",
                 DEFAULT_MAX_BYTES / 1024
@@ -75,6 +77,7 @@ async fn execute_shell_exec(
                 details: json!({ "streaming": true }),
                 added_tool_names: None,
                 terminate: None,
+                usage: None,
             });
         }) as Arc<dyn Fn(&str) + Send + Sync>
     });

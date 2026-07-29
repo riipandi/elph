@@ -97,6 +97,8 @@ fn normalizes_foreign_pipe_separated_tool_call_ids_for_cross_provider_handoff() 
             details: None,
             added_tool_names: None,
             is_error: false,
+            usage: None,
+
             timestamp: 1,
         },
     ];
@@ -163,6 +165,8 @@ fn openrouter_completions_normalizes_long_pipe_separated_ids_from_issue_1022() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

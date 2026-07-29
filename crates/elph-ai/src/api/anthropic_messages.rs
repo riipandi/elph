@@ -155,6 +155,15 @@ async fn run_anthropic_stream(
             req = req.header("Authorization", format!("Bearer {key}"));
         }
     }
+    // ANTHROPIC_AUTH_TOKEN bearer for Anthropic-compatible gateways (pi #5871).
+    if let Some(auth_token) = options
+        .base
+        .env
+        .as_ref()
+        .and_then(|env| env.get("ANTHROPIC_AUTH_TOKEN"))
+    {
+        req = req.header("x-anthropic-auth-token", auth_token);
+    }
 
     if crate::api::common::is_request_aborted(&options.base.signal) {
         crate::api::common::finish_stream_error(stream, output, crate::api::common::request_aborted_error(), true);

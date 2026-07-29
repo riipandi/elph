@@ -187,7 +187,7 @@ pub fn anthropic_provider() -> Provider {
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth(
                 "Anthropic API key",
-                vec!["ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"],
+                vec!["ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"],
             )),
             oauth: Some(anthropic_oauth()),
         },

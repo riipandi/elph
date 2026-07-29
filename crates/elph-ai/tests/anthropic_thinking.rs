@@ -64,6 +64,7 @@ fn adds_eager_input_streaming_to_tools_by_default() {
     context.tools = Some(vec![elph_ai::types::Tool {
         name: "read".to_string(),
         description: "Read".to_string(),
+        constrained_sampling: None,
         parameters: json!({
             "type": "object",
             "properties": { "path": { "type": "string" } }
@@ -84,6 +85,7 @@ fn omits_eager_input_streaming_when_compat_disables_it() {
     context.tools = Some(vec![elph_ai::types::Tool {
         name: "read".to_string(),
         description: "Read".to_string(),
+        constrained_sampling: None,
         parameters: json!({ "type": "object", "properties": {} }),
     }]);
     let params = build_anthropic_messages_params(

@@ -145,7 +145,7 @@ Component-level tests (14 test files):
 | `coverage_gaps.rs`      | Coverage gap detection       |
 | `coverage_helpers.rs`   | Coverage utility helpers     |
 
-### `elph-core` tests — `/crates/elph-core/tests/`
+### `floppy` tests — `/crates/floppy/tests/`
 
 | Test file                | Covers                          |
 | ------------------------ | ------------------------------- |

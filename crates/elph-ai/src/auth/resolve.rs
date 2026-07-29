@@ -6,6 +6,8 @@ use super::types::{ApiKeyCredential, AuthContext, AuthModel, AuthResult, BoxFutu
 use super::types::{OAuthCredential, ProviderAuth};
 use crate::types::ProviderEnv;
 
+use std::fmt;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelsErrorCode {
     ModelSource,
@@ -16,13 +18,26 @@ pub enum ModelsErrorCode {
     OAuth,
 }
 
+/// Error from model resolution or streaming.
+///
+/// The Display includes the underlying cause message when present,
+/// so auth failures report the provider response instead of a bare wrapper.
 #[derive(Debug, Error)]
-#[error("{code:?}: {message}")]
 pub struct ModelsError {
     pub code: ModelsErrorCode,
     pub message: String,
     #[source]
     pub cause: Option<anyhow::Error>,
+}
+
+impl fmt::Display for ModelsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}: {}", self.code, self.message)?;
+        if let Some(ref cause) = self.cause {
+            write!(f, " — {}", cause)?;
+        }
+        Ok(())
+    }
 }
 
 impl ModelsError {

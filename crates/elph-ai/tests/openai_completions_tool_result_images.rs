@@ -20,6 +20,7 @@ fn groups_tool_result_images_into_follow_up_user_message() {
                 }],
                 details: None,
                 added_tool_names: None,
+                usage: None,
                 is_error: false,
                 timestamp: 0,
             },

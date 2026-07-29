@@ -212,7 +212,7 @@ Uses `log` + `logforth` for structured JSONL logging.
 | Logs   | `{logs_dir}/elph.jsonl`        | `ELPH_LOG_LEVEL`, `ELPH_LOG_FILE`, `ELPH_LOG_ROTATION` |
 | Traces | `{logs_dir}/elph-traces.jsonl` | `ELPH_TRACE` (set `0` to disable)                      |
 
-**Source:** `crates/elph-core/src/logger/`, `crates/elph-agent/src/trace/`
+**Source:** `crates/elph-ai/src/logger/`, `crates/elph-agent/src/trace/`
 
 ### Distributed tracing
 
@@ -220,7 +220,7 @@ Uses `log` + `logforth` for structured JSONL logging.
 - HTTP `traceparent` header propagation for downstream tracing
 - Feature-gated behind `tracing` Cargo feature (enabled by default in `elph` binary)
 
-**Source:** `crates/elph-core/src/trace/`, `crates/elph-agent/src/trace/`, documentation at `crates/elph-agent/docs/observability.md`
+**Source:** `crates/elph-ai/src/trace/`, `crates/elph-agent/src/trace/`, documentation at `crates/elph-agent/docs/observability.md`
 
 ## Make targets
 

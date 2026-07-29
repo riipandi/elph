@@ -22,6 +22,8 @@ async fn main() -> anyhow::Result<()> {
     // ── Define a tool ──
     let weather_tool = Tool {
         name: "get_weather".into(),
+        constrained_sampling: None,
+
         description: "Get current temperature for a city".into(),
         parameters: json!({
             "type": "object",
@@ -72,6 +74,8 @@ async fn main() -> anyhow::Result<()> {
         details: None,
         added_tool_names: None,
         is_error: false,
+        usage: None,
+
         timestamp: timestamp(),
     });
 

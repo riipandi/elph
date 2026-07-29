@@ -19,6 +19,7 @@ pub fn create_web_fetch_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "web_fetch".into(),
+constrained_sampling: None,
             description: "Fetches a URL and optionally returns the content as Markdown. HTML is converted to plain text. Falls back to the Obscura headless browser for JavaScript-heavy pages. Useful for providing docs as context.".into(),
             parameters: json!({
                 "type": "object",

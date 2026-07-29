@@ -59,10 +59,29 @@ pub enum Credential {
 pub type CredentialModifyFn =
     Box<dyn FnOnce(Option<Credential>) -> Pin<Box<dyn Future<Output = Option<Credential>> + Send>> + Send>;
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CredentialEntry {
+    pub provider_id: String,
+    pub credential: Credential,
+}
+
+/// Non-secret metadata about a stored credential returned by `CredentialStore::list`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CredentialInfo {
+    pub provider_id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
 pub trait CredentialStore: Send + Sync {
     fn read<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, Option<Credential>>;
     fn modify<'a>(&'a self, provider_id: &'a str, f: CredentialModifyFn) -> BoxFuture<'a, Option<Credential>>;
     fn delete<'a>(&'a self, provider_id: &'a str) -> BoxFuture<'a, ()>;
+    /// Enumerate non-secret metadata for all stored credentials.
+    /// The returned entries expose provider_id and credential kind but not
+    /// secret material (keys or tokens).
+    fn list<'a>(&'a self) -> BoxFuture<'a, Vec<CredentialInfo>>;
 }
 
 pub trait AuthContext: Send + Sync {

@@ -55,6 +55,8 @@ async fn main() -> anyhow::Result<()> {
     let list_inventory = simple_tool(
         Tool {
             name: "list_inventory".into(),
+            constrained_sampling: None,
+
             description: "Return the full product inventory as structured JSON.".into(),
             parameters: json!({
                 "type": "object",

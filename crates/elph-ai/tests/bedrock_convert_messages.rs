@@ -114,6 +114,8 @@ fn replaces_blank_tool_result_content_with_placeholder() {
             details: None,
             added_tool_names: None,
             is_error: false,
+            usage: None,
+
             timestamp: 0,
         }],
         tools: None,

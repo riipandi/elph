@@ -21,6 +21,7 @@ pub fn create_copy_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "copy_path".into(),
+constrained_sampling: None,
             description: "Copies a file or directory recursively in the project, more efficient than manually reading and writing files when duplicating content.".into(),
             parameters: json!({
                 "type": "object",

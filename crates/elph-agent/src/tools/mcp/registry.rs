@@ -487,6 +487,8 @@ impl McpToolRegistry {
             out.push(simple_tool(
                 Tool {
                     name: desc.exposed_name.clone(),
+                    constrained_sampling: None,
+
                     description: desc.description.clone(),
                     parameters: desc.parameters.clone(),
                 },
@@ -1014,6 +1016,7 @@ pub fn mcp_result_to_agent_with_limit(result: CallToolResult, max_chars: usize) 
             details: Value::Null,
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }
     };
 

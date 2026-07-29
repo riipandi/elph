@@ -126,6 +126,8 @@ fn create_read_file_tool() -> elph_agent::AgentTool {
     simple_tool(
         Tool {
             name: "read_file".into(),
+            constrained_sampling: None,
+
             description: "Read the contents of a file".into(),
             parameters: json!({
                 "type": "object",

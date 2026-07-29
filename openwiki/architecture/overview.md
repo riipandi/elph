@@ -109,7 +109,7 @@ Reusable terminal UI components built on the patched `iocraft` crate (`/crates/e
 ## License split
 
 - **Application** (`elph/`) — Apache 2.0
-- **Libraries** — MIT (elph-core, elph-ai, elph-agent, elph-tui, elph-swarm)
+- **Libraries** — MIT (elph-ai, elph-agent, elph-tui, elph-swarm)
 
 This is intentional: users deploying the binary get strong patent protections via Apache 2.0; library consumers get permissive MIT.
 

@@ -141,6 +141,7 @@ mod tests {
                 ]
             }),
             added_tool_names: None,
+            usage: None,
             terminate: None,
         };
         apply_to_tool_result(&mut result, &toon_config());

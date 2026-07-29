@@ -15,6 +15,8 @@ fn has_env(name: &str) -> bool {
 fn echo_tool() -> Tool {
     Tool {
         name: "echo".to_string(),
+        constrained_sampling: None,
+
         description: "Echoes the message back".to_string(),
         parameters: json!({
             "type": "object",
@@ -63,6 +65,8 @@ fn build_prefilled_messages() -> Vec<Message> {
             details: None,
             added_tool_names: None,
             is_error: false,
+            usage: None,
+
             timestamp: 1,
         },
         Message::User {

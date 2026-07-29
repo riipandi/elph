@@ -18,6 +18,8 @@ pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "edit_file".into(),
+            constrained_sampling: None,
+
             description:
                 "Edits files by replacing specific text with new content. The old_string must match exactly once."
                     .into(),

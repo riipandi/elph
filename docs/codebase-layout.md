@@ -19,7 +19,6 @@ Implementation detail lives in [openwiki](../openwiki/quickstart.md); this docum
 | -------------- | ----------------------------------------------------------------------------------------------- |
 | `elph-agent`   | Generic runtime: harness, agent loop, optional MCP/skills, `SystemPromptBuilder` (MiniJinja)    |
 | `elph-ai`      | Provider layer: `api/`, `auth/`, `models/`, `providers/`, `utils/`                              |
-| `elph-core`    | Shared primitives: `floppy/` (`query/`, `store/`), `logger/`, `scaffold/`, `utils/`             |
 | `elph-tui`     | Reusable widgets: `diff/`, `prompt/`, `chrome/`, `shell/`                                       |
 | `elph`         | Coding agent product: `agent/` (prompts, modes, session factory), `shell/`, `cli/`, `platform/` |
 
@@ -109,24 +108,6 @@ crates/elph-agent/src/
 ├── compaction/, session/, goals/, skills/, plugins/, datastore/, trace/
 └── lib.rs                   # Crate root (module declarations + re-exports)
 
-## `elph-core` floppy layout
-
-```
-
-crates/elph-core/src/floppy/
-├── mod.rs
-├── query.rs # Task start, memory search, retrieval SQL
-├── store/ # Turso-backed MemoryStore (split submodules)
-│ ├── mod.rs
-│ ├── read.rs
-│ ├── write.rs
-│ ├── embed.rs
-│ └── tasks.rs
-├── scoring.rs, migrations.rs, builder.rs, …
-└── (unit tests colocated in src/; no integration tests/ yet)
-
-```
-
 ## Crate boundaries
 
 | Crate        | Responsibility                                                                                                       |
@@ -146,8 +127,6 @@ crates/elph-core/src/floppy/
 | Shared test helpers | `<crate>/tests/common/`     | `elph-agent/tests/common/`, `elph-ai/tests/common/` (`mod common;` in each test file) |
 
 Each crate's integration tests exercise that crate's public API. `elph/tests/` covers only the `elph` binary and library glue (`cli.rs`, `bootstrap.rs`, `sigint.rs`).
-
-`elph-core` and `elph-swarm` currently have no `tests/` directory; coverage lives in `#[cfg(test)]` modules next to the code under `src/`.
 
 ## Naming conventions
 

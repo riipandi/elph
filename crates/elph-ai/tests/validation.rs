@@ -5,6 +5,8 @@ use serde_json::json;
 fn tool_with_schema(schema: serde_json::Value) -> Tool {
     Tool {
         name: "echo".to_string(),
+        constrained_sampling: None,
+
         description: "Echo tool".to_string(),
         parameters: schema,
     }

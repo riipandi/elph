@@ -12,7 +12,7 @@ Design lineage: [pi-agent observability](https://github.com/earendil-works/pi/bl
 | Tracing | `fastrace`                | `{logs_dir}/{app}-traces.jsonl`             |
 | Bridge  | `logforth::FastraceEvent` | Log events attached to the active span tree |
 
-Logging and tracing are initialized together through `elph_core::logger::init()`. The returned [`LogGuard`](../../elph-core/src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and calls `fastrace::flush()`.
+Logging and tracing are initialized together through `AgentBuilder`'s logging initializer. The returned [`LogGuard`](../src/logger/mod.rs) must live for the process lifetime; on drop it flushes async log writers and calls `fastrace::flush()`.
 
 ```rust
 let init = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
@@ -21,10 +21,10 @@ let init = AgentBuilder::new(env!("CARGO_PKG_VERSION"))
     .logs_dir(paths.logs_dir())
     .build();
 
-let _log_guard = elph_core::logger::init(init.logging);
+let _log_guard = init.logging.init();
 ```
 
-`elph_core::trace::init()` runs inside `logger::init()` and installs a [`JsonlReporter`](../../elph-core/src/trace/reporter.rs) when tracing is enabled.
+Tracing initialization runs inside the logging initializer and installs a [`JsonlReporter`](../src/trace/reporter.rs) when tracing is enabled.
 
 ## Cargo features
 
@@ -34,21 +34,20 @@ The Cargo feature is named `tracing` for historical reasons. It enables `fastrac
 | ------------- | --------- | ------- | ------------------------------------------------- |
 | `elph-ai`     | `tracing` | no      | Provider stream spans, HTTP trace propagation     |
 | `elph-agent`  | `tracing` | no      | Harness/loop/tool/MCP spans (chains to above)     |
-| `elph` binary | —         | always  | `tracing` on `elph-core`, `elph-ai`, `elph-agent` |
+| `elph` binary | —         | always  | `tracing` on `elph-ai`, `elph-agent` |
 
 Library consumers opt in explicitly:
 
 ```toml
 elph-agent = { version = "0.0", features = ["tracing", "mcp"] }
 elph-ai = { version = "0.0", features = ["tracing"] }
-elph-core = { version = "0.0", features = ["tracing"] }
 ```
 
 Without the `tracing` feature, span macros compile to no-ops and `with_trace_headers()` returns the request unchanged.
 
 ## Environment variables
 
-Resolved by [`LoggingOptions::resolve`](../../elph-core/src/logger/options.rs) via [`AgentBuilder`](../../elph-agent/src/builder.rs). The `elph` binary uses prefix `ELPH`.
+Resolved by [`LoggingOptions::resolve`](../src/logger/options.rs) via [`AgentBuilder`](../src/builder.rs). The `elph` binary uses prefix `ELPH`.
 
 | Variable                 | Default | Effect                                                                                             |
 | ------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
@@ -137,12 +136,12 @@ Use harness events for UI and policy hooks. Use trace spans for latency analysis
 
 ## Enabling tracing in downstream apps
 
-1. Enable the `tracing` feature on `elph-core`, `elph-ai`, and/or `elph-agent` as needed.
-2. Call `elph_core::logger::init()` early in `main`, keeping the `LogGuard` alive.
+1. Enable the `tracing` feature on `elph-ai`, and/or `elph-agent` as needed.
+2. Call `AgentBuilder` early in `main`, keeping the `LogGuard` alive from `init.logging.init()`.
 3. Set `{PREFIX}_TRACE` (omit or non-`0` to enable) and configure log directory via `AgentBuilder::logs_dir`.
 4. Inspect `{app}-traces.jsonl` under the logs directory.
 
-For custom root spans outside the harness, use `elph_core::trace::root_span("my.app.operation")`.
+For custom root spans outside the harness, use `elph_agent::trace::root_span("my.app.operation")`.
 
 ## Safety and redaction
 
@@ -168,15 +167,13 @@ Opt-in content capture and redaction hooks remain future work.
 
 | Test crate   | File                           | Covers                                                  |
 | ------------ | ------------------------------ | ------------------------------------------------------- |
-| `elph-core`  | `tests/tracing_integration.rs` | `JsonlReporter`, `root_span`, `init` skip when disabled |
-| `elph-core`  | `trace/reporter.rs` unit tests | JSONL line format                                       |
+| `elph-agent` | `trace/reporter.rs` unit tests | JSONL line format                                       |
 | `elph-ai`    | `tests/tracing_http.rs`        | `traceparent` header injection                          |
 | `elph-agent` | `tests/tracing_http.rs`        | `traceparent` header injection                          |
 
 Run with the `tracing` feature enabled:
 
 ```sh
-cargo test -p elph-core --features tracing
 cargo test -p elph-ai --features tracing
 cargo test -p elph-agent --features tracing
 ```

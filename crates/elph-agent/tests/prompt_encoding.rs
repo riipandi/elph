@@ -28,6 +28,7 @@ fn mcp_structured_content_roundtrip() {
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     };
 
     apply_to_tool_result(&mut result, &toon_config());

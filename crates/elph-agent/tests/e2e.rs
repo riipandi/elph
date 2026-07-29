@@ -54,6 +54,8 @@ fn calculate_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "calculate".into(),
+            constrained_sampling: None,
+
             description: "Evaluate mathematical expressions".into(),
             parameters: json!({
                 "type": "object",
@@ -616,6 +618,8 @@ async fn agent_continue_from_tool_result_processes_results() {
                     details: None,
                     added_tool_names: None,
                     is_error: false,
+                    usage: None,
+
                     timestamp: 0,
                 }),
             ]),

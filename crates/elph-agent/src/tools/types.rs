@@ -20,6 +20,9 @@ pub struct AgentToolResult {
     pub added_tool_names: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminate: Option<bool>,
+    /// Optional usage metadata from tool execution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<Box<elph_ai::Usage>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,11 +39,17 @@ impl AgentToolResult {
             details: Value::Object(Default::default()),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }
     }
 
     pub fn error(message: impl Into<String>) -> Self {
         Self::text(message)
+    }
+
+    pub fn with_usage(mut self, usage: elph_ai::Usage) -> Self {
+        self.usage = Some(Box::new(usage));
+        self
     }
 }
 

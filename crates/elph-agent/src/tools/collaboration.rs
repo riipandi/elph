@@ -27,6 +27,8 @@ fn spawn_agent_tool(control: Arc<AgentControl>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "spawn_agent".into(),
+            constrained_sampling: None,
+
             description: "Spawn a subagent to handle a focused task in an isolated context.".into(),
             parameters: json!({
                 "type": "object",
@@ -46,6 +48,8 @@ fn send_message_tool(control: Arc<AgentControl>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "send_message".into(),
+            constrained_sampling: None,
+
             description: "Queue a message on a subagent without starting a turn.".into(),
             parameters: json!({
                 "type": "object",
@@ -65,6 +69,8 @@ fn followup_task_tool(control: Arc<AgentControl>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "followup_task".into(),
+            constrained_sampling: None,
+
             description: "Send a message to a subagent and run a turn.".into(),
             parameters: json!({
                 "type": "object",
@@ -86,6 +92,8 @@ fn wait_agent_tool(control: Arc<AgentControl>) -> AgentTool {
     AgentTool {
         tool: elph_ai::Tool {
             name: "wait_agent".into(),
+            constrained_sampling: None,
+
             description: "Wait until a subagent finishes its current turn.".into(),
             parameters: json!({
                 "type": "object",
@@ -106,6 +114,8 @@ fn list_agents_tool(control: Arc<AgentControl>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "list_agents".into(),
+            constrained_sampling: None,
+
             description: "List active subagents in this session.".into(),
             parameters: json!({
                 "type": "object",

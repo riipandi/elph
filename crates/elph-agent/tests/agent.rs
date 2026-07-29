@@ -660,6 +660,8 @@ fn noop_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "noop".into(),
+            constrained_sampling: None,
+
             description: "Noop".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -676,6 +678,8 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
     let tool = AgentTool {
         tool: Tool {
             name: "delayed_tool".into(),
+            constrained_sampling: None,
+
             description: "Captures progress callbacks".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -692,6 +696,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
                         details: json!({ "status": "running" }),
                         added_tool_names: None,
                         terminate: None,
+                        usage: None,
                     });
                 }
                 Ok(AgentToolResult {
@@ -699,6 +704,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -743,6 +749,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
             details: json!({ "status": "late" }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         });
     }
     tokio::task::yield_now().await;
@@ -830,6 +837,8 @@ async fn agent_prepare_next_turn_runs_between_tool_and_followup_turn() {
     let noop = simple_tool(
         Tool {
             name: "noop".into(),
+            constrained_sampling: None,
+
             description: "Noop".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -915,6 +924,8 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     let settled_tool = AgentTool {
         tool: Tool {
             name: "settled_tool".into(),
+            constrained_sampling: None,
+
             description: "Captures progress callbacks".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -930,6 +941,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -940,6 +952,8 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     let slow_tool = AgentTool {
         tool: Tool {
             name: "slow_tool".into(),
+            constrained_sampling: None,
+
             description: "Keeps the agent run active".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -959,6 +973,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -1024,6 +1039,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
             details: json!({ "status": "late" }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         });
     }
     tokio::task::yield_now().await;

@@ -21,6 +21,7 @@ pub fn create_web_search_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "web_search".into(),
+constrained_sampling: None,
             description: "Searches the web for information, providing results with snippets and links from relevant web pages. Supports multiple engines with automatic ranking and fallback. Useful for accessing real-time information.".into(),
             parameters: json!({
                 "type": "object",

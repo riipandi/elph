@@ -51,6 +51,8 @@ fn calculate_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "calculate".into(),
+            constrained_sampling: None,
+
             description: "Evaluate arithmetic".into(),
             parameters: json!({
                 "type": "object",
@@ -581,6 +583,8 @@ fn get_current_time_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "get_current_time".into(),
+            constrained_sampling: None,
+
             description: "Return the current time".into(),
             parameters: json!({
                 "type": "object",

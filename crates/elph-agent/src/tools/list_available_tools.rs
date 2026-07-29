@@ -41,6 +41,7 @@ pub fn create_list_available_tools(tools: &[AgentTool]) -> AgentTool {
     simple_tool(
         Tool {
             name: "list_available_tools".into(),
+            constrained_sampling: None,
             description:
                 "Lists all available tools that the agent can use, including their descriptions and usage instructions."
                     .into(),

@@ -68,6 +68,8 @@ fn sends_empty_tools_array_when_conversation_has_tool_history() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

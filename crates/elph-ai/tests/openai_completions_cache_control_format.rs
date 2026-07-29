@@ -40,6 +40,8 @@ fn cache_control_model() -> Model {
             zai_tool_stream: None,
             supports_strict_mode: None,
             send_session_affinity_headers: None,
+            supports_openai_grammar_tools: None,
+            session_affinity_format: None,
             supports_long_cache_retention: None,
         }),
         openai_responses_compat: None,
@@ -56,6 +58,7 @@ fn sample_context() -> Context {
         }],
         tools: Some(vec![Tool {
             name: "read".to_string(),
+            constrained_sampling: None,
             description: "Read a file".to_string(),
             parameters: json!({
                 "type": "object",

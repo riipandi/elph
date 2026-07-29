@@ -121,7 +121,7 @@ Automatic per-turn hooks integrate the floppy memory store with the agent loop:
 ## License
 
 - **Application** (`elph/`) — Apache 2.0
-- **Libraries** (`elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — MIT
+- **Libraries** (`elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — MIT
 
 ## Backlog
 

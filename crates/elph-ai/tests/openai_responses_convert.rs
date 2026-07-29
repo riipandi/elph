@@ -49,6 +49,8 @@ fn hashes_foreign_copilot_tool_item_ids_to_fc_prefix() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

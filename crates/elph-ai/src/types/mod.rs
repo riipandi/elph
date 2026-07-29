@@ -248,6 +248,10 @@ pub enum Message {
         /// Providers with native deferred tool loading use this as the load point.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         added_tool_names: Option<Vec<String>>,
+        /// Optional usage metadata reported by the tool execution, if available.
+        /// Hosts may attach this for cost tracking and diagnostics.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        usage: Option<Usage>,
         is_error: bool,
         timestamp: i64,
     },
@@ -332,11 +336,66 @@ impl AssistantMessage {
     }
 }
 
+/// Configuration for constrained tool sampling.
+///
+/// When set on a `Tool`, the provider enforces the specified sampling constraint:
+/// - `json_schema`: strict JSON Schema enforcement (`prefer` = best-effort, `require` = strict)
+/// - `grammar`: provider-specific grammar variants (Lark, regex, etc.)
+///
+/// Ported from pi `ConstrainedSamplingConfig`.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ConstrainedSamplingConfig {
+    JsonSchema {
+        /// Whether to prefer or require strict JSON Schema enforcement.
+        strict: StrictMode,
+    },
+    Grammar {
+        /// Grammar variants for provider-specific encodings.
+        variants: GrammarVariants,
+    },
+}
+
+/// Strictness level for JSON Schema constrained sampling.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum StrictMode {
+    Prefer,
+    Require,
+}
+
+/// Provider-specific grammar variants for constrained sampling.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GrammarVariants {
+    /// Lark grammar definition for OpenAI grammar tools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lark: Option<String>,
+    /// Regex pattern for constrained generation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub regex: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Tool {
     pub name: String,
     pub description: String,
     pub parameters: Value,
+    /// Constrained sampling configuration.
+    /// When `None`, no constraint is applied.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constrained_sampling: Option<ConstrainedSamplingConfig>,
+}
+
+impl Tool {
+    pub fn new(name: impl Into<String>, description: impl Into<String>, parameters: Value) -> Self {
+        Self {
+            name: name.into(),
+            description: description.into(),
+            parameters,
+            constrained_sampling: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -412,6 +471,18 @@ pub enum AssistantMessageEvent {
     },
 }
 
+/// Session-affinity header format.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SessionAffinityFormat {
+    /// Sends `session_id`, `x-client-request-id`, and `x-session-affinity`.
+    OpenAI,
+    /// Sends `x-client-request-id` and `x-session-affinity` but no `session_id`.
+    OpenAINoSession,
+    /// Sends `x-session-id` for OpenRouter-compatible session affinity.
+    OpenRouter,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenAICompletionsCompat {
@@ -427,8 +498,11 @@ pub struct OpenAICompletionsCompat {
     pub thinking_format: Option<String>,
     pub zai_tool_stream: Option<bool>,
     pub supports_strict_mode: Option<bool>,
+    /// Whether the provider supports OpenAI custom tools with Lark/regex grammar formats.
+    pub supports_openai_grammar_tools: Option<bool>,
     pub cache_control_format: Option<String>,
     pub send_session_affinity_headers: Option<bool>,
+    pub session_affinity_format: Option<SessionAffinityFormat>,
     pub supports_long_cache_retention: Option<bool>,
 }
 
@@ -437,9 +511,14 @@ pub struct OpenAICompletionsCompat {
 pub struct OpenAIResponsesCompat {
     pub supports_developer_role: Option<bool>,
     pub send_session_id_header: Option<bool>,
+    pub session_affinity_format: Option<SessionAffinityFormat>,
     pub supports_long_cache_retention: Option<bool>,
     /// Whether the model supports client-executed tool search for deferred tools.
     pub supports_tool_search: Option<bool>,
+    /// Whether the provider supports strict JSON-schema function tools.
+    pub supports_strict_mode: Option<bool>,
+    /// Whether the provider supports OpenAI custom tools with Lark/regex grammar formats.
+    pub supports_openai_grammar_tools: Option<bool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -454,6 +533,8 @@ pub struct AnthropicMessagesCompat {
     pub allow_empty_signature: Option<bool>,
     /// Whether the provider supports deferred tools loaded by `tool_reference`.
     pub supports_tool_references: Option<bool>,
+    /// Whether the provider supports Anthropic strict tool schemas.
+    pub supports_strict_tools: Option<bool>,
 }
 
 #[derive(Debug, Clone)]

@@ -23,6 +23,8 @@ pub fn create_find_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "find_path".into(),
+                constrained_sampling: None,
+
             description: "Quickly finds files by matching glob patterns (like '*.rs'), returning matching file paths alphabetically.".into(),
             parameters: json!({
                 "type": "object",
@@ -104,5 +106,6 @@ async fn execute_find_path(
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }

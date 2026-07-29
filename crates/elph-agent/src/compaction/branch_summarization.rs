@@ -422,6 +422,8 @@ mod tests {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 0,
             })),
         };

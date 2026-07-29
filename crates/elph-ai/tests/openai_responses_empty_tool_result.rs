@@ -45,6 +45,8 @@ fn uses_no_tool_output_placeholder_for_empty_tool_results_without_images() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

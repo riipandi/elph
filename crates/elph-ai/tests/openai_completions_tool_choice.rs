@@ -20,6 +20,8 @@ fn reasoning_effort_for_model(model: &elph_ai::types::Model, level: ThinkingLeve
 fn sample_tool() -> Tool {
     Tool {
         name: "ping".to_string(),
+        constrained_sampling: None,
+
         description: "Ping tool".to_string(),
         parameters: json!({
             "type": "object",
