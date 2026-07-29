@@ -670,6 +670,17 @@ pub fn render_provider_connect_dialog(
     step: ProviderConnectStep,
     input_focus: ProviderConnectFocus,
 ) -> AnyElement<'static> {
+    // Defensive guard: when input_focus is still AuthMethodList (fresh dialog on first open),
+    // force step to SelectAuthMethod to prevent state leakage from entering the dialog
+    // with a pre-set step (e.g. SelectProvider).
+    let step = if input_focus == ProviderConnectFocus::AuthMethodList
+        && step != ProviderConnectStep::SelectAuthMethod
+    {
+        ProviderConnectStep::SelectAuthMethod
+    } else {
+        step
+    };
+
     match step {
         ProviderConnectStep::SelectAuthMethod => {
             render_select_auth_method_step(screen_width, screen_height, has_focus, selected, input_focus)
