@@ -87,6 +87,8 @@ pub struct PendingProviderConnectDialog {
     /// Provider ID to pre-select (from `/provider connect <id>`).
     pub provider_id: Option<String>,
     pub stashed_prompt_draft: Option<String>,
+    /// Set to true when OAuth flow completes — main loop will close the dialog.
+    pub done: bool,
 }
 
 /// Pending API key input dialog state (separate from provider selection).
@@ -158,19 +160,27 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 
 /// Check auth.json for any stored credential (API key or OAuth token).
 fn check_stored_credential(provider_id: &str) -> ProviderConfigStatus {
-    if !has_stored_api_key(provider_id) {
+    // Normalize: strip legacy "oauth:" prefix if present
+    let normalized = provider_id.strip_prefix("oauth:").unwrap_or(provider_id);
+
+    if !has_stored_api_key(normalized) {
+        // Also check legacy prefixed key
+        let prefixed = format!("oauth:{normalized}");
+        if has_stored_api_key(&prefixed) {
+            // Found with prefixed key — treat as configured (migration on next save)
+            return ProviderConfigStatus::ApiKeyConfigured;
+        }
         return ProviderConfigStatus::Unconfigured;
     }
 
-    // Check if the stored credential is an OAuth token (starts with {)
-    // Simple heuristic: OAuth credentials are JSON objects, API keys are plain strings
+    // Determine the type of stored credential (API key vs OAuth blob).
     let auth_store_path = default_auth_store_path();
     if !auth_store_path.exists() {
         return ProviderConfigStatus::Unconfigured;
     }
     if let Ok(bytes) = std::fs::read(&auth_store_path) {
         if let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes) {
-            if let Some(enc) = file.get_provider_credential(provider_id) {
+            if let Some(enc) = file.get_provider_credential(normalized) {
                 // If it's encrypted, we can't tell the type without decrypting.
                 // Use a heuristic: API keys are typically short strings, OAuth blobs are longer JSON.
                 // For safety, check if the credential was stored via OAuth flow by looking it up.
@@ -179,6 +189,12 @@ fn check_stored_credential(provider_id: &str) -> ProviderConfigStatus {
                     return ProviderConfigStatus::OAuthConfigured;
                 }
                 return ProviderConfigStatus::ApiKeyConfigured;
+            }
+
+            // Also check legacy prefixed key as fallback
+            let prefixed = format!("oauth:{normalized}");
+            if let Some(_enc) = file.get_provider_credential(&prefixed) {
+                return ProviderConfigStatus::OAuthConfigured;
             }
         }
     }
@@ -350,6 +366,7 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         oauth_provider_name: String::new(),
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
+        done: false,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }

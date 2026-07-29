@@ -2960,6 +2960,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let pending_ref = pending_provider_connect.read();
                         pending_ref.as_ref().map(|p| p.step)
                     };
+
+                    // ── OAuth completed: close dialog, clear draft ─────
+                    let oauth_done = pending_provider_connect.read().as_ref().map(|p| p.done).unwrap_or(false);
+                    if oauth_done {
+                        close_provider_connect_dialog(
+                            &mut pending_provider_connect,
+                            &mut provider_connect_selected,
+                            &mut provider_connect_filter,
+                            &mut provider_connect_api_key,
+                            &mut provider_connect_input_focus,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        return;
+                    }
+
                     let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
                     let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
                     let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
@@ -3034,7 +3052,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 if provider_supports_oauth(&provider.id) && is_oauth_method {
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
-                                    let provider_name = format_provider_name(&provider.id);
                                     let auth_store_path = paths.auth_store_path();
 
                                     log::info!("Starting OAuth flow for provider: {}", provider_id);
@@ -3042,7 +3059,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     // Transition to OAuth device code step
                                     if let Some(ref mut pending) = *pending_provider_connect.write() {
                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
-                                        pending.oauth_provider_name = format!("Login to {}", provider_name);
+                                        pending.oauth_provider_name = crate::tui::provider_connect_dialog::format_provider_name(&provider_id);
                                         pending.oauth_url = String::new();
                                         pending.oauth_code = String::new();
                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
@@ -3055,7 +3072,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                                     // Store the sender so the spawned task can notify us
                                     let provider_id_for_task = provider_id.clone();
-                                    let provider_name_for_task = provider_name.clone();
                                     let mut pending_ref = pending_provider_connect.clone();
                                     let auth_store_path_for_task = auth_store_path.clone();
 
@@ -3085,24 +3101,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                             api_key_result.new_credentials.expires,
                                                         );
 
-                                                        // Update dialog state to show completion
-                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
-                                                            pending.step = ProviderConnectStep::SelectProvider;
-                                                            pending.oauth_url = format!(
-                                                                "✓ Authenticated as {}",
-                                                                provider_name_for_task
-                                                            );
-                                                            pending.oauth_code = String::new();
-                                                        }
-
                                                         // Store OAuth credential in auth.json for persistence
-                                                        // The credential store in elph-ai handles runtime access
                                                         if let Ok(json) = serde_json::to_string(&credential) {
                                                             let _ = crate::tui::provider_credential_store::save_provider_credential(
                                                                 &auth_store_path_for_task,
                                                                 &provider_id_for_task,
                                                                 &json,
                                                             ).await;
+                                                        }
+
+                                                        // Close dialog — OAuth is complete.
+                                                        // The main loop detects the done flag
+                                                        // and cleans up focus + clears the draft.
+                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                            pending.done = true;
                                                         }
                                                     }
                                                     Err(e) => {
