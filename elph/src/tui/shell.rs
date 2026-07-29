@@ -1134,6 +1134,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let extension_host_for_loop = extension_host.clone();
     let mut pending_provider_connect_for_tick = pending_provider_connect;
     let mut pending_provider_disconnect_for_tick = pending_provider_disconnect;
+    let mut messages_for_tick = messages;
+    let mut messages_revision_for_tick = messages_revision;
     let mut provider_connect_api_key_for_tick = provider_connect_api_key;
     let mut provider_connect_input_focus_for_tick = provider_connect_input_focus;
     let mut shell_focus_for_tick = shell_focus;
@@ -1295,10 +1297,29 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .as_ref()
                 .is_some_and(|p| p.done)
             {
+                let notice = pending_provider_connect_for_tick
+                    .read()
+                    .as_ref()
+                    .and_then(|p| {
+                        let url = &p.oauth_url;
+                        // If the done flag was set with a notification message, use it
+                        if url.starts_with("Signed in to ") {
+                            Some(url.clone())
+                        } else {
+                            None
+                        }
+                    });
                 pending_provider_connect_for_tick.set(None);
                 provider_connect_api_key_for_tick.set(String::new());
                 provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
                 shell_focus_for_tick.set(ShellFocus::Prompt);
+                // Push transcript notification
+                if let Some(notice) = notice {
+                    let mut msgs = messages_for_tick.write().clone();
+                    msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
+                    messages_for_tick.set(msgs);
+                    messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
+                }
             }
 
             // ── Provider disconnect completed: close dialog ─────────────
@@ -1309,6 +1330,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             {
                 pending_provider_disconnect_for_tick.set(None);
                 shell_focus_for_tick.set(ShellFocus::Prompt);
+                // Push transcript notification
+                let mut msgs = messages_for_tick.write().clone();
+                msgs.push(TranscriptMessage::text("Signed out from all providers".to_string(), TranscriptStyle::Meta));
+                messages_for_tick.set(msgs);
+                messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
 
             let chrome_due = chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0;
@@ -3289,6 +3315,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
                                     let provider_name = format_provider_name(&provider_id);
+                                    let provider_name_for_clone = provider_name.clone();
                                     let auth_store_path = paths.auth_store_path();
 
                                     log::info!("Starting OAuth flow for provider: {}", provider_id);
@@ -3353,6 +3380,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                         // and cleans up focus + clears the draft.
                                                         if let Some(pending) = pending_ref.write().as_mut() {
                                                             pending.done = true;
+                                                            pending.oauth_url = format!("Signed in to {provider_name_for_clone}");
                                                         }
                                                     }
                                                     Err(e) => {

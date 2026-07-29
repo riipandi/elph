@@ -50,7 +50,6 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
-        builtin("copy", "Copy last agent message"),
         builtin("rename", "Rename the current session"),
         builtin("session", "Show session info"),
         builtin("changelog", "Show changelog"),
