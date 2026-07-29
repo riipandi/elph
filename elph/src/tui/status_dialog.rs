@@ -328,8 +328,6 @@ pub enum StatusDialogKind {
     },
     /// Plan confirmation dialog (Implement / Implement fresh / Stay in Plan).
     PlanConfirmation {
-        #[allow(dead_code)]
-        plan_id: String,
         plan_text: String,
     },
     /// Feedback dialog (Report a Bug / Join Community).
@@ -664,7 +662,6 @@ pub fn build_plan_confirmation_dialog_kind(
 ) -> Option<StatusDialogKind> {
     let pending = pending?;
     Some(StatusDialogKind::PlanConfirmation {
-        plan_id: pending.plan_id.clone(),
         plan_text: pending.plan_text.clone(),
     })
 }

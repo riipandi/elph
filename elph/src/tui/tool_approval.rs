@@ -114,10 +114,6 @@ impl PendingModeChange {
     }
 }
 
-/// Default selected row when the mode-change dialog opens (Approve).
-#[allow(dead_code)]
-pub const MODE_CHANGE_DEFAULT_INDEX: usize = 0;
-
 /// Select-list rows for the mode-change dialog.
 pub fn mode_change_select_options() -> Vec<SelectOption> {
     [("Approve", "Switch to this mode"), ("Deny", "Keep current mode")]
@@ -241,7 +237,6 @@ use crate::agent::PlanConfirmationRequest;
 /// `<proposed_plan>` block. The UI must show a dialog so the user can choose
 /// between stay-in-plan, implement, or implement-fresh.
 pub struct PendingPlanConfirmation {
-    pub plan_id: String,
     pub plan_text: String,
     /// Path to the saved plan file on disk (`.elph/plans/plan-*.md`), set before
     /// the confirmation dialog is shown so the user can read the file.
@@ -252,7 +247,6 @@ pub struct PendingPlanConfirmation {
 impl From<PlanConfirmationRequest> for PendingPlanConfirmation {
     fn from(req: PlanConfirmationRequest) -> Self {
         Self {
-            plan_id: req.plan_id,
             plan_text: req.plan_text,
             plan_file: None,
             session: None,

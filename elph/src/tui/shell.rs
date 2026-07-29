@@ -1457,7 +1457,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                            plan_id: req.plan_id.clone(),
                             plan_text: req.plan_text.clone(),
                             plan_file,
                             session: agent_session_for_loop.clone(),

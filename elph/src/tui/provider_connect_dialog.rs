@@ -50,7 +50,6 @@ pub struct ProviderOption {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProviderConfigStatus {
     Unconfigured,
-    #[allow(dead_code)]
     ApiKeyConfigured,
     OAuthConfigured,
     EnvVarConfigured(String), // Environment variable name
@@ -80,7 +79,6 @@ pub enum ProviderConnectFocus {
     Search,
     List,
     OAuthCodeInput,
-    ApiKeyInput,
 }
 
 /// Pending provider connection dialog state.
@@ -123,7 +121,6 @@ pub struct PendingProviderApiKeyDialog {
 #[derive(Debug, Clone)]
 pub struct AuthMethodOption {
     pub name: String,
-    #[allow(dead_code)]
     pub description: String,
 }
 
@@ -234,33 +231,6 @@ fn has_stored_api_key(provider_id: &str) -> bool {
     has_provider_credential(&auth_store_path, provider_id)
 }
 
-/// Get the auth store path for provider credentials.
-#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
-fn auth_store_path() -> std::path::PathBuf {
-    default_auth_store_path()
-}
-
-/// Save API key to auth.json with encryption
-#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
-pub async fn save_provider_api_key(provider_id: &str, api_key: String) -> anyhow::Result<()> {
-    let path = auth_store_path();
-    crate::tui::provider_credential_store::save_provider_credential(&path, provider_id, &api_key).await
-}
-
-/// Load and decrypt API key from auth.json
-#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
-pub async fn load_provider_api_key(provider_id: &str) -> anyhow::Result<Option<String>> {
-    let path = auth_store_path();
-    crate::tui::provider_credential_store::load_provider_credential(&path, provider_id).await
-}
-
-/// Remove stored API key for a provider
-#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
-pub async fn remove_provider_api_key(provider_id: &str) -> anyhow::Result<bool> {
-    let path = auth_store_path();
-    crate::tui::provider_credential_store::remove_provider_credential(&path, provider_id).await
-}
-
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
     let oauth_provider_ids = builtin_oauth_provider_ids();
@@ -366,15 +336,6 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
     scored.into_iter().map(|(prov, _)| prov).collect()
 }
 
-#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
-fn clamp_selected(selected: usize, count: usize) -> usize {
-    if count == 0 {
-        0
-    } else {
-        selected.min(count.saturating_sub(1))
-    }
-}
-
 // ── Dialog lifecycle functions ───────────────────────────────────────
 
 /// Arguments for [`open_provider_connect_dialog`].
@@ -423,27 +384,6 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         fresh_open: true,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);
-}
-
-/// Transition from SelectProvider to EnterApiKey step.
-#[allow(dead_code)]
-pub fn transition_to_api_key_step(pending: &mut PendingProviderConnectDialog, providers: &[ProviderOption]) {
-    let filtered = filtered_providers(providers, &pending.filter);
-    if let Some(provider) = filtered.get(pending.selected_provider)
-        && !provider.supports_oauth
-    {
-        pending.step = ProviderConnectStep::EnterApiKey;
-        pending.input_focus = ProviderConnectFocus::ApiKeyInput;
-        pending.api_key_input.clear();
-    }
-}
-
-/// Transition from EnterApiKey back to SelectProvider step.
-#[allow(dead_code)]
-pub fn transition_to_select_provider_step(pending: &mut PendingProviderConnectDialog) {
-    pending.step = ProviderConnectStep::SelectProvider;
-    pending.input_focus = ProviderConnectFocus::List;
-    pending.api_key_input.clear();
 }
 
 /// Close the provider connect dialog and restore stashed draft.
