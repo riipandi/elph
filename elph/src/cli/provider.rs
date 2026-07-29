@@ -1,8 +1,33 @@
+use std::fmt;
+use std::sync::Arc;
+
+use anstyle::{AnsiColor, Color, Style};
 use clap::{Parser, Subcommand};
+use inquire::Select;
 
 use super::help;
+use super::interactive;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 use crate::utils::path::AppPaths;
+use crate::tui::provider_connect_dialog::{
+    ProviderAuthMethod, ProviderConfigStatus, get_provider_options,
+};
+use crate::tui::provider_credential_store::save_provider_credential;
+
+// ── Style helpers ────────────────────────────────────────────────────
+
+const STYLE_OK: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Green)));
+const STYLE_ERR: Style = Style::new().bold().fg_color(Some(Color::Ansi(AnsiColor::Red)));
+const STYLE_MUTED: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::BrightBlack)));
+const STYLE_BOLD: Style = Style::new().bold();
+
+fn ok(msg: impl fmt::Display) -> String {
+    format!("{}✓ {}{}", STYLE_OK.render(), msg, STYLE_OK.render_reset())
+}
+
+fn err(msg: impl fmt::Display) -> String {
+    format!("{}! {}{}", STYLE_ERR.render(), msg, STYLE_ERR.render_reset())
+}
 
 #[derive(Parser, Default)]
 #[command(
@@ -18,12 +43,13 @@ pub struct ProviderArgs {
 #[derive(Subcommand)]
 pub enum ProviderCommands {
     /// List configured providers and stored credentials
+    #[command(visible_alias = "ls")]
     List {
         /// Emit machine-readable JSON output
         #[arg(long)]
         json: bool,
     },
-    /// Sign in to an AI provider (opens TUI for interactive login)
+    /// Sign in to an AI provider (interactive login)
     Connect {
         /// Provider ID to connect (e.g. anthropic, openai-codex, github-copilot)
         provider: Option<String>,
@@ -60,6 +86,16 @@ fn resolve_paths() -> Result<Paths, ExitCode> {
     })
 }
 
+/// Config status label for display (single line, no newline).
+fn config_status_label(status: &ProviderConfigStatus) -> String {
+    match status {
+        ProviderConfigStatus::Unconfigured => "unconfigured".to_string(),
+        ProviderConfigStatus::ApiKeyConfigured => "API key stored".to_string(),
+        ProviderConfigStatus::OAuthConfigured => "OAuth configured".to_string(),
+        ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
+    }
+}
+
 fn handle_list(json: &bool) -> ExitCode {
     let paths = match resolve_paths() {
         Ok(p) => p,
@@ -74,25 +110,210 @@ fn handle_list(json: &bool) -> ExitCode {
         return EXIT_SUCCESS;
     }
 
-    if provider_ids.is_empty() {
-        println!("No stored provider credentials.");
-        return EXIT_SUCCESS;
+    let all_providers = get_provider_options();
+    let configured_count = provider_ids.len();
+
+    // Sort: configured (✓) first, then unconfigured, both ASC by ID
+    let mut sorted = all_providers;
+    sorted.sort_by(|a, b| {
+        let a_configured = !matches!(a.config_status, ProviderConfigStatus::Unconfigured);
+        let b_configured = !matches!(b.config_status, ProviderConfigStatus::Unconfigured);
+        b_configured
+            .cmp(&a_configured)
+            .then_with(|| a.id.cmp(&b.id))
+    });
+
+    // Find the longest provider ID for alignment
+    let max_id_len = sorted.iter().map(|p| p.id.len()).max().unwrap_or(10);
+
+    for provider in &sorted {
+        let status = config_status_label(&provider.config_status);
+        let is_configured = !matches!(provider.config_status, ProviderConfigStatus::Unconfigured);
+        let marker = if is_configured {
+            format!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset())
+        } else {
+            " ".to_string()
+        };
+        let id_styled = if is_configured {
+            format!("{}{}{}{}",
+                STYLE_BOLD.render(),
+                provider.id,
+                STYLE_BOLD.render_reset(),
+                " ".repeat(2),
+            )
+        } else {
+            format!("{} {}", provider.id, " ")
+        };
+        let padded_id = format!("{:<width$}", id_styled, width = max_id_len);
+        println!("  {} {}  {}{}{}",
+            marker,
+            padded_id,
+            STYLE_MUTED.render(),
+            status,
+            STYLE_MUTED.render_reset(),
+        );
     }
 
-    for id in &provider_ids {
-        let name = crate::tui::provider_connect_dialog::format_provider_name(id);
-        println!("{id}  ({name})");
+    if configured_count > 0 {
+        println!();
+        println!("{}{}{}{} provider(s) with stored credentials{}",
+            STYLE_MUTED.render(),
+            STYLE_BOLD.render(),
+            configured_count,
+            STYLE_BOLD.render_reset(),
+            STYLE_MUTED.render_reset(),
+        );
     }
     EXIT_SUCCESS
+}
+
+// ── Connect wizard ───────────────────────────────────────────────────
+
+fn resolve_provider_by_id<'a>(
+    providers: &'a [crate::tui::provider_connect_dialog::ProviderOption],
+    pid: &str,
+) -> Option<(
+    &'a crate::tui::provider_connect_dialog::ProviderOption,
+    ProviderAuthMethod,
+)> {
+    let provider = providers.iter().find(|p| p.id == pid)?;
+    let method = if provider.supports_api_key {
+        ProviderAuthMethod::ApiKey
+    } else if provider.supports_oauth {
+        ProviderAuthMethod::Account
+    } else {
+        ProviderAuthMethod::ApiKey
+    };
+    Some((provider, method))
 }
 
 fn handle_connect(provider: Option<&str>) -> ExitCode {
-    help::unimplemented(&format!(
-        "Provider connect — use `elph` TUI /provider connect{} (interactive login not yet available in CLI)",
-        provider.map_or(String::new(), |p| format!(" {p}"))
-    ));
-    EXIT_SUCCESS
+    let paths = match resolve_paths() {
+        Ok(p) => p,
+        Err(e) => return e,
+    };
+
+    let auth_store_path = paths.auth_store_path();
+    let all_providers = get_provider_options();
+
+    // If a specific provider was given, resolve it directly.
+    let (selected_provider, auth_method) = if let Some(pid) = provider {
+        match resolve_provider_by_id(&all_providers, pid) {
+            Some(result) => result,
+            None => {
+                eprintln!("{}", err(format!("Unknown provider: {pid}")));
+                return EXIT_ERROR;
+            }
+        }
+    } else {
+        // Step 1: pick auth method
+        let Some(auth_method) = interactive::select_auth_method() else {
+            println!("Cancelled.");
+            return EXIT_SUCCESS;
+        };
+
+        // Step 2: pick provider with fuzzy search
+        let Some(provider) = interactive::select_provider(&all_providers, auth_method) else {
+            println!("Cancelled.");
+            return EXIT_SUCCESS;
+        };
+
+        (provider, auth_method)
+    };
+
+    match auth_method {
+        // ── OAuth flow ───────────────────────────────────────────────
+        ProviderAuthMethod::Account => {
+            if !selected_provider.supports_oauth {
+                eprintln!("Provider '{}' does not support OAuth login.", selected_provider.id);
+                return EXIT_ERROR;
+            }
+
+            let callbacks = Arc::new(interactive::CliAuthCallbacks);
+            let provider_id = selected_provider.id.clone();
+            let auth_store = auth_store_path.clone();
+
+            match run_async(move || {
+                let rt = new_rt();
+                let credential = rt.block_on(elph_ai::oauth_provider_login(&provider_id, callbacks))?;
+                if let Ok(json) = serde_json::to_string(&credential) {
+                    rt.block_on(save_provider_credential(&auth_store, &provider_id, &json))?;
+                }
+                Ok(credential)
+            }) {
+                Ok(_) => {
+                    println!("{}", ok(format!("Signed in to {}.", selected_provider.name)));
+                    EXIT_SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{}", err(format!("OAuth login failed: {e}")));
+                    EXIT_ERROR
+                }
+            }
+        }
+
+        // ── API key flow ─────────────────────────────────────────────
+        ProviderAuthMethod::ApiKey => {
+            let already_configured = matches!(
+                selected_provider.config_status,
+                ProviderConfigStatus::ApiKeyConfigured | ProviderConfigStatus::OAuthConfigured
+            );
+            if already_configured {
+                if !interactive::confirm_overwrite(&selected_provider.name) {
+                    println!("Cancelled.");
+                    return EXIT_SUCCESS;
+                }
+            }
+
+            let Some(api_key) = interactive::prompt_api_key(&selected_provider.name) else {
+                println!("Cancelled.");
+                return EXIT_SUCCESS;
+            };
+
+            let auth_store = auth_store_path.clone();
+            let pid = selected_provider.id.clone();
+            let name = selected_provider.name.clone();
+            let pid_for_closure = pid.clone();
+
+            match run_async(move || {
+                let rt = new_rt();
+                rt.block_on(save_provider_credential(&auth_store, &pid_for_closure, &api_key))
+            }) {
+                Ok(()) => {
+                    println!("{}", ok(format!("Saved API key for {name}.")));
+                    EXIT_SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("{}", err(format!("Failed to save API key for '{pid}': {e}")));
+                    EXIT_ERROR
+                }
+            }
+        }
+    }
 }
+
+/// Run an async closure on a new thread with its own tokio runtime.
+/// This avoids the "Cannot start a runtime from within a runtime" panic
+/// when called from `#[tokio::main]`.
+fn run_async<F, R>(f: F) -> anyhow::Result<R>
+where
+    F: FnOnce() -> anyhow::Result<R> + Send + 'static,
+    R: Send + 'static,
+{
+    std::thread::spawn(f)
+        .join()
+        .map_err(|e| anyhow::anyhow!("thread panicked: {:?}", e))?
+}
+
+fn new_rt() -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("tokio runtime")
+}
+
+// ── Disconnect ───────────────────────────────────────────────────────
 
 fn handle_disconnect(provider: Option<&str>) -> ExitCode {
     let paths = match resolve_paths() {
@@ -108,13 +329,15 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
             println!("No stored credentials for provider '{pid}'.");
             return EXIT_SUCCESS;
         }
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime");
-        match rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store_path, pid)) {
+        let pid = pid.to_string();
+        let auth_store = auth_store_path.clone();
+        let pid_for_closure = pid.clone();
+        match run_async(move || {
+            let rt = new_rt();
+            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store, &pid_for_closure))
+        }) {
             Ok(true) => {
-                println!("Signed out from {pid}.");
+                println!("{}", ok(format!("Signed out from {pid}.")));
                 EXIT_SUCCESS
             }
             Ok(false) => {
@@ -122,45 +345,49 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
                 EXIT_SUCCESS
             }
             Err(e) => {
-                eprintln!("Failed to disconnect provider '{pid}': {e}");
+                eprintln!("{}", err(format!("Failed to disconnect provider '{pid}': {e}")));
                 EXIT_ERROR
             }
         }
     } else {
-        // Disconnect all
         if provider_ids.is_empty() {
             println!("No stored provider credentials to disconnect.");
             return EXIT_SUCCESS;
         }
 
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("tokio runtime");
+        // Show interactive selection
+        let display_items: Vec<&str> = provider_ids.iter().map(|s| s.as_str()).collect();
+        let selected = Select::new("Select provider to disconnect", display_items)
+            .with_page_size(10)
+            .with_help_message("↑↓ navigate · Enter confirm · Esc cancel")
+            .prompt_skippable()
+            .ok()
+            .flatten();
 
-        let mut removed = 0usize;
-        let mut errors = 0usize;
-        for pid in &provider_ids {
-            match rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store_path, pid)) {
-                Ok(true) => {
-                    removed += 1;
-                }
-                Ok(false) => {
-                    // already gone
-                }
-                Err(e) => {
-                    eprintln!("Failed to disconnect provider '{pid}': {e}");
-                    errors += 1;
-                }
+        let Some(pid) = selected else {
+            println!("Cancelled.");
+            return EXIT_SUCCESS;
+        };
+
+        let auth_store = auth_store_path.clone();
+        let pid_str = pid.to_string();
+        let pid_for_closure = pid_str.clone();
+        match run_async(move || {
+            let rt = new_rt();
+            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store, &pid_for_closure))
+        }) {
+            Ok(true) => {
+                println!("{}", ok(format!("Signed out from {pid_str}.")));
+                EXIT_SUCCESS
             }
-        }
-
-        if errors > 0 {
-            eprintln!("Disconnected {removed} provider(s), {errors} error(s).");
-            EXIT_ERROR
-        } else {
-            println!("Signed out from all providers ({removed}).");
-            EXIT_SUCCESS
+            Ok(false) => {
+                println!("No stored credentials for provider '{pid_str}'.");
+                EXIT_SUCCESS
+            }
+            Err(e) => {
+                eprintln!("{}", err(format!("Failed to disconnect provider '{pid_str}': {e}")));
+                EXIT_ERROR
+            }
         }
     }
 }

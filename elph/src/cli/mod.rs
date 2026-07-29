@@ -7,6 +7,7 @@ mod export;
 mod extensions;
 mod help;
 mod import;
+mod interactive;
 mod mcp;
 mod memory;
 mod models;

@@ -21,6 +21,7 @@ path = "src/main.rs"
 
 [dependencies]
 agent-client-protocol.workspace = true
+anstyle.workspace = true
 anyhow.workspace = true
 chord_macro = "0.1"
 chrono.workspace = true
@@ -33,6 +34,7 @@ elph-tui = { workspace = true }
 floppy = { path = "../crates/floppy", version = "0.0.1", features = ["embed"] }
 futures-util.workspace = true
 git2 = { workspace = true, features = ["cred"] }
+inquire.workspace = true
 iocraft.workspace = true
 log.workspace = true
 logforth.workspace = true

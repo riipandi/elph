@@ -45,7 +45,7 @@ pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str,
         .await
         .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
 
-    log::info!("Saved encrypted API key for provider: {provider_id}");
+    log::debug!("Saved encrypted API key for provider: {provider_id}");
     Ok(())
 }
 
@@ -79,7 +79,7 @@ pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &st
         .await
         .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
     if removed {
-        log::info!("Removed credential for provider: {provider_id}");
+        log::debug!("Removed credential for provider: {provider_id}");
     }
     Ok(removed)
 }
