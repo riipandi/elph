@@ -45,6 +45,7 @@ pub enum MutationKind {
 /// ensuring that concurrent mutations don't conflict.
 #[derive(Clone)]
 pub struct FileMutationQueue {
+    #[allow(dead_code)]
     env: Arc<LocalExecutionEnv>,
     mutations: Arc<Mutex<Vec<FileMutation>>>,
     applied: Arc<Mutex<Vec<FileMutation>>>,

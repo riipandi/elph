@@ -13,9 +13,9 @@ use super::pkce::generate_pkce;
 const RADIUS_CLIENT_ID: &str = "pi-messages";
 const RADIUS_AUTHORIZE_URL: &str = "https://oauth.pi.ai/authorize";
 const RADIUS_TOKEN_URL: &str = "https://oauth.pi.ai/token";
-const CALLBACK_PORT: u16 = 53692;
+const CALLBACK_PORT: u16 = 53694;
 const CALLBACK_PATH: &str = "/callback";
-const REDIRECT_URI: &str = "http://localhost:53692/callback";
+const REDIRECT_URI: &str = "http://localhost:53694/callback";
 const SCOPES: &str = "openid profile email";
 
 pub fn radius_oauth() -> OAuthAuth {

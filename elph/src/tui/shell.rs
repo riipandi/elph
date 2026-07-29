@@ -154,6 +154,12 @@ enum OAuthDialogEvent {
         message: String,
         placeholder: Option<String>,
     },
+    /// Prompt the user to select from a list of options (e.g. OpenAI Codex login method).
+    PromptSelect {
+        id: u64,
+        message: String,
+        options: Vec<elph_ai::auth::AuthSelectOption>,
+    },
 }
 
 /// Global store for OAuth prompt response channels.
@@ -198,11 +204,11 @@ impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
                     placeholder: placeholder.clone(),
                 });
             }
-            elph_ai::auth::AuthPrompt::Select { message, .. } => {
-                let _ = tx.send(OAuthDialogEvent::PromptText {
+            elph_ai::auth::AuthPrompt::Select { message, options } => {
+                let _ = tx.send(OAuthDialogEvent::PromptSelect {
                     id: prompt_id,
-                    message: format!("{message} (select not supported, enter value manually)"),
-                    placeholder: None,
+                    message: message.clone(),
+                    options: options.clone(),
                 });
             }
         }
@@ -1121,6 +1127,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let cwd_for_mention_index = cwd.clone();
     let cwd_for_loop = cwd.clone();
     let extension_host_for_loop = extension_host.clone();
+    let mut pending_provider_connect_for_tick = pending_provider_connect;
+    let mut provider_connect_api_key_for_tick = provider_connect_api_key;
+    let mut provider_connect_input_focus_for_tick = provider_connect_input_focus;
+    let mut shell_focus_for_tick = shell_focus;
     let mut layout_screen_size_for_loop = layout_screen_size;
     // Clone the Arc into the async future so event processing writes to
     // messages_arc (no State dirty marks) instead of messages State.
@@ -1272,6 +1282,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             chrome_tick.set(chrome_tick.get().wrapping_add(1));
+
+            // ── OAuth completed: close dialog ──────────────────────────
+            // The keyboard handler also checks this, but Kimi's device-code
+            // flow completes without any user keypress, so the tick loop
+            // must detect done and close the dialog.
+            if pending_provider_connect_for_tick
+                .read()
+                .as_ref()
+                .is_some_and(|p| p.done)
+            {
+                pending_provider_connect_for_tick.set(None);
+                provider_connect_api_key_for_tick.set(String::new());
+                provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
+                shell_focus_for_tick.set(ShellFocus::Prompt);
+            }
+
             let chrome_due = chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0;
             if chrome_due {
                 let paths = paths.read().clone();
@@ -3051,6 +3077,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
                     let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
                     let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
+                    let is_oauth_select = step == Some(ProviderConnectStep::OAuthSelect);
                     let _is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
 
                     // ── Esc ──────────────────────────────────────────────
@@ -3069,6 +3096,51 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         );
                         force_editor_clear.set(true);
                         return;
+                    }
+
+                    // ── OAuth Select step: navigate with ↑↓ and confirm with Enter ──
+                    if is_oauth_select && modifiers.is_empty() && kind == KeyEventKind::Press {
+                        if code == KeyCode::Enter {
+                            // Submit the selected option back to the OAuth flow
+                            let pending_state = pending_provider_connect.read();
+                            let (selected_id, selected_index) = pending_state.as_ref().map(|p| {
+                                (p.oauth_select_ids.get(p.oauth_select_index).cloned(), p.oauth_select_index)
+                            }).unwrap_or((None, 0));
+                            drop(pending_state);
+
+                            if let Some(selected_id) = selected_id {
+                                log::info!("OAuth select: {} (index {})", selected_id, selected_index);
+                                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                                if let Some(prompt_id) = store.keys().next().cloned() {
+                                    if let Some(tx) = store.remove(&prompt_id) {
+                                        let _ = tx.send(selected_id);
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                        if code == KeyCode::Up || code == KeyCode::Char('k') {
+                            let mut pending_ref = pending_provider_connect.write();
+                            if let Some(pending) = pending_ref.as_mut() {
+                                let count = pending.oauth_select_ids.len();
+                                if count > 0 {
+                                    pending.oauth_select_index = pending.oauth_select_index.saturating_sub(1);
+                                    provider_connect_selected.set(pending.oauth_select_index);
+                                }
+                            }
+                            return;
+                        }
+                        if code == KeyCode::Down || code == KeyCode::Char('j') {
+                            let mut pending_ref = pending_provider_connect.write();
+                            if let Some(pending) = pending_ref.as_mut() {
+                                let count = pending.oauth_select_ids.len();
+                                if count > 0 {
+                                    pending.oauth_select_index = (pending.oauth_select_index + 1).min(count - 1);
+                                    provider_connect_selected.set(pending.oauth_select_index);
+                                }
+                            }
+                            return;
+                        }
                     }
 
                     // ── Enter in OAuth device code step: submit prompt response ──
@@ -3267,16 +3339,35 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                 OAuthDialogEvent::DeviceCode { url, code } => {
                                                     pending.oauth_url = url;
                                                     pending.oauth_code = code;
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
                                                 }
-                                                OAuthDialogEvent::PromptText { id, message, placeholder } => {
-                                                    pending.oauth_url = message.clone();
+                                                OAuthDialogEvent::PromptText { id: _, message, placeholder } => {
                                                     pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                     pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
                                                 }
-                                                OAuthDialogEvent::PromptManualCode { id, message, placeholder } => {
-                                                    pending.oauth_url = message.clone();
+                                                OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
                                                     pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                     pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                                }
+                                                OAuthDialogEvent::PromptSelect { id: _, message, options } => {
+                                                    pending.oauth_url = message.clone();
+                                                    pending.oauth_code = String::new();
+                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    // Store options as selectable labels
+                                                    pending.oauth_select_labels = options.iter().map(|o| o.label.clone()).collect();
+                                                    pending.oauth_select_ids = options.iter().map(|o| o.id.clone()).collect();
+                                                    pending.oauth_select_index = 0;
+                                                    pending.step = ProviderConnectStep::OAuthSelect;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthSelectList;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthSelectList);
                                                 }
                                             }
                                         }
@@ -3293,16 +3384,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                     OAuthDialogEvent::DeviceCode { url, code } => {
                                                         pending.oauth_url = url;
                                                         pending.oauth_code = code;
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     }
-                                                    OAuthDialogEvent::PromptText { id, message, placeholder } => {
-                                                        pending.oauth_url = message.clone();
+                                                    OAuthDialogEvent::PromptText { id: _, message, placeholder } => {
                                                         pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                         pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     }
-                                                    OAuthDialogEvent::PromptManualCode { id, message, placeholder } => {
-                                                        pending.oauth_url = message.clone();
+                                                    OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
                                                         pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                         pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    }
+                                                    OAuthDialogEvent::PromptSelect { id: _, message, options } => {
+                                                        pending.oauth_url = message.clone();
+                                                        pending.oauth_code = String::new();
+                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.oauth_select_labels = options.iter().map(|o| o.label.clone()).collect();
+                                                        pending.oauth_select_ids = options.iter().map(|o| o.id.clone()).collect();
+                                                        pending.oauth_select_index = 0;
+                                                        pending.step = ProviderConnectStep::OAuthSelect;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthSelectList;
                                                     }
                                                 }
                                             }
@@ -4821,6 +4926,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
             let selected_auth_method = pending_ref.map(|p| p.selected_auth_method).unwrap_or(0);
             let fresh_open = pending_ref.map(|p| p.fresh_open).unwrap_or(false);
+            let oauth_select_labels = pending_ref.map(|p| p.oauth_select_labels.clone()).unwrap_or_default();
+            let oauth_select_index = pending_ref.map(|p| p.oauth_select_index).unwrap_or(0);
             drop(pending);
 
             let dialog = build_provider_connect_dialog_kind(
@@ -4833,6 +4940,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 oauth_code,
                 oauth_provider_name,
                 fresh_open,
+                oauth_select_labels,
+                oauth_select_index,
             );
             if fresh_open && let Some(ref mut pending) = *pending_provider_connect.write() {
                 pending.fresh_open = false;

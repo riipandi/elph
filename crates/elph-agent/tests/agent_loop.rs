@@ -469,7 +469,7 @@ async fn run_agent_loop_prepares_tool_arguments_for_validation() {
         })),
         execute: Arc::new({
             let executed_capture = executed_capture.clone();
-            move |_id, args, _signal, _on_update| {
+            move |_id, args, _signal, _on_update, _context| {
                 let executed_capture = executed_capture.clone();
                 Box::pin(async move {
                     executed_capture

@@ -122,6 +122,7 @@ async fn goal_tools_round_trip() {
     let tools = create_goal_tools(store, session_id);
 
     let create = tools.iter().find(|t| t.name() == "create_goal").expect("create_goal");
+    let ctx = elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::LocalExecutionEnv::new(".")));
     let create_result = (create.execute)(
         "tc1".into(),
         json!({
@@ -130,6 +131,7 @@ async fn goal_tools_round_trip() {
         }),
         None,
         None,
+        ctx.clone(),
     )
     .await
     .expect("create tool");
@@ -137,7 +139,7 @@ async fn goal_tools_round_trip() {
     assert!(create_text.contains("Refactor module"));
 
     let update = tools.iter().find(|t| t.name() == "update_goal").expect("update_goal");
-    let update_result = (update.execute)("tc4".into(), json!({ "status": "blocked" }), None, None)
+    let update_result = (update.execute)("tc4".into(), json!({ "status": "blocked" }), None, None, ctx.clone())
         .await
         .expect("update goal");
     assert!(tool_text(update_result).contains("\"status\":\"blocked\""));

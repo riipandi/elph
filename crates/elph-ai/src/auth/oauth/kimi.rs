@@ -13,10 +13,10 @@ use crate::auth::types::{AuthEvent, AuthLoginCallbacks, OAuthAuth, OAuthCredenti
 
 use super::device_code::{DeviceCodePollOptions, DeviceCodePollResult, poll_oauth_device_code_flow};
 
-const KIMI_CLIENT_ID: &str = "kimi-coding";
-const KIMI_SCOPE: &str = "openid profile email offline_access";
-const KIMI_DEVICE_CODE_URL: &str = "https://kimi.moonshot.cn/oauth/device/code";
-const KIMI_TOKEN_URL: &str = "https://kimi.moonshot.cn/oauth/token";
+const KIMI_CLIENT_ID: &str = "17e5f671-d194-4dfb-9706-5516cb48c098";
+const KIMI_DEFAULT_OAUTH_HOST: &str = "https://auth.kimi.com";
+const KIMI_DEVICE_CODE_PATH: &str = "/api/oauth/device_authorization";
+const KIMI_TOKEN_PATH: &str = "/api/oauth/token";
 const REFRESH_SKEW_MS: i64 = 5 * 60 * 1000;
 const DEFAULT_TOKEN_LIFETIME_SECONDS: u64 = 3600;
 
@@ -50,6 +50,14 @@ fn kimi_oauth_impl() -> OAuthAuth {
     }
 }
 
+fn get_oauth_host() -> String {
+    std::env::var("KIMI_CODE_OAUTH_HOST")
+        .or_else(|_| std::env::var("KIMI_OAUTH_HOST"))
+        .unwrap_or_else(|_| KIMI_DEFAULT_OAUTH_HOST.to_string())
+        .trim_end_matches('/')
+        .to_string()
+}
+
 fn oauth_credential(access: String, refresh: String, expires: i64) -> OAuthCredential {
     OAuthCredential {
         kind: "oauth".to_string(),
@@ -78,13 +86,13 @@ async fn post_form(url: &str, fields: Vec<(&str, &str)>) -> Result<(bool, Value)
 }
 
 async fn login_kimi(callbacks: &Arc<dyn AuthLoginCallbacks>) -> Result<OAuthCredential> {
-    let fields = vec![
-        ("client_id", KIMI_CLIENT_ID),
-        ("scope", KIMI_SCOPE),
-        ("referrer", "elph"),
-    ];
+    let oauth_host = get_oauth_host();
+    let device_code_url = format!("{oauth_host}{KIMI_DEVICE_CODE_PATH}");
+    let token_url = format!("{oauth_host}{KIMI_TOKEN_PATH}");
 
-    let (ok, body) = post_form(KIMI_DEVICE_CODE_URL, fields).await?;
+    let fields = vec![("client_id", KIMI_CLIENT_ID)];
+
+    let (ok, body) = post_form(&device_code_url, fields).await?;
     if !ok {
         let error = body.get("error").and_then(|v| v.as_str()).unwrap_or("unknown");
         let description = body.get("error_description").and_then(|v| v.as_str()).unwrap_or("");
@@ -126,6 +134,7 @@ async fn login_kimi(callbacks: &Arc<dyn AuthLoginCallbacks>) -> Result<OAuthCred
         wait_before_first_poll: true,
         poll: Box::new(move || {
             let device_code = device_code.clone();
+            let token_url = token_url.clone();
             Box::pin(async move {
                 let fields = vec![
                     ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
@@ -133,7 +142,7 @@ async fn login_kimi(callbacks: &Arc<dyn AuthLoginCallbacks>) -> Result<OAuthCred
                     ("device_code", &device_code),
                 ];
 
-                let result = post_form(KIMI_TOKEN_URL, fields).await;
+                let result = post_form(&token_url, fields).await;
                 let (ok, body) = match result {
                     Ok((ok, body)) => (ok, body),
                     Err(e) => return DeviceCodePollResult::Failed { message: e.to_string() },
@@ -194,13 +203,15 @@ async fn login_kimi(callbacks: &Arc<dyn AuthLoginCallbacks>) -> Result<OAuthCred
 }
 
 async fn refresh_kimi_token(refresh_token: &str) -> Result<OAuthCredential> {
+    let oauth_host = get_oauth_host();
+    let token_url = format!("{oauth_host}{KIMI_TOKEN_PATH}");
     let fields = vec![
         ("grant_type", "refresh_token"),
         ("client_id", KIMI_CLIENT_ID),
         ("refresh_token", refresh_token),
     ];
 
-    let (ok, body) = post_form(KIMI_TOKEN_URL, fields).await?;
+    let (ok, body) = post_form(&token_url, fields).await?;
     if !ok {
         let error = body.get("error").and_then(|v| v.as_str()).unwrap_or("unknown");
         anyhow::bail!("Kimi OAuth token refresh failed: {error}");

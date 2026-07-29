@@ -3,8 +3,9 @@
 //! Multi-step dialog:
 //!   1. **SelectAuthMethod** — choose between OAuth or API key authentication
 //!   2. **SelectProvider** — pick a provider with fuzzy search (like the model selector)
-//!   3. **OAuthDeviceCode** — (OAuth only) show device code URL and wait for authentication
-//!   4. **EnterApiKey** — (API key only) type the API key in a dedicated dialog
+//!   3. **OAuthSelect** — (OAuth only) select login method when the provider offers multiple options
+//!   4. **OAuthDeviceCode** — (OAuth only) show device code URL and wait for authentication
+//!   5. **EnterApiKey** — (API key only) type the API key in a dedicated dialog
 //!
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
@@ -61,6 +62,7 @@ pub enum ProviderConnectStep {
     SelectAuthMethod,
     SelectProvider,
     OAuthDeviceCode,
+    OAuthSelect,
     EnterApiKey,
 }
 
@@ -79,6 +81,7 @@ pub enum ProviderConnectFocus {
     Search,
     List,
     OAuthCodeInput,
+    OAuthSelectList,
 }
 
 /// Pending provider connection dialog state.
@@ -93,6 +96,12 @@ pub struct PendingProviderConnectDialog {
     pub oauth_code: String,
     pub oauth_url: String,
     pub oauth_provider_name: String,
+    /// Labels for OAuth select options (e.g. ["Browser login (default)", "Device code login (headless)"]).
+    pub oauth_select_labels: Vec<String>,
+    /// IDs for OAuth select options (e.g. ["browser", "device_code"]).
+    pub oauth_select_ids: Vec<String>,
+    /// Selected index within the OAuth select options.
+    pub oauth_select_index: usize,
     /// Provider ID to pre-select (from `/provider connect <id>`).
     pub provider_id: Option<String>,
     pub stashed_prompt_draft: Option<String>,
@@ -377,6 +386,9 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         oauth_code: String::new(),
         oauth_url: String::new(),
         oauth_provider_name: String::new(),
+        oauth_select_labels: Vec::new(),
+        oauth_select_ids: Vec::new(),
+        oauth_select_index: 0,
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
         opened_at: Instant::now(),
@@ -668,6 +680,8 @@ pub fn render_provider_connect_dialog(
     step: ProviderConnectStep,
     input_focus: ProviderConnectFocus,
     fresh_open: bool,
+    oauth_select_labels: Vec<String>,
+    _oauth_select_index: usize,
 ) -> AnyElement<'static> {
     // Defensive guard: ensure the dialog always starts at SelectAuthMethod.
     // The `fresh_open` flag is set by `open_provider_connect_dialog` and cleared
@@ -695,6 +709,14 @@ pub fn render_provider_connect_dialog(
         ProviderConnectStep::OAuthDeviceCode => {
             render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
         }
+        ProviderConnectStep::OAuthSelect => render_oauth_select_step(
+            screen_width,
+            screen_height,
+            has_focus,
+            oauth_select_labels.clone(),
+            selected,
+            input_focus,
+        ),
         ProviderConnectStep::EnterApiKey => {
             render_api_key_step(screen_width, screen_height, has_focus, api_key_input, provider_name)
         }
@@ -796,6 +818,70 @@ fn render_select_provider_step(
                         models: model_rows,
                         show_provider_hint: false,
                         custom_hints: config_hints,
+                        selected_index: Some(selected),
+                        has_focus: list_focused,
+                        theme: Some(thm),
+                    )
+                }
+            }
+        }
+    }
+    .into()
+}
+
+/// Render the OAuth select prompt step (e.g. OpenAI Codex login method selection).
+fn render_oauth_select_step(
+    screen_width: u16,
+    _screen_height: u16,
+    has_focus: bool,
+    labels: Vec<String>,
+    selected: State<usize>,
+    input_focus: ProviderConnectFocus,
+) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(screen_width);
+
+    let list_focused = has_focus && input_focus == ProviderConnectFocus::OAuthSelectList;
+
+    // Map options to ModelRow for consistent rendering
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = labels
+        .iter()
+        .map(|opt| crate::tui::model_selector::ModelRow {
+            value: opt.clone(),
+            name: opt.clone(),
+            provider_id: String::new(),
+            model_id: opt.clone(),
+            context_k: 0,
+            reasoning: false,
+            images: false,
+        })
+        .collect();
+
+    let w = body_width;
+    let thm = theme;
+
+    element! {
+        InlineDialogShell(
+            screen_width: screen_width,
+            title: "Select login method".to_string(),
+            has_focus: has_focus,
+            footer_hint: Some("↑↓ navigate · Enter confirm · Esc cancel".to_string()),
+        ) {
+            View(width: w, flex_direction: FlexDirection::Column, gap: 0, flex_shrink: 0f32) {
+                View(width: w, flex_shrink: 0f32) {
+                    Text(
+                        content: "Choose a login method:".to_string(),
+                        color: thm.text_secondary,
+                        wrap: TextWrap::NoWrap,
+                    )
+                }
+                View(width: w, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
+                    crate::tui::model_option_list::ModelOptionList(
+                        width: w,
+                        height: 0u16,
+                        models: model_rows,
+                        show_provider_hint: false,
+                        custom_hints: vec![String::new(); labels.len()],
                         selected_index: Some(selected),
                         has_focus: list_focused,
                         theme: Some(thm),

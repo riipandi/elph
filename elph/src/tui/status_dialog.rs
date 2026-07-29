@@ -342,6 +342,10 @@ pub enum StatusDialogKind {
         oauth_code: String,
         oauth_provider_name: String,
         fresh_open: bool,
+        /// Labels for OAuth select options.
+        oauth_select_labels: Vec<String>,
+        /// Selected index within the OAuth select options.
+        oauth_select_index: usize,
     },
     /// Dedicated API key input dialog (separate from provider selection).
     ProviderApiKey {
@@ -502,6 +506,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             oauth_code,
             oauth_provider_name,
             fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
         }) => Some(render_provider_connect_dialog(
             props,
             provider_id,
@@ -512,6 +518,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             oauth_code,
             oauth_provider_name,
             fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
         )),
         Some(StatusDialogKind::ProviderApiKey {
             provider_id,
@@ -537,6 +545,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         oauth_code: String,
         oauth_provider_name: String,
         fresh_open: bool,
+        oauth_select_labels: Vec<String>,
+        oauth_select_index: usize,
     ) -> AnyElement<'static> {
         use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
 
@@ -563,6 +573,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             step,
             input_focus,
             fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
         )
     }
 
@@ -684,6 +696,8 @@ pub fn build_provider_connect_dialog_kind(
     oauth_code: String,
     oauth_provider_name: String,
     fresh_open: bool,
+    oauth_select_labels: Vec<String>,
+    oauth_select_index: usize,
 ) -> Option<StatusDialogKind> {
     let step = step?;
     if has_focus {
@@ -696,6 +710,8 @@ pub fn build_provider_connect_dialog_kind(
             oauth_code,
             oauth_provider_name,
             fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
         })
     } else {
         None
@@ -970,6 +986,8 @@ mod tests {
             String::new(),
             String::new(),
             false,
+            Vec::new(),
+            0,
         );
 
         assert!(dialog.is_none());

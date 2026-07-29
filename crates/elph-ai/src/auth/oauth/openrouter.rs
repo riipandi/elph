@@ -15,9 +15,9 @@ const OPENROUTER_CLIENT_ID: &str = "openrouter";
 const OPENROUTER_AUTHORIZE_URL: &str = "https://openrouter.ai/auth/authorize";
 const OPENROUTER_TOKEN_URL: &str = "https://openrouter.ai/api/v1/auth/token";
 const OPENROUTER_KEYS_URL: &str = "https://openrouter.ai/api/v1/auth/keys";
-const CALLBACK_PORT: u16 = 53692;
+const CALLBACK_PORT: u16 = 53693;
 const CALLBACK_PATH: &str = "/callback";
-const REDIRECT_URI: &str = "http://localhost:53692/callback";
+const REDIRECT_URI: &str = "http://localhost:53693/callback";
 const SCOPES: &str = "openid profile email";
 
 pub fn openrouter_oauth() -> OAuthAuth {

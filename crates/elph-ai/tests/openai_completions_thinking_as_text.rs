@@ -74,6 +74,7 @@ fn converts_thinking_blocks_to_plain_text_content() {
                 provider: "repro".to_string(),
                 model: "repro-model".to_string(),
                 diagnostics: None,
+                pending_stop_reason: None,
                 usage: Default::default(),
                 stop_reason: elph_ai::StopReason::Stop,
                 timestamp: 2,

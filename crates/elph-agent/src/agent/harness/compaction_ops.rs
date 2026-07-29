@@ -64,7 +64,7 @@ where
                 model,
                 effective_custom_instructions,
                 None,
-                thinking.clone(),
+                thinking,
             )
             .await;
 

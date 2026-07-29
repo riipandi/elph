@@ -49,6 +49,7 @@ fn build_prefilled_messages() -> Vec<Message> {
             provider: "github-copilot".to_string(),
             model: "gpt-5.2-codex".to_string(),
             diagnostics: None,
+            pending_stop_reason: None,
             usage: Usage::default(),
             stop_reason: StopReason::ToolUse,
             timestamp: 0,

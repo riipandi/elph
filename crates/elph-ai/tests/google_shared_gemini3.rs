@@ -56,6 +56,7 @@ fn context_with_tool_calls(model: &Model, thought_signature: Option<&str>) -> Co
                 provider: model.provider.clone(),
                 model: model.id.clone(),
                 diagnostics: None,
+                pending_stop_reason: None,
                 usage: Usage::default(),
                 stop_reason: StopReason::ToolUse,
                 timestamp: 1,
