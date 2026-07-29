@@ -8,11 +8,9 @@ use inquire::Select;
 use super::help;
 use super::interactive;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
-use crate::utils::path::AppPaths;
-use crate::tui::provider_connect_dialog::{
-    ProviderAuthMethod, ProviderConfigStatus, get_provider_options,
-};
+use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, get_provider_options};
 use crate::tui::provider_credential_store::save_provider_credential;
+use crate::utils::path::AppPaths;
 
 // ── Style helpers ────────────────────────────────────────────────────
 
@@ -106,7 +104,10 @@ fn handle_list(json: &bool) -> ExitCode {
     let provider_ids = crate::tui::provider_credential_store::list_providers_with_credentials(&auth_store_path);
 
     if *json {
-        println!("{}", serde_json::to_string_pretty(&provider_ids).unwrap_or_else(|_| "[]".into()));
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&provider_ids).unwrap_or_else(|_| "[]".into())
+        );
         return EXIT_SUCCESS;
     }
 
@@ -118,9 +119,7 @@ fn handle_list(json: &bool) -> ExitCode {
     sorted.sort_by(|a, b| {
         let a_configured = !matches!(a.config_status, ProviderConfigStatus::Unconfigured);
         let b_configured = !matches!(b.config_status, ProviderConfigStatus::Unconfigured);
-        b_configured
-            .cmp(&a_configured)
-            .then_with(|| a.id.cmp(&b.id))
+        b_configured.cmp(&a_configured).then_with(|| a.id.cmp(&b.id))
     });
 
     // Find the longest provider ID for alignment
@@ -129,25 +128,25 @@ fn handle_list(json: &bool) -> ExitCode {
     for provider in &sorted {
         let status = config_status_label(&provider.config_status);
         let is_configured = !matches!(provider.config_status, ProviderConfigStatus::Unconfigured);
+
+        // Pad plain ID first, then wrap with ANSI styling
+        let padded_id = format!("{:<width$}", provider.id, width = max_id_len);
+        let id_display = if is_configured {
+            format!("{}{}{}", STYLE_BOLD.render(), padded_id, STYLE_BOLD.render_reset())
+        } else {
+            padded_id
+        };
+
         let marker = if is_configured {
             format!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset())
         } else {
             " ".to_string()
         };
-        let id_styled = if is_configured {
-            format!("{}{}{}{}",
-                STYLE_BOLD.render(),
-                provider.id,
-                STYLE_BOLD.render_reset(),
-                " ".repeat(2),
-            )
-        } else {
-            format!("{} {}", provider.id, " ")
-        };
-        let padded_id = format!("{:<width$}", id_styled, width = max_id_len);
-        println!("  {} {}  {}{}{}",
+
+        println!(
+            "  {} {}  {}{}{}",
             marker,
-            padded_id,
+            id_display,
             STYLE_MUTED.render(),
             status,
             STYLE_MUTED.render_reset(),
@@ -156,7 +155,8 @@ fn handle_list(json: &bool) -> ExitCode {
 
     if configured_count > 0 {
         println!();
-        println!("{}{}{}{} provider(s) with stored credentials{}",
+        println!(
+            "{}{}{}{} provider(s) with stored credentials{}",
             STYLE_MUTED.render(),
             STYLE_BOLD.render(),
             configured_count,
@@ -172,10 +172,7 @@ fn handle_list(json: &bool) -> ExitCode {
 fn resolve_provider_by_id<'a>(
     providers: &'a [crate::tui::provider_connect_dialog::ProviderOption],
     pid: &str,
-) -> Option<(
-    &'a crate::tui::provider_connect_dialog::ProviderOption,
-    ProviderAuthMethod,
-)> {
+) -> Option<(&'a crate::tui::provider_connect_dialog::ProviderOption, ProviderAuthMethod)> {
     let provider = providers.iter().find(|p| p.id == pid)?;
     let method = if provider.supports_api_key {
         ProviderAuthMethod::ApiKey
@@ -334,7 +331,10 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
         let pid_for_closure = pid.clone();
         match run_async(move || {
             let rt = new_rt();
-            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store, &pid_for_closure))
+            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(
+                &auth_store,
+                &pid_for_closure,
+            ))
         }) {
             Ok(true) => {
                 println!("{}", ok(format!("Signed out from {pid}.")));
@@ -374,7 +374,10 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
         let pid_for_closure = pid_str.clone();
         match run_async(move || {
             let rt = new_rt();
-            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(&auth_store, &pid_for_closure))
+            rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(
+                &auth_store,
+                &pid_for_closure,
+            ))
         }) {
             Ok(true) => {
                 println!("{}", ok(format!("Signed out from {pid_str}.")));

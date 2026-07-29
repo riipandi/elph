@@ -715,9 +715,16 @@ pub fn render_provider_connect_dialog(
             input_focus,
             selected_auth_method,
         ),
-        ProviderConnectStep::OAuthDeviceCode => {
-            render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name, oauth_is_prompt, oauth_prompt_message)
-        }
+        ProviderConnectStep::OAuthDeviceCode => render_oauth_device_code_step(
+            screen_width,
+            screen_height,
+            has_focus,
+            oauth_url,
+            oauth_code,
+            provider_name,
+            oauth_is_prompt,
+            oauth_prompt_message,
+        ),
         ProviderConnectStep::OAuthSelect => render_oauth_select_step(
             screen_width,
             screen_height,
@@ -919,9 +926,8 @@ fn render_oauth_device_code_step(
     let w = body_width;
     let thm = theme;
 
-    let is_prompt = oauth_is_prompt
-        || oauth_url.contains("GitHub Enterprise")
-        || oauth_url.contains("enter value manually");
+    let is_prompt =
+        oauth_is_prompt || oauth_url.contains("GitHub Enterprise") || oauth_url.contains("enter value manually");
 
     let title = if oauth_is_prompt {
         format!("Login to {provider_name}")
@@ -1156,7 +1162,9 @@ pub fn open_provider_disconnect_dialog(args: OpenProviderDisconnectDialogArgs<'_
 
     let mut provider_ids = super::provider_credential_store::list_providers_with_credentials(args.auth_store_path);
     // Pre-select if a specific provider was given
-    let selected_index = args.provider_id.as_ref()
+    let selected_index = args
+        .provider_id
+        .as_ref()
         .and_then(|pid| provider_ids.iter().position(|id| id == pid))
         .unwrap_or(0);
 

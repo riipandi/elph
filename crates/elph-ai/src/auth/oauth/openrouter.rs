@@ -132,9 +132,7 @@ async fn login_openrouter(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Re
     };
 
     let code = callback
-        .and_then(|r| {
-            if r.code.is_empty() { None } else { Some(r.code) }
-        })
+        .and_then(|r| if r.code.is_empty() { None } else { Some(r.code) })
         .ok_or_else(|| anyhow::anyhow!("Missing authorization code"))?;
 
     callbacks.notify(crate::auth::types::AuthEvent::Progress {

@@ -7,8 +7,8 @@
 use std::fmt;
 
 use anstyle::*;
-use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 use elph_ai::auth::{AuthEvent, AuthLoginCallbacks, AuthPrompt, BoxFuture};
+use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 
 use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, ProviderOption};
 
@@ -53,7 +53,9 @@ impl fmt::Display for ProviderDisplayItem<'_> {
             ProviderConfigStatus::Unconfigured => String::new(),
             _ => " ✓".to_string(),
         };
-        write!(f, "{}{}{}{}",
+        write!(
+            f,
+            "{}{}{}{}",
             self.provider.name,
             STYLE_DIM.render(),
             status,
@@ -114,15 +116,15 @@ pub fn select_provider<'a>(
         .collect();
 
     if filtered.is_empty() {
-        eprintln!("{} No providers available for the selected method.",
-            styled(STYLE_ERROR, "error:", ""));
+        eprintln!(
+            "{} No providers available for the selected method.",
+            styled(STYLE_ERROR, "error:", "")
+        );
         return None;
     }
 
-    let display_items: Vec<ProviderDisplayItem<'_>> = filtered
-        .iter()
-        .map(|p| ProviderDisplayItem { provider: p })
-        .collect();
+    let display_items: Vec<ProviderDisplayItem<'_>> =
+        filtered.iter().map(|p| ProviderDisplayItem { provider: p }).collect();
 
     let ans = Select::new("Select provider", display_items)
         .with_page_size(10)
@@ -151,15 +153,13 @@ pub fn prompt_api_key(provider_name: &str) -> Option<String> {
 
 /// Confirm overwriting existing credentials for a provider.
 pub fn confirm_overwrite(provider_name: &str) -> bool {
-    Confirm::new(&format!(
-        "{provider_name} already has stored credentials. Overwrite?"
-    ))
-    .with_default(false)
-    .with_help_message("y/N")
-    .prompt_skippable()
-    .ok()
-    .flatten()
-    .unwrap_or(false)
+    Confirm::new(&format!("{provider_name} already has stored credentials. Overwrite?"))
+        .with_default(false)
+        .with_help_message("y/N")
+        .prompt_skippable()
+        .ok()
+        .flatten()
+        .unwrap_or(false)
 }
 
 // ── OAuth callbacks (CLI) ────────────────────────────────────────────
@@ -221,7 +221,10 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     .await
                     .map_err(|e| anyhow::anyhow!("{e}"))?
                 }
-                AuthPrompt::Secret { message, placeholder: _ } => {
+                AuthPrompt::Secret {
+                    message,
+                    placeholder: _,
+                } => {
                     let message = message.clone();
                     tokio::task::spawn_blocking(move || {
                         Password::new(&message)
@@ -275,35 +278,30 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
         match event {
             AuthEvent::AuthUrl { url, instructions } => {
                 println!();
-                eprintln!("{}{}",
+                eprintln!(
+                    "{}Opening browser for authentication…{}",
                     STYLE_ACCENT.render(),
-                    "│  Opening browser for authentication…",
+                    STYLE_ACCENT.render_reset(),
                 );
                 if let Some(instructions) = instructions {
-                    eprintln!("{}{}",
-                        STYLE_DIM.render(),
-                        instructions,
-                    );
+                    eprintln!("{}{}", STYLE_DIM.render(), instructions);
                 }
-                eprintln!("{}  {}",
-                    STYLE_URL.render(),
-                    url,
-                );
-                eprintln!("{}", STYLE_ACCENT.render_reset());
+                eprintln!("{}  {}{}", STYLE_URL.render(), url, STYLE_URL.render_reset(),);
                 match open_url(&url) {
                     Ok(()) => {
-                        let line = styled(STYLE_SUCCESS, "✓", "Browser opened. Complete the login in your browser.");
+                        let line = styled(STYLE_SUCCESS, "✓", "Browser opened. Login in your browser.");
                         eprintln!("{line}");
                     }
                     Err(e) => {
-                        let err = format!("{} Could not open browser: {e}", err_label());
-                        eprintln!("{err}");
-                        let open_manually = format!("  {}Open manually: {}{}",
+                        eprintln!("{} Could not open browser: {e}", err_label());
+                        eprintln!(
+                            "{}  Open manually:{}{}{}{}",
                             STYLE_DIM.render(),
+                            STYLE_DIM.render_reset(),
                             STYLE_URL.render(),
                             url,
+                            STYLE_URL.render_reset(),
                         );
-                        eprintln!("{open_manually}");
                     }
                 }
                 println!();
@@ -315,37 +313,52 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                 expires_in_seconds,
             } => {
                 println!();
-                eprintln!("  {}  Device code authentication",
+                eprintln!(
+                    "{}Device code authentication{}",
                     STYLE_ACCENT.render(),
+                    STYLE_ACCENT.render_reset(),
                 );
-                eprintln!("  {} Open:", STYLE_LABEL.render());
-                eprintln!("    {}{}", STYLE_URL.render(), verification_uri);
-                eprintln!("  {} Code:", STYLE_LABEL.render());
-                eprintln!("    {}{}", STYLE_CODE.render(), user_code);
-                eprintln!("{}", STYLE_ACCENT.render_reset());
+                eprintln!(
+                    "  {}Open:{}{}  {}{}",
+                    STYLE_LABEL.render(),
+                    STYLE_LABEL.render_reset(),
+                    STYLE_URL.render(),
+                    verification_uri,
+                    STYLE_URL.render_reset(),
+                );
+                eprintln!(
+                    "  {}Code:{}{}  {}{}",
+                    STYLE_LABEL.render(),
+                    STYLE_LABEL.render_reset(),
+                    STYLE_CODE.render(),
+                    user_code,
+                    STYLE_CODE.render_reset(),
+                );
                 match open_url(&verification_uri) {
                     Ok(()) => {
                         let line = styled(STYLE_SUCCESS, "✓", "Browser opened.");
                         eprintln!("{line}");
                     }
                     Err(e) => {
-                        let err = format!("{} Could not open browser: {e}", err_label());
-                        eprintln!("{err}");
-                        let open_manually = format!("  {}Open manually: {}{}",
+                        eprintln!("{} Could not open browser: {e}", err_label());
+                        eprintln!(
+                            "{}  Open manually:{}{}{}{}",
                             STYLE_DIM.render(),
+                            STYLE_DIM.render_reset(),
                             STYLE_URL.render(),
                             verification_uri,
+                            STYLE_URL.render_reset(),
                         );
-                        eprintln!("{open_manually}");
                     }
                 }
                 if let Some(interval) = interval_seconds {
-                    eprintln!("{}  Polling every {interval}s — waiting for authentication…",
-                        dim("").trim_end());
+                    eprintln!(
+                        "{}  Polling every {interval}s — waiting for authentication…",
+                        dim("").trim_end()
+                    );
                 }
                 if let Some(expires) = expires_in_seconds {
-                    eprintln!("{}  Code expires in {expires}s.",
-                        dim("").trim_end());
+                    eprintln!("{}  Code expires in {expires}s.", dim("").trim_end());
                 }
                 println!();
             }

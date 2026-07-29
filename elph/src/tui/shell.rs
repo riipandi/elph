@@ -64,12 +64,10 @@ use crate::tui::prompt_history::{
 };
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
-    PendingProviderConnectDialog, PendingProviderDisconnectDialog,
-    ProviderConnectFocus, ProviderConnectStep, apply_provider_filter_seed,
-    close_provider_api_key_dialog, close_provider_connect_dialog, close_provider_disconnect_dialog,
-    focus_provider_list, format_provider_name,
-    get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
-    open_provider_disconnect_dialog,
+    PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
+    apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
+    close_provider_disconnect_dialog, focus_provider_list, format_provider_name, get_provider_options_for_auth_method,
+    open_provider_api_key_dialog, open_provider_connect_dialog, open_provider_disconnect_dialog,
     provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed, provider_list_nav_delta,
     provider_supports_oauth,
 };
@@ -1297,18 +1295,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 .as_ref()
                 .is_some_and(|p| p.done)
             {
-                let notice = pending_provider_connect_for_tick
-                    .read()
-                    .as_ref()
-                    .and_then(|p| {
-                        let url = &p.oauth_url;
-                        // If the done flag was set with a notification message, use it
-                        if url.starts_with("Signed in to ") {
-                            Some(url.clone())
-                        } else {
-                            None
-                        }
-                    });
+                let notice = pending_provider_connect_for_tick.read().as_ref().and_then(|p| {
+                    let url = &p.oauth_url;
+                    // If the done flag was set with a notification message, use it
+                    if url.starts_with("Signed in to ") {
+                        Some(url.clone())
+                    } else {
+                        None
+                    }
+                });
                 pending_provider_connect_for_tick.set(None);
                 provider_connect_api_key_for_tick.set(String::new());
                 provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
@@ -1332,7 +1327,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 shell_focus_for_tick.set(ShellFocus::Prompt);
                 // Push transcript notification
                 let mut msgs = messages_for_tick.write().clone();
-                msgs.push(TranscriptMessage::text("Signed out from all providers".to_string(), TranscriptStyle::Meta));
+                msgs.push(TranscriptMessage::text(
+                    "Signed out from all providers".to_string(),
+                    TranscriptStyle::Meta,
+                ));
                 messages_for_tick.set(msgs);
                 messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
             }
@@ -4844,7 +4842,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         && !model_selector_open
         && !provider_connect_open
         && !provider_disconnect_open;
-    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open && !provider_connect_open && !provider_disconnect_open;
+    let system_prompt_has_focus =
+        system_prompt_open && !rename_open && !confetti_open && !provider_connect_open && !provider_disconnect_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
@@ -5162,10 +5161,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
         .or_else(|| {
             let pending = pending_provider_disconnect.read();
-            pending.as_ref().map(|p| {
-                StatusDialogKind::ProviderDisconnect {
-                    provider_ids: p.provider_ids.clone(),
-                }
+            pending.as_ref().map(|p| StatusDialogKind::ProviderDisconnect {
+                provider_ids: p.provider_ids.clone(),
             })
         })
         .or_else(|| {
