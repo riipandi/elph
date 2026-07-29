@@ -16,23 +16,29 @@ use crate::tui::confetti::confetti_mode_from_slash_args;
 
 use super::agent_bridge::SlashDispatcher;
 
-/// Handle `/memory` slash commands synchronously and return the result as a dialog.
+/// Handle `/memory` slash commands as a background task.
 ///
-/// Memory operations are async (Turso DB) but fast enough to run inline via
-/// the current Tokio runtime handle without blocking the render loop noticeably.
+/// Memory operations are async (Turso DB). The result is delivered as a
+/// `MemoryResult` UI event so the shell can open a ScrollTextDialog.
 fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let Some(paths) = ctx.paths else {
         return SlashOutcome::Status("Project directory required for memory commands.".into());
     };
-    let output = match tokio::runtime::Handle::try_current() {
-        Ok(handle) => match handle.block_on(crate::memory::slash_run(paths, args)) {
+    let paths = paths.clone();
+    let args = args.to_string();
+    let ui_tx = ctx.agent_session.as_ref().map(|s| s.ui_event_sender());
+
+    tokio::spawn(async move {
+        let output = match crate::memory::slash_run(&paths, &args).await {
             Ok(text) => text,
             Err(err) => format!("memory error: {err}"),
-        },
-        Err(_) => "No tokio runtime available for memory command.".into(),
-    };
+        };
+        if let Some(tx) = ui_tx {
+            let _ = tx.send(crate::agent::AgentUiEvent::MemoryResult(output));
+        }
+    });
 
-    SlashOutcome::OpenMemoryResultDialog { text: output }
+    SlashOutcome::BackgroundTask
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

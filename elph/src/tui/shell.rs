@@ -1498,6 +1498,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
 
+                    if let AgentUiEvent::MemoryResult(ref text) = event {
+                        let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                            pending: &mut pending_system_prompt,
+                            shell_focus: &mut shell_focus,
+                            title: "Memory".to_string(),
+                            text: text.clone(),
+                            width_pct: 80,
+                            body_height: Some(body_height),
+                            show_copy: false,
+                        });
+                        continue;
+                    }
+
                     if let AgentUiEvent::ToolApprovalRequired(req) = event {
                         let tool_name = req.tool_name.clone();
                         let tool_call_id = req.tool_call_id.clone();
