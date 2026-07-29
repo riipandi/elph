@@ -23,7 +23,7 @@ Upstream projects move quickly. Each page records:
 
 ## Baseline (pi libraries)
 
-Last documented **2026-07-11T11:23:28Z** (18:23 WIB).
+Last documented **2026-07-29T12:00:00Z** (19:00 WIB).
 
 - **Upstream:** https://github.com/earendil-works/pi
 - **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
@@ -31,7 +31,7 @@ Last documented **2026-07-11T11:23:28Z** (18:23 WIB).
 - **Package version:** `0.80.6` (released 2026-07-09) + **Unreleased** on `main`
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
 - **Last library implementation pass:** 2026-07-11 — Sprints 1–4 on `elph-ai` / `elph-agent`
-- **Last product gap audit:** 2026-07-11T12:14:13Z — coding-agent vs `elph/` (docs only)
+- **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
 
 ## Status tags
 
@@ -60,7 +60,20 @@ Use these inline in prose (not table cells):
 
 5. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).
 
-### Skills
+### Timeline
+
+### 2026-07-29 — Rust verify & harden + dead code cleanup
+
+**Scope:** `elph/` product crate + `elph-tui`, `elph-agent` tests.
+
+- `make lint` brought to zero violations: 26 clippy errors fixed across 5 files.
+- `make test` repaired: 2 `elph-agent` tests broke due to model catalog restructure (direct `openai` provider removed; models now served through gateway providers). Updated to use `get_models(None).next()`.
+- Dead code removed: 17 items across provider connect dialog, credential store, plan confirmation, paths, and tool approval modules.
+- All 1881 tests passing, lint clean, warnings-free.
+
+Details in [pi-coding-agent.md](./pi-coding-agent.md#timeline).
+
+## Skills
 
 - **`/pi-port-gap`** — pi libraries/product vs elph crates
 

@@ -21,6 +21,10 @@
 
 ## Timeline
 
+### 2026-07-29 @ `4c18610` (v0.80.6 + Unreleased)
+
+**Test fix:** Two integration tests used `get_model("openai", "gpt-4o-mini")` which no longer resolves after `elph-ai` catalog restructure (see [pi-ai.md](./pi-ai.md#timeline)). Updated to `get_models(None).next()`.
+
 ### 2026-07-11T11:23:28Z @ `4c18610` (v0.80.6 + Unreleased)
 
 **Sprints 1–4:** Max thinking, deferred tool names, session transforms, estimate gate.

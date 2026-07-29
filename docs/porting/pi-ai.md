@@ -26,6 +26,14 @@ Most of the mainstream surface is at **[Parity]** after the library sprints:
 
 ## Timeline
 
+### 2026-07-29 @ `4c18610` (v0.80.6 + Unreleased)
+
+**Test fix: no direct `openai` provider in catalog.**
+
+Two `elph-agent` integration tests used `get_model("openai", "gpt-4o-mini")` which no longer resolves — the model catalog restructured so that `openai` is no longer a directly-registered provider. OpenAI models are now exposed through gateway providers (`kilo`, `sumopod`, `cloudflare-ai-gateway`, `azure-openai-responses`). Tests updated to pick the first available model via `get_models(None).next()`.
+
+No library-level functionality changed — this is a catalog reshape that happened between Sprints 1–4 and now. The `openai.json` model file still exists but the provider registration path changed. If `generate-models chat` is re-run, verify OpenAI registration logic.
+
 ### 2026-07-11T11:23:28Z @ `4c18610` (v0.80.6 + Unreleased)
 
 **Sprints 1–4 implemented.** Catalogs regenerated from pi; Hyper re-added.
@@ -70,6 +78,7 @@ Initial gap audit.
 
 - After every `generate-models chat`, re-add **Hyper** (`define_catalog!(HYPER_MODELS, …)` + `index.json`) — not in pi.
 - **[Gap P1]** Cloudflare key-only credential should fall back to ambient `CLOUDFLARE_ACCOUNT_ID` (pi #6292 / origin after `4c18610`) — check `providers/cloudflare_auth.rs`.
+- **[Catalog]** The `openai` provider is no longer directly registered in the catalog. OpenAI models are served through gateway providers (`kilo`, `sumopod`, etc.). Verify `generate-models` still produces correct provider routing when re-run.
 - **[Gap P2]** Retry patterns: gRPC `ResourceExhausted`, Bun `socket connection was closed` — extend `utils/retry.rs` when porting next Unreleased fixes.
 - OpenRouter context windows from top provider (#6481) — re-run catalog regen from latest pi.
 - OpenAI Completions does not use native deferred tool search (same as pi).
