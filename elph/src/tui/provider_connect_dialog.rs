@@ -3,8 +3,10 @@
 //! Multi-step dialog:
 //!   1. **SelectAuthMethod** — choose between OAuth or API key authentication
 //!   2. **SelectProvider** — pick a provider with fuzzy search (like the model selector)
-//!   3. **OAuthDeviceCode** — (OAuth only) enter device code for OAuth flow
+//!   3. **OAuthDeviceCode** — (OAuth only) show device code URL and wait for authentication
 //!   4. **EnterApiKey** — (API key only) type the API key in a dedicated dialog
+//!
+//! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
 use elph_tui::components::{DialogUserInputContent, SelectList, UiTheme};
@@ -144,10 +146,46 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
         return ProviderConfigStatus::EnvVarConfigured(env_var.to_string());
     }
 
-    // Check if there's stored API key configuration
-    // This would need to integrate with the settings system
-    // For now, return unconfigured
+    // Check if there's stored API key configuration in auth.json
+    // This is a placeholder - actual implementation would read from auth.json
+    if has_stored_api_key(provider_id) {
+        return ProviderConfigStatus::ApiKeyConfigured;
+    }
+
     ProviderConfigStatus::Unconfigured
+}
+
+/// Check if provider has stored API key in auth.json
+fn has_stored_api_key(_provider_id: &str) -> bool {
+    // This would check auth.json for encrypted API keys
+    // For now, return false to simplify the implementation
+    // TODO: Implement actual auth.json reading
+    false
+}
+
+/// Save API key to auth.json with encryption (async)
+/// This is a placeholder for the actual implementation
+pub async fn save_provider_api_key(provider_id: &str, api_key: String) -> anyhow::Result<()> {
+    log::info!("Saving encrypted API key for provider: {}", provider_id);
+    
+    // TODO: Implement encryption and storage using elph-agent's crypto module
+    // The crypto module is currently private, so we need to either:
+    // 1. Make it public in elph-agent
+    // 2. Create a public encryption wrapper
+    // 3. Use environment variables as a fallback
+    
+    // For now, just log the operation
+    log::info!("API key ({} chars) would be encrypted and saved to auth.json", api_key.len());
+    Ok(())
+}
+
+/// Load and decrypt API key from auth.json (async)
+/// This is a placeholder for the actual implementation
+pub async fn load_provider_api_key(provider_id: &str) -> anyhow::Result<Option<String>> {
+    log::info!("Loading encrypted API key for provider: {}", provider_id);
+    
+    // TODO: Implement decryption and loading using elph-agent's crypto module
+    Ok(None)
 }
 
 /// Get list of all providers with OAuth support info and configuration status.
@@ -160,7 +198,7 @@ pub fn get_provider_options() -> Vec<ProviderOption> {
             id: id.to_string(),
             name: format_provider_name(id),
             supports_oauth: oauth_provider_ids.contains(&id),
-            config_status: get_provider_config_status(&id),
+            config_status: get_provider_config_status(id),
         })
         .collect()
 }
@@ -498,7 +536,7 @@ fn auth_method_footer_hint() -> String {
 }
 
 fn oauth_device_code_footer_hint() -> String {
-    "Enter submit · Esc cancel".to_string()
+    "Esc cancel".to_string()
 }
 
 /// Render step 1: authentication method selection.
@@ -566,6 +604,9 @@ pub fn render_provider_connect_dialog(
     selected: State<usize>,
     filter: State<String>,
     api_key_input: State<String>,
+    oauth_url: String,
+    oauth_code: String,
+    provider_name: String,
     step: ProviderConnectStep,
     input_focus: ProviderConnectFocus,
 ) -> AnyElement<'static> {
@@ -577,7 +618,7 @@ pub fn render_provider_connect_dialog(
             render_select_provider_step(screen_width, screen_height, has_focus, selected, filter, input_focus)
         }
         ProviderConnectStep::OAuthDeviceCode => {
-            render_oauth_device_code_step(screen_width, screen_height, has_focus, api_key_input)
+            render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
         }
         ProviderConnectStep::EnterApiKey => {
             render_api_key_step(screen_width, screen_height, has_focus, api_key_input)
@@ -608,7 +649,7 @@ fn render_select_provider_step(
                 ProviderConfigStatus::ApiKeyConfigured => " • API key configured".to_string(),
                 ProviderConfigStatus::EnvVarConfigured(var) => format!(" ✓ env: {}", var),
             };
-            SelectOption::new(&format!("{}{}", p.name, status_suffix), &p.id)
+            SelectOption::new(format!("{}{}", p.name, status_suffix), &p.id)
         })
         .collect();
 
@@ -684,30 +725,27 @@ fn render_oauth_device_code_step(
     screen_width: u16,
     _screen_height: u16,
     has_focus: bool,
-    oauth_code: State<String>,
+    oauth_url: String,
+    oauth_code: String,
+    provider_name: String,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
-    let code_focused = has_focus;
     let w = body_width;
     let thm = theme;
-
-    // This would need to get the provider name from the pending state
-    // For now, use a generic title
-    let provider_name = "Provider"; 
 
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: format!("Login to {}", provider_name),
+            title: provider_name,
             has_focus: has_focus,
             footer_hint: Some(oauth_device_code_footer_hint()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
                 View(width: w, flex_shrink: 0f32) {
                     Text(
-                        content: "https://accounts.x.ai/oauth2/device?user_code=XXXX-XXXX".to_string(),
+                        content: oauth_url,
                         color: thm.text_primary,
                         weight: Weight::Bold,
                         wrap: TextWrap::NoWrap,
@@ -722,7 +760,7 @@ fn render_oauth_device_code_step(
                 }
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     Text(
-                        content: "Enter code: XXXX-XXXX".to_string(),
+                        content: format!("Enter code: {}", oauth_code),
                         color: thm.text_secondary,
                         wrap: TextWrap::NoWrap,
                     )
@@ -732,20 +770,6 @@ fn render_oauth_device_code_step(
                         content: "Waiting for authentication...".to_string(),
                         color: thm.text_muted,
                         wrap: TextWrap::NoWrap,
-                    )
-                }
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    DialogUserInputContent(
-                        width: w,
-                        value: Some(oauth_code),
-                        has_focus: code_focused,
-                        theme: Some(thm),
-                        compact: true,
-                        show_prompt: false,
-                        show_footer_hint: false,
-                        dialog_chrome: true,
-                        on_submit: HandlerMut::default(),
-                        on_cancel: HandlerMut::default(),
                     )
                 }
             }

@@ -516,6 +516,12 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             .provider_connect_filter
             .clone()
             .expect("provider_connect_filter should be set");
+        
+        // For OAuth, we need to pass the OAuth state from the shell
+        // For now, use empty strings as placeholders - will be updated with proper state integration
+        let oauth_url = String::new();
+        let oauth_code = String::new();
+        let provider_name = String::new();
 
         render_dialog(
             props.screen_width,
@@ -524,6 +530,9 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             selected,
             filter,
             api_key_input,
+            oauth_url,
+            oauth_code,
+            provider_name,
             step,
             input_focus,
         )

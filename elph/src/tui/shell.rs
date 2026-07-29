@@ -2986,16 +2986,39 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 let is_oauth_method = auth_method_idx == 0; // First method is OAuth
                                 
                                 if provider_supports_oauth(&provider.id) && is_oauth_method {
-                                    // OAuth — transition to OAuth device code step
+                                    // OAuth — trigger OAuth flow
+                                    let provider_id = provider.id.clone();
+                                    let provider_name = format_provider_name(&provider.id);
+                                    
+                                    // Trigger OAuth flow using elph-ai's OAuth infrastructure
+                                    log::info!("Starting OAuth flow for provider: {}", provider_id);
+                                    
+                                    // Transition to OAuth device code step
                                     if let Some(ref mut pending) = *pending_provider_connect.write() {
                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
-                                        pending.oauth_provider_name = format_provider_name(&provider.id);
+                                        pending.oauth_provider_name = format!("Login to {}", provider_name);
                                         pending.oauth_url = String::new(); // Will be filled by OAuth flow
-                                        pending.oauth_code = String::new();
+                                        pending.oauth_code = String::new(); // Will be filled by OAuth flow
                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                         provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
-                                        provider_connect_api_key.set(String::new());
                                     }
+                                    
+                                    // Start the OAuth flow in the background
+                                    // This would normally use the elph-ai OAuth callbacks
+                                    // For now, we need to integrate with the existing OAuth infrastructure
+                                    let provider_id_oauth = provider_id.clone();
+                                    
+                                    // Spawn a task to handle the OAuth flow
+                                    tokio::spawn(async move {
+                                        // TODO: Integrate with elph-ai's OAuth infrastructure
+                                        // This should:
+                                        // 1. Call the OAuth provider's login method
+                                        // 2. Get the device code info
+                                        // 3. Update the pending state with URL and code
+                                        // 4. Poll for token completion
+                                        // 5. Store the credential when complete
+                                        log::warn!("OAuth flow integration not yet complete for provider: {}", provider_id_oauth);
+                                    });
                                 } else {
                                     // API Key: close provider selection, open dedicated API key dialog
                                     let provider_id = provider.id.clone();
