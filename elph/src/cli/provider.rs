@@ -314,17 +314,36 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
             let name = selected_provider.name.clone();
             let pid_for_closure = pid.clone();
 
-            match run_async(move || {
-                let rt = new_rt();
-                rt.block_on(save_provider_credential(&auth_store, &pid_for_closure, &api_key))
-            }) {
-                Ok(()) => {
-                    println!("{}", ok(format!("Saved API key for {name}.")));
-                    EXIT_SUCCESS
+            // Detect env: prefix — store as plaintext reference, not encrypted.
+            if let Some(env_var) = api_key.strip_prefix("env:") {
+                let env_var = env_var.to_string();
+                let env_var_for_closure = env_var.clone();
+                match run_async(move || {
+                    let rt = new_rt();
+                    rt.block_on(save_provider_env_ref(&auth_store, &pid_for_closure, &env_var_for_closure))
+                }) {
+                    Ok(()) => {
+                        println!("{}", ok(format!("Registered {name} to read credential from env: {env_var}.")));
+                        EXIT_SUCCESS
+                    }
+                    Err(e) => {
+                        eprintln!("{}", err(format!("Failed to register env ref for '{pid}': {e}")));
+                        EXIT_ERROR
+                    }
                 }
-                Err(e) => {
-                    eprintln!("{}", err(format!("Failed to save API key for '{pid}': {e}")));
-                    EXIT_ERROR
+            } else {
+                match run_async(move || {
+                    let rt = new_rt();
+                    rt.block_on(save_provider_credential(&auth_store, &pid_for_closure, &api_key))
+                }) {
+                    Ok(()) => {
+                        println!("{}", ok(format!("Saved API key for {name}.")));
+                        EXIT_SUCCESS
+                    }
+                    Err(e) => {
+                        eprintln!("{}", err(format!("Failed to save API key for '{pid}': {e}")));
+                        EXIT_ERROR
+                    }
                 }
             }
         }

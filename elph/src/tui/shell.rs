@@ -3779,14 +3779,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         );
                         force_editor_clear.set(true);
                         if let Some(pid) = provider_id {
-                            let api_key = api_key.clone();
                             let auth_store_path = paths.auth_store_path();
+                            let api_key_clone = api_key.clone();
                             tokio::spawn(async move {
-                                match crate::tui::provider_credential_store::save_provider_credential(
-                                    &auth_store_path, &pid, &api_key
-                                ).await {
-                                    Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
-                                    Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                                // Detect env: prefix — store as plaintext reference, not encrypted.
+                                if let Some(env_var) = api_key_clone.strip_prefix("env:") {
+                                    match crate::tui::provider_credential_store::save_provider_env_ref(
+                                        &auth_store_path, &pid, env_var,
+                                    ).await {
+                                        Ok(()) => log::info!("Saved env ref for provider: {pid}"),
+                                        Err(e) => log::error!("Failed to save env ref for provider {pid}: {e}"),
+                                    }
+                                } else {
+                                    match crate::tui::provider_credential_store::save_provider_credential(
+                                        &auth_store_path, &pid, &api_key_clone,
+                                    ).await {
+                                        Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
+                                        Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                                    }
                                 }
                             });
                         }
