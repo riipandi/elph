@@ -343,6 +343,7 @@ pub enum StatusDialogKind {
         oauth_url: String,
         oauth_code: String,
         oauth_provider_name: String,
+        fresh_open: bool,
     },
     /// Dedicated API key input dialog (separate from provider selection).
     ProviderApiKey {
@@ -502,6 +503,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             oauth_url,
             oauth_code,
             oauth_provider_name,
+            fresh_open,
         }) => Some(render_provider_connect_dialog(
             props,
             provider_id,
@@ -511,6 +513,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             oauth_url,
             oauth_code,
             oauth_provider_name,
+            fresh_open,
         )),
         Some(StatusDialogKind::ProviderApiKey {
             provider_id,
@@ -533,6 +536,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         oauth_url: String,
         oauth_code: String,
         oauth_provider_name: String,
+        fresh_open: bool,
     ) -> AnyElement<'static> {
         use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
 
@@ -560,6 +564,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             oauth_provider_name,
             step,
             input_focus,
+            fresh_open,
         )
     }
 
@@ -680,6 +685,7 @@ pub fn build_provider_connect_dialog_kind(
     oauth_url: String,
     oauth_code: String,
     oauth_provider_name: String,
+    fresh_open: bool,
 ) -> Option<StatusDialogKind> {
     if has_focus {
         Some(StatusDialogKind::ProviderConnect {
@@ -690,6 +696,7 @@ pub fn build_provider_connect_dialog_kind(
             oauth_url,
             oauth_code,
             oauth_provider_name,
+            fresh_open,
         })
     } else {
         None

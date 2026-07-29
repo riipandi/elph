@@ -8,6 +8,7 @@
 //!
 //! OAuth providers trigger the OAuth flow when OAuth authentication is selected.
 
+use elph_ai::providers::builtin_providers;
 use elph_ai::{builtin_oauth_provider_ids, get_builtin_providers};
 use elph_tui::components::{DialogChrome, DialogUserInputContent, UiTheme, dialog_max_content_height};
 use iocraft::prelude::*;
@@ -19,6 +20,7 @@ use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_
 use crate::tui::provider_credential_store::has_provider_credential;
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 /// Default auth store path under `~/.elph/auth.json`.
@@ -39,6 +41,7 @@ pub struct ProviderOption {
     pub id: String,
     pub name: String,
     pub supports_oauth: bool,
+    pub supports_api_key: bool,
     pub config_status: ProviderConfigStatus,
 }
 
@@ -59,6 +62,13 @@ pub enum ProviderConnectStep {
     SelectProvider,
     OAuthDeviceCode,
     EnterApiKey,
+}
+
+/// Authentication method selected in the first step.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProviderAuthMethod {
+    Account,
+    ApiKey,
 }
 
 /// Keyboard focus target within the provider dialog.
@@ -89,6 +99,11 @@ pub struct PendingProviderConnectDialog {
     pub stashed_prompt_draft: Option<String>,
     /// Set to true when OAuth flow completes — main loop will close the dialog.
     pub done: bool,
+    /// True right after `open_provider_connect_dialog` sets up the dialog.
+    /// Resets to false on the first step transition. The render function uses
+    /// this to force the initial step to `SelectAuthMethod` regardless of any
+    /// stale `step` value.
+    pub fresh_open: bool,
 }
 
 /// Pending API key input dialog state (separate from provider selection).
@@ -121,6 +136,14 @@ pub fn get_auth_methods() -> Vec<AuthMethodOption> {
             description: "Manually enter an API key".to_string(),
         },
     ]
+}
+
+pub fn provider_auth_method_from_index(index: usize) -> ProviderAuthMethod {
+    if index == 0 {
+        ProviderAuthMethod::Account
+    } else {
+        ProviderAuthMethod::ApiKey
+    }
 }
 
 /// Check if a provider has configuration.
@@ -234,6 +257,11 @@ pub async fn remove_provider_api_key(provider_id: &str) -> anyhow::Result<bool> 
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
     let oauth_provider_ids = builtin_oauth_provider_ids();
+    let api_key_provider_ids: HashSet<String> = builtin_providers()
+        .into_iter()
+        .filter(|provider| provider.auth.api_key.is_some())
+        .map(|provider| provider.id)
+        .collect();
 
     get_builtin_providers()
         .into_iter()
@@ -241,9 +269,25 @@ pub fn get_provider_options() -> Vec<ProviderOption> {
             id: id.to_string(),
             name: format_provider_name(id),
             supports_oauth: oauth_provider_ids.contains(&id),
+            supports_api_key: api_key_provider_ids.contains(id),
             config_status: get_provider_config_status(id),
         })
         .collect()
+}
+
+pub fn providers_for_auth_method(providers: &[ProviderOption], auth_method: ProviderAuthMethod) -> Vec<ProviderOption> {
+    providers
+        .iter()
+        .filter(|provider| match auth_method {
+            ProviderAuthMethod::Account => provider.supports_oauth,
+            ProviderAuthMethod::ApiKey => provider.supports_api_key,
+        })
+        .cloned()
+        .collect()
+}
+
+pub fn get_provider_options_for_auth_method(auth_method: ProviderAuthMethod) -> Vec<ProviderOption> {
+    providers_for_auth_method(&get_provider_options(), auth_method)
 }
 
 /// Format provider name for display.
@@ -367,6 +411,7 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
         done: false,
+        fresh_open: true,
     }));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }
@@ -669,13 +714,13 @@ pub fn render_provider_connect_dialog(
     provider_name: String,
     step: ProviderConnectStep,
     input_focus: ProviderConnectFocus,
+    fresh_open: bool,
 ) -> AnyElement<'static> {
-    // Defensive guard: when input_focus is still AuthMethodList (fresh dialog on first open),
-    // force step to SelectAuthMethod to prevent state leakage from entering the dialog
-    // with a pre-set step (e.g. SelectProvider).
-    let step = if input_focus == ProviderConnectFocus::AuthMethodList
-        && step != ProviderConnectStep::SelectAuthMethod
-    {
+    // Defensive guard: ensure the dialog always starts at SelectAuthMethod.
+    // The `fresh_open` flag is set by `open_provider_connect_dialog` and cleared
+    // on the first step transition. This catches any stale step/input_focus
+    // leakage between dialog open/close cycles.
+    let step = if fresh_open && step != ProviderConnectStep::SelectAuthMethod {
         ProviderConnectStep::SelectAuthMethod
     } else {
         step
@@ -685,17 +730,15 @@ pub fn render_provider_connect_dialog(
         ProviderConnectStep::SelectAuthMethod => {
             render_select_auth_method_step(screen_width, screen_height, has_focus, selected, input_focus)
         }
-        ProviderConnectStep::SelectProvider => {
-            render_select_provider_step(
-                screen_width,
-                screen_height,
-                has_focus,
-                selected,
-                filter,
-                input_focus,
-                selected_auth_method,
-            )
-        }
+        ProviderConnectStep::SelectProvider => render_select_provider_step(
+            screen_width,
+            screen_height,
+            has_focus,
+            selected,
+            filter,
+            input_focus,
+            selected_auth_method,
+        ),
         ProviderConnectStep::OAuthDeviceCode => {
             render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
         }
@@ -718,13 +761,8 @@ fn render_select_provider_step(
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
 
-    let is_oauth_method = selected_auth_method == 0;
-    let providers = get_provider_options();
-    let providers: Vec<ProviderOption> = if is_oauth_method {
-        providers.into_iter().filter(|p| p.supports_oauth).collect()
-    } else {
-        providers
-    };
+    let auth_method = provider_auth_method_from_index(selected_auth_method);
+    let providers = get_provider_options_for_auth_method(auth_method);
     let filtered = filtered_providers(&providers, &filter.read());
 
     let total_count = providers.len();
@@ -906,4 +944,59 @@ fn render_api_key_step(
         }
     }
     .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn provider(id: &str, supports_oauth: bool, supports_api_key: bool) -> ProviderOption {
+        ProviderOption {
+            id: id.to_string(),
+            name: id.to_string(),
+            supports_oauth,
+            supports_api_key,
+            config_status: ProviderConfigStatus::Unconfigured,
+        }
+    }
+
+    #[test]
+    fn auth_method_index_starts_with_account() {
+        assert_eq!(provider_auth_method_from_index(0), ProviderAuthMethod::Account);
+        assert_eq!(provider_auth_method_from_index(1), ProviderAuthMethod::ApiKey);
+        assert_eq!(provider_auth_method_from_index(99), ProviderAuthMethod::ApiKey);
+    }
+
+    #[test]
+    fn providers_for_auth_method_filters_by_supported_login_type() {
+        let providers = vec![
+            provider("oauth-only", true, false),
+            provider("api-key-only", false, true),
+            provider("both", true, true),
+        ];
+
+        let account_ids: Vec<_> = providers_for_auth_method(&providers, ProviderAuthMethod::Account)
+            .into_iter()
+            .map(|provider| provider.id)
+            .collect();
+        assert_eq!(account_ids, vec!["oauth-only", "both"]);
+
+        let api_key_ids: Vec<_> = providers_for_auth_method(&providers, ProviderAuthMethod::ApiKey)
+            .into_iter()
+            .map(|provider| provider.id)
+            .collect();
+        assert_eq!(api_key_ids, vec!["api-key-only", "both"]);
+    }
+
+    #[test]
+    fn provider_options_use_builtin_api_key_auth_metadata() {
+        let options = get_provider_options();
+        let openai_codex = options
+            .iter()
+            .find(|provider| provider.id == "openai-codex")
+            .expect("openai-codex provider option");
+
+        assert!(openai_codex.supports_oauth);
+        assert!(!openai_codex.supports_api_key);
+    }
 }

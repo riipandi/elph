@@ -66,8 +66,9 @@ use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, ProviderConnectFocus, ProviderConnectStep, apply_provider_filter_seed,
     close_provider_api_key_dialog, close_provider_connect_dialog, focus_provider_list, format_provider_name,
-    get_provider_options, open_provider_api_key_dialog, open_provider_connect_dialog, provider_confirm_on_enter,
-    provider_filter_seed, provider_list_nav_delta, provider_supports_oauth,
+    get_provider_options_for_auth_method, open_provider_api_key_dialog, open_provider_connect_dialog,
+    provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed, provider_list_nav_delta,
+    provider_supports_oauth,
 };
 use crate::tui::rename_dialog::{OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog};
 use crate::tui::scoped_models::PendingScopedModels;
@@ -2972,6 +2973,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut shell_focus,
                             false,
                         );
+                        force_editor_clear.set(true);
                         return;
                     }
 
@@ -2992,8 +2994,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut draft,
                             &mut live_draft,
                             &mut shell_focus,
-                            true,
+                            false,
                         );
+                        force_editor_clear.set(true);
                         return;
                     }
 
@@ -3008,10 +3011,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 if let Some(ref mut pending) = *pending_provider_connect.write() {
                                     pending.step = ProviderConnectStep::SelectProvider;
                                     pending.selected_auth_method = selected_idx;
+                                    pending.selected_provider = 0;
+                                    pending.filter.clear();
+                                    pending.api_key_input.clear();
+                                    pending.oauth_code.clear();
+                                    pending.oauth_url.clear();
+                                    pending.oauth_provider_name.clear();
+                                    pending.done = false;
                                     pending.input_focus = ProviderConnectFocus::List;
+                                    pending.fresh_open = false;
                                     provider_connect_input_focus.set(ProviderConnectFocus::List);
                                     provider_connect_selected.set(0);
                                     provider_connect_filter.set(String::new());
+                                    provider_connect_api_key.set(String::new());
                                 }
                             }
                             return;
@@ -3031,22 +3043,26 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                                 return;
                             }
-                            let providers = get_provider_options();
                             let selected_idx = provider_connect_selected.read().clone();
                             let current_filter = provider_connect_filter.read().clone();
+                            let auth_method_idx = pending_provider_connect
+                                .read()
+                                .as_ref()
+                                .map(|p| p.selected_auth_method)
+                                .unwrap_or(0);
+                            let auth_method = provider_auth_method_from_index(auth_method_idx);
+                            let providers = get_provider_options_for_auth_method(auth_method);
                             if let Some(provider) = crate::tui::provider_connect_dialog::get_filtered_provider_at(
                                 &providers,
                                 &current_filter,
                                 selected_idx,
                             ) {
-                                let auth_method_idx = pending_provider_connect
-                                    .read()
-                                    .as_ref()
-                                    .map(|p| p.selected_auth_method)
-                                    .unwrap_or(0);
-                                let is_oauth_method = auth_method_idx == 0; // First method is OAuth
+                                let is_oauth_method = matches!(
+                                    provider_auth_method_from_index(auth_method_idx),
+                                    crate::tui::provider_connect_dialog::ProviderAuthMethod::Account
+                                );
 
-                                if provider_supports_oauth(&provider.id) && is_oauth_method {
+                                if provider.supports_oauth && provider_supports_oauth(&provider.id) && is_oauth_method {
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
                                     let auth_store_path = paths.auth_store_path();
@@ -3056,6 +3072,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     // Transition to OAuth device code step
                                     if let Some(ref mut pending) = *pending_provider_connect.write() {
                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                        pending.fresh_open = false;
                                         pending.oauth_provider_name = crate::tui::provider_connect_dialog::format_provider_name(&provider_id);
                                         pending.oauth_url = String::new();
                                         pending.oauth_code = String::new();
@@ -3110,7 +3127,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                         // Close dialog — OAuth is complete.
                                                         // The main loop detects the done flag
                                                         // and cleans up focus + clears the draft.
-                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                        if let Some(pending) = pending_ref.write().as_mut() {
                                                             pending.done = true;
                                                         }
                                                     }
@@ -3119,7 +3136,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                             "Failed to derive API key from OAuth for {}: {}",
                                                             provider_id_for_task, e
                                                         );
-                                                        if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                        if let Some(pending) = pending_ref.write().as_mut() {
                                                             pending.oauth_url = format!("OAuth error: {e}");
                                                         }
                                                     }
@@ -3127,7 +3144,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                             }
                                             Err(e) => {
                                                 log::error!("OAuth login failed for {}: {}", provider_id_for_task, e);
-                                                if let Some(mut pending) = pending_ref.write().as_mut() {
+                                                if let Some(pending) = pending_ref.write().as_mut() {
                                                     pending.oauth_url = format!("OAuth failed: {e}");
                                                 }
                                             }
@@ -3151,7 +3168,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     let mut pending_ref = pending_provider_connect.clone();
                                     tokio::spawn(async move {
                                         while let Some(event) = oauth_event_rx.recv().await {
-                                            if let Some(mut pending) = pending_ref.write().as_mut() {
+                                            if let Some(pending) = pending_ref.write().as_mut() {
                                                 match event {
                                                     OAuthDialogEvent::DeviceCode { url, code } => {
                                                         pending.oauth_url = url;
@@ -3238,7 +3255,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         if !modifiers.is_empty() {
                             // Ignore modified keys
                         } else {
-                            let providers = get_provider_options();
+                            let auth_method_idx = pending_provider_connect
+                                .read()
+                                .as_ref()
+                                .map(|p| p.selected_auth_method)
+                                .unwrap_or(0);
+                            let providers =
+                                get_provider_options_for_auth_method(provider_auth_method_from_index(auth_method_idx));
 
                             // Arrow keys move focus to the list (selection is handled by ModelOptionList)
                             if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
@@ -3318,8 +3341,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut draft,
                             &mut live_draft,
                             &mut shell_focus,
-                            true,
+                            false,
                         );
+                        force_editor_clear.set(true);
                         return;
                     }
 
@@ -3335,6 +3359,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut shell_focus,
                             false,
                         );
+                        force_editor_clear.set(true);
                         if let Some(pid) = provider_id {
                             let api_key = api_key.clone();
                             let auth_store_path = paths.auth_store_path();
@@ -4371,6 +4396,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || rename_open
         || confetti_open
         || provider_connect_open
+        || provider_api_key_open
         || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
@@ -4679,6 +4705,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let oauth_code = pending_ref.map(|p| p.oauth_code.clone()).unwrap_or_default();
             let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
             let selected_auth_method = pending_ref.map(|p| p.selected_auth_method).unwrap_or(0);
+            let fresh_open = pending_ref.map(|p| p.fresh_open).unwrap_or(false);
             drop(pending);
             build_provider_connect_dialog_kind(
                 pending_provider_connect
@@ -4693,6 +4720,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 oauth_url,
                 oauth_code,
                 oauth_provider_name,
+                fresh_open,
             )
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
@@ -5392,6 +5420,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
+                                force_editor_clear.set(true);
                                 suppress_enter_newline.set(true);
                                 return;
                             }
