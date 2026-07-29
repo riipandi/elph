@@ -527,6 +527,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
 
     /// Render the provider connect dialog.
+    // TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+    #[allow(clippy::too_many_arguments)]
     fn render_provider_connect_dialog(
         props: &mut StatusZoneProps,
         _provider_id: Option<String>,
@@ -542,13 +544,11 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
 
         let selected = props
             .provider_connect_selected
-            .clone()
-            .or_else(|| props.approval_selected.clone())
+            .or(props.approval_selected)
             .expect("provider_connect_selected or approval_selected should be set");
-        let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
+        let api_key_input = props.api_key_input.expect("api_key_input should be set");
         let filter = props
             .provider_connect_filter
-            .clone()
             .expect("provider_connect_filter should be set");
 
         render_dialog(
@@ -576,7 +576,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
     ) -> AnyElement<'static> {
         let theme = UiTheme::default();
         let body_width = inline_body_width(props.screen_width);
-        let api_key_input = props.api_key_input.clone().expect("api_key_input should be set");
+        let api_key_input = props.api_key_input.expect("api_key_input should be set");
 
         element! {
             InlineDialogShell(
@@ -675,6 +675,8 @@ pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
 }
 
 /// Build the provider connect dialog when pending.
+// TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+#[allow(clippy::too_many_arguments)]
 pub fn build_provider_connect_dialog_kind(
     provider_id: Option<String>,
     step: Option<ProviderConnectStep>,

@@ -204,24 +204,24 @@ fn check_stored_credential(provider_id: &str) -> ProviderConfigStatus {
     if !auth_store_path.exists() {
         return ProviderConfigStatus::Unconfigured;
     }
-    if let Ok(bytes) = std::fs::read(&auth_store_path) {
-        if let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes) {
-            if let Some(enc) = file.get_provider_credential(normalized) {
-                // If it's encrypted, we can't tell the type without decrypting.
-                // Use a heuristic: API keys are typically short strings, OAuth blobs are longer JSON.
-                // For safety, check if the credential was stored via OAuth flow by looking it up.
-                if enc.len() > 100 {
-                    // Longer encrypted values likely contain OAuth credential JSON
-                    return ProviderConfigStatus::OAuthConfigured;
-                }
-                return ProviderConfigStatus::ApiKeyConfigured;
-            }
-
-            // Also check legacy prefixed key as fallback
-            let prefixed = format!("oauth:{normalized}");
-            if let Some(_enc) = file.get_provider_credential(&prefixed) {
+    if let Ok(bytes) = std::fs::read(&auth_store_path)
+        && let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes)
+    {
+        if let Some(enc) = file.get_provider_credential(normalized) {
+            // If it's encrypted, we can't tell the type without decrypting.
+            // Use a heuristic: API keys are typically short strings, OAuth blobs are longer JSON.
+            // For safety, check if the credential was stored via OAuth flow by looking it up.
+            if enc.len() > 100 {
+                // Longer encrypted values likely contain OAuth credential JSON
                 return ProviderConfigStatus::OAuthConfigured;
             }
+            return ProviderConfigStatus::ApiKeyConfigured;
+        }
+
+        // Also check legacy prefixed key as fallback
+        let prefixed = format!("oauth:{normalized}");
+        if let Some(_enc) = file.get_provider_credential(&prefixed) {
+            return ProviderConfigStatus::OAuthConfigured;
         }
     }
 
@@ -235,23 +235,27 @@ fn has_stored_api_key(provider_id: &str) -> bool {
 }
 
 /// Get the auth store path for provider credentials.
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 fn auth_store_path() -> std::path::PathBuf {
     default_auth_store_path()
 }
 
 /// Save API key to auth.json with encryption
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn save_provider_api_key(provider_id: &str, api_key: String) -> anyhow::Result<()> {
     let path = auth_store_path();
     crate::tui::provider_credential_store::save_provider_credential(&path, provider_id, &api_key).await
 }
 
 /// Load and decrypt API key from auth.json
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn load_provider_api_key(provider_id: &str) -> anyhow::Result<Option<String>> {
     let path = auth_store_path();
     crate::tui::provider_credential_store::load_provider_credential(&path, provider_id).await
 }
 
 /// Remove stored API key for a provider
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn remove_provider_api_key(provider_id: &str) -> anyhow::Result<bool> {
     let path = auth_store_path();
     crate::tui::provider_credential_store::remove_provider_credential(&path, provider_id).await
@@ -317,7 +321,7 @@ pub fn format_provider_name(id: &str) -> String {
         "cerebras" => "Cerebras".to_string(),
         "kilo" => "Kilo Gateway".to_string(),
         "faux" => "Faux".to_string(),
-        _ => id.replace('-', " ").replace('_', " "),
+        _ => id.replace(['-', '_'], " "),
     }
 }
 
@@ -362,6 +366,7 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
     scored.into_iter().map(|(prov, _)| prov).collect()
 }
 
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 fn clamp_selected(selected: usize, count: usize) -> usize {
     if count == 0 {
         0
@@ -424,12 +429,12 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
 #[allow(dead_code)]
 pub fn transition_to_api_key_step(pending: &mut PendingProviderConnectDialog, providers: &[ProviderOption]) {
     let filtered = filtered_providers(providers, &pending.filter);
-    if let Some(provider) = filtered.get(pending.selected_provider) {
-        if !provider.supports_oauth {
-            pending.step = ProviderConnectStep::EnterApiKey;
-            pending.input_focus = ProviderConnectFocus::ApiKeyInput;
-            pending.api_key_input.clear();
-        }
+    if let Some(provider) = filtered.get(pending.selected_provider)
+        && !provider.supports_oauth
+    {
+        pending.step = ProviderConnectStep::EnterApiKey;
+        pending.input_focus = ProviderConnectFocus::ApiKeyInput;
+        pending.api_key_input.clear();
     }
 }
 
@@ -442,6 +447,8 @@ pub fn transition_to_select_provider_step(pending: &mut PendingProviderConnectDi
 }
 
 /// Close the provider connect dialog and restore stashed draft.
+// TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+#[allow(clippy::too_many_arguments)]
 pub fn close_provider_connect_dialog(
     pending: &mut Ref<Option<PendingProviderConnectDialog>>,
     selected: &mut State<usize>,
@@ -705,6 +712,8 @@ fn render_select_auth_method_step(
 }
 
 /// Render the provider connect dialog — dispatches to the correct step.
+// TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+#[allow(clippy::too_many_arguments)]
 pub fn render_provider_connect_dialog(
     screen_width: u16,
     screen_height: u16,
@@ -847,7 +856,7 @@ fn render_select_provider_step(
                         models: model_rows,
                         show_provider_hint: false,
                         custom_hints: config_hints,
-                        selected_index: Some(selected.clone()),
+                        selected_index: Some(selected),
                         has_focus: list_focused,
                         theme: Some(thm),
                     )

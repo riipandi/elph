@@ -344,7 +344,7 @@ pub fn SelectList(props: &mut SelectListProps, mut hooks: Hooks) -> impl Into<An
 
             let inner_content: AnyElement<'static> = if props.inline_description && show_desc {
                 // Inline: name and hint on the same row
-                let desc_w = (content_width / 3).max(12).min(20);
+                let desc_w = (content_width / 3).clamp(12, 20);
                 let name_w = content_width.saturating_sub(desc_w).saturating_sub(1).max(4);
                 element! {
                     View(

@@ -99,7 +99,12 @@ async fn agent_creates_with_default_state() {
 #[tokio::test]
 async fn agent_creates_with_custom_initial_state() {
     let models = builtin_models(None);
-    let model = models.get_model("openai", "gpt-4o-mini").expect("model");
+    // Pick the first available model from any provider
+    let model = models
+        .get_models(None)
+        .into_iter()
+        .next()
+        .expect("at least one builtin model");
 
     let agent = Agent::new(AgentOptions {
         initial_state: Some(PartialAgentState {
@@ -615,7 +620,11 @@ async fn agent_passes_abort_signal_to_subscribers() {
 #[tokio::test]
 async fn agent_updates_state_with_mutators() {
     let models = builtin_models(None);
-    let model = models.get_model("openai", "gpt-4o-mini").expect("model");
+    let model = models
+        .get_models(None)
+        .into_iter()
+        .next()
+        .expect("at least one builtin model");
     let agent = Agent::new(AgentOptions::default());
 
     agent.set_system_prompt("Custom prompt").await;

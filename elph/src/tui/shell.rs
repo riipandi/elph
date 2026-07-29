@@ -3019,7 +3019,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         if is_select_auth_method {
                             // Confirm authentication method selection
                             let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
-                            let selected_idx = provider_connect_selected.read().clone();
+                            let selected_idx = *provider_connect_selected.read();
                             if auth_methods.get(selected_idx).is_some() {
                                 // Transition to provider selection
                                 if let Some(ref mut pending) = *pending_provider_connect.write() {
@@ -3057,7 +3057,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 }
                                 return;
                             }
-                            let selected_idx = provider_connect_selected.read().clone();
+                            let selected_idx = *provider_connect_selected.read();
                             let current_filter = provider_connect_filter.read().clone();
                             let auth_method_idx = pending_provider_connect
                                 .read()
@@ -3100,7 +3100,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                                     // Store the sender so the spawned task can notify us
                                     let provider_id_for_task = provider_id.clone();
-                                    let mut pending_ref = pending_provider_connect.clone();
+                                    let mut pending_ref = pending_provider_connect;
                                     let auth_store_path_for_task = auth_store_path.clone();
 
                                     tokio::spawn(async move {
@@ -3179,7 +3179,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                                     // Read incoming OAuth events in a background task
                                     // to keep the dialog updated
-                                    let mut pending_ref = pending_provider_connect.clone();
+                                    let mut pending_ref = pending_provider_connect;
                                     tokio::spawn(async move {
                                         while let Some(event) = oauth_event_rx.recv().await {
                                             if let Some(pending) = pending_ref.write().as_mut() {
@@ -3310,33 +3310,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             if code == KeyCode::Backspace {
                                 let pending_ref = &mut *pending_provider_connect.write();
                                 if let Some(pending) = pending_ref {
-                                    let focus = pending.input_focus;
-                                    if focus == ProviderConnectFocus::Search {
-                                        let mut next = pending.filter.clone();
-                                        if next.pop().is_some() {
-                                            pending.filter = next;
-                                            provider_connect_filter.set(pending.filter.clone());
-                                            let count = crate::tui::provider_connect_dialog::count_filtered(
-                                                &providers,
-                                                &pending.filter,
-                                            );
-                                            pending.selected_provider =
-                                                pending.selected_provider.min(count.saturating_sub(1));
-                                            provider_connect_selected.set(pending.selected_provider);
-                                        }
-                                    } else {
-                                        let mut next = pending.filter.clone();
-                                        if next.pop().is_some() {
-                                            pending.filter = next;
-                                            provider_connect_filter.set(pending.filter.clone());
-                                            let count = crate::tui::provider_connect_dialog::count_filtered(
-                                                &providers,
-                                                &pending.filter,
-                                            );
-                                            pending.selected_provider =
-                                                pending.selected_provider.min(count.saturating_sub(1));
-                                            provider_connect_selected.set(pending.selected_provider);
-                                        }
+                                    let mut next = pending.filter.clone();
+                                    if next.pop().is_some() {
+                                        pending.filter = next;
+                                        provider_connect_filter.set(pending.filter.clone());
+                                        let count = crate::tui::provider_connect_dialog::count_filtered(
+                                            &providers,
+                                            &pending.filter,
+                                        );
+                                        pending.selected_provider =
+                                            pending.selected_provider.min(count.saturating_sub(1));
+                                        provider_connect_selected.set(pending.selected_provider);
                                     }
                                 }
                                 return;
@@ -4734,9 +4718,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 oauth_provider_name,
                 fresh_open,
             );
-            if fresh_open
-                && let Some(ref mut pending) = *pending_provider_connect.write()
-            {
+            if fresh_open && let Some(ref mut pending) = *pending_provider_connect.write() {
                 pending.fresh_open = false;
             }
             dialog

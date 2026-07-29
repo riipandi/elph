@@ -56,6 +56,7 @@ pub async fn save_provider_credential(auth_store_path: &Path, provider_id: &str,
 }
 
 /// Load a decrypted API key for a specific provider from `auth.json`.
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn load_provider_credential(auth_store_path: &Path, provider_id: &str) -> anyhow::Result<Option<String>> {
     let file = AuthStoreFile::load_from_path(auth_store_path)
         .await
@@ -84,6 +85,7 @@ pub async fn load_provider_credential(auth_store_path: &Path, provider_id: &str)
 
 /// Load all stored provider credentials from `auth.json`, returning
 /// `(provider_id, decrypted_api_key)` pairs.
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn load_all_provider_credentials(auth_store_path: &Path) -> anyhow::Result<Vec<(String, String)>> {
     let file = AuthStoreFile::load_from_path(auth_store_path)
         .await
@@ -120,6 +122,7 @@ pub async fn load_all_provider_credentials(auth_store_path: &Path) -> anyhow::Re
 }
 
 /// Remove a stored provider credential from `auth.json`.
+#[expect(dead_code, reason = "WIP: provider connect feature, not yet wired")]
 pub async fn remove_provider_credential(auth_store_path: &Path, provider_id: &str) -> anyhow::Result<bool> {
     let _guard = lock_auth_store(auth_store_path)
         .await
