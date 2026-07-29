@@ -31,6 +31,7 @@ pub fn open_system_prompt_dialog(args: OpenSystemPromptDialogArgs<'_>) {
         text: args.text,
         width_pct: args.width_pct.unwrap_or(DEFAULT_SCROLL_TEXT_WIDTH_PCT),
         body_height: None,
+        show_copy: true,
     });
 }
 

@@ -16,29 +16,23 @@ use crate::tui::confetti::confetti_mode_from_slash_args;
 
 use super::agent_bridge::SlashDispatcher;
 
-/// Handle `/memory` slash commands as a background task.
+/// Handle `/memory` slash commands synchronously and return the result as a dialog.
 ///
-/// Memory operations are async (Turso DB) and must not block the TUI render loop.
-/// The result is delivered as a `Status` UI event when the background task completes.
+/// Memory operations are async (Turso DB) but fast enough to run inline via
+/// the current Tokio runtime handle without blocking the render loop noticeably.
 fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let Some(paths) = ctx.paths else {
         return SlashOutcome::Status("Project directory required for memory commands.".into());
     };
-    let paths = paths.clone();
-    let args = args.to_string();
-    let ui_tx = ctx.agent_session.as_ref().map(|s| s.ui_event_sender());
-
-    tokio::spawn(async move {
-        let output = match crate::memory::slash_run(&paths, &args).await {
+    let output = match tokio::runtime::Handle::try_current() {
+        Ok(handle) => match handle.block_on(crate::memory::slash_run(paths, args)) {
             Ok(text) => text,
             Err(err) => format!("memory error: {err}"),
-        };
-        if let Some(tx) = ui_tx {
-            let _ = tx.send(crate::agent::AgentUiEvent::Status(output));
-        }
-    });
+        },
+        Err(_) => "No tokio runtime available for memory command.".into(),
+    };
 
-    SlashOutcome::BackgroundTask
+    SlashOutcome::OpenMemoryResultDialog { text: output }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +54,14 @@ pub enum SlashOutcome {
     },
     /// Session metadata viewer (ScrollTextDialog).
     OpenSessionInfoDialog {
+        text: String,
+    },
+    /// Provider list viewer (ScrollTextDialog).
+    OpenProviderListDialog {
+        text: String,
+    },
+    /// Memory operation result viewer (ScrollTextDialog).
+    OpenMemoryResultDialog {
         text: String,
     },
     /// Rename session inline text dialog (prefilled title).
@@ -135,7 +137,9 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
         SlashDispatch::ProviderConnect { provider_id } => SlashOutcome::OpenProviderConnectDialog { provider_id },
         SlashDispatch::ProviderDisconnect { provider_id } => SlashOutcome::OpenProviderDisconnectDialog { provider_id },
-        SlashDispatch::ProviderList => SlashOutcome::Status(provider_list_slash_message()),
+        SlashDispatch::ProviderList => SlashOutcome::OpenProviderListDialog {
+            text: provider_list_slash_message(),
+        },
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -216,6 +220,8 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenFeedbackDialog
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
+            | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMemoryResultDialog { .. }
     )
 }
 

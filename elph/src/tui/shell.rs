@@ -4139,6 +4139,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     text,
                                     width_pct: 50,
                                     body_height: Some(body_height),
+                                    show_copy: true,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenProviderListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Configured Providers".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenMemoryResultDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Memory".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
                                 });
                                 force_editor_clear.set(true);
                             }
@@ -5064,6 +5091,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut shell_focus = shell_focus;
             let mut force_editor_clear = force_editor_clear;
             let text_for_copy = pending.text.clone();
+            let show_copy = pending.show_copy;
             let mut copy_banner = ephemeral_banner;
             let mut copy_banner_gen = ephemeral_banner_generation;
             let copy_expire = ephemeral_expire;
@@ -5087,18 +5115,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut force_editor_clear,
                         );
                     },
-                    on_copy: Some(HandlerMut::from(move |_| {
-                        let text = &text_for_copy;
-                        let banner = match copy_to_clipboard(text) {
-                            Ok(()) => prompt_copy_banner(text.chars().count()),
-                            Err(err) => {
-                                log::warn!("copy system prompt failed: {err}");
-                                prompt_copy_failed_banner()
-                            }
-                        };
-                        let expire_tx = copy_expire.read().tx.clone();
-                        show_ephemeral_banner(&mut copy_banner, &mut copy_banner_gen, &expire_tx, banner);
-                    })),
+                    on_copy: if show_copy {
+                        Some(HandlerMut::from(move |_| {
+                            let text = &text_for_copy;
+                            let banner = match copy_to_clipboard(text) {
+                                Ok(()) => prompt_copy_banner(text.chars().count()),
+                                Err(err) => {
+                                    log::warn!("copy system prompt failed: {err}");
+                                    prompt_copy_failed_banner()
+                                }
+                            };
+                            let expire_tx = copy_expire.read().tx.clone();
+                            show_ephemeral_banner(&mut copy_banner, &mut copy_banner_gen, &expire_tx, banner);
+                        }))
+                    } else {
+                        None
+                    },
                 )
             }
             .into()
@@ -5945,6 +5977,41 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     text,
                                     width_pct: 50,
                                     body_height: Some(body_height),
+                                    show_copy: true,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Configured Providers".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMemoryResultDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Memory".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());
