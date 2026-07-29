@@ -3045,7 +3045,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     .map(|p| p.selected_auth_method)
                                     .unwrap_or(0);
                                 let is_oauth_method = auth_method_idx == 0; // First method is OAuth
-                                
+
                                 if provider_supports_oauth(&provider.id) && is_oauth_method {
                                     // OAuth — trigger OAuth flow
                                     let provider_id = provider.id.clone();
@@ -3215,7 +3215,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             // Ignore modified keys
                         } else {
                             let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
-                            
+
                             // List navigation (↑↓ or j/k)
                             if let Some(delta) = provider_list_nav_delta(modifiers, code) {
                                 let pending_ref = &mut *pending_provider_connect.write();
@@ -3757,6 +3757,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 approval_selected.set(0);
                                 suppress_enter_newline.set(true);
                                 force_editor_clear.set(true);
+                                return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
