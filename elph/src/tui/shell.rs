@@ -3146,12 +3146,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     // ── Enter in OAuth device code step: submit prompt response ──
                     // Must be checked BEFORE the main Enter handler to avoid conflicts.
                     if is_oauth_device_code && modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                        let is_prompt = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.oauth_is_prompt)
+                            .unwrap_or(false);
                         let response = pending_provider_connect
                             .read()
                             .as_ref()
                             .map(|p| p.oauth_code.clone())
                             .unwrap_or_default();
-                        if !response.is_empty() {
+
+                        // Allow empty submit in prompt mode (e.g. blank means github.com)
+                        if !response.is_empty() || (is_prompt && OAUTH_PROMPT_STORE.lock().unwrap().len() > 0) {
                             log::info!("OAuth prompt response submitted: {}", response);
                             let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
                             if let Some(prompt_id) = store.keys().next().cloned() {
@@ -3164,6 +3171,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         return;
+                    }
+
+                    // ── Text input in OAuth device code step (prompt mode only) ──
+                    if is_oauth_device_code
+                        && let Some(ref mut pending) = *pending_provider_connect.write()
+                        && pending.oauth_is_prompt
+                    {
+                        if modifiers.is_empty()
+                            && code == KeyCode::Backspace
+                            && kind == KeyEventKind::Press
+                        {
+                            pending.oauth_code.pop();
+                            return;
+                        }
+                        if modifiers.is_empty()
+                            && let KeyCode::Char(c) = code
+                            && kind == KeyEventKind::Press
+                        {
+                            pending.oauth_code.push(c);
+                            return;
+                        }
                     }
 
                     // ── Enter (confirm) ──────────────────────────────────
@@ -3339,13 +3367,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                 OAuthDialogEvent::DeviceCode { url, code } => {
                                                     pending.oauth_url = url;
                                                     pending.oauth_code = code;
+                                                    pending.oauth_is_prompt = false;
                                                     pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                     pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
                                                 }
-                                                OAuthDialogEvent::PromptText { id: _, message, placeholder } => {
-                                                    pending.oauth_code = placeholder.clone().unwrap_or_default();
-                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                OAuthDialogEvent::PromptText { id: _, message, placeholder: _ } => {
+                                                    pending.oauth_code = String::new();
+                                                    pending.oauth_prompt_message = message.clone();
+                                                    pending.oauth_is_prompt = true;
                                                     pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                     pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
@@ -3353,6 +3383,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                 OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
                                                     pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                     pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    pending.oauth_is_prompt = true;
                                                     pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                     pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
@@ -3384,18 +3415,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                                     OAuthDialogEvent::DeviceCode { url, code } => {
                                                         pending.oauth_url = url;
                                                         pending.oauth_code = code;
+                                                        pending.oauth_is_prompt = false;
                                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     }
-                                                    OAuthDialogEvent::PromptText { id: _, message, placeholder } => {
-                                                        pending.oauth_code = placeholder.clone().unwrap_or_default();
-                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                    OAuthDialogEvent::PromptText { id: _, message, placeholder: _ } => {
+                                                        pending.oauth_code = String::new();
+                                                        pending.oauth_prompt_message = message.clone();
+                                                        pending.oauth_is_prompt = true;
                                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     }
                                                     OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
                                                         pending.oauth_code = placeholder.clone().unwrap_or_default();
                                                         pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.oauth_is_prompt = true;
                                                         pending.step = ProviderConnectStep::OAuthDeviceCode;
                                                         pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
                                                     }
@@ -4928,6 +4962,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let fresh_open = pending_ref.map(|p| p.fresh_open).unwrap_or(false);
             let oauth_select_labels = pending_ref.map(|p| p.oauth_select_labels.clone()).unwrap_or_default();
             let oauth_select_index = pending_ref.map(|p| p.oauth_select_index).unwrap_or(0);
+            let oauth_is_prompt = pending_ref.map(|p| p.oauth_is_prompt).unwrap_or(false);
+            let oauth_prompt_message = pending_ref.map(|p| p.oauth_prompt_message.clone()).unwrap_or_default();
             drop(pending);
 
             let dialog = build_provider_connect_dialog_kind(
@@ -4942,6 +4978,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 fresh_open,
                 oauth_select_labels,
                 oauth_select_index,
+                oauth_is_prompt,
+                oauth_prompt_message,
             );
             if fresh_open && let Some(ref mut pending) = *pending_provider_connect.write() {
                 pending.fresh_open = false;

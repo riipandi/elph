@@ -96,6 +96,11 @@ pub struct PendingProviderConnectDialog {
     pub oauth_code: String,
     pub oauth_url: String,
     pub oauth_provider_name: String,
+    /// Whether the current OAuth step is a text prompt (e.g. GitHub Enterprise domain)
+    /// rather than a device code URL display.
+    pub oauth_is_prompt: bool,
+    /// Custom text prompt message (shown as body text when `oauth_is_prompt` is true).
+    pub oauth_prompt_message: String,
     /// Labels for OAuth select options (e.g. ["Browser login (default)", "Device code login (headless)"]).
     pub oauth_select_labels: Vec<String>,
     /// IDs for OAuth select options (e.g. ["browser", "device_code"]).
@@ -389,6 +394,8 @@ pub fn open_provider_connect_dialog(args: OpenProviderConnectDialogArgs<'_>) {
         oauth_select_labels: Vec::new(),
         oauth_select_ids: Vec::new(),
         oauth_select_index: 0,
+        oauth_is_prompt: false,
+        oauth_prompt_message: String::new(),
         provider_id: args.provider_id,
         stashed_prompt_draft: stashed,
         opened_at: Instant::now(),
@@ -682,6 +689,8 @@ pub fn render_provider_connect_dialog(
     fresh_open: bool,
     oauth_select_labels: Vec<String>,
     _oauth_select_index: usize,
+    oauth_is_prompt: bool,
+    oauth_prompt_message: String,
 ) -> AnyElement<'static> {
     // Defensive guard: ensure the dialog always starts at SelectAuthMethod.
     // The `fresh_open` flag is set by `open_provider_connect_dialog` and cleared
@@ -707,7 +716,7 @@ pub fn render_provider_connect_dialog(
             selected_auth_method,
         ),
         ProviderConnectStep::OAuthDeviceCode => {
-            render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name)
+            render_oauth_device_code_step(screen_width, screen_height, has_focus, oauth_url, oauth_code, provider_name, oauth_is_prompt, oauth_prompt_message)
         }
         ProviderConnectStep::OAuthSelect => render_oauth_select_step(
             screen_width,
@@ -893,7 +902,7 @@ fn render_oauth_select_step(
     .into()
 }
 
-/// Render step 3: OAuth device code.
+/// Render step 3: OAuth device code or text prompt.
 fn render_oauth_device_code_step(
     screen_width: u16,
     _screen_height: u16,
@@ -901,6 +910,8 @@ fn render_oauth_device_code_step(
     oauth_url: String,
     oauth_code: String,
     provider_name: String,
+    oauth_is_prompt: bool,
+    oauth_prompt_message: String,
 ) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(screen_width);
@@ -908,43 +919,89 @@ fn render_oauth_device_code_step(
     let w = body_width;
     let thm = theme;
 
-    // Determine if this is a prompt requiring text input (vs device code display)
-    let is_prompt = oauth_url.contains("GitHub Enterprise") || oauth_url.contains("enter value manually");
+    let is_prompt = oauth_is_prompt
+        || oauth_url.contains("GitHub Enterprise")
+        || oauth_url.contains("enter value manually");
+
+    let title = if oauth_is_prompt {
+        format!("Login to {provider_name}")
+    } else {
+        format!("{provider_name} · OAuth")
+    };
+
+    let show_url = !oauth_is_prompt && !oauth_url.is_empty();
+    let show_code = !oauth_is_prompt && !is_prompt && !oauth_code.is_empty();
+    let show_input = oauth_is_prompt || is_prompt;
+
+    let body_text = if oauth_is_prompt {
+        oauth_prompt_message.clone()
+    } else if is_prompt {
+        "Enter the requested information:".to_string()
+    } else {
+        "Open the URL and enter the code:".to_string()
+    };
+
+    let status_text = if oauth_is_prompt || is_prompt {
+        "Type your response and press Enter".to_string()
+    } else {
+        "Waiting for authentication…".to_string()
+    };
+
+    let url_text = oauth_url.clone();
+    let code_text = if show_code {
+        format!("Code: {oauth_code}")
+    } else {
+        String::new()
+    };
 
     element! {
         InlineDialogShell(
             screen_width: screen_width,
-            title: format!("{provider_name} · OAuth"),
+            title: title,
             has_focus: has_focus,
             footer_hint: Some(oauth_device_code_footer()),
         ) {
             View(width: w, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                // Body text: prompt message or instruction
                 View(width: w, flex_shrink: 0f32) {
-                    Text(content: if is_prompt { "Enter the requested information:" } else { "Open the URL and enter the code:" }.to_string(), color: thm.text_secondary, wrap: TextWrap::Wrap)
-                }
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(content: oauth_url, color: thm.text_primary, weight: Weight::Bold, wrap: TextWrap::Wrap)
-                }
-                // Show device code when present
-                View(width: w, padding_top: 1, flex_shrink: 0f32) {
                     Text(
-                        content: if !is_prompt && !oauth_code.is_empty() { format!("Code: {oauth_code}") } else { String::new() },
+                        content: body_text,
+                        color: thm.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                // URL (device code mode only, not prompt mode)
+                View(width: w, padding_top: if show_url { 1 } else { 0 }, flex_shrink: 0f32) {
+                    Text(content: url_text, color: thm.text_primary, weight: Weight::Bold, wrap: TextWrap::Wrap)
+                }
+                // Show device code when present (device code mode only)
+                View(width: w, padding_top: if show_code { 1 } else { 0 }, flex_shrink: 0f32) {
+                    Text(
+                        content: code_text,
                         color: thm.accent_soft,
                         weight: Weight::Bold,
                         wrap: TextWrap::NoWrap,
                     )
                 }
-                // Text input prompt
-                View(width: w, padding_top: 2, flex_shrink: 0f32) {
+                // Text input line (only shown in prompt mode)
+                View(width: w, padding_top: 0, flex_shrink: 0f32) {
                     Text(
-                        content: if oauth_code.is_empty() { "> Enter text and press Enter to submit…".to_string() } else { format!("> {oauth_code}") },
+                        content: if show_input {
+                            if oauth_code.is_empty() { "> Enter text and press Enter to submit…".to_string() } else { format!("> {oauth_code}") }
+                        } else {
+                            String::new()
+                        },
                         color: if has_focus { thm.text_primary } else { thm.text_muted },
                         wrap: TextWrap::NoWrap,
                     )
                 }
                 // Status message
                 View(width: w, padding_top: 1, flex_shrink: 0f32) {
-                    Text(content: if !is_prompt { "Waiting for authentication…" } else { "Type your response and press Enter" }.to_string(), color: thm.text_muted, wrap: TextWrap::NoWrap)
+                    Text(
+                        content: status_text,
+                        color: thm.text_muted,
+                        wrap: TextWrap::NoWrap,
+                    )
                 }
             }
         }

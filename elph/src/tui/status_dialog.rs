@@ -346,6 +346,8 @@ pub enum StatusDialogKind {
         oauth_select_labels: Vec<String>,
         /// Selected index within the OAuth select options.
         oauth_select_index: usize,
+        oauth_is_prompt: bool,
+        oauth_prompt_message: String,
     },
     /// Dedicated API key input dialog (separate from provider selection).
     ProviderApiKey {
@@ -508,6 +510,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             fresh_open,
             oauth_select_labels,
             oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
         }) => Some(render_provider_connect_dialog(
             props,
             provider_id,
@@ -520,6 +524,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             fresh_open,
             oauth_select_labels,
             oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
         )),
         Some(StatusDialogKind::ProviderApiKey {
             provider_id,
@@ -547,6 +553,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         fresh_open: bool,
         oauth_select_labels: Vec<String>,
         oauth_select_index: usize,
+        oauth_is_prompt: bool,
+        oauth_prompt_message: String,
     ) -> AnyElement<'static> {
         use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
 
@@ -575,6 +583,8 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             fresh_open,
             oauth_select_labels,
             oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
         )
     }
 
@@ -698,6 +708,8 @@ pub fn build_provider_connect_dialog_kind(
     fresh_open: bool,
     oauth_select_labels: Vec<String>,
     oauth_select_index: usize,
+    oauth_is_prompt: bool,
+    oauth_prompt_message: String,
 ) -> Option<StatusDialogKind> {
     let step = step?;
     if has_focus {
@@ -712,6 +724,8 @@ pub fn build_provider_connect_dialog_kind(
             fresh_open,
             oauth_select_labels,
             oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
         })
     } else {
         None
