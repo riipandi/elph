@@ -73,6 +73,8 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals", "<subcommand>"),
         hidden_builtin_with_args("confetti", "Confetti celebration", "[confetti|firework]"),
+        hidden_builtin_with_args("login", "Sign in to an AI provider", ""),
+        hidden_builtin_with_args("logout", "Sign out from an AI provider", ""),
     ]
 }
 
@@ -358,6 +360,10 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
+        "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
+        "logout" => {
+            Some(SlashDispatch::Unimplemented("provider disconnect".to_string()))
+        }
         "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
             Some(SlashDispatch::Unimplemented(format!("/{name}")))
         }
