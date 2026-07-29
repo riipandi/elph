@@ -1220,13 +1220,19 @@ pub fn render_provider_disconnect_dialog(
         "Esc cancel".to_string()
     };
 
-    // Build the list as a single text block
+    // Render rows with consistent selection styling
     let mut list_text = String::new();
     for (i, id) in provider_ids.iter().enumerate() {
-        let prefix = if i == selected_index { "❯ " } else { "  " };
+        let selected = i == selected_index;
+        let prefix = if selected { "❯ " } else { "  " };
         list_text.push_str(&format!("{}{}\n", prefix, format_provider_name(id)));
     }
     let list_text = list_text.trim_end().to_string();
+    let (list_color, _list_weight) = if has_focus {
+        (thm.text_primary, Weight::Normal)
+    } else {
+        (thm.text_muted, Weight::Normal)
+    };
 
     element! {
         InlineDialogShell(
@@ -1246,7 +1252,7 @@ pub fn render_provider_disconnect_dialog(
                 View(width: w, padding_top: if has_any { OPTIONS_LIST_TOP_GAP } else { 0u16 }, flex_shrink: 0f32) {
                     Text(
                         content: list_text,
-                        color: thm.text_primary,
+                        color: list_color,
                         wrap: TextWrap::NoWrap,
                     )
                 }
