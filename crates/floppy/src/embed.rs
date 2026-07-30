@@ -189,6 +189,9 @@ pub fn create_embedder(options: EmbedOptions) -> anyhow::Result<EmbedFn> {
 #[cfg(feature = "embed")]
 fn set_hf_home(dir: &std::path::Path) {
     let value = dir.to_string_lossy().into_owned();
+    // SAFETY: Called once during embedder initialization, before any
+    // concurrent access to env var state. No other thread reads HF_HOME
+    // concurrently; the embedder is not yet built.
     unsafe {
         std::env::set_var("HF_HOME", value);
     }

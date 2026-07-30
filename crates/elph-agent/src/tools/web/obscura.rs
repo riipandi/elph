@@ -90,6 +90,10 @@ fn suppress_thread_stderr() {
         fn dup2(oldfd: std::os::raw::c_int, newfd: std::os::raw::c_int) -> std::os::raw::c_int;
     }
     if let Ok(null) = std::fs::File::open("/dev/null") {
+        // SAFETY: `null` was just opened, so its fd is valid. fd 2 (stderr)
+        // is guaranteed to be open in a running process. dup2 is
+        // signal-safe. Called once at worker start — no concurrent
+        // dup2/close racing on fd 2 at this point.
         unsafe {
             dup2(null.as_raw_fd(), 2);
         }

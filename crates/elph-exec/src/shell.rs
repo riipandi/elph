@@ -123,6 +123,9 @@ async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
 
     apply_env(&mut cmd, config, options);
 
+    // SAFETY: The pre_exec closure runs in the child process after fork(),
+    // before exec(). It calls session_leader() which is signal-safe and
+    // only modifies child-local process state. No async/catching unwind.
     unsafe {
         cmd.pre_exec(move || {
             session_leader()?;

@@ -82,6 +82,10 @@ impl Pts {
         let pts_fd = self.0.as_raw_fd();
         move || {
             rustix::process::setsid().map_err(std::io::Error::from)?;
+            // SAFETY: pts_fd is a valid fd borrowed from self (PtyMaster).
+            // The BorrowedFd is used only within this closure, which runs
+            // in a forked child before exec — self (and its fd) outlives
+            // this call because the closure is consumed synchronously.
             rustix::process::ioctl_tiocsctty(unsafe { std::os::fd::BorrowedFd::borrow_raw(pts_fd) })
                 .map_err(std::io::Error::from)?;
             Ok(())

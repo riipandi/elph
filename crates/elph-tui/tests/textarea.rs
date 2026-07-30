@@ -1,9 +1,8 @@
 use elph_tui::components::textarea::*;
-use elph_tui::paste::{PasteBurstState, newline_count};
+use elph_tui::paste::newline_count;
 use elph_tui::text_editing::{insert_newline_at_cursor, line_start_offset, wire_insert_newline};
 use elph_tui::text_input_layout::WrappedTextLayout;
 use elph_tui::text_input_layout::update_scroll_offset;
-use iocraft::prelude::*;
 
 #[test]
 fn insert_newline_at_cursor_appends() {
@@ -191,7 +190,7 @@ fn move_right_through_long_content_does_not_stall() {
     let text = "a".repeat(200);
     let cursor = 0;
     let w = 40;
-    let wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
+    let _wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
     // After moving right by one char, cursor should advance
     let next = WrappedTextLayout::right_of_offset(&text, cursor);
     assert_eq!(next, 1);
