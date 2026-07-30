@@ -260,34 +260,34 @@ pub fn sticky_user_message_index(
 
 /// Sticky prompt shown for the active transcript turn.
 ///
-/// Returns `None` for an empty transcript or when content still fits the viewport (no scroll).
+/// Returns `None` when the transcript fits the viewport (no scroll needed) or when the
+/// candidate sticky prompt is still visibly in-flow — keeping its tinted card background
+/// and avoiding a duplicate overlay.
 ///
-/// While `auto_scroll` is pinned to the bottom (normal follow-latest after submit), sticky is
-/// **disabled** so the in-flow user bubble keeps its tinted card background. A bottom-pinned
-/// offset looks like a large scroll and would otherwise pin the latest prompt to the top while
-/// suppressing the source bubble (invisible / no background) in the stream.
+/// When the latest sticky prompt has been scrolled past (above the viewport), returns its
+/// index so the panel can pin it as an overlay, even while auto-scroll follows the bottom.
 ///
-/// During manual scroll: hide at the top of the transcript (`scroll_offset <= 0`) so in-flow
-/// cards show without a duplicate overlay. Below that, pick the last sticky turn whose start
-/// row is at or above the viewport top (the prompt you have scrolled past).
+/// Hides at the top of the transcript (`scroll_offset <= 0`) so in-flow cards show without
+/// a duplicate overlay.
 pub fn active_sticky_user_message_index(
     layouts: &[TranscriptRowLayout],
     is_sticky_prompt: &[bool],
     scroll_offset: i32,
-    auto_scroll_pinned: bool,
+    _auto_scroll_pinned: bool,
     viewport_rows: u16,
 ) -> Option<usize> {
     if layouts.len() != is_sticky_prompt.len() || !transcript_supports_sticky_scroll(layouts, viewport_rows) {
         return None;
     }
-    // Following the bottom: keep in-flow user cards fully painted (with bubble background).
-    if auto_scroll_pinned {
-        return None;
-    }
     if scroll_offset <= 0 {
         return None;
     }
-    sticky_user_message_index(layouts, is_sticky_prompt, scroll_offset)
+    let idx = sticky_user_message_index(layouts, is_sticky_prompt, scroll_offset)?;
+    // Still visible in the viewport — the in-flow card is fine with its tinted background.
+    if transcript_bubble_overlaps_viewport(layouts, idx, scroll_offset, viewport_rows) {
+        return None;
+    }
+    Some(idx)
 }
 
 /// Effective scroll offset when `auto_scroll` may be pinned to the bottom.

@@ -125,21 +125,27 @@ fn transcript_supports_sticky_scroll_requires_overflow() {
 }
 
 #[test]
-fn active_sticky_disabled_when_auto_scroll_pinned() {
+fn active_sticky_activates_when_prompt_scrolled_off_regardless_of_auto_scroll() {
     let texts = ["sys", "user one", "assistant", "user two"];
     let layouts = layout_transcript_rows(&texts, 40, 1);
     let is_sticky_prompt = [false, true, false, true];
     let viewport = 5;
-    let bottom_offset = 50;
-    // Pinned to bottom after submit: no sticky overlay — in-flow user bubble keeps its card bg.
+    // Latest prompt (idx=3, row 6) is scrolled far past the viewport → sticky engages
+    // even when auto-scroll is pinned to the bottom.
     assert_eq!(
-        active_sticky_user_message_index(&layouts, &is_sticky_prompt, bottom_offset, true, viewport),
-        None
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 50, true, viewport),
+        Some(3)
     );
-    // Manual scroll past the latest prompt: sticky engages.
+    // Same offset, manual scroll → same result (auto_scroll flag is irrelevant).
+    assert_eq!(
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, 50, false, viewport),
+        Some(3)
+    );
+    // When the prompt is still visible in the viewport, no sticky — the in-flow
+    // card keeps its tinted background.
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, 6, false, viewport),
-        Some(3)
+        None
     );
 }
 
@@ -177,10 +183,13 @@ fn active_sticky_tracks_scrolled_past_prompt_while_manual_scrolling() {
     let viewport = 5;
     let first_user = 1usize;
     let second_user = 3usize;
+    // At scroll top: no sticky.
     assert_eq!(
         active_sticky_user_message_index(&layouts, &is_sticky_prompt, 0, false, viewport),
         None
     );
+    // Scrolled exactly to the first user prompt — it's still in the viewport
+    // (starts at top edge), so no sticky overlay needed.
     assert_eq!(
         active_sticky_user_message_index(
             &layouts,
@@ -189,13 +198,28 @@ fn active_sticky_tracks_scrolled_past_prompt_while_manual_scrolling() {
             false,
             viewport
         ),
-        Some(first_user)
+        None
     );
+    // Scrolled just past the first user prompt (past its end row): bubble is
+    // above the viewport → sticky engages for the latest scrolled-past prompt.
+    let past_first = layouts[first_user].start_row + layouts[first_user].row_count; // row 3
     assert_eq!(
         active_sticky_user_message_index(
             &layouts,
             &is_sticky_prompt,
-            layouts[second_user].start_row as i32,
+            past_first as i32,
+            false,
+            viewport
+        ),
+        Some(first_user)
+    );
+    // Scrolled past the second user prompt too: picks the latest scrolled-past.
+    let past_second = layouts[second_user].start_row + layouts[second_user].row_count; // row 7
+    assert_eq!(
+        active_sticky_user_message_index(
+            &layouts,
+            &is_sticky_prompt,
+            past_second as i32,
             false,
             viewport
         ),
@@ -265,15 +289,15 @@ fn layout_sticky_header_line_clamps_tall_prompt() {
 }
 
 #[test]
-fn pinned_auto_scroll_never_activates_sticky_even_when_content_overflows() {
+fn pinned_auto_scroll_shows_sticky_when_content_overflows_and_prompt_scrolled_off() {
     let texts = ["user paste"];
     let layouts = layout_transcript_rows(&texts, 40, 0);
     let is_sticky_prompt = [true];
     let pinned_offset = 80;
-    assert_eq!(sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset), Some(0));
-    // Short content (fits viewport) — already None.
+    let short_viewport = 20;
+    // Short content (fits viewport) — no sticky needed.
     assert_eq!(
-        active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true, 20),
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, pinned_offset, true, short_viewport),
         None
     );
 
@@ -281,14 +305,16 @@ fn pinned_auto_scroll_never_activates_sticky_even_when_content_overflows() {
     let long_layouts = layout_transcript_rows(&[long.trim()], 12, 0);
     let long_rows = transcript_content_row_count(&long_layouts) as u16;
     assert!(transcript_supports_sticky_scroll(&long_layouts, long_rows - 1));
-    // Overflow + auto-scroll pinned: still None so the submitted bubble paints its background.
+    // Overflow + auto-scroll pinned + prompt scrolled far above:
+    // sticky engages so the user can still see the prompt text.
     assert_eq!(
         active_sticky_user_message_index(&long_layouts, &[true], pinned_offset, true, long_rows - 1),
-        None
-    );
-    // Manual scroll past the prompt: sticky can engage.
-    assert_eq!(
-        active_sticky_user_message_index(&long_layouts, &[true], 2, false, long_rows - 1),
         Some(0)
+    );
+    // When the prompt is still visible in the viewport: no sticky overlay.
+    let full_viewport = long_rows + 10;
+    assert_eq!(
+        active_sticky_user_message_index(&long_layouts, &[true], 0, true, full_viewport),
+        None
     );
 }

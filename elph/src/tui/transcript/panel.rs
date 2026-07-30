@@ -259,12 +259,14 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         }
     };
     // panel_viewport uses stable sticky_rows (no one-frame lag).
-    let sticky_inset = if near_bottom { 0 } else { sticky_rows };
+    let sticky_inset = sticky_rows;
     let panel_viewport = scroll_zone.saturating_add(sticky_inset);
     let panel_height = panel_viewport;
 
     // effective_scroll_offset: always use raw_offset when not near_bottom.
     // When near_bottom, use stable committed bottom from layout_metrics.
+    // Also used for bubble windowing — must reflect the actual scroll position
+    // (not the content bottom) so windowed mounting covers in-viewport rows.
     let effective_scroll_offset = if near_bottom {
         let bottom = layout_content_rows.saturating_sub(scroll_zone as u32);
         last_committed_bottom.set(bottom);
