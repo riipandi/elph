@@ -117,14 +117,15 @@ pub fn slash_commands_for_palette(
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
-                commands.push(
-                    SlashCommand::new(
-                        &template.name,
-                        format!("[prompt] {}", truncate_palette_description(&template.description)),
-                    )
-                    .with_kind(SlashCommandKind::PromptTemplate)
-                    .with_args_hint("[args]"),
-                );
+                let mut cmd = SlashCommand::new(
+                    &template.name,
+                    format!("[prompt] {}", truncate_palette_description(&template.description)),
+                )
+                .with_kind(SlashCommandKind::PromptTemplate);
+                if let Some(hint) = &template.argument_hint {
+                    cmd = cmd.with_args_hint(hint);
+                }
+                commands.push(cmd);
             }
         }
     }
@@ -576,6 +577,7 @@ mod tests {
             name: "review".into(),
             description: "Review code".into(),
             content: "Review $@".into(),
+            argument_hint: None,
         }];
         assert_eq!(
             dispatch_slash_command("/review main.rs", None, Some(&templates), None),
@@ -728,6 +730,7 @@ mod tests {
             name: "help".into(),
             description: "Custom help".into(),
             content: "Help me".into(),
+            argument_hint: None,
         }];
         let names: Vec<_> = slash_commands_for_palette(None, Some(&templates), None)
             .into_iter()

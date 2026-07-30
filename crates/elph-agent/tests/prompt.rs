@@ -141,6 +141,7 @@ fn format_prompt_template_invocation_substitutes_arguments() {
         name: "one".to_string(),
         description: String::new(),
         content: "$1 ${@:2} $ARGUMENTS".to_string(),
+        argument_hint: None,
     };
     assert_eq!(
         format_prompt_template_invocation(&template, &["hello world".to_string(), "test".to_string()],),

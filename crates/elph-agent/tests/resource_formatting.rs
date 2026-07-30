@@ -36,6 +36,7 @@ fn format_prompt_template_invocation_substitutes_positional_arguments() {
         name: "review".to_string(),
         description: String::new(),
         content: "Review $1 with $ARGUMENTS".to_string(),
+        argument_hint: None,
     };
 
     assert_eq!(
