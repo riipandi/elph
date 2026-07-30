@@ -2,6 +2,7 @@
 mod common;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use parking_lot::Mutex as ParkingMutex;
 
@@ -686,7 +687,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
         label: "Delayed Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, on_update|, _context|, _context| {
+        execute: Arc::new(move |_id, _args, _signal, on_update, _context| {
             let update_tx_capture = update_tx_capture.clone();
             Box::pin(async move {
                 *update_tx_capture.lock().await = on_update.clone();
@@ -912,7 +913,6 @@ async fn agent_session_id_setter_updates_stream_fn() {
 #[tokio::test]
 async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     use std::sync::atomic::AtomicBool;
-    use std::time::Duration;
 
     let slow_started = Arc::new(AtomicBool::new(false));
     let settled_tool_ended = Arc::new(AtomicBool::new(false));
@@ -932,7 +932,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
         label: "Settled Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, on_update|, _context|, _context| {
+        execute: Arc::new(move |_id, _args, _signal, on_update, _context| {
             let settled_update_capture = settled_update_capture.clone();
             Box::pin(async move {
                 *settled_update_capture.lock().await = on_update.clone();
@@ -960,7 +960,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
         label: "Slow Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, _on_update|, _context|, _context| {
+        execute: Arc::new(move |_id, _args, _signal, _on_update, _context| {
             let slow_started_capture = slow_started_capture.clone();
             let release_slow_capture = release_slow_capture.clone();
             Box::pin(async move {

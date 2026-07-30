@@ -14,8 +14,13 @@ pub static SHOULD_KILL_PARENT: AtomicBool = AtomicBool::new(false);
 
 #[cfg(unix)]
 pub fn kill_parent() {
+    // SAFETY: getppid is a POSIX system call that returns the parent process ID.
+    // It's always safe to call and returns a valid pid_t.
     let ppid = unsafe { getppid() };
     if ppid > 1 {
+        // SAFETY: kill is a POSIX system call that sends a signal to a process.
+        // We only send SIGTERM (termination signal) to the parent process when ppid > 1,
+        // which means we have a valid parent process. This is a standard signal delivery pattern.
         unsafe {
             kill(ppid, SIGTERM);
         }

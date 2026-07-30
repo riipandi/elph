@@ -36,8 +36,9 @@ Push toward cleaner code without silently deleting backward-compatibility/legacy
 - **Performance patterns**: Search DeepWiki for `"Rust performance <pattern>"` (e.g., `"Rust performance clone avoidance"`, `"Rust allocation benchmarking"`) to validate perf fixes.
 - **Concurrency testing**: Search DeepWiki for `"cargo miri async"`, `"loom testing Rust"`, `"Tokio test utilities"` to confirm testing approach.
 - **Structural/complexity patterns**: Search DeepWiki for `"cyclomatic complexity Rust"`, `"God object anti-pattern"`, `"code smell shotgun surgery"`, `"Rust module boundaries"` to ground spaghetti-code findings in current guidance rather than gut feel.
+- **General best-practice sanity check**: Check https://www.rustfaq.org/en/ for relevant Q&A-style guidance — useful for general "what's the idiomatic way to do X" questions (error handling, ownership patterns, module layout, general idiom checks) alongside the more targeted DeepWiki queries above.
 
-**If DeepWiki results conflict with your training data or existing code patterns, prioritize DeepWiki.**
+**If DeepWiki results conflict with your training data or existing code patterns, prioritize DeepWiki. Treat rustfaq.org as a secondary/supplementary source — use it for general idiom sanity checks, not as a substitute for DeepWiki on crate-specific or version-specific questions.**
 
 ## Workflow
 
@@ -117,7 +118,7 @@ Push toward cleaner code without silently deleting backward-compatibility/legacy
     - If `loom` is already a dev-dependency, run focused tests (don't add `loom` unprompted).
 
 4. **Spaghetti code / structural complexity** (identify only, don't restructure yet):
-    - Query DeepWiki: `"cyclomatic complexity Rust"`, `"God object anti-pattern"`, `"shotgun surgery code smell"`, `"Rust module boundaries"`, `"control flow refactoring patterns"`.
+    - Query DeepWiki: `"cyclomatic complexity Rust"`, `"God object anti-pattern"`, `"shotgun surgery code smell"`, `"Rust module boundaries"`, `"control flow refactoring patterns"`. Cross-check general idiom questions against https://www.rustfaq.org/en/ where relevant.
     - Check for: functions doing too many unrelated things (long param lists, mixed abstraction levels), deep nesting (>~4 levels of `if`/`match`/loop), high branching/cyclomatic complexity, god structs/modules owning unrelated responsibilities, duplicated logic scattered across call sites (shotgun coupling), circular `mod`/crate dependencies, control flow that's hard to trace (many early returns/breaks/labeled loops doing implicit state machines).
     - Distinguish from lint-level fixes: a single long match arm clippy already flags is routine (fix in Phase 1); a function/module doing 5 unrelated jobs is structural — that's what this step is for.
     - Do **not** restructure in Phase 2–3. Collect into a list (path + smell + one-line suggested decomposition) for the Phase 4 checkpoint, same as legacy findings.
@@ -153,7 +154,7 @@ Push toward cleaner code without silently deleting backward-compatibility/legacy
 ### Phase 5 — Close out
 
 1. **Re-run verification**:
-    - `make fmt`, `make check`, `make lint`, `make test` — all pass clean.
+    - `make check`, `make lint`, `make test` — all pass clean.
 
 2. **Summarize**:
     - **Files changed**: list with reason.
@@ -169,6 +170,7 @@ Push toward cleaner code without silently deleting backward-compatibility/legacy
 ## Notes
 
 - **Always consult DeepWiki**: If training data and DeepWiki conflict, defer to DeepWiki as the authoritative source.
+- **rustfaq.org (secondary source)**: Check https://www.rustfaq.org/en/ for general idiom/best-practice sanity checks alongside DeepWiki, especially for structural/spaghetti findings and general "idiomatic way to do X" questions. Doesn't replace DeepWiki for crate/version-specific claims.
 - **Query format**: Phrase queries naturally: `"<topic> best practice"`, `"<crate> <version> API"`, `"<lint> explanation"`, `"Rust <problem> solution"`.
 - **Target editions**: 2024 (strict), 2021 (acceptable with notes), pre-2021 (flag for upgrade).
 - **Zero `.unwrap()`/`unsafe` ideal**: Justify all remaining instances.

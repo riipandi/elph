@@ -464,12 +464,14 @@ pub fn count_filtered(providers: &[ProviderOption], filter: &str) -> usize {
 
 /// How a list keystroke seeds the filter field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ProviderFilterSeed {
     FocusOnly,
     Append(char),
 }
 
 /// Printable characters that seed the filter (like model selector).
+#[allow(dead_code)]
 pub fn provider_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ProviderFilterSeed> {
     if !modifiers.is_empty() {
         return None;
@@ -520,6 +522,7 @@ pub fn provider_confirm_on_enter(focus: ProviderConnectFocus) -> bool {
 }
 
 /// Apply a filter seed keystroke: focus search, optionally append a character.
+#[allow(dead_code)]
 pub fn apply_provider_filter_seed(
     seed: ProviderFilterSeed,
     filter: &mut State<String>,
@@ -861,6 +864,7 @@ fn render_oauth_select_step(
 }
 
 /// Render step 3: OAuth device code or text prompt.
+#[allow(clippy::too_many_arguments)]
 fn render_oauth_device_code_step(
     screen_width: u16,
     _screen_height: u16,
@@ -1111,7 +1115,7 @@ pub fn open_provider_disconnect_dialog(args: OpenProviderDisconnectDialogArgs<'_
         args.live_draft.set(String::new());
     }
 
-    let mut provider_ids = super::provider_credential_store::list_providers_with_credentials(args.auth_store_path);
+    let provider_ids = super::provider_credential_store::list_providers_with_credentials(args.auth_store_path);
     // Pre-select if a specific provider was given
     let selected_index = args
         .provider_id
@@ -1158,7 +1162,7 @@ pub fn close_provider_disconnect_dialog(
 /// Render the provider disconnect dialog.
 pub fn render_provider_disconnect_dialog(
     screen_width: u16,
-    screen_height: u16,
+    _screen_height: u16,
     has_focus: bool,
     provider_ids: Vec<String>,
     selected_index: usize,

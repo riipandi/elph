@@ -65,11 +65,10 @@ use crate::tui::prompt_history::{
 use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
-    apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
-    close_provider_disconnect_dialog, focus_provider_list, focus_provider_search, format_provider_name, get_provider_options_for_auth_method,
+    close_provider_api_key_dialog, close_provider_connect_dialog, close_provider_disconnect_dialog,
+    focus_provider_list, focus_provider_search, format_provider_name, get_provider_options_for_auth_method,
     open_provider_api_key_dialog, open_provider_connect_dialog, open_provider_disconnect_dialog,
-    provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed, provider_list_nav_delta,
-    provider_supports_oauth,
+    provider_auth_method_from_index, provider_confirm_on_enter, provider_list_nav_delta, provider_supports_oauth,
 };
 use crate::tui::rename_dialog::{OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog};
 use crate::tui::scoped_models::PendingScopedModels;
@@ -145,18 +144,22 @@ enum OAuthDialogEvent {
     },
     /// Prompt the user for text input (e.g. GitHub Copilot enterprise URL).
     PromptText {
+        #[allow(dead_code)]
         id: u64,
         message: String,
+        #[allow(dead_code)]
         placeholder: Option<String>,
     },
     /// Prompt the user to paste a manual authorization code / redirect URL.
     PromptManualCode {
+        #[allow(dead_code)]
         id: u64,
         message: String,
         placeholder: Option<String>,
     },
     /// Prompt the user to select from a list of options (e.g. OpenAI Codex login method).
     PromptSelect {
+        #[allow(dead_code)]
         id: u64,
         message: String,
         options: Vec<elph_ai::auth::AuthSelectOption>,
@@ -3164,10 +3167,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             if let Some(selected_id) = selected_id {
                                 log::info!("OAuth select: {} (index {})", selected_id, selected_index);
                                 let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
-                                if let Some(prompt_id) = store.keys().next().cloned() {
-                                    if let Some(tx) = store.remove(&prompt_id) {
-                                        let _ = tx.send(selected_id);
-                                    }
+                                if let Some(prompt_id) = store.keys().next().cloned()
+                                    && let Some(tx) = store.remove(&prompt_id) {
+                                    let _ = tx.send(selected_id);
                                 }
                             }
                             return;
@@ -3211,13 +3213,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             .unwrap_or_default();
 
                         // Allow empty submit in prompt mode (e.g. blank means github.com)
-                        if !response.is_empty() || (is_prompt && OAUTH_PROMPT_STORE.lock().unwrap().len() > 0) {
+                        if !response.is_empty() || (is_prompt && !OAUTH_PROMPT_STORE.lock().unwrap().is_empty()) {
                             log::info!("OAuth prompt response submitted: {}", response);
                             let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
-                            if let Some(prompt_id) = store.keys().next().cloned() {
-                                if let Some(tx) = store.remove(&prompt_id) {
-                                    let _ = tx.send(response);
-                                }
+                            if let Some(prompt_id) = store.keys().next().cloned()
+                                && let Some(tx) = store.remove(&prompt_id) {
+                                let _ = tx.send(response);
                             }
                             if let Some(ref mut pending) = *pending_provider_connect.write() {
                                 pending.oauth_code.clear();
@@ -3687,7 +3688,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     if !modifiers.is_empty() {
                         // Ignore modified keys
                     } else {
-                        let auth_method_idx = pending_provider_connect
+                        let _auth_method_idx = pending_provider_connect
                             .read()
                             .as_ref()
                             .map(|p| p.selected_auth_method)
@@ -4918,9 +4919,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     if let Some(pending) = pending_provider_connect.write().as_mut() {
         let next_filter = provider_connect_filter.read().clone();
         if pending.filter != next_filter {
-            let providers = get_provider_options_for_auth_method(
-                provider_auth_method_from_index(pending.selected_auth_method),
-            );
+            let providers =
+                get_provider_options_for_auth_method(provider_auth_method_from_index(pending.selected_auth_method));
             let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &next_filter);
             pending.filter = next_filter;
             pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));

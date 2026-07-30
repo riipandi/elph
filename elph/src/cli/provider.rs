@@ -300,11 +300,9 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                 selected_provider.config_status,
                 ProviderConfigStatus::ApiKeyConfigured | ProviderConfigStatus::OAuthConfigured
             );
-            if already_configured {
-                if !interactive::confirm_overwrite(&selected_provider.name) {
-                    println!("Cancelled.");
-                    return EXIT_SUCCESS;
-                }
+            if already_configured && !interactive::confirm_overwrite(&selected_provider.name) {
+                println!("Cancelled.");
+                return EXIT_SUCCESS;
             }
 
             let Some(api_key) = interactive::prompt_api_key(&selected_provider.name) else {

@@ -103,10 +103,7 @@ pub fn select_auth_method() -> Option<ProviderAuthMethod> {
 ///
 /// Shows providers filtered by `auth_method`, with config status labels.
 /// Returns `None` if the user cancels.
-pub fn select_provider<'a>(
-    providers: &'a [ProviderOption],
-    auth_method: ProviderAuthMethod,
-) -> Option<&'a ProviderOption> {
+pub fn select_provider(providers: &[ProviderOption], auth_method: ProviderAuthMethod) -> Option<&ProviderOption> {
     let filtered: Vec<&ProviderOption> = providers
         .iter()
         .filter(|p| match auth_method {

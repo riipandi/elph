@@ -124,10 +124,14 @@ mod tests {
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
+        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::set_var("HOME", tmp.path());
         }
         let paths = resolver.resolve().expect("resolve");
+        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }
@@ -145,6 +149,8 @@ mod tests {
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
+        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::set_var("HOME", tmp.path());
         }
@@ -152,6 +158,8 @@ mod tests {
             std::env::set_var("ELPH_TEST_DATA_DIR", "/custom/data");
         }
         let paths = resolver.resolve().expect("resolve");
+        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }
@@ -172,6 +180,8 @@ mod tests {
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
+        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::set_var("HOME", tmp.path());
         }
@@ -179,6 +189,8 @@ mod tests {
             std::env::set_var("XDG_DATA_HOME", "/xdg/data");
         }
         let paths = resolver.resolve().expect("resolve");
+        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }
@@ -199,10 +211,14 @@ mod tests {
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
+        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::set_var("HOME", tmp.path());
         }
         let paths = resolver.resolve().expect("resolve");
+        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
+        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }

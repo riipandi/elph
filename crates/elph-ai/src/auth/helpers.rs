@@ -24,20 +24,20 @@ pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) ->
                     });
                 }
                 // Check the credential's embedded env map (from env-ref entries).
-                if let Some(cred) = &input.credential {
-                    if let Some(ref env) = cred.env {
-                        for var_name in env.keys() {
-                            if let Some(value) = input.ctx.env(var_name).await {
-                                return Some(AuthResult {
-                                    auth: ModelAuth {
-                                        api_key: Some(value),
-                                        headers: None,
-                                        base_url: None,
-                                    },
-                                    env: None,
-                                    source: Some(format!("env:{var_name}")),
-                                });
-                            }
+                if let Some(cred) = &input.credential
+                    && let Some(ref env) = cred.env
+                {
+                    for var_name in env.keys() {
+                        if let Some(value) = input.ctx.env(var_name).await {
+                            return Some(AuthResult {
+                                auth: ModelAuth {
+                                    api_key: Some(value),
+                                    headers: None,
+                                    base_url: None,
+                                },
+                                env: None,
+                                source: Some(format!("env:{var_name}")),
+                            });
                         }
                     }
                 }

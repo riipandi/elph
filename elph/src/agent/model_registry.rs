@@ -127,14 +127,14 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
             };
 
             // Heuristic: if it looks like JSON, try OAuth; otherwise treat as API key
-            if plain.trim().starts_with('{') {
-                if let Ok(oauth) = serde_json::from_str::<OAuthCredential>(&plain) {
-                    let cred = Credential::OAuth(oauth);
-                    store
-                        .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
-                        .await;
-                    continue;
-                }
+            if plain.trim().starts_with('{')
+                && let Ok(oauth) = serde_json::from_str::<OAuthCredential>(&plain)
+            {
+                let cred = Credential::OAuth(oauth);
+                store
+                    .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
+                    .await;
+                continue;
             }
             // Treat as raw API key
             let cred = Credential::ApiKey(ApiKeyCredential::new(plain));

@@ -67,6 +67,7 @@ pub enum SlashOutcome {
         text: String,
     },
     /// Memory operation result viewer (ScrollTextDialog).
+    #[allow(dead_code)]
     OpenMemoryResultDialog {
         text: String,
     },
