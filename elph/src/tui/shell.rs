@@ -1198,7 +1198,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     match &event {
                         BootstrapUiEvent::AgentReady(_) => {
                             if let Ok(settings) = Settings::load(&paths.read().clone()) {
-                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
+                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady).await;
                             }
                         }
                         BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
@@ -1206,7 +1206,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 notifier::notify(
                                     &settings.notifications,
                                     notifier::NotifKind::Error { message: msg.as_str() },
-                                );
+                                )
+                                .await;
                             }
                         }
                         _ => {}
@@ -1452,281 +1453,286 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut run_completed = false;
             let mut run_completed_elapsed: Option<f64> = None;
 
-            if let Some(rx) = ui_events.as_ref()
-                && let Ok(mut guard) = rx.lock()
-            {
-                // Drain + coalesce stream deltas so one tick applies O(1) text/tool appends
-                // instead of dozens of tiny mutations that each rebuild layout.
-                let mut raw_events = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
-                while raw_events.len() < MAX_UI_EVENTS_PER_TICK {
-                    let Ok(event) = guard.try_recv() else {
-                        break;
-                    };
-                    raw_events.push(event);
-                }
-                last_event_burst.set(raw_events.len());
-                let events = crate::tui::agent_bridge::coalesce_agent_ui_events(raw_events);
-                for event in events {
-                    if agent_event_keeps_busy(&event) {
-                        // Stream/tool activity means a real harness turn (not bootstrap chrome).
-                        agent_turn_active.set(true);
-                        if !busy.get() {
-                            mark_busy(
-                                &mut BusyActivation {
-                                    busy: &mut busy,
-                                    busy_started_at: &mut busy_started_at,
-                                    activity_started_at: &mut activity_started_at,
-                                    activity_label: &mut activity_label,
-                                    last_activity_label: &mut last_activity_label,
-                                },
-                                false,
-                                None,
-                            );
-                        }
-                    }
-                    if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
-                        run_completed = true;
-                        run_completed_elapsed = Some(*elapsed_secs);
-                    }
-
-                    match &event {
-                        AgentUiEvent::TextDelta(delta) => {
-                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
-                                tracker.record_delta(delta);
-                            }
-                        }
-                        AgentUiEvent::ThinkingDelta(delta) if show_thinking => {
-                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
-                                tracker.record_delta(delta);
-                            }
-                        }
-                        _ => {}
-                    }
-
-                    if let AgentUiEvent::Status(ref message) = event {
-                        if message.to_ascii_lowercase().contains("reloaded") {
-                            palette_refresh_pending.set(true);
-                        }
-                        // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
-                        if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
-                            let toast = crate::tui::api_error_display::format_ephemeral_api_error(message);
-                            show_ephemeral_banner(
-                                &mut ephemeral_banner,
-                                &mut ephemeral_banner_generation,
-                                &ephemeral_expire.read().tx,
-                                api_error_banner(toast),
-                            );
-                        }
-                    }
-
-                    if let AgentUiEvent::MemoryResult(ref text) = event {
-                        let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
-                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
-                            pending: &mut pending_system_prompt,
-                            shell_focus: &mut shell_focus,
-                            title: "Memory".to_string(),
-                            text: text.clone(),
-                            width_pct: 80,
-                            body_height: Some(body_height),
-                            show_copy: false,
-                        });
-                        continue;
-                    }
-
-                    if let AgentUiEvent::ToolApprovalRequired(req) = event {
-                        let tool_name = req.tool_name.clone();
-                        let tool_call_id = req.tool_call_id.clone();
-                        let verb = tool_display_verb(&tool_name);
-                        activity_label.set(format!("Approve: {verb}"));
-                        approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
-                        // Desktop notification: tool permission request
-                        {
-                            let paths = paths.read().clone();
-                            if let Ok(settings) = Settings::load(&paths) {
-                                notifier::notify(
-                                    &settings.notifications,
-                                    notifier::NotifKind::ToolPermission { tool_name: &tool_name },
-                                );
-                            }
-                        }
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            // Process status line (colored, consistent gaps) — not a flush Meta dump.
-                            let key = tool_approval_transcript_key(&tool_call_id);
-                            if let Some(existing) =
-                                msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
-                            {
-                                existing.content = "Tool approval".to_string();
-                                existing.status_detail = Some(verb.clone());
-                                existing.style = TranscriptStyle::StatusRunning;
-                            } else {
-                                let mut row = TranscriptMessage::startup_status(
-                                    key,
-                                    "Tool approval".to_string(),
-                                    TranscriptStyle::StatusRunning,
-                                );
-                                row.status_detail = Some(verb);
-                                msgs.push(row);
-                            }
-                        }
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::UserQuestionRequired(req) = event {
-                        let question_summary: String = req
-                            .steps
-                            .first()
-                            .map(|s| s.question.clone())
-                            .unwrap_or_else(|| "Agent has a question".into());
-                        let pending = PendingUserQuestion::from_request(req);
-                        activity_label.set(step_activity_label(&pending));
-                        reset_ui_for_step(
-                            &pending,
-                            &mut question_selected,
-                            &mut question_confirm_focus,
-                            &mut question_answer,
-                            &mut question_multi_checked,
-                            &mut question_input_focus,
-                        );
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_user_question.set(Some(pending));
-                        // Desktop notification: user question
-                        {
-                            let paths = paths.read().clone();
-                            if let Ok(settings) = Settings::load(&paths) {
-                                notifier::notify(
-                                    &settings.notifications,
-                                    notifier::NotifKind::UserQuestion {
-                                        summary: question_summary,
-                                    },
-                                );
-                            }
-                        }
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::ModeChangeRequired(req) = event {
-                        if busy.get() && !allow_mode_change_while_busy.get() {
-                            // Auto-reject mode change while busy when setting disallows it.
-                            let _ = req.response_tx.send("false".to_string());
-                            continue;
-                        }
-                        let mode_label = req.target_mode.to_ascii_uppercase();
-                        activity_label.set(format!("Approve: switch to {mode_label}"));
-                        approval_selected.set(0);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_mode_change.set(Some(PendingModeChange {
-                            target_mode: req.target_mode.clone(),
-                            reason: req.reason.clone(),
-                            response_tx: req.response_tx,
-                        }));
-                        // Push a status row for the transcript.
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            let key = "mode-change:pending".to_string();
-                            let mut row = TranscriptMessage::startup_status(
-                                key,
-                                format!("Switch to {mode_label} mode?"),
-                                TranscriptStyle::StatusRunning,
-                            );
-                            row.status_detail = Some(req.reason);
-                            msgs.push(row);
-                        }
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::PlanConfirmationRequired(req) = event {
-                        // Save plan to disk FIRST so user can read it before deciding.
-                        let plan_file = {
-                            let paths = paths.read().clone();
-                            let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
-                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
-                                .map_err(|e| log::error!("Failed to save plan: {e}"))
-                                .ok()
+            let drained_events: Vec<AgentUiEvent> = if let Some(rx) = ui_events.as_ref() {
+                if let Ok(mut guard) = rx.lock() {
+                    let mut raw = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
+                    while raw.len() < MAX_UI_EVENTS_PER_TICK {
+                        let Ok(event) = guard.try_recv() else {
+                            break;
                         };
-
-                        activity_label.set("Plan proposed".to_string());
-                        approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                            plan_text: req.plan_text.clone(),
-                            plan_file,
-                            session: agent_session_for_loop.clone(),
-                        }));
-                        // Push a status row for the transcript.
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            let key = plan_confirmation_transcript_key();
-                            let mut row = TranscriptMessage::startup_status(
-                                key,
-                                "Plan confirmation".to_string(),
-                                TranscriptStyle::StatusRunning,
-                            );
-                            row.status_detail = Some("Review the proposed plan".to_string());
-                            msgs.push(row);
-                        }
-                        transcript_changed = true;
-                        continue;
+                        raw.push(event);
                     }
+                    drop(guard);
+                    last_event_burst.set(raw.len());
+                    crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
+                } else {
+                    Vec::new()
+                }
+            } else {
+                Vec::new()
+            };
 
-                    if let AgentUiEvent::QueueUpdate { items } = event {
-                        prompt_queue.write().replace(items);
-                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                        if prompt_queue.read().is_empty() {
-                            if queue_manager_open.get() {
-                                queue_manager_open.set(false);
-                                queue_manager_selected.set(0);
-                                if pending_tool_approval.read().is_none() && pending_user_question.read().is_none() {
-                                    shell_focus.set(ShellFocus::Prompt);
-                                }
-                            }
-                        } else {
-                            let len = prompt_queue.read().len();
-                            let idx = queue_manager_selected.get().min(len.saturating_sub(1));
-                            queue_manager_selected.set(idx);
-                        }
-                        continue;
+            for event in drained_events {
+                if agent_event_keeps_busy(&event) {
+                    // Stream/tool activity means a real harness turn (not bootstrap chrome).
+                    agent_turn_active.set(true);
+                    if !busy.get() {
+                        mark_busy(
+                            &mut BusyActivation {
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
+                            false,
+                            None,
+                        );
                     }
+                }
+                if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
+                    run_completed = true;
+                    run_completed_elapsed = Some(*elapsed_secs);
+                }
 
-                    if let AgentUiEvent::UserPromptCommitted { text } = event {
-                        // Idle submit and Ctrl+Enter already painted the user card.
-                        let pending = pre_echoed_user_prompts.get();
-                        if pending > 0 {
-                            pre_echoed_user_prompts.set(pending.saturating_sub(1));
-                        } else {
-                            let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                            // Write to arc directly (no State dirty mark);
-                            // sync to messages State happens at end of tick.
-                            {
-                                let mut msgs = messages_arc_inner.write().unwrap();
-                                if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
-                                    crate::tui::prompt_history::push_history_entry_styled(
-                                        &mut prompt_history.write(),
-                                        &submitted.content,
-                                        submitted.style,
-                                    );
-                                }
-                                msgs.push(submitted);
-                            }
-                            transcript_changed = true;
+                match &event {
+                    AgentUiEvent::TextDelta(delta) => {
+                        if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                            tracker.record_delta(delta);
                         }
-                        continue;
                     }
+                    AgentUiEvent::ThinkingDelta(delta) if show_thinking => {
+                        if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                            tracker.record_delta(delta);
+                        }
+                    }
+                    _ => {}
+                }
 
-                    if let Some(label) = activity_label_for_event(&event, show_thinking) {
-                        activity_label.set(label);
+                if let AgentUiEvent::Status(ref message) = event {
+                    if message.to_ascii_lowercase().contains("reloaded") {
+                        palette_refresh_pending.set(true);
+                    }
+                    // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
+                    if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
+                        let toast = crate::tui::api_error_display::format_ephemeral_api_error(message);
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &ephemeral_expire.read().tx,
+                            api_error_banner(toast),
+                        );
+                    }
+                }
+
+                if let AgentUiEvent::MemoryResult(ref text) = event {
+                    let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                    open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                        pending: &mut pending_system_prompt,
+                        shell_focus: &mut shell_focus,
+                        title: "Memory".to_string(),
+                        text: text.clone(),
+                        width_pct: 80,
+                        body_height: Some(body_height),
+                        show_copy: false,
+                    });
+                    continue;
+                }
+
+                if let AgentUiEvent::ToolApprovalRequired(req) = event {
+                    let tool_name = req.tool_name.clone();
+                    let tool_call_id = req.tool_call_id.clone();
+                    let verb = tool_display_verb(&tool_name);
+                    activity_label.set(format!("Approve: {verb}"));
+                    approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
+                    // Desktop notification: tool permission request
+                    {
+                        let paths = paths.read().clone();
+                        if let Ok(settings) = Settings::load(&paths) {
+                            notifier::notify(
+                                &settings.notifications,
+                                notifier::NotifKind::ToolPermission { tool_name: &tool_name },
+                            )
+                            .await;
+                        }
                     }
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
-                        if event_applier.write().apply(&mut msgs, event) {
-                            transcript_changed = true;
+                        // Process status line (colored, consistent gaps) — not a flush Meta dump.
+                        let key = tool_approval_transcript_key(&tool_call_id);
+                        if let Some(existing) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                        {
+                            existing.content = "Tool approval".to_string();
+                            existing.status_detail = Some(verb.clone());
+                            existing.style = TranscriptStyle::StatusRunning;
+                        } else {
+                            let mut row = TranscriptMessage::startup_status(
+                                key,
+                                "Tool approval".to_string(),
+                                TranscriptStyle::StatusRunning,
+                            );
+                            row.status_detail = Some(verb);
+                            msgs.push(row);
                         }
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::UserQuestionRequired(req) = event {
+                    let question_summary: String = req
+                        .steps
+                        .first()
+                        .map(|s| s.question.clone())
+                        .unwrap_or_else(|| "Agent has a question".into());
+                    let pending = PendingUserQuestion::from_request(req);
+                    activity_label.set(step_activity_label(&pending));
+                    reset_ui_for_step(
+                        &pending,
+                        &mut question_selected,
+                        &mut question_confirm_focus,
+                        &mut question_answer,
+                        &mut question_multi_checked,
+                        &mut question_input_focus,
+                    );
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_user_question.set(Some(pending));
+                    // Desktop notification: user question
+                    {
+                        let paths = paths.read().clone();
+                        if let Ok(settings) = Settings::load(&paths) {
+                            notifier::notify(
+                                &settings.notifications,
+                                notifier::NotifKind::UserQuestion {
+                                    summary: question_summary,
+                                },
+                            )
+                            .await;
+                        }
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::ModeChangeRequired(req) = event {
+                    if busy.get() && !allow_mode_change_while_busy.get() {
+                        // Auto-reject mode change while busy when setting disallows it.
+                        let _ = req.response_tx.send("false".to_string());
+                        continue;
+                    }
+                    let mode_label = req.target_mode.to_ascii_uppercase();
+                    activity_label.set(format!("Approve: switch to {mode_label}"));
+                    approval_selected.set(0);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_mode_change.set(Some(PendingModeChange {
+                        target_mode: req.target_mode.clone(),
+                        reason: req.reason.clone(),
+                        response_tx: req.response_tx,
+                    }));
+                    // Push a status row for the transcript.
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let key = "mode-change:pending".to_string();
+                        let mut row = TranscriptMessage::startup_status(
+                            key,
+                            format!("Switch to {mode_label} mode?"),
+                            TranscriptStyle::StatusRunning,
+                        );
+                        row.status_detail = Some(req.reason);
+                        msgs.push(row);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::PlanConfirmationRequired(req) = event {
+                    // Save plan to disk FIRST so user can read it before deciding.
+                    let plan_file = {
+                        let paths = paths.read().clone();
+                        let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
+                        crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
+                            .map_err(|e| log::error!("Failed to save plan: {e}"))
+                            .ok()
+                    };
+
+                    activity_label.set("Plan proposed".to_string());
+                    approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_plan_confirmation.set(Some(PendingPlanConfirmation {
+                        plan_text: req.plan_text.clone(),
+                        plan_file,
+                        session: agent_session_for_loop.clone(),
+                    }));
+                    // Push a status row for the transcript.
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let key = plan_confirmation_transcript_key();
+                        let mut row = TranscriptMessage::startup_status(
+                            key,
+                            "Plan confirmation".to_string(),
+                            TranscriptStyle::StatusRunning,
+                        );
+                        row.status_detail = Some("Review the proposed plan".to_string());
+                        msgs.push(row);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::QueueUpdate { items } = event {
+                    prompt_queue.write().replace(items);
+                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                    if prompt_queue.read().is_empty() {
+                        if queue_manager_open.get() {
+                            queue_manager_open.set(false);
+                            queue_manager_selected.set(0);
+                            if pending_tool_approval.read().is_none() && pending_user_question.read().is_none() {
+                                shell_focus.set(ShellFocus::Prompt);
+                            }
+                        }
+                    } else {
+                        let len = prompt_queue.read().len();
+                        let idx = queue_manager_selected.get().min(len.saturating_sub(1));
+                        queue_manager_selected.set(idx);
+                    }
+                    continue;
+                }
+
+                if let AgentUiEvent::UserPromptCommitted { text } = event {
+                    // Idle submit and Ctrl+Enter already painted the user card.
+                    let pending = pre_echoed_user_prompts.get();
+                    if pending > 0 {
+                        pre_echoed_user_prompts.set(pending.saturating_sub(1));
+                    } else {
+                        let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        // Write to arc directly (no State dirty mark);
+                        // sync to messages State happens at end of tick.
+                        {
+                            let mut msgs = messages_arc_inner.write().unwrap();
+                            if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
+                                crate::tui::prompt_history::push_history_entry_styled(
+                                    &mut prompt_history.write(),
+                                    &submitted.content,
+                                    submitted.style,
+                                );
+                            }
+                            msgs.push(submitted);
+                        }
+                        transcript_changed = true;
+                    }
+                    continue;
+                }
+
+                if let Some(label) = activity_label_for_event(&event, show_thinking) {
+                    activity_label.set(label);
+                }
+                {
+                    let mut msgs = messages_arc_inner.write().unwrap();
+                    if event_applier.write().apply(&mut msgs, event) {
+                        transcript_changed = true;
                     }
                 }
             }
@@ -1875,7 +1881,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         notifier::notify(
                             &settings.notifications,
                             notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
-                        );
+                        )
+                        .await;
                     }
                 } else if let Some(elapsed_secs) = run_completed_elapsed {
                     idle_status_notice.set(Some(IdleStatusNotice {
@@ -1884,7 +1891,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }));
                     // Desktop notification
                     if let Ok(settings) = Settings::load(&paths.read().clone()) {
-                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
+                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs })
+                            .await;
                     }
                 }
             }

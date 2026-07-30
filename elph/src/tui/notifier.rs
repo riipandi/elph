@@ -18,7 +18,10 @@
 use crate::platform::NotificationSettings;
 
 /// Send a desktop notification if the event type is enabled in settings.
-pub fn notify(settings: &NotificationSettings, kind: NotifKind) {
+///
+/// Spawns a blocking task so the notification does not block the TUI
+/// tick loop, even though `notify-rust`'s `show()` is synchronous.
+pub async fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
     if !settings.enabled {
         return;
     }
@@ -27,13 +30,18 @@ pub fn notify(settings: &NotificationSettings, kind: NotifKind) {
     }
 
     let (summary, body) = kind.message();
-    let _ = notify_rust::Notification::new()
-        .summary(&summary)
-        .body(&body)
-        .appname(&settings.app_name)
-        .timeout(notify_rust::Timeout::Milliseconds(8000))
-        .show()
-        .inspect_err(|e| log::warn!("desktop notification failed: {e}"));
+    let app_name = settings.app_name.clone();
+    // Spawn blocking so the sync `show()` call never stalls the tokio runtime.
+    let _ = tokio::task::spawn_blocking(move || {
+        let _ = notify_rust::Notification::new()
+            .summary(&summary)
+            .body(&body)
+            .appname(&app_name)
+            .timeout(notify_rust::Timeout::Milliseconds(8000))
+            .show()
+            .inspect_err(|e| log::warn!("desktop notification failed: {e}"));
+    })
+    .await;
 }
 
 /// All notification event kinds.
