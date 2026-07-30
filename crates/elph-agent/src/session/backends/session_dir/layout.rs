@@ -14,6 +14,8 @@ pub const PROMPT_CONTEXT_FILE: &str = "prompt_context.json";
 pub const SYSTEM_PROMPT_FILE: &str = "system_prompt.txt";
 /// User prompt submission log.
 pub const PROMPT_HISTORY_FILE: &str = "prompt_history.jsonl";
+/// Append-only tool execution output log (call_id, name, args, output, timestamp).
+pub const TOOL_OUTPUTS_FILE: &str = "tool_outputs.jsonl";
 
 /// Subdirectories created for every new session.
 pub const SESSION_SUBDIRS: &[&str] = &["terminals", "compaction_checkpoints", "compaction_requests"];

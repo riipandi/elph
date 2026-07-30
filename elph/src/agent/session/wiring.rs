@@ -205,6 +205,42 @@ impl CodingAgentSession {
             .set_event_forwarder(Some(forwarder))
             .await;
 
+        // ── Tool execution output persistence ──────────────────────────────────
+        // Persist every tool call result to `tool_outputs.jsonl` in the session
+        // directory so results survive session resume and can be browsed.
+        let harness_for_tool_output = self.harness.clone();
+        let tool_sink = harness_for_tool_output.clone();
+        tool_sink
+            .on_tool_result({
+                move |event: &elph_agent::ToolResultEvent| {
+                    let harness = harness_for_tool_output.clone();
+                    let event = event.clone();
+                    Box::pin(async move {
+                        let meta = harness.session_metadata().await;
+                        let dir = std::path::Path::new(&meta.dir);
+                        let _ = elph_agent::session::backends::session_dir::tool_outputs::append_tool_output(
+                            dir,
+                            &event.tool_call_id,
+                            &event.tool_name,
+                            &event.input,
+                            &event
+                                .content
+                                .iter()
+                                .filter_map(|c| match c {
+                                    elph_agent::ToolResultContent::Text(t) => Some(t.text.as_str()),
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                            event.is_error,
+                        )
+                        .await;
+                        None::<elph_agent::ToolResultPatch>
+                    })
+                }
+            })
+            .await;
+
         Ok(())
     }
 }
