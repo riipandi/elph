@@ -627,14 +627,14 @@ mod tests {
     }
 
     #[test]
-    fn rapid_typing_then_cmd_backspace_deletes_line_in_one_press() {
+    fn rapid_typing_then_cmd_backspace_deletes_word_in_one_press() {
         let mut state = TextareaState::default();
         let mut esc = false;
         let mut burst = PasteBurstState::default();
         let mut last = None;
         let mut on_escape = HandlerMut::default();
 
-        for ch in "hello".chars() {
+        for ch in "hello world".chars() {
             let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
             handle_textarea_terminal_event(key_press(KeyCode::Char(ch)), &mut state, ctx);
         }
@@ -645,8 +645,8 @@ mod tests {
             handle_textarea_terminal_event(key_press_mod(KeyCode::Backspace, KeyModifiers::SUPER), &mut state, ctx,),
             TextareaInputResult::Changed
         );
-        assert_eq!(state.text, "");
-        assert_eq!(state.cursor, 0);
+        assert_eq!(state.text, "hello ");
+        assert_eq!(state.cursor, 6);
     }
 
     #[test]

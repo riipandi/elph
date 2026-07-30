@@ -21,8 +21,9 @@ pub fn match_key_to_action(
     multiline: bool,
     after_esc: bool,
 ) -> Option<TextEditAction> {
-    let word_mod = KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META;
-    let super_only = modifiers.contains(KeyModifiers::SUPER) && !modifiers.intersects(word_mod | KeyModifiers::SHIFT);
+    let word_mod = KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META | KeyModifiers::SUPER;
+    let super_only = modifiers.contains(KeyModifiers::SUPER)
+        && !modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META | KeyModifiers::SHIFT);
     let ctrl_only = modifiers.contains(KeyModifiers::CONTROL)
         && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::SUPER | KeyModifiers::SHIFT | KeyModifiers::META);
 
@@ -64,7 +65,6 @@ pub fn match_key_to_action(
     match code {
         KeyCode::Left if modifiers.intersects(word_mod) => Some(TextEditAction::WordLeft),
         KeyCode::Right if modifiers.intersects(word_mod) => Some(TextEditAction::WordRight),
-        KeyCode::Backspace if super_only => Some(TextEditAction::DeleteToLineStart),
         KeyCode::Backspace if modifiers.intersects(word_mod) => Some(TextEditAction::DeleteWordBackward),
         KeyCode::Delete if super_only => Some(TextEditAction::DeleteToLineEnd),
         KeyCode::Delete if modifiers.intersects(word_mod) => Some(TextEditAction::DeleteWordForward),
