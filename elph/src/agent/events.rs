@@ -95,6 +95,11 @@ pub enum AgentUiEvent {
         /// Model id shown in brackets, e.g. `claude-sonnet-4-20250514`.
         model: String,
     },
+    /// Subagent output text (accumulated deltas, tool results, completion markers).
+    SubagentOutput {
+        agent_id: String,
+        content: String,
+    },
     GoalUpdated {
         objective: Option<String>,
         status: Option<String>,

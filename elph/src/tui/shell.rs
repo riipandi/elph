@@ -101,6 +101,7 @@ use crate::tui::status_dialog::{
     build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
     build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
+use crate::tui::subagent_output_dialog::SubagentOutputDialogOverlay;
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
@@ -358,6 +359,7 @@ fn agent_event_keeps_busy(event: &AgentUiEvent) -> bool {
             | AgentUiEvent::ToolUpdate { .. }
             | AgentUiEvent::ToolEnd { .. }
             | AgentUiEvent::SubagentStatus { .. }
+            | AgentUiEvent::SubagentOutput { .. }
     )
 }
 
@@ -1058,6 +1060,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_state(|| 0u32);
 
+    // Shared output buffers for real-time subagent dialog display.
+    // Maps agent_id → (text: Arc<RwLock<String>>, is_running: Arc<AtomicBool>).
+    // The shell writes SubagentOutput events into these buffers; the dialog reads them.
+    // Using Arc<RwLock> so both the async event loop and the render phase can access.
+    let subagent_output_buffers: Arc<
+        RwLock<HashMap<String, (Arc<RwLock<String>>, Arc<std::sync::atomic::AtomicBool>)>>,
+    > = Arc::new(RwLock::new(HashMap::new()));
+    let subagent_output_buffers_state = hooks.use_ref(|| subagent_output_buffers.clone());
+    let mut subagent_output_scroll_tick = hooks.use_state(|| 0u32);
+    // Pending dialog state — when Some, the SubagentOutputDialogOverlay is rendered.
+    let pending_subagent_output =
+        hooks.use_ref(|| None::<crate::tui::subagent_output_dialog::PendingSubagentOutputDialog>);
+    // Scroll handle for subagent output dialog.
+    let subagent_output_scroll = hooks.use_ref_default::<ScrollViewHandle>();
+
     let extension_host = props.extension_host.clone();
     let cwd = props.cwd.clone();
 
@@ -1733,6 +1750,46 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                 if let Some(label) = activity_label_for_event(&event, show_thinking) {
                     activity_label.set(label);
+                }
+                // Handle SubagentStatus: init/cleanup output buffers for real-time dialog.
+                if let AgentUiEvent::SubagentStatus {
+                    agent_id,
+                    phase,
+                    task_name: _,
+                    ..
+                } = &event
+                {
+                    let buffers_arc = subagent_output_buffers_state.read().clone();
+                    let mut buffers = buffers_arc.write().expect("subagent output buffers lock");
+                    let phase = *phase;
+                    match phase {
+                        crate::agent::SubagentUiPhase::Running => {
+                            use std::collections::hash_map::Entry;
+                            if let Entry::Vacant(e) = buffers.entry(agent_id.clone()) {
+                                e.insert((
+                                    Arc::new(RwLock::new(String::new())),
+                                    Arc::new(std::sync::atomic::AtomicBool::new(true)),
+                                ));
+                            }
+                        }
+                        crate::agent::SubagentUiPhase::Done | crate::agent::SubagentUiPhase::Error => {
+                            if let Some((_text, is_running)) = buffers.get(agent_id) {
+                                is_running.store(false, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                // Handle SubagentOutput: update shared output buffer for real-time dialog.
+                if let AgentUiEvent::SubagentOutput { agent_id, content } = &event {
+                    let buffers_arc = subagent_output_buffers_state.read().clone();
+                    let buffers = buffers_arc.read().expect("subagent output buffers lock");
+                    if let Some((text_arc, _is_running_arc)) = buffers.get(agent_id) {
+                        if let Ok(mut current) = text_arc.write() {
+                            current.push_str(content);
+                        }
+                        subagent_output_scroll_tick.set(subagent_output_scroll_tick.get().wrapping_add(1));
+                    }
                 }
                 {
                     let mut msgs = messages_arc_inner.write().unwrap();
@@ -5474,7 +5531,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
-
+                on_subagent_click: {
+                    use crate::tui::subagent_output_dialog::PendingSubagentOutputDialog;
+                    let mut pending_subagent_output = pending_subagent_output;
+                    let subagent_output_buffers = subagent_output_buffers_state.read().clone();
+                    Some(HandlerMut::from(move |(agent_id, title): (String, String)| {
+                        let buffers = subagent_output_buffers.read().expect("subagent output buffers lock");
+                        if let Some((text, is_running)) = buffers.get(&agent_id) {
+                            let pending = PendingSubagentOutputDialog::open(
+                                &agent_id,
+                                &title,
+                                text.clone(),
+                                is_running.clone(),
+                            );
+                            pending_subagent_output.set(Some(pending));
+                        }
+                    }))
+                },
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
@@ -6328,6 +6401,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             )
             #(confetti_overlay)
             #(system_prompt_overlay)
+            #(pending_subagent_output.read().as_ref().map(|pending| -> AnyElement<'static> {
+                let (chrome, body_height) = crate::tui::subagent_output_dialog::subagent_output_dialog_chrome(
+                    screen_width, screen_height, pending.width_pct
+                );
+                let mut pending_subagent_output = pending_subagent_output;
+                let mut shell_focus = shell_focus;
+                element! {
+                    SubagentOutputDialogOverlay(
+                        screen_width: screen_width,
+                        screen_height: screen_height,
+                        agent_id: pending.agent_id.clone(),
+                        title: pending.title.clone(),
+                        text: pending.text.clone(),
+                        is_running: pending.is_running.clone(),
+                        body_height: body_height,
+                        chrome: chrome,
+                        scroll_handle: Some(subagent_output_scroll),
+                        scroll_tick: subagent_output_scroll_tick.get(),
+                        has_focus: true,
+                        on_esc: move |_| {
+                            pending_subagent_output.set(None);
+                            shell_focus.set(ShellFocus::Prompt);
+                        },
+                    )
+                }
+                .into()
+            }))
         }
     }
 }

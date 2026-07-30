@@ -27,7 +27,7 @@ const MARKDOWN_DEBOUNCE_MS: u64 = 120;
 const MARKDOWN_STREAMING_DEBOUNCE_MS: u64 = 400;
 const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 1;
 
-#[derive(Clone, Default, Props)]
+#[derive(Default, Props)]
 pub struct TranscriptPanelProps {
     pub screen_width: u16,
     pub messages: Option<State<Vec<TranscriptMessage>>>,
@@ -48,6 +48,9 @@ pub struct TranscriptPanelProps {
     /// Arc<RwLock> messages — decouples panel from shell's State dirt chain.
     /// Panel reads/writes this directly instead of the `messages` State.
     pub messages_arc: Option<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    /// Click handler for subagent status lines. Fires with `(agent_id, title)` when
+    /// a subagent status row is clicked.
+    pub on_subagent_click: Option<HandlerMut<'static, (String, String)>>,
 }
 
 struct TranscriptRenderCache {

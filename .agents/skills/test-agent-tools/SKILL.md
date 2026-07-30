@@ -1,8 +1,10 @@
 ---
 name: test-agent-tools
 description: >-
-    Probe, test, and document every tool the agent harness has access to (native tools, subagents, connected MCP servers).
-    Use when the user wants to test, audit, or inventory the harness's tool/capability set, or asks "what tools do you have".
+    Probe, test, and document every tool the agent harness has access
+    to (native tools, subagents, connected MCP servers). Use when the
+    user wants to test, audit, or inventory the harness's tool/capability
+    set, or asks "what tools do you have".
 ---
 
 # Test Agent Tools
@@ -31,6 +33,16 @@ Enumerate available tools/capabilities — including connected MCP servers — e
 - No subagent: write markdown files flat inside `demo/YYMMDD_hhmm/`.
 - With subagent: each subagent writes into its own `demo/YYMMDD_hhmm/<subagent_id_or_name>/`.
 - `REPORT.md` always lives flat at `demo/YYMMDD_hhmm/REPORT.md`, never inside a subagent folder.
+
+## Mode Lock
+
+- Never offer, suggest, or ask the user to switch agent mode (Build/Plan/Brave/Ask).
+- Always operate in the currently active mode, regardless of task complexity/risk.
+- If the task needs another mode's capability (e.g. execution needed but mode = Plan/Ask):
+    - Do as much as the active mode allows.
+    - Report the blocker factually (e.g. "needs write access, current mode is read-only").
+    - Do NOT frame it as "want me to switch to mode X?" — mode switching is user-initiated only.
+- This holds even if the user seems unsure or asks "should I switch mode?" — answer factually, but still don't proactively offer/trigger a switch.
 
 ## Examples
 

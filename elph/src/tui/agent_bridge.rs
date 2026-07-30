@@ -506,6 +506,11 @@ impl TranscriptEventApplier {
                 }
             }
             AgentUiEvent::Status(message) => self.push_status(messages, message.trim()),
+            // SubagentOutput is NOT pushed to the transcript — it's stored in a
+            // shared output buffer in the shell and displayed in the SubagentOutputDialog.
+            // Returning false here prevents the transcript from being flooded with
+            // real-time subagent text deltas.
+            AgentUiEvent::SubagentOutput { .. } => false,
             AgentUiEvent::ThinkingDelta(_)
             | AgentUiEvent::PlanConfirmationRequired(_)
             | AgentUiEvent::UserQuestionRequired(_)

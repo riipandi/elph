@@ -34,6 +34,7 @@ mod slash_palette;
 mod startup;
 mod status_dialog;
 mod subagent_display;
+pub(crate) mod subagent_output_dialog;
 mod system_prompt_dialog;
 mod theme;
 mod tool_approval;
