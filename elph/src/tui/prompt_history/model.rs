@@ -80,7 +80,7 @@ pub fn entry_preview(text: &str, max_cols: usize) -> String {
 /// Normalize text for the history store / apply-to-prompt path.
 ///
 /// - Free-form prompts: unchanged (no forced `/`)
-/// - Skills: always `/skill:…` (never bare `skill:…`)
+/// - Skills: always `/name[ args]` (legacy `/skill:name` stripped to `/name`)
 /// - Other slash commands: keep a leading `/` when already present (echo sites store `/cmd`)
 pub fn normalize_prompt_history_entry(text: &str, style: TranscriptStyle) -> String {
     let t = text.trim();
@@ -88,7 +88,7 @@ pub fn normalize_prompt_history_entry(text: &str, style: TranscriptStyle) -> Str
         return String::new();
     }
 
-    // Skills — always `/skill:name[ args]`
+    // Skills — always `/name[ args]`; strip legacy `/skill:` prefix.
     if style == TranscriptStyle::SkillPrompt
         || t.starts_with("skill:")
         || t.starts_with("skill ")
@@ -108,7 +108,7 @@ pub fn normalize_prompt_history_entry(text: &str, style: TranscriptStyle) -> Str
     t.to_string()
 }
 
-/// Canonical `/skill:name[ args]` form.
+/// Canonical `/name[ args]` form (strips legacy `/skill:` prefix).
 fn normalize_skill_slash(text: &str) -> String {
     let t = text.trim();
     let rest = t.strip_prefix('/').unwrap_or(t);
@@ -118,9 +118,9 @@ fn normalize_skill_slash(text: &str) -> String {
         .unwrap_or(rest);
     let rest = rest.trim_start_matches(':').trim_start();
     if rest.is_empty() {
-        "/skill:".to_string()
+        "/".to_string()
     } else {
-        format!("/skill:{rest}")
+        format!("/{rest}")
     }
 }
 
@@ -219,20 +219,21 @@ mod tests {
         ];
         let mut h = Vec::new();
         seed_history_from_transcript(&mut h, &messages);
-        assert_eq!(h, vec!["first".to_string(), "second".to_string(), "/skill:x".to_string(),]);
+        assert_eq!(h, vec!["first".to_string(), "second".to_string(), "/x".to_string(),]);
     }
 
     #[test]
     fn normalize_skill_always_slash_skill_prefix() {
         assert_eq!(
-            normalize_prompt_history_entry("skill:tui-design layout", TranscriptStyle::SkillPrompt),
-            "/skill:tui-design layout"
+            normalize_prompt_history_entry("tui-design layout", TranscriptStyle::SkillPrompt),
+            "/tui-design layout"
         );
         assert_eq!(
-            normalize_prompt_history_entry("/skill:tui-design", TranscriptStyle::SkillPrompt),
-            "/skill:tui-design"
+            normalize_prompt_history_entry("/tui-design", TranscriptStyle::SkillPrompt),
+            "/tui-design"
         );
-        assert_eq!(normalize_prompt_history_entry("skill:foo", TranscriptStyle::User), "/skill:foo");
+        // Legacy `skill:foo` is stripped to `/foo`.
+        assert_eq!(normalize_prompt_history_entry("skill:foo", TranscriptStyle::User), "/foo");
     }
 
     #[test]

@@ -12,7 +12,7 @@ use crate::runtime::local_env::LocalExecutionEnv;
 pub(super) struct PromptTemplateFrontmatter {
     description: Option<String>,
     #[serde(rename = "argument-hint")]
-    _argument_hint: Option<String>,
+    argument_hint: Option<String>,
 }
 
 pub(super) struct ParsedTemplateFile {
@@ -85,6 +85,7 @@ pub(super) async fn load_template_from_file(env: &LocalExecutionEnv, file_path: 
                 .to_string(),
             description,
             content: parsed.body,
+            argument_hint: parsed.frontmatter.argument_hint,
         }),
         diagnostics,
     }

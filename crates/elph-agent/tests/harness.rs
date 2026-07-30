@@ -1247,6 +1247,7 @@ async fn harness_resources_update_events_clone_resources() {
             name: "review".into(),
             description: "Review".into(),
             content: "Review $1".into(),
+            argument_hint: None,
         }],
     };
     harness.set_resources(resources.clone()).await.expect("set resources");

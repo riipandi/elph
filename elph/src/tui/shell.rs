@@ -5762,7 +5762,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
-                                // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
+                                // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
                                 if slash_input.trim().starts_with('/') {
                                     slash_input.trim().to_string()
                                 } else {
@@ -5814,6 +5814,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TurnDispatcher::spawn_abort(Arc::clone(session));
                                 }
 
+                                // Clear the session slot immediately so no command can
+                                // access the stale session during the async bootstrap
+                                // transition (preventing /reload from restoring old history).
+                                agent_session_slot.set(None);
+
+                                // Clear the old session's event receiver so its abort/cleanup
+                                // events don't leak into the new transcript.
+                                ui_events_slot.set(None);
+
                                 // Clear pending dialogs
                                 pending_tool_approval.set(None);
                                 if let Some(question) = pending_user_question.write().take() {
@@ -5837,6 +5846,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TranscriptStyle::StatusRunning,
                                 )]);
                                 messages_revision.set(messages_revision.get().wrapping_add(1));
+
+                                // Flush the shared arc so the arc-to-state sync does not
+                                // restore the old transcript on the next tick.
+                                *messages_arc.write().write().unwrap() = messages.read().clone();
+
+                                // Clear prompt history (Arrow Up) so old entries don't
+                                // reappear in the new session.
+                                prompt_history.set(Vec::new());
 
                                 // Reset timing / busy / tracking state
                                 busy.set(false);
@@ -6172,6 +6189,7 @@ mod tests {
             return true;
         }
         let body = trimmed.trim_start_matches('/').trim();
+        // Legacy `/skill:name` prefix.
         if let Some((name, _)) = parse_skill_slash(body)
             && skills.iter().any(|skill| skill.name == name)
         {
@@ -6181,6 +6199,10 @@ mod tests {
             .split_once(' ')
             .map_or(body, |(command, _)| command)
             .to_ascii_lowercase();
+        // Match by raw name (skills, templates).
+        if skills.iter().any(|skill| skill.name.to_ascii_lowercase() == name) {
+            return true;
+        }
         templates.iter().any(|template| template.name == name)
     }
 
@@ -6197,6 +6219,8 @@ mod tests {
     #[test]
     fn slash_turn_sets_busy_for_skill_slash() {
         let skills = vec![sample_skill()];
+        assert!(slash_turn_sets_busy("/tui-design layout bug", &[], &skills,));
+        // Legacy `/skill:` prefix still works for busy detection.
         assert!(slash_turn_sets_busy("/skill:tui-design layout bug", &[], &skills,));
     }
 

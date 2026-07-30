@@ -1,7 +1,7 @@
 //! Built-in slash command registry and dispatch.
 
 use crate::agent::{parse_skill_slash, skill_slash_name, truncate_palette_description};
-use crate::types::SlashCommand;
+use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 #[derive(Debug, Clone)]
@@ -21,11 +21,11 @@ fn builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand
     }
 }
 
-fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &'static str) -> BuiltinSlashCommand {
+fn builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
         description,
-        args_hint: Some(args_hint),
+        args_hint: Some("[args]"),
         hidden: false,
     }
 }
@@ -33,12 +33,20 @@ fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &
 fn hidden_builtin_with_args(
     name: &'static str,
     description: &'static str,
-    args_hint: &'static str,
 ) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
         description,
-        args_hint: Some(args_hint),
+        args_hint: Some("[args]"),
+        hidden: true,
+    }
+}
+
+fn hidden_builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: None,
         hidden: true,
     }
 }
@@ -46,7 +54,7 @@ fn hidden_builtin_with_args(
 pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
     vec![
         builtin("settings", "Open settings menu"),
-        builtin_with_args("model", "Select model", "[filter]"),
+        builtin_with_args("model", "Select model"),
         builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
@@ -58,26 +66,22 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args(
-            "provider",
-            "Manage providers (connect, disconnect, list)",
-            "connect|disconnect|list",
-        ),
+        builtin_with_args("provider", "Manage providers (connect, disconnect, list)"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload resources"),
         builtin("quit", "Quit Elph"),
-        builtin_with_args("memory", "Agent memory store (floppy)", "status|list|tasks|log|search|purge"),
+        builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
-        builtin_with_args("tools", "Show active tools", "[json|list|table]"),
+        builtin_with_args("tools", "Show active tools"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
-        builtin_with_args("goal", "Manage session goals", "<subcommand>"),
-        hidden_builtin_with_args("confetti", "Confetti celebration", "[confetti|firework]"),
-        hidden_builtin_with_args("login", "Sign in to an AI provider", ""),
-        hidden_builtin_with_args("logout", "Sign out from an AI provider", ""),
+        builtin_with_args("goal", "Manage session goals"),
+        hidden_builtin_with_args("confetti", "Confetti celebration"),
+        hidden_builtin("login", "Sign in to an AI provider"),
+        hidden_builtin("logout", "Sign out from an AI provider"),
     ]
 }
 
@@ -113,10 +117,15 @@ pub fn slash_commands_for_palette(
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
-                commands.push(SlashCommand::new(
+                let mut cmd = SlashCommand::new(
                     &template.name,
-                    truncate_palette_description(&template.description),
-                ));
+                    format!("[prompt] {}", truncate_palette_description(&template.description)),
+                )
+                .with_kind(SlashCommandKind::PromptTemplate);
+                if let Some(hint) = &template.argument_hint {
+                    cmd = cmd.with_args_hint(hint);
+                }
+                commands.push(cmd);
             }
         }
     }
@@ -124,7 +133,15 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                commands.push(SlashCommand::new(name, truncate_palette_description(&skill.description)));
+                let mut cmd = SlashCommand::new(
+                    name,
+                    format!("[skill] {}", truncate_palette_description(&skill.description)),
+                )
+                .with_kind(SlashCommandKind::Skill);
+                if let Some(hint) = &skill.argument_hint {
+                    cmd = cmd.with_args_hint(hint);
+                }
+                commands.push(cmd);
             }
         }
     }
@@ -209,7 +226,7 @@ pub fn format_help_message(
     let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
-        lines.push(format!("  /{} — {}", cmd.name, cmd.description));
+        lines.push(format!("  {} — {}", cmd.palette_command_label(), cmd.description));
     }
     lines.join("\n")
 }
@@ -422,6 +439,7 @@ pub fn dispatch_slash_command(
         return None;
     }
 
+    // Legacy `/skill:<name>` prefix (backward-compat).
     if let Some((name, args)) = parse_skill_slash(body) {
         if skills.is_some_and(|items| items.iter().any(|skill| skill.name == name)) {
             return Some(SlashDispatch::Skill { name, args });
@@ -445,6 +463,13 @@ pub fn dispatch_slash_command(
         && templates.iter().any(|template| template.name == name)
     {
         return Some(SlashDispatch::PromptTemplate { name, args });
+    }
+
+    // Match skill by raw name (no prefix needed).
+    if let Some(skills) = skills
+        && skills.iter().any(|skill| skill.name == name)
+    {
+        return Some(SlashDispatch::Skill { name, args });
     }
 
     Some(SlashDispatch::Unimplemented(format!("/{name}")))
@@ -552,6 +577,7 @@ mod tests {
             name: "review".into(),
             description: "Review code".into(),
             content: "Review $@".into(),
+            argument_hint: None,
         }];
         assert_eq!(
             dispatch_slash_command("/review main.rs", None, Some(&templates), None),
@@ -565,6 +591,7 @@ mod tests {
     #[test]
     fn skill_slash_dispatch() {
         let skills = vec![sample_skill()];
+        // Legacy `/skill:name` prefix still works.
         assert_eq!(
             dispatch_slash_command("/skill:code-review src/", None, None, Some(&skills)),
             Some(SlashDispatch::Skill {
@@ -579,21 +606,47 @@ mod tests {
     }
 
     #[test]
-    fn palette_lists_skill_commands_with_prefix() {
+    fn skill_dispatch_by_raw_name() {
+        let skills = vec![sample_skill()];
+        assert_eq!(
+            dispatch_slash_command("/code-review src/", None, None, Some(&skills)),
+            Some(SlashDispatch::Skill {
+                name: "code-review".into(),
+                args: "src/".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/code-review", None, None, Some(&skills)),
+            Some(SlashDispatch::Skill {
+                name: "code-review".into(),
+                args: String::new()
+            })
+        );
+    }
+
+    #[test]
+    fn palette_lists_skill_commands_without_prefix() {
         let skills = vec![sample_skill()];
         let names: Vec<_> = slash_commands_for_palette(None, None, Some(&skills))
             .into_iter()
             .map(|cmd| cmd.name)
             .collect();
-        assert!(names.contains(&"skill:code-review".to_string()));
+        assert!(names.contains(&"code-review".to_string()));
+        let skill = slash_commands_for_palette(None, None, Some(&skills))
+            .into_iter()
+            .find(|cmd| cmd.name == "code-review")
+            .expect("skill command");
+        // sample_skill() has no argument_hint → no args_hint.
+        assert_eq!(skill.args_hint, None);
+        assert!(skill.description.starts_with("[skill]"));
     }
 
     #[test]
     fn palette_includes_tools_args_hint() {
         let commands = slash_commands_for_palette(None, None, None);
         let tools = commands.iter().find(|cmd| cmd.name == "tools").expect("tools");
-        assert_eq!(tools.args_hint.as_deref(), Some("[json|list|table]"));
-        assert_eq!(tools.palette_command_label(), "/tools [json|list|table]");
+        assert_eq!(tools.args_hint.as_deref(), Some("[args]"));
+        assert_eq!(tools.palette_command_label(), "/tools [args]");
         assert_eq!(tools.description, "Show active tools");
     }
 
@@ -677,6 +730,7 @@ mod tests {
             name: "help".into(),
             description: "Custom help".into(),
             content: "Help me".into(),
+            argument_hint: None,
         }];
         let names: Vec<_> = slash_commands_for_palette(None, Some(&templates), None)
             .into_iter()

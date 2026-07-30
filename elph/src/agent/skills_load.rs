@@ -94,7 +94,7 @@ pub fn format_skill_conflict_notice(conflicts: &[SkillConflict]) -> Option<Strin
     Some(lines.join("\n"))
 }
 
-/// Pi-style slash prefix: `/skill:review fix this`.
+/// Legacy slash prefix: `/skill:review fix this` (backward-compat; skills now dispatch by raw name).
 pub fn parse_skill_slash(body: &str) -> Option<(String, String)> {
     let body = body.trim();
     let rest = body.strip_prefix("skill:")?;
@@ -107,9 +107,9 @@ pub fn parse_skill_slash(body: &str) -> Option<(String, String)> {
     Some((name.to_string(), args.to_string()))
 }
 
-/// Palette / dispatch command name for a skill.
+/// Palette / dispatch command name for a skill (raw name, no prefix).
 pub fn skill_slash_name(skill_name: &str) -> String {
-    format!("skill:{skill_name}")
+    skill_name.to_string()
 }
 
 /// Shorten a description for palette rows (first line, ellipsis).
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn skill_slash_name_uses_prefix() {
-        assert_eq!(skill_slash_name("tui-design"), "skill:tui-design");
+        assert_eq!(skill_slash_name("tui-design"), "tui-design");
     }
 
     #[test]

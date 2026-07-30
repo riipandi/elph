@@ -139,8 +139,8 @@ mod tests {
             SlashCommand::new("goal", "Manage session goals"),
             SlashCommand::new("model", "Select model"),
             SlashCommand::new("reload", "Reload extensions and prompt templates"),
-            SlashCommand::new("skill:rust-verify-harden", "Run make check/lint/test and audit Rust changes"),
-            SlashCommand::new("skill:tui-design", "Guide terminal UI development with iocraft"),
+            SlashCommand::new("rust-verify-harden", "Run make check/lint/test and audit Rust changes"),
+            SlashCommand::new("tui-design", "Guide terminal UI development with iocraft"),
             SlashCommand::new("confetti", "Confetti celebration").with_hidden(true),
         ]
     }
@@ -173,13 +173,13 @@ mod tests {
     #[test]
     fn matches_skill_suffix_without_prefix() {
         let filtered = filter_commands(&commands(), "tui");
-        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("skill:tui-design"));
+        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("tui-design"));
     }
 
     #[test]
     fn acronym_like_query_matches_hyphenated_skill() {
         let filtered = filter_commands(&commands(), "rvh");
-        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("skill:rust-verify-harden"));
+        assert_eq!(filtered.first().map(|cmd| cmd.name.as_str()), Some("rust-verify-harden"));
     }
 
     #[test]
