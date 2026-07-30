@@ -14,9 +14,6 @@ pub const CMD_DESC_GAP_COLS: u16 = 2;
 /// Fallback command column width when the list is empty.
 pub const CMD_COLUMN_MIN_CHARS: usize = 14;
 
-/// Upper bound so long skill names do not consume the whole row.
-pub const CMD_COLUMN_MAX_CHARS: usize = 44;
-
 /// Minimum description column width after reserving the command column.
 pub const MIN_DESC_COLUMN_CHARS: u16 = 12;
 
@@ -50,7 +47,6 @@ pub fn palette_command_column_width(options: &[SelectOption], list_width: u16) -
     for option in options {
         max_label = max_label.max(palette_command_label_width(&option.name));
     }
-    max_label = max_label.min(CMD_COLUMN_MAX_CHARS);
 
     let max_allowed = list_width
         .saturating_sub(CMD_DESC_GAP_COLS + MIN_DESC_COLUMN_CHARS)
@@ -65,7 +61,6 @@ pub fn palette_command_column_width_for_commands(commands: &[SlashCommand], list
         let width = palette_slash_row_label_width(&command.palette_command_name(), command.args_hint.as_deref());
         max_label = max_label.max(width);
     }
-    max_label = max_label.min(CMD_COLUMN_MAX_CHARS);
 
     let max_allowed = list_width
         .saturating_sub(CMD_DESC_GAP_COLS + MIN_DESC_COLUMN_CHARS)
@@ -83,8 +78,9 @@ pub fn palette_desc_width(list_width: u16, command_column_width: u16) -> usize {
 /// Truncate command name (and optional args hint) to fit the command column content width.
 ///
 /// `content_max` is the available display columns *after* the row prefix (`❯ `) has been
-/// reserved.  The function reserves an additional 1-column safety margin to prevent rendering
-/// overlap when terminal cell widths and character counts diverge.
+/// reserved. When the column is narrow (≤ 30 columns) a 1-column safety margin is reserved
+/// to prevent rendering overlap; on wider columns the full content_max is usable so
+/// truncation is driven purely by actual space.
 ///
 /// Returns `(display_name, display_hint)` — hint is `None` when not provided, when there is
 /// no room left after the name, or when it would be truncated to fewer than 3 columns
@@ -95,14 +91,17 @@ pub fn truncate_command_label(
     content_max: usize,
 ) -> (String, Option<String>) {
     if content_max < 2 {
-        // Too narrow for any prefix + content: show only ellipsis or empty.
         if content_max == 1 {
             return ("…".to_string(), None);
         }
         return (String::new(), None);
     }
-    // Reserve 1 display-column safety margin to prevent rendering overlap.
-    let budget = content_max.saturating_sub(1);
+    // Safety margin only on narrow columns where overlap is likely.
+    let budget = if content_max <= 30 {
+        content_max.saturating_sub(1)
+    } else {
+        content_max
+    };
 
     let Some(hint) = args_hint.filter(|h| !h.is_empty()) else {
         return (truncate_with_ellipsis(command_name, budget), None);
