@@ -4,6 +4,7 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
+use elph_agent::compaction::{estimate_context_tokens, should_compact};
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
 use std::sync::Arc;
@@ -286,6 +287,8 @@ impl CodingAgentSession {
             Ok(()) => {
                 self.finish_ui_turn(started).await;
                 self.maybe_generate_session_title();
+                // Check auto-compaction after a successful turn.
+                self.maybe_auto_compact().await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
@@ -297,6 +300,42 @@ impl CodingAgentSession {
             }
         }
         result.map_err(|err| anyhow::anyhow!("{err}"))
+    }
+
+    /// Check context usage and auto-compact if it exceeds the configured threshold.
+    /// Runs as a background task so the UI stays responsive.
+    async fn maybe_auto_compact(&self) {
+        let settings = self.harness.compaction_settings();
+        if !settings.enabled {
+            return;
+        }
+        let model = self.harness.get_model().await;
+        let context_window = model.context_window as u64;
+        if context_window == 0 {
+            return;
+        }
+        let Ok(entries) = self.harness.session_branch_entries().await else {
+            return;
+        };
+        let messages: Vec<elph_agent::AgentMessage> = entries
+            .into_iter()
+            .filter_map(|e| {
+                if let elph_agent::session::SessionTreeEntry::Message { message, .. } = e {
+                    Some(message)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let estimate = estimate_context_tokens(&messages);
+        if should_compact(estimate.tokens, context_window, settings) {
+            let harness = self.harness.clone();
+            tokio::spawn(async move {
+                if let Err(err) = harness.compact(None).await {
+                    log::warn!("auto-compact failed: {err}");
+                }
+            });
+        }
     }
 
     /// Enqueue a follow-up prompt (delivered after current agent work). Does not end the UI turn.

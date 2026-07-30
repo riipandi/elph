@@ -192,6 +192,7 @@ where
     /// kind is `"skill"` or `"template"`; title is slash body without leading `/`.
     pending_prompt_meta: Mutex<Option<(String, String)>>,
     agent_control: Mutex<Arc<AgentControl>>,
+    compaction_settings: CompactionSettings,
     goal_runtime: Option<Arc<GoalRuntime>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
 }
@@ -312,6 +313,7 @@ where
                 pending_plan: Mutex::new(None),
                 pending_prompt_meta: Mutex::new(None),
                 agent_control: Mutex::new(agent_control),
+                compaction_settings: options.compaction_settings,
                 goal_runtime: options.goal_runtime,
                 subagent_bootstrap: options.subagent_bootstrap,
                 steer_queue: Mutex::new(Vec::new()),

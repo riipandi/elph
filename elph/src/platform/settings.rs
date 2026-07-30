@@ -86,6 +86,9 @@ pub struct Settings {
     /// Desktop notification preferences.
     #[serde(default)]
     pub notifications: NotificationSettings,
+    /// Auto-compaction preferences.
+    #[serde(default)]
+    pub compaction: CompactionConfig,
 }
 
 /// TUI presentation preferences.
@@ -316,6 +319,44 @@ impl Default for NotificationSettings {
     }
 }
 
+/// Auto-compaction preferences.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactionConfig {
+    /// Master switch — enable automatic compaction after turns.
+    #[serde(default = "default_compaction_enabled")]
+    pub enabled: bool,
+    /// Context-window usage percentage that triggers compaction (1–100).
+    /// Compact when context tokens exceed `context_window * threshold_pct / 100`.
+    #[serde(default = "default_compaction_threshold_pct")]
+    pub threshold_pct: u8,
+    /// Number of recent tokens to keep after compaction.
+    #[serde(default = "default_compaction_keep_recent")]
+    pub keep_recent_tokens: u64,
+}
+
+impl Default for CompactionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_compaction_enabled(),
+            threshold_pct: default_compaction_threshold_pct(),
+            keep_recent_tokens: default_compaction_keep_recent(),
+        }
+    }
+}
+
+impl CompactionConfig {
+    /// Convert to elph-agent's `CompactionSettings`.
+    pub fn to_agent_settings(&self) -> elph_agent::CompactionSettings {
+        elph_agent::CompactionSettings {
+            enabled: self.enabled,
+            reserve_tokens: 0, // unused when threshold_pct is set
+            threshold_pct: Some(self.threshold_pct.min(100).max(1)),
+            keep_recent_tokens: self.keep_recent_tokens,
+        }
+    }
+}
+
 impl Settings {
     /// Built-in defaults written on first bootstrap (`Settings::ensure`).
     ///
@@ -335,6 +376,7 @@ impl Settings {
             provider: ProviderHttpSettings::default(),
             memory: MemorySettings::default(),
             notifications: NotificationSettings::default(),
+            compaction: CompactionConfig::default(),
         }
     }
 
@@ -561,6 +603,18 @@ fn default_min_turn_duration_secs() -> f64 {
 
 fn default_notification_app_name() -> String {
     "Elph".to_string()
+}
+
+fn default_compaction_enabled() -> bool {
+    true
+}
+
+fn default_compaction_threshold_pct() -> u8 {
+    80
+}
+
+fn default_compaction_keep_recent() -> u64 {
+    20_000
 }
 
 #[cfg(test)]

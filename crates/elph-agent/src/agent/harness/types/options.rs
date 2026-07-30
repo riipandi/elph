@@ -158,12 +158,17 @@ pub fn apply_stream_options_patch(
 pub struct CompactionSettings {
     pub enabled: bool,
     pub reserve_tokens: u64,
+    /// Context-window usage percentage that triggers compaction.
+    /// When `Some(pct)`, compaction fires when `context > context_window * pct / 100`.
+    /// When `None`, falls back to `reserve_tokens` (legacy behavior).
+    pub threshold_pct: Option<u8>,
     pub keep_recent_tokens: u64,
 }
 
 pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
     enabled: true,
     reserve_tokens: 16384,
+    threshold_pct: Some(80),
     keep_recent_tokens: 20000,
 };
 
@@ -264,6 +269,7 @@ where
     pub follow_up_mode: QueueMode,
     pub goal_runtime: Option<std::sync::Arc<crate::goals::GoalRuntime>>,
     pub subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
+    pub compaction_settings: CompactionSettings,
     pub shared_registry: Option<std::sync::Arc<crate::agent::subagent::AgentRegistry>>,
     pub agent_control: Option<std::sync::Arc<crate::agent::subagent::AgentControl>>,
 }

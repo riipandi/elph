@@ -140,6 +140,7 @@ pub async fn create_coding_session_with_events(
 
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
+    let compaction_settings = options.settings.compaction.to_agent_settings();
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,
         session,
@@ -153,6 +154,7 @@ pub async fn create_coding_session_with_events(
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        compaction_settings,
         goal_runtime: Some(goal_runtime.clone()),
         subagent_bootstrap: Some(subagent_bootstrap),
         shared_registry: None,

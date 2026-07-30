@@ -6,7 +6,9 @@ use elph_ai::Model;
 
 use crate::agent::harness::hooks::AgentHarnessEvent;
 use crate::agent::harness::types::clone_stream_options;
-use crate::agent::harness::types::{AgentHarnessPhase, AgentHarnessResources, AgentHarnessStreamOptions};
+use crate::agent::harness::types::{
+    AgentHarnessPhase, AgentHarnessResources, AgentHarnessStreamOptions, CompactionSettings,
+};
 use crate::agent::subagent::AgentControl;
 use crate::collaboration::CollaborationMode;
 use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
@@ -141,5 +143,9 @@ where
     /// Session backend metadata (includes last-activity timestamps for dir storage).
     pub async fn session_metadata(&self) -> S::Metadata {
         self.shared.session.lock().await.metadata().await
+    }
+
+    pub fn compaction_settings(&self) -> CompactionSettings {
+        self.shared.compaction_settings
     }
 }

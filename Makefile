@@ -210,6 +210,7 @@ prepare: ## Install required toolchain
 	@command -v cargo-nextest >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-nextest
 	@command -v cargo-machete >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-machete
 	@command -v cargo-llvm-cov >/dev/null 2>&1 || $(CARGO) binstall --locked -y cargo-llvm-cov
+	@command -v communique >/dev/null 2>&1 || $(CARGO) binstall --locked -y communique
 	@command -v watchexec >/dev/null 2>&1 || $(CARGO) binstall --locked -y watchexec-cli
 	@command -v rapidhash >/dev/null 2>&1 || $(CARGO) install --locked -y rapidhash
 	@command -v sccache >/dev/null 2>&1 || $(CARGO) binstall --locked -y sccache

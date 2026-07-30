@@ -149,9 +149,10 @@ fn main() {
     // ── 7. CompactionSettings ──
     println!("\n=== CompactionSettings ===");
     println!(
-        "  DEFAULT: enabled={}, reserve={}, keep_recent={}",
+        "  DEFAULT: enabled={}, reserve={}, threshold_pct={:?}, keep_recent={}",
         elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS.enabled,
         elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS.reserve_tokens,
+        elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS.threshold_pct,
         elph_agent::compaction::DEFAULT_COMPACTION_SETTINGS.keep_recent_tokens,
     );
 

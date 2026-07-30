@@ -27,6 +27,9 @@
         },
         "notifications": {
             "$ref": "#/definitions/notifications"
+        },
+        "compaction": {
+            "$ref": "#/definitions/compaction"
         }
     },
     "definitions": {
@@ -287,6 +290,31 @@
                     "default": "Elph",
                     "minLength": 1,
                     "description": "Application name shown in the notification banner."
+                }
+            }
+        },
+        "compaction": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Auto-compaction preferences. Compresses conversation history when context approaches the configured threshold.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch — automatically compact history after turns when threshold is exceeded."
+                },
+                "thresholdPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 80,
+                    "description": "Context-window usage percentage (1–100) that triggers compaction. Compact when context tokens exceed contextWindow * thresholdPct / 100."
+                },
+                "keepRecentTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 20000,
+                    "description": "Number of recent tokens to retain after compaction."
                 }
             }
         }
