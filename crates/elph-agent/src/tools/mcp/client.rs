@@ -20,13 +20,19 @@ use rmcp::model::Tool;
 use rmcp::service::RunningService;
 use rmcp::{ClientLifecycleMode, ClientServiceExt};
 
-/// Default lifecycle mode: prefer 2026-07-28, fall back to legacy initialization.
+/// Default lifecycle mode: use the legacy `initialize` / `notifications/initialized`
+/// handshake.  This works with all current MCP servers (2024-11-05 through
+/// 2025-11-25).  Once the server responds, the negotiated protocol version is
+/// used for all subsequent requests.
+///
+/// Servers that support the 2026-07-28 protocol may opt in via their server
+/// config; until then the legacy handshake avoids compatibility issues with
+/// servers (e.g. DeepWiki, Context7) that reject `server/discover` with
+/// non-standard error codes.
 fn default_lifecycle() -> ClientLifecycleMode {
-    ClientLifecycleMode::Auto {
-        preferred_versions: vec![ProtocolVersion::V_2026_07_28],
-        legacy_version: Some(ProtocolVersion::V_2025_11_25),
-    }
+    ClientLifecycleMode::Initialize
 }
+
 use rmcp::transport::auth::AuthClient;
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::{ConfigureCommandExt, StreamableHttpClientTransport, TokioChildProcess};
