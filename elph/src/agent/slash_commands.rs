@@ -30,10 +30,7 @@ fn builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSl
     }
 }
 
-fn hidden_builtin_with_args(
-    name: &'static str,
-    description: &'static str,
-) -> BuiltinSlashCommand {
+fn hidden_builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
         description,
@@ -133,11 +130,9 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                let mut cmd = SlashCommand::new(
-                    name,
-                    format!("[skill] {}", truncate_palette_description(&skill.description)),
-                )
-                .with_kind(SlashCommandKind::Skill);
+                let mut cmd =
+                    SlashCommand::new(name, format!("[skill] {}", truncate_palette_description(&skill.description)))
+                        .with_kind(SlashCommandKind::Skill);
                 if let Some(hint) = &skill.argument_hint {
                     cmd = cmd.with_args_hint(hint);
                 }

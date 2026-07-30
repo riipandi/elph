@@ -129,11 +129,7 @@ fn palette_arg_row(
     palette_command_row(chrome, theme, arg, None, description, selected)
 }
 
-fn palette_list_rows(
-    props: &PaletteCardBodyProps,
-    theme: UiTheme,
-    selected_index: usize,
-) -> Vec<AnyElement<'static>> {
+fn palette_list_rows(props: &PaletteCardBodyProps, theme: UiTheme, selected_index: usize) -> Vec<AnyElement<'static>> {
     let options = &props.snapshot.options;
     let len = options.len();
     let viewport_cap = list_viewport_cap(props.screen_height).max(1);
