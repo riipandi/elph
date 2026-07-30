@@ -303,7 +303,11 @@ impl CodingAgentSession {
     }
 
     /// Check context usage and auto-compact if it exceeds the configured threshold.
-    /// Runs as a background task so the UI stays responsive.
+    ///
+    /// Runs synchronously within `turn_gate` (already held by the caller) so that
+    /// compaction completes before the next turn starts — preventing the race where
+    /// a new prompt arrives before a background-spawned compact gets scheduled and
+    /// fails with *"compact() requires idle harness"*.
     async fn maybe_auto_compact(&self) {
         let settings = self.harness.compaction_settings();
         if !settings.enabled {
@@ -329,12 +333,9 @@ impl CodingAgentSession {
             .collect();
         let estimate = estimate_context_tokens(&messages);
         if should_compact(estimate.tokens, context_window, settings) {
-            let harness = self.harness.clone();
-            tokio::spawn(async move {
-                if let Err(err) = harness.compact(None).await {
-                    log::warn!("auto-compact failed: {err}");
-                }
-            });
+            if let Err(err) = self.harness.compact(None).await {
+                log::warn!("auto-compact failed: {err}");
+            }
         }
     }
 
