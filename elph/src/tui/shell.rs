@@ -5814,6 +5814,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TurnDispatcher::spawn_abort(Arc::clone(session));
                                 }
 
+                                // Clear the session slot immediately so no command can
+                                // access the stale session during the async bootstrap
+                                // transition (preventing /reload from restoring old history).
+                                agent_session_slot.set(None);
+
+                                // Clear the old session's event receiver so its abort/cleanup
+                                // events don't leak into the new transcript.
+                                ui_events_slot.set(None);
+
                                 // Clear pending dialogs
                                 pending_tool_approval.set(None);
                                 if let Some(question) = pending_user_question.write().take() {
@@ -5837,6 +5846,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     TranscriptStyle::StatusRunning,
                                 )]);
                                 messages_revision.set(messages_revision.get().wrapping_add(1));
+
+                                // Flush the shared arc so the arc-to-state sync does not
+                                // restore the old transcript on the next tick.
+                                *messages_arc.write().write().unwrap() = messages.read().clone();
+
+                                // Clear prompt history (Arrow Up) so old entries don't
+                                // reappear in the new session.
+                                prompt_history.set(Vec::new());
 
                                 // Reset timing / busy / tracking state
                                 busy.set(false);

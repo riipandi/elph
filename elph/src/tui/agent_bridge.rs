@@ -9,8 +9,10 @@ use crate::agent::format_skill_conflict_notice;
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
 use crate::agent::{SlashDispatch, SubagentUiPhase};
+use crate::agent::{resolve_model, thinking_level_from_setting, to_agent_thinking};
 use crate::extensions::ExtensionHost;
-use crate::platform::Paths;
+use crate::platform::{Paths, Settings};
+use crate::utils::path::AppPaths;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
@@ -120,6 +122,45 @@ impl SlashDispatcher {
                 }
                 SlashDispatch::Reload => {
                     let mut messages = Vec::new();
+
+                    // ── Reload and apply Settings ──────────────────────────
+                    if let Some(paths) = paths.as_ref() {
+                        let settings = Settings::load(paths);
+                        if let Ok(settings) = settings {
+                            let auth_path = paths.auth_store_path();
+                            match resolve_model(&settings, None, None, Some(&auth_path)).await {
+                                Ok(selection) => {
+                                    let _ = session.harness().set_model(selection.model).await;
+
+                                    let thinking = to_agent_thinking(thinking_level_from_setting(
+                                        &settings.session.thinking_level,
+                                    ));
+                                    let _ = session.harness().set_thinking_level(thinking).await;
+
+                                    session
+                                        .harness()
+                                        .set_stream_options(elph_agent::AgentHarnessStreamOptions {
+                                            timeout_ms: settings.provider_timeout_ms(),
+                                            max_retries: Some(settings.provider.max_retries),
+                                            ..elph_agent::AgentHarnessStreamOptions::default()
+                                        })
+                                        .await;
+
+                                    let mode = crate::agent::agent_mode_from_setting(&settings.session.agent_mode);
+                                    *session.mode_state().lock().await = mode;
+
+                                    messages.push("Settings reloaded.".into());
+                                }
+                                Err(err) => {
+                                    messages.push(format!("Settings reload (model resolve) failed: {err}"));
+                                }
+                            }
+                        } else if let Err(err) = settings {
+                            messages.push(format!("Settings reload failed: {err}"));
+                        }
+                    }
+
+                    // ── Reload Resources (skills, templates) ───────────────
                     if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
                         match session.reload_resources(paths, cwd).await {
                             Ok(loaded) => {
@@ -131,6 +172,8 @@ impl SlashDispatcher {
                             Err(err) => messages.push(format!("Resource reload failed: {err}")),
                         }
                     }
+
+                    // ── Reload Extensions ───────────────────────────────────
                     if let Some(host) = extension_host.as_ref()
                         && let Some(paths) = paths.as_ref()
                     {
@@ -139,6 +182,7 @@ impl SlashDispatcher {
                             Err(err) => messages.push(format!("Extension reload failed: {err}")),
                         }
                     }
+
                     if messages.is_empty() {
                         messages.push("Reload unavailable.".into());
                     }
