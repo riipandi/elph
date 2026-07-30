@@ -49,6 +49,7 @@ fn main() {
         cwd: Some("/tmp".into()),
         timeout_ms: Some(120_000),
         enable: true,
+        lifecycle: Default::default(),
         policy: None,
     });
     println!("  custom stdio: command=uvx, env=1 var, timeout=120s");
@@ -62,6 +63,7 @@ fn main() {
         cwd: None,
         timeout_ms: None,
         enable: false,
+        lifecycle: Default::default(),
         policy: None,
     });
     println!("  is_disabled: {}", disabled.is_disabled());
@@ -121,6 +123,7 @@ fn main() {
         cwd: None,
         timeout_ms: Some(60_000),
         enable: true,
+        lifecycle: Default::default(),
         policy: None,
     });
     let http_server = McpServerConfig::http("https://example.com/mcp");

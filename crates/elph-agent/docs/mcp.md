@@ -27,6 +27,11 @@ JSON file (Elph product: `~/.elph/mcp.json`):
             },
             "timeoutMs": 45000
         },
+        "deepwiki": {
+            "type": "http",
+            "url": "https://deepwiki.example.com/mcp",
+            "lifecycle": "legacy"
+        },
         "off": {
             "type": "stdio",
             "command": "unused",
@@ -43,6 +48,7 @@ JSON file (Elph product: `~/.elph/mcp.json`):
 | `url` / `headers` / `authToken` / `authTokenEnv` | http       | Streamable HTTP endpoint             |
 | `timeoutMs`                                      | both       | Per list/call timeout (default 60s)  |
 | `disabled`                                       | both       | Skip during discovery and calls      |
+| `lifecycle`                                      | both       | `auto` (default), `legacy`, or `discover`. Auto probes `server/discover` and falls back to `initialize`; `legacy` uses the old handshake only; `discover` requires 2026-07-28+. Set to `legacy` for servers (e.g. DeepWiki) that reject unknown methods with non-standard errors. |
 
 ## API surface
 
@@ -169,3 +175,4 @@ Covers: unicode/empty/long strings, nonce uniqueness, wrong key, tamper detectio
 - MCP **server** role (hosting tools for other clients) is out of scope.
 - OAuth browser login for remote MCP is not fully productized (token via `authToken` / `authTokenEnv`).
 - Resource/prompt MCP surfaces are not yet mapped to agent tools (tools only).
+- Tasks and Apps (2026-07-28 Extensions framework) are not yet exposed.

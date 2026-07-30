@@ -379,6 +379,8 @@ pub use tools::mcp::McpEventBus;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpHttpConfig;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::McpLifecycleMode;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::McpLoadReport;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpOAuthClientMeta;

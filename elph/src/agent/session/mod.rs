@@ -332,10 +332,10 @@ impl CodingAgentSession {
             })
             .collect();
         let estimate = estimate_context_tokens(&messages);
-        if should_compact(estimate.tokens, context_window, settings) {
-            if let Err(err) = self.harness.compact(None).await {
-                log::warn!("auto-compact failed: {err}");
-            }
+        if should_compact(estimate.tokens, context_window, settings)
+            && let Err(err) = self.harness.compact(None).await
+        {
+            log::warn!("auto-compact failed: {err}");
         }
     }
 
