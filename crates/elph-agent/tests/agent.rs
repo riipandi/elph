@@ -2,6 +2,7 @@
 mod common;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use parking_lot::Mutex as ParkingMutex;
 
@@ -99,7 +100,12 @@ async fn agent_creates_with_default_state() {
 #[tokio::test]
 async fn agent_creates_with_custom_initial_state() {
     let models = builtin_models(None);
-    let model = models.get_model("openai", "gpt-4o-mini").expect("model");
+    // Pick the first available model from any provider
+    let model = models
+        .get_models(None)
+        .into_iter()
+        .next()
+        .expect("at least one builtin model");
 
     let agent = Agent::new(AgentOptions {
         initial_state: Some(PartialAgentState {
@@ -615,7 +621,11 @@ async fn agent_passes_abort_signal_to_subscribers() {
 #[tokio::test]
 async fn agent_updates_state_with_mutators() {
     let models = builtin_models(None);
-    let model = models.get_model("openai", "gpt-4o-mini").expect("model");
+    let model = models
+        .get_models(None)
+        .into_iter()
+        .next()
+        .expect("at least one builtin model");
     let agent = Agent::new(AgentOptions::default());
 
     agent.set_system_prompt("Custom prompt").await;
@@ -651,6 +661,8 @@ fn noop_tool() -> AgentTool {
     simple_tool(
         Tool {
             name: "noop".into(),
+            constrained_sampling: None,
+
             description: "Noop".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -667,13 +679,15 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
     let tool = AgentTool {
         tool: Tool {
             name: "delayed_tool".into(),
+            constrained_sampling: None,
+
             description: "Captures progress callbacks".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
         label: "Delayed Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, on_update| {
+        execute: Arc::new(move |_id, _args, _signal, on_update, _context| {
             let update_tx_capture = update_tx_capture.clone();
             Box::pin(async move {
                 *update_tx_capture.lock().await = on_update.clone();
@@ -683,6 +697,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
                         details: json!({ "status": "running" }),
                         added_tool_names: None,
                         terminate: None,
+                        usage: None,
                     });
                 }
                 Ok(AgentToolResult {
@@ -690,6 +705,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -734,6 +750,7 @@ async fn agent_ignores_late_tool_updates_after_settlement() {
             details: json!({ "status": "late" }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         });
     }
     tokio::task::yield_now().await;
@@ -821,6 +838,8 @@ async fn agent_prepare_next_turn_runs_between_tool_and_followup_turn() {
     let noop = simple_tool(
         Tool {
             name: "noop".into(),
+            constrained_sampling: None,
+
             description: "Noop".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
@@ -894,7 +913,6 @@ async fn agent_session_id_setter_updates_stream_fn() {
 #[tokio::test]
 async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     use std::sync::atomic::AtomicBool;
-    use std::time::Duration;
 
     let slow_started = Arc::new(AtomicBool::new(false));
     let settled_tool_ended = Arc::new(AtomicBool::new(false));
@@ -906,13 +924,15 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     let settled_tool = AgentTool {
         tool: Tool {
             name: "settled_tool".into(),
+            constrained_sampling: None,
+
             description: "Captures progress callbacks".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
         label: "Settled Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, on_update| {
+        execute: Arc::new(move |_id, _args, _signal, on_update, _context| {
             let settled_update_capture = settled_update_capture.clone();
             Box::pin(async move {
                 *settled_update_capture.lock().await = on_update.clone();
@@ -921,6 +941,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -931,13 +952,15 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
     let slow_tool = AgentTool {
         tool: Tool {
             name: "slow_tool".into(),
+            constrained_sampling: None,
+
             description: "Keeps the agent run active".into(),
             parameters: json!({ "type": "object", "properties": {} }),
         },
         label: "Slow Tool".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: Arc::new(move |_id, _args, _signal, _on_update| {
+        execute: Arc::new(move |_id, _args, _signal, _on_update, _context| {
             let slow_started_capture = slow_started_capture.clone();
             let release_slow_capture = release_slow_capture.clone();
             Box::pin(async move {
@@ -950,6 +973,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
                     details: json!({ "status": "done" }),
                     added_tool_names: None,
                     terminate: Some(true),
+                    usage: None,
                 })
             })
         }),
@@ -1015,6 +1039,7 @@ async fn agent_ignores_parallel_settled_tool_update_while_another_tool_runs() {
             details: json!({ "status": "late" }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         });
     }
     tokio::task::yield_now().await;

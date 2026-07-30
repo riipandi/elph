@@ -155,6 +155,15 @@ async fn run_anthropic_stream(
             req = req.header("Authorization", format!("Bearer {key}"));
         }
     }
+    // ANTHROPIC_AUTH_TOKEN bearer for Anthropic-compatible gateways (pi #5871).
+    if let Some(auth_token) = options
+        .base
+        .env
+        .as_ref()
+        .and_then(|env| env.get("ANTHROPIC_AUTH_TOKEN"))
+    {
+        req = req.header("x-anthropic-auth-token", auth_token);
+    }
 
     if crate::api::common::is_request_aborted(&options.base.signal) {
         crate::api::common::finish_stream_error(stream, output, crate::api::common::request_aborted_error(), true);
@@ -344,6 +353,8 @@ fn process_anthropic_sse_event(
                 let stop_details = event.pointer("/delta/stop_details");
                 let result = map_stop_reason(reason, stop_details);
                 output.stop_reason = result.stop_reason;
+                // Expose the stop reason as soon as it's known mid-stream.
+                output.pending_stop_reason = Some(result.stop_reason);
                 if let Some(message) = result.error_message {
                     output.error_message = Some(message);
                 }

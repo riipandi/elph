@@ -35,6 +35,8 @@ pub struct PendingScrollTextDialog {
     /// Optional explicit body height in rows. When `None`, height is auto-computed
     /// from screen size (maximized). When `Some`, the dialog fits exactly that many rows.
     pub body_height: Option<u16>,
+    /// When false, the `[copy]` header button is hidden. Defaults to `true`.
+    pub show_copy: bool,
 }
 
 impl PendingScrollTextDialog {
@@ -48,6 +50,7 @@ impl PendingScrollTextDialog {
             text: text.into(),
             width_pct: clamp_scroll_text_width_pct(width_pct),
             body_height: None,
+            show_copy: true,
         }
     }
 }
@@ -62,6 +65,8 @@ pub struct OpenScrollTextDialogArgs<'a> {
     pub width_pct: u8,
     /// Optional explicit body height in rows. When `None`, height auto-computes from screen.
     pub body_height: Option<u16>,
+    /// When false, the `[copy]` header button is hidden. Defaults to `true`.
+    pub show_copy: bool,
 }
 
 pub fn open_scroll_text_dialog(args: OpenScrollTextDialogArgs<'_>) {
@@ -71,6 +76,7 @@ pub fn open_scroll_text_dialog(args: OpenScrollTextDialogArgs<'_>) {
         PendingScrollTextDialog::open_with_width(args.title, args.text, args.width_pct)
     };
     pending.body_height = args.body_height;
+    pending.show_copy = args.show_copy;
     args.pending.set(Some(pending));
     args.shell_focus.set(ShellFocus::StatusDialog);
 }

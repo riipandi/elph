@@ -53,6 +53,7 @@ fn context_with_thinking(signature: &str) -> Context {
                 provider: "xiaomi-token-plan-ams".to_string(),
                 model: "mimo-v2.5-pro".to_string(),
                 diagnostics: None,
+                pending_stop_reason: None,
                 usage: Usage::default(),
                 stop_reason: StopReason::Stop,
                 timestamp: 1,

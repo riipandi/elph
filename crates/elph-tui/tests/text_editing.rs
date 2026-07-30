@@ -158,7 +158,7 @@ fn match_ctrl_backspace() {
 #[test]
 fn match_cmd_backspace() {
     let action = match_key_to_action(KeyCode::Backspace, KeyModifiers::SUPER, false, false);
-    assert_eq!(action, Some(TextEditAction::DeleteToLineStart));
+    assert_eq!(action, Some(TextEditAction::DeleteWordBackward));
 }
 
 #[test]
@@ -567,8 +567,8 @@ fn apply_wire_edit_key_super_backspace_deletes_line_start() {
         11,
     )
     .unwrap();
-    assert_eq!(result.text, "");
-    assert_eq!(result.cursor, 0);
+    assert_eq!(result.text, "hello ");
+    assert_eq!(result.cursor, 6);
     assert!(!result.cursor_only);
 }
 

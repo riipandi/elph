@@ -47,6 +47,7 @@ pub fn error_assistant_message(error_message: impl Into<String>) -> AssistantMes
         response_model: None,
         response_id: None,
         diagnostics: None,
+        pending_stop_reason: None,
         usage: Usage::default(),
         stop_reason: StopReason::Error,
         error_message: Some(error_message.into()),

@@ -243,7 +243,7 @@ fn match_key_covers_esc_right_and_super_backspace() {
     );
     assert_eq!(
         match_key_to_action(KeyCode::Backspace, KeyModifiers::SUPER, false, false),
-        Some(TextEditAction::DeleteToLineStart)
+        Some(TextEditAction::DeleteWordBackward)
     );
     assert_eq!(
         match_key_to_action(KeyCode::Char('J'), KeyModifiers::CONTROL, true, false),

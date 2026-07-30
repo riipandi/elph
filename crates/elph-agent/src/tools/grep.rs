@@ -37,6 +37,8 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "grep".into(),
+            constrained_sampling: None,
+
             description: "Search file contents with regex or literal patterns across the project. \
                          Supports context lines (-C), file-only listing (-l), match counts (-c), \
                          whole-word matching (-w), case-insensitive search, batch patterns, and batch paths."
@@ -364,6 +366,7 @@ async fn execute_grep(
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 

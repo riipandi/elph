@@ -145,7 +145,6 @@ pub use elph_tui::CliProgress as InitProgress;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
 
     #[test]
     fn builder_resolves_logging_without_logs_dir() {

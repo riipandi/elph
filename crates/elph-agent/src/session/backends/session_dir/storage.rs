@@ -8,13 +8,14 @@ use tokio::fs::{self};
 use tokio::io::AsyncWriteExt;
 
 use crate::session::id::generate_entry_id;
-use crate::session::storage_utils::{append_to_index, build_index, create_leaf_entry, find_entries, get_path_to_root};
-use crate::session::types::SessionDirMetadata;
-use crate::session::types::SessionError;
-use crate::session::types::SessionErrorCode;
-use crate::session::types::SessionIndex;
-use crate::session::types::SessionStorage;
-use crate::session::types::SessionTreeEntry;
+use crate::session::storage_utils::{
+    append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
+    get_path_to_root, get_path_to_root_or_compaction,
+};
+use crate::session::types::{
+    CheckpointTail, CursorPosition, SessionDirMetadata, SessionError, SessionErrorCode, SessionIndex,
+    SessionStatistics, SessionStorage, SessionTreeEntry,
+};
 use crate::types::AgentMessage;
 
 use super::chat::{tree_message_to_chat_line, user_prompt_text};
@@ -355,7 +356,65 @@ impl SessionStorage for SessionDirStorage {
         get_path_to_root(&self.index.by_id, leaf_id)
     }
 
+    async fn get_path_to_root_or_compaction(
+        &self,
+        leaf_id: Option<&str>,
+    ) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        get_path_to_root_or_compaction(&self.index.by_id, leaf_id)
+    }
+
     async fn get_entries(&self) -> Vec<SessionTreeEntry> {
         self.index.entries.clone()
+    }
+
+    async fn get_entries_cursor(&self, cursor: &CursorPosition) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        get_entries_cursor(&self.index.entries, cursor)
+    }
+
+    async fn get_statistics(&self) -> SessionStatistics {
+        compute_statistics(&self.index)
+    }
+
+    async fn store_checkpoint_tail(&mut self, tail: CheckpointTail) -> Result<String, SessionError> {
+        let root_id = tail.root_id.clone();
+        let checkpoint_dir = self.session_dir.join("compaction_checkpoints");
+        fs::create_dir_all(&checkpoint_dir)
+            .await
+            .map_err(|e| storage_error(&self.session_dir, format!("failed to create checkpoint dir: {e}")))?;
+        let path = checkpoint_dir.join(format!("{root_id}.json"));
+        let content = serde_json::to_string_pretty(&tail)
+            .map_err(|e| storage_error(&self.session_dir, format!("failed to encode checkpoint: {e}")))?;
+        fs::write(&path, &content)
+            .await
+            .map_err(|e| storage_error(&self.session_dir, format!("failed to write checkpoint {root_id}: {e}")))?;
+        self.index.checkpoints.insert(root_id.clone(), tail);
+        Ok(root_id)
+    }
+
+    async fn load_checkpoint_tail(&self, root_id: &str) -> Result<Option<CheckpointTail>, SessionError> {
+        if let Some(cached) = self.index.checkpoints.get(root_id) {
+            return Ok(Some(cached.clone()));
+        }
+        let path = self
+            .session_dir
+            .join("compaction_checkpoints")
+            .join(format!("{root_id}.json"));
+        if !path.exists() {
+            return Ok(None);
+        }
+        let content = fs::read_to_string(&path)
+            .await
+            .map_err(|e| storage_error(&self.session_dir, format!("failed to read checkpoint {root_id}: {e}")))?;
+        let tail: CheckpointTail = serde_json::from_str(&content)
+            .map_err(|e| storage_error(&self.session_dir, format!("invalid checkpoint {root_id}: {e}")))?;
+        Ok(Some(tail))
+    }
+
+    async fn list_checkpoint_tails(&self) -> Vec<String> {
+        self.index.checkpoints.keys().cloned().collect()
+    }
+
+    async fn get_name(&self) -> Option<String> {
+        self.index.name.clone()
     }
 }

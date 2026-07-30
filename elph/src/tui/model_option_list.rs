@@ -189,6 +189,9 @@ pub struct ModelOptionListProps {
     pub selected_index: Option<State<usize>>,
     pub has_focus: bool,
     pub theme: Option<UiTheme>,
+    /// Override the computed hint text per row (e.g. provider config status).
+    /// When set, must have the same length as `models`.
+    pub custom_hints: Vec<String>,
 }
 
 #[component]
@@ -237,7 +240,11 @@ pub fn ModelOptionList(props: &mut ModelOptionListProps, mut hooks: Hooks) -> im
     let (viewport_height, scroll_cap) = model_option_list_viewport(props.height, option_count);
     let window_start = palette_window_start(index, scroll_cap, option_count);
     let id_col = model_id_column_width(&models, props.width);
-    let hints = format_model_hints_tabular(&models, show_provider_hint);
+    let hints = if !props.custom_hints.is_empty() {
+        props.custom_hints.clone()
+    } else {
+        format_model_hints_tabular(&models, show_provider_hint)
+    };
 
     let rows: Vec<AnyElement<'static>> = if models.is_empty() {
         vec![

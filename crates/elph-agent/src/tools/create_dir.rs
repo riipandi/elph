@@ -18,6 +18,7 @@ pub fn create_create_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "create_dir".into(),
+constrained_sampling: None,
             description: "Creates a new directory at the specified path, creating all necessary parent directories (similar to `mkdir -p`).".into(),
             parameters: json!({
                 "type": "object",

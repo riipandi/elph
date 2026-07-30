@@ -6,6 +6,12 @@ use crate::paste::apply_paste_at_cursor;
 
 use super::wire::wire_edit_handle_key;
 
+// TODO: Review iocraft PR#183 (on_key_event prop) to properly handle keyboard shortcuts in TextInput.
+// The current implementation uses wire_edit_handle_key with multiline=true to match textarea behavior,
+// but word deletion shortcuts (Cmd+Backspace, Opt+Backspace) still don't work in single-line Input.
+// PR#183 adds an on_key_event prop that would allow us to override default keyboard handling properly.
+// See: https://github.com/ccbrown/iocraft/pull/183
+
 /// Wire GUI shortcuts and bracketed paste into a single-line [`TextInput`].
 pub fn wire_input_shortcuts(
     hooks: &mut Hooks,
@@ -43,14 +49,20 @@ pub fn wire_input_shortcuts(
             let mut text = prev.clone();
             let mut esc = pending_esc.get();
             let mut handle = input_handle.write();
-            if !wire_edit_handle_key(code, kind, modifiers, false, &mut esc, &mut text, &mut handle) {
+
+            // Try wire shortcuts first (use multiline=true to match textarea behavior)
+            if wire_edit_handle_key(code, kind, modifiers, true, &mut esc, &mut text, &mut handle) {
+                drop(handle);
+                pending_esc.set(esc);
+                if text != prev {
+                    value.set(text);
+                }
                 return;
             }
+
+            // If wire shortcuts didn't handle it, let TextInput handle default behavior
             drop(handle);
             pending_esc.set(esc);
-            if text != prev {
-                value.set(text);
-            }
         }
     });
 }

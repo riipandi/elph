@@ -26,6 +26,8 @@ pub fn create_list_dir_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "list_dir".into(),
+            constrained_sampling: None,
+
             description: "Lists files and directories in a given path, providing an overview of filesystem contents."
                 .into(),
             parameters: json!({
@@ -87,6 +89,7 @@ async fn execute_list_dir(
         details: json!({ "truncated": truncation.truncated }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 

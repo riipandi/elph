@@ -57,9 +57,9 @@ mod tests {
     }
 
     #[test]
-    fn cmd_backspace_at_line_end_deletes_line_content_in_one_press() {
-        let mut state = TextareaState::from_text("hello\n".into());
-        state.cursor = "hello".len();
+    fn cmd_backspace_at_line_end_deletes_word_in_one_press() {
+        let mut state = TextareaState::from_text("hello world\n".into());
+        state.cursor = "hello world".len();
         let mut esc = false;
         assert!(apply_wire_edit(
             KeyCode::Backspace,
@@ -69,8 +69,8 @@ mod tests {
             40,
             &mut esc,
         ));
-        assert_eq!(state.text, "\n");
-        assert_eq!(state.cursor, 0);
+        assert_eq!(state.text, "hello \n");
+        assert_eq!(state.cursor, "hello ".len());
     }
 
     #[test]

@@ -129,6 +129,7 @@ Let me start with step 1.";
         response_model: None,
         response_id: None,
         diagnostics: None,
+        pending_stop_reason: None,
         usage: elph_ai::Usage::default(),
         stop_reason: elph_ai::StopReason::Stop,
         error_message: None,

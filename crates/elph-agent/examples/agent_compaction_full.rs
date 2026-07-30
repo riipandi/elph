@@ -46,6 +46,7 @@ fn build_conversation(turns: usize) -> Vec<AgentMessage> {
                 ..Default::default()
             },
             stop_reason: elph_ai::StopReason::Stop,
+            pending_stop_reason: None,
             error_message: None,
             timestamp: now_ms(),
         })));

@@ -5,15 +5,20 @@ use std::sync::Arc;
 
 use crate::auth::env_api_key_auth;
 use crate::auth::oauth::openai_codex_oauth;
-use crate::auth::oauth::{anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent};
+use crate::auth::oauth::{
+    anthropic_oauth, github_copilot_oauth, hyper_api_base_url, hyper_oauth, hyper_user_agent, kimi_oauth,
+};
 use crate::auth::{AuthResolveInput, AuthResult, ModelAuth, ProviderAuth};
 use crate::models::catalog::*;
 use crate::models::{CreateModelsOptions, CreateProviderOptions, MutableModels, Provider, ProviderApi};
 use crate::models::{create_models, create_provider};
 use crate::providers::adapter::openai_responses_api;
 use crate::providers::adapter::{anthropic_messages_api, azure_openai_responses_api, bedrock_converse_stream_api};
-use crate::providers::adapter::{google_generative_ai_api, google_vertex_api, mistral_conversations_api};
-use crate::providers::adapter::{mixed_openai_apis, openai_codex_responses_api, openai_completions_api};
+use crate::providers::adapter::{google_generative_ai_api, google_vertex_api};
+use crate::providers::adapter::{
+    mistral_conversations_api, mixed_gateway_apis, mixed_openai_apis, openai_codex_responses_api,
+    openai_completions_api,
+};
 use crate::providers::cloudflare_auth::{cloudflare_ai_gateway_auth, cloudflare_workers_ai_auth};
 
 macro_rules! simple_provider {
@@ -184,7 +189,7 @@ pub fn anthropic_provider() -> Provider {
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth(
                 "Anthropic API key",
-                vec!["ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY"],
+                vec!["ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"],
             )),
             oauth: Some(anthropic_oauth()),
         },
@@ -223,6 +228,38 @@ pub fn openai_provider() -> Provider {
         models: OPENAI_MODELS.to_vec(),
         refresh_models: None,
         api: ProviderApi::Single(openai_responses_api()),
+    })
+}
+
+pub fn opencode_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "opencode".to_string(),
+        name: Some("OpenCode Zen".to_string()),
+        base_url: Some("https://opencode.ai/zen/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
+            oauth: None,
+        },
+        models: OPENCODE_MODELS.to_vec(),
+        refresh_models: None,
+        api: mixed_gateway_apis(),
+    })
+}
+
+pub fn opencode_go_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "opencode-go".to_string(),
+        name: Some("OpenCode Go".to_string()),
+        base_url: Some("https://opencode.ai/zen/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OpenCode API key", vec!["OPENCODE_API_KEY"])),
+            oauth: None,
+        },
+        models: OPENCODE_GO_MODELS.to_vec(),
+        refresh_models: None,
+        api: mixed_openai_apis(),
     })
 }
 
@@ -319,11 +356,104 @@ pub fn kimi_coding_provider() -> Provider {
         headers: None,
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth("Moonshot API key", vec!["MOONSHOT_API_KEY"])),
-            oauth: None,
+            oauth: Some(kimi_oauth()),
         },
         models: KIMI_CODING_MODELS.to_vec(),
         refresh_models: None,
         api: ProviderApi::Single(anthropic_messages_api()),
+    })
+}
+
+pub fn xai_provider() -> Provider {
+    use crate::auth::helpers::lazy_oauth;
+    use crate::auth::oauth::xai_oauth;
+    use crate::providers::adapter::{openai_completions_api, openai_responses_api};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    let mut api_map = HashMap::new();
+    api_map.insert("openai-completions".to_string(), openai_completions_api());
+    api_map.insert("openai-responses".to_string(), openai_responses_api());
+
+    create_provider(CreateProviderOptions {
+        id: "xai".to_string(),
+        name: Some("xAI".to_string()),
+        base_url: Some("https://api.x.ai/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("xAI API key", vec!["XAI_API_KEY"])),
+            oauth: Some(lazy_oauth(
+                "xAI (Grok/X subscription)",
+                Arc::new(|| Box::pin(async { xai_oauth() })),
+            )),
+        },
+        models: XAI_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Map(api_map),
+    })
+}
+
+pub fn mistral_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "mistral".to_string(),
+        name: Some("Mistral".to_string()),
+        base_url: Some("https://api.mistral.ai/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Mistral API key", vec!["MISTRAL_API_KEY"])),
+            oauth: None,
+        },
+        models: MISTRAL_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(mistral_conversations_api()),
+    })
+}
+
+pub fn neuralwatt_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "neuralwatt".to_string(),
+        name: Some("Neuralwatt".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Neuralwatt API key", vec!["NEURALWATT_API_KEY"])),
+            oauth: None,
+        },
+        models: NEURALWATT_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+pub fn nvidia_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "nvidia".to_string(),
+        name: Some("NVIDIA NIM".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("NVIDIA API key", vec!["NVIDIA_API_KEY"])),
+            oauth: None,
+        },
+        models: NVIDIA_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
+    })
+}
+
+pub fn sumopod_provider() -> Provider {
+    create_provider(CreateProviderOptions {
+        id: "sumopod".to_string(),
+        name: Some("Sumopod".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("Sumopod API key", vec!["SUMOPOD_AI_API_KEY"])),
+            oauth: None,
+        },
+        models: SUMOPOD_MODELS.to_vec(),
+        refresh_models: None,
+        api: ProviderApi::Single(openai_completions_api()),
     })
 }
 
@@ -385,6 +515,9 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["HF_TOKEN"], "Hugging Face token")
         ),
+        mistral_provider(),
+        neuralwatt_provider(),
+        nvidia_provider(),
         hyper_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
@@ -396,129 +529,9 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
         kimi_coding_provider(),
-        simple_provider!(
-            "minimax",
-            "MiniMax",
-            MINIMAX_MODELS,
-            openai_completions_api,
-            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
-        ),
-        simple_provider!(
-            "minimax-cn",
-            "MiniMax (China)",
-            MINIMAX_CN_MODELS,
-            openai_completions_api,
-            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
-        ),
-        simple_provider!(
-            "mistral",
-            "Mistral",
-            MISTRAL_MODELS,
-            mistral_conversations_api,
-            (vec!["MISTRAL_API_KEY"], "Mistral API key")
-        ),
-        simple_provider!(
-            "moonshotai",
-            "Moonshot AI",
-            MOONSHOTAI_MODELS,
-            openai_completions_api,
-            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
-        ),
-        simple_provider!(
-            "moonshotai-cn",
-            "Moonshot AI (China)",
-            MOONSHOTAI_CN_MODELS,
-            openai_completions_api,
-            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
-        ),
-        simple_provider!(
-            "neuralwatt",
-            "Neuralwatt",
-            NEURALWATT_MODELS,
-            openai_completions_api,
-            (vec!["NEURALWATT_API_KEY"], "Neuralwatt API key")
-        ),
-        simple_provider!(
-            "nvidia",
-            "NVIDIA NIM",
-            NVIDIA_MODELS,
-            openai_completions_api,
-            (vec!["NVIDIA_API_KEY"], "NVIDIA API key")
-        ),
-        openai_provider(),
-        openai_codex_provider(),
-        simple_provider!(
-            "opencode",
-            "OpenCode Zen",
-            OPENCODE_MODELS,
-            openai_completions_api,
-            (vec!["OPENCODE_API_KEY"], "OpenCode API key")
-        ),
-        simple_provider!(
-            "opencode-go",
-            "OpenCode Go",
-            OPENCODE_GO_MODELS,
-            openai_completions_api,
-            (vec!["OPENCODE_API_KEY"], "OpenCode API key")
-        ),
-        // Gitlawb OpenGateway — OpenAI-compatible proxy (https://gitlawb.com/opengateway).
-        // Base URL: https://opengateway.gitlawb.com/v1 · keys: OGW_API_KEY | OPENGATEWAY_API_KEY
-        simple_provider!(
-            "opengateway",
-            "OpenGateway",
-            OPENGATEWAY_MODELS,
-            openai_completions_api,
-            (vec!["OGW_API_KEY", "OPENGATEWAY_API_KEY"], "OpenGateway API key")
-        ),
-        simple_provider!(
-            "qwen-token-plan",
-            "Qwen Token Plan",
-            QWEN_TOKEN_PLAN_MODELS,
-            openai_completions_api,
-            (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
-        ),
-        simple_provider!(
-            "qwen-token-plan-cn",
-            "Qwen Token Plan (China)",
-            QWEN_TOKEN_PLAN_CN_MODELS,
-            openai_completions_api,
-            (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
-        ),
-        simple_provider!(
-            "openrouter",
-            "OpenRouter",
-            OPENROUTER_MODELS,
-            openai_completions_api,
-            (vec!["OPENROUTER_API_KEY"], "OpenRouter API key")
-        ),
-        simple_provider!(
-            "sumopod",
-            "Sumopod",
-            SUMOPOD_MODELS,
-            openai_completions_api,
-            (vec!["SUMOPOD_AI_API_KEY"], "Sumopod API key")
-        ),
-        simple_provider!(
-            "together",
-            "Together AI",
-            TOGETHER_MODELS,
-            openai_completions_api,
-            (vec!["TOGETHER_API_KEY"], "Together API key")
-        ),
-        simple_provider!(
-            "vercel-ai-gateway",
-            "Vercel AI Gateway",
-            VERCEL_AI_GATEWAY_MODELS,
-            openai_completions_api,
-            (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
-        ),
-        simple_provider!(
-            "xai",
-            "xAI",
-            XAI_MODELS,
-            openai_completions_api,
-            (vec!["XAI_API_KEY"], "xAI API key")
-        ),
+        opencode_provider(),
+        opencode_go_provider(),
+        sumopod_provider(),
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",

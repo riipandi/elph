@@ -413,13 +413,12 @@ pub fn Textarea(props: &mut TextareaProps, mut hooks: Hooks) -> impl Into<AnyEle
             (content, TextWrap::NoWrap, 0i32, cursor_row.saturating_sub(next_scroll))
         } else {
             viewport_cache.set(None);
-            let plain = ed.text.clone();
-            let display = styled_content
-                .as_ref()
-                .map(|styled| styled.read().clone())
-                .filter(|styled| !styled.is_empty())
-                .unwrap_or_else(|| plain.clone());
-            (display, TextWrap::Wrap, next_scroll as i32, cursor_row)
+            // Use WrappedTextLayout for consistent wrapping — iocraft's built-in
+            // TextWrap::Wrap may compute line breaks differently (e.g. reserve
+            // one column for the cursor), desyncing cursor position from text.
+            // Scroll-aware: generate the viewport slice from next_scroll.
+            let content = wrapped.display_text_for_row_range(&ed.text, next_scroll, layout.viewport_height);
+            (content, TextWrap::NoWrap, 0i32, cursor_row.saturating_sub(next_scroll))
         };
         let cursor_col_clamped = if layout.input_width > 0 {
             cursor_col.min(layout.input_width.saturating_sub(1))

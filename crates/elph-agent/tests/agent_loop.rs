@@ -53,6 +53,8 @@ where
     simple_tool(
         Tool {
             name: "echo".into(),
+            constrained_sampling: None,
+
             description: "Echo tool".into(),
             parameters: json!({
                 "type": "object",
@@ -427,6 +429,8 @@ async fn run_agent_loop_prepares_tool_arguments_for_validation() {
     let tool = AgentTool {
         tool: Tool {
             name: "edit_file".into(),
+            constrained_sampling: None,
+
             description: "Edit tool".into(),
             parameters: json!({
                 "type": "object",
@@ -465,7 +469,7 @@ async fn run_agent_loop_prepares_tool_arguments_for_validation() {
         })),
         execute: Arc::new({
             let executed_capture = executed_capture.clone();
-            move |_id, args, _signal, _on_update| {
+            move |_id, args, _signal, _on_update, _context| {
                 let executed_capture = executed_capture.clone();
                 Box::pin(async move {
                     executed_capture
@@ -1154,6 +1158,7 @@ async fn run_agent_loop_stops_after_tool_batch_when_all_tools_terminate() {
                 details: json!({ "value": value }),
                 added_tool_names: None,
                 terminate: Some(true),
+                usage: None,
             })
         })
     });
@@ -1210,6 +1215,7 @@ async fn run_agent_loop_continues_after_parallel_tools_when_not_all_terminate() 
                 details: json!({ "value": value }),
                 added_tool_names: None,
                 terminate: Some(value == "first"),
+                usage: None,
             })
         })
     });

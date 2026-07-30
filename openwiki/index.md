@@ -4,13 +4,13 @@ okf_version: "0.1"
 
 # Files
 
-- [Agent Runtime](agent-runtime.md) - The elph-agent turn loop, harness, session management, tool execution, MCP integration, subagents, goals, and compaction.
-- [MCP Integration](mcp-integration.md) - Model Context Protocol (MCP) server configuration, authentication, tool registration, and credential management in Elph.
-- [Operations and Configuration](operations.md) - CLI subcommands, configuration system, environment variables, directory layout, observability, and day-to-day operations.
-- [Elph Quickstart](quickstart.md) - Entrypoint for the Elph AI Agent workspace — Rust workspace with a coding agent CLI/TUI and shared agent runtime libraries.
-- [Testing](testing.md) - Test organization, running tests, key test areas for each crate, and testing patterns used in the Elph workspace.
-- [TUI Shell](tui-shell.md) - The iocraft-based terminal UI for Elph — layout zones, interaction modes, theme system, prompt chrome, and session bootstrap flow.
+- [Operations — CLI, Configuration, and Observability](operations.md) - Elph operations guide — CLI subcommands, ELPH_ environment variables, config paths, Makefile targets, and observability
+- [Elph Workspace Quickstart](quickstart.md) - Entrypoint for the Elph Rust workspace — workspace layout, make targets, crate dependency graph, and navigation guide
+- [Testing — Test Patterns and Strategies](testing.md) - Elph's testing patterns — unit tests, integration tests, live provider tests, and test harness tools
 
 # Directories
 
 - [architecture](architecture/)
+- [domains](domains/)
+- [integrations](integrations/)
+- [workflows](workflows/)

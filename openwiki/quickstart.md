@@ -1,111 +1,123 @@
 ---
-type: Overview
-title: Elph Quickstart
-description: Entrypoint for the Elph AI Agent workspace — Rust workspace with a coding agent CLI/TUI and shared agent runtime libraries.
-tags: [elph, ai-agent, rust, workspace, quickstart]
-resource: /
+type: Workspace
+title: Elph Workspace Quickstart
+description: Entrypoint for the Elph Rust workspace — workspace layout, make targets, crate dependency graph, and navigation guide
+tags: [elph, workspace, quickstart, rust]
 ---
 
-# Elph AI Agent Workspace
+# Elph Workspace Quickstart
 
-**Elph** is a Rust workspace for AI agent applications — a coding agent CLI and TUI, plus shared runtime libraries and terminal UI components. It re-implements concepts from [pi](https://pi.dev), [OpenAI Codex CLI](https://github.com/openai/codex), and [memelord](https://github.com/glommer/memelord) in Rust.
+[Elph](https://elph.space) is a Rust workspace (edition 2024, resolver v2, Rust 1.97) at `github.com/riipandi/elph` that builds an AI coding agent CLI, shared runtime libraries, and terminal UI components. It ports core concepts from [pi](https://pi.dev) (TypeScript) by Mario Zechner and adds Elph-only extensions.
 
-## Quick overview
+## Workspace Layout
 
-| Component          | Location              | Description                                                                                      |
-| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------ |
-| Binary CLI + TUI   | `/elph/`              | The `elph` application — interactive TUI, non-interactive `run`, admin subcommands               |
-| Agent runtime      | `/crates/elph-agent/` | App-agnostic agent harness: turn loop, tool execution, MCP, sessions, subagents, compaction      |
-| LLM provider layer | `/crates/elph-ai/`    | Provider-agnostic LLM API: OpenAI-compatible, Anthropic, Bedrock, Gemini, Copilot, Mistral, etc. |
-| Core primitives    | `/crates/floppy/`     | Standalone AI memory crate: vector memory, Turso + ONNX embeddings, query engine                 |
-| TUI components     | `/crates/elph-tui/`   | Reusable iocraft-based widgets: markdown, textarea, diff viewer, themes, transcript layout       |
-| Shell execution    | `/crates/elph-exec/`  | Configurable local shell and PTY execution                                                       |
-
-### Placeholder crates (not yet implemented)
-
-- `elph-cron` — cron-based scheduled tasks (empty)
-- `elph-sandbox` — sandbox execution (empty)
-- `elph-swarm` — multi-agent swarm orchestration (empty)
-
-## Installation
-
-```sh
-# Pre-built binary (Linux/macOS)
-curl -fsSL https://elph.space/elph/install.sh | bash
-
-# From crates.io
-cargo install --locked elph
-
-# From source
-cargo install --path elph
+```
+Cargo.toml          # workspace root — resolver = "2", members = ["crates/elph-*", "crates/floppy", "elph"]
+Makefile            # build, test, lint, release, cross-compilation targets
+elph/               # product binary + library (CLI, TUI, agent session orchestration)
+crates/
+├── elph-agent/     # app-agnostic agent runtime (port of @earendil-works/pi-agent)
+├── elph-ai/        # unified LLM API with provider collections, auth, streaming (port of @earendil-works/pi-ai)
+├── elph-cron/      # skeleton — cron scheduled tasks
+├── elph-exec/      # local shell & PTY execution
+├── elph-sandbox/   # skeleton — sandbox (zerobox)
+├── elph-swarm/     # skeleton — multi-agent orchestration
+├── elph-tui/       # reusable iocraft-based TUI components
+└── floppy/         # AI memory with vector search (Turso); port of memelord
+docs/               # project documentation, porting status, design notes
+skills/             # OpenWiki skill files (mermaid-diagrams, migrate-wiki, write-connector)
+extensions/         # WASM extension plugins (say-hello)
+templates/agent/    # MiniJinja system prompt templates (coding_base.md, mode_*.md, session_title_*.md)
 ```
 
-Requires Rust >= 1.97 (edition 2024).
+## Make Targets
 
-## Development setup
+| Target                 | Description                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `make build`           | Build `elph` binary (debug; `RELEASE=1` or `-- --release` for release) |
+| `make run`             | Run elph coding agent                                                  |
+| `make watch`           | Run with hot reload (requires watchexec)                               |
+| `make test`            | Run all workspace tests via `cargo nextest`                            |
+| `make test-elph`       | Test `elph-ai` + `elph` + `elph-agent` (with `--features full`)        |
+| `make test-elph-tui`   | Test `elph-tui`                                                        |
+| `make check`           | Check compilation (no codegen)                                         |
+| `make lint`            | Run clippy with `-D warnings` (`elph`, `elph-agent`, `elph-ai`)        |
+| `make fmt`             | Format all Rust code + models + wiki                                   |
+| `make coverage`        | Test coverage via `cargo-llvm-cov`                                     |
+| `make generate-models` | Regenerate `elph-ai` model catalogs from pi upstream                   |
+| `make cross`           | Cross-compile one platform (`CROSS_TARGET=<triple>`)                   |
+| `make cross-pull`      | Pull cross-compilation Docker images                                   |
+| `make release`         | Host-aware release build                                               |
+| `make install`         | Install to `~/.local/bin/` (debug → `elph-dev`, release → `elph-next`) |
+| `make prepare`         | Prepare workspace for development                                      |
+| `make clean`           | Clean build artifacts                                                  |
+| `make stats`           | Show sccache stats and line counts                                     |
+| `make publish`         | Publish crates                                                         |
+| `make version`         | Show version info                                                      |
 
-```sh
-git clone https://github.com/riipandi/elph.git
-cd elph
-make prepare        # install toolchain, tools, and vendor deps
-make check          # fast compile check (no codegen)
-make test           # cargo nextest run
-make lint           # cargo clippy --workspace -D warnings
-make run            # cargo run --bin elph
+## Crate Dependency Graph
+
+```
+elph (binary + lib)
+├── elph-agent (--features "tracing, builtin-tools, mcp, prompt-templates, extensions")
+│   ├── elph-ai (--features "tracing")
+│   ├── elph-exec (shell execution)
+│   └── floppy (memory, --features "embed")
+├── elph-ai
+├── elph-tui (iocraft-based TUI components)
+├── floppy
+└── git2, iocraft, tokio, clap, etc.
 ```
 
-## Key concepts
+The `elph` crate is the product binary. Its `lib.rs` exports modules for:
 
-### Agent modes
+- `cli/` — 19 subcommands (ACP, codegraph, provider, run, server, session, etc.)
+- `agent/` — session orchestration above `elph-agent` (modes, prompts, tools, MCP bootstrap)
+- `tui/` — interactive TUI shell powered by `iocraft`
+- `platform/` — paths, settings, datastore, bootstrap
+- `memory/` — floppy memory hooks, commands, tools
+- `extensions/` — WASM extension host
 
-| Mode      | Description                       | TUI accent |
-| --------- | --------------------------------- | ---------- |
-| **Build** | Full tool access, productive mode | White      |
-| **Plan**  | Read-only, research mode          | Yellow     |
-| **Ask**   | Chat mode, no code changes        | Blue       |
-| **Brave** | All tools auto-approved           | Orange     |
+## Key Feature Flags in `elph-agent`
 
-### Text-select mode
+```toml
+# crates/elph-agent/Cargo.toml
+[features]
+full = ["mcp", "prompt-templates", "extensions", "builtin-tools"]
+builtin-tools = ["tools-edit", "tools-search", "tools-web", "tools-collaboration"]
+tools-edit = ["tools-edit-file", "tools-write-file", "tools-shell-exec", "tools-create-dir", "tools-copy-path", "tools-delete-path", "tools-move-path"]
+tools-search = ["tools-read-file", "tools-grep", "tools-find-path", "tools-list-dir"]
+mcp = ["dep:rmcp"]
+extensions = ["dep:wasmtime", "dep:walkdir"]
+prompt-templates = ["dep:minijinja"]
+obscura = ["dep:obscura"]
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
+```
 
-Toggle with `ctrl+s` in the TUI. When active, the scrollbar is hidden and the scrollbar column is cleared so native terminal text selection (drag-to-select) works without interference.
+## Navigation
 
-**Source:** `/elph/src/tui/transcript/panel.rs` — `TranscriptPanelProps::text_select_mode`
+Start here, then explore:
 
-### Thinking levels
-
-Controls reasoning depth: `Off` → `Minimal` → `Low` → `Medium` → `High` → `Xhigh` → `Max`. Each has a distinct footer color.
-
-### Agent loop
-
-The core agent runtime (`elph-agent`) implements a turn cycle:
-
-1. Assemble system prompt + conversation history + resources
-2. Stream completions from the LLM provider (with tool schemas)
-3. If tool calls are made → approval (if risky) → execute → append results → repeat
-4. When model stops calling tools → persist history → emit turn completion
-5. Automatic compaction when limits are reached (~32 messages, ~512KB)
-
-## Documentation map
-
-| Page                                                     | Covers                                                             |
-| -------------------------------------------------------- | ------------------------------------------------------------------ |
-| [quickstart.md](quickstart.md)                           | Overview, installation, navigation                                 |
-| [architecture/overview.md](architecture/overview.md)     | System architecture, crate dependencies, design principles         |
-| [architecture/source-map.md](architecture/source-map.md) | Crate-by-crate source map with module paths                        |
-| [agent-runtime.md](agent-runtime.md)                     | Agent loop, harness, sessions, tools, subagents, goals, compaction |
-| [mcp-integration.md](mcp-integration.md)                 | MCP configuration, auth, tool registry                             |
-| [operations.md](operations.md)                           | CLI subcommands, config system, env vars, paths, observability     |
-| [tui-shell.md](tui-shell.md)                             | TUI layout, interaction modes, theme system                        |
-| [testing.md](testing.md)                                 | Test organization, running tests, per-crate test areas             |
-
-## License
-
-- **Application** (`elph/`) — Apache 2.0
-- **Libraries** (`elph-core`, `elph-ai`, `elph-agent`, `elph-tui`, `elph-swarm`) — MIT
+- [Architecture Overview](architecture/overview.md) — crate dependency graph, agent loop phases, session persistence
+- [Source Map](architecture/source-map.md) — crate-by-crate module map with file paths
+- [Agent Loop](workflows/agent-loop.md) — turn cycle: `AgentHarness::prompt()` → `run_agent_loop()` → tool execution → compaction
+- [Compaction](workflows/compaction.md) — context window management, summarization, timestamp-gated estimate
+- [Auth](workflows/auth.md) — CredentialStore, ModelsStore, OAuth providers, resolve_provider_auth
+- [Providers](domains/providers.md) — ProviderStreams trait, 30+ provider adapters, compat flags
+- [MCP](domains/mcp.md) — Model Context Protocol: transports, AES-256-GCM encryption, tool naming
+- [Tools](domains/tools.md) — AgentTool, built-in tools, feature flags
+- [Skills](domains/skills.md) — SKILL.md format, resolution, MiniJinja templates
+- [Operations](operations.md) — CLI subcommands, ELPH_ env vars, observability
+- [Testing](testing.md) — unit/integration test patterns, live provider tests
+- [Pi Port Status](integrations/pi-port.md) — upstream commit cee5ff75, crate mapping, parity gaps
 
 ## Backlog
 
-- **WASM extensions (phase 2)** — `/elph/src/extensions/`, `/elph/src/cli/extensions.rs` — wasmtime Component Model API beyond slash commands
-- **Collaboration protocol** — `/crates/elph-agent/src/collaboration/` — plan/implement mode refinement
-- **Codegraph integration** — `/elph/src/cli/codegraph.rs` — structural code review graph (external tool)
-- **Prompt templates directory** — `/crates/elph-agent/src/prompt/` — MiniJinja template system (designed, not fully documented)
+| Area                   | Source Anchor                                            | Reason Deferred                                                                  |
+| ---------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Memory (floppy)        | `crates/floppy/src/`                                     | Vector memory, Welford scoring, embedding details — large specialized domain     |
+| Extensions (WASM)      | `crates/elph-agent/src/plugins/`, `elph/src/extensions/` | Plugin system is evolving; `extensions/say-hello` is the only example            |
+| Terminal UI (elph-tui) | `crates/elph-tui/src/`                                   | Component library with 15+ widgets — separate doc needed                         |
+| Agent Modes            | `elph/src/types.rs`                                      | Build/Plan/Ask/Brave modes — documented in overview but needs mode-specific page |
+| Prompts & Templates    | `elph/templates/agent/`, `crates/elph-agent/src/prompt/` | MiniJinja template engine, system prompt builder — separate domain page needed   |
+| ACP Protocol           | `elph/src/cli/acp.rs`, `elph/src/platform/acp/`          | Agent Client Protocol server — needs its own integration page                    |

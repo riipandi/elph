@@ -35,7 +35,6 @@ impl Paths {
         }
     }
 
-    #[allow(dead_code)]
     pub fn project_dir(&self) -> &PathBuf {
         &self.inner.project_dir
     }
@@ -80,12 +79,6 @@ impl Paths {
         Ok(self.projects_dir().join(self.project_key()?))
     }
 
-    /// `~/.elph/sessions/<key>/`
-    #[allow(dead_code)]
-    pub fn project_sessions_dir(&self) -> Result<PathBuf> {
-        Ok(self.sessions_dir().join(self.project_key()?))
-    }
-
     /// Per-project runtime directories (mcps, terminals, agent-tools).
     pub fn project_layout_dirs(&self) -> Result<Vec<PathBuf>> {
         let base = self.project_data_dir()?;
@@ -93,7 +86,12 @@ impl Paths {
     }
 
     /// Resolve layout dirs for an arbitrary project path (e.g. session resume).
-    #[allow(dead_code)]
+    pub fn project_layout_dirs_for(&self, project_path: &Path) -> Result<Vec<PathBuf>> {
+        let key = project_key::from_path(project_path)?;
+        let base = self.projects_dir().join(key);
+        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
+    }
+
     /// `~/.elph/extensions/`
     pub fn global_extensions_dir(&self) -> PathBuf {
         elph_agent::global_extensions_dir(self.config_dir())
@@ -112,18 +110,6 @@ impl Paths {
     /// Project settings override: `<project>/.elph/settings.json` (merged over home settings).
     pub fn project_settings_path(&self) -> PathBuf {
         self.project_elph_dir().join("settings.json")
-    }
-
-    pub fn project_layout_dirs_for(&self, project_path: &Path) -> Result<Vec<PathBuf>> {
-        let key = project_key::from_path(project_path)?;
-        let base = self.projects_dir().join(key);
-        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
-    }
-
-    /// Session storage root for a project path.
-    #[allow(dead_code)]
-    pub fn project_sessions_dir_for(&self, project_path: &Path) -> Result<PathBuf> {
-        Ok(self.sessions_dir().join(project_key::from_path(project_path)?))
     }
 }
 

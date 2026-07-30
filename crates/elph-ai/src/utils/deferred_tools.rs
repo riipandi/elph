@@ -78,11 +78,7 @@ mod tests {
     use serde_json::json;
 
     fn tool(name: &str) -> Tool {
-        Tool {
-            name: name.into(),
-            description: name.into(),
-            parameters: json!({"type": "object", "properties": {}}),
-        }
+        Tool::new(name, name, json!({"type": "object", "properties": {}}))
     }
 
     #[test]
@@ -120,6 +116,7 @@ mod tests {
                     content: vec![ContentBlock::Text { text: "ok".into() }],
                     details: None,
                     added_tool_names: Some(vec!["websearch".into()]),
+                    usage: None,
                     is_error: false,
                     timestamp: 1,
                 },

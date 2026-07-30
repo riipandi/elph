@@ -12,7 +12,7 @@ pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) ->
         resolve: Arc::new(move |input: AuthResolveInput| {
             let env_vars = env_vars.clone();
             Box::pin(async move {
-                if let Some(key) = input.credential.and_then(|c| c.key) {
+                if let Some(key) = input.credential.as_ref().and_then(|c| c.key.clone()) {
                     return Some(AuthResult {
                         auth: ModelAuth {
                             api_key: Some(key),
@@ -22,6 +22,24 @@ pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) ->
                         env: None,
                         source: Some("stored credential".to_string()),
                     });
+                }
+                // Check the credential's embedded env map (from env-ref entries).
+                if let Some(cred) = &input.credential
+                    && let Some(ref env) = cred.env
+                {
+                    for var_name in env.keys() {
+                        if let Some(value) = input.ctx.env(var_name).await {
+                            return Some(AuthResult {
+                                auth: ModelAuth {
+                                    api_key: Some(value),
+                                    headers: None,
+                                    base_url: None,
+                                },
+                                env: None,
+                                source: Some(format!("env:{var_name}")),
+                            });
+                        }
+                    }
                 }
                 for var in env_vars {
                     if let Some(value) = input.ctx.env(var).await {

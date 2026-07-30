@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use super::types::{BoxFuture, Credential, CredentialModifyFn, CredentialStore};
+use super::types::{BoxFuture, Credential, CredentialInfo, CredentialModifyFn, CredentialStore};
 
 /// In-memory credential store with per-provider serialized writes.
 pub struct InMemoryCredentialStore {
@@ -31,6 +31,15 @@ impl InMemoryCredentialStore {
             .entry(provider_id.to_string())
             .or_insert_with(|| Arc::new(Mutex::new(())))
             .clone()
+    }
+}
+
+impl InMemoryCredentialStore {
+    fn credential_kind(credential: &Credential) -> String {
+        match credential {
+            Credential::ApiKey(_) => "api_key".to_string(),
+            Credential::OAuth(_) => "oauth".to_string(),
+        }
     }
 }
 
@@ -62,6 +71,20 @@ impl CredentialStore for InMemoryCredentialStore {
             let chain = self.lock_chain(&provider_id).await;
             let _guard = chain.lock().await;
             self.credentials.lock().await.remove(&provider_id);
+        })
+    }
+
+    fn list<'a>(&'a self) -> BoxFuture<'a, Vec<CredentialInfo>> {
+        Box::pin(async move {
+            let credentials = self.credentials.lock().await;
+            credentials
+                .iter()
+                .map(|(provider_id, credential)| CredentialInfo {
+                    provider_id: provider_id.clone(),
+                    kind: Self::credential_kind(credential),
+                    label: None,
+                })
+                .collect()
         })
     }
 }

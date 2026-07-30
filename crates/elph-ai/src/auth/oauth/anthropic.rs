@@ -65,9 +65,9 @@ fn oauth_credential(creds: OAuthTokens) -> OAuthCredential {
 }
 
 pub struct OAuthTokens {
-    access: String,
-    refresh: String,
-    expires: i64,
+    pub access: String,
+    pub refresh: String,
+    pub expires: i64,
 }
 
 pub async fn login_anthropic(callbacks: &Arc<dyn AuthLoginCallbacks>) -> anyhow::Result<OAuthTokens> {

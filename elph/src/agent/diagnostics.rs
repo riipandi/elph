@@ -15,6 +15,7 @@ pub fn create_diagnostics_tool(cwd: &str) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "diagnostics".into(),
+                constrained_sampling: None,
             description: "Gets errors and warnings for either a specific file or the entire project, useful after making edits to determine if further changes are needed.".into(),
             parameters: json!({
                 "type": "object",
@@ -101,5 +102,6 @@ async fn execute_diagnostics(project_root: String, args: Value) -> anyhow::Resul
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }

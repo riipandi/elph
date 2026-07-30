@@ -25,6 +25,7 @@ use crate::platform::handle_prompt_interrupt_text;
 use crate::platform::{Paths, PromptInterrupt, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
+use crate::utils::path::AppPaths;
 
 use crate::tui::activity::TurnTokenTracker;
 use crate::tui::activity::{
@@ -61,6 +62,14 @@ use crate::tui::prompt_history::{
     PromptHistoryKeyAction, build_snapshot as build_prompt_history_snapshot, can_open_history,
     resolve_key_action as resolve_prompt_history_key_action, seed_history_from_transcript,
 };
+use crate::tui::provider_connect_dialog::{
+    OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
+    PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
+    close_provider_api_key_dialog, close_provider_connect_dialog, close_provider_disconnect_dialog,
+    focus_provider_list, focus_provider_search, format_provider_name, get_provider_options_for_auth_method,
+    open_provider_api_key_dialog, open_provider_connect_dialog, open_provider_disconnect_dialog,
+    provider_auth_method_from_index, provider_confirm_on_enter, provider_list_nav_delta, provider_supports_oauth,
+};
 use crate::tui::rename_dialog::{OpenRenameDialogArgs, RenameDialogBar, close_rename_dialog, open_rename_dialog};
 use crate::tui::scoped_models::PendingScopedModels;
 use crate::tui::scoped_models_bar::{ScopedModelsBar, ScopedModelsView};
@@ -86,8 +95,9 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
-    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_status_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
+    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
+    build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
@@ -122,6 +132,130 @@ use elph_agent::tools::fff_picker::MentionSearchIndex;
 use elph_tui::PaletteKeyInput;
 use elph_tui::components::ConfirmButtonFocus;
 use elph_tui::copy_to_clipboard;
+
+// ── OAuth dialog events ──────────────────────────────────────────────
+
+/// Events sent from the OAuth flow to the provider connect dialog.
+#[derive(Debug, Clone)]
+enum OAuthDialogEvent {
+    DeviceCode {
+        url: String,
+        code: String,
+    },
+    /// Prompt the user for text input (e.g. GitHub Copilot enterprise URL).
+    PromptText {
+        #[allow(dead_code)]
+        id: u64,
+        message: String,
+        #[allow(dead_code)]
+        placeholder: Option<String>,
+    },
+    /// Prompt the user to paste a manual authorization code / redirect URL.
+    PromptManualCode {
+        #[allow(dead_code)]
+        id: u64,
+        message: String,
+        placeholder: Option<String>,
+    },
+    /// Prompt the user to select from a list of options (e.g. OpenAI Codex login method).
+    PromptSelect {
+        #[allow(dead_code)]
+        id: u64,
+        message: String,
+        options: Vec<elph_ai::auth::AuthSelectOption>,
+    },
+}
+
+/// Global store for OAuth prompt response channels.
+/// Keyed by prompt_id, value is the oneshot sender to deliver the response.
+static OAUTH_PROMPT_STORE: std::sync::LazyLock<
+    std::sync::Mutex<std::collections::HashMap<u64, tokio::sync::oneshot::Sender<String>>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+
+/// AuthLoginCallbacks implementation that forwards events via an mpsc channel.
+struct OAuthLoginCallbacksImpl {
+    tx: tokio::sync::mpsc::UnboundedSender<OAuthDialogEvent>,
+}
+
+impl elph_ai::auth::AuthLoginCallbacks for OAuthLoginCallbacksImpl {
+    fn prompt(&self, prompt: elph_ai::auth::AuthPrompt) -> elph_ai::auth::BoxFuture<'_, anyhow::Result<String>> {
+        let tx = self.tx.clone();
+        let prompt_id = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+
+        // Send the prompt event through the channel so the UI can show it.
+        match &prompt {
+            elph_ai::auth::AuthPrompt::Text { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptText {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::ManualCode { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptManualCode {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::Secret { message, placeholder } => {
+                let _ = tx.send(OAuthDialogEvent::PromptText {
+                    id: prompt_id,
+                    message: message.clone(),
+                    placeholder: placeholder.clone(),
+                });
+            }
+            elph_ai::auth::AuthPrompt::Select { message, options } => {
+                let _ = tx.send(OAuthDialogEvent::PromptSelect {
+                    id: prompt_id,
+                    message: message.clone(),
+                    options: options.clone(),
+                });
+            }
+        }
+
+        Box::pin(async move {
+            let (response_tx, response_rx) = tokio::sync::oneshot::channel();
+            // Use std::sync::Mutex::lock() — held briefly, dropped before await.
+            {
+                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                store.insert(prompt_id, response_tx);
+            }
+
+            match response_rx.await {
+                Ok(response) => Ok(response),
+                Err(_) => Err(anyhow::anyhow!("OAuth prompt cancelled")),
+            }
+        })
+    }
+
+    fn notify(&self, event: elph_ai::auth::AuthEvent) {
+        match event {
+            elph_ai::auth::AuthEvent::DeviceCode {
+                user_code,
+                verification_uri,
+                ..
+            } => {
+                let _ = self.tx.send(OAuthDialogEvent::DeviceCode {
+                    url: verification_uri,
+                    code: user_code,
+                });
+            }
+            elph_ai::auth::AuthEvent::AuthUrl { url, .. } => {
+                let _ = self.tx.send(OAuthDialogEvent::DeviceCode {
+                    url: url.clone(),
+                    code: String::new(),
+                });
+            }
+            _ => {}
+        }
+    }
+}
+
+// ── Constants ────────────────────────────────────────────────────────
 
 const SHELL_TICK_MS: u64 = 50;
 const CHROME_REFRESH_TICKS: u32 = 20;
@@ -907,6 +1041,14 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut pending_rename = hooks.use_ref(|| None::<crate::tui::rename_dialog::PendingRenameDialog>);
     let mut rename_value = hooks.use_state(String::new);
     let mut pending_confetti = hooks.use_ref(|| None::<PendingConfetti>);
+    let mut pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
+    let mut pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
+    let mut pending_provider_api_key = hooks.use_ref(|| None::<PendingProviderApiKeyDialog>);
+    let mut provider_disconnect_selected = hooks.use_state(|| 0usize);
+    let mut provider_connect_selected = hooks.use_state(|| 0usize);
+    let mut provider_connect_filter = hooks.use_state(String::new);
+    let mut provider_connect_api_key = hooks.use_state(String::new);
+    let mut provider_connect_input_focus = hooks.use_state(ProviderConnectFocus::default);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
     let mut confetti_frame = hooks.use_ref(|| 0u32);
 
@@ -991,6 +1133,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let cwd_for_mention_index = cwd.clone();
     let cwd_for_loop = cwd.clone();
     let extension_host_for_loop = extension_host.clone();
+    let mut pending_provider_connect_for_tick = pending_provider_connect;
+    let mut pending_provider_disconnect_for_tick = pending_provider_disconnect;
+    let mut messages_for_tick = messages;
+    let mut messages_revision_for_tick = messages_revision;
+    let mut provider_connect_api_key_for_tick = provider_connect_api_key;
+    let mut provider_connect_input_focus_for_tick = provider_connect_input_focus;
+    let mut shell_focus_for_tick = shell_focus;
     let mut layout_screen_size_for_loop = layout_screen_size;
     // Clone the Arc into the async future so event processing writes to
     // messages_arc (no State dirty marks) instead of messages State.
@@ -1142,6 +1291,53 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             chrome_tick.set(chrome_tick.get().wrapping_add(1));
+
+            // ── OAuth completed: close dialog ──────────────────────────
+            if pending_provider_connect_for_tick
+                .read()
+                .as_ref()
+                .is_some_and(|p| p.done)
+            {
+                let notice = pending_provider_connect_for_tick.read().as_ref().and_then(|p| {
+                    let url = &p.oauth_url;
+                    // If the done flag was set with a notification message, use it
+                    if url.starts_with("Signed in to ") {
+                        Some(url.clone())
+                    } else {
+                        None
+                    }
+                });
+                pending_provider_connect_for_tick.set(None);
+                provider_connect_api_key_for_tick.set(String::new());
+                provider_connect_input_focus_for_tick.set(ProviderConnectFocus::default());
+                shell_focus_for_tick.set(ShellFocus::Prompt);
+                // Push transcript notification
+                if let Some(notice) = notice {
+                    let mut msgs = messages_for_tick.write().clone();
+                    msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
+                    messages_for_tick.set(msgs);
+                    messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
+                }
+            }
+
+            // ── Provider disconnect completed: close dialog ─────────────
+            if pending_provider_disconnect_for_tick
+                .read()
+                .as_ref()
+                .is_some_and(|p| p.done)
+            {
+                pending_provider_disconnect_for_tick.set(None);
+                shell_focus_for_tick.set(ShellFocus::Prompt);
+                // Push transcript notification
+                let mut msgs = messages_for_tick.write().clone();
+                msgs.push(TranscriptMessage::text(
+                    "Signed out from all providers".to_string(),
+                    TranscriptStyle::Meta,
+                ));
+                messages_for_tick.set(msgs);
+                messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
+            }
+
             let chrome_due = chrome_refresh_pending.get() || chrome_tick.get() % CHROME_REFRESH_TICKS == 0;
             if chrome_due {
                 let paths = paths.read().clone();
@@ -1305,6 +1501,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                     }
 
+                    if let AgentUiEvent::MemoryResult(ref text) = event {
+                        let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                            pending: &mut pending_system_prompt,
+                            shell_focus: &mut shell_focus,
+                            title: "Memory".to_string(),
+                            text: text.clone(),
+                            width_pct: 80,
+                            body_height: Some(body_height),
+                            show_copy: false,
+                        });
+                        continue;
+                    }
+
                     if let AgentUiEvent::ToolApprovalRequired(req) = event {
                         let tool_name = req.tool_name.clone();
                         let tool_call_id = req.tool_call_id.clone();
@@ -1399,7 +1609,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                            plan_id: req.plan_id.clone(),
                             plan_text: req.plan_text.clone(),
                             plan_file,
                             session: agent_session_for_loop.clone(),
@@ -1923,6 +2132,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let confetti_open = pending_confetti.read().is_some();
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
+            let provider_connect_open = pending_provider_connect.read().is_some();
+            let provider_disconnect_open = pending_provider_disconnect.read().is_some();
+            let provider_api_key_open = pending_provider_api_key.read().is_some();
             let queue_manager_is_open = queue_manager_open.get();
             let status_dialog_open = pending_tool_approval.read().is_some()
                 || pending_mode_change.read().is_some()
@@ -1934,6 +2146,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || system_prompt_open
                 || rename_open
                 || confetti_open
+                || provider_connect_open
+                || provider_disconnect_open
+                || provider_api_key_open
                 || queue_manager_is_open;
 
             if status_dialog_open {
@@ -2889,6 +3104,698 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 }
 
+                // ── Provider connect dialog ────────────────────────────────
+                let step = {
+                    let pending_ref = pending_provider_connect.read();
+                    pending_ref.as_ref().map(|p| p.step)
+                };
+                let is_select_auth_method = step == Some(ProviderConnectStep::SelectAuthMethod);
+                let is_select_provider = step == Some(ProviderConnectStep::SelectProvider);
+                let is_oauth_device_code = step == Some(ProviderConnectStep::OAuthDeviceCode);
+                let is_oauth_select = step == Some(ProviderConnectStep::OAuthSelect);
+
+                if provider_connect_open {
+
+                    // ── OAuth completed: close dialog, clear draft ─────
+                    let oauth_done = pending_provider_connect.read().as_ref().map(|p| p.done).unwrap_or(false);
+                    if oauth_done {
+                        close_provider_connect_dialog(
+                            &mut pending_provider_connect,
+                            &mut provider_connect_selected,
+                            &mut provider_connect_filter,
+                            &mut provider_connect_api_key,
+                            &mut provider_connect_input_focus,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+
+                    let _is_enter_api_key = step == Some(ProviderConnectStep::EnterApiKey);
+
+                    // ── Esc ──────────────────────────────────────────────
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        // Esc always closes the dialog from any step
+                        close_provider_connect_dialog(
+                            &mut pending_provider_connect,
+                            &mut provider_connect_selected,
+                            &mut provider_connect_filter,
+                            &mut provider_connect_api_key,
+                            &mut provider_connect_input_focus,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+
+                    // ── OAuth Select step: navigate with ↑↓ and confirm with Enter ──
+                    if is_oauth_select && modifiers.is_empty() && kind == KeyEventKind::Press {
+                        if code == KeyCode::Enter {
+                            // Submit the selected option back to the OAuth flow
+                            let pending_state = pending_provider_connect.read();
+                            let (selected_id, selected_index) = pending_state.as_ref().map(|p| {
+                                (p.oauth_select_ids.get(p.oauth_select_index).cloned(), p.oauth_select_index)
+                            }).unwrap_or((None, 0));
+                            drop(pending_state);
+
+                            if let Some(selected_id) = selected_id {
+                                log::info!("OAuth select: {} (index {})", selected_id, selected_index);
+                                let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                                if let Some(prompt_id) = store.keys().next().cloned()
+                                    && let Some(tx) = store.remove(&prompt_id) {
+                                    let _ = tx.send(selected_id);
+                                }
+                            }
+                            return;
+                        }
+                        if code == KeyCode::Up || code == KeyCode::Char('k') {
+                            let mut pending_ref = pending_provider_connect.write();
+                            if let Some(pending) = pending_ref.as_mut() {
+                                let count = pending.oauth_select_ids.len();
+                                if count > 0 {
+                                    pending.oauth_select_index = pending.oauth_select_index.saturating_sub(1);
+                                    provider_connect_selected.set(pending.oauth_select_index);
+                                }
+                            }
+                            return;
+                        }
+                        if code == KeyCode::Down || code == KeyCode::Char('j') {
+                            let mut pending_ref = pending_provider_connect.write();
+                            if let Some(pending) = pending_ref.as_mut() {
+                                let count = pending.oauth_select_ids.len();
+                                if count > 0 {
+                                    pending.oauth_select_index = (pending.oauth_select_index + 1).min(count - 1);
+                                    provider_connect_selected.set(pending.oauth_select_index);
+                                }
+                            }
+                            return;
+                        }
+                    }
+
+                    // ── Enter in OAuth device code step: submit prompt response ──
+                    // Must be checked BEFORE the main Enter handler to avoid conflicts.
+                    if is_oauth_device_code && modifiers.is_empty() && code == KeyCode::Enter && kind == KeyEventKind::Press {
+                        let is_prompt = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.oauth_is_prompt)
+                            .unwrap_or(false);
+                        let response = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.oauth_code.clone())
+                            .unwrap_or_default();
+
+                        // Allow empty submit in prompt mode (e.g. blank means github.com)
+                        if !response.is_empty() || (is_prompt && !OAUTH_PROMPT_STORE.lock().unwrap().is_empty()) {
+                            log::info!("OAuth prompt response submitted: {}", response);
+                            let mut store = OAUTH_PROMPT_STORE.lock().unwrap();
+                            if let Some(prompt_id) = store.keys().next().cloned()
+                                && let Some(tx) = store.remove(&prompt_id) {
+                                let _ = tx.send(response);
+                            }
+                            if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                pending.oauth_code.clear();
+                            }
+                        }
+                        return;
+                    }
+
+                    // ── Text input in OAuth device code step (prompt mode only) ──
+                    if is_oauth_device_code
+                        && let Some(ref mut pending) = *pending_provider_connect.write()
+                        && pending.oauth_is_prompt
+                    {
+                        if modifiers.is_empty()
+                            && code == KeyCode::Backspace
+                            && kind == KeyEventKind::Press
+                        {
+                            pending.oauth_code.pop();
+                            return;
+                        }
+                        if modifiers.is_empty()
+                            && let KeyCode::Char(c) = code
+                            && kind == KeyEventKind::Press
+                        {
+                            pending.oauth_code.push(c);
+                            return;
+                        }
+                    }
+
+                    // ── Enter (confirm) ──────────────────────────────────
+                    if modifiers.is_empty() && code == KeyCode::Enter {
+                        if kind != KeyEventKind::Press {
+                            return;
+                        }
+                        if pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|pending| pending.fresh_open)
+                            .unwrap_or(false)
+                        {
+                            if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                pending.fresh_open = false;
+                            }
+                            return;
+                        }
+                        if is_select_auth_method {
+                            // Confirm authentication method selection
+                            let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+                            let selected_idx = *provider_connect_selected.read();
+                            if auth_methods.get(selected_idx).is_some() {
+                                // Transition to provider selection
+                                if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                    pending.step = ProviderConnectStep::SelectProvider;
+                                    pending.selected_auth_method = selected_idx;
+                                    pending.selected_provider = 0;
+                                    pending.filter.clear();
+                                    pending.api_key_input.clear();
+                                    pending.oauth_code.clear();
+                                    pending.oauth_url.clear();
+                                    pending.oauth_provider_name.clear();
+                                    pending.done = false;
+                                    pending.input_focus = ProviderConnectFocus::List;
+                                    pending.fresh_open = false;
+                                    provider_connect_input_focus.set(ProviderConnectFocus::List);
+                                    provider_connect_selected.set(0);
+                                    provider_connect_filter.set(String::new());
+                                    provider_connect_api_key.set(String::new());
+                                }
+                            }
+                            return;
+                        }
+
+                        if is_select_provider {
+                            // Only confirm when focus is on the list, not the search field
+                            let focus = pending_provider_connect
+                                .read()
+                                .as_ref()
+                                .map(|p| p.input_focus)
+                                .unwrap_or(ProviderConnectFocus::List);
+                            if !provider_confirm_on_enter(focus) {
+                                // Enter on search: move focus to list
+                                if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                    focus_provider_list(&mut provider_connect_input_focus, pending);
+                                }
+                                return;
+                            }
+                            let selected_idx = *provider_connect_selected.read();
+                            let current_filter = provider_connect_filter.read().clone();
+                            let auth_method_idx = pending_provider_connect
+                                .read()
+                                .as_ref()
+                                .map(|p| p.selected_auth_method)
+                                .unwrap_or(0);
+                            let auth_method = provider_auth_method_from_index(auth_method_idx);
+                            let providers = get_provider_options_for_auth_method(auth_method);
+                            if let Some(provider) = crate::tui::provider_connect_dialog::get_filtered_provider_at(
+                                &providers,
+                                &current_filter,
+                                selected_idx,
+                            ) {
+                                let is_oauth_method = matches!(
+                                    provider_auth_method_from_index(auth_method_idx),
+                                    crate::tui::provider_connect_dialog::ProviderAuthMethod::Account
+                                );
+
+                                if provider.supports_oauth && provider_supports_oauth(&provider.id) && is_oauth_method {
+                                    // OAuth — trigger OAuth flow
+                                    let provider_id = provider.id.clone();
+                                    let provider_name = format_provider_name(&provider_id);
+                                    let provider_name_for_clone = provider_name.clone();
+                                    let auth_store_path = paths.auth_store_path();
+
+                                    log::info!("Starting OAuth flow for provider: {}", provider_id);
+
+                                    // Transition to OAuth device code step
+                                    if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                        pending.fresh_open = false;
+                                        pending.oauth_provider_name = crate::tui::provider_connect_dialog::format_provider_name(&provider_id);
+                                        pending.oauth_url = String::new();
+                                        pending.oauth_code = String::new();
+                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                        provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                    }
+
+                                    // Channel to push OAuth events back to the dialog state
+                                    let (oauth_event_tx, mut oauth_event_rx) =
+                                        tokio::sync::mpsc::unbounded_channel::<OAuthDialogEvent>();
+
+                                    // Store the sender so the spawned task can notify us
+                                    let provider_id_for_task = provider_id.clone();
+                                    let mut pending_ref = pending_provider_connect;
+                                    let auth_store_path_for_task = auth_store_path.clone();
+
+                                    tokio::spawn(async move {
+                                        // Build AuthLoginCallbacks that sends events through the channel
+                                        let callbacks = Arc::new(OAuthLoginCallbacksImpl {
+                                            tx: oauth_event_tx,
+                                        });
+
+                                        match elph_ai::oauth_provider_login(&provider_id_for_task, callbacks).await {
+                                            Ok(credential) => {
+                                                log::info!(
+                                                    "OAuth login succeeded for provider: {}",
+                                                    provider_id_for_task
+                                                );
+
+                                                // Derive API key from OAuth credential
+                                                match elph_ai::get_oauth_api_key(&provider_id_for_task, credential.clone()).await {
+                                                    Ok(api_key_result) => {
+                                                        // OAuth credentials are stored differently — they provide
+                                                        // access tokens that auto-refresh. For now we save the
+                                                        // access token as an encrypted API key as a fallback,
+                                                        // but the real OAuth flow stores tokens in-memory.
+                                                        log::info!(
+                                                            "OAuth login complete for {} — token expires at {}",
+                                                            provider_id_for_task,
+                                                            api_key_result.new_credentials.expires,
+                                                        );
+
+                                                        // Store OAuth credential in auth.json for persistence
+                                                        if let Ok(json) = serde_json::to_string(&credential) {
+                                                            let _ = crate::tui::provider_credential_store::save_provider_credential(
+                                                                &auth_store_path_for_task,
+                                                                &provider_id_for_task,
+                                                                &json,
+                                                            ).await;
+                                                        }
+
+                                                        // Close dialog — OAuth is complete.
+                                                        // The main loop detects the done flag
+                                                        // and cleans up focus + clears the draft.
+                                                        if let Some(pending) = pending_ref.write().as_mut() {
+                                                            pending.done = true;
+                                                            pending.oauth_url = format!("Signed in to {provider_name_for_clone}");
+                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        log::error!(
+                                                            "Failed to derive API key from OAuth for {}: {}",
+                                                            provider_id_for_task, e
+                                                        );
+                                                        if let Some(pending) = pending_ref.write().as_mut() {
+                                                            pending.oauth_url = format!("OAuth error: {e}");
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                log::error!("OAuth login failed for {}: {}", provider_id_for_task, e);
+                                                if let Some(pending) = pending_ref.write().as_mut() {
+                                                    pending.oauth_url = format!("OAuth failed: {e}");
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // Process any events that arrived before the spawn
+                                    while let Ok(event) = oauth_event_rx.try_recv() {
+                                        if let Some(ref mut pending) = *pending_provider_connect.write() {
+                                            match event {
+                                                OAuthDialogEvent::DeviceCode { url, code } => {
+                                                    pending.oauth_url = url;
+                                                    pending.oauth_code = code;
+                                                    pending.oauth_is_prompt = false;
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                                }
+                                                OAuthDialogEvent::PromptText { id: _, message, placeholder: _ } => {
+                                                    pending.oauth_code = String::new();
+                                                    pending.oauth_prompt_message = message.clone();
+                                                    pending.oauth_is_prompt = true;
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                                }
+                                                OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
+                                                    pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    pending.oauth_is_prompt = true;
+                                                    pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthCodeInput);
+                                                }
+                                                OAuthDialogEvent::PromptSelect { id: _, message, options } => {
+                                                    pending.oauth_url = message.clone();
+                                                    pending.oauth_code = String::new();
+                                                    pending.oauth_provider_name = format!("{provider_name} - {message}");
+                                                    // Store options as selectable labels
+                                                    pending.oauth_select_labels = options.iter().map(|o| o.label.clone()).collect();
+                                                    pending.oauth_select_ids = options.iter().map(|o| o.id.clone()).collect();
+                                                    pending.oauth_select_index = 0;
+                                                    pending.step = ProviderConnectStep::OAuthSelect;
+                                                    pending.input_focus = ProviderConnectFocus::OAuthSelectList;
+                                                    provider_connect_input_focus.set(ProviderConnectFocus::OAuthSelectList);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Read incoming OAuth events in a background task
+                                    // to keep the dialog updated
+                                    let mut pending_ref = pending_provider_connect;
+                                    let provider_name_for_task = provider_name.clone();
+                                    tokio::spawn(async move {
+                                        while let Some(event) = oauth_event_rx.recv().await {
+                                            if let Some(pending) = pending_ref.write().as_mut() {
+                                                match event {
+                                                    OAuthDialogEvent::DeviceCode { url, code } => {
+                                                        pending.oauth_url = url;
+                                                        pending.oauth_code = code;
+                                                        pending.oauth_is_prompt = false;
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    }
+                                                    OAuthDialogEvent::PromptText { id: _, message, placeholder: _ } => {
+                                                        pending.oauth_code = String::new();
+                                                        pending.oauth_prompt_message = message.clone();
+                                                        pending.oauth_is_prompt = true;
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    }
+                                                    OAuthDialogEvent::PromptManualCode { id: _, message, placeholder } => {
+                                                        pending.oauth_code = placeholder.clone().unwrap_or_default();
+                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.oauth_is_prompt = true;
+                                                        pending.step = ProviderConnectStep::OAuthDeviceCode;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthCodeInput;
+                                                    }
+                                                    OAuthDialogEvent::PromptSelect { id: _, message, options } => {
+                                                        pending.oauth_url = message.clone();
+                                                        pending.oauth_code = String::new();
+                                                        pending.oauth_provider_name = format!("{provider_name_for_task} - {message}");
+                                                        pending.oauth_select_labels = options.iter().map(|o| o.label.clone()).collect();
+                                                        pending.oauth_select_ids = options.iter().map(|o| o.id.clone()).collect();
+                                                        pending.oauth_select_index = 0;
+                                                        pending.step = ProviderConnectStep::OAuthSelect;
+                                                        pending.input_focus = ProviderConnectFocus::OAuthSelectList;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    // API Key: close provider selection, open dedicated API key dialog
+                                    let provider_id = provider.id.clone();
+                                    let provider_name = format_provider_name(&provider.id);
+                                    close_provider_connect_dialog(
+                                        &mut pending_provider_connect,
+                                        &mut provider_connect_selected,
+                                        &mut provider_connect_filter,
+                                        &mut provider_connect_api_key,
+                                        &mut provider_connect_input_focus,
+                                        &mut draft,
+                                        &mut live_draft,
+                                        &mut shell_focus,
+                                        false,
+                                    );
+                                    open_provider_api_key_dialog(OpenProviderApiKeyDialogArgs {
+                                        pending: &mut pending_provider_api_key,
+                                        api_key_input: &mut provider_connect_api_key,
+                                        draft: &mut draft,
+                                        live_draft: &mut live_draft,
+                                        shell_focus: &mut shell_focus,
+                                        provider_id,
+                                        provider_name,
+                                    });
+                                }
+                            }
+                        }
+                        return;
+                    }
+                }
+
+                // ── Provider disconnect dialog ─────────────────────────
+                if provider_disconnect_open {
+                    let opened_at = pending_provider_disconnect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.opened_at)
+                        .unwrap_or(Instant::now());
+                    // Guard: suppress Enter that leaks from the slash-submit keystroke
+                    let enter_ok = kind == KeyEventKind::Press
+                        && opened_at.elapsed() > Duration::from_millis(200);
+
+                    let has_any = pending_provider_disconnect
+                        .read()
+                        .as_ref()
+                        .map(|p| !p.provider_ids.is_empty())
+                        .unwrap_or(false);
+
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_provider_disconnect_dialog(
+                            &mut pending_provider_disconnect,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+
+                    if !has_any {
+                        return;
+                    }
+
+                    // List navigation (↑↓ or j/k)
+                    if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                        let pending_ref = &mut *pending_provider_disconnect.write();
+                        if let Some(pending) = pending_ref {
+                            let count = pending.provider_ids.len();
+                            if count > 0 {
+                                pending.selected_index = ((pending.selected_index as isize + delta)
+                                    .rem_euclid(count as isize)) as usize;
+                                provider_disconnect_selected.set(pending.selected_index);
+                            }
+                        }
+                        return;
+                    }
+
+                    // Enter: delete selected credential
+                    if modifiers.is_empty() && code == KeyCode::Enter && enter_ok {
+                        let (provider_id, index) = {
+                            let pending = pending_provider_disconnect.read();
+                            let pending = pending.as_ref();
+                            let id = pending.and_then(|p| p.provider_ids.get(p.selected_index).cloned());
+                            let ix = pending.map(|p| p.selected_index).unwrap_or(0);
+                            (id, ix)
+                        };
+
+                        if let Some(pid) = provider_id {
+                            let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                            let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                            let pid_for_task = pid.clone();
+                            tokio::spawn(async move {
+                                match crate::tui::provider_credential_store::delete_provider_credential(
+                                    &auth_store_path,
+                                    &pid_for_task,
+                                ).await
+                                {
+                                    Ok(true) => {
+                                        log::info!("Removed credentials for provider: {}", pid_for_task);
+                                    }
+                                    Ok(false) => {
+                                        log::info!("No credentials to remove for provider: {}", pid_for_task);
+                                    }
+                                    Err(e) => {
+                                        log::error!("Failed to remove credentials for {}: {}", pid_for_task, e);
+                                    }
+                                }
+                            });
+
+                            // Push transcript notification immediately
+                            let provider_name = format_provider_name(&pid);
+                            push_transcript_message(
+                                &mut messages,
+                                &mut messages_revision,
+                                &mut prompt_history,
+                                TranscriptMessage::text(
+                                    format!("Signed out from {provider_name}"),
+                                    TranscriptStyle::Meta,
+                                ),
+                            );
+
+                            // Remove from list and adjust selection
+                            if let Some(pending) = pending_provider_disconnect.write().as_mut() {
+                                pending.provider_ids.remove(index);
+                                if !pending.provider_ids.is_empty() {
+                                    pending.selected_index = pending.selected_index.min(pending.provider_ids.len().saturating_sub(1));
+                                    provider_disconnect_selected.set(pending.selected_index);
+                                } else {
+                                    pending.selected_index = 0;
+                                    pending.done = true;
+                                }
+                            }
+                        }
+                        return;
+                    }
+                }
+
+                // ── Ctrl+O: open OAuth URL in browser ──────────────
+                if is_oauth_device_code
+                    && !modifiers.intersects(KeyModifiers::ALT | KeyModifiers::META)
+                    && (modifiers == KeyModifiers::CONTROL && matches!(code, KeyCode::Char('o') | KeyCode::Char('O')))
+                {
+                    let url = pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_url.clone())
+                        .unwrap_or_default();
+                    if !url.is_empty() {
+                        std::thread::spawn(move || {
+                            let _ = open_url(&url);
+                        });
+                    }
+                    return;
+                }
+
+                // ── Character handling for auth method selection ─────
+                if is_select_auth_method {
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else {
+                        let auth_methods = crate::tui::provider_connect_dialog::get_auth_methods();
+
+                        // List navigation (↑↓ or j/k)
+                        if let Some(delta) = provider_list_nav_delta(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                let count = auth_methods.len();
+                                if count > 0 {
+                                    let new_idx = ((pending.selected_auth_method as isize + delta)
+                                        .rem_euclid(count as isize)) as usize;
+                                    pending.selected_auth_method = new_idx;
+                                    provider_connect_selected.set(new_idx);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                // ── Character handling for provider selection ──────
+                if is_select_provider {
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else {
+                        let _auth_method_idx = pending_provider_connect
+                            .read()
+                            .as_ref()
+                            .map(|p| p.selected_auth_method)
+                            .unwrap_or(0);
+
+                        // Arrow keys move focus to the list (selection is handled by ModelOptionList)
+                        if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                focus_provider_list(&mut provider_connect_input_focus, pending);
+                            }
+                            return;
+                        }
+
+                        // `/` reopens search focus when already in list (like model selector)
+                        if modifiers.is_empty() && code == KeyCode::Char('/') {
+                            let pending_ref = &mut *pending_provider_connect.write();
+                            if let Some(pending) = pending_ref {
+                                focus_provider_search(&mut provider_connect_input_focus, pending);
+                            }
+                            return;
+                        }
+
+                        // Typing and backspace are handled by the Input component (TextInput).
+                        // The filter State is synced via the on_change callback below.
+                    }
+                }
+
+                // ── API key dialog (separate dialog) ─────────────────────
+                if provider_api_key_open {
+                    // Esc
+                    if modifiers.is_empty() && code == KeyCode::Esc {
+                        close_provider_api_key_dialog(
+                            &mut pending_provider_api_key,
+                            &mut provider_connect_api_key,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        return;
+                    }
+
+                    // Enter — save API key
+                    if modifiers.is_empty() && code == KeyCode::Enter {
+                        if kind != KeyEventKind::Press {
+                            return;
+                        }
+                        let api_key = provider_connect_api_key.read().clone();
+                        let provider_id = pending_provider_api_key.read().as_ref().map(|p| p.provider_id.clone());
+                        close_provider_api_key_dialog(
+                            &mut pending_provider_api_key,
+                            &mut provider_connect_api_key,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            false,
+                        );
+                        force_editor_clear.set(true);
+                        if let Some(pid) = provider_id {
+                            let auth_store_path = paths.auth_store_path();
+                            let api_key_clone = api_key.clone();
+                            tokio::spawn(async move {
+                                // Detect env: prefix — store as plaintext reference, not encrypted.
+                                if let Some(env_var) = api_key_clone.strip_prefix("env:") {
+                                    match crate::tui::provider_credential_store::save_provider_env_ref(
+                                        &auth_store_path, &pid, env_var,
+                                    ).await {
+                                        Ok(()) => log::info!("Saved env ref for provider: {pid}"),
+                                        Err(e) => log::error!("Failed to save env ref for provider {pid}: {e}"),
+                                    }
+                                } else {
+                                    match crate::tui::provider_credential_store::save_provider_credential(
+                                        &auth_store_path, &pid, &api_key_clone,
+                                    ).await {
+                                        Ok(()) => log::info!("Saved encrypted API key for provider: {pid}"),
+                                        Err(e) => log::error!("Failed to save API key for provider {pid}: {e}"),
+                                    }
+                                }
+                            });
+                        }
+                        return;
+                    }
+
+                    // Character typing
+                    if !modifiers.is_empty() {
+                        // Ignore modified keys
+                    } else {
+                        match code {
+                            KeyCode::Char(c) => {
+                                let mut current = provider_connect_api_key.read().clone();
+                                current.push(c);
+                                provider_connect_api_key.set(current);
+                                return;
+                            }
+                            KeyCode::Backspace => {
+                                let mut current = provider_connect_api_key.read().clone();
+                                current.pop();
+                                provider_connect_api_key.set(current);
+                                return;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 let option_nav = {
                     let pending_ref = pending_user_question.read();
                     match (pending_ref.as_ref(), question_option_nav_delta(modifiers, code)) {
@@ -3227,6 +4134,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     text,
                                     width_pct: 50,
                                     body_height: Some(body_height),
+                                    show_copy: true,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenProviderListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Configured Providers".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenMemoryResultDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Memory".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
                                 });
                                 force_editor_clear.set(true);
                             }
@@ -3258,6 +4192,41 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 shell_focus.set(ShellFocus::StatusDialog);
                                 suppress_enter_newline.set(true);
                                 force_editor_clear.set(true);
+                            }
+                            SlashOutcome::OpenProviderConnectDialog { provider_id } => {
+                                open_provider_connect_dialog(OpenProviderConnectDialogArgs {
+                                    pending: &mut pending_provider_connect,
+                                    selected: &mut provider_connect_selected,
+                                    filter: &mut provider_connect_filter,
+                                    api_key_input: &mut provider_connect_api_key,
+                                    input_focus: &mut provider_connect_input_focus,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    provider_id,
+                                });
+                                approval_selected.set(0);
+                                suppress_enter_newline.set(true);
+                                force_editor_clear.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
+                                let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                                let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                                open_provider_disconnect_dialog(
+                                    crate::tui::provider_connect_dialog::OpenProviderDisconnectDialogArgs {
+                                        pending: &mut pending_provider_disconnect,
+                                        auth_store_path: &auth_store_path,
+                                        draft: &mut draft,
+                                        live_draft: &mut live_draft,
+                                        shell_focus: &mut shell_focus,
+                                        provider_id,
+                                    },
+                                );
+                                approval_selected.set(0);
+                                suppress_enter_newline.set(true);
+                                force_editor_clear.set(true);
+                                return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
                                 push_transcript_message(
@@ -3857,6 +4826,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let system_prompt_open = pending_system_prompt.read().is_some();
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
+    let provider_connect_open = pending_provider_connect.read().is_some();
+    let provider_disconnect_open = pending_provider_disconnect.read().is_some();
+    let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
@@ -3868,6 +4840,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         || system_prompt_open
         || rename_open
         || confetti_open
+        || provider_connect_open
+        || provider_disconnect_open
+        || provider_api_key_open
         || queue_manager_is_open;
     let prompt_focused =
         !status_dialog_open && matches!(shell_focus.get(), ShellFocus::Prompt | ShellFocus::StatusDialog);
@@ -3878,20 +4853,28 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         && !system_prompt_open
         && !rename_open
         && !confetti_open
-        && !scoped_models_open;
+        && !scoped_models_open
+        && !provider_connect_open
+        && !provider_disconnect_open;
     let scoped_models_has_focus = scoped_models_open
         && !user_question_open
         && !system_prompt_open
         && !rename_open
         && !confetti_open
-        && !model_selector_open;
-    let system_prompt_has_focus = system_prompt_open && !rename_open && !confetti_open;
+        && !model_selector_open
+        && !provider_connect_open
+        && !provider_disconnect_open;
+    let system_prompt_has_focus =
+        system_prompt_open && !rename_open && !confetti_open && !provider_connect_open && !provider_disconnect_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
-        || *pending_feedback.read())
+        || *pending_feedback.read()
+        || provider_connect_open
+        || provider_disconnect_open
+        || provider_api_key_open)
         && !user_question_open
         && !model_selector_open
         && !scoped_models_open
@@ -3929,6 +4912,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending.clamp_selection();
         if pending.selected_index != scoped_selected_index.get() {
             scoped_selected_index.set(pending.selected_index);
+        }
+    }
+    // Sync provider connect filter from State into pending dialog so re-renders
+    // pick up characters typed through the Input component.
+    if let Some(pending) = pending_provider_connect.write().as_mut() {
+        let next_filter = provider_connect_filter.read().clone();
+        if pending.filter != next_filter {
+            let providers =
+                get_provider_options_for_auth_method(provider_auth_method_from_index(pending.selected_auth_method));
+            let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &next_filter);
+            pending.filter = next_filter;
+            pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+            provider_connect_selected.set(pending.selected_provider);
         }
     }
     let model_selector_view = pending_model_selector
@@ -4103,6 +5099,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut shell_focus = shell_focus;
             let mut force_editor_clear = force_editor_clear;
             let text_for_copy = pending.text.clone();
+            let show_copy = pending.show_copy;
             let mut copy_banner = ephemeral_banner;
             let mut copy_banner_gen = ephemeral_banner_generation;
             let copy_expire = ephemeral_expire;
@@ -4126,18 +5123,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut force_editor_clear,
                         );
                     },
-                    on_copy: Some(HandlerMut::from(move |_| {
-                        let text = &text_for_copy;
-                        let banner = match copy_to_clipboard(text) {
-                            Ok(()) => prompt_copy_banner(text.chars().count()),
-                            Err(err) => {
-                                log::warn!("copy system prompt failed: {err}");
-                                prompt_copy_failed_banner()
-                            }
-                        };
-                        let expire_tx = copy_expire.read().tx.clone();
-                        show_ephemeral_banner(&mut copy_banner, &mut copy_banner_gen, &expire_tx, banner);
-                    })),
+                    on_copy: if show_copy {
+                        Some(HandlerMut::from(move |_| {
+                            let text = &text_for_copy;
+                            let banner = match copy_to_clipboard(text) {
+                                Ok(()) => prompt_copy_banner(text.chars().count()),
+                                Err(err) => {
+                                    log::warn!("copy system prompt failed: {err}");
+                                    prompt_copy_failed_banner()
+                                }
+                            };
+                            let expire_tx = copy_expire.read().tx.clone();
+                            show_ephemeral_banner(&mut copy_banner, &mut copy_banner_gen, &expire_tx, banner);
+                        }))
+                    } else {
+                        None
+                    },
                 )
             }
             .into()
@@ -4158,6 +5159,52 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
         .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
         .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
+        .or_else(|| {
+            let pending = pending_provider_connect.read();
+            let pending_ref = pending.as_ref();
+            let provider_id = pending_ref.and_then(|p| p.provider_id.clone());
+            let step = pending_ref.map(|p| p.step);
+            let input_focus = pending_ref
+                .map(|p| p.input_focus)
+                .unwrap_or(ProviderConnectFocus::AuthMethodList);
+            let oauth_url = pending_ref.map(|p| p.oauth_url.clone()).unwrap_or_default();
+            let oauth_code = pending_ref.map(|p| p.oauth_code.clone()).unwrap_or_default();
+            let oauth_provider_name = pending_ref.map(|p| p.oauth_provider_name.clone()).unwrap_or_default();
+            let selected_auth_method = pending_ref.map(|p| p.selected_auth_method).unwrap_or(0);
+            let fresh_open = pending_ref.map(|p| p.fresh_open).unwrap_or(false);
+            let oauth_select_labels = pending_ref.map(|p| p.oauth_select_labels.clone()).unwrap_or_default();
+            let oauth_select_index = pending_ref.map(|p| p.oauth_select_index).unwrap_or(0);
+            let oauth_is_prompt = pending_ref.map(|p| p.oauth_is_prompt).unwrap_or(false);
+            let oauth_prompt_message = pending_ref.map(|p| p.oauth_prompt_message.clone()).unwrap_or_default();
+            drop(pending);
+
+            let dialog = build_provider_connect_dialog_kind(
+                provider_id,
+                step,
+                approval_has_focus,
+                input_focus,
+                selected_auth_method,
+                oauth_url,
+                oauth_code,
+                oauth_provider_name,
+                fresh_open,
+                oauth_select_labels,
+                oauth_select_index,
+                oauth_is_prompt,
+                oauth_prompt_message,
+            );
+            if fresh_open && let Some(ref mut pending) = *pending_provider_connect.write() {
+                pending.fresh_open = false;
+            }
+            dialog
+        })
+        .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
+        .or_else(|| {
+            let pending = pending_provider_disconnect.read();
+            pending.as_ref().map(|p| StatusDialogKind::ProviderDisconnect {
+                provider_ids: p.provider_ids.clone(),
+            })
+        })
         .or_else(|| {
             build_prompt_queue_dialog_kind(
                 prompt_queue.read().items(),
@@ -4464,6 +5511,32 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 dialog: status_dialog,
                 approval_selected: Some(approval_selected),
                 approval_has_focus: approval_has_focus,
+                api_key_input: Some(provider_connect_api_key),
+                provider_connect_selected: Some(provider_connect_selected),
+                provider_disconnect_selected: Some(provider_disconnect_selected),
+                provider_connect_filter: Some(provider_connect_filter),
+                provider_connect_input_focus: Some(provider_connect_input_focus),
+                provider_connect_oauth_url: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_url.clone())
+                        .unwrap_or_default(),
+                ),
+                provider_connect_oauth_code: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_code.clone())
+                        .unwrap_or_default(),
+                ),
+                provider_connect_oauth_provider_name: Some(
+                    pending_provider_connect
+                        .read()
+                        .as_ref()
+                        .map(|p| p.oauth_provider_name.clone())
+                        .unwrap_or_default(),
+                ),
                 queue_count: queue_count,
                 on_queue_action: on_queue_action_click,
             )
@@ -4815,6 +5888,42 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
+                            SlashOutcome::OpenProviderConnectDialog { provider_id } => {
+                                open_provider_connect_dialog(OpenProviderConnectDialogArgs {
+                                    pending: &mut pending_provider_connect,
+                                    selected: &mut provider_connect_selected,
+                                    filter: &mut provider_connect_filter,
+                                    api_key_input: &mut provider_connect_api_key,
+                                    input_focus: &mut provider_connect_input_focus,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    provider_id,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
+                                let auth_store_path = paths_snapshot.auth_store_path();
+                                open_provider_disconnect_dialog(
+                                    crate::tui::provider_connect_dialog::OpenProviderDisconnectDialogArgs {
+                                        pending: &mut pending_provider_disconnect,
+                                        auth_store_path: &auth_store_path,
+                                        draft: &mut draft,
+                                        live_draft: &mut live_draft,
+                                        shell_focus: &mut shell_focus,
+                                        provider_id,
+                                    },
+                                );
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
                             SlashOutcome::OpenModelSelector { filter } => {
                                 let settings = Settings::load(&paths_snapshot).ok();
                                 open_model_selector(OpenModelSelectorArgs {
@@ -4876,6 +5985,41 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     text,
                                     width_pct: 50,
                                     body_height: Some(body_height),
+                                    show_copy: true,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenProviderListDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Configured Providers".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
+                                });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMemoryResultDialog { text } => {
+                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Memory".to_string(),
+                                    text,
+                                    width_pct: 55,
+                                    body_height: Some(body_height),
+                                    show_copy: false,
                                 });
                                 draft.set(String::new());
                                 live_draft.set(String::new());

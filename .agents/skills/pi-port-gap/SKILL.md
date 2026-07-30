@@ -21,6 +21,20 @@ Split by destination:
 - **In-chat report** (Phase 6 deliverable, printed directly in the conversation) — **match the language the user is currently using** in the prompt (Indonesian, English, etc). Keep paths, commits, symbols, upstream package names, and code/technical identifiers literal/English regardless of chat language (e.g. _behavior_, _serialize_, _catalog_ stay as-is).
 - If the user explicitly asks for a specific language for either destination, that overrides the default above.
 
+## Arguments (optional)
+
+Free-form flags appended after `/pi-port-gap`. Parse before Phase 1; apply
+overrides; state any skipped/unrecognized flag in the Summary.
+
+- `path=<dir>` — override upstream pi clone path (default: `/Users/ariss/Developer/github.com/earendil-works/pi`)
+- `branch=<name>` — upstream ref to check out (default: `main` — always live HEAD, not a tag)
+- `since=<commit|date>` — limit walk to changes after this point (default: last audit commit from `docs/porting/*.md`)
+- `scope=ai|agent|coding-agent|all` — restrict crate scope (default: `ai,agent`)
+- `module=<name>` — narrow Phase 3 to one Elph extension (e.g. `module=mcp`)
+- `depth=full|quick` — `full` = chore/docs bullets + full source-level diff (Phase 2b); `quick` skips both (default: `full`)
+- `persist=yes|no` — run Phase 5 without asking first (default: `no`, ask)
+- `lang=id|en` — override in-chat report language (default: user's current chat language)
+
 ## Goal
 
 Answer two questions in every run:
@@ -57,16 +71,17 @@ Pick shape by content (smart, not rigid):
 
 **Mermaid:** only if port ordering is hard to follow in prose.
 
-**Inline tags:** `[Gap P0|P1|P2]`, `[Partial]`, `[Parity]`, `[Elph delta]`, `[N/A]`.
+**Inline tags:** `[Gap P0|P1|P2]`, `[Partial]`, `[Parity]`, `[Elph delta]`, `[Undocumented]`, `[N/A]`.
 
 ---
 
 ## Source of truth (read in this order)
 
 1. Local baseline: [`docs/porting/README.md`](../../../docs/porting/README.md), [`pi-ai.md`](../../../docs/porting/pi-ai.md), [`pi-agent.md`](../../../docs/porting/pi-agent.md)
-2. Upstream clone (default): `/Users/ariss/Developer/github.com/earendil-works/pi`
-    - `packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md`
-    - matching `packages/ai/src/`, `packages/agent/src/`
+2. Upstream clone (default path, or `path=` override): `/Users/ariss/Developer/github.com/earendil-works/pi`
+    - Track `main` (or `branch=` override) as live HEAD — **CHANGELOG lags reality**, never treat the last tag/CHANGELOG entry as the full picture.
+    - `packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md` for the documented trail
+    - `packages/ai/src/`, `packages/agent/src/` for the actual current implementation (source is the ground truth, CHANGELOG is the index)
 3. Elph: `crates/elph-ai/`, `crates/elph-agent/` (+ public API in `src/lib.rs`)
 4. Extension scan hints: [`references/elph-extensions.md`](references/elph-extensions.md)
 5. Output shapes: [`references/report-template.md`](references/report-template.md)
@@ -78,11 +93,11 @@ Pick shape by content (smart, not rigid):
 
 ### Phase 1 — Baseline
 
-1. Resolve pi path (default above, or user override). `git fetch` if network is available; always `git log -1 --oneline` and note dirty state.
-2. Versions: `packages/ai/package.json`, `packages/agent/package.json` (+ Unreleased section if present).
+1. Resolve pi path (`path=` override or default). `git fetch origin <branch>` if network is available, checkout/pull `main` (or `branch=` override) — always work off live HEAD, not whatever the clone happened to have checked out. `git log -1 --oneline` and note dirty state.
+2. Versions: `packages/ai/package.json`, `packages/agent/package.json` (+ Unreleased section if present) — a version label, not the source of truth.
 3. Skim both CHANGELOGs: **Unreleased → recent tags**, newest first.
-4. Read last-audited commit / notes from `docs/porting/*.md`.
-5. One-sentence baseline in the report: _pi @ commit (version) vs last audit @ …_.
+4. Read last-audited commit / notes from `docs/porting/*.md` (or `since=` override).
+5. One-sentence baseline in the report: _pi @ `<commit>` on `main` (vX.Y.Z [+Unreleased]) vs last audit @ `<prev-commit>`_.
 
 ### Phase 2 — Upstream gap (CHANGELOG → code)
 
@@ -114,6 +129,16 @@ Priority heuristic when tagging gaps:
 - **P1** — user-visible provider or agent-loop behavior
 - **P2** — polish, edge tests, optional interop
 
+### Phase 2b — Source-level drift beyond CHANGELOG (always, skip only if `depth=quick`)
+
+CHANGELOG entries are curated after the fact — `main` moves faster than the doc.
+This phase catches real code changes that Phase 2 would miss entirely.
+
+1. Diff pi source directly against the last-audited state: `git diff <last-audited-commit>..HEAD -- packages/ai/src packages/agent/src` (or `git log <last-audited-commit>..HEAD --oneline -- packages/ai/src packages/agent/src` if a full diff is too noisy).
+2. Flag any structural change with no matching CHANGELOG bullet — new export, renamed/removed type, changed function signature, new provider branch, new tool, altered default — tag `[Undocumented]`.
+3. Cross-check each `[Undocumented]` item against elph exactly like a normal CHANGELOG bullet (Phase 2 steps 2–4): locate in elph, classify `[Gap Pn]` / `[Partial]` / `[Parity]` / `[N/A]`, state the concrete missing piece.
+4. Don't invent drift — if the diff is empty or purely mechanical (formatting, comment-only, dep bump with no behavior change), say so in one line and move on.
+
 ### Phase 3 — Elph implementation delta (always, independent of CHANGELOG)
 
 Scan what Elph has that pi does **not** (or solves differently):
@@ -142,8 +167,8 @@ Append under a timeline heading in `docs/porting/pi-ai.md` / `pi-agent.md` (see 
 
 Always ship in this order in-chat, in the user's current language (paths/commits/symbols stay literal):
 
-1. **Summary** — gap counts by priority, headline Elph deltas, top next step
-2. **Upstream gap** — CHANGELOG timeline (`pi-ai`, then `pi-agent`)
+1. **Summary** — gap counts by priority, undocumented-drift count, headline Elph deltas, top next step
+2. **Upstream gap** — CHANGELOG timeline + `[Undocumented]` source-level drift (`pi-ai`, then `pi-agent`)
 3. **Elph implementation delta** — In pi / In Elph / Implications per module
 4. **Parity and nuance**
 5. **Cross-crate**
@@ -176,3 +201,5 @@ cargo test -p elph-agent --lib
 - **Read-only** on the pi clone unless the user asks to port.
 - **No drive-by ports** unless the user explicitly asks to implement.
 - **Be honest about Partial** — better than false Parity.
+- **`main` HEAD, not just tags/CHANGELOG** — CHANGELOG is curated after the fact; Phase 2b's direct source diff is what catches drift the doc hasn't caught up to yet.
+- **Args override defaults, never scope** — `path=`/`branch=`/`since=`/`scope=`/`module=`/`depth=`/`persist=`/`lang=` adjust _how_ the run happens; they never skip Phase 3 (Elph delta) or the two-lenses rule.

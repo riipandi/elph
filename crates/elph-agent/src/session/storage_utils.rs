@@ -56,7 +56,79 @@ pub fn build_index(entries: Vec<SessionTreeEntry>, leaf_id: Option<String>) -> R
         by_id,
         labels_by_id,
         leaf_id: resolved_leaf,
+        checkpoints: HashMap::new(),
+        name: None,
     })
+}
+
+/// Compute session statistics from an index.
+pub fn compute_statistics(index: &SessionIndex) -> crate::session::types::SessionStatistics {
+    let total_entries = index.entries.len() as u64;
+    let mut message_count = 0u64;
+    let mut compaction_count = 0u64;
+    let mut branch_summary_count = 0u64;
+    for entry in &index.entries {
+        match entry.entry_type() {
+            "message" => message_count += 1,
+            "compaction" => compaction_count += 1,
+            "branch_summary" => branch_summary_count += 1,
+            _ => {}
+        }
+    }
+    crate::session::types::SessionStatistics {
+        total_entries,
+        message_count,
+        compaction_count,
+        branch_summary_count,
+        approximate_tokens: 0,
+        name: index.name.clone(),
+    }
+}
+
+/// Get path to root or stop at the nearest compaction boundary.
+/// Returns entries from the compaction boundary (or root) up to the leaf.
+pub fn get_path_to_root_or_compaction(
+    by_id: &HashMap<String, SessionTreeEntry>,
+    leaf_id: Option<&str>,
+) -> Result<Vec<SessionTreeEntry>, SessionError> {
+    let Some(leaf_id) = leaf_id else {
+        return Ok(Vec::new());
+    };
+    let mut path = Vec::new();
+    let mut current = by_id
+        .get(leaf_id)
+        .ok_or_else(|| SessionError::new(SessionErrorCode::NotFound, format!("Entry {leaf_id} not found")))?;
+    loop {
+        path.insert(0, current.clone());
+        // Stop at compaction boundary — we have a self-contained checkpoint tail.
+        if matches!(current, SessionTreeEntry::Compaction { .. }) {
+            break;
+        }
+        let Some(parent_id) = current.parent_id() else {
+            break;
+        };
+        current = by_id.get(parent_id).ok_or_else(|| {
+            SessionError::new(SessionErrorCode::InvalidSession, format!("Entry {parent_id} not found"))
+        })?;
+    }
+    Ok(path)
+}
+
+/// Get entries after a cursor position (exclusive `after_id`).
+pub fn get_entries_cursor(
+    entries: &[SessionTreeEntry],
+    cursor: &crate::session::types::CursorPosition,
+) -> Result<Vec<SessionTreeEntry>, SessionError> {
+    let after_idx = entries.iter().position(|e| e.id() == cursor.after_id).ok_or_else(|| {
+        SessionError::new(
+            SessionErrorCode::NotFound,
+            format!("Cursor entry {} not found", cursor.after_id),
+        )
+    })?;
+    let limit = cursor.limit as usize;
+    let start = after_idx + 1;
+    let end = std::cmp::min(start + limit, entries.len());
+    Ok(entries[start..end].to_vec())
 }
 
 pub fn append_to_index(index: &mut SessionIndex, entry: SessionTreeEntry) {

@@ -32,7 +32,8 @@ async fn find_tool_matches_glob_pattern_recursively() {
     get_or_throw(env.write_file("readme.md", "# readme\n").await);
 
     let tool = create_find_path_tool(env.clone());
-    let result = (tool.execute)("find-1".into(), json!({ "pattern": "*.rs" }), None, None)
+    let context = elph_agent::ToolContext::new(env.clone());
+    let result = (tool.execute)("find-1".into(), json!({ "pattern": "*.rs" }), None, None, context)
         .await
         .expect("find tool");
 
@@ -49,9 +50,16 @@ async fn grep_tool_finds_literal_pattern_in_directory() {
     get_or_throw(env.write_file("beta.txt", "goodbye world\n").await);
 
     let tool = create_grep_tool(env.clone());
-    let result = (tool.execute)("grep-1".into(), json!({ "pattern": "hello", "literal": true }), None, None)
-        .await
-        .expect("grep tool");
+    let context = elph_agent::ToolContext::new(env.clone());
+    let result = (tool.execute)(
+        "grep-1".into(),
+        json!({ "pattern": "hello", "literal": true }),
+        None,
+        None,
+        context,
+    )
+    .await
+    .expect("grep tool");
 
     let text = tool_text(result);
     assert!(text.contains("alpha.txt:1:hello world"), "unexpected output:\n{text}");
@@ -67,11 +75,13 @@ async fn grep_tool_scopes_search_to_single_file() {
     let path = format!("{}/one.txt", env.cwd().replace('\\', "/"));
 
     let tool = create_grep_tool(env.clone());
+    let context = elph_agent::ToolContext::new(env.clone());
     let result = (tool.execute)(
         "grep-2".into(),
         json!({ "pattern": "needle", "path": path, "literal": true }),
         None,
         None,
+        context,
     )
     .await
     .expect("grep tool");
@@ -87,7 +97,8 @@ async fn grep_tool_supports_regex_pattern() {
     get_or_throw(env.write_file("data.txt", "foo123 bar\n").await);
 
     let tool = create_grep_tool(env.clone());
-    let result = (tool.execute)("grep-3".into(), json!({ "pattern": "foo\\d+" }), None, None)
+    let context = elph_agent::ToolContext::new(env.clone());
+    let result = (tool.execute)("grep-3".into(), json!({ "pattern": "foo\\d+" }), None, None, context)
         .await
         .expect("grep tool");
 

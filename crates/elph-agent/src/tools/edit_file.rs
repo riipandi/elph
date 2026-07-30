@@ -18,6 +18,8 @@ pub fn create_edit_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "edit_file".into(),
+            constrained_sampling: None,
+
             description:
                 "Edits files by replacing specific text with new content. The old_string must match exactly once."
                     .into(),
@@ -80,6 +82,7 @@ async fn execute_edit(
             }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }

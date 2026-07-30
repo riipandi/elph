@@ -64,6 +64,7 @@ pub fn base_loop_config(model: Model, stream_fn: elph_agent::StreamFn) -> elph_a
         after_tool_call: None,
         stream_fn: Some(stream_fn),
         prompt_encoding: Default::default(),
+        tool_context: elph_agent::ToolContext::new(std::sync::Arc::new(elph_agent::LocalExecutionEnv::new("."))),
     }
 }
 

@@ -79,3 +79,13 @@ pub fn mixed_openai_apis() -> ProviderApi {
     map.insert("openai-responses".to_string(), openai_responses_api());
     ProviderApi::Map(map)
 }
+
+/// Mixed API map for gateway providers with Google AI support.
+pub fn mixed_gateway_apis() -> ProviderApi {
+    let mut map = std::collections::HashMap::new();
+    map.insert("anthropic-messages".to_string(), anthropic_messages_api());
+    map.insert("google-generative-ai".to_string(), google_generative_ai_api());
+    map.insert("openai-completions".to_string(), openai_completions_api());
+    map.insert("openai-responses".to_string(), openai_responses_api());
+    ProviderApi::Map(map)
+}

@@ -1,5 +1,6 @@
 //! Shared types for interactive components.
 
+use iocraft::prelude::Color;
 use serde::{Deserialize, Serialize};
 
 /// One selectable row (OpenTUI Select option).
@@ -7,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct SelectOption {
     pub name: String,
     pub description: String,
+    /// Optional per-row description color. When set, the [`SelectList`][crate::components::SelectList]
+    /// uses this instead of the default theme-based description color.
+    #[serde(skip)]
+    pub description_color: Option<Color>,
 }
 
 impl SelectOption {
@@ -14,6 +19,7 @@ impl SelectOption {
         Self {
             name: name.into(),
             description: description.into(),
+            description_color: None,
         }
     }
 }

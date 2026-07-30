@@ -38,6 +38,7 @@ pub use crate::runtime::loop_config::TransformContextFn;
 pub use crate::tools::types::AgentTool;
 pub use crate::tools::types::AgentToolCall;
 pub use crate::tools::types::AgentToolResult;
+pub use crate::tools::types::ToolContext;
 pub use crate::tools::types::ToolExecuteFn;
 pub use crate::tools::types::ToolResultContent;
 pub use crate::tools::types::ToolUpdateCallback;

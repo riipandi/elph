@@ -3,8 +3,8 @@
 Rust workspace for AI agent applications — coding agent CLI, shared runtime libraries, and terminal UI components.
 
 > [!WARNING]
-> This project is under active development, so you may encounter bugs.<br/>
-> Please review the release notes thoroughly before updating, as breaking changes can occur!
+> This actively developed project may have usability issues due to ongoing changes and occasional bugs.<br/>
+> Always check release notes before upgrading, since breaking changes could disrupt your workflow.
 
 ## Quick Start
 

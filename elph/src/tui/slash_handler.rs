@@ -18,8 +18,8 @@ use super::agent_bridge::SlashDispatcher;
 
 /// Handle `/memory` slash commands as a background task.
 ///
-/// Memory operations are async (Turso DB) and must not block the TUI render loop.
-/// The result is delivered as a `Status` UI event when the background task completes.
+/// Memory operations are async (Turso DB). The result is delivered as a
+/// `MemoryResult` UI event so the shell can open a ScrollTextDialog.
 fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let Some(paths) = ctx.paths else {
         return SlashOutcome::Status("Project directory required for memory commands.".into());
@@ -34,7 +34,7 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
             Err(err) => format!("memory error: {err}"),
         };
         if let Some(tx) = ui_tx {
-            let _ = tx.send(crate::agent::AgentUiEvent::Status(output));
+            let _ = tx.send(crate::agent::AgentUiEvent::MemoryResult(output));
         }
     });
 
@@ -62,6 +62,15 @@ pub enum SlashOutcome {
     OpenSessionInfoDialog {
         text: String,
     },
+    /// Provider list viewer (ScrollTextDialog).
+    OpenProviderListDialog {
+        text: String,
+    },
+    /// Memory operation result viewer (ScrollTextDialog).
+    #[allow(dead_code)]
+    OpenMemoryResultDialog {
+        text: String,
+    },
     /// Rename session inline text dialog (prefilled title).
     OpenRenameDialog {
         initial: String,
@@ -71,6 +80,14 @@ pub enum SlashOutcome {
     },
     /// Open feedback dialog (Report a Bug / Join Community).
     OpenFeedbackDialog,
+    /// Open provider connection dialog with OAuth or API key input.
+    OpenProviderConnectDialog {
+        provider_id: Option<String>,
+    },
+    /// Open provider disconnect dialog to remove stored credentials.
+    OpenProviderDisconnectDialog {
+        provider_id: Option<String>,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -125,10 +142,16 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
             mode: confetti_mode_from_slash_args(confetti_mode_from_args(&args)),
         },
         SlashDispatch::Feedback => SlashOutcome::OpenFeedbackDialog,
+        SlashDispatch::ProviderConnect { provider_id } => SlashOutcome::OpenProviderConnectDialog { provider_id },
+        SlashDispatch::ProviderDisconnect { provider_id } => SlashOutcome::OpenProviderDisconnectDialog { provider_id },
+        SlashDispatch::ProviderList => SlashOutcome::OpenProviderListDialog {
+            text: provider_list_slash_message(),
+        },
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
         SlashDispatch::OverlayNeeded(overlay) => match overlay {
+            OverlayCommand::ProviderConnect { .. } => SlashOutcome::OverlayDeferred(overlay),
             OverlayCommand::Model { filter } => SlashOutcome::OpenModelSelector { filter },
             OverlayCommand::ScopedModels => SlashOutcome::OpenScopedModels,
             other => SlashOutcome::OverlayDeferred(other),
@@ -202,6 +225,10 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OverlayDeferred(_)
             | SlashOutcome::Quit
             | SlashOutcome::OpenFeedbackDialog
+            | SlashOutcome::OpenProviderConnectDialog { .. }
+            | SlashOutcome::OpenProviderDisconnectDialog { .. }
+            | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMemoryResultDialog { .. }
     )
 }
 
@@ -216,7 +243,43 @@ pub fn overlay_deferred_message(overlay: &OverlayCommand) -> String {
         OverlayCommand::ScopedModels => "/scoped-models overlay not yet implemented".into(),
         OverlayCommand::Tree => "/tree overlay not yet implemented".into(),
         OverlayCommand::Resume => "/resume overlay not yet implemented".into(),
+        OverlayCommand::ProviderConnect { .. } => "/provider connect overlay not yet implemented".into(),
     }
+}
+
+pub fn provider_list_slash_message() -> String {
+    use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
+
+    let providers = get_provider_options();
+    let mut configured: Vec<_> = providers
+        .iter()
+        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
+        .collect();
+    configured.sort_by_key(|p| &p.id);
+
+    let mut lines = vec![format!("{} configured provider(s):\n", configured.len())];
+
+    if configured.is_empty() {
+        lines.push("  (none)".into());
+        lines.push(String::new());
+        lines.push(
+            "Tip: Use /provider connect or `elph provider connect <id> --env <VAR>` to register a provider.".into(),
+        );
+        return lines.join("\n");
+    }
+
+    let max_id = configured.iter().map(|p| p.id.len()).max().unwrap_or(0);
+    for p in configured {
+        let status = match &p.config_status {
+            ProviderConfigStatus::ApiKeyConfigured => "API key".into(),
+            ProviderConfigStatus::OAuthConfigured => "OAuth".into(),
+            ProviderConfigStatus::EnvVarConfigured(var) => format!("env: {var}"),
+            ProviderConfigStatus::Unconfigured => unreachable!(),
+        };
+        lines.push(format!("  {:<max_id$}  {}", p.id, status, max_id = max_id));
+    }
+
+    lines.join("\n")
 }
 
 #[cfg(test)]

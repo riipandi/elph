@@ -59,6 +59,8 @@ fn available_pairs() -> Vec<&'static ProviderPair> {
 fn test_tool() -> Tool {
     Tool {
         name: "double_number".to_string(),
+        constrained_sampling: None,
+
         description: "Doubles a number and returns the result".to_string(),
         parameters: json!({
             "type": "object",
@@ -111,6 +113,8 @@ async fn generate_fixture(pair: &ProviderPair) -> Option<Vec<Message>> {
         details: None,
         added_tool_names: None,
         is_error: false,
+        usage: None,
+
         timestamp: 1,
     };
     let final_context = Context {

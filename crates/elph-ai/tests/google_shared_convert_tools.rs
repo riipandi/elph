@@ -6,6 +6,7 @@ use serde_json::json;
 fn strips_json_schema_meta_keys_from_parameters() {
     let tools = vec![Tool {
         name: "search".to_string(),
+        constrained_sampling: None,
         description: "Search the web".to_string(),
         parameters: json!({
             "$schema": "https://json-schema.org/draft/2020-12/schema",

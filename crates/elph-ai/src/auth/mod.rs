@@ -1,6 +1,7 @@
 pub mod context;
 pub mod credential_store;
 pub mod helpers;
+pub mod models_store;
 pub mod oauth;
 pub mod resolve;
 pub mod types;
@@ -10,6 +11,7 @@ pub use context::default_auth_context;
 pub use credential_store::InMemoryCredentialStore;
 pub use helpers::OAuthLoader;
 pub use helpers::{env_api_key_auth, lazy_oauth};
+pub use models_store::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore};
 pub use oauth::OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 pub use oauth::{OAuthApiKeyResult, OAuthProviderInterface, OPENAI_CODEX_BROWSER_LOGIN_METHOD};
 pub use oauth::{anthropic_oauth, builtin_oauth_provider_ids, get_oauth_api_key, get_oauth_provider};

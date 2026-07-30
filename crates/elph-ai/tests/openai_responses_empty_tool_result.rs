@@ -23,6 +23,7 @@ fn uses_no_tool_output_placeholder_for_empty_tool_results_without_images() {
         provider: model.provider.clone(),
         model: model.id.clone(),
         diagnostics: None,
+        pending_stop_reason: None,
         usage: Usage::default(),
         stop_reason: StopReason::ToolUse,
         timestamp: 0,
@@ -45,6 +46,8 @@ fn uses_no_tool_output_placeholder_for_empty_tool_results_without_images() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

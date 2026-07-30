@@ -37,6 +37,7 @@ pub(super) fn create_failure_message(model: &Model, error: &str, aborted: bool) 
         response_model: None,
         response_id: None,
         diagnostics: None,
+        pending_stop_reason: None,
         usage: elph_ai::Usage::default(),
         stop_reason: if aborted {
             StopReason::Aborted

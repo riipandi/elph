@@ -44,6 +44,7 @@ pub(super) fn create_tool_result_message(finalized: &FinalizedToolCall) -> Messa
         content,
         details: Some(details),
         added_tool_names: finalized.result.added_tool_names.clone(),
+        usage: finalized.result.usage.clone().map(|b| *b),
         is_error: finalized.is_error,
         timestamp: std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

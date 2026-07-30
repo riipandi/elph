@@ -46,6 +46,7 @@ parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
+serde_urlencoded.workspace = true
 rustls.workspace = true
 schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }

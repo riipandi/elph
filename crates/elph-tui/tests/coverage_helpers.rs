@@ -34,7 +34,7 @@ fn wire_edit_handle_key_applies_text_change() {
     )
     .unwrap();
     wire_edit_apply_result(result, &mut value, &mut handle, &mut esc);
-    assert_eq!(value, "");
+    assert_eq!(value, "hello ");
 }
 
 #[test]

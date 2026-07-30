@@ -34,6 +34,7 @@ fn reasoning_content_on_assistant_messages_when_required() {
             provider: model.provider.clone(),
             model: model.id.clone(),
             diagnostics: None,
+            pending_stop_reason: None,
             usage: Default::default(),
             stop_reason: StopReason::Stop,
             timestamp: 0,

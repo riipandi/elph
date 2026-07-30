@@ -23,11 +23,14 @@ pub use auth::oauth::OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 pub use auth::oauth::unregister_oauth_provider;
 pub use auth::oauth::{OAuthApiKeyResult, OAuthProviderInterface, OPENAI_CODEX_BROWSER_LOGIN_METHOD};
 pub use auth::oauth::{anthropic_oauth, builtin_oauth_provider_ids, get_oauth_api_key, get_oauth_provider};
-pub use auth::oauth::{get_oauth_providers, github_copilot_oauth, oauth_provider_modify_models, openai_codex_oauth};
+pub use auth::oauth::{
+    get_oauth_providers, github_copilot_oauth, oauth_provider_login, oauth_provider_modify_models, openai_codex_oauth,
+};
 pub use auth::oauth::{refresh_oauth_token, register_oauth_provider, reset_oauth_providers};
 pub use auth::{ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, AuthResult, BoxFuture, Credential};
+pub use auth::{CredentialInfo, ModelsErrorCode, OAuthCredential, ProviderAuth};
 pub use auth::{CredentialStore, DefaultAuthContext, InMemoryCredentialStore, ModelAuth, ModelsError};
-pub use auth::{ModelsErrorCode, OAuthCredential, ProviderAuth};
+pub use auth::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore};
 pub use auth::{default_auth_context, env_api_key_auth, resolve_provider_auth};
 pub use images::{CreateImagesModelsOptions, ImagesModels};
 pub use images::{builtin_images_models, generate_images};
@@ -43,4 +46,5 @@ pub use types::*;
 pub use utils::deferred_tools::split_deferred_tools;
 pub use utils::diagnostics::{append_assistant_message_diagnostic, create_assistant_message_diagnostic};
 pub use utils::event_stream::EventStreamIterator;
-pub use utils::{overflow, retry, validation};
+pub use utils::text::{assistant_content_text, content_text};
+pub use utils::{overflow, retry, text, validation};

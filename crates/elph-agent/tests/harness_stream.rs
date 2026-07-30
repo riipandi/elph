@@ -36,6 +36,8 @@ fn calculate_tool() -> elph_agent::AgentTool {
     simple_tool(
         Tool {
             name: "calculate".into(),
+            constrained_sampling: None,
+
             description: "Evaluate arithmetic".into(),
             parameters: json!({
                 "type": "object",

@@ -26,6 +26,7 @@ fn create_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "create_goal".into(),
+            constrained_sampling: None,
             description: "Create a session goal with an objective and optional budgets.".into(),
             parameters: json!({
                 "type": "object",
@@ -63,6 +64,7 @@ fn get_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "get_goal".into(),
+            constrained_sampling: None,
             description: "Get the current session goal status and remaining budgets.".into(),
             parameters: json!({
                 "type": "object",
@@ -78,6 +80,7 @@ fn update_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "update_goal".into(),
+            constrained_sampling: None,
             description: "Update the active goal status to complete or blocked.".into(),
             parameters: json!({
                 "type": "object",
@@ -100,6 +103,7 @@ fn set_goal_budget_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool 
     simple_tool(
         elph_ai::Tool {
             name: "set_goal_budget".into(),
+            constrained_sampling: None,
             description: "Set token, turn, or wall-clock budget on the active goal.".into(),
             parameters: json!({
                 "type": "object",

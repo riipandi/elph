@@ -16,6 +16,7 @@ APP           ?= elph
 # Use sccache when installed; otherwise leave RUSTC_WRAPPER unset (normal rustc).
 SCCACHE_BIN := $(shell command -v sccache 2>/dev/null)
 ifneq ($(SCCACHE_BIN),)
+  export AWS_PROFILE := r2-sccache
   export RUSTC_WRAPPER := sccache
   export SCCACHE_DIRECT := true
 endif

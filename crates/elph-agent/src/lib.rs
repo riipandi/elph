@@ -335,6 +335,8 @@ pub use tools::mcp::Aes256Key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::AuthStoreFile;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::AuthStoreGuard;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
@@ -350,6 +352,8 @@ pub use tools::mcp::DEFAULT_OAUTH_SCOPES;
 pub use tools::mcp::DEFAULT_OPERATION_TIMEOUT_SECS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::ENC_PREFIX;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::ENV_REF_PREFIX;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::FileCredentialStore;
 #[cfg(feature = "mcp")]
@@ -454,6 +458,8 @@ pub use tools::mcp::is_encrypted_value;
 pub use tools::mcp::list_tools;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::list_tools_for_server;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::lock_auth_store;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent;
 #[cfg(feature = "mcp")]

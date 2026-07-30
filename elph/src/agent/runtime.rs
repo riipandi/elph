@@ -47,7 +47,13 @@ pub async fn create_coding_session_with_events(
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
     };
-    let selection = resolve_model(options.settings, options.provider_override, options.model_override).await?;
+    let selection = resolve_model(
+        options.settings,
+        options.provider_override,
+        options.model_override,
+        Some(&options.paths.auth_store_path()),
+    )
+    .await?;
 
     let resources = match options.preloaded_resources {
         Some(loaded) => loaded.resources,

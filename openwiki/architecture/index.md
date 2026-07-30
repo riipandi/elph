@@ -1,4 +1,4 @@
 # Files
 
-- [Elph Architecture Overview](overview.md) - High-level architecture, crate dependency graph, and design principles for the Elph AI Agent workspace.
-- [Elph Source Map](source-map.md) - Comprehensive crate-by-crate module map with file paths and responsibilities for the Elph workspace.
+- [Elph Architecture Overview](overview.md) - High-level architecture of the Elph AI coding agent — crate dependency graph, agent loop phases, and session persistence
+- [Elph Crate-by-Crate Source Map](source-map.md) - Module map for every crate in the Elph workspace, noting which modules are pi ports vs elph-only

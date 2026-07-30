@@ -5,7 +5,10 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use crate::auth::helpers::lazy_oauth;
 use crate::auth::oauth::openai_codex_oauth_loader;
-use crate::auth::oauth::{anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader};
+use crate::auth::oauth::{
+    anthropic_oauth_loader, github_copilot_oauth_loader, hyper_oauth_loader, kimi_oauth_loader,
+    openrouter_oauth_loader, radius_oauth_loader, xai_oauth_loader,
+};
 use crate::auth::types::{AuthLoginCallbacks, ModelAuth, OAuthAuth, OAuthCredential};
 use crate::models::catalog::GITHUB_COPILOT_MODELS;
 use crate::types::Model;
@@ -69,7 +72,51 @@ fn built_in_providers() -> Vec<OAuthProviderInterface> {
         github_copilot_provider(),
         hyper_provider(),
         openai_codex_provider(),
+        xai_provider(),
+        kimi_provider(),
+        openrouter_provider(),
+        radius_provider(),
     ]
+}
+
+fn xai_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "xai".to_string(),
+        name: "xAI (Grok/X subscription)".to_string(),
+        auth: lazy_oauth("xAI (Grok/X subscription)", xai_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
+fn kimi_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "kimi-coding".to_string(),
+        name: "Kimi Code Subscription".to_string(),
+        auth: lazy_oauth("Kimi Code Subscription", kimi_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
+fn openrouter_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "openrouter".to_string(),
+        name: "OpenRouter".to_string(),
+        auth: lazy_oauth("OpenRouter", openrouter_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
+}
+
+fn radius_provider() -> OAuthProviderInterface {
+    OAuthProviderInterface {
+        id: "radius".to_string(),
+        name: "Inflection AI (pi-messages)".to_string(),
+        auth: lazy_oauth("Inflection AI (pi-messages)", radius_oauth_loader()),
+        get_api_key: Arc::new(|c| c.access.clone()),
+        modify_models: None,
+    }
 }
 
 fn modify_github_copilot_models(models: Vec<Model>, credential: &OAuthCredential) -> Vec<Model> {
@@ -189,7 +236,16 @@ pub fn oauth_provider_modify_models(provider_id: &str, models: Vec<Model>, crede
 }
 
 pub fn builtin_oauth_provider_ids() -> Vec<&'static str> {
-    vec!["anthropic", "github-copilot", "hyper", "openai-codex"]
+    vec![
+        "anthropic",
+        "github-copilot",
+        "hyper",
+        "openai-codex",
+        "xai",
+        "kimi-coding",
+        "openrouter",
+        "radius",
+    ]
 }
 
 pub fn github_copilot_catalog_models() -> Vec<Model> {

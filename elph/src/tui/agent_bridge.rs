@@ -176,6 +176,9 @@ impl SlashDispatcher {
                 | SlashDispatch::Rename { .. }
                 | SlashDispatch::Confetti { .. }
                 | SlashDispatch::Feedback
+                | SlashDispatch::ProviderConnect { .. }
+                | SlashDispatch::ProviderDisconnect { .. }
+                | SlashDispatch::ProviderList
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}
@@ -464,6 +467,7 @@ impl TranscriptEventApplier {
             | AgentUiEvent::UserQuestionRequired(_)
             | AgentUiEvent::ModeChangeRequired(_)
             | AgentUiEvent::QueueUpdate { .. }
+            | AgentUiEvent::MemoryResult(_)
             | AgentUiEvent::UserPromptCommitted { .. } => false,
             // ToolApprovalRequired is handled in shell (must respond on response_tx).
             AgentUiEvent::ToolApprovalRequired(_) => false,

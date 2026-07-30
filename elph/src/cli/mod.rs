@@ -7,6 +7,7 @@ mod export;
 mod extensions;
 mod help;
 mod import;
+mod interactive;
 mod mcp;
 mod memory;
 mod models;
@@ -51,6 +52,14 @@ pub struct Cli {
     /// Print version information
     #[arg(short = 'V', long = "version", help = "Print version information")]
     pub version: bool,
+
+    /// Continue last session for the current working directory
+    #[arg(
+        short = 'c',
+        long = "continue",
+        help = "Continue last session for the current working directory"
+    )]
+    pub continue_session: bool,
 
     /// Resume a specific session by ID (interactive TUI)
     #[arg(long = "resume", value_name = "SESSION_ID")]

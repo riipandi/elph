@@ -7,14 +7,14 @@ use turso::Builder;
 use crate::datastore::migrations::run as run_migrations;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
-use crate::session::storage_utils::{append_to_index, build_index, create_leaf_entry, find_entries, get_path_to_root};
-use crate::session::types::SessionError;
-use crate::session::types::SessionErrorCode;
-use crate::session::types::SessionIndex;
-use crate::session::types::SessionMetadata;
-use crate::session::types::SessionStorage;
-use crate::session::types::SessionTreeEntry;
-use crate::session::types::TursoSessionMetadata;
+use crate::session::storage_utils::{
+    append_to_index, build_index, compute_statistics, create_leaf_entry, find_entries, get_entries_cursor,
+    get_path_to_root, get_path_to_root_or_compaction,
+};
+use crate::session::types::{
+    CheckpointTail, CursorPosition, SessionError, SessionErrorCode, SessionIndex, SessionMetadata, SessionStatistics,
+    SessionStorage, SessionTreeEntry, TursoSessionMetadata,
+};
 
 pub struct TursoSessionStorage {
     db_path: PathBuf,
@@ -250,8 +250,41 @@ impl SessionStorage for TursoSessionStorage {
         get_path_to_root(&self.index.by_id, leaf_id)
     }
 
+    async fn get_path_to_root_or_compaction(
+        &self,
+        leaf_id: Option<&str>,
+    ) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        get_path_to_root_or_compaction(&self.index.by_id, leaf_id)
+    }
+
     async fn get_entries(&self) -> Vec<SessionTreeEntry> {
         self.index.entries.clone()
+    }
+
+    async fn get_entries_cursor(&self, cursor: &CursorPosition) -> Result<Vec<SessionTreeEntry>, SessionError> {
+        get_entries_cursor(&self.index.entries, cursor)
+    }
+
+    async fn get_statistics(&self) -> SessionStatistics {
+        compute_statistics(&self.index)
+    }
+
+    async fn store_checkpoint_tail(&mut self, tail: CheckpointTail) -> Result<String, SessionError> {
+        let root_id = tail.root_id.clone();
+        self.index.checkpoints.insert(root_id.clone(), tail);
+        Ok(root_id)
+    }
+
+    async fn load_checkpoint_tail(&self, root_id: &str) -> Result<Option<CheckpointTail>, SessionError> {
+        Ok(self.index.checkpoints.get(root_id).cloned())
+    }
+
+    async fn list_checkpoint_tails(&self) -> Vec<String> {
+        self.index.checkpoints.keys().cloned().collect()
+    }
+
+    async fn get_name(&self) -> Option<String> {
+        self.index.name.clone()
     }
 }
 

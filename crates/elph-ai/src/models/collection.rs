@@ -119,6 +119,7 @@ pub fn create_provider(input: CreateProviderOptions) -> Provider {
     }
 }
 
+#[derive(Default)]
 pub struct CreateModelsOptions {
     pub credentials: Option<Arc<dyn CredentialStore>>,
     pub auth_context: Option<Arc<dyn AuthContext>>,

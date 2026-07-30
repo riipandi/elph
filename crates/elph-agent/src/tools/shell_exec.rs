@@ -18,11 +18,18 @@ use crate::tools::common::{check_aborted, resolve_path};
 use crate::types::{AgentTool, AgentToolResult, ToolExecuteFn, ToolResultContent, ToolUpdateCallback};
 use elph_ai::TextContent;
 
+/// Create a shell_exec tool that uses ToolContext for execution.
+///
+/// Unlike the old pattern (capturing `Arc<LocalExecutionEnv>` at construction),
+/// this tool receives the env from the harness-provided `ToolContext` at runtime.
 pub fn create_shell_exec_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
-    let env_for_tool = env.clone();
+    // For backward compatibility, still accept env, but delegate to context-aware execution.
+    let _ = env;
     AgentTool {
         tool: Tool {
             name: "shell_exec".into(),
+            constrained_sampling: None,
+
             description: format!(
                 "Execute a shell command in the current working directory. Output truncated to last {DEFAULT_MAX_LINES} lines or {}/KB.",
                 DEFAULT_MAX_BYTES / 1024
@@ -39,14 +46,19 @@ pub fn create_shell_exec_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
         label: "shell_exec".into(),
         execution_mode: None,
         prepare_arguments: None,
-        execute: shell_exec_execute_fn(env_for_tool),
+        execute: shell_exec_execute_fn(),
     }
 }
 
-fn shell_exec_execute_fn(env: Arc<LocalExecutionEnv>) -> ToolExecuteFn {
+fn shell_exec_execute_fn() -> ToolExecuteFn {
     Arc::new(
-        move |_id, args, signal, on_update| -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
-            let env = env.clone();
+        move |_id,
+              args,
+              signal,
+              on_update,
+              context|
+              -> Pin<Box<dyn Future<Output = anyhow::Result<AgentToolResult>> + Send>> {
+            let env = context.env.clone();
             Box::pin(async move { execute_shell_exec(env, args, signal, on_update).await })
         },
     )
@@ -75,6 +87,7 @@ async fn execute_shell_exec(
                 details: json!({ "streaming": true }),
                 added_tool_names: None,
                 terminate: None,
+                usage: None,
             });
         }) as Arc<dyn Fn(&str) + Send + Sync>
     });
@@ -120,6 +133,7 @@ async fn execute_shell_exec(
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 

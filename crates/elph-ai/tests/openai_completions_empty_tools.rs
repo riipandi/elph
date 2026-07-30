@@ -52,6 +52,7 @@ fn sends_empty_tools_array_when_conversation_has_tool_history() {
                 provider: model.provider.clone(),
                 model: model.id.clone(),
                 diagnostics: None,
+                pending_stop_reason: None,
                 usage: Usage::default(),
                 stop_reason: StopReason::ToolUse,
                 timestamp: 0,
@@ -68,6 +69,8 @@ fn sends_empty_tools_array_when_conversation_has_tool_history() {
                 details: None,
                 added_tool_names: None,
                 is_error: false,
+                usage: None,
+
                 timestamp: 1,
             },
         ],

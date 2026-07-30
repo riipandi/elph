@@ -1,6 +1,6 @@
 {
-    "updatedAt": "2026-07-26T21:10:29.277Z",
-    "command": "update",
-    "gitHead": "c7b677c7f107632bc39e40ae0642159662d7601e",
-    "model": "kilo-auto/free"
+    "updatedAt": "2026-07-29T12:10:14.690Z",
+    "command": "init",
+    "gitHead": "8a731dcd606d5826e35b9c3b871ad686c7de6417",
+    "model": "deepseek-v4-flash"
 }

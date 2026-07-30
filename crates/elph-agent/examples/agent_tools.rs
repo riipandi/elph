@@ -45,6 +45,8 @@ async fn main() -> anyhow::Result<()> {
                 simple_tool(
                     Tool {
                         name: "uppercase".into(),
+                        constrained_sampling: None,
+
                         description: "Convert text to uppercase".into(),
                         parameters: json!({
                             "type": "object",

@@ -18,6 +18,7 @@ pub fn create_delete_path_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "delete_path".into(),
+constrained_sampling: None,
             description: "Deletes a file or directory (including contents recursively) at the specified path and confirms the deletion.".into(),
             parameters: json!({
                 "type": "object",

@@ -18,6 +18,8 @@ pub fn create_write_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "write_file".into(),
+                constrained_sampling: None,
+
             description: "Creates a new file or overwrites an existing file with completely new contents. Creates parent directories when needed.".into(),
             parameters: json!({
                 "type": "object",
@@ -72,6 +74,7 @@ async fn execute_write(
             }),
             added_tool_names: None,
             terminate: None,
+            usage: None,
         }),
         HarnessResult::Err(error) => Err(file_error(error)),
     }

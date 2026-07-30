@@ -1,122 +1,147 @@
 ---
 type: Architecture
 title: Elph Architecture Overview
-description: High-level architecture, crate dependency graph, and design principles for the Elph AI Agent workspace.
-tags: [architecture, design, rust, workspace]
+description: High-level architecture of the Elph AI coding agent — crate dependency graph, agent loop phases, and session persistence
+tags: [architecture, agent-loop, session, persistence]
 ---
 
 # Architecture Overview
 
-## Crate dependency graph
+## Crate Dependency Graph
 
 ```
-                    ┌───────────────────────────────────┐
-                    │         elph (binary)             │
-                    │  CLI + TUI + coding agent wiring  │
-                    └────┬───────┬───────┬───────┬──────┘
-                         │       │       │       │
-              ┌──────────┤       │       │       │
-              │          │       │       │       │
-        ┌─────▼────┐ ┌───▼───┐ ┌─▼─────┐ │ ┌─────▼──────┐
-        │ elph-tui │ │elph-ai│ │elph-  │ │ │ elph-exec  │
-        │(iocraft) │ │(LLM)  │ │agent  │ │ │ (PTY/shell)│
-        └──────────┘ └───┬───┘ └─┬─────┘ │ └────────────┘
-                         │       │       │
-                   ┌─────▼───────▼───────▼─┐
-                   │     floppy              │
-                   │ (vector memory, Turso +  │
-                   │  ONNX embeddings, query) │
-                   └─────────────────────────┘
+                ┌─────────────────────────────────────────────────┐
+                │                   elph (product)                │
+                │  CLI · TUI (iocraft) · Agent wiring · Memory   │
+                └──────┬──────────┬────────────┬─────────────────┘
+                       │          │            │
+          ┌────────────┘          │            └──────────────┐
+          ▼                       ▼                           ▼
+   ┌──────────────┐    ┌──────────────────┐        ┌──────────────────┐
+   │  elph-agent  │◄───│    elph-ai       │        │    elph-tui      │
+   │ Agent runtime │    │ LLM providers,   │        │ iocraft widgets, │
+   │ Harness, MCP  │    │ auth, models     │        │ markdown, diff   │
+   │ Compaction,   │    │ streaming, retry │        │ text editing     │
+   │ Skills, Tools │    └──────────────────┘        └──────────────────┘
+   └──────┬────────┘
+          │
+          ▼
+   ┌──────────────┐
+   │  elph-exec   │
+   │ Shell, PTY   │
+   └──────────────┘
 ```
 
-**Source:** `/Cargo.toml` workspace members, each crate's `Cargo.toml` dependency declarations.
+- `elph-agent` depends on `elph-ai` for all LLM communication.
+- `elph-agent` depends on `elph-exec` for shell execution and PTY.
+- `elph` (product) depends on `elph-agent` (with `full` features), `elph-ai`, `elph-tui`, and `floppy`.
 
-## Layer responsibilities
+## Agent Loop Phases
 
-### Binary layer: `elph/`
+The agent loop runs inside `AgentHarness<S>` (defined in `crates/elph-agent/src/agent/harness/mod.rs`). The harness wraps a generic `SessionStorage` backend (`S`). See the detailed [Agent Loop](../workflows/agent-loop.md) page for the full turn cycle.
 
-The `elph` package (`/elph/Cargo.toml`) produces both a library and binary. `main.rs` parses CLI args with clap and dispatches to `cli::run()`. The library crate exposes all modules for integration testing.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AgentHarness<S>                          │
+│                                                                 │
+│  Phase: Idle ──► Turn ──► (Compaction | BranchSummary | Retry) ──► Idle  │
+│                                                                 │
+│  Inner loop (runtime/run_loop.rs):                               │
+│    stream_assistant_response() ──► execute_tool_calls()          │
+│        ──► prepare_next_turn() ──► drain steering/follow-up      │
+│        ──► repeat until StopReason::EndTurn / Stop / MaxTokens   │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-Key routing:
+Key phases (`AgentHarnessPhase` enum from `harness/types.rs`):
 
-- **Interactive TUI** → `tui::run_tui()` — iocraft-based shell
-- **Non-interactive** → `cli::run::run()` — agent run in non-interactive mode
-- **Admin subcommands** → `cli::mcp`, `cli::memory`, `cli::session`, etc.
+| Phase         | Description                                                                         |
+| ------------- | ----------------------------------------------------------------------------------- |
+| `Idle`        | Ready for next prompt. Guards `prompt()` and `skill()` entry.                       |
+| `Turn`        | Main turn execution. Runs `create_turn_state()` → `execute_turn()`.                 |
+| Compaction    | Background context window compaction. See [Compaction](../workflows/compaction.md). |
+| BranchSummary | Branch summarization for multi-turn sessions.                                       |
+| Retry         | Automatic retry on transient provider errors.                                       |
 
-### Agent runtime: `elph-agent`
+### Turn Execution Flow
 
-Generic, app-agnostic agent runtime (`/crates/elph-agent/`). See [agent-runtime.md](../agent-runtime.md).
+`AgentHarness::prompt()` (from `prompt_ops.rs`):
 
-Key modules:
+1. **Guard**: Asserts phase is `Idle`, sets phase to `Turn`.
+2. **`begin_run()`**: Emits `AgentHarnessEvent::Started`.
+3. **`create_turn_state()`**: Builds `TurnState` with session context, skills, tool registry.
+4. **`execute_turn()`**: Calls `run_agent_loop()` from `runtime/run_loop.rs`.
+5. **`finish_run()`**: Emits completion event, phase back to `Idle`.
 
-| Module           | Responsibility                                             |
-| ---------------- | ---------------------------------------------------------- |
-| `runtime/`       | Turn loop: stream → tool execute → repeat                  |
-| `agent/harness/` | Agent harness: session persistence, hooks, compaction      |
-| `tools/`         | Built-in tools (edit, search, web, shell_exec, MCP)        |
-| `tools/mcp/`     | MCP client: stdio, HTTP, SSE; OAuth; policy engine         |
-| `session/`       | Session storage (in-memory, dir, Turso)                    |
-| `compaction/`    | History compaction, token estimation, branch summarization |
-| `goals/`         | Goal/todo lifecycle with budgets                           |
-| `messages/`      | Message types, shell output formatting                     |
-| `collaboration/` | Plan/implement modes with tool exposure policies           |
-| `plugins/`       | WASM extension support via wasmtime                        |
+The inner loop (`runtime/run_loop.rs`) iterates:
 
-### LLM provider layer: `elph-ai`
+```
+loop {
+    // 1. Drain steering messages
+    // 2. stream_assistant_response() — SSE/streaming from provider
+    // 3. Extract tool calls, if any
+    // 4. execute_tool_calls() — run each tool, collect results
+    // 5. If stop_reason is EndTurn/Stop/MaxTokens, break
+    // 6. Otherwise, feed tool results back and continue
+}
+```
 
-Provider-agnostic LLM API (`/crates/elph-ai/`). Supports 30+ providers.
+## Session Persistence
 
-| Module       | Responsibility                                          |
-| ------------ | ------------------------------------------------------- |
-| `api/`       | Provider API implementations                            |
-| `auth/`      | API key resolution, OAuth 2.1 + PKCE                    |
-| `models/`    | Model catalog with capabilities metadata                |
-| `providers/` | Provider definitions + `faux` mock provider for testing |
+`AgentHarness` is generic over `S: SessionStorage + Clone + Send + Sync + 'static`. The product uses `SessionDirStorage` (Turso-based flat-file session store).
 
-### Core primitives: `floppy`
+Session entries are stored as a tree (`SessionTreeEntry` enum):
 
-Standalone AI memory crate (`/crates/floppy/`). Provides vector memory with Turso + ONNX embeddings, query engine, scoring, and report generation.
+- `Message { message, metadata }` — LLM messages
+- `ToolResult { tool_name, result, metadata }` — tool execution results
+- `Summary { summary, metadata }` — compaction summaries
 
-| Module          | Responsibility                                           |
-| --------------- | -------------------------------------------------------- |
-| `store/`        | Storage layer (read/write, embed, tasks)                 |
-| `query/`        | Query engine (memories, search, status, tasks, timeline) |
-| `types/`        | Config, memory, report, task types                       |
-| `embed.rs`      | ONNX embedding integration                               |
-| `scoring.rs`    | Relevance scoring and ranking                            |
-| `report.rs`     | Report generation                                        |
-| `util.rs`       | Utility functions                                        |
-| `builder.rs`    | Floppy builder for initialization                        |
-| `migrations.rs` | Database migration management                            |
-| `paths.rs`      | Path resolution for floppy data files                    |
+The `SessionStorage` trait (from `crates/elph-agent/src/session/types.rs`) defines:
 
-### TUI: `elph-tui`
+- `append_entry()`, `append_entries()`
+- `read_tree()` / `read_tree_since()`
+- `build_context_with_options()` — session context for prompts
+- `get_path_to_root_or_compaction()` — for context window slicing
 
-Reusable terminal UI components built on the patched `iocraft` crate (`/crates/elph-tui/`). See [tui-shell.md](../tui-shell.md).
+## Key Traits
 
-## Design principles
+| Trait             | Location                                       | Purpose                                                               |
+| ----------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| `AgentHarness`    | `crates/elph-agent/src/agent/harness/`         | Hook-rich agent orchestration                                         |
+| `SessionStorage`  | `crates/elph-agent/src/session/types.rs`       | Session persistence backend                                           |
+| `CredentialStore` | `crates/elph-ai/src/auth/`                     | API key + OAuth credential storage — see [Auth](../workflows/auth.md) |
+| `ModelsStore`     | `crates/elph-ai/src/auth/models_store.rs`      | Dynamic provider catalog storage — see [Auth](../workflows/auth.md)   |
+| `ProviderStreams` | `crates/elph-ai/src/providers/adapter.rs`      | Provider API adapter trait — see [Providers](../domains/providers.md) |
+| `ExecutionEnv`    | `crates/elph-agent/src/agent/harness/types.rs` | Filesystem and shell execution — see [Tools](../domains/tools.md)     |
 
-1. **Minimal agent CLI** — one interactive binary, non-interactive `run`, and admin subcommands
-2. **Native tool calling** — models invoke tools via provider APIs; text markup is fallback only
-3. **Durable sessions** — conversations, checkpoints, metadata survive restarts
-4. **Project memory** — cross-session lessons via vector store; semantic retrieval at task start
-5. **Light TUI** — multiline prompt, sticky-tail scroll, inline tools, minimal chrome
-6. **Safe defaults** — risky tools require approval; _brave_ mode is opt-in
-7. **Feature-gated tools** — built-in tools are Cargo features for minimal builds
-8. **No direct env reading in libraries** — host binary passes config explicitly
-9. **Deep merge settings** — project overlays per nested key, never written back to home
+## Session Persistence Lifecycle
 
-## License split
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant H as AgentHarness
+    participant S as SessionStorage
+    participant P as LLM Provider
+    participant T as Tool Executor
 
-- **Application** (`elph/`) — Apache 2.0
-- **Libraries** — MIT (elph-core, elph-ai, elph-agent, elph-tui, elph-swarm)
+    U->>H: prompt("write a test")
+    H->>S: append_entry(user_message)
+    H->>P: stream_assistant_response(context)
+    P-->>H: stream of AssistantContentBlock
+    H->>S: append_entry(assistant_message)
+    H->>T: execute_tool_calls(tool_calls)
+    T-->>H: AgentToolResult
+    H->>S: append_entry(tool_result)
+    H->>P: next turn with tool results
+    P-->>H: final assistant message
+    H->>S: append_entry(final_message)
+    H-->>U: AssistantMessage
+```
 
-This is intentional: users deploying the binary get strong patent protections via Apache 2.0; library consumers get permissive MIT.
+## Source References
 
-## Key design decisions from git history
-
-1. **Rust edition 2024** ([commit `901dd3c`](https://github.com/riipandi/elph/commit/901dd3c)) — refactored `elph-core` into floppy, elph, and library crates. Dissolved the intermediate `elph-core` crate and redistributed its content.
-2. **elph-core reintroduction** ([commit `ed330a0`](https://github.com/riipandi/elph/commit/ed330a0)) — reverted the dissolve when the split created import complexity; consolidated again as a shared primitives crate.
-3. **TOON encoding** — compressed JSON format for tool results to reduce token consumption; controlled by `ELPH_PROMPT_ENCODING` env var.
-4. **Patched iocraft** — local vendor at `/vendor/iocraft/` for bracketed paste support not yet on crates.io.
-5. **`shell_exec` rename** ([commit `f014ddd`](https://github.com/riipandi/elph/commit/f014ddd)) — `bash` tool renamed to `shell_exec` across the codebase for platform-neutral naming.
+- `crates/elph-agent/src/agent/harness/mod.rs` — harness module structure
+- `crates/elph-agent/src/agent/harness/prompt_ops.rs` — `prompt()` and `skill()` entry points
+- `crates/elph-agent/src/runtime/run_loop.rs` — core turn iteration
+- `crates/elph-agent/src/session/types.rs` — `SessionStorage` trait
+- `crates/elph-agent/src/agent/harness/types.rs` — `AgentHarnessPhase`, `AgentHarnessError`, `CompactionSettings`

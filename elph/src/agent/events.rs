@@ -47,6 +47,8 @@ pub struct QueuedPromptItem {
 #[derive(Debug)]
 pub enum AgentUiEvent {
     Status(String),
+    /// Result of a `/memory` command — the shell opens a ScrollTextDialog.
+    MemoryResult(String),
     TextDelta(String),
     ThinkingDelta(String),
     ToolStart {

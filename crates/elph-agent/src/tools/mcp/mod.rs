@@ -38,6 +38,7 @@ mod session;
 mod sse;
 #[cfg(feature = "mcp")]
 mod store_lock;
+pub use store_lock::{AuthStoreGuard, lock_auth_store};
 #[cfg(feature = "mcp")]
 mod truncate;
 #[cfg(feature = "mcp")]
@@ -47,6 +48,8 @@ mod validate;
 pub use auth::AuthStoreFile;
 #[cfg(feature = "mcp")]
 pub use auth::AuthStorePathBuilder;
+#[cfg(feature = "mcp")]
+pub use auth::ENV_REF_PREFIX;
 #[cfg(feature = "mcp")]
 pub use auth::FileCredentialStore;
 #[cfg(feature = "mcp")]

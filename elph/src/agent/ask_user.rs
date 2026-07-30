@@ -20,6 +20,7 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
     elph_agent::simple_tool(
         Tool {
             name: "ask_user_question".into(),
+                constrained_sampling: None,
             description: "Ask the user one or more questions to gather structured input. Use `questions` for multi-step flows. Each step may offer numbered choices, multi-select (`allow_multiple`), and/or an inline custom text field (`allow_custom`). Returns a plain string for a single simple answer, or JSON for multi-step / multi-select results.".into(),
             parameters: json!({
                 "type": "object",

@@ -1,10 +1,13 @@
 //! Tool-approval dialog below the status row (ask-user prompts use [`super::user_question_bar`] above).
 
-use elph_tui::components::{SELECT_LIST_AUTO_HEIGHT, SelectList, UiTheme, select_list_total_rows};
+use elph_tui::components::{
+    DialogUserInputContent, SELECT_LIST_AUTO_HEIGHT, SelectList, UiTheme, select_list_total_rows,
+};
 use iocraft::prelude::*;
 
 use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
+use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
 use crate::tui::tool_approval::{
     PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, mode_change_footer_hint,
     mode_change_select_options, plan_confirmation_footer_hint, plan_confirmation_select_options,
@@ -325,12 +328,36 @@ pub enum StatusDialogKind {
     },
     /// Plan confirmation dialog (Implement / Implement fresh / Stay in Plan).
     PlanConfirmation {
-        #[allow(dead_code)]
-        plan_id: String,
         plan_text: String,
     },
     /// Feedback dialog (Report a Bug / Join Community).
     Feedback,
+    /// Provider connection dialog with OAuth or API key input.
+    ProviderConnect {
+        provider_id: Option<String>,
+        step: ProviderConnectStep,
+        input_focus: ProviderConnectFocus,
+        selected_auth_method: usize,
+        oauth_url: String,
+        oauth_code: String,
+        oauth_provider_name: String,
+        fresh_open: bool,
+        /// Labels for OAuth select options.
+        oauth_select_labels: Vec<String>,
+        /// Selected index within the OAuth select options.
+        oauth_select_index: usize,
+        oauth_is_prompt: bool,
+        oauth_prompt_message: String,
+    },
+    /// Dedicated API key input dialog (separate from provider selection).
+    ProviderApiKey {
+        provider_id: String,
+        provider_name: String,
+    },
+    /// Provider disconnect dialog (remove stored credentials).
+    ProviderDisconnect {
+        provider_ids: Vec<String>,
+    },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -364,6 +391,21 @@ pub struct StatusZoneProps {
     pub dialog: Option<StatusDialogKind>,
     pub approval_selected: Option<State<usize>>,
     pub approval_has_focus: bool,
+    pub api_key_input: Option<State<String>>,
+    /// Provider connect dialog selection state.
+    pub provider_connect_selected: Option<State<usize>>,
+    /// Provider connect dialog filter text.
+    pub provider_connect_filter: Option<State<String>>,
+    /// Provider connect dialog input focus.
+    pub provider_connect_input_focus: Option<State<ProviderConnectFocus>>,
+    /// Provider disconnect dialog selection state.
+    pub provider_disconnect_selected: Option<State<usize>>,
+    /// Provider connect OAuth URL (shown on the OAuth device code step).
+    pub provider_connect_oauth_url: Option<String>,
+    /// Provider connect OAuth code (shown on the OAuth device code step).
+    pub provider_connect_oauth_code: Option<String>,
+    /// Provider connect OAuth provider name (shown on the OAuth device code step).
+    pub provider_connect_oauth_provider_name: Option<String>,
     /// Queued prompt count for StatusRow badge (independent of manager open).
     pub queue_count: u32,
     /// Mouse click on `[Send]` / `[Edit]` / `[Cancel]` — `(display_index, action)`.
@@ -390,6 +432,14 @@ impl Default for StatusZoneProps {
             dialog: None,
             approval_selected: None,
             approval_has_focus: false,
+            api_key_input: None,
+            provider_connect_selected: None,
+            provider_disconnect_selected: None,
+            provider_connect_filter: None,
+            provider_connect_input_focus: None,
+            provider_connect_oauth_url: None,
+            provider_connect_oauth_code: None,
+            provider_connect_oauth_provider_name: None,
             queue_count: 0,
             on_queue_action: Handler::default(),
         }
@@ -456,12 +506,155 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
         Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
+        Some(StatusDialogKind::ProviderConnect {
+            provider_id,
+            step,
+            input_focus,
+            selected_auth_method,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+            fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
+        }) => Some(render_provider_connect_dialog(
+            props,
+            provider_id,
+            step,
+            input_focus,
+            selected_auth_method,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+            fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
+        )),
+        Some(StatusDialogKind::ProviderApiKey {
+            provider_id,
+            provider_name,
+        }) => Some(render_provider_api_key_dialog(props, &provider_id, &provider_name)),
+        Some(StatusDialogKind::ProviderDisconnect { provider_ids }) => {
+            let selected_index = props
+                .provider_disconnect_selected
+                .or(props.provider_connect_selected)
+                .or(props.approval_selected)
+                .map(|s| s.get())
+                .unwrap_or(0);
+            Some(crate::tui::provider_connect_dialog::render_provider_disconnect_dialog(
+                props.screen_width,
+                props.screen_height,
+                props.approval_has_focus,
+                provider_ids,
+                selected_index,
+            ))
+        }
         _ => None,
     };
     let banner = props
         .ephemeral_banner
         .as_ref()
         .map(|(text, color)| render_ephemeral_banner(props.screen_width, text, *color));
+
+    /// Render the provider connect dialog.
+    // TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+    #[allow(clippy::too_many_arguments)]
+    fn render_provider_connect_dialog(
+        props: &mut StatusZoneProps,
+        _provider_id: Option<String>,
+        step: ProviderConnectStep,
+        input_focus: ProviderConnectFocus,
+        selected_auth_method: usize,
+        oauth_url: String,
+        oauth_code: String,
+        oauth_provider_name: String,
+        fresh_open: bool,
+        oauth_select_labels: Vec<String>,
+        oauth_select_index: usize,
+        oauth_is_prompt: bool,
+        oauth_prompt_message: String,
+    ) -> AnyElement<'static> {
+        use crate::tui::provider_connect_dialog::render_provider_connect_dialog as render_dialog;
+
+        let selected = props
+            .provider_connect_selected
+            .or(props.approval_selected)
+            .expect("provider_connect_selected or approval_selected should be set");
+        let api_key_input = props.api_key_input.expect("api_key_input should be set");
+        let filter = props
+            .provider_connect_filter
+            .expect("provider_connect_filter should be set");
+
+        render_dialog(
+            props.screen_width,
+            props.screen_height,
+            props.approval_has_focus,
+            selected,
+            filter,
+            api_key_input,
+            selected_auth_method,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+            step,
+            input_focus,
+            fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
+        )
+    }
+
+    /// Render the dedicated API key input dialog.
+    fn render_provider_api_key_dialog(
+        props: &mut StatusZoneProps,
+        _provider_id: &str,
+        provider_name: &str,
+    ) -> AnyElement<'static> {
+        let theme = UiTheme::default();
+        let body_width = inline_body_width(props.screen_width);
+        let api_key_input = props.api_key_input.expect("api_key_input should be set");
+
+        element! {
+            InlineDialogShell(
+                screen_width: props.screen_width,
+                title: format!("API key · {provider_name}"),
+                has_focus: props.approval_has_focus,
+                footer_hint: Some(format!("Enter confirm · Esc cancel · Provider: {provider_name}")),
+            ) {
+                View(width: body_width, flex_direction: FlexDirection::Column, flex_shrink: 0f32) {
+                    View(width: body_width, flex_shrink: 0f32) {
+                        Text(
+                            content: format!("Paste your API key for {provider_name}:"),
+                            color: theme.text_secondary,
+                            wrap: TextWrap::Wrap,
+                        )
+                    }
+                    View(width: body_width, padding_top: 1, flex_shrink: 0f32) {
+                        DialogUserInputContent(
+                            width: body_width,
+                            placeholder: format!("sk-… ({provider_name} API key)"),
+                            value: Some(api_key_input),
+                            has_focus: props.approval_has_focus,
+                            theme: Some(theme),
+                            compact: true,
+                            show_prompt: false,
+                            show_footer_hint: false,
+                            dialog_chrome: true,
+                            on_submit: HandlerMut::default(),
+                            on_cancel: HandlerMut::default(),
+                        )
+                    }
+                }
+            }
+        }
+        .into()
+    }
 
     element! {
         View(
@@ -513,7 +706,6 @@ pub fn build_plan_confirmation_dialog_kind(
 ) -> Option<StatusDialogKind> {
     let pending = pending?;
     Some(StatusDialogKind::PlanConfirmation {
-        plan_id: pending.plan_id.clone(),
         plan_text: pending.plan_text.clone(),
     })
 }
@@ -521,6 +713,61 @@ pub fn build_plan_confirmation_dialog_kind(
 /// Build the feedback dialog when pending.
 pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
     if active { Some(StatusDialogKind::Feedback) } else { None }
+}
+
+/// Build the provider connect dialog when pending.
+// TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
+#[allow(clippy::too_many_arguments)]
+pub fn build_provider_connect_dialog_kind(
+    provider_id: Option<String>,
+    step: Option<ProviderConnectStep>,
+    has_focus: bool,
+    input_focus: ProviderConnectFocus,
+    selected_auth_method: usize,
+    oauth_url: String,
+    oauth_code: String,
+    oauth_provider_name: String,
+    fresh_open: bool,
+    oauth_select_labels: Vec<String>,
+    oauth_select_index: usize,
+    oauth_is_prompt: bool,
+    oauth_prompt_message: String,
+) -> Option<StatusDialogKind> {
+    let step = step?;
+    if has_focus {
+        Some(StatusDialogKind::ProviderConnect {
+            provider_id,
+            step,
+            input_focus,
+            selected_auth_method,
+            oauth_url,
+            oauth_code,
+            oauth_provider_name,
+            fresh_open,
+            oauth_select_labels,
+            oauth_select_index,
+            oauth_is_prompt,
+            oauth_prompt_message,
+        })
+    } else {
+        None
+    }
+}
+
+/// Build the dedicated API key input dialog when pending.
+pub fn build_provider_api_key_dialog_kind(
+    pending: Option<&PendingProviderApiKeyDialog>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if has_focus {
+        let pending = pending?;
+        Some(StatusDialogKind::ProviderApiKey {
+            provider_id: pending.provider_id.clone(),
+            provider_name: pending.provider_name.clone(),
+        })
+    } else {
+        None
+    }
 }
 
 /// Render the feedback dialog with Report a Bug and Join Community options.
@@ -761,5 +1008,26 @@ mod tests {
         let summary = format_tool_approval_summary("shell_exec", &long_args_json());
         let plan = tool_approval_layout_plan(80, 24, &summary, body_width);
         assert!(plan.list_height == SELECT_LIST_AUTO_HEIGHT || plan.list_height >= list_rows.min(3));
+    }
+
+    #[test]
+    fn provider_connect_dialog_requires_pending_step_even_when_focused() {
+        let dialog = build_provider_connect_dialog_kind(
+            None,
+            None,
+            true,
+            ProviderConnectFocus::AuthMethodList,
+            0,
+            String::new(),
+            String::new(),
+            String::new(),
+            false,
+            Vec::new(),
+            0,
+            false,
+            String::new(),
+        );
+
+        assert!(dialog.is_none());
     }
 }

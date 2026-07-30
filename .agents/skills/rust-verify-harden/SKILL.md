@@ -2,11 +2,12 @@
 name: rust-verify-harden
 description: >-
     Run make check/lint/test (cargo fmt/check/clippy/test) and fix failures, then audit changed/related
-    Rust code for memory/resource leaks, deadlock risk, and data races, applying fixes and performance
-    improvements. Use when user asks to verify build quality gates, prep Rust code for merge/release,
-    or audit concurrency/memory safety in a Rust codebase. Consult current Rust docs (rust-lang.org, docs.rs)
-    and lint guidance to ensure fixes align with active best practices, not deprecated patterns. Flags
-    backward-compat/legacy code found during cleanup and asks the user before removing it.
+    Rust code for memory/resource leaks, deadlock risk, data races, and structural complexity (spaghetti
+    code, god functions/modules, tangled control flow). Use when user asks to verify build quality gates,
+    prep Rust code for merge/release, audit concurrency/memory safety, or clean up messy/spaghetti Rust
+    code. Consult current Rust docs (rust-lang.org, docs.rs) and lint guidance to ensure fixes align with
+    active best practices, not deprecated patterns. Flags backward-compat/legacy code and structural
+    refactors found during cleanup and asks the user before removing/restructuring.
 ---
 
 # Rust Verify & Harden
@@ -20,7 +21,8 @@ Split by destination:
 
 ## Purpose
 
-Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper concurrency/memory safety + perf pass on the affected Rust code, applying contemporary idioms and patterns verified against live documentation. Push toward cleaner code without silently deleting backward-compatibility or legacy paths — those go through the user first.
+Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper concurrency/memory safety + structural + perf pass on the affected Rust code, applying contemporary idioms and patterns verified against live documentation.
+Push toward cleaner code without silently deleting backward-compatibility/legacy paths or restructuring tangled (spaghetti) code — those go through the user first.
 
 ## Context & Documentation
 
@@ -33,8 +35,10 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
 - **Crate API updates**: When fixing dependency-related issues, search DeepWiki for `"<crate-name> changelog"` or `"<crate-name> migration guide"` to check for API breaking changes or deprecations.
 - **Performance patterns**: Search DeepWiki for `"Rust performance <pattern>"` (e.g., `"Rust performance clone avoidance"`, `"Rust allocation benchmarking"`) to validate perf fixes.
 - **Concurrency testing**: Search DeepWiki for `"cargo miri async"`, `"loom testing Rust"`, `"Tokio test utilities"` to confirm testing approach.
+- **Structural/complexity patterns**: Search DeepWiki for `"cyclomatic complexity Rust"`, `"God object anti-pattern"`, `"code smell shotgun surgery"`, `"Rust module boundaries"` to ground spaghetti-code findings in current guidance rather than gut feel.
+- **General best-practice sanity check**: Check https://www.rustfaq.org/en/ for relevant Q&A-style guidance — useful for general "what's the idiomatic way to do X" questions (error handling, ownership patterns, module layout, general idiom checks) alongside the more targeted DeepWiki queries above.
 
-**If DeepWiki results conflict with your training data or existing code patterns, prioritize DeepWiki.**
+**If DeepWiki results conflict with your training data or existing code patterns, prioritize DeepWiki. Treat rustfaq.org as a secondary/supplementary source — use it for general idiom sanity checks, not as a substitute for DeepWiki on crate-specific or version-specific questions.**
 
 ## Workflow
 
@@ -113,7 +117,13 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
     - Query DeepWiki: `"cargo miri async tests"`, `"loom concurrency testing"` for advanced testing approaches.
     - If `loom` is already a dev-dependency, run focused tests (don't add `loom` unprompted).
 
-4. **Fix application**: One-line reasoning per fix. If risky or design-heavy, report instead of applying.
+4. **Spaghetti code / structural complexity** (identify only, don't restructure yet):
+    - Query DeepWiki: `"cyclomatic complexity Rust"`, `"God object anti-pattern"`, `"shotgun surgery code smell"`, `"Rust module boundaries"`, `"control flow refactoring patterns"`. Cross-check general idiom questions against https://www.rustfaq.org/en/ where relevant.
+    - Check for: functions doing too many unrelated things (long param lists, mixed abstraction levels), deep nesting (>~4 levels of `if`/`match`/loop), high branching/cyclomatic complexity, god structs/modules owning unrelated responsibilities, duplicated logic scattered across call sites (shotgun coupling), circular `mod`/crate dependencies, control flow that's hard to trace (many early returns/breaks/labeled loops doing implicit state machines).
+    - Distinguish from lint-level fixes: a single long match arm clippy already flags is routine (fix in Phase 1); a function/module doing 5 unrelated jobs is structural — that's what this step is for.
+    - Do **not** restructure in Phase 2–3. Collect into a list (path + smell + one-line suggested decomposition) for the Phase 4 checkpoint, same as legacy findings.
+
+5. **Fix application**: One-line reasoning per fix. If risky or design-heavy, report instead of applying.
 
 ### Phase 3 — Perf pass (same scope)
 
@@ -131,15 +141,15 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
     - Don't require design restructuring (report those instead).
     - DeepWiki confirms the pattern is current best practice.
 
-### Phase 4 — Legacy/back-compat checkpoint (ask before touching)
+### Phase 4 — Legacy/back-compat & structural checkpoint (ask before touching)
 
-1. If Phase 1's legacy scan found nothing: skip this phase silently.
-2. If it found items: present the list to the user (path + what it is + why it looks legacy/compat) and ask, per item or as a batch, whether to:
-    - **Remove** — drop the shim/dead path and update callers.
+1. If Phase 1's legacy scan and Phase 2's spaghetti scan both found nothing: skip this phase silently.
+2. If either found items: present the combined list to the user (path + what it is + why it's flagged — legacy/compat vs structural/spaghetti) and ask, per item or as a batch, whether to:
+    - **Remove/Refactor** — drop the shim/dead path, or restructure the flagged function/module per the suggested decomposition, updating callers as needed.
     - **Keep** — leave as-is, don't touch.
-    - Use `ask_user_input_v0` for a quick single/multi-select when the choice is simple (remove/keep per item or for the batch); fall back to a plain question if the tradeoffs need more context than fits in short button labels.
-3. Only act on explicit answers. Don't assume "remove" from silence or from a general "clean this up" instruction given before the scan — legacy/compat removal always gets its own confirmation.
-4. Apply removals only for items the user approved; re-run `make check`/`make lint`/`make test` after removal.
+    - Use `ask_user_input_v0` for a quick single/multi-select when the choice is simple (remove/keep, refactor/keep, per item or for the batch); fall back to a plain question if the tradeoffs need more context than fits in short button labels.
+3. Only act on explicit answers. Don't assume "remove"/"refactor" from silence or from a general "clean this up" instruction given before the scan — legacy removal and structural refactors always get their own confirmation.
+4. Apply only the changes the user approved; re-run `make check`/`make lint`/`make test` after removal or restructuring.
 
 ### Phase 5 — Close out
 
@@ -148,9 +158,10 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
 
 2. **Summarize**:
     - **Files changed**: list with reason.
-    - **Issues found** (by category): memory, deadlock, race, perf, etc.
+    - **Issues found** (by category): memory, deadlock, race, structural/spaghetti, perf, etc.
     - **Fixes applied**: one-line rationale per fix, noting DeepWiki sources if consulted.
     - **Legacy/back-compat**: what was found, what the user decided, what was actually removed/kept.
+    - **Structural/spaghetti**: what was found, what the user decided, what was actually refactored/kept.
     - **`.unwrap()`/`unsafe` remaining**: list with justification or flag for review.
     - **Known risks**: unfixed issues and why.
     - **Edition/idiom notes**: confirm 2024/2021 compliance per DeepWiki guidance.
@@ -159,12 +170,14 @@ Run standard quality gates (fmt/check/lint/test), fix failures, then do a deeper
 ## Notes
 
 - **Always consult DeepWiki**: If training data and DeepWiki conflict, defer to DeepWiki as the authoritative source.
+- **rustfaq.org (secondary source)**: Check https://www.rustfaq.org/en/ for general idiom/best-practice sanity checks alongside DeepWiki, especially for structural/spaghetti findings and general "idiomatic way to do X" questions. Doesn't replace DeepWiki for crate/version-specific claims.
 - **Query format**: Phrase queries naturally: `"<topic> best practice"`, `"<crate> <version> API"`, `"<lint> explanation"`, `"Rust <problem> solution"`.
 - **Target editions**: 2024 (strict), 2021 (acceptable with notes), pre-2021 (flag for upgrade).
 - **Zero `.unwrap()`/`unsafe` ideal**: Justify all remaining instances.
 - **Scope discipline**: Only touch files from phase 1 + direct neighbors.
 - **Risky changes**: Report instead of applying (behavior change, unclear intent, ownership restructuring).
 - **Legacy/back-compat is a risky change by default**: never remove `#[deprecated]` paths, compat shims, `_v1`/`_old` duplicates, or "just in case" `#[cfg(...)]` blocks without explicit per-item or per-batch user approval from Phase 4.
+- **Spaghetti/structural refactors are a risky change by default**: never restructure god functions/modules, break up tangled control flow, or de-duplicate shotgun-coupled logic without explicit per-item or per-batch user approval from Phase 4 — flag and suggest, don't rewrite unprompted.
 - **No unprompted deps**: Don't add tools unless already present or explicitly approved.
 - **Git**: Commit/push only if explicitly instructed.
 
@@ -175,6 +188,6 @@ User: "run quality gates and audit concurrency issues in this Rust service"
 Agent workflow:
 
 1. Query DeepWiki: `"Rust 2024 edition best practices"`, `"Tokio concurrency patterns"`.
-2. Run phases 1–3, consulting DeepWiki at each step (clippy lints, async patterns, unsafe verification); collect any legacy/back-compat findings without touching them.
-3. If legacy/back-compat code was found, ask the user remove vs keep (Phase 4) before acting on it.
-4. Report summary with file:line refs, citing DeepWiki sources for each category of fixes (e.g., "DeepWiki: 'tokio::sync::Mutex vs std::sync::Mutex' — replaced std::sync::Mutex in async context"), and note what happened with any legacy code.
+2. Run phases 1–3, consulting DeepWiki at each step (clippy lints, async patterns, unsafe verification, structural complexity); collect any legacy/back-compat and spaghetti-code findings without touching them.
+3. If legacy/back-compat or structural/spaghetti issues were found, ask the user remove/refactor vs keep (Phase 4) before acting on it.
+4. Report summary with file:line refs, citing DeepWiki sources for each category of fixes (e.g., "DeepWiki: 'tokio::sync::Mutex vs std::sync::Mutex' — replaced std::sync::Mutex in async context"), and note what happened with any legacy or structural code.

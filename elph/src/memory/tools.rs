@@ -71,6 +71,7 @@ fn create_start_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_start_task".into(),
+            constrained_sampling: None,
             description: "Retrieve relevant memories for a task description via vector search. \
                           Call this at the start of every significant task to surface \
                           lessons from previous sessions."
@@ -160,6 +161,7 @@ async fn execute_start_task(state: Arc<MemoryToolState>, args: Value) -> Result<
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 
@@ -171,6 +173,7 @@ fn create_end_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_end_task".into(),
+            constrained_sampling: None,
             description: "Rate the retrieved memories and record the task outcome. \
                           Call this when a task is complete, failed, or abandoned. \
                           This updates memory weights so helpful memories survive \
@@ -299,6 +302,7 @@ fn create_report_tool(state: Arc<MemoryToolState>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_report".into(),
+            constrained_sampling: None,
             description: "Store a correction, user input, or insight into persistent memory. \
                           This helps future sessions learn from this session's experience."
                 .into(),
@@ -415,6 +419,7 @@ fn create_contradict_tool(state: Arc<MemoryToolState>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_contradict".into(),
+            constrained_sampling: None,
             description: "Flag a retrieved memory as wrong and delete it. \
                           Optionally provide a correction that replaces it. \
                           Use when you find that a memory contains incorrect information."
@@ -474,6 +479,7 @@ fn create_memory_status_tool(state: Arc<MemoryToolState>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_status".into(),
+            constrained_sampling: None,
             description: "Show memory system statistics: total memories, task counts, \
                           average task score, top memories by weight."
                 .into(),

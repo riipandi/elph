@@ -1,253 +1,146 @@
 ---
-type: Guide
-title: Operations and Configuration
-description: CLI subcommands, configuration system, environment variables, directory layout, observability, and day-to-day operations.
-tags: [operations, cli, config, observability, runbook]
-resource: /elph/
+type: Concept
+title: Operations — CLI, Configuration, and Observability
+description: Elph operations guide — CLI subcommands, ELPH_ environment variables, config paths, Makefile targets, and observability
+tags: [operations, cli, configuration, observability, environment-variables]
 ---
 
-# Operations and Configuration
+# Operations
 
-## CLI subcommands
+See [Architecture Overview](architecture/overview.md) for the system architecture, [Source Map](architecture/source-map.md) for the module layout, and [Agent Loop](workflows/agent-loop.md) for the turn cycle.
 
-The `elph` binary exposes 17+ subcommands via `clap` ([source](../architecture/source-map.md#elph-binary--library-crate--elph)).
+## CLI Subcommands
 
-### Interactive TUI
+The `elph` binary provides 19 subcommands (from `elph/src/cli/mod.rs`):
 
-```sh
-elph                    # Launch interactive TUI
-elph --resume <id>      # Resume a specific session
-elph --version          # Print version
-```
+| Subcommand    | Alias | Description                                 |
+| ------------- | ----- | ------------------------------------------- |
+| `acp`         | —     | Agent Client Protocol server over stdio     |
+| `codegraph`   | —     | Structural knowledge graph for code reviews |
+| `completions` | —     | Generate shell completion scripts           |
+| `doctor`      | —     | Show discovered configuration               |
+| `export`      | —     | Export session transcript/archive           |
+| `import`      | —     | Import sessions                             |
+| `mcp`         | —     | Manage MCP server configurations            |
+| `memory`      | `mem` | Inspect/manage agent memory (floppy)        |
+| `models`      | —     | List available models                       |
+| `extensions`  | `ext` | Manage Elph extensions                      |
+| `provider`    | —     | Manage AI providers and credentials         |
+| `run`         | —     | Run a prompt non-interactively              |
+| `server`      | —     | Local Elph REST+WS+Web UI server            |
+| `session`     | —     | List/search/restore sessions                |
+| `stats`       | —     | Token usage and cost statistics             |
+| `tools`       | —     | List available agent tools                  |
+| `update`      | —     | Check for updates or install a version      |
+| `version`     | —     | Print version                               |
+| `worktree`    | —     | Manage git worktrees                        |
 
-### Non-interactive run
+## Environment Variables
 
-```sh
-elph run "Write a Rust function to parse CSV"  # Single-turn agent execution
-elph run --provider anthropic --model claude-sonnet-4-20250514 "query"
-elph run --no-mcp "query"                       # Skip MCP discovery
-```
+| Variable           | Purpose                              | Defined In                                        |
+| ------------------ | ------------------------------------ | ------------------------------------------------- |
+| `ELPH_HOME`        | Override config/home directory       | `elph/src/platform/paths.rs`                      |
+| `ELPH_DATA_DIR`    | Override data directory              | `elph/src/platform/paths.rs`, `cli/mod.rs`        |
+| `ELPH_PROJECT_DIR` | Override project directory           | `elph/src/platform/paths.rs`                      |
+| `ELPH_QUIET`       | Suppress init progress output        | `cli/mod.rs`, `bootstrap.rs`                      |
+| `ELPH_PROVIDER`    | Default provider override            | `agent/provider.rs`                               |
+| `ELPH_MODEL`       | Default model override               | `agent/provider.rs`                               |
+| `ELPH_` prefix     | Agent env prefix for extended config | `cli/mod.rs` — `AgentBuilder::env_prefix("ELPH")` |
 
-### Session management
+## Config Paths
 
-```sh
-elph session list       # List all sessions
-elph session export <id>  # Export session transcript
-elph session delete <id>  # Delete a session
-```
+From `elph/src/platform/paths.rs`:
 
-### Memory
+| Path                            | Method                             | Description              |
+| ------------------------------- | ---------------------------------- | ------------------------ |
+| `~/.elph/`                      | `Paths::home_dir()`                | Home config directory    |
+| `<project>/.elph/`              | `Paths::project_elph_dir()`        | Project-level config     |
+| `<project>/.elph/settings.json` | `Paths::project_settings_path()`   | Project settings         |
+| `~/.elph/settings.json`         | `Paths::home_settings_path()`      | Home settings (override) |
+| `<project>/.elph/mcp.json`      | `Paths::project_mcp_config_path()` | MCP server config        |
+| `<project>/.elph/store.db`      | `Paths::memory_db_path()`          | Floppy memory DB         |
+| `<project>/.elph/plans/`        | `Paths::plans_dir()`               | Plan files               |
+| `<data>/metadata.db`            | `Paths::metadata_db_path()`        | Metadata database        |
+| `<data>/models/`                | `Paths::models_dir()`              | Model catalogs           |
+| `~/.elph/extensions/`           | `Paths::global_extensions_dir()`   | Global extensions        |
+| `<project>/.elph/extensions/`   | `Paths::project_extensions_dir()`  | Project extensions       |
 
-```sh
-elph memory status           # Show memory store status
-elph memory search "query"   # Semantic memory search
-elph memory tasks            # List memory tasks
-```
+## Makefile Targets
 
-### MCP
+Key targets from `/Makefile`:
 
-See [mcp-integration.md](mcp-integration.md) for full reference.
-
-```sh
-elph mcp list                              # List configured servers
-elph mcp add <name> '<config_json>'        # Add a server
-elph mcp remove <name>                     # Remove a server
-elph mcp doctor                            # Validate configurations
-elph mcp listen                            # Listen for MCP notifications
-```
-
-### Admin
-
-```sh
-elph doctor              # Show discovered configuration
-elph models list         # Browse available models
-elph models catalog      # Generate model catalog
-elph provider list       # List configured providers
-elph stats               # Show usage statistics
-elph export              # Export sessions
-elph import              # Import sessions
-elph update              # Self-update
-elph completions bash    # Generate shell completions
-```
-
-### Slash commands
-
-| Command    | Description                                                             |
-| ---------- | ----------------------------------------------------------------------- |
-| `/new`     | Start a fresh session in-place (reloads resources, no exit + re-launch) |
-| `/compact` | Compact conversation history                                            |
-| `/goal`    | Manage goals/todos                                                      |
-| `/reload`  | Reload extensions and skills                                            |
-
-**Source:** `/elph/src/agent/slash_commands.rs`, `/elph/src/tui/slash_handler.rs`
-
-### BackgroundTask async dispatch
-
-Slash commands that require an agent session but should not block the TUI (e.g. `/goal`, `/reload`, `/extension`) can be dispatched as background tasks via `SlashOutcome::BackgroundTask`. The TUI continues to accept input while the task runs in the background.
-
-**Source:** `/elph/src/tui/slash_handler.rs` — `SlashOutcome::BackgroundTask`
-
-### Shell execution timeout
-
-The `elph-exec` shell execution layer uses deadline-based timeouts (`tokio::time::sleep_until`) instead of interval-based sleeps, and caps streaming tool output at 100KB to prevent rendering slowdowns from multi-MB outputs.
-
-**Source:** `/crates/elph-exec/src/shell.rs`
-
-**Source:** `/elph/src/cli/mod.rs` and submodule files.
-
-## Configuration system
-
-### Directory layout
-
-```
-~/.elph/                                    # XDG_CONFIG_HOME
-├── settings.json          # UI and session preferences
-├── mcp.json               # Global MCP server configs
-├── auth.json              # Encrypted OAuth tokens
-├── providers/
-│   ├── openai.json
-│   ├── anthropic.json
-│   └── ...                # One JSON file per provider
-├── prompts/               # Global prompt templates
-├── extensions/            # WASM extension bundles
-└── skills/                # Global skills
-
-~/.local/share/elph/       # XDG_DATA_HOME
-├── version.json
-├── metadata.db            # SQLite/Turso platform sessions
-├── attachments/           # Pasted images per session
-├── models/                # Embedding model cache
-└── logs/
-    ├── elph.jsonl         # Structured log output
-    └── elph-traces.jsonl  # fastrace trace spans
-
-<workDir>/.agents/         # Shared agent prompts and skills (gitignored)
-├── prompts/*.md
-└── skills/<name>/SKILL.md
-
-<workDir>/.elph/           # Project-local configuration (gitignored)
-├── settings.json          # Optional project settings overrides
-├── mcp.json               # Per-project MCP config
-├── store.db               # Agent memory (floppy)
-├── prompts/*.md
-├── extensions/
-├── skills/
-└── metadata/              # Session metadata and logs
-```
-
-**Source:** `/elph/src/platform/paths.rs`
-
-### Layered settings
-
-Merge order: **Defaults** → **Home** (`~/.elph/settings.json`) → **Project** (`<workDir>/.elph/settings.json`)
-
-- Project overrides per **nested key** (deep merge)
-- Runtime saves write **home only**, never project
-- Settings schema: `/schemas/elph-schema.json`
-
-**Source:** `/elph/src/platform/settings.rs`
-
-### Settings domains
-
-Settings are JSON with domain groups:
-
-| Domain     | Key settings                                           |
-| ---------- | ------------------------------------------------------ |
-| `ui`       | Theme (auto/dark/light), thinking level, scoped models |
-| `session`  | Auto-save interval, max turns, compaction limits       |
-| `models`   | Model preferences, provider mapping                    |
-| `provider` | Default provider, API configuration                    |
-| `memory`   | Floppy memory store connection                         |
-
-### Environment variables
-
-| Variable                      | Effect                                               |
-| ----------------------------- | ---------------------------------------------------- |
-| `ELPH_HOME`                   | Override `~/.elph` config dir                        |
-| `ELPH_DATA_DIR`               | Override data directory                              |
-| `ELPH_PROJECT_DIR`            | Project root for `.elph/`                            |
-| `ELPH_PROVIDER`               | Force provider ID                                    |
-| `ELPH_MODEL`                  | Force model ID                                       |
-| `ELPH_PROMPT_ENCODING`        | Tool-result encoding: `off`, `toon`, `auto`          |
-| `ELPH_TRACE`                  | Enable/disable distributed tracing (`fastrace`)      |
-| `ELPH_LOG_LEVEL`              | Log level: `trace`, `debug`, `info`, `warn`, `error` |
-| `ELPH_LOG_FILE`               | Log file (set `0` to disable)                        |
-| `ELPH_LOG_ROTATION`           | Rotation: `hourly`, `daily`, `weekly`                |
-| `ELPH_QUIET`                  | Suppress bootstrap output                            |
-| `ELPH_MCP_DISABLED`           | Skip MCP discovery                                   |
-| `ELPH_MCP_FETCH_TIMEOUT_SECS` | Per-server connection timeout                        |
-
-Provider keys are read from standard env vars: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENCODE_API_KEY`, `DEEPSEEK_API_KEY`, etc.
-
-**Source:** `/docs/configuration.md`, `/elph/src/platform/paths.rs`
+| Target                 | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| `make build`           | Build elph binary (debug default)           |
+| `make install`         | Build and install to `~/.local/bin/`        |
+| `make run`             | Run elph coding agent                       |
+| `make watch`           | Run with hot reload (watchexec)             |
+| `make test`            | Run all workspace tests via `cargo nextest` |
+| `make check`           | Check compilation (no codegen)              |
+| `make lint`            | Run clippy with `-D warnings`               |
+| `make fmt`             | Format all code                             |
+| `make coverage`        | Run tests with coverage (cargo-llvm-cov)    |
+| `make prepare`         | Install required toolchain tools            |
+| `make generate-models` | Regenerate elph-ai model catalogs           |
+| `make cross`           | Cross-compile for specific target           |
+| `make release`         | Build release for host platform             |
+| `make bump`            | Bump version (patch/minor/major)            |
+| `make publish`         | Publish crates to crates.io                 |
+| `make clean`           | Clean build artifacts                       |
 
 ## Observability
 
+### Tracing
+
+Enabled via the `tracing` feature flag on both `elph-agent` and `elph-ai`:
+
+```toml
+# elph-agent/Cargo.toml
+tracing = ["dep:fastrace", "dep:fastrace-reqwest", "fastrace/enable", "elph-ai/tracing"]
+```
+
+Key spans (from `elph-agent/src/agent/harness/prompt_ops.rs`):
+
+```
+elph.agent.turn     — AgentHarness::prompt() (top-level turn span)
+```
+
 ### Logging
 
-Uses `log` + `logforth` for structured JSONL logging.
+`logforth` is the logging framework (configured in `elph/src/platform/bootstrap.rs`):
 
-| Output | Path                           | Control                                                |
-| ------ | ------------------------------ | ------------------------------------------------------ |
-| Logs   | `{logs_dir}/elph.jsonl`        | `ELPH_LOG_LEVEL`, `ELPH_LOG_FILE`, `ELPH_LOG_ROTATION` |
-| Traces | `{logs_dir}/elph-traces.jsonl` | `ELPH_TRACE` (set `0` to disable)                      |
-
-**Source:** `crates/elph-core/src/logger/`, `crates/elph-agent/src/trace/`
-
-### Distributed tracing
-
-- `fastrace` spans for agent loop, tool execution, LLM calls
-- HTTP `traceparent` header propagation for downstream tracing
-- Feature-gated behind `tracing` Cargo feature (enabled by default in `elph` binary)
-
-**Source:** `crates/elph-core/src/trace/`, `crates/elph-agent/src/trace/`, documentation at `crates/elph-agent/docs/observability.md`
-
-## Make targets
-
-Key targets from the root `Makefile`:
-
-| Target         | Description                            |
-| -------------- | -------------------------------------- |
-| `make check`   | `cargo check --workspace`              |
-| `make build`   | Build `elph` binary                    |
-| `make test`    | `cargo nextest run`                    |
-| `make lint`    | `cargo clippy --workspace -D warnings` |
-| `make fmt`     | `cargo fmt` (edition 2024)             |
-| `make run`     | `cargo run --bin elph`                 |
-| `make install` | Copy binary to `~/.local/bin`          |
-| `make clean`   | Clean build artifacts                  |
-| `make stats`   | Code statistics (cloc)                 |
-| `make prepare` | Install toolchain, tools, vendor deps  |
-| `make publish` | Publish crates to crates.io            |
-| `make release` | Multi-arch release builds              |
-
-**Source:** `/Makefile`
-
-## WASM extensions
-
-Phase 1 extension support via wasmtime Component Model:
-
-- **Discovery**: `~/.elph/extensions/` and `<project>/.elph/extensions/`
-- **Slash commands**: extensions can register slash commands
-- **Development**: build guest WASM, install with `elph plugin install`
-
-**Source:** `/elph/src/extensions/`, `/docs/extensions.md`
-
-## Troubleshooting
-
-```sh
-# Check discovered config
-elph doctor
-
-# Validate MCP setup
-elph mcp doctor
-
-# View logs
-tail -f ~/.local/share/elph/logs/elph.jsonl
-
-# Run with verbose logging
-ELPH_LOG_LEVEL=debug elph
-
-# Disable MCP for troubleshooting
-elph run --no-mcp "query"
+```toml
+# Cargo.toml workspace dependency
+logforth = { version = "0.30.1", features = [
+  "append-async", "append-fastrace", "append-file", "diagnostic-fastrace",
+  "filter-rustlog", "layout-json", "layout-text", "starter-log",
+] }
 ```
+
+Features: async appending, fastrace integration, JSON/text layout, file output.
+
+### Agent Diagnostics
+
+From `crates/elph-ai/src/utils/diagnostics.rs`:
+
+- `create_assistant_message_diagnostic()` — creates diagnostic entries for assistant messages.
+- `append_assistant_message_diagnostic()` — appends diagnostic to existing messages.
+
+### Session Resource Cleanup
+
+From `crates/elph-ai/src/session_resources.rs`:
+
+- `register_session_resource_cleanup()` — register cleanup handlers.
+- `cleanup_session_resources()` — runs all registered cleanup handlers.
+- `SessionResourceCleanupRegistration` — handle for deregistration.
+
+## Source References
+
+- `elph/src/cli/mod.rs` — CLI subcommand definitions
+- `elph/src/platform/paths.rs` — `Paths` struct, `PathResolver`, env var handling
+- `elph/src/platform/settings.rs` — Settings loading/merging
+- `elph/src/platform/bootstrap.rs` — logging initialization
+- `Makefile` — build targets
+- `crates/elph-ai/src/utils/diagnostics.rs` — diagnostic utilities
+- `crates/elph-ai/src/session_resources.rs` — session resource cleanup
+- `crates/elph-agent/src/agent/harness/prompt_ops.rs` — tracing spans

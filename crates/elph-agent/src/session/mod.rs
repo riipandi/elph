@@ -12,6 +12,7 @@ pub mod types;
 
 pub use backends::InMemorySessionOptions;
 pub use backends::InMemorySessionStorage;
+pub use backends::JsonlSessionStorage;
 pub use backends::SessionDirCreateOptions;
 pub use backends::SessionDirStorage;
 pub use backends::TursoSessionStorage;
@@ -39,6 +40,8 @@ pub use types::SessionError;
 pub use types::SessionErrorCode;
 pub use types::SessionMetadata;
 pub use types::SessionModelRef;
+pub use types::SessionStatistics;
 pub use types::SessionStorage;
 pub use types::SessionTreeEntry;
 pub use types::TursoSessionMetadata;
+pub use types::{CheckpointTail, CursorPosition};

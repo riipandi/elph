@@ -385,6 +385,8 @@ fn find_cut_point_and_turn_start_edge_cases() {
             details: None,
             added_tool_names: None,
             is_error: false,
+            usage: None,
+
             timestamp: 0,
         })),
     );
@@ -445,6 +447,7 @@ fn estimate_tokens_across_supported_message_roles() {
         ],
         details: None,
         added_tool_names: None,
+        usage: None,
         is_error: false,
         timestamp: 0,
     }));
@@ -749,6 +752,8 @@ fn serialize_conversation_formats_roles() {
             details: None,
             added_tool_names: None,
             is_error: false,
+            usage: None,
+
             timestamp: 0,
         },
     ];
@@ -768,6 +773,8 @@ fn serialize_conversation_truncates_long_tool_results() {
         details: None,
         added_tool_names: None,
         is_error: false,
+        usage: None,
+
         timestamp: 0,
     }];
     let result = serialize_conversation(&messages);

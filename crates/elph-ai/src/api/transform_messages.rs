@@ -47,6 +47,7 @@ fn downgrade_unsupported_images(messages: Vec<Message>, model: &Model) -> Vec<Me
                 content,
                 details,
                 added_tool_names,
+                usage,
                 is_error,
                 timestamp,
             } => Message::ToolResult {
@@ -55,6 +56,7 @@ fn downgrade_unsupported_images(messages: Vec<Message>, model: &Model) -> Vec<Me
                 content: replace_images_with_placeholder(&content, NON_VISION_TOOL_IMAGE_PLACEHOLDER),
                 details,
                 added_tool_names,
+                usage,
                 is_error,
                 timestamp,
             },
@@ -80,6 +82,7 @@ where
                 content,
                 details,
                 added_tool_names,
+                usage,
                 is_error,
                 timestamp,
             } => {
@@ -90,6 +93,7 @@ where
                     content,
                     details,
                     added_tool_names,
+                    usage,
                     is_error,
                     timestamp,
                 }
@@ -163,6 +167,7 @@ where
                         }],
                         details: None,
                         added_tool_names: None,
+                        usage: None,
                         is_error: true,
                         timestamp: chrono::Utc::now().timestamp_millis(),
                     });

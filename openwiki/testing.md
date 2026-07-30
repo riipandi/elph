@@ -1,202 +1,133 @@
 ---
-type: Guide
-title: Testing
-description: Test organization, running tests, key test areas for each crate, and testing patterns used in the Elph workspace.
-tags: [testing, ci, coverage, cargo-nextest]
-resource: /
+type: Concept
+title: Testing — Test Patterns and Strategies
+description: Elph's testing patterns — unit tests, integration tests, live provider tests, and test harness tools
+tags: [testing, integration-tests, unit-tests, live-tests, harness]
 ---
 
 # Testing
 
-Elph uses `cargo nextest` for test execution (run with `make test` or `cargo nextest run`). Unit tests are colocated with source code; integration tests live in each crate's `tests/` directory.
+## Test Organization
 
-## Running tests
+Tests are organized across the workspace. See [Architecture Overview](architecture/overview.md) for the crate structure, and [Source Map](architecture/source-map.md) for test file locations.
 
-```sh
-# All tests
-make test                    # cargo nextest run
+### Unit Tests
 
-# Specific package
-cargo nextest run -p elph-agent  # agent tests
-cargo nextest run -p elph-ai     # AI model tests
-cargo nextest run -p elph-tui    # TUI tests
-cargo nextest run -p elph        # binary integration tests
+Located in the same file as the implementation, using `#[cfg(test)]` modules. This follows the convention documented in `AGENTS.md`:
 
-# With output (for debugging)
-cargo nextest run --nocapture
-
-# Specific test
-cargo nextest run -p elph-ai --test anthropic_thinking
-
-# Check compilation only (fast)
-make check
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // test internal logic directly
+}
 ```
 
-## Test layout by crate
+### Integration Tests
 
-### `elph-agent` tests — `/crates/elph-agent/tests/`
+Each crate has its own `tests/` directory:
 
-The largest test suite (30+ test files). Key areas:
+| Crate        | Test Files                           | Focus                                                               |
+| ------------ | ------------------------------------ | ------------------------------------------------------------------- |
+| `elph-agent` | 30 test files                        | Agent loop, compaction, harness, goals, MCP, skills, sessions, etc. |
+| `elph-ai`    | ~15 test files                       | Provider adapters, auth, message transformation, tool schemas       |
+| `elph-tui`   | ~5 test files                        | UI component tests                                                  |
+| `elph`       | `tests/bootstrap.rs`, `tests/cli.rs` | Bootstrap, CLI subcommands                                          |
 
-| Test file                         | Covers                                                         |
-| --------------------------------- | -------------------------------------------------------------- |
-| `harness.rs`                      | Agent harness: creation, configuration, basic turn cycles      |
-| `harness_stream.rs`               | Stream API: event emits during harness execution               |
-| `agent.rs`                        | Agent struct: queue, run, state transitions                    |
-| `agent_loop.rs`                   | Runtime loop: turn iteration, tool calls                       |
-| `session.rs`, `session_kalid.rs`  | Session storage: create, resume, metadata                      |
-| `storage.rs`                      | SessionDirStorage, InMemorySessionStorage, TursoSessionStorage |
-| `compaction.rs`                   | History compaction: triggers, summarization, branch merge      |
-| `goals.rs`                        | Goal lifecycle: create, complete, fail, budgets                |
-| `subagent.rs`                     | Subagent spawning, depth limits, shared registry               |
-| `skills.rs`                       | Skill loading and system prompt formatting                     |
-| `prompt.rs`, `prompt_template.rs` | Prompt assembly, MiniJinja templates                           |
-| `prompt_encoding.rs`              | TOON encoding: compression, delimiter config                   |
-| `plan_mode.rs`                    | Collaboration: plan mode restrictions                          |
-| `mcp_deepwiki.rs`                 | MCP client connectivity with DeepWiki server                   |
-| `tools_fff.rs`                    | FFF search tool                                                |
-| `web_tools.rs`                    | Web fetch and search tools                                     |
-| `messages.rs`                     | Message types, shell output formatting                         |
-| `serde_roundtrip.rs`              | Serialization roundtrip for all agent types                    |
-| `truncate.rs`                     | Text truncation utility                                        |
-| `tracing_http.rs`                 | HTTP trace header propagation                                  |
-| `env.rs`                          | Local execution environment                                    |
-| `e2e.rs`                          | End-to-end: full agent execution                               |
-| `edit_file.rs` (in tools tests)   | edit_file tool with diff result handling                       |
-| `plugins.rs`                      | WASM plugins                                                   |
-| `defaults.rs`                     | Default configuration                                          |
-| `resource_formatting.rs`          | Resource formatting                                            |
-| `system_prompt.rs`                | System prompt building                                         |
-| `repo.rs`                         | Repository tool operations                                     |
-| `encrypt_string.rs`               | MCP OAuth encryption                                           |
-| `common/mod.rs`                   | Shared test utilities                                          |
+## Test Patterns
 
-### `elph-ai` tests — `/crates/elph-ai/tests/`
+### Common Module
 
-Provider-specific and protocol-level tests (40+ test files). Key areas:
+All `elph-agent` integration tests share a `mod common;` module. It provides:
 
-| Test file                               | Covers                                            |
-| --------------------------------------- | ------------------------------------------------- |
-| `providers.rs`                          | Provider resolution and configuration             |
-| `api_registry.rs`                       | API registry and routing                          |
-| `faux_provider.rs`                      | Mock provider (used by other tests)               |
-| `anthropic_thinking.rs`                 | Anthropic extended thinking                       |
-| `anthropic_temperature.rs`              | Anthropic temperature parameter                   |
-| `anthropic_sse_parsing.rs`              | Anthropic SSE response parsing                    |
-| `anthropic_empty_thinking_signature.rs` | Edge case: empty thinking blocks                  |
-| `bedrock_convert_messages.rs`           | AWS Bedrock message conversion                    |
-| `bedrock_thinking_payload.rs`           | Bedrock thinking payload format                   |
-| `bedrock_endpoint_resolution.rs`        | Bedrock endpoint resolution                       |
-| `bedrock_custom_headers.rs`             | Bedrock custom HTTP headers                       |
-| `google_shared_gemini3.rs`              | Google Gemini 3 integration                       |
-| `google_shared_thinking.rs`             | Google thinking/thinking                          |
-| `google_shared_convert_tools.rs`        | Google tool format conversion                     |
-| `openai_compat.rs`                      | OpenAI-compatible API testing                     |
-| `openai_responses_convert.rs`           | OpenAI Responses API conversion                   |
-| `openai_responses_empty_tool_result.rs` | Empty tool results handling                       |
-| `openai_responses_partial_json.rs`      | Partial JSON parsing                              |
-| `openai_responses_terminal_event.rs`    | Terminal events                                   |
-| `openai_completions_*.rs`               | Various OpenAI completion tests                   |
-| `mistral_reasoning_mode.rs`             | Mistral reasoning mode                            |
-| `mistral_tool_schema.rs`                | Mistral tool schema format                        |
-| `codex_websocket.rs`                    | OpenAI Codex WebSocket transport                  |
-| `codex_websocket_proxy.rs`              | Codex proxy support                               |
-| `github_copilot_headers.rs`             | GitHub Copilot auth headers                       |
-| `oauth_auth.rs`                         | OAuth 2.1 + PKCE flow                             |
-| `cache_retention.rs`                    | Prompt cache control                              |
-| `images_models.rs`                      | Image generation models                           |
-| `http_proxy.rs`                         | HTTP proxy support                                |
-| `retry.rs`                              | Retry logic                                       |
-| `overflow.rs`                           | Overflow handling                                 |
-| `validation.rs`                         | Input validation                                  |
-| `abort.rs`, `abort_live.rs`             | Request cancellation                              |
-| `sse_abort.rs`                          | SSE stream cancellation                           |
-| `e2e_live.rs`                           | Live provider E2E (requires credentials)          |
-| `cross_provider_handoff_live.rs`        | Cross-provider handoff (requires credentials)     |
-| `tool_call_id_normalization_live.rs`    | Tool call ID normalization (requires credentials) |
-| `openrouter_cache_write_live.rs`        | OpenRouter cache (requires credentials)           |
-| `openrouter_images.rs`                  | OpenRouter image support                          |
-| `tracing_http.rs`                       | HTTP trace propagation                            |
-| `error_body.rs`                         | Error response body parsing                       |
-| `transform_messages.rs`                 | Message transformation                            |
-| `unicode_surrogate.rs`                  | Unicode surrogate handling                        |
-| `stream_without_api_key.rs`             | Error handling without API key                    |
-| `azure_openai_base_url.rs`              | Azure base URL configuration                      |
-| `common/mod.rs`                         | Shared test utilities (includes `FauxProvider`)   |
+- `simple_tool()` — creates `AgentTool` from `elph_ai::Tool` definition
+- `llm_message_to_agent()` — translates LLM messages to agent messages
+- `user_agent_message()` — user message helper
 
-### `elph-tui` tests — `/crates/elph-tui/tests/`
+### Faux Provider
 
-Component-level tests (14 test files):
+Tests use `FauxProviderHandle` from `elph-ai`:
 
-| Test file               | Covers                       |
-| ----------------------- | ---------------------------- |
-| `color.rs`              | Color parsing and conversion |
-| `text_input_layout.rs`  | Text input layout            |
-| `transcript_layout.rs`  | Transcript layout rendering  |
-| `textarea.rs`           | Textarea component           |
-| `text_editing.rs`       | Text editing operations      |
-| `scroll.rs`             | Scroll behavior              |
-| `types.rs`              | Shared types serialization   |
-| `utils.rs`              | Utility functions            |
-| `components_render.rs`  | Component rendering          |
-| `components_props.rs`   | Component props handling     |
-| `components_mock.rs`    | Component mock rendering     |
-| `components_helpers.rs` | Component test helpers       |
-| `coverage_gaps.rs`      | Coverage gap detection       |
-| `coverage_helpers.rs`   | Coverage utility helpers     |
+```rust
+use elph_ai::faux_provider;
+use elph_ai::faux_assistant_message;
+use elph_ai::faux_text;
+use elph_ai::faux_tool_call;
+use elph_ai::FauxResponseStep;
 
-### `elph-core` tests — `/crates/elph-core/tests/`
+// Create a faux provider that returns predefined responses
+let (provider, handle) = faux_provider();
+handle.add_step(FauxResponseStep::Text("Hello world"));
+```
 
-| Test file                | Covers                          |
-| ------------------------ | ------------------------------- |
-| `tracing_integration.rs` | Distributed tracing integration |
+### Agent Loop Tests
 
-### `elph-exec` tests — `/crates/elph-exec/tests/`
+From `crates/elph-agent/tests/agent_loop.rs` (50,377 bytes):
 
-| Test file  | Covers              |
-| ---------- | ------------------- |
-| `shell.rs` | Shell/PTY execution |
+- Tests `run_agent_loop()` and `run_agent_loop_continue()`
+- Tests event lifecycle: `AgentStart → TurnStart → MessageEnd → ToolExecution* → TurnEnd`
+- Tests tool execution modes (background, visible, error handling)
+- Tests `QueueMode` (normal, replace, background)
 
-### `elph` (binary) tests — `/elph/tests/`
+### Compaction Tests
 
-| Test file      | Covers                                       |
-| -------------- | -------------------------------------------- |
-| `bootstrap.rs` | Full app bootstrap, TUI initialization       |
-| `cli.rs`       | CLI argument parsing and subcommand dispatch |
+From `crates/elph-agent/tests/compaction.rs` (41,052 bytes):
 
-## Testing patterns
+- Tests `compact()`, `should_compact()`, `calculate_context_tokens()`
+- Tests `find_cut_point()`, `serialize_conversation()`, `estimate_tokens()`
+- Tests `generate_summary()`, `prepare_compaction()`
 
-### Mock providers
+### E2E Harness Tests
 
-The `FauxProvider` (`crates/elph-ai/src/providers/faux.rs`) provides a deterministic mock LLM provider for testing agent loops without real API calls.
+From `crates/elph-agent/tests/e2e.rs` (22,353 bytes):
 
-### Live tests
+- Tests `AgentHarness` with `InMemorySessionStorage`
+- Tests `AgentHarnessResources`, `SystemPrompt`, `ToolExecutionMode`
+- Uses `tempfile::TempDir` for filesystem isolation
 
-Tests with `_live` suffix require real provider credentials. These are typically gated with `#[cfg(feature = "full")]` or `#[ignore]` annotations.
+## Live Provider Tests
 
-### Test organization principles
+Located in `crates/elph-ai/tests/`:
 
-Per `/docs/codebase-layout.md`:
+- `e2e_live.rs` — OpenAI, Anthropic, Gemini streaming tests
+- `abort_live.rs` — Abort/cancellation tests
+- `cross_provider_handoff_live.rs` — Provider switching
+- `openrouter_cache_write_live.rs` — OpenRouter cache
+- `tool_call_id_normalization_live.rs` — Tool call ID normalization
 
-- **Unit tests**: colocated with the code they cover
-- **Integration tests**: in each crate's `tests/` directory
-- **File size**: prefer modules under ~400 lines; split by concern
+Live tests are marked `#[ignore = "requires X_API_KEY"]` and guarded by `has_env()`:
 
-### CI pipeline
+```rust
+#[tokio::test]
+#[ignore = "requires OPENAI_API_KEY"]
+async fn openai_stream_returns_assistant_content() {
+    if !has_env("OPENAI_API_KEY") {
+        return;
+    }
+    // ...
+}
+```
 
-GitHub Actions runs in `.github/workflows/`:
+Run them with:
 
-1. **Format check** — `cargo fmt --check`
-2. **Lint** — `cargo clippy --workspace -D warnings`
-3. **Test** — `cargo nextest run --workspace`
-4. **Build** — `cargo build --workspace`
+```sh
+cargo test -p elph-ai --test e2e_live -- --ignored
+```
 
-Uses `sccache` for compilation caching across CI runs.
+## Makefile Test Targets
 
-## Tips for writing tests
+```sh
+make test                      # All workspace tests (cargo nextest)
+make test-elph                 # elph-ai + elph + elph-agent (with full features)
+make test-elph-tui             # elph-tui tests
+make coverage                  # With cargo-llvm-cov
+```
 
-- Use `FauxProvider` for agent loop tests without real API calls
-- Session tests work with `InMemorySessionStorage` or a temp directory
-- MCP tests use a local stdio-based test server or mock
-- For TUI component tests, use the mock rendering context from `elph-tui/tests/components_mock.rs`
-- To test a specific feature, check the Cargo feature flags in `crates/elph-agent/Cargo.toml`
+## Source References
+
+- `crates/elph-agent/tests/` — 30 integration test files
+- `crates/elph-ai/tests/` — provider adapter tests + live tests
+- `elph/tests/bootstrap.rs` — home bootstrapping tests
+- `elph/tests/cli.rs` — CLI subcommand tests
+- `crates/elph-agent/src/tools/types.rs` — `AgentTool`, `AgentToolResult`
+- `crates/elph-ai/src/providers/faux/` — `FauxProviderHandle`, `FauxResponseStep`

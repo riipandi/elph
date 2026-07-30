@@ -50,7 +50,6 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
-        builtin("copy", "Copy last agent message"),
         builtin("rename", "Rename the current session"),
         builtin("session", "Show session info"),
         builtin("changelog", "Show changelog"),
@@ -59,7 +58,11 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin("provider", "Manage providers (connect, disconnect)"),
+        builtin_with_args(
+            "provider",
+            "Manage providers (connect, disconnect, list)",
+            "connect|disconnect|list",
+        ),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
@@ -73,6 +76,8 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("exit", "Quit Elph"),
         builtin_with_args("goal", "Manage session goals", "<subcommand>"),
         hidden_builtin_with_args("confetti", "Confetti celebration", "[confetti|firework]"),
+        hidden_builtin_with_args("login", "Sign in to an AI provider", ""),
+        hidden_builtin_with_args("logout", "Sign out from an AI provider", ""),
     ]
 }
 
@@ -133,6 +138,7 @@ pub enum OverlayCommand {
     ScopedModels,
     Tree,
     Resume,
+    ProviderConnect { provider_id: Option<String> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,6 +183,16 @@ pub enum SlashDispatch {
     OverlayNeeded(OverlayCommand),
     /// Open feedback dialog (Report a Bug / Join Community).
     Feedback,
+    /// Open provider connection dialog with OAuth or API key input.
+    ProviderConnect {
+        provider_id: Option<String>,
+    },
+    /// Open provider disconnect dialog to remove stored credentials.
+    ProviderDisconnect {
+        provider_id: Option<String>,
+    },
+    /// List configured providers in the transcript.
+    ProviderList,
     Unimplemented(String),
 }
 
@@ -236,6 +252,48 @@ const CONFETTI_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
+const MEMORY_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "status",
+        description: "Show memory status",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "List memory entries",
+    },
+    SlashArgCompletion {
+        value: "tasks",
+        description: "Show memory tasks",
+    },
+    SlashArgCompletion {
+        value: "log",
+        description: "Show memory log",
+    },
+    SlashArgCompletion {
+        value: "search",
+        description: "Search memory",
+    },
+    SlashArgCompletion {
+        value: "purge",
+        description: "Purge all memory",
+    },
+];
+
+const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "connect",
+        description: "Connect to an AI provider",
+    },
+    SlashArgCompletion {
+        value: "disconnect",
+        description: "Disconnect from an AI provider",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "List configured providers",
+    },
+];
+
 const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "status",
@@ -269,6 +327,8 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
         "tools" => Some(TOOLS_ARG_COMPLETIONS),
         "goal" | "goals" => Some(GOAL_ARG_COMPLETIONS),
         "confetti" | "conffety" | "confetty" => Some(CONFETTI_ARG_COMPLETIONS),
+        "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
+        "provider" => Some(PROVIDER_ARG_COMPLETIONS),
         _ => None,
     }
 }
@@ -313,8 +373,36 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
         "new" => Some(SlashDispatch::NewSession),
         "feedback" => Some(SlashDispatch::Feedback),
         "memory" | "mem" => Some(SlashDispatch::Memory { args }),
-        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust"
-        | "provider" => Some(SlashDispatch::Unimplemented(format!("/{name}"))),
+        "login" => Some(SlashDispatch::ProviderConnect { provider_id: None }),
+        "logout" => Some(SlashDispatch::ProviderDisconnect { provider_id: None }),
+        "settings" | "export" | "import" | "copy" | "changelog" | "hotkeys" | "fork" | "clone" | "trust" => {
+            Some(SlashDispatch::Unimplemented(format!("/{name}")))
+        }
+        "provider" => {
+            if args.trim().is_empty() {
+                Some(SlashDispatch::ProviderConnect { provider_id: None })
+            } else if args.starts_with("connect") {
+                let provider_id = args.trim_start_matches("connect").trim().to_string();
+                let provider_id = if provider_id.is_empty() {
+                    None
+                } else {
+                    Some(provider_id)
+                };
+                Some(SlashDispatch::ProviderConnect { provider_id })
+            } else if args.starts_with("disconnect") {
+                let provider_id = args.trim_start_matches("disconnect").trim().to_string();
+                let provider_id = if provider_id.is_empty() {
+                    None
+                } else {
+                    Some(provider_id)
+                };
+                Some(SlashDispatch::ProviderDisconnect { provider_id })
+            } else if args.starts_with("list") || args.trim() == "ls" {
+                Some(SlashDispatch::ProviderList)
+            } else {
+                Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
+            }
+        }
         _ => None,
     }
 }
@@ -382,14 +470,20 @@ mod tests {
     }
 
     #[test]
-    fn provider_subcommands_are_unimplemented() {
+    fn provider_connect_dispatch() {
         assert_eq!(
             dispatch_slash_command("/provider connect", None, None, None),
-            Some(SlashDispatch::Unimplemented("/provider".into()))
+            Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
         assert_eq!(
             dispatch_slash_command("/provider connect anthropic", None, None, None),
-            Some(SlashDispatch::Unimplemented("/provider".into()))
+            Some(SlashDispatch::ProviderConnect {
+                provider_id: Some("anthropic".to_string())
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/provider", None, None, None),
+            Some(SlashDispatch::ProviderConnect { provider_id: None })
         );
     }
 
@@ -507,6 +601,9 @@ mod tests {
     fn slash_arg_completions_cover_tools_and_goal() {
         assert!(slash_arg_completions("tools").is_some());
         assert!(slash_arg_completions("goal").is_some());
+        assert!(slash_arg_completions("memory").is_some());
+        assert!(slash_arg_completions("mem").is_some());
+        assert!(slash_arg_completions("provider").is_some());
         assert!(slash_arg_completions("model").is_none());
     }
 

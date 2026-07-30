@@ -37,7 +37,9 @@ For each item found, write **In pi / In Elph / Implications** — not a one-line
 ## How to confirm “missing in pi”
 
 ```sh
-# From pi clone
+# From pi clone — make sure it's tracking live main, not a stale checkout
+git fetch origin main && git checkout main && git pull && git log -1 --oneline
+
 ls packages/agent/src packages/ai/src
 rg -n "mcp|MCP" packages/agent packages/ai --glob '!**/node_modules/**' | head
 # From elph

@@ -281,15 +281,15 @@ When no actual token usage data is available (e.g., at startup before the first 
 
 Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`):
 
-| Level   | Color         | Hex       |
-| ------- | ------------- | --------- |
-| off     | soft grey     | `#9CA3AF` |
-| minimal | soft cyan     | `#5EC8D4` |
-| low     | periwinkle    | `#7B9FD4` |
-| medium  | soft peach    | `#D4A574` |
+| Level   | Color            | Hex       |
+| ------- | ---------------- | --------- |
+| off     | soft grey        | `#9CA3AF` |
+| minimal | soft cyan        | `#5EC8D4` |
+| low     | periwinkle       | `#7B9FD4` |
+| medium  | soft peach       | `#D4A574` |
 | high    | soft clearer red | `#DC6E76` |
-| xhigh   | soft lavender | `#B49AD9` |
-| max     | soft magenta  | `#C48AD4` |
+| xhigh   | soft lavender    | `#B49AD9` |
+| max     | soft magenta     | `#C48AD4` |
 
 ### Context Usage → Color
 
@@ -335,28 +335,27 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 
 ## Keybindings
 
-| Key                 | Action                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------ |
-| `Ctrl+C`            | First press: quit notice; second press: quit (or clear input + attachments if typing)            |
-| `Ctrl+X`            | Cancel / Quit                                                                                    |
-| `Ctrl+D`            | Exit application                                                                                 |
-| `Tab`               | Toggle focus between prompt textarea and transcript                                              |
-| `Shift+Tab`         | Cycle agent mode                                                                                 |
-| `Ctrl+~`            | Cycle thinking level (`Ctrl+\`` also accepted)                                                   |
-| `Enter`             | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command |
-| `Ctrl+Enter`        | If queue non-empty: send top item now (interject). Else interject editor text mid-turn |
-| `Ctrl+Q`            | Open/close numbered prompt queue manager (edit / cancel items)                                   |
-| `Ctrl+J`            | Insert newline in input                                                                          |
-| `Shift+Enter`       | Insert newline in input                                                                          |
-| `Ctrl+L`            | Open model selector                                                                              |
-| `Ctrl+Shift+T`      | Cycle theme: Auto → Light → Dark (saved to `ui.theme`)                                           |
-| `Ctrl+P` / `Shift+Ctrl+P` | Cycle scoped models forward / backward                                                     |
-| `Ctrl+Y`            | Copy last AI response (raw markdown source)                                                      |
-| Click copy hint     | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting) |
-| `Ctrl+V`            | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                        |
-| `Ctrl+O`            | Preview/edit pasted block (input); else expand/collapse newest collapsible block                 |
-| Click header/footer | Expand/collapse that specific block                                                              |
-| `:q` / `:q!`        | Quit (vim-style)                                                                                 |
+| Key                       | Action                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `Ctrl+C`                  | First press: quit notice; second press: quit (or clear input + attachments if typing)              |
+| `Ctrl+X`                  | Cancel / Quit                                                                                      |
+| `Ctrl+D`                  | Exit application                                                                                   |
+| `Tab`                     | Toggle focus between prompt textarea and transcript                                                |
+| `Shift+Tab`               | Cycle agent mode                                                                                   |
+| `Ctrl+~`                  | Cycle thinking level (`Ctrl+\`` also accepted)                                                     |
+| `Enter`                   | Send message; while agent is busy, enqueue as follow-up; in slash palette, run or complete command |
+| `Ctrl+Enter`              | If queue non-empty: send top item now (interject). Else interject editor text mid-turn             |
+| `Ctrl+Q`                  | Open/close numbered prompt queue manager (edit / cancel items)                                     |
+| `Ctrl+J`                  | Insert newline in input                                                                            |
+| `Shift+Enter`             | Insert newline in input                                                                            |
+| `Ctrl+L`                  | Open model selector                                                                                |
+| `Ctrl+Shift+T`            | Cycle theme: Auto → Light → Dark (saved to `ui.theme`)                                             |
+| `Ctrl+P` / `Shift+Ctrl+P` | Cycle scoped models forward / backward                                                             |
+| Click copy hint           | Copy that assistant message (raw source) — see [AI response formatting](#ai-response-formatting)   |
+| `Ctrl+V`                  | Paste image from clipboard (**Cmd+V** on macOS); falls back to text paste                          |
+| `Ctrl+O`                  | Preview/edit pasted block (input); else expand/collapse newest collapsible block                   |
+| Click header/footer       | Expand/collapse that specific block                                                                |
+| `:q` / `:q!`              | Quit (vim-style)                                                                                   |
 
 Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
 
@@ -388,16 +387,16 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 `/scoped-models` opens the scoped-models editor (pi-compatible UX). Enabled models appear in the model picker's **Scoped** tab and can be cycled with **Ctrl+P** / **Shift+Ctrl+P**.
 
-| Key | Action |
-| --- | --- |
-| `↑` / `↓` (or `k` / `j`) | Move selection |
-| `Enter` | Toggle model for Ctrl+P cycling |
-| `Ctrl+A` | Enable all models (or all matching the filter) |
-| `Ctrl+X` | Clear all (or clear matching the filter) |
-| `Ctrl+P` | Toggle every model for the selected item's provider |
-| `Alt+↑` / `Alt+↓` | Reorder enabled models (cycle order) |
-| `Ctrl+S` | Save to home `settings.models.scoped` |
-| `Esc` | Cancel without saving |
+| Key                      | Action                                              |
+| ------------------------ | --------------------------------------------------- |
+| `↑` / `↓` (or `k` / `j`) | Move selection                                      |
+| `Enter`                  | Toggle model for Ctrl+P cycling                     |
+| `Ctrl+A`                 | Enable all models (or all matching the filter)      |
+| `Ctrl+X`                 | Clear all (or clear matching the filter)            |
+| `Ctrl+P`                 | Toggle every model for the selected item's provider |
+| `Alt+↑` / `Alt+↓`        | Reorder enabled models (cycle order)                |
+| `Ctrl+S`                 | Save to home `settings.models.scoped`               |
+| `Esc`                    | Cancel without saving                               |
 
 Edits are **session-only** until **Ctrl+S** (footer shows `(unsaved)`). Cancel restores the list from when the editor opened.
 

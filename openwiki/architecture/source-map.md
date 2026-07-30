@@ -1,404 +1,161 @@
 ---
-type: Reference
-title: Elph Source Map
-description: Comprehensive crate-by-crate module map with file paths and responsibilities for the Elph workspace.
-tags: [source-map, rust, crates, workspace]
-resource: /
+type: Source Map
+title: Elph Crate-by-Crate Source Map
+description: Module map for every crate in the Elph workspace, noting which modules are pi ports vs elph-only
+tags: [source-map, modules, pi-port, elph-only]
 ---
 
 # Source Map
 
-## `elph` (binary + library crate) — `/elph/`
+Crate-by-crate module map with file paths, noting pi port origins vs Elph-only extensions.
 
-The main application. `main.rs` parses args → `cli::run()`. Library crate exposes modules for integration tests.
+## `elph` (product binary + library)
 
-```
-elph/src/
-├── main.rs               # Entry: clap parse → cli::run()
-├── lib.rs                # Public modules
-│
-├── cli/                  # CLI subcommands (clap-based)
-│   ├── mod.rs            # Cli struct + Commands enum (17+ subcommands)
-│   ├── acp.rs            # Agent Client Protocol server (CLI entry point)
-│   ├── codegraph.rs      # code-review-graph integration
-│   ├── completions.rs    # Shell completion generation
-│   ├── default.rs        # Default/interactive mode handler
-│   ├── doctor.rs         # Configuration diagnostics
-│   ├── export.rs         # Session export
-│   ├── extensions.rs     # WASM extension management
-│   ├── help.rs           # Help display
-│   ├── import.rs         # Session import
-│   ├── mcp.rs            # MCP server management (add/remove/list/doctor)
-│   ├── memory.rs         # Agent memory inspection
-│   ├── models.rs         # Model catalog inspection
-│   ├── provider.rs       # Provider config management
-│   ├── run.rs            # Non-interactive run
-│   ├── server.rs         # ACP server listener
-│   ├── session.rs        # Session management (list/delete/export)
-│   ├── stats.rs          # Usage statistics
-│   ├── tools.rs          # Tool listing and inspection
-│   ├── update.rs         # Self-update
-│   ├── version.rs        # Version info
-│   └── worktree.rs       # Worktree management
-│
-├── agent/                # Coding agent product logic
-│   ├── mod.rs            # Module declarations
-│   ├── runtime.rs        # create_coding_session_with_events factory
-│   ├── session/          # CodingAgentSession (harness → UI bridge)
-│   │   ├── mod.rs
-│   │   └── wiring.rs
-│   ├── session_manager.rs
-│   ├── slash_commands.rs
-│   ├── goal_slash.rs
-│   ├── tool_policy.rs    # Agent mode → tool approval policies
-│   ├── run_mode.rs       # Non-interactive run orchestration
-│   ├── mcp_bootstrap.rs  # MCP discovery during session start
-│   ├── model_registry.rs # Model resolution from settings
-│   ├── resource_loader.rs
-│   ├── events.rs         # AgentUiEvent types
-│   ├── overlays.rs       # Overlay handler for UI events
-│   ├── diagnostics.rs    # Diagnostics tool
-│   ├── skills_load.rs    # Skill loading
-│   └── prompt/           # System prompt building
-│
-├── tui/                  # Interactive TUI application
-│   ├── mod.rs            # run_tui() entry, TuiOptions
-│   ├── shell.rs          # MainShell (iocraft-based)
-│   ├── shell_submit.rs   # Submit handler
-│   ├── startup.rs        # TUI bootstrap flow
-│   ├── agent_bridge.rs   # Agent event → TUI event bridge
-│   ├── activity.rs       # Activity indicator management
-│   ├── transcript/       # Chat transcript rendering
-│   │   ├── mod.rs
-│   │   ├── types.rs
-│   │   ├── panel.rs
-│   │   ├── ephemeral.rs  # Ephemeral message display
-│   │   ├── layout.rs
-│   │   ├── card/         # Agent message cards
-│   │   │   ├── mod.rs
-│   │   │   ├── kinds.rs
-│   │   │   ├── builder.rs
-│   │   │   ├── chrome.rs
-│   │   │   ├── frame.rs
-│   │   │   ├── tool_format.rs
-│   │   │   └── toggle_ctx.rs
-│   │   └── markdown/     # Markdown rendering pipeline
-│   ├── prompt/           # Input prompt chrome
-│   │   ├── mod.rs
-│   │   ├── chrome.rs
-│   │   ├── editor.rs
-│   │   └── footer.rs
-│   ├── chrome/           # Header/status row chrome
-│   │   ├── mod.rs
-│   │   ├── header.rs
-│   │   ├── status_row.rs
-│   │   ├── stats.rs
-│   │   └── fit.rs
-│   ├── confetti/         # Confetti overlay
-│   ├── model_selector.rs
-│   ├── model_selector_bar.rs
-│   ├── model_selector_shell.rs
-│   ├── scoped_models.rs
-│   ├── scoped_models_bar.rs
-│   ├── scoped_models_shell.rs
-│   ├── scroll_text_dialog.rs  # Reusable scrollable text modal
-│   ├── session_prefs.rs
-│   ├── slash_handler.rs
-│   ├── slash_palette.rs
-│   ├── status_dialog.rs
-│   ├── subagent_display.rs
-│   ├── system_prompt_dialog.rs
-│   ├── tool_approval.rs  # Tool approval dialogs
-│   ├── tool_params.rs    # Tool parameter display
-│   ├── theme.rs
-│   ├── focus.rs
-│   ├── labels.rs
-│   ├── file_picker.rs
-│   ├── api_error_display.rs
-│   ├── ask_user_tool_card.rs
-│   ├── inline_dialog.rs
-│   ├── user_question.rs
-│   ├── user_question_bar.rs
-│   ├── user_question_option_list.rs
-│   └── model_option_list.rs
-│
-├── platform/             # Host environment
-│   ├── mod.rs            # Paths, Settings, migrations, MCP relay, hooks
-│   ├── paths.rs          # XDG path resolution
-│   ├── settings.rs       # Layered settings (defaults → home → project)
-│   ├── bootstrap.rs      # App bootstrap
-│   ├── mcp.rs            # MCP server relay
-│   ├── migrations.rs     # Platform datastore migrations
-│   ├── acp/              # Agent Client Protocol server
-│   │   ├── mod.rs        # ACP server runtime (run_agent_stdio)
-│   │   ├── handler.rs    # Prompt dispatch and slash command routing
-│   │   └── util.rs       # Notification chunking, event streaming, text extraction
-│   ├── exit_message.rs   # Exit message display
-│   └── provider.rs       # Provider config (added opencode-go)
-│
-├── memory/               # Agent memory
-│   ├── mod.rs
-│   ├── format.rs
-│   └── store.rs
-│
-├── skills/               # Skill loading
-├── prompt/               # Prompt structures
-├── command/              # Command implementations
-├── worktree/             # Worktree management
-├── extensions/           # WASM extension host
-└── types.rs              # AgentMode, ThinkingLevel types
-```
+**Path:** `elph/src/`
+**Pi mapping:** `@earendil-works/pi-coding-agent` → `elph/`
+**Key files:**
 
-## `elph-agent` — `/crates/elph-agent/`
+| Module                     | Path                                  | Status                                  |
+| -------------------------- | ------------------------------------- | --------------------------------------- |
+| `main.rs`                  | `elph/src/main.rs`                    | [Elph delta] — CLI entry via clap       |
+| `lib.rs`                   | `elph/src/lib.rs`                     | [Elph delta] — re-exports all modules   |
+| `cli/`                     | `elph/src/cli/` (19 subcommand files) | [Elph delta] — CLI subcommands          |
+| `agent/`                   | `elph/src/agent/`                     | [Partial] — pi-coding-agent equivalent  |
+| `agent/runtime.rs`         | `elph/src/agent/runtime.rs`           | [Partial] — session factory             |
+| `agent/session/`           | `elph/src/agent/session/`             | [Partial] — CodingAgentSession          |
+| `agent/session_manager.rs` | `elph/src/agent/session_manager.rs`   | [Partial]                               |
+| `agent/slash_commands.rs`  | `elph/src/agent/slash_commands.rs`    | [Partial]                               |
+| `agent/mode_change.rs`     | `elph/src/agent/mode_change.rs`       | [Elph delta]                            |
+| `agent/run_mode.rs`        | `elph/src/agent/run_mode.rs`          | [Partial] — non-interactive mode        |
+| `agent/tool_policy.rs`     | `elph/src/agent/tool_policy.rs`       | [Elph delta]                            |
+| `agent/mcp_bootstrap.rs`   | `elph/src/agent/mcp_bootstrap.rs`     | [Elph delta]                            |
+| `agent/prompt/`            | `elph/src/agent/prompt/`              | [Partial]                               |
+| `tui/`                     | `elph/src/tui/` (35+ files)           | [Elph delta] — iocraft-based TUI        |
+| `platform/`                | `elph/src/platform/`                  | [Elph delta]                            |
+| `platform/paths.rs`        | `elph/src/platform/paths.rs`          | [Elph delta] — ELPH_HOME, paths         |
+| `platform/settings.rs`     | `elph/src/platform/settings.rs`       | [Elph delta] — settings merge           |
+| `memory/`                  | `elph/src/memory/`                    | [Elph delta] — floppy memory            |
+| `extensions/`              | `elph/src/extensions/`                | [Elph delta] — WASM extension host      |
+| `codegraph/`               | `elph/src/codegraph/`                 | [Elph delta] — code review graph        |
+| `worktree/`                | `elph/src/worktree/`                  | [Elph delta]                            |
+| `types.rs`                 | `elph/src/types.rs`                   | [Elph delta] — AgentMode, ThinkingLevel |
 
-Generic agent runtime library. The largest crate by feature surface.
+## `elph-agent` (agent runtime)
 
-```
-crates/elph-agent/src/
-├── lib.rs                    # Public API: AgentBuilder, BuiltinToolsBuilder, harness, etc.
-├── builder.rs                # AgentBuilder (logging) + BuiltinToolsBuilder (tool catalog)
-│
-├── agent/                    # Core agent types
-│   ├── mod.rs                # Agent struct, events, queue, run, state
-│   └── harness/              # AgentHarness
-│       ├── mod.rs            # Harness struct + core implementation
-│       ├── helpers.rs        # Message builders, validation
-│       ├── plan_mode.rs      # Collaboration plan mode
-│       ├── prompt_ops.rs     # System prompt operations
-│       ├── compaction_ops.rs # History compaction operations
-│       ├── tree_nav.rs       # Branch/tree navigation
-│       ├── hooks.rs          # Hook system
-│       ├── system_prompt.rs  # System prompt builder
-│       ├── generic_on.rs     # Event handler wiring
-│       ├── types/            # Error, event, option types
-│       ├── utils/            # Truncation, shell output
-│       └── run_loop/         # Harness turn loop (split by concern)
-│
-├── runtime/                  # Agent turn loop execution
-│   ├── mod.rs                # agent_loop, block_on/try_block_on
-│   ├── loop_config.rs        # AgentLoopConfig, AgentContext, callbacks
-│   ├── run_loop.rs           # Core turn iteration
-│   ├── stream.rs             # Assistant response streaming
-│   ├── event_stream.rs       # AgentEventStream + sink
-│   ├── env.rs                # Local execution environment
-│   ├── local_env/            # Filesystem + shell execution
-│   ├── exec/                 # Tool execution pipeline
-│   └── proxy.rs              # Browser stream proxy
-│
-├── tools/                    # Built-in tools
-│   ├── mod.rs                # Tool catalog, feature gates
-│   ├── types.rs              # AgentTool, AgentToolResult types
-│   ├── shell_exec.rs         # Shell command execution
-│   ├── read_file.rs, write.rs, grep.rs, ...
-│   ├── web/                  # Web fetch + search tools
-│   ├── mcp/                  # MCP client tools
-│   │   ├── mod.rs
-│   │   ├── client.rs         # MCP client connection
-│   │   ├── config.rs         # MCP config schema
-│   │   ├── sse.rs            # SSE transport
-│   │   └── ...
-│   └── collaboration/        # Collaboration tools
-│
-├── session/                  # Session management
-│   ├── mod.rs
-│   ├── types.rs
-│   ├── storage.rs            # InMemorySessionStorage, SessionDirStorage, TursoSessionStorage
-│   └── dir.rs
-│
-├── compaction/               # History compaction
-│   ├── mod.rs
-│   ├── estimation.rs         # Token estimation
-│   ├── branch.rs             # Branch management
-│   └── summarization.rs      # Branch summarization
-│
-├── goals/                    # Goal/todo system
-│   ├── mod.rs
-│   ├── types.rs
-│   ├── runtime.rs
-│   └── store.rs
-│
-├── messages/                 # Message types
-│   ├── mod.rs
-│   ├── types.rs
-│   └── format.rs
-│
-├── prompt/                   # Prompt templates (MiniJinja)
-├── skills/                   # Skill loading/formatting
-├── collaboration/            # Collaboration protocols
-├── plugins/                  # WASM extension host
-├── datastore/                # Database specs
-├── trace/                    # Distributed tracing
-└── types/                    # Shared types
-```
+**Path:** `crates/elph-agent/src/`
+**Pi mapping:** `@earendil-works/pi-agent-core` → `crates/elph-agent`
+**Key files:**
 
-## `elph-ai` — `/crates/elph-ai/`
+| Module                        | Path                                                | Status                          |
+| ----------------------------- | --------------------------------------------------- | ------------------------------- |
+| `lib.rs`                      | `crates/elph-agent/src/lib.rs`                      | [Parity] — re-exports           |
+| `agent/`                      | `crates/elph-agent/src/agent/`                      | [Parity] — Agent struct, events |
+| `agent/harness/`              | `crates/elph-agent/src/agent/harness/`              | [Parity] — AgentHarness         |
+| `agent/harness/mod.rs`        | `crates/elph-agent/src/agent/harness/mod.rs`        | [Parity]                        |
+| `agent/harness/prompt_ops.rs` | `crates/elph-agent/src/agent/harness/prompt_ops.rs` | [Parity]                        |
+| `agent/harness/run_loop/`     | `crates/elph-agent/src/agent/harness/run_loop/`     | [Parity]                        |
+| `agent/subagent/`             | `crates/elph-agent/src/agent/subagent/`             | [Elph delta]                    |
+| `runtime/`                    | `crates/elph-agent/src/runtime/`                    | [Parity]                        |
+| `runtime/run_loop.rs`         | `crates/elph-agent/src/runtime/run_loop.rs`         | [Parity]                        |
+| `runtime/exec/`               | `crates/elph-agent/src/runtime/exec/`               | [Parity]                        |
+| `runtime/local_env/`          | `crates/elph-agent/src/runtime/local_env/`          | [Parity]                        |
+| `compaction/`                 | `crates/elph-agent/src/compaction/`                 | [Parity]                        |
+| `session/`                    | `crates/elph-agent/src/session/`                    | [Parity]                        |
+| `tools/`                      | `crates/elph-agent/src/tools/`                      | [Elph delta] — product tools    |
+| `tools/types.rs`              | `crates/elph-agent/src/tools/types.rs`              | [Elph delta]                    |
+| `tools/mcp/`                  | `crates/elph-agent/src/tools/mcp/`                  | [Elph delta] — MCP client       |
+| `tools/web/`                  | `crates/elph-agent/src/tools/web/`                  | [Elph delta]                    |
+| `skills/`                     | `crates/elph-agent/src/skills/`                     | [Elph delta] — SKILL.md system  |
+| `goals/`                      | `crates/elph-agent/src/goals/`                      | [Elph delta]                    |
+| `plugins/`                    | `crates/elph-agent/src/plugins/`                    | [Elph delta] — WASM plugins     |
+| `collaboration/`              | `crates/elph-agent/src/collaboration/`              | [Elph delta]                    |
+| `datastore/`                  | `crates/elph-agent/src/datastore/`                  | [Elph delta]                    |
+| `prompt/`                     | `crates/elph-agent/src/prompt/`                     | [Elph delta] — TOON encoding    |
+| `builder.rs`                  | `crates/elph-agent/src/builder.rs`                  | [Elph delta]                    |
 
-Provider-agnostic LLM API layer. Now includes self-contained tracing and logging infrastructure (previously in `elph-core`).
+## `elph-ai` (LLM API layer)
 
-```
-crates/elph-ai/src/
-├── lib.rs                # Provider resolution, auth helpers, model lookup
-│
-├── trace/                # Distributed tracing (self-contained, no elph-core dep)
-│   ├── mod.rs            # Feature-gated module routing
-│   ├── core_imp.rs       # fastrace-based implementation with JsonlReporter
-│   ├── core_stub.rs      # No-op stubs when tracing feature disabled
-│   ├── imp.rs            # Public tracing API (model_stream_span, spawn_stream)
-│   ├── reporter.rs       # JsonlReporter — writes JSONL span trees to disk
-│   └── stub.rs           # No-op stub implementations
-│
-├── logger/               # Logging configuration (self-contained)
-│   ├── mod.rs
-│   ├── options.rs        # LoggingOptions, LogRotation, env-var parsing
-│   └── crash.rs          # Crash handler
-│
-├── api/                  # Provider API implementations
-│   ├── mod.rs
-│   ├── anthropic.rs      # Anthropic Messages API
-│   ├── bedrock.rs        # AWS Bedrock (Converse API)
-│   ├── google.rs         # Google Gemini/Vertex AI
-│   ├── openai_compat.rs  # OpenAI-compatible APIs
-│   ├── openai_responses  # OpenAI Responses API
-│   ├── azure.rs          # Azure OpenAI
-│   ├── copilot.rs        # GitHub Copilot
-│   ├── mistral.rs        # Mistral AI
-│   ├── cloudflare.rs     # Cloudflare Workers AI
-│   ├── openrouter.rs     # OpenRouter
-│   └── codex.rs          # OpenAI Codex (WebSocket transport)
-│
-├── auth/                 # Authentication
-│   ├── mod.rs
-│   ├── api_key.rs
-│   ├── env.rs
-│   ├── oauth.rs          # OAuth 2.1 + PKCE
-│   └── store.rs          # Credential store
-│
-├── models/               # Model catalog
-│   ├── mod.rs
-│   └── builtin.json      # Built-in model definitions (JSON)
-│
-├── providers/            # Provider definitions
-│   ├── mod.rs
-│   ├── definitions.rs
-│   └── faux.rs           # Mock provider for testing
-│
-├── images/               # Image generation
-├── types/                # Core types
-└── utils/                # Deferred tools, diagnostics, streaming, retry
-```
+**Path:** `crates/elph-ai/src/`
+**Pi mapping:** `@earendil-works/pi-ai` → `crates/elph-ai`
+**Key files:**
 
-## `floppy` — `/crates/floppy/`
+| Module                      | Path                                           | Status                           |
+| --------------------------- | ---------------------------------------------- | -------------------------------- |
+| `lib.rs`                    | `crates/elph-ai/src/lib.rs`                    | [Parity]                         |
+| `api/`                      | `crates/elph-ai/src/api/`                      | [Parity] — provider API adapters |
+| `api/anthropic_messages.rs` | `crates/elph-ai/src/api/anthropic_messages.rs` | [Parity]                         |
+| `api/bedrock_converse.rs`   | `crates/elph-ai/src/api/bedrock_converse.rs`   | [Parity]                         |
+| `api/transform_messages.rs` | `crates/elph-ai/src/api/transform_messages.rs` | [Parity]                         |
+| `auth/`                     | `crates/elph-ai/src/auth/`                     | [Parity]                         |
+| `auth/credential_store.rs`  | `crates/elph-ai/src/auth/credential_store.rs`  | [Parity]                         |
+| `auth/models_store.rs`      | `crates/elph-ai/src/auth/models_store.rs`      | [Parity]                         |
+| `auth/oauth/`               | `crates/elph-ai/src/auth/oauth/`               | [Parity]                         |
+| `auth/resolve.rs`           | `crates/elph-ai/src/auth/resolve.rs`           | [Parity]                         |
+| `providers/`                | `crates/elph-ai/src/providers/`                | [Parity]                         |
+| `providers/builtin.rs`      | `crates/elph-ai/src/providers/builtin.rs`      | [Parity] + [Elph delta]          |
+| `providers/adapter.rs`      | `crates/elph-ai/src/providers/adapter.rs`      | [Parity]                         |
+| `providers/faux/`           | `crates/elph-ai/src/providers/faux/`           | [Parity] — test provider         |
+| `models/`                   | `crates/elph-ai/src/models/`                   | [Parity]                         |
+| `types/`                    | `crates/elph-ai/src/types/`                    | [Parity]                         |
+| `utils/`                    | `crates/elph-ai/src/utils/`                    | [Parity]                         |
+| `utils/retry.rs`            | `crates/elph-ai/src/utils/retry.rs`            | [Parity]                         |
+| `utils/deferred_tools.rs`   | `crates/elph-ai/src/utils/deferred_tools.rs`   | [Parity]                         |
+| `utils/text.rs`             | `crates/elph-ai/src/utils/text.rs`             | [Parity]                         |
+| `images/`                   | `crates/elph-ai/src/images/`                   | [Parity]                         |
+| `resilience/`               | `crates/elph-ai/src/resilience/`               | [Parity]                         |
+| `session_resources.rs`      | `crates/elph-ai/src/session_resources.rs`      | [Parity]                         |
 
-Standalone AI memory crate (extracted from `elph-core`). Vector memory with Turso + ONNX embeddings, query engine, scoring, and report generation.
+## `elph-tui` (TUI components)
 
-```
-crates/floppy/src/
-├── lib.rs                # Public API
-├── builder.rs            # FloppyBuilder
-├── embed.rs              # ONNX embedding integration
-├── migrations.rs         # DB schema migrations
-├── paths.rs              # Storage paths
-├── scoring.rs            # Welford scoring, EMA weight updates
-├── report.rs             # Memory reporting
-├── util.rs               # Utilities
-├── types/
-│   ├── mod.rs
-│   ├── config.rs         # FloppyConfig
-│   ├── memory.rs         # MemoryEntry, MemoryFilter
-│   ├── report.rs         # Report types
-│   └── task.rs           # Task types
-├── store/
-│   ├── mod.rs
-│   ├── read.rs           # Read operations
-│   ├── write.rs          # Write operations
-│   ├── embed.rs          # Embedding storage
-│   ├── tasks.rs          # Task storage
-│   └── store_tests.rs    # Store tests
-└── query/
-    ├── mod.rs
-    ├── memories.rs       # Memory query operations
-    ├── search.rs         # Semantic search
-    ├── status.rs         # Status queries
-    ├── tasks.rs          # Task queries
-    ├── timeline.rs       # Timeline queries
-    └── query_tests.rs    # Query tests
-```
+**Path:** `crates/elph-tui/src/`
+**Status:** [Elph delta] — no pi equivalent
 
-## `elph-core` — REMOVED
+| Module            | Path                                                                                      |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| `lib.rs`          | `crates/elph-tui/src/lib.rs`                                                              |
+| `components/`     | `crates/elph-tui/src/components/` (select, card, code, diff, markdown, scroll, tab, etc.) |
+| `text_editing/`   | `crates/elph-tui/src/text_editing/`                                                       |
+| `slash_palette/`  | `crates/elph-tui/src/slash_palette/`                                                      |
+| `theme_config.rs` | `crates/elph-tui/src/theme_config.rs`                                                     |
+| `loader.rs`       | `crates/elph-tui/src/loader.rs`                                                           |
+| `clipboard.rs`    | `crates/elph-tui/src/clipboard.rs`                                                        |
+| `types.rs`        | `crates/elph-tui/src/types.rs`                                                            |
 
-`elph-core` has been removed as a standalone crate. Its modules were redistributed:
+## `elph-exec` (shell execution)
 
-| Former module          | New location                                                                             |
-| ---------------------- | ---------------------------------------------------------------------------------------- |
-| `floppy/*`             | `/crates/floppy/` (standalone crate)                                                     |
-| `fs.rs`                | `/crates/elph-agent/src/fs.rs`                                                           |
-| `logger/*`             | `/crates/elph-agent/src/logger/*`                                                        |
-| `trace/*`              | `/crates/elph-agent/src/trace/*` (core) + `/crates/elph-ai/src/trace/*` (provider-level) |
-| `utils/lines.rs`       | `/crates/elph-agent/src/utils/lines.rs`                                                  |
-| `utils/path/*`         | `/elph/src/utils/path/*`                                                                 |
-| `utils/git.rs`         | `/elph/src/utils/git.rs`                                                                 |
-| `utils/project_key.rs` | `/elph/src/utils/project_key.rs`                                                         |
-| `scaffold/*`           | `/elph/src/platform/scaffold/*`                                                          |
+**Path:** `crates/elph-exec/src/`
+**Status:** [Elph delta]
 
-## `elph-tui` — `/crates/elph-tui/`
+| Module      | Path                             |
+| ----------- | -------------------------------- |
+| `lib.rs`    | `crates/elph-exec/src/lib.rs`    |
+| `shell.rs`  | `crates/elph-exec/src/shell.rs`  |
+| `types.rs`  | `crates/elph-exec/src/types.rs`  |
+| `error.rs`  | `crates/elph-exec/src/error.rs`  |
+| `output.rs` | `crates/elph-exec/src/output.rs` |
+| `pty/`      | `crates/elph-exec/src/pty/`      |
 
-Reusable terminal UI widgets built on `iocraft`.
+## `floppy` (memory)
 
-```
-crates/elph-tui/src/
-├── lib.rs                # Public API
-├── color.rs              # Color parsing (hex, CSS, CSV, named)
-├── theme_config.rs       # Theme system (auto/dark/light palette tokens)
-├── transcript_layout.rs  # Chat transcript layout
-├── text_input_layout.rs  # Text input layout
-├── input_prefix.rs       # Prompt prefix detection (> / $ #)
-├── cli_progress.rs       # CLI progress spinners
-├── clipboard.rs          # Native clipboard API (copy/read with status toasts)
-├── loader.rs             # Loading animations
-├── paste.rs              # Paste handler
-├── types.rs              # Shared types
-├── utils.rs              # Utilities
-│
-├── components/           # Reusable UI components
-│   ├── mod.rs
-│   ├── markdown/         # Markdown rendering
-│   ├── textarea/         # Text area component
-│   ├── dialog_shell/     # Dialog shell
-│   ├── diff/             # Git diff viewer (unified + side-by-side, syntax highlighting, line numbers)
-│   │   ├── mod.rs        # DiffView component, DiffMode, DiffViewProps
-│   │   ├── types.rs      # DiffHunkLine, DiffHunk, DiffResult data model
-│   │   ├── compute.rs    # Diff computation via similar::TextDiff::grouped_ops
-│   │   ├── highlight.rs  # Syntax highlighting for diff lines (syntect)
-│   │   └── render.rs     # Rendering helpers (hunk headers, line numbers, unified/side-by-side)
-│   ├── progress_indicator.rs
-│   ├── status_indicator.rs
-│   ├── select.rs
-│   └── ...
-│
-└── slash_palette/        # Slash command palette
-    ├── mod.rs
-    ├── completer.rs      # Fuzzy completion
-    └── floating.rs       # Floating palette widget
-```
+**Path:** `crates/floppy/src/`
+**Status:** [Elph delta] — port of memelord SDK
 
-## `elph-exec` — `/crates/elph-exec/`
+| Module          | Path                              |
+| --------------- | --------------------------------- |
+| `lib.rs`        | `crates/floppy/src/lib.rs`        |
+| `builder.rs`    | `crates/floppy/src/builder.rs`    |
+| `embed.rs`      | `crates/floppy/src/embed.rs`      |
+| `migrations.rs` | `crates/floppy/src/migrations.rs` |
+| `paths.rs`      | `crates/floppy/src/paths.rs`      |
+| `query/`        | `crates/floppy/src/query/`        |
+| `store/`        | `crates/floppy/src/store/`        |
+| `scoring.rs`    | `crates/floppy/src/scoring.rs`    |
+| `types/`        | `crates/floppy/src/types/`        |
 
-Shell and PTY execution.
+## Skeleton crates
 
-```
-crates/elph-exec/src/
-├── lib.rs
-├── shell.rs              # Shell execution
-├── pty/                  # Unix PTY support (via rustix)
-├── error.rs
-├── output.rs
-└── types.rs
-```
-
-## Additional crates (placeholder status)
-
-| Crate          | Path                    | Status | Notes                              |
-| -------------- | ----------------------- | ------ | ---------------------------------- |
-| `elph-cron`    | `/crates/elph-cron/`    | Empty  | `src/lib.rs` has no implementation |
-| `elph-sandbox` | `/crates/elph-sandbox/` | Empty  | `src/lib.rs` has no implementation |
-| `elph-swarm`   | `/crates/elph-swarm/`   | Empty  | `src/lib.rs` has no implementation |
+| Crate          | Path                             | Status            |
+| -------------- | -------------------------------- | ----------------- |
+| `elph-cron`    | `crates/elph-cron/src/lib.rs`    | Empty placeholder |
+| `elph-sandbox` | `crates/elph-sandbox/src/lib.rs` | Empty placeholder |
+| `elph-swarm`   | `crates/elph-swarm/src/lib.rs`   | Empty placeholder |

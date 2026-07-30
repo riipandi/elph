@@ -56,6 +56,7 @@ fn create_long_conversation(turns: usize) -> Vec<AgentMessage> {
                 cost: elph_ai::UsageCost::default(),
             },
             stop_reason: elph_ai::StopReason::Stop,
+            pending_stop_reason: None,
             error_message: None,
             timestamp: now_ms(),
         })));

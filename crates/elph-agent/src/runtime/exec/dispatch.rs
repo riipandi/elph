@@ -44,7 +44,8 @@ pub(super) async fn execute_tool_calls_sequential(
                 duration_secs: None,
             },
             Preparation::Prepared(prepared) => {
-                let executed = execute_prepared_tool_call(prepared.as_ref(), signal.clone(), emit).await;
+                let executed =
+                    execute_prepared_tool_call(prepared.as_ref(), signal.clone(), emit, &config.tool_context).await;
                 finalize_executed_tool_call(
                     current_context,
                     assistant_message,
@@ -117,8 +118,10 @@ pub(super) async fn execute_tool_calls_parallel(
                 let assistant_message = assistant_message.clone();
                 let config_hooks = config.after_tool_call.clone();
                 let prompt_encoding = config.prompt_encoding.clone();
+                let tool_context = config.tool_context.clone();
                 entries.push(Entry::Deferred(Box::pin(async move {
-                    let executed = execute_prepared_tool_call(prepared.as_ref(), signal.clone(), &emit).await;
+                    let executed =
+                        execute_prepared_tool_call(prepared.as_ref(), signal.clone(), &emit, &tool_context).await;
                     finalize_executed_tool_call_with_hook(
                         &current_context,
                         &assistant_message,

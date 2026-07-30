@@ -33,6 +33,8 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
     simple_tool(
         Tool {
             name: "read_file".into(),
+            constrained_sampling: None,
+
             description: format!(
                 "Read file contents from the project. Supports single files with offset/limit, \
                  batch reading of multiple files (paths), and multiple specific ranges (ranges). \
@@ -172,6 +174,7 @@ async fn execute_read(
         }),
         added_tool_names: None,
         terminate: None,
+        usage: None,
     })
 }
 
