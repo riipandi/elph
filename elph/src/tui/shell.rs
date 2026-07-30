@@ -21,8 +21,7 @@ use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
 use crate::platform::exit_message::{ExitSnapshot, record_if_active};
-use crate::platform::handle_prompt_interrupt_text;
-use crate::platform::{Paths, PromptInterrupt, Settings};
+use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
@@ -4759,63 +4758,63 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         false,
                     );
                 }
-                (m, KeyCode::Char('c')) if m.contains(KeyModifiers::CONTROL) && busy.get() => {
-                    turn_cancel_requested.set(true);
-                    activity_label.set("Cancelling…".to_string());
-                    prompt_queue.write().clear();
-                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                    pre_echoed_user_prompts.set(0);
-                    agent_turn_active.set(false);
-                    queue_manager_open.set(false);
-                    queue_manager_selected.set(0);
-                    if let Some(pending) = pending_tool_approval.write().take() {
-                        pending.respond(ToolApprovalChoice::Reject);
-                    }
-                    if let Some(mode_change) = pending_mode_change.write().take() {
-                        mode_change.respond(false);
-                    }
-                    let _ = pending_plan_confirmation.write().take();
-                    if let Some(question) = pending_user_question.write().take() {
-                        question.cancel();
-                    }
-                    shell_focus.set(ShellFocus::Prompt);
-                    question_answer.set(String::new());
-                    question_input_focus.set(QuestionInputFocus::Choices);
-                    if let Some(token) = user_shell_abort.read().clone() {
-                        token.cancel();
-                    }
-                    if let Some(session) = agent_session.as_ref() {
-                        TurnDispatcher::spawn_abort(Arc::clone(session));
-                    } else if user_shell_abort.read().is_none() {
-                        let canceled_elapsed = busy_started_at
-                            .read()
-                            .as_ref()
-                            .map(|started| format_elapsed_secs(*started))
-                            .unwrap_or(0.0);
-                        session_elapsed_secs
-                            .set(accumulate_session_elapsed(session_elapsed_secs.get(), canceled_elapsed));
-                        busy.set(false);
-                        busy_started_at.set(None);
-                        activity_started_at.set(None);
-                        turn_token_tracker.set(None);
-                        turn_cancel_requested.set(false);
-                        idle_status_notice.set(Some(IdleStatusNotice {
-                            text: format_turn_canceled_notice(canceled_elapsed),
-                            since: Instant::now(),
-                        }));
-                    }
-                }
                 (m, KeyCode::Char('c'))
-                    if m.contains(KeyModifiers::CONTROL) && !busy.get() && pending_tool_approval.read().is_none() =>
+                    if m.contains(KeyModifiers::CONTROL) && pending_tool_approval.read().is_none() =>
                 {
-                    // Ctrl+C always clears / cancels — never used for yank (`y` = selection, Ctrl+Y = full prompt).
-                    if matches!(handle_prompt_interrupt_text(&draft_text), PromptInterrupt::Cleared) {
+                    // Ctrl+C: if textarea has content → clear it; if empty and busy → cancel stream.
+                    // Never used for yank (`y` = selection, Ctrl+Y = full prompt).
+                    if !draft_body.is_empty() {
                         draft.set(String::new());
                         live_draft.set(String::new());
                         force_editor_clear.set(true);
                         slash_palette_index.set(0);
                         slash_palette_query.write().clear();
                         suppress_enter_newline.set(true);
+                    } else if busy.get() {
+                        turn_cancel_requested.set(true);
+                        activity_label.set("Cancelling…".to_string());
+                        prompt_queue.write().clear();
+                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                        pre_echoed_user_prompts.set(0);
+                        agent_turn_active.set(false);
+                        queue_manager_open.set(false);
+                        queue_manager_selected.set(0);
+                        if let Some(pending) = pending_tool_approval.write().take() {
+                            pending.respond(ToolApprovalChoice::Reject);
+                        }
+                        if let Some(mode_change) = pending_mode_change.write().take() {
+                            mode_change.respond(false);
+                        }
+                        let _ = pending_plan_confirmation.write().take();
+                        if let Some(question) = pending_user_question.write().take() {
+                            question.cancel();
+                        }
+                        shell_focus.set(ShellFocus::Prompt);
+                        question_answer.set(String::new());
+                        question_input_focus.set(QuestionInputFocus::Choices);
+                        if let Some(token) = user_shell_abort.read().clone() {
+                            token.cancel();
+                        }
+                        if let Some(session) = agent_session.as_ref() {
+                            TurnDispatcher::spawn_abort(Arc::clone(session));
+                        } else if user_shell_abort.read().is_none() {
+                            let canceled_elapsed = busy_started_at
+                                .read()
+                                .as_ref()
+                                .map(|started| format_elapsed_secs(*started))
+                                .unwrap_or(0.0);
+                            session_elapsed_secs
+                                .set(accumulate_session_elapsed(session_elapsed_secs.get(), canceled_elapsed));
+                            busy.set(false);
+                            busy_started_at.set(None);
+                            activity_started_at.set(None);
+                            turn_token_tracker.set(None);
+                            turn_cancel_requested.set(false);
+                            idle_status_notice.set(Some(IdleStatusNotice {
+                                text: format_turn_canceled_notice(canceled_elapsed),
+                                since: Instant::now(),
+                            }));
+                        }
                     }
                 }
                 _ => {}

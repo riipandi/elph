@@ -126,8 +126,10 @@ mod tests {
 
     #[test]
     fn notif_turn_complete_respects_min_duration() {
-        let mut settings = NotificationSettings::default();
-        settings.min_turn_duration_secs = 5.0;
+        let settings = NotificationSettings {
+            min_turn_duration_secs: 5.0,
+            ..Default::default()
+        };
 
         let fast = NotifKind::TurnComplete { elapsed_secs: 2.0 };
         let slow = NotifKind::TurnComplete { elapsed_secs: 10.0 };
@@ -145,8 +147,10 @@ mod tests {
 
     #[test]
     fn notif_master_switch_disables_all() {
-        let mut settings = NotificationSettings::default();
-        settings.enabled = false;
+        let settings = NotificationSettings {
+            enabled: false,
+            ..Default::default()
+        };
         // Should not reach the notification call, but is_enabled is still true.
         // The gate is checked in `notify()` before `is_enabled()`.
         let complete = NotifKind::TurnComplete { elapsed_secs: 10.0 };
