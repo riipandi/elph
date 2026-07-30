@@ -8,16 +8,25 @@ use std::time::Duration;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use http::{HeaderName, HeaderValue};
-use rmcp::ServiceExt;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::GetPromptRequestParams;
 use rmcp::model::Prompt;
+use rmcp::model::ProtocolVersion;
 use rmcp::model::ReadResourceRequestParams;
 use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
 use rmcp::model::Tool;
 use rmcp::service::RunningService;
+use rmcp::{ClientLifecycleMode, ClientServiceExt};
+
+/// Default lifecycle mode: prefer 2026-07-28, fall back to legacy initialization.
+fn default_lifecycle() -> ClientLifecycleMode {
+    ClientLifecycleMode::Auto {
+        preferred_versions: vec![ProtocolVersion::V_2026_07_28],
+        legacy_version: Some(ProtocolVersion::V_2025_11_25),
+    }
+}
 use rmcp::transport::auth::AuthClient;
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::{ConfigureCommandExt, StreamableHttpClientTransport, TokioChildProcess};
@@ -113,7 +122,10 @@ pub async fn connect_stdio_with_context(config: &McpStdioConfig, ctx: &McpConnec
     log::debug!("spawning MCP stdio server: command={} args={:?}", config.command, config.args);
     let transport = TokioChildProcess::new(command.configure(|_| {})).context("spawn MCP stdio transport")?;
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
-    let client = handler.serve(transport).await.context("initialize MCP stdio client")?;
+    let client = handler
+        .serve_with_lifecycle(transport, default_lifecycle())
+        .await
+        .context("initialize MCP stdio client")?;
     Ok(client)
 }
 
@@ -171,7 +183,7 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
             let auth_client = AuthClient::new(http, manager);
             let transport = StreamableHttpClientTransport::with_client(auth_client, transport_config);
             let client = handler
-                .serve(transport)
+                .serve_with_lifecycle(transport, default_lifecycle())
                 .await
                 .context("initialize MCP HTTP OAuth client")?;
             Ok(client)
@@ -180,12 +192,18 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
             log::debug!("MCP HTTP using static bearer: source={source:?}");
             transport_config = transport_config.auth_header(token);
             let transport = StreamableHttpClientTransport::from_config(transport_config);
-            let client = handler.serve(transport).await.context("initialize MCP HTTP client")?;
+            let client = handler
+                .serve_with_lifecycle(transport, default_lifecycle())
+                .await
+                .context("initialize MCP HTTP client")?;
             Ok(client)
         }
         ResolvedMcpAuth::None => {
             let transport = StreamableHttpClientTransport::from_config(transport_config);
-            let client = handler.serve(transport).await.context("initialize MCP HTTP client")?;
+            let client = handler
+                .serve_with_lifecycle(transport, default_lifecycle())
+                .await
+                .context("initialize MCP HTTP client")?;
             Ok(client)
         }
     }
@@ -213,7 +231,10 @@ pub async fn connect_sse_with_context(config: &McpHttpConfig, ctx: &McpConnectCo
         .await
         .with_context(|| format!("connect SSE MCP at {}", config.url))?;
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
-    let client = handler.serve(transport).await.context("initialize MCP SSE client")?;
+    let client = handler
+        .serve_with_lifecycle(transport, default_lifecycle())
+        .await
+        .context("initialize MCP SSE client")?;
     Ok(client)
 }
 

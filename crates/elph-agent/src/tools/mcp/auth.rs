@@ -14,7 +14,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use rmcp::transport::auth::{
-    AuthError, AuthorizationManager, AuthorizationSession, CredentialStore, StoredCredentials,
+    AuthError, AuthorizationManager, AuthorizationRequest, AuthorizationSession, CredentialStore, StoredCredentials,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -534,11 +534,11 @@ pub async fn run_oauth_flow(
         .map_err(|e| anyhow::anyhow!("init OAuth manager: {e}"))?;
     manager.set_credential_store(store);
 
-    let metadata = manager
-        .discover_metadata()
+    // Resolve metadata (replaces discover_metadata).
+    let _metadata_resolution = manager
+        .resolve_metadata()
         .await
-        .map_err(|e| anyhow::anyhow!("discover OAuth metadata: {e}"))?;
-    manager.set_metadata(metadata);
+        .map_err(|e| anyhow::anyhow!("resolve OAuth metadata: {e}"))?;
 
     let bind_addr = match options.redirect_port {
         Some(port) => format!("127.0.0.1:{port}"),
@@ -549,72 +549,51 @@ pub async fn run_oauth_flow(
         .with_context(|| format!("bind OAuth callback listener on {bind_addr}"))?;
     let port = listener.local_addr()?.port();
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
-    let scope_refs: Vec<&str> = options.scopes.iter().map(String::as_str).collect();
-    let client_name = options.client_name.as_deref().unwrap_or("Elph MCP Client");
 
-    let client_id = if let Some(client_id) = options.client_id.as_deref() {
-        use rmcp::transport::auth::OAuthClientConfig;
-        let mut cfg = OAuthClientConfig::new(client_id, &redirect_uri);
+    let mut auth_request = AuthorizationRequest::new(&redirect_uri)
+        .with_scopes(options.scopes.clone())
+        .with_client_name(
+            options
+                .client_name
+                .clone()
+                .unwrap_or_else(|| "Elph MCP Client".to_string()),
+        );
+
+    if let Some(client_id) = &options.client_id {
+        auth_request = auth_request.with_preregistered_client(client_id.clone());
         if let Some(secret) = &options.client_secret {
-            cfg = cfg.with_client_secret(secret);
+            auth_request = auth_request.with_client_secret(secret.clone());
         }
-        if !options.scopes.is_empty() {
-            cfg = cfg.with_scopes(options.scopes.clone());
-        }
-        manager
-            .configure_client(cfg)
-            .map_err(|e| anyhow::anyhow!("configure OAuth client: {e}"))?;
-        let auth_url = manager
-            .get_authorization_url(&scope_refs)
-            .await
-            .map_err(|e| anyhow::anyhow!("build authorize URL: {e}"))?;
-        log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");
-        println!("Open this URL to authorize MCP server '{server_name}':\n  {auth_url}\n");
-        if options.open_browser
-            && let Err(error) = open_browser(&auth_url)
-        {
-            log::warn!("failed to open browser; paste the URL manually: {error}");
-        }
-        let callback_url = wait_for_oauth_callback(listener)
-            .await
-            .context("wait for OAuth callback")?;
-        let (code, state, iss) = parse_oauth_callback(&callback_url)?;
-        let _token = manager
-            .exchange_code_for_token_with_issuer(&code, &state, iss.as_deref())
-            .await
-            .map_err(|e| anyhow::anyhow!("OAuth token exchange failed: {e}"))?;
-        client_id.to_string()
-    } else {
-        let session = AuthorizationSession::new(
-            manager,
-            &scope_refs,
-            &redirect_uri,
-            Some(client_name),
-            options.client_metadata_url.as_deref(),
-        )
+    }
+    if let Some(meta_url) = &options.client_metadata_url {
+        auth_request = auth_request.with_client_metadata_url(meta_url);
+    }
+
+    let session = AuthorizationSession::new(manager, auth_request)
         .await
-        .map_err(|e| anyhow::anyhow!("start OAuth session: {e}"))?;
-        let auth_url = session.get_authorization_url().to_string();
-        log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");
-        println!("Open this URL to authorize MCP server '{server_name}':\n  {auth_url}\n");
-        if options.open_browser
-            && let Err(error) = open_browser(&auth_url)
-        {
-            log::warn!("failed to open browser; paste the URL manually: {error}");
-        }
-        let callback_url = wait_for_oauth_callback(listener)
-            .await
-            .context("wait for OAuth callback")?;
-        let _token = session
-            .handle_callback_url(&callback_url)
-            .await
-            .map_err(|e| anyhow::anyhow!("OAuth token exchange failed: {e}"))?;
-        let (client_id, _) = session
-            .get_credentials()
-            .await
-            .map_err(|e| anyhow::anyhow!("read OAuth credentials: {e}"))?;
-        client_id
-    };
+        .map_err(|(_, e)| anyhow::anyhow!("start OAuth session: {e}"))?;
+    let auth_url = session.get_authorization_url().to_string();
+
+    log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");
+    println!("Open this URL to authorize MCP server '{server_name}':\n  {auth_url}\n");
+    if options.open_browser
+        && let Err(error) = open_browser(&auth_url)
+    {
+        log::warn!("failed to open browser; paste the URL manually: {error}");
+    }
+    let callback_url = wait_for_oauth_callback(listener)
+        .await
+        .context("wait for OAuth callback")?;
+    let _token = session
+        .handle_callback_url(&callback_url)
+        .await
+        .map_err(|e| anyhow::anyhow!("OAuth token exchange failed: {e}"))?;
+    let credentials = session
+        .get_credentials()
+        .await
+        .map_err(|e| anyhow::anyhow!("read OAuth credentials: {e}"))?;
+    let client_id = credentials.0;
+    // credentials.1 is the OAuthTokenResponse (already persisted by the session).
 
     println!(
         "Authorized MCP server '{server_name}'. Credentials saved (encrypted) to {}.",
@@ -646,26 +625,6 @@ pub async fn run_oauth_flow_with_scopes(
         },
     )
     .await
-}
-
-fn parse_oauth_callback(callback_url: &str) -> Result<(String, String, Option<String>)> {
-    let url = url::Url::parse(callback_url).context("parse OAuth callback URL")?;
-    let mut code = None;
-    let mut state = None;
-    let mut iss = None;
-    for (k, v) in url.query_pairs() {
-        match k.as_ref() {
-            "code" => code = Some(v.into_owned()),
-            "state" => state = Some(v.into_owned()),
-            "iss" => iss = Some(v.into_owned()),
-            _ => {}
-        }
-    }
-    Ok((
-        code.context("OAuth callback missing code")?,
-        state.context("OAuth callback missing state")?,
-        iss,
-    ))
 }
 
 /// Build an [`AuthorizationManager`] with file-backed credentials for an existing session.
