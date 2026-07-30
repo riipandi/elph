@@ -55,6 +55,8 @@ pub fn match_key_to_action(
         match code {
             KeyCode::Left => return Some(TextEditAction::WordLeft),
             KeyCode::Right => return Some(TextEditAction::WordRight),
+            KeyCode::Backspace => return Some(TextEditAction::DeleteWordBackward),
+            KeyCode::Delete => return Some(TextEditAction::DeleteWordForward),
             _ => {}
         }
     }

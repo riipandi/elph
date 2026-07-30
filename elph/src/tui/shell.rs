@@ -66,7 +66,7 @@ use crate::tui::provider_connect_dialog::{
     OpenProviderApiKeyDialogArgs, OpenProviderConnectDialogArgs, PendingProviderApiKeyDialog,
     PendingProviderConnectDialog, PendingProviderDisconnectDialog, ProviderConnectFocus, ProviderConnectStep,
     apply_provider_filter_seed, close_provider_api_key_dialog, close_provider_connect_dialog,
-    close_provider_disconnect_dialog, focus_provider_list, format_provider_name, get_provider_options_for_auth_method,
+    close_provider_disconnect_dialog, focus_provider_list, focus_provider_search, format_provider_name, get_provider_options_for_auth_method,
     open_provider_api_key_dialog, open_provider_connect_dialog, open_provider_disconnect_dialog,
     provider_auth_method_from_index, provider_confirm_on_enter, provider_filter_seed, provider_list_nav_delta,
     provider_supports_oauth,
@@ -3692,8 +3692,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             .as_ref()
                             .map(|p| p.selected_auth_method)
                             .unwrap_or(0);
-                        let providers =
-                            get_provider_options_for_auth_method(provider_auth_method_from_index(auth_method_idx));
 
                         // Arrow keys move focus to the list (selection is handled by ModelOptionList)
                         if let Some(_delta) = provider_list_nav_delta(modifiers, code) {
@@ -3704,45 +3702,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             return;
                         }
 
-                        // Filter seeding (printable chars including /)
-                        if let Some(seed) = provider_filter_seed(modifiers, code) {
+                        // `/` reopens search focus when already in list (like model selector)
+                        if modifiers.is_empty() && code == KeyCode::Char('/') {
                             let pending_ref = &mut *pending_provider_connect.write();
                             if let Some(pending) = pending_ref {
-                                apply_provider_filter_seed(
-                                    seed,
-                                    &mut provider_connect_filter,
-                                    &mut provider_connect_input_focus,
-                                    pending,
-                                );
-                                let count = crate::tui::provider_connect_dialog::count_filtered(
-                                    &providers,
-                                    &pending.filter,
-                                );
-                                pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
-                                provider_connect_selected.set(pending.selected_provider);
+                                focus_provider_search(&mut provider_connect_input_focus, pending);
                             }
                             return;
                         }
 
-                        // Backspace trims filter — from either search or list focus
-                        if code == KeyCode::Backspace {
-                            let pending_ref = &mut *pending_provider_connect.write();
-                            if let Some(pending) = pending_ref {
-                                let mut next = pending.filter.clone();
-                                if next.pop().is_some() {
-                                    pending.filter = next;
-                                    provider_connect_filter.set(pending.filter.clone());
-                                    let count = crate::tui::provider_connect_dialog::count_filtered(
-                                        &providers,
-                                        &pending.filter,
-                                    );
-                                    pending.selected_provider =
-                                        pending.selected_provider.min(count.saturating_sub(1));
-                                    provider_connect_selected.set(pending.selected_provider);
-                                }
-                            }
-                            return;
-                        }
+                        // Typing and backspace are handled by the Input component (TextInput).
+                        // The filter State is synced via the on_change callback below.
                     }
                 }
 
@@ -4941,6 +4911,20 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending.clamp_selection();
         if pending.selected_index != scoped_selected_index.get() {
             scoped_selected_index.set(pending.selected_index);
+        }
+    }
+    // Sync provider connect filter from State into pending dialog so re-renders
+    // pick up characters typed through the Input component.
+    if let Some(pending) = pending_provider_connect.write().as_mut() {
+        let next_filter = provider_connect_filter.read().clone();
+        if pending.filter != next_filter {
+            let providers = get_provider_options_for_auth_method(
+                provider_auth_method_from_index(pending.selected_auth_method),
+            );
+            let count = crate::tui::provider_connect_dialog::count_filtered(&providers, &next_filter);
+            pending.filter = next_filter;
+            pending.selected_provider = pending.selected_provider.min(count.saturating_sub(1));
+            provider_connect_selected.set(pending.selected_provider);
         }
     }
     let model_selector_view = pending_model_selector
