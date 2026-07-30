@@ -833,6 +833,11 @@ mod tests {
     #[test]
     fn slash_turn_echo_uses_user_bubble_for_templates_and_skills() {
         assert_eq!(
+            TranscriptStyle::for_slash_turn_echo("/tui-design"),
+            TranscriptStyle::User
+        );
+        // Legacy `/skill:` prefix still detected as skill.
+        assert_eq!(
             TranscriptStyle::for_slash_turn_echo("/skill:tui-design"),
             TranscriptStyle::SkillPrompt
         );

@@ -173,17 +173,17 @@ mod tests {
     fn command_column_grows_with_longest_name() {
         let options = vec![
             SelectOption::new("/goal", "Goals"),
-            SelectOption::new("/skill:rust-verify-harden", "Audit Rust changes"),
+            SelectOption::new("/rust-verify-harden", "Audit Rust changes"),
         ];
         let width = palette_command_column_width(&options, 77);
-        assert!(width >= palette_command_label_width("/skill:rust-verify-harden") as u16);
+        assert!(width >= palette_command_label_width("/rust-verify-harden") as u16);
         assert!(width < 77);
     }
 
     #[test]
     fn command_column_respects_description_minimum() {
         let options = vec![SelectOption::new(
-            "/skill:rust-verify-harden-with-extra-suffix",
+            "/rust-verify-harden-with-extra-suffix",
             "Audit Rust changes",
         )];
         let list_width = 40u16;

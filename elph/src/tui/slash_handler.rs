@@ -599,7 +599,7 @@ mod tests {
             ..Default::default()
         };
         let outcome = handle_slash_submit(SlashContext {
-            input: "/skill:code-review",
+            input: "/code-review",
             extensions: None,
             prompt_templates: None,
             skills: Some(&[skill]),

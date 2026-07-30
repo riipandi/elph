@@ -5762,7 +5762,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             && matches!(outcome, SlashOutcome::SpawnAgentTurn);
                         if slash_echoes_prompt_in_transcript(&outcome) && !queue_follow_up {
                             let echo = if is_slash {
-                                // Keep leading `/` so history / skill cards restore as `/skill:…` or `/cmd`.
+                                // Keep leading `/` so history / skill cards restore as `/name` or `/cmd`.
                                 if slash_input.trim().starts_with('/') {
                                     slash_input.trim().to_string()
                                 } else {
@@ -6189,6 +6189,7 @@ mod tests {
             return true;
         }
         let body = trimmed.trim_start_matches('/').trim();
+        // Legacy `/skill:name` prefix.
         if let Some((name, _)) = parse_skill_slash(body)
             && skills.iter().any(|skill| skill.name == name)
         {
@@ -6198,6 +6199,10 @@ mod tests {
             .split_once(' ')
             .map_or(body, |(command, _)| command)
             .to_ascii_lowercase();
+        // Match by raw name (skills, templates).
+        if skills.iter().any(|skill| skill.name.to_ascii_lowercase() == name) {
+            return true;
+        }
         templates.iter().any(|template| template.name == name)
     }
 
@@ -6214,6 +6219,8 @@ mod tests {
     #[test]
     fn slash_turn_sets_busy_for_skill_slash() {
         let skills = vec![sample_skill()];
+        assert!(slash_turn_sets_busy("/tui-design layout bug", &[], &skills,));
+        // Legacy `/skill:` prefix still works for busy detection.
         assert!(slash_turn_sets_busy("/skill:tui-design layout bug", &[], &skills,));
     }
 

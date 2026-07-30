@@ -885,9 +885,9 @@ mod tests {
 
     #[test]
     fn prompt_card_from_session_meta_skill_and_template() {
-        let skill = prompt_card_from_session_meta("/skill:tui-design layout", "skill", None).expect("skill");
+        let skill = prompt_card_from_session_meta("/tui-design layout", "skill", None).expect("skill");
         assert_eq!(skill.style, TranscriptStyle::SkillPrompt);
-        assert_eq!(skill.content, "/skill:tui-design layout");
+        assert_eq!(skill.content, "/tui-design layout");
         assert!(skill.style.is_user_input_card());
 
         let template = prompt_card_from_session_meta("/review-pr 42", "template", None).expect("template");
@@ -901,13 +901,13 @@ mod tests {
     fn snapshot_preserves_skill_and_template_prompt_cards() {
         use crate::tui::transcript::{build_snapshot_data, messages_from_snapshot_data};
 
-        let skill = prompt_card_from_session_meta("/skill:code-review fix tests", "skill", None).unwrap();
+        let skill = prompt_card_from_session_meta("/code-review fix tests", "skill", None).unwrap();
         let template = prompt_card_from_session_meta("/summarize --short", "template", None).unwrap();
         let data = build_snapshot_data(&[skill, template]);
         let restored = messages_from_snapshot_data(&data).expect("parse");
         assert_eq!(restored.len(), 2);
         assert_eq!(restored[0].style, TranscriptStyle::SkillPrompt);
-        assert_eq!(restored[0].content, "/skill:code-review fix tests");
+        assert_eq!(restored[0].content, "/code-review fix tests");
         assert_eq!(restored[1].style, TranscriptStyle::User);
         assert_eq!(restored[1].content, "/summarize --short");
     }

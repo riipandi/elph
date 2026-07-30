@@ -1,7 +1,7 @@
 //! Built-in slash command registry and dispatch.
 
 use crate::agent::{parse_skill_slash, skill_slash_name, truncate_palette_description};
-use crate::types::SlashCommand;
+use crate::types::{SlashCommand, SlashCommandKind};
 use elph_agent::{ExtensionRegistry, PromptTemplate, Skill};
 
 #[derive(Debug, Clone)]
@@ -117,10 +117,14 @@ pub fn slash_commands_for_palette(
     if let Some(templates) = prompt_templates {
         for template in templates {
             if !builtin_names.contains(&template.name) {
-                commands.push(SlashCommand::new(
-                    &template.name,
-                    truncate_palette_description(&template.description),
-                ));
+                commands.push(
+                    SlashCommand::new(
+                        &template.name,
+                        format!("[prompt] {}", truncate_palette_description(&template.description)),
+                    )
+                    .with_kind(SlashCommandKind::PromptTemplate)
+                    .with_args_hint("[args]"),
+                );
             }
         }
     }
@@ -128,7 +132,15 @@ pub fn slash_commands_for_palette(
         for skill in skills {
             let name = skill_slash_name(&skill.name);
             if !builtin_names.contains(&name) {
-                commands.push(SlashCommand::new(name, truncate_palette_description(&skill.description)));
+                let mut cmd = SlashCommand::new(
+                    name,
+                    format!("[skill] {}", truncate_palette_description(&skill.description)),
+                )
+                .with_kind(SlashCommandKind::Skill);
+                if let Some(hint) = &skill.argument_hint {
+                    cmd = cmd.with_args_hint(hint);
+                }
+                commands.push(cmd);
             }
         }
     }
@@ -213,7 +225,7 @@ pub fn format_help_message(
     let commands = slash_commands_for_palette(extensions, prompt_templates, skills);
     let mut lines = vec!["Slash commands:".to_string()];
     for cmd in commands.into_iter().filter(|cmd| !cmd.hidden) {
-        lines.push(format!("  /{} — {}", cmd.name, cmd.description));
+        lines.push(format!("  {} — {}", cmd.palette_command_label(), cmd.description));
     }
     lines.join("\n")
 }
@@ -426,6 +438,7 @@ pub fn dispatch_slash_command(
         return None;
     }
 
+    // Legacy `/skill:<name>` prefix (backward-compat).
     if let Some((name, args)) = parse_skill_slash(body) {
         if skills.is_some_and(|items| items.iter().any(|skill| skill.name == name)) {
             return Some(SlashDispatch::Skill { name, args });
@@ -449,6 +462,13 @@ pub fn dispatch_slash_command(
         && templates.iter().any(|template| template.name == name)
     {
         return Some(SlashDispatch::PromptTemplate { name, args });
+    }
+
+    // Match skill by raw name (no prefix needed).
+    if let Some(skills) = skills
+        && skills.iter().any(|skill| skill.name == name)
+    {
+        return Some(SlashDispatch::Skill { name, args });
     }
 
     Some(SlashDispatch::Unimplemented(format!("/{name}")))
@@ -569,6 +589,7 @@ mod tests {
     #[test]
     fn skill_slash_dispatch() {
         let skills = vec![sample_skill()];
+        // Legacy `/skill:name` prefix still works.
         assert_eq!(
             dispatch_slash_command("/skill:code-review src/", None, None, Some(&skills)),
             Some(SlashDispatch::Skill {
@@ -583,13 +604,39 @@ mod tests {
     }
 
     #[test]
-    fn palette_lists_skill_commands_with_prefix() {
+    fn skill_dispatch_by_raw_name() {
+        let skills = vec![sample_skill()];
+        assert_eq!(
+            dispatch_slash_command("/code-review src/", None, None, Some(&skills)),
+            Some(SlashDispatch::Skill {
+                name: "code-review".into(),
+                args: "src/".into()
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/code-review", None, None, Some(&skills)),
+            Some(SlashDispatch::Skill {
+                name: "code-review".into(),
+                args: String::new()
+            })
+        );
+    }
+
+    #[test]
+    fn palette_lists_skill_commands_without_prefix() {
         let skills = vec![sample_skill()];
         let names: Vec<_> = slash_commands_for_palette(None, None, Some(&skills))
             .into_iter()
             .map(|cmd| cmd.name)
             .collect();
-        assert!(names.contains(&"skill:code-review".to_string()));
+        assert!(names.contains(&"code-review".to_string()));
+        let skill = slash_commands_for_palette(None, None, Some(&skills))
+            .into_iter()
+            .find(|cmd| cmd.name == "code-review")
+            .expect("skill command");
+        // sample_skill() has no argument_hint → no args_hint.
+        assert_eq!(skill.args_hint, None);
+        assert!(skill.description.starts_with("[skill]"));
     }
 
     #[test]

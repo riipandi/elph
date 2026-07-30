@@ -201,6 +201,19 @@ impl SelectItem {
     }
 }
 
+/// Classifies the origin of a slash command for display and filtering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlashCommandKind {
+    /// Built-in command such as `/help`, `/model`, `/exit`.
+    Builtin,
+    /// Extension command registered by an extension host.
+    Extension,
+    /// Skill invoked as `/skill:<name>`.
+    Skill,
+    /// Loaded prompt template such as `/review`.
+    PromptTemplate,
+}
+
 /// Slash command entry for prompt autocomplete (previously in elph-tui diff module).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SlashCommand {
@@ -210,6 +223,7 @@ pub struct SlashCommand {
     /// When true, omitted from the default `/` palette list and `/help`, but still
     /// dispatchable when typed and completable via Tab once the query matches.
     pub hidden: bool,
+    pub kind: SlashCommandKind,
 }
 
 impl SlashCommand {
@@ -219,6 +233,7 @@ impl SlashCommand {
             description: description.into(),
             args_hint: None,
             hidden: false,
+            kind: SlashCommandKind::Builtin,
         }
     }
 
@@ -229,6 +244,11 @@ impl SlashCommand {
 
     pub fn with_hidden(mut self, hidden: bool) -> Self {
         self.hidden = hidden;
+        self
+    }
+
+    pub fn with_kind(mut self, kind: SlashCommandKind) -> Self {
+        self.kind = kind;
         self
     }
 
