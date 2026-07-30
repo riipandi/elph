@@ -1053,7 +1053,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut provider_connect_api_key = hooks.use_state(String::new);
     let mut provider_connect_input_focus = hooks.use_state(ProviderConnectFocus::default);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
-    let mut confetti_frame = hooks.use_ref(|| 0u32);
+    let mut confetti_frame = hooks.use_state(|| 0u32);
 
     let extension_host = props.extension_host.clone();
     let cwd = props.cwd.clone();
@@ -2191,6 +2191,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let system_prompt_open = pending_system_prompt.read().is_some();
             let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
+
+            // Escape closes confetti/fireworks overlay.
+            if confetti_open && modifiers.is_empty() && code == KeyCode::Esc {
+                close_confetti(
+                    &mut pending_confetti,
+                    &mut confetti_runtime,
+                    &mut draft,
+                    &mut live_draft,
+                    &mut shell_focus,
+                );
+                return;
+            }
+
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
             let provider_connect_open = pending_provider_connect.read().is_some();
@@ -5173,9 +5186,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
-        let plane = if let Some(runtime) = confetti_runtime.write().as_mut() {
+        let particles = if let Some(runtime) = confetti_runtime.write().as_mut() {
             runtime.resize(screen_width, screen_height);
-            runtime.system.render_plane()
+            runtime.system.visible_particles()
         } else {
             Vec::new()
         };
@@ -5183,7 +5196,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             ConfettiOverlay(
                 screen_width: screen_width,
                 screen_height: screen_height,
-                plane: plane,
+                particles: particles,
             )
         }
         .into()

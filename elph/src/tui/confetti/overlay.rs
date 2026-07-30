@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use iocraft::prelude::*;
 
-use super::simulation::{ConfettiMode, System};
+use super::simulation::{ConfettiMode, System, VisibleParticle};
 
 use crate::tui::focus::ShellFocus;
 
@@ -128,36 +128,27 @@ impl ConfettiRuntime {
 pub struct ConfettiOverlayProps {
     pub screen_width: u16,
     pub screen_height: u16,
-    pub plane: Vec<Vec<super::simulation::RenderedCell>>,
+    pub particles: Vec<VisibleParticle>,
 }
 
 #[component]
 pub fn ConfettiOverlay(props: &ConfettiOverlayProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
     let _ = hooks;
-    let rows: Vec<AnyElement<'static>> = props
-        .plane
+    let cells: Vec<AnyElement<'static>> = props
+        .particles
         .iter()
-        .map(|row| {
-            let cells: Vec<AnyElement<'static>> = row
-                .iter()
-                .map(|cell| {
-                    element! {
-                        Text(
-                            content: cell.ch.clone(),
-                            color: cell.color,
-                            wrap: TextWrap::NoWrap,
-                        )
-                    }
-                    .into()
-                })
-                .collect();
+        .map(|p| {
             element! {
                 View(
-                    width: props.screen_width,
-                    flex_direction: FlexDirection::Row,
-                    flex_shrink: 0f32,
+                    position: Position::Absolute,
+                    left: p.x as u16,
+                    top: p.y as u16,
                 ) {
-                    #(cells)
+                    Text(
+                        content: p.ch.clone(),
+                        color: p.color,
+                        wrap: TextWrap::NoWrap,
+                    )
                 }
             }
             .into()
@@ -171,10 +162,9 @@ pub fn ConfettiOverlay(props: &ConfettiOverlayProps, hooks: Hooks) -> impl Into<
             position: Position::Absolute,
             left: 0,
             top: 0,
-            flex_direction: FlexDirection::Column,
             background_color: Color::Reset,
         ) {
-            #(rows)
+            #(cells)
         }
     }
 }
