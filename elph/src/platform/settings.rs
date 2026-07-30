@@ -83,6 +83,9 @@ pub struct Settings {
     /// Local embedding / floppy memory.
     #[serde(default)]
     pub memory: MemorySettings,
+    /// Desktop notification preferences.
+    #[serde(default)]
+    pub notifications: NotificationSettings,
 }
 
 /// TUI presentation preferences.
@@ -260,6 +263,59 @@ impl Default for MemorySettings {
     }
 }
 
+/// Desktop notification preferences.
+///
+/// Controls which events trigger native OS notifications
+/// (macOS Notification Center, Linux D-Bus, Windows Toast).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationSettings {
+    /// Master switch — disable all desktop notifications.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Notify when the agent finishes a turn.
+    #[serde(default = "default_true")]
+    pub on_turn_complete: bool,
+    /// Notify when the agent requests tool permission.
+    #[serde(default = "default_true")]
+    pub on_tool_permission: bool,
+    /// Notify when the agent asks a question.
+    #[serde(default = "default_true")]
+    pub on_user_question: bool,
+    /// Notify on errors (agent / MCP / bootstrap failure).
+    #[serde(default = "default_true")]
+    pub on_error: bool,
+    /// Notify when a running turn is canceled.
+    #[serde(default = "default_false")]
+    pub on_turn_cancel: bool,
+    /// Notify when bootstrap / startup completes.
+    #[serde(default = "default_true")]
+    pub on_startup_ready: bool,
+    /// Minimum turn duration (seconds) before sending a turn-complete notification.
+    /// Prevents noise from quick turns.
+    #[serde(default = "default_min_turn_duration_secs")]
+    pub min_turn_duration_secs: f64,
+    /// Application name shown in the notification banner.
+    #[serde(default = "default_notification_app_name")]
+    pub app_name: String,
+}
+
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            on_turn_complete: true,
+            on_tool_permission: true,
+            on_user_question: true,
+            on_error: true,
+            on_turn_cancel: false,
+            on_startup_ready: true,
+            min_turn_duration_secs: 5.0,
+            app_name: "Elph".to_string(),
+        }
+    }
+}
+
 impl Settings {
     /// Built-in defaults written on first bootstrap (`Settings::ensure`).
     ///
@@ -278,6 +334,7 @@ impl Settings {
             models: ModelsSettings::default(),
             provider: ProviderHttpSettings::default(),
             memory: MemorySettings::default(),
+            notifications: NotificationSettings::default(),
         }
     }
 
@@ -496,6 +553,14 @@ fn default_true() -> bool {
 
 fn default_false() -> bool {
     false
+}
+
+fn default_min_turn_duration_secs() -> f64 {
+    5.0
+}
+
+fn default_notification_app_name() -> String {
+    "Elph".to_string()
 }
 
 #[cfg(test)]

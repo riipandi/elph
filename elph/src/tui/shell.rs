@@ -56,6 +56,7 @@ use crate::tui::model_selector_shell::{
     model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector, spawn_runtime_model_switch,
     sync_pending_filter,
 };
+use crate::tui::notifier;
 use crate::tui::prompt::PromptChrome;
 use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
 use crate::tui::prompt_history::{
@@ -1193,6 +1194,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         break;
                     };
                     bootstrap_events += 1;
+                    // Desktop notification for bootstrap events
+                    match &event {
+                        BootstrapUiEvent::AgentReady(_) => {
+                            if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
+                            }
+                        }
+                        BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
+                            if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                                notifier::notify(
+                                    &settings.notifications,
+                                    notifier::NotifKind::Error { message: msg.as_str() },
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
                     apply_bootstrap_ui_event(
                         event,
                         &mut bootstrap_phase,
@@ -1523,6 +1541,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
+                        // Desktop notification: tool permission request
+                        {
+                            let paths = paths.read().clone();
+                            if let Ok(settings) = Settings::load(&paths) {
+                                notifier::notify(
+                                    &settings.notifications,
+                                    notifier::NotifKind::ToolPermission { tool_name: &tool_name },
+                                );
+                            }
+                        }
                         {
                             let mut msgs = messages_arc_inner.write().unwrap();
                             // Process status line (colored, consistent gaps) — not a flush Meta dump.
@@ -1548,6 +1576,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
 
                     if let AgentUiEvent::UserQuestionRequired(req) = event {
+                        let question_summary: String = req
+                            .steps
+                            .first()
+                            .map(|s| s.question.clone())
+                            .unwrap_or_else(|| "Agent has a question".into());
                         let pending = PendingUserQuestion::from_request(req);
                         activity_label.set(step_activity_label(&pending));
                         reset_ui_for_step(
@@ -1560,6 +1593,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         );
                         shell_focus.set(ShellFocus::StatusDialog);
                         pending_user_question.set(Some(pending));
+                        // Desktop notification: user question
+                        {
+                            let paths = paths.read().clone();
+                            if let Ok(settings) = Settings::load(&paths) {
+                                notifier::notify(
+                                    &settings.notifications,
+                                    notifier::NotifKind::UserQuestion {
+                                        summary: question_summary,
+                                    },
+                                );
+                            }
+                        }
                         transcript_changed = true;
                         continue;
                     }
@@ -1825,11 +1870,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         text: format_turn_canceled_notice(elapsed),
                         since: Instant::now(),
                     }));
+                    // Desktop notification
+                    if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                        notifier::notify(
+                            &settings.notifications,
+                            notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
+                        );
+                    }
                 } else if let Some(elapsed_secs) = run_completed_elapsed {
                     idle_status_notice.set(Some(IdleStatusNotice {
                         text: format_turn_complete_notice(elapsed_secs),
                         since: Instant::now(),
                     }));
+                    // Desktop notification
+                    if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
+                    }
                 }
             }
         }

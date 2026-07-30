@@ -39,7 +39,7 @@ iocraft.workspace = true
 log.workspace = true
 logforth.workspace = true
 memorable-ids.workspace = true
-notify = { workspace = true, features = ["serde"] }
+notify-rust = { workspace = true, features = ["tokio"] }
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
