@@ -165,6 +165,12 @@ pub struct CompactionSettings {
     pub keep_recent_tokens: u64,
 }
 
+impl Default for CompactionSettings {
+    fn default() -> Self {
+        DEFAULT_COMPACTION_SETTINGS
+    }
+}
+
 pub const DEFAULT_COMPACTION_SETTINGS: CompactionSettings = CompactionSettings {
     enabled: true,
     reserve_tokens: 16384,

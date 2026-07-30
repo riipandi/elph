@@ -10,6 +10,7 @@ use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::BuiltinToolsBuilder;
 use elph_agent::CollaborationMode;
+use elph_agent::CompactionSettings;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
 use elph_agent::PlanConfirmationChoice;
@@ -64,6 +65,7 @@ async fn harness_enter_plan_mode_filters_active_tools() {
         follow_up_mode: QueueMode::default(),
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -113,6 +115,7 @@ async fn harness_emits_plan_confirmation_events() {
         follow_up_mode: QueueMode::default(),
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })

@@ -13,6 +13,7 @@ use elph_agent::AgentHarnessOwnEvent;
 use elph_agent::AgentHarnessResources;
 use elph_agent::AgentHarnessStreamOptions;
 use elph_agent::AgentThinkingLevel;
+use elph_agent::CompactionSettings;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
 use elph_agent::Session;
@@ -106,6 +107,7 @@ async fn harness_snapshots_stream_options_before_provider_request() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -181,6 +183,7 @@ async fn harness_save_point_refreshes_stream_options_without_mutating_active_req
             follow_up_mode: elph_agent::QueueMode::OneAtATime,
             goal_runtime: None,
             subagent_bootstrap: None,
+            compaction_settings: CompactionSettings::default(),
             shared_registry: None,
             agent_control: None,
         })
@@ -248,6 +251,7 @@ async fn harness_chains_provider_request_patches_with_deletion() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -362,6 +366,7 @@ async fn harness_chains_provider_payload_hooks() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -451,6 +456,7 @@ async fn harness_on_chains_provider_payload_hooks() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -530,6 +536,7 @@ async fn harness_on_rejects_unknown_hook_type() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -571,6 +578,7 @@ async fn harness_after_provider_response_captures_status_and_headers() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -622,6 +630,7 @@ async fn harness_subscribe_receives_after_provider_response_own_event() {
         follow_up_mode: elph_agent::QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })

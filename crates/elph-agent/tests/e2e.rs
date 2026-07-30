@@ -13,6 +13,7 @@ use elph_agent::AgentMessage;
 use elph_agent::AgentOptions;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
+use elph_agent::CompactionSettings;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
 use elph_agent::PartialAgentState;
@@ -157,6 +158,7 @@ async fn harness_prompt_persists_session_messages() {
         follow_up_mode: Default::default(),
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })

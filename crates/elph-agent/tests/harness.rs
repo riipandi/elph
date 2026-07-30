@@ -18,6 +18,7 @@ use elph_agent::AgentHarnessResources;
 use elph_agent::AgentThinkingLevel;
 use elph_agent::AgentTool;
 use elph_agent::BranchSummarySummary;
+use elph_agent::CompactionSettings;
 use elph_agent::CustomMessageContent;
 use elph_agent::InMemorySessionStorage;
 use elph_agent::LocalExecutionEnv;
@@ -128,6 +129,7 @@ fn make_harness(
         follow_up_mode: options.follow_up_mode,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -179,6 +181,7 @@ async fn harness_exposes_queue_modes() {
         follow_up_mode: QueueMode::All,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -306,6 +309,7 @@ async fn harness_before_agent_start_appends_messages() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -358,6 +362,7 @@ async fn harness_tool_result_hook_patches_output() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -547,6 +552,7 @@ async fn harness_settles_context_hook_failures() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -808,6 +814,7 @@ async fn harness_save_point_refreshes_config_at_tool_execution() {
             follow_up_mode: QueueMode::OneAtATime,
             goal_runtime: None,
             subagent_bootstrap: None,
+            compaction_settings: CompactionSettings::default(),
             shared_registry: None,
             agent_control: None,
         })
@@ -1026,6 +1033,7 @@ async fn harness_validates_constructor_tool_names() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     });
@@ -1049,6 +1057,7 @@ async fn harness_validates_constructor_tool_names() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     });
@@ -1072,6 +1081,7 @@ async fn harness_validates_constructor_tool_names() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     });
@@ -1105,6 +1115,7 @@ async fn harness_tools_update_events_and_validation() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -1205,6 +1216,7 @@ async fn harness_resources_update_events_clone_resources() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -1337,6 +1349,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })
@@ -1407,6 +1420,7 @@ async fn harness_session_before_tree_runs_during_navigate_tree() {
         follow_up_mode: QueueMode::OneAtATime,
         goal_runtime: None,
         subagent_bootstrap: None,
+        compaction_settings: CompactionSettings::default(),
         shared_registry: None,
         agent_control: None,
     })

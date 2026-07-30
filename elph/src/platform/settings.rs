@@ -351,7 +351,7 @@ impl CompactionConfig {
         elph_agent::CompactionSettings {
             enabled: self.enabled,
             reserve_tokens: 0, // unused when threshold_pct is set
-            threshold_pct: Some(self.threshold_pct.min(100).max(1)),
+            threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
             keep_recent_tokens: self.keep_recent_tokens,
         }
     }
