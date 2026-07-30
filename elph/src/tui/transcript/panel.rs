@@ -215,15 +215,27 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         *near_bottom_sticky.read()
     };
 
-    // Compute sticky_idx BEFORE sticky_rows to break circular dep with panel_viewport.
-    // Use scroll_zone as the viewport parameter (conservative lower bound).
+    // Compute effective_scroll_offset BEFORE sticky_idx so sticky uses the correct
+    // visual offset (not the raw handle offset, which stays at 0 during auto-scroll).
+    // Also used for bubble windowing — must reflect the actual scroll position
+    // (not the content bottom) so windowed mounting covers in-viewport rows.
+    let effective_scroll_offset = if near_bottom {
+        let bottom = layout_content_rows.saturating_sub(scroll_zone as u32);
+        last_committed_bottom.set(bottom);
+        bottom
+    } else {
+        raw_offset.max(0) as u32
+    };
+
+    // Compute sticky_idx using effective_scroll_offset so it correctly detects
+    // scrolled-off prompts even while auto-scroll keeps the viewport at the bottom.
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
             active_sticky_user_message_index(
                 row_layouts,
                 is_sticky_prompt,
-                handle.scroll_offset(),
+                effective_scroll_offset as i32,
                 near_bottom,
                 scroll_zone,
             )
@@ -263,17 +275,6 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
     let panel_viewport = scroll_zone.saturating_add(sticky_inset);
     let panel_height = panel_viewport;
 
-    // effective_scroll_offset: always use raw_offset when not near_bottom.
-    // When near_bottom, use stable committed bottom from layout_metrics.
-    // Also used for bubble windowing — must reflect the actual scroll position
-    // (not the content bottom) so windowed mounting covers in-viewport rows.
-    let effective_scroll_offset = if near_bottom {
-        let bottom = layout_content_rows.saturating_sub(scroll_zone as u32);
-        last_committed_bottom.set(bottom);
-        bottom
-    } else {
-        raw_offset.max(0) as u32
-    };
     let suppress_sticky_source =
         sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset as i32, scroll_zone);
     let toggle = match (props.messages, props.messages_revision) {
