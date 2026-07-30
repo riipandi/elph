@@ -16,8 +16,8 @@ use super::card::{
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
 use super::card::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_tool_args_display,
-    format_tool_output_display, tool_status_marker,
+    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_args_display, format_tool_output_display, tool_status_marker,
 };
 use super::markdown::AssistantMarkdownBuffer;
 
@@ -496,6 +496,9 @@ impl TranscriptMessage {
         };
         if show_body {
             let body = match self.style {
+                // Streaming thinking: 20-line cap so the collapse-on-finish transition
+                // does not cause a large layout jump. Finished + expanded: full content.
+                TranscriptStyle::Thinking if streaming => format_thinking_stream_body_display(&self.content),
                 TranscriptStyle::Thinking => format_thinking_body_display(&self.content),
                 // Streaming assistant: layout only needs the recent tail (full text stays in memory).
                 TranscriptStyle::Assistant if streaming => format_assistant_stream_body_display(&self.content),

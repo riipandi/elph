@@ -36,8 +36,8 @@ use super::frame::{
 };
 use super::toggle_ctx::CollapsibleToggleCtx;
 use super::tool_format::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_tool_output_display,
-    format_tool_output_display_unlimited,
+    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_output_display, format_tool_output_display_full, format_tool_output_display_unlimited,
 };
 
 pub fn tool_status_marker(style: TranscriptStyle) -> &'static str {
@@ -345,8 +345,14 @@ pub fn thinking_card(
         toggle,
     )];
     if show_body {
-        // Cap long thinking streams so wrap/layout stays bounded during live turns.
-        let body = format_thinking_body_display(&message.content);
+        // Streaming: tight 20-line cap so the collapse-on-finish transition does not
+        // cause a large layout jump. Finished + expanded: full content (48 lines) so
+        // the user sees the complete reasoning when they expand a settled card.
+        let body = if streaming {
+            format_thinking_stream_body_display(&message.content)
+        } else {
+            format_thinking_body_display(&message.content)
+        };
         children.push(
             element! {
                 Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: body)
@@ -652,11 +658,17 @@ pub fn tool_call_card(
         let status = tool_process_status(style);
         let inner_width = chrome_inner_width(&chrome).max(8);
         let show_detail = !collapsed;
+        // Running tool: 20-line cap so the collapse-on-finish transition does not
+        // cause a large layout jump. Finished + expanded: full content so the user
+        // sees the complete result when they expand a settled card.
+        let is_running = message.style == TranscriptStyle::ToolRunning;
         let output = if show_detail {
             if message.user_shell {
                 format_tool_output_display_unlimited(&tool.output)
-            } else {
+            } else if is_running {
                 format_tool_output_display(&tool.output)
+            } else {
+                format_tool_output_display_full(&tool.output)
             }
         } else {
             String::new()
@@ -902,8 +914,13 @@ pub fn thinking_response_pair_card(
                     toggle,
                 ))
                 #(if thinking_show_body {
+                    let body = if thinking.is_thinking_streaming() {
+                        format_thinking_stream_body_display(&thinking.content)
+                    } else {
+                        format_thinking_body_display(&thinking.content)
+                    };
                     Some(element! {
-                        Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: thinking.content.as_str())
+                        Text(color: THINKING_FG, wrap: TextWrap::Wrap, content: body)
                     })
                 } else {
                     None

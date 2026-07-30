@@ -20,6 +20,6 @@ pub(crate) use chrome::{
 };
 pub(crate) use kinds::tool_status_marker;
 pub(crate) use tool_format::{
-    format_assistant_stream_body_display, format_thinking_body_display, format_tool_args_display,
-    format_tool_output_display,
+    format_assistant_stream_body_display, format_thinking_body_display, format_thinking_stream_body_display,
+    format_tool_args_display, format_tool_output_display,
 };
