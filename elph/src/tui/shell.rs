@@ -2087,6 +2087,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if agent_turn_active.get() {
+                            // Suppress the text from the queue list: `spawn_steer` adds it to the
+                            // harness queue, which will send back a `QueueUpdate`. Without this,
+                            // the prompt reappears in the queue UI as if it was never sent.
+                            prompt_queue.write().suppress_sent(body.clone());
+                            queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                             TurnDispatcher::spawn_steer(Arc::clone(session), body);
                         } else {
                             // Idle: start a normal turn (steer while idle falls back the same way).
