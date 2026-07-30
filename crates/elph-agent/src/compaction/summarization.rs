@@ -62,7 +62,8 @@ pub async fn generate_summary(
         } else {
             u64::MAX
         },
-    );
+    )
+    .max(1); // Safety floor: must be ≥1 for all providers
 
     let base_prompt = if previous_summary.is_some() {
         UPDATE_SUMMARIZATION_PROMPT.to_string()
@@ -133,7 +134,8 @@ pub(super) async fn generate_turn_prefix_summary(
         } else {
             u64::MAX
         },
-    );
+    )
+    .max(1); // Safety floor: must be ≥1 for all providers
     let llm_messages = default_convert_to_llm(messages.to_vec());
     let conversation_text = serialize_conversation(&llm_messages);
     let prompt_text =
