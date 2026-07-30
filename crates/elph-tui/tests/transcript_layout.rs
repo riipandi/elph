@@ -204,25 +204,13 @@ fn active_sticky_tracks_scrolled_past_prompt_while_manual_scrolling() {
     // above the viewport → sticky engages for the latest scrolled-past prompt.
     let past_first = layouts[first_user].start_row + layouts[first_user].row_count; // row 3
     assert_eq!(
-        active_sticky_user_message_index(
-            &layouts,
-            &is_sticky_prompt,
-            past_first as i32,
-            false,
-            viewport
-        ),
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, past_first as i32, false, viewport),
         Some(first_user)
     );
     // Scrolled past the second user prompt too: picks the latest scrolled-past.
     let past_second = layouts[second_user].start_row + layouts[second_user].row_count; // row 7
     assert_eq!(
-        active_sticky_user_message_index(
-            &layouts,
-            &is_sticky_prompt,
-            past_second as i32,
-            false,
-            viewport
-        ),
+        active_sticky_user_message_index(&layouts, &is_sticky_prompt, past_second as i32, false, viewport),
         Some(second_user)
     );
 }

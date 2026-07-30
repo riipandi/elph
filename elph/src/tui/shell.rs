@@ -937,10 +937,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let (screen_width, screen_height) = layout_screen_size.get();
     let mut system = hooks.use_context_mut::<SystemContext>();
     let mut should_exit = hooks.use_state(|| false);
+    // Track whether Shift is held so the transcript can hide the scrollbar and disable
+    // mouse capture during native text selection (like a temporary Ctrl+S toggle).
+    // Declared early so mouse capture can reference it.
+    let mut shift_held = hooks.use_state(|| false);
+    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     // When true, mouse capture is off so the terminal can native-select transcript text.
     let mut select_mode = hooks.use_state(|| false);
     // Apply every frame; iocraft only reconfigures the terminal when the value changes.
-    system.set_mouse_capture(!select_mode.get());
+    // Shift-held mode also disables mouse capture (temporary Ctrl+S toggle).
+    system.set_mouse_capture(!select_mode.get() && !shift_held.get());
     let mut agent_mode = hooks.use_state(|| props.initial_agent_mode);
     let mut thinking_level = hooks.use_state(|| props.initial_thinking_level);
     let mut draft = hooks.use_state(String::new);
@@ -1013,8 +1019,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut mention_index_requested = hooks.use_ref(|| false);
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
     let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
-    let mut shift_held = hooks.use_state(|| false);
-    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -1153,13 +1157,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             poll_layout_screen_size(&mut layout_screen_size_for_loop);
 
-            // Safety timeout: auto-clear shift-held after 60s so the scrollbar never
-            // stays stuck hidden if Shift is released without a follow-up key event.
+            // Time-based debounce: auto-clear shift-held after 10 seconds of no Shift
+            // key press. The user holds Shift, selects text for several seconds,
+            // then has 10s after the last Shift press to press Ctrl+C/Cmd+V
+            // (which arrive without modifiers on macOS terminals). After 10s
+            // of no Shift key, the scrollbar comes back.
             let shift_timed_out = shift_held.get()
                 && shift_last_pressed
                     .read()
                     .as_ref()
-                    .is_some_and(|last| last.elapsed() > Duration::from_secs(60));
+                    .is_some_and(|last| last.elapsed() > Duration::from_secs(10));
             if shift_timed_out {
                 shift_held.set(false);
                 shift_last_pressed.set(None);
@@ -1918,16 +1925,17 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             // Track whether Shift is held so the transcript can hide the scrollbar
-            // during native text selection (similar to Ctrl+S toggle mode).
-            // Only key events with Shift set it; only key events without Shift clear it.
-            // Safety timeout in the main loop prevents stuck state (no key-up events
-            // from terminal when Shift is released without pressing another key).
+            // during native text selection (like a temporary Ctrl+S toggle).
+            // Shift sets the flag and resets a 10-second timer. Only Shift press
+            // extends the timer — non-Shift keys do nothing. This allows:
+            // 1. Hold Shift → select text with mouse (timer starts at 10s)
+            // 2. Release Shift → 10s grace to press Ctrl+C/Cmd+V (modifier chords
+            //    arrive without visible modifiers on macOS terminals)
+            // 3. Hold Shift again → timer resets to 10s
+            // 4. After 10s of no Shift → scrollbar reappears automatically
             if modifiers.contains(KeyModifiers::SHIFT) {
                 shift_held.set(true);
                 shift_last_pressed.set(Some(Instant::now()));
-            } else {
-                shift_held.set(false);
-                shift_last_pressed.set(None);
             }
 
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
