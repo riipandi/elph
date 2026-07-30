@@ -49,6 +49,7 @@ pub struct PendingSubagentOutputDialog {
     /// Whether the subagent is still running (shared `Arc<AtomicBool>`).
     pub is_running: Arc<AtomicBool>,
     /// Bumped after content updates so the overlay re-renders.
+    #[allow(dead_code)]
     pub scroll_tick: u32,
     /// Outer width as % of terminal width (default [`DEFAULT_SUBAGENT_OUTPUT_WIDTH_PCT`]).
     pub width_pct: u8,
@@ -73,6 +74,7 @@ impl PendingSubagentOutputDialog {
     }
 
     /// Open a subagent output dialog with a custom width percent.
+    #[allow(dead_code)]
     pub fn open_with_width(
         agent_id: impl Into<String>,
         title: impl Into<String>,

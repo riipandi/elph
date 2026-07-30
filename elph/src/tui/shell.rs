@@ -1064,9 +1064,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Maps agent_id → (text: Arc<RwLock<String>>, is_running: Arc<AtomicBool>).
     // The shell writes SubagentOutput events into these buffers; the dialog reads them.
     // Using Arc<RwLock> so both the async event loop and the render phase can access.
-    let subagent_output_buffers: Arc<
-        RwLock<HashMap<String, (Arc<RwLock<String>>, Arc<std::sync::atomic::AtomicBool>)>>,
-    > = Arc::new(RwLock::new(HashMap::new()));
+    type SubagentBuf = (Arc<RwLock<String>>, Arc<std::sync::atomic::AtomicBool>);
+    let subagent_output_buffers: Arc<RwLock<HashMap<String, SubagentBuf>>> = Arc::new(RwLock::new(HashMap::new()));
     let subagent_output_buffers_state = hooks.use_ref(|| subagent_output_buffers.clone());
     let mut subagent_output_scroll_tick = hooks.use_state(|| 0u32);
     // Pending dialog state — when Some, the SubagentOutputDialogOverlay is rendered.
@@ -1752,13 +1751,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     activity_label.set(label);
                 }
                 // Handle SubagentStatus: init/cleanup output buffers for real-time dialog.
-                if let AgentUiEvent::SubagentStatus {
-                    agent_id,
-                    phase,
-                    task_name: _,
-                    ..
-                } = &event
-                {
+                if let AgentUiEvent::SubagentStatus { agent_id, phase, .. } = &event {
                     let buffers_arc = subagent_output_buffers_state.read().clone();
                     let mut buffers = buffers_arc.write().expect("subagent output buffers lock");
                     let phase = *phase;
