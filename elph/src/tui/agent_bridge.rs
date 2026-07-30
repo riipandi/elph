@@ -750,8 +750,12 @@ impl TranscriptEventApplier {
         if delta.is_empty() {
             return false;
         }
+        // Append to the latest thinking card only if it is still live (not finalized).
+        // A finalized thinking card has `duration_secs` set and is collapsed — appending
+        // more content to it would flicker and create a glitch in the sticky card area.
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Thinking
+            && last.duration_secs.is_none()
         {
             last.content.push_str(delta);
             return true;
