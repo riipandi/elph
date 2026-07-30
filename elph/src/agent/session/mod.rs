@@ -321,17 +321,13 @@ impl CodingAgentSession {
         let Ok(entries) = self.harness.session_branch_entries().await else {
             return;
         };
-        let messages: Vec<elph_agent::AgentMessage> = entries
-            .into_iter()
-            .filter_map(|e| {
-                if let elph_agent::session::SessionTreeEntry::Message { message, .. } = e {
-                    Some(message)
-                } else {
-                    None
-                }
-            })
-            .collect();
-        let estimate = estimate_context_tokens(&messages);
+        // Use `build_session_context` so that the compaction transform (removing
+        // entries before `first_kept_entry_id` and projecting the compaction summary)
+        // gives us the actual messages the LLM would see. Without this, we'd count
+        // old compacted messages that are no longer in the context, causing compaction
+        // to trigger too aggressively or re-compact already-compacted history.
+        let context = elph_agent::build_session_context(&entries);
+        let estimate = estimate_context_tokens(&context.messages);
         if should_compact(estimate.tokens, context_window, settings)
             && let Err(err) = self.harness.compact(None).await
         {
