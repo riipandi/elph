@@ -476,6 +476,13 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["AZURE_OPENAI_API_KEY"], "Azure OpenAI API key")
         ),
         simple_provider!(
+            "baseten",
+            "Baseten",
+            BASETEN_MODELS,
+            openai_completions_api,
+            (vec!["BASETEN_API_KEY"], "Baseten API key")
+        ),
+        simple_provider!(
             "cerebras",
             "Cerebras",
             CEREBRAS_MODELS,
@@ -518,6 +525,13 @@ pub fn builtin_providers() -> Vec<Provider> {
         mistral_provider(),
         neuralwatt_provider(),
         nvidia_provider(),
+        simple_provider!(
+            "ollama-cloud",
+            "Ollama Cloud",
+            OLLAMA_CLOUD_MODELS,
+            openai_completions_api,
+            (vec!["OLLAMA_API_KEY"], "Ollama API key")
+        ),
         hyper_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
@@ -531,7 +545,21 @@ pub fn builtin_providers() -> Vec<Provider> {
         kimi_coding_provider(),
         opencode_provider(),
         opencode_go_provider(),
+        simple_provider!(
+            "opengateway",
+            "OpenGateway",
+            OPENGATEWAY_MODELS,
+            openai_completions_api,
+            (vec!["OGW_API_KEY"], "OpenGateway API key")
+        ),
         sumopod_provider(),
+        simple_provider!(
+            "tokenrouter",
+            "TokenRouter",
+            TOKENROUTER_MODELS,
+            openai_completions_api,
+            (vec!["TOKENROUTER_API_KEY"], "TokenRouter API key")
+        ),
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",

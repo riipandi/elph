@@ -236,6 +236,7 @@ pub fn get_provider_options_for_auth_method(auth_method: ProviderAuthMethod) -> 
 pub fn format_provider_name(id: &str) -> String {
     match id {
         "anthropic" => "Anthropic".to_string(),
+        "baseten" => "Baseten".to_string(),
         "openai" => "OpenAI".to_string(),
         "openai-codex" => "OpenAI Codex".to_string(),
         "github-copilot" => "GitHub Copilot".to_string(),
@@ -251,10 +252,13 @@ pub fn format_provider_name(id: &str) -> String {
         "deepseek" => "DeepSeek".to_string(),
         "huggingface" => "Hugging Face".to_string(),
         "kimi-coding" => "Kimi Coding".to_string(),
+        "ollama-cloud" => "Ollama Cloud".to_string(),
+        "opengateway" => "OpenGateway".to_string(),
         "xiaomi" => "Xiaomi".to_string(),
         "zai" => "ZAI".to_string(),
         "cerebras" => "Cerebras".to_string(),
         "kilo" => "Kilo Gateway".to_string(),
+        "tokenrouter" => "TokenRouter".to_string(),
         "faux" => "Faux".to_string(),
         _ => id.replace(['-', '_'], " "),
     }

@@ -2,16 +2,12 @@
     "auto": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0,
+            "output": 0
         },
         "id": "auto",
         "input": ["text"],
@@ -23,10 +19,6 @@
     "xiaomi/mimo-v2.5-pro": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0036,
@@ -44,10 +36,6 @@
     "xiaomi/mimo-v2.5": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0028,
@@ -65,10 +53,6 @@
     "google/gemini-3.1-flash-lite": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.025,
@@ -86,10 +70,6 @@
     "minimax/minimax-m3": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.06,
@@ -107,10 +87,6 @@
     "qwen/qwen3.7-max": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.25,
@@ -128,10 +104,6 @@
     "moonshotai/kimi-k3": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.3,
@@ -149,10 +121,6 @@
     "z-ai/glm-5.2": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.26,
@@ -170,16 +138,12 @@
     "nvidia/nemotron-3-ultra-550b-a55b:free": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0.0,
+            "cacheRead": 0,
             "cacheWrite": 0,
-            "input": 0.0,
-            "output": 0.0
+            "input": 0,
+            "output": 0
         },
         "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
         "input": ["text"],
@@ -188,13 +152,26 @@
         "provider": "opengateway",
         "reasoning": false
     },
+    "inclusionai/ling-3.0-flash:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "inclusionai/ling-3.0-flash:free",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Ling 3.0 Flash",
+        "provider": "opengateway",
+        "reasoning": true
+    },
     "tencent/hy3": {
         "api": "openai-completions",
         "baseUrl": "https://opengateway.gitlawb.com/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsStore": false
-        },
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.05,
@@ -208,5 +185,22 @@
         "name": "Tencent HY3",
         "provider": "opengateway",
         "reasoning": false
+    },
+    "mindai/macaron-v1-tall": {
+        "api": "openai-completions",
+        "baseUrl": "https://opengateway.gitlawb.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "mindai/macaron-v1-tall",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Macaron V1 Tall",
+        "provider": "opengateway",
+        "reasoning": true
     }
 }

@@ -1,0 +1,138 @@
+{
+    "deepseek-ai/DeepSeek-V4-Pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek-ai/DeepSeek-V4-Pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V4 Pro",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "zai-org/GLM-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 976000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "zai-org/GLM-5.2",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "zai-org/GLM-5.2-Fast": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 976000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "zai-org/GLM-5.2-Fast",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5.2 Fast",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "moonshotai/Kimi-K2.7-Code": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/Kimi-K2.7-Code",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.7 Code",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "moonshotai/Kimi-K3": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/Kimi-K3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Kimi K3",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3 Super 120B",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Nemotron 3 Ultra 550B",
+        "provider": "baseten",
+        "reasoning": true
+    },
+    "thinkingmachines/Inkling": {
+        "api": "openai-completions",
+        "baseUrl": "https://inference.baseten.co/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "thinkingmachines/Inkling",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 65536,
+        "name": "Inkling",
+        "provider": "baseten",
+        "reasoning": true
+    }
+}

@@ -1,0 +1,325 @@
+{
+    "deepseek-v4-flash:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek-v4-flash:cloud",
+        "input": ["text"],
+        "maxTokens": 1048576,
+        "name": "DeepSeek V4 Flash (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "deepseek-v4-pro:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek-v4-pro:cloud",
+        "input": ["text"],
+        "maxTokens": 1048576,
+        "name": "DeepSeek V4 Pro (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "gemma4:31b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "gemma4:31b:cloud",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Gemma 4 31B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "glm-5.1:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "glm-5.1:cloud",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM 5.1 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "glm-5.2:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 976000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "glm-5.2:cloud",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM 5.2 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "gpt-oss:120b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "gpt-oss:120b:cloud",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT-OSS 120B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "gpt-oss:20b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "gpt-oss:20b:cloud",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT-OSS 20B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "kimi-k2.5:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "kimi-k2.5:cloud",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Kimi K2.5 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "kimi-k2.6:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "kimi-k2.6:cloud",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Kimi K2.6 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "kimi-k2.7-code:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "kimi-k2.7-code:cloud",
+        "input": ["text", "image"],
+        "maxTokens": 262144,
+        "name": "Kimi K2.7 Code (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "kimi-k3:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "kimi-k3:cloud",
+        "input": ["text", "image", "video"],
+        "maxTokens": 131072,
+        "name": "Kimi K3 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "minimax-m2.5:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax-m2.5:cloud",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "MiniMax M2.5 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "minimax-m2.7:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 196608,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax-m2.7:cloud",
+        "input": ["text"],
+        "maxTokens": 196608,
+        "name": "MiniMax M2.7 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "minimax-m3:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax-m3:cloud",
+        "input": ["text", "image"],
+        "maxTokens": 131072,
+        "name": "MiniMax M3 (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "mistral-large-3:675b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "mistral-large-3:675b:cloud",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Mistral Large 3 675B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": false
+    },
+    "nemotron-3-nano:30b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nemotron-3-nano:30b:cloud",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "Nemotron 3 Nano 30B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "nemotron-3-super:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nemotron-3-super:cloud",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3 Super (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "nemotron-3-ultra:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nemotron-3-ultra:cloud",
+        "input": ["text"],
+        "maxTokens": 128000,
+        "name": "Nemotron 3 Ultra (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    },
+    "qwen3.5:397b:cloud": {
+        "api": "openai-completions",
+        "baseUrl": "https://ollama.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen3.5:397b:cloud",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 397B (Cloud)",
+        "provider": "ollama-cloud",
+        "reasoning": true
+    }
+}
