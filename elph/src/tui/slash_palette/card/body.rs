@@ -2,6 +2,7 @@
 
 use elph_tui::components::theme::{UiTheme, dialog_option_desc_style, dialog_option_name_style, dialog_row_surface};
 use elph_tui::list_selection_row_prefix;
+use elph_tui::utils::display_width;
 use iocraft::prelude::*;
 
 use super::super::model::SlashPaletteSnapshot;
@@ -38,9 +39,7 @@ fn palette_command_row(
     let desc_width = chrome.list_width.saturating_sub(cmd_col + CMD_DESC_GAP_COLS).max(1);
     let content_max = (cmd_col as usize).saturating_sub(ROW_PREFIX_CHARS);
     let (display_name, display_hint) = truncate_command_label(command_name, args_hint, content_max);
-    let desc_lines = wrap_palette_description(description, chrome.list_width, cmd_col);
-    let row_height = desc_lines.len().max(1) as u16;
-    let desc_text = desc_lines.join("\n");
+    let desc_text = wrap_palette_description(description, chrome.list_width, cmd_col).join("");
 
     let mut name_segments: Vec<AnyElement<'static>> = Vec::new();
     name_segments.push(
@@ -56,15 +55,24 @@ fn palette_command_row(
         .into(),
     );
     if let Some(hint) = display_hint {
+        let hint_content = format!(" {hint}");
+        let hint_width = display_width(&hint_content) as u16;
         name_segments.push(
             element! {
-                Text(
-                    content: format!(" {hint}"),
-                    color: if selected { theme.text_muted } else { chrome.args_hint_color },
-                    weight: Weight::Normal,
-                    wrap: TextWrap::NoWrap,
-                    align: TextAlign::Left,
-                )
+                View(
+                    width: hint_width,
+                    height: 1u16,
+                    overflow: Overflow::Hidden,
+                    flex_shrink: 0f32,
+                ) {
+                    Text(
+                        content: hint_content,
+                        color: if selected { theme.text_muted } else { chrome.args_hint_color },
+                        weight: Weight::Normal,
+                        wrap: TextWrap::NoWrap,
+                        align: TextAlign::Left,
+                    )
+                }
             }
             .into(),
         );
@@ -73,7 +81,7 @@ fn palette_command_row(
     element! {
         View(
             width: chrome.list_width,
-            height: row_height,
+            height: 1u16,
             background_color: row_surface,
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::FlexStart,
@@ -84,7 +92,7 @@ fn palette_command_row(
         ) {
             View(
                 width: cmd_col,
-                height: row_height,
+                height: 1u16,
                 align_items: AlignItems::FlexStart,
                 flex_direction: FlexDirection::Row,
                 overflow: Overflow::Hidden,
@@ -94,7 +102,7 @@ fn palette_command_row(
             }
             View(
                 width: desc_width,
-                height: row_height,
+                height: 1u16,
                 align_items: AlignItems::FlexStart,
                 overflow: Overflow::Hidden,
                 flex_shrink: 0f32,
@@ -121,17 +129,16 @@ fn palette_arg_row(
     palette_command_row(chrome, theme, arg, None, description, selected)
 }
 
-fn palette_list_rows(props: &PaletteCardBodyProps, theme: UiTheme) -> Vec<AnyElement<'static>> {
+fn palette_list_rows(
+    props: &PaletteCardBodyProps,
+    theme: UiTheme,
+    selected_index: usize,
+) -> Vec<AnyElement<'static>> {
     let options = &props.snapshot.options;
     let len = options.len();
     let viewport_cap = list_viewport_cap(props.screen_height).max(1);
-    let index = props
-        .selected_index
-        .map(|state| state.get())
-        .unwrap_or(0)
-        .min(len.saturating_sub(1));
     let scroll_cap = viewport_cap.min(len.max(1));
-    let window_start = palette_window_start(index, scroll_cap, len);
+    let window_start = palette_window_start(selected_index, scroll_cap, len);
 
     if props.snapshot.is_args_phase() {
         return options
@@ -139,7 +146,7 @@ fn palette_list_rows(props: &PaletteCardBodyProps, theme: UiTheme) -> Vec<AnyEle
             .enumerate()
             .skip(window_start)
             .take(scroll_cap)
-            .map(|(i, opt)| palette_arg_row(&props.chrome, theme, &opt.name, &opt.description, i == index))
+            .map(|(i, opt)| palette_arg_row(&props.chrome, theme, &opt.name, &opt.description, i == selected_index))
             .collect();
     }
 
@@ -163,7 +170,7 @@ fn palette_list_rows(props: &PaletteCardBodyProps, theme: UiTheme) -> Vec<AnyEle
                 &opt.name,
                 cmd.args_hint.as_deref(),
                 &opt.description,
-                i == index,
+                i == selected_index,
             )
         })
         .collect()
@@ -175,7 +182,7 @@ pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'st
     let fixed_height = props.snapshot.list_height;
 
     if props.snapshot.has_matches() {
-        let rows = palette_list_rows(props, theme);
+        let rows = palette_list_rows(props, theme, props.selected_index.map(|s| s.get()).unwrap_or(0));
         let options = &props.snapshot.options;
         let len = options.len();
         let viewport_cap = list_viewport_cap(props.screen_height).max(1);
@@ -186,6 +193,7 @@ pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'st
             .min(len.saturating_sub(1));
         let scroll_cap = viewport_cap.min(len.max(1));
         let window_start = palette_window_start(index, scroll_cap, len);
+        // Each item occupies exactly one row — body_height matches the item count.
         let body_height = visible_terminal_rows(
             options,
             window_start,
@@ -194,6 +202,7 @@ pub fn PaletteCardBody(props: &PaletteCardBodyProps) -> impl Into<AnyElement<'st
             props.chrome.command_column_width,
             viewport_cap,
         );
+
         element! {
             View(
                 width: props.chrome.list_width,

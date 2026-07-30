@@ -21,11 +21,11 @@ fn builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand
     }
 }
 
-fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &'static str) -> BuiltinSlashCommand {
+fn builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
         description,
-        args_hint: Some(args_hint),
+        args_hint: Some("[args]"),
         hidden: false,
     }
 }
@@ -33,12 +33,20 @@ fn builtin_with_args(name: &'static str, description: &'static str, args_hint: &
 fn hidden_builtin_with_args(
     name: &'static str,
     description: &'static str,
-    args_hint: &'static str,
 ) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
         description,
-        args_hint: Some(args_hint),
+        args_hint: Some("[args]"),
+        hidden: true,
+    }
+}
+
+fn hidden_builtin(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: None,
         hidden: true,
     }
 }
@@ -46,7 +54,7 @@ fn hidden_builtin_with_args(
 pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
     vec![
         builtin("settings", "Open settings menu"),
-        builtin_with_args("model", "Select model", "[filter]"),
+        builtin_with_args("model", "Select model"),
         builtin("scoped-models", "Enable models for Ctrl+P cycling"),
         builtin("export", "Export session (JSONL)"),
         builtin("import", "Import session JSONL"),
@@ -58,26 +66,22 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args(
-            "provider",
-            "Manage providers (connect, disconnect, list)",
-            "connect|disconnect|list",
-        ),
+        builtin_with_args("provider", "Manage providers (connect, disconnect, list)"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
         builtin("reload", "Reload resources"),
         builtin("quit", "Quit Elph"),
-        builtin_with_args("memory", "Agent memory store (floppy)", "status|list|tasks|log|search|purge"),
+        builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),
         builtin("help", "List commands"),
-        builtin_with_args("tools", "Show active tools", "[json|list|table]"),
+        builtin_with_args("tools", "Show active tools"),
         builtin("system-prompt", "Show compiled system prompt"),
         builtin("exit", "Quit Elph"),
-        builtin_with_args("goal", "Manage session goals", "<subcommand>"),
-        hidden_builtin_with_args("confetti", "Confetti celebration", "[confetti|firework]"),
-        hidden_builtin_with_args("login", "Sign in to an AI provider", ""),
-        hidden_builtin_with_args("logout", "Sign out from an AI provider", ""),
+        builtin_with_args("goal", "Manage session goals"),
+        hidden_builtin_with_args("confetti", "Confetti celebration"),
+        hidden_builtin("login", "Sign in to an AI provider"),
+        hidden_builtin("logout", "Sign out from an AI provider"),
     ]
 }
 
@@ -592,8 +596,8 @@ mod tests {
     fn palette_includes_tools_args_hint() {
         let commands = slash_commands_for_palette(None, None, None);
         let tools = commands.iter().find(|cmd| cmd.name == "tools").expect("tools");
-        assert_eq!(tools.args_hint.as_deref(), Some("[json|list|table]"));
-        assert_eq!(tools.palette_command_label(), "/tools [json|list|table]");
+        assert_eq!(tools.args_hint.as_deref(), Some("[args]"));
+        assert_eq!(tools.palette_command_label(), "/tools [args]");
         assert_eq!(tools.description, "Show active tools");
     }
 

@@ -39,13 +39,24 @@ iocraft.workspace = true
 log.workspace = true
 logforth.workspace = true
 memorable-ids.workspace = true
+notify = { workspace = true, features = ["serde"] }
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
 rustc-hash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tokio = { workspace = true, features = ["fs", "io-util", "io-std", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = [
+  "fs",
+  "io-util",
+  "io-std",
+  "macros",
+  "net",
+  "rt",
+  "rt-multi-thread",
+  "sync",
+  "time",
+] }
 tokio-util = { workspace = true }
 
 [target.'cfg(unix)'.dependencies]
