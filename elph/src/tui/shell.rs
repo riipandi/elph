@@ -40,7 +40,9 @@ use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prom
 use crate::tui::labels::GitFooterInfo;
 
 use crate::agent::rename_session_title;
-use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
+use crate::tui::confetti::{
+    ConfettiMode, ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti,
+};
 use crate::tui::file_picker::FilePickerKeyAction;
 use crate::tui::file_picker::{
     FilePickerApplyContext, FilePickerSnapshot, active_mention_at_cursor, apply_file_picker_key,
@@ -1198,7 +1200,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     match &event {
                         BootstrapUiEvent::AgentReady(_) => {
                             if let Ok(settings) = Settings::load(&paths.read().clone()) {
-                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady).await;
+                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
                             }
                         }
                         BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
@@ -1206,8 +1208,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 notifier::notify(
                                     &settings.notifications,
                                     notifier::NotifKind::Error { message: msg.as_str() },
-                                )
-                                .await;
+                                );
                             }
                         }
                         _ => {}
@@ -1554,8 +1555,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             notifier::notify(
                                 &settings.notifications,
                                 notifier::NotifKind::ToolPermission { tool_name: &tool_name },
-                            )
-                            .await;
+                            );
                         }
                     }
                     {
@@ -1608,8 +1608,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 notifier::NotifKind::UserQuestion {
                                     summary: question_summary,
                                 },
-                            )
-                            .await;
+                            );
                         }
                     }
                     transcript_changed = true;
@@ -1881,8 +1880,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         notifier::notify(
                             &settings.notifications,
                             notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
-                        )
-                        .await;
+                        );
                     }
                 } else if let Some(elapsed_secs) = run_completed_elapsed {
                     idle_status_notice.set(Some(IdleStatusNotice {
@@ -1891,8 +1889,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }));
                     // Desktop notification
                     if let Ok(settings) = Settings::load(&paths.read().clone()) {
-                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs })
-                            .await;
+                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
                     }
                 }
             }
@@ -4480,6 +4477,58 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             });
                         }
                     }
+                }
+                // Ctrl+R — play confetti rain (if no overlays open).
+                (m, KeyCode::Char('r')) | (m, KeyCode::Char('R'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_confetti.read().is_none()
+                        && pending_tool_approval.read().is_none()
+                        && pending_mode_change.read().is_none()
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    open_confetti(OpenConfettiArgs {
+                        pending: &mut pending_confetti,
+                        state: &mut confetti_runtime,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        mode: ConfettiMode::Confetti,
+                    });
+                }
+                // Ctrl+F — play fireworks (if no overlays open).
+                (m, KeyCode::Char('f')) | (m, KeyCode::Char('F'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_confetti.read().is_none()
+                        && pending_tool_approval.read().is_none()
+                        && pending_mode_change.read().is_none()
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    open_confetti(OpenConfettiArgs {
+                        pending: &mut pending_confetti,
+                        state: &mut confetti_runtime,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        mode: ConfettiMode::Firework,
+                    });
                 }
                 // Ctrl+Y — always copy the full prompt body (not the selection).
                 // Plain `y` yanks selected text in the Textarea (separate toast path).
