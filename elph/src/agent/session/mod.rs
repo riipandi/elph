@@ -48,6 +48,9 @@ pub struct CodingAgentSessionParams {
     pub ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
     /// Model for auto session titles (`provider/model_id` or `"inherit"`).
     pub title_model: String,
+    /// User's preferred chat language for transcript responses (e.g. `"english"`, `"indonesian"`).
+    /// Code, comments, and documentation remain in English regardless of this value.
+    pub preferred_chat_language: String,
 }
 
 pub struct CodingAgentSession {
@@ -70,6 +73,9 @@ pub struct CodingAgentSession {
     system_prompt_cache: RwLock<Option<String>>,
     /// Settings `session.titleModel` (`inherit` or `provider/model_id`).
     title_model: String,
+    /// User's preferred chat language for transcript responses.
+    /// Code, comments, and documentation remain in English regardless of this value.
+    preferred_chat_language: String,
     /// Ensures at most one background auto-title attempt per session instance.
     title_generation_started: AtomicBool,
 }
@@ -88,6 +94,7 @@ impl CodingAgentSession {
             mcp_registry,
             ui_tx,
             title_model,
+            preferred_chat_language,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -111,6 +118,7 @@ impl CodingAgentSession {
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
             title_model,
+            preferred_chat_language,
             title_generation_started: AtomicBool::new(already_named),
         };
         session.wire_harness(ui_tx).await?;
@@ -248,7 +256,14 @@ impl CodingAgentSession {
         let tool_names: Vec<String> = tools.iter().map(|tool| tool.name().to_string()).collect();
         let agents_md = agents_md_for_cwd(cwd);
         let mode = *self.mode_state.lock().await;
-        let text = build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)?;
+        let text = build_coding_system_prompt(
+            cwd,
+            &resources,
+            &tool_names,
+            agents_md.as_deref(),
+            mode,
+            &self.preferred_chat_language,
+        )?;
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)
     }

@@ -183,6 +183,11 @@
                     "type": "string",
                     "default": "inherit",
                     "description": "Model for session title generation. Use a provider/model_id or \"inherit\" to reuse the session model."
+                },
+                "preferredChatLanguage": {
+                    "type": "string",
+                    "default": "english",
+                    "description": "Preferred language for AI chat responses in the transcript. The AI responds in this language for conversational text; code, comments, and documentation remain in English."
                 }
             }
         },

@@ -15,16 +15,13 @@
 //!
 //! ```json
 //! {
-//!   "ui": {
-//!     "theme": "auto",
-//!     "themes": { "dark": { "accent": "#6699ff" }, "light": {} },
-//!     "showThinking", "autoExpandThinking", "stickyScroll",
-//!     "footerTokenDisplay", "coloredStatusFooter", "filePicker"
-//!   },
-//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel" },
-//!   "models": { "scoped": ["provider/model_id", ...] },
-//!   "provider": { "maxRetries", "defaultTimeout" },
-//!   "memory": { "embedModel", "embedQuantized" }
+//!   "ui": { ... },
+//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel", "preferredChatLanguage" },
+//!   "models": { "scoped": [...] },
+//!   "provider": { ... },
+//!   "memory": { ... },
+//!   "notifications": { ... },
+//!   "compaction": { ... }
 //! }
 //! ```
 //!
@@ -213,6 +210,11 @@ pub struct SessionSettings {
     /// When `"inherit"` (default), the live session model is used for the background title call.
     #[serde(default = "default_title_model")]
     pub title_model: String,
+    /// Preferred language for AI chat responses in the transcript.
+    ///
+    /// Code, comments, and documentation remain in English regardless of this setting.
+    #[serde(default = "default_preferred_chat_language")]
+    pub preferred_chat_language: String,
 }
 
 /// Model-catalog preferences.
@@ -371,6 +373,7 @@ impl Settings {
                 agent_mode: default_agent_mode(),
                 thinking_level: default_thinking_level(),
                 title_model: default_title_model(),
+                preferred_chat_language: default_preferred_chat_language(),
             },
             models: ModelsSettings::default(),
             provider: ProviderHttpSettings::default(),
@@ -573,6 +576,10 @@ fn default_title_model() -> String {
     "inherit".to_string()
 }
 
+fn default_preferred_chat_language() -> String {
+    "english".to_string()
+}
+
 fn default_footer_token_display() -> String {
     "both".to_string()
 }
@@ -636,6 +643,7 @@ mod tests {
         assert!(decoded.session.provider_id.is_none());
         assert!(decoded.session.model_id.is_none());
         assert_eq!(decoded.session.title_model, "inherit");
+        assert_eq!(decoded.session.preferred_chat_language, "english");
         assert_eq!(decoded.provider.max_retries, 2);
         assert_eq!(decoded.provider.default_timeout, "120s");
         assert!(decoded.ui.show_thinking);

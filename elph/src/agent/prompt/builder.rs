@@ -19,12 +19,17 @@ use super::modes::{build_mode_section, mode_footer_slug};
 const CODING_BASE_TEMPLATE: &str = "coding_base";
 
 /// Build the dynamic system prompt for a coding session turn.
+///
+/// `preferred_chat_language` controls the language the AI uses for conversational
+/// responses in the transcript. Code, comments, and documentation remain in English
+/// regardless of this value. Pass an empty string to use the default (English).
 pub fn build_coding_system_prompt(
     cwd: &Path,
     resources: &AgentHarnessResources,
     tool_names: &[String],
     agents_md: Option<&str>,
     mode: AgentMode,
+    preferred_chat_language: impl Into<String>,
 ) -> anyhow::Result<String> {
     let date = now_iso_timestamp().chars().take(10).collect::<String>();
     let shell_path = std::env::var("SHELL").ok();
@@ -35,6 +40,11 @@ pub fn build_coding_system_prompt(
     } else {
         format_skills_for_system_prompt(&resources.skills)
     };
+
+    let preferred_chat_language: String = preferred_chat_language.into();
+    let use_language_preference = !preferred_chat_language.is_empty() && preferred_chat_language != "english";
+    // Clone the value before it's moved into the template context.
+    let language_for_prompt = preferred_chat_language.clone();
 
     let context = SystemPromptTemplateContext {
         persona: "You are an expert AI coding assistant, operate in Elph CLI. Your main goal is to complete the user's request."
@@ -47,18 +57,30 @@ pub fn build_coding_system_prompt(
         skills_section,
         mode_section: build_mode_section(mode),
         agent_mode: mode_footer_slug(mode).to_string(),
+        preferred_chat_language,
         is_non_interactive: false,
         ..Default::default()
     }
     .with_active_tool_names(tool_names);
 
-    SystemPromptBuilder::new()
+    let mut prompt = SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Extend)
         .context(context)
         .register_domain_template(CODING_BASE_TEMPLATE, include_str!("../../../templates/agent/coding_base.md"))?
         .domain_template(CODING_BASE_TEMPLATE)
-        .render()
-        .map_err(Into::into)
+        .render()?;
+
+    // Append a language preference note for conversational responses.
+    // Code, comments, and documentation remain in English regardless.
+    if use_language_preference {
+        prompt.push_str(&format!(
+            "\n\n<language_preference>\nThe user prefers conversational responses in {language_for_prompt}. \
+Use that language for all user-facing text, explanations, and prose in the transcript. \
+Keep code, comments, and documentation in English.\n</language_preference>"
+        ));
+    }
+
+    Ok(prompt)
 }
 
 #[cfg(test)]
@@ -74,6 +96,7 @@ mod tests {
             &["read_file", "write_file", "grep", "list_dir", "shell_exec"].map(String::from),
             None,
             AgentMode::Build,
+            "",
         )
         .expect("prompt");
 
@@ -99,6 +122,7 @@ mod tests {
             &[],
             None,
             AgentMode::Plan,
+            "",
         )
         .expect("prompt");
 
@@ -115,6 +139,7 @@ mod tests {
             &["read_file".to_string()],
             None,
             AgentMode::Ask,
+            "",
         )
         .expect("prompt");
 
@@ -133,6 +158,7 @@ mod tests {
             &["write_file".to_string()],
             None,
             AgentMode::Brave,
+            "",
         )
         .expect("prompt");
 
@@ -150,6 +176,7 @@ mod tests {
             &["write_file".to_string()],
             None,
             AgentMode::Build,
+            "",
         )
         .expect("prompt");
 
@@ -165,6 +192,7 @@ mod tests {
             &[],
             Some("Always run tests."),
             AgentMode::Build,
+            "",
         )
         .expect("prompt");
 

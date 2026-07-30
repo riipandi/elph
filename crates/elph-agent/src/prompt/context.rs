@@ -50,6 +50,10 @@ pub struct SystemPromptTemplateContext {
     pub mode_section: String,
     /// Active agent mode slug (`build`, `plan`, `ask`, `brave`) for template conditionals.
     pub agent_mode: String,
+    /// Preferred chat language for AI responses in the transcript (e.g. `"english"`, `"indonesian"`).
+    /// Code, comments, and documentation remain in English regardless of this value.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub preferred_chat_language: String,
     /// Tool names exposed to the model this turn (for `<available_tools>` blocks).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub active_tool_names: Vec<String>,
@@ -69,6 +73,7 @@ impl Default for SystemPromptTemplateContext {
             skills_section: String::new(),
             mode_section: String::new(),
             agent_mode: "build".to_string(),
+            preferred_chat_language: String::new(),
             active_tool_names: Vec::new(),
             tools: ToolNamesContext::default(),
             is_non_interactive: false,
