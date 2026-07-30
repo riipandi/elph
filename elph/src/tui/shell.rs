@@ -2990,6 +2990,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                         messages_revision.set(messages_revision.get().wrapping_add(1));
                         if let Some(session) = agent_session.as_ref() {
+                            // Eagerly invalidate cache and set mode_state so
+                            // the agent's next turn and /system-prompt reflect
+                            // the new mode before the background task completes.
+                            session.invalidate_system_prompt_cache();
+                            session.try_set_mode_sync(mode);
                             let session = session.clone();
                             let mode_for_session = mode;
                             let pending_for_response = pending;
@@ -3091,6 +3096,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         // The plan confirmation dialog IS the user's approval; no second dialog needed.
                         if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh) {
                             agent_mode.set(AgentMode::Build);
+                            // Eagerly invalidate cache and set mode_state so
+                            // /system-prompt and the next turn see the new mode
+                            // before the background resolve task completes.
+                            if let Some(session) = pending.session.as_ref() {
+                                session.invalidate_system_prompt_cache();
+                                session.try_set_mode_sync(AgentMode::Build);
+                            }
                             // Show ephemeral banner about the mode switch.
                             let expire_tx = ephemeral_expire.read().tx.clone();
                             show_ephemeral_banner(
@@ -4666,6 +4678,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             agent_mode_banner(next),
                         );
                         if let Some(session) = agent_session.as_ref() {
+                            // Eagerly invalidate cache and set mode_state so
+                            // /system-prompt and the next harness turn see the
+                            // new mode before the background task completes.
+                            session.invalidate_system_prompt_cache();
+                            session.try_set_mode_sync(next);
                             let session = Arc::clone(session);
                             let mode = next;
                             tokio::spawn(async move {

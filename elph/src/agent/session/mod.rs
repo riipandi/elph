@@ -133,6 +133,34 @@ impl CodingAgentSession {
         self.mode_state.clone()
     }
 
+    /// Eagerly invalidate the system prompt cache synchronously so the next
+    /// `/system-prompt` read (or fresh compile) reflects the current mode.
+    ///
+    /// Safe to call from the TUI input path while a turn is streaming.
+    /// The cache is repopulated by [`apply_agent_mode`] when the mode-change
+    /// background task completes, or on the next fresh compile via
+    /// [`system_prompt_slash_message`].
+    pub fn invalidate_system_prompt_cache(&self) {
+        *self.system_prompt_cache.write() = None;
+    }
+
+    /// Try to set the agent mode synchronously using `try_lock`.
+    ///
+    /// Returns `true` on success. Falls back to `set_agent_mode` (async) when
+    /// the lock is contended (unlikely — `mode_state` is held only briefly).
+    ///
+    /// Use this from the TUI key handler to eagerly update `mode_state` before
+    /// spawning the full `set_agent_mode` background task, eliminating the race
+    /// between mode change and the next prompt submission.
+    pub fn try_set_mode_sync(&self, mode: AgentMode) -> bool {
+        if let Ok(mut guard) = self.mode_state.try_lock() {
+            *guard = mode;
+            true
+        } else {
+            false
+        }
+    }
+
     /// Re-apply tool permissions after MCP hot-reload or tool set changes.
     pub async fn reconcile_tool_surface(&self) -> Result<()> {
         let mode = *self.mode_state.lock().await;
