@@ -543,6 +543,34 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
         kimi_coding_provider(),
+        simple_provider!(
+            "minimax",
+            "MiniMax",
+            MINIMAX_MODELS,
+            openai_completions_api,
+            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
+        ),
+        simple_provider!(
+            "minimax-cn",
+            "MiniMax (China)",
+            MINIMAX_CN_MODELS,
+            openai_completions_api,
+            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
+        ),
+        simple_provider!(
+            "moonshotai",
+            "Moonshot AI",
+            MOONSHOTAI_MODELS,
+            openai_completions_api,
+            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
+        ),
+        simple_provider!(
+            "moonshotai-cn",
+            "Moonshot AI (China)",
+            MOONSHOTAI_CN_MODELS,
+            openai_completions_api,
+            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
+        ),
         opencode_provider(),
         opencode_go_provider(),
         simple_provider!(
@@ -552,6 +580,27 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["OGW_API_KEY"], "OpenGateway API key")
         ),
+        simple_provider!(
+            "openrouter",
+            "OpenRouter",
+            OPENROUTER_MODELS,
+            openai_completions_api,
+            (vec!["OPENROUTER_API_KEY"], "OpenRouter API key")
+        ),
+        simple_provider!(
+            "qwen-token-plan",
+            "Qwen Token Plan",
+            QWEN_TOKEN_PLAN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
+        ),
+        simple_provider!(
+            "qwen-token-plan-cn",
+            "Qwen Token Plan (China)",
+            QWEN_TOKEN_PLAN_CN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
+        ),
         sumopod_provider(),
         simple_provider!(
             "tokenrouter",
@@ -559,6 +608,20 @@ pub fn builtin_providers() -> Vec<Provider> {
             TOKENROUTER_MODELS,
             openai_completions_api,
             (vec!["TOKENROUTER_API_KEY"], "TokenRouter API key")
+        ),
+        simple_provider!(
+            "together",
+            "Together AI",
+            TOGETHER_MODELS,
+            openai_completions_api,
+            (vec!["TOGETHER_API_KEY"], "Together API key")
+        ),
+        simple_provider!(
+            "vercel-ai-gateway",
+            "Vercel AI Gateway",
+            VERCEL_AI_GATEWAY_MODELS,
+            openai_completions_api,
+            (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
         ),
         simple_provider!(
             "xiaomi",
