@@ -7,11 +7,11 @@ use inquire::Select;
 
 use super::help;
 use super::interactive;
+use crate::agent::provider::provider_config;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, get_provider_options};
 use crate::tui::provider_credential_store::save_provider_credential;
 use crate::tui::provider_credential_store::save_provider_env_ref;
-use crate::agent::provider::provider_config;
 use crate::utils::path::AppPaths;
 
 // ── Style helpers ────────────────────────────────────────────────────
@@ -225,7 +225,10 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
             rt.block_on(save_provider_env_ref(&auth_store, &pid_owned, &env_owned))
         }) {
             Ok(()) => {
-                println!("{}", ok(format!("Registered {name} to read credential from env: {env_var_name}.")));
+                println!(
+                    "{}",
+                    ok(format!("Registered {name} to read credential from env: {env_var_name}."))
+                );
                 return EXIT_SUCCESS;
             }
             Err(e) => {

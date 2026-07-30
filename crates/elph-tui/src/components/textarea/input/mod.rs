@@ -337,6 +337,34 @@ mod tests {
     }
 
     #[test]
+    fn shift_enter_then_chars_in_empty_buffer_cursor_follows() {
+        // Start with empty buffer + submit_on_enter (chat mode).
+        let mut state = TextareaState::default();
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        // Shift+Enter → insert newline (not suppressed)
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(shift_enter(), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "\n");
+        assert_eq!(state.cursor, 1);
+
+        // Type a character — it must land after the newline, not at offset 0
+        let ctx = test_context(&mut esc, &mut burst, &mut last, true, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('x')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "\nx");
+        assert_eq!(state.cursor, 2);
+    }
+
+    #[test]
     fn rapid_paste_stream_stays_visible_while_bursting() {
         let paste = "# Elph — OpenWiki Quickstart";
         let mut state = TextareaState::default();

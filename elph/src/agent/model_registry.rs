@@ -6,8 +6,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use elph_ai::auth::InMemoryCredentialStore;
 use elph_ai::auth::types::{ApiKeyCredential, Credential, OAuthCredential};
-use elph_ai::types::ProviderEnv;
 use elph_ai::get_builtin_model;
+use elph_ai::types::ProviderEnv;
 use elph_ai::{CreateModelsOptions, CredentialStore, Model, Models};
 
 use super::provider::resolve_provider_and_model;
@@ -66,9 +66,7 @@ pub async fn resolve_model(
 }
 
 /// Load provider credentials from `auth.json` into an in-memory credential store.
-async fn load_credentials_from_auth_json(
-    auth_store_path: Option<&Path>,
-) -> Result<InMemoryCredentialStore> {
+async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Result<InMemoryCredentialStore> {
     let store = InMemoryCredentialStore::new();
     let Some(path) = auth_store_path else {
         return Ok(store);
@@ -107,10 +105,16 @@ async fn load_credentials_from_auth_json(
                 key: None,
                 env: Some(env),
             });
-            store.modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) }))).await;
+            store
+                .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
+                .await;
         } else if raw.starts_with(elph_agent::ENC_PREFIX) {
             // Encrypted entry — attempt to decrypt
-            let Some(ref key_path) = (if key_path.exists() { Some(key_path.clone()) } else { None }) else {
+            let Some(ref key_path) = (if key_path.exists() {
+                Some(key_path.clone())
+            } else {
+                None
+            }) else {
                 continue;
             };
             let key = match elph_agent::Aes256Key::load_or_create(key_path).await {
@@ -134,7 +138,9 @@ async fn load_credentials_from_auth_json(
             }
             // Treat as raw API key
             let cred = Credential::ApiKey(ApiKeyCredential::new(plain));
-            store.modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) }))).await;
+            store
+                .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
+                .await;
         }
     }
 

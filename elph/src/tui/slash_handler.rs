@@ -250,7 +250,10 @@ pub fn provider_list_slash_message() -> String {
     use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
 
     let providers = get_provider_options();
-    let mut configured: Vec<_> = providers.iter().filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured)).collect();
+    let mut configured: Vec<_> = providers
+        .iter()
+        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
+        .collect();
     configured.sort_by_key(|p| &p.id);
 
     let mut lines = vec![format!("{} configured provider(s):\n", configured.len())];
@@ -258,7 +261,9 @@ pub fn provider_list_slash_message() -> String {
     if configured.is_empty() {
         lines.push("  (none)".into());
         lines.push(String::new());
-        lines.push("Tip: Use /provider connect or `elph provider connect <id> --env <VAR>` to register a provider.".into());
+        lines.push(
+            "Tip: Use /provider connect or `elph provider connect <id> --env <VAR>` to register a provider.".into(),
+        );
         return lines.join("\n");
     }
 

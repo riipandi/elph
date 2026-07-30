@@ -62,8 +62,10 @@ pub async fn save_provider_env_ref(auth_store_path: &Path, provider_id: &str, en
         .await
         .map_err(|e| anyhow::anyhow!("read auth store: {e}"))?;
 
-    file.providers
-        .insert(provider_id.to_string(), serde_json::Value::String(format!("{}{}", ENV_REF_PREFIX, env_var)));
+    file.providers.insert(
+        provider_id.to_string(),
+        serde_json::Value::String(format!("{}{}", ENV_REF_PREFIX, env_var)),
+    );
 
     file.save_to_path_unlocked(auth_store_path)
         .await

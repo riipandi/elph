@@ -1,8 +1,9 @@
 use elph_tui::components::textarea::*;
-use elph_tui::paste::newline_count;
+use elph_tui::paste::{PasteBurstState, newline_count};
 use elph_tui::text_editing::{insert_newline_at_cursor, line_start_offset, wire_insert_newline};
 use elph_tui::text_input_layout::WrappedTextLayout;
 use elph_tui::text_input_layout::update_scroll_offset;
+use iocraft::prelude::*;
 
 #[test]
 fn insert_newline_at_cursor_appends() {
@@ -134,4 +135,115 @@ fn scroll_follows_cursor_to_empty_continuation_row() {
     let (row, _) = wrapped.row_column_for_offset(text, layout_cursor);
     let offset = update_scroll_offset(0, row, layout.viewport_height, layout.content_rows);
     assert!(row + 1 >= layout.viewport_height || offset <= row);
+}
+
+// Regression: cursor column after each keystroke stays correct — small buffer.
+#[test]
+fn cursor_column_after_paste_stays_correct_small_buffer() {
+    let paste = "line one\nline two\nline three";
+    let w = 20;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(paste, w);
+    let cursor = paste.len();
+    let (cursor_row, cursor_col) = wrapped.row_column_for_offset(paste, cursor);
+    // Verify cursor is on the last row at the correct column
+    assert_eq!(cursor_row, wrapped.row_count() - 1);
+    assert_eq!(cursor_col as usize, paste.lines().last().unwrap().len());
+}
+
+// Regression: cursor column after appending to a long line stays accurate.
+#[test]
+fn cursor_column_after_appending_to_long_line() {
+    let long_line = "a".repeat(120);
+    let text = format!("{}{}", long_line, "hello");
+    let w = 30;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
+    let cursor = text.len();
+    let (cursor_row, cursor_col) = wrapped.row_column_for_offset(&text, cursor);
+    let last_row_nr = wrapped.row_count().saturating_sub(1);
+    assert_eq!(cursor_row, last_row_nr, "cursor must be on the last display row");
+    // The long line wraps across many rows; "hello" is appended at the end
+    // col should be the display width of "hello" (5)
+    assert_eq!(cursor_col as usize, "hello".len());
+}
+
+// Regression: long paste in textarea, cursor displays correctly at EOF.
+// After pasting 2048+ chars, the viewport slice path is used for rendering.
+#[test]
+fn long_paste_cursor_at_eof_column_is_correct() {
+    let mut text = String::from("prefix-");
+    text.push_str(&"x".repeat(3000));
+    let cursor = text.len();
+    let w = 40;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
+    let (cursor_row, _cursor_col) = wrapped.row_column_for_offset(&text, cursor);
+    // Cursor must be on the last wrapped row, not stuck mid-text
+    assert_eq!(cursor_row, wrapped.row_count().saturating_sub(1));
+    // Verify we can get valid layout at EOF
+    let layout = layout_textarea(&text, cursor, w, 1, Some(3));
+    assert!(layout.content_rows > 0);
+    let (row_after, _) = wrapped.row_column_for_offset(&text, cursor);
+    assert_eq!(row_after, wrapped.row_count().saturating_sub(1));
+}
+
+// Regression: cursor stays on correct row after navigating right through long content.
+#[test]
+fn move_right_through_long_content_does_not_stall() {
+    let text = "a".repeat(200);
+    let cursor = 0;
+    let w = 40;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
+    // After moving right by one char, cursor should advance
+    let next = WrappedTextLayout::right_of_offset(&text, cursor);
+    assert_eq!(next, 1);
+    // After moving to EOF, cursor should equal text.len()
+    let eof = WrappedTextLayout::right_of_offset(&text, text.len());
+    assert_eq!(eof, text.len());
+    let near_eof = WrappedTextLayout::right_of_offset(&text, text.len() - 1);
+    assert_eq!(near_eof, text.len());
+}
+
+// Regression: after newline in multiline, cursor lands on the correct wrapped row.
+#[test]
+fn multiline_newline_cursor_on_new_row() {
+    let text = "hello\n";
+    let cursor = text.len(); // On the empty continuation row
+    let w = 40;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(text, w);
+    let (row, col) = wrapped.row_column_for_offset(text, layout_cursor_for_viewport(text, cursor));
+    assert_eq!(row, wrapped.row_count() - 1);
+    assert_eq!(col, 0);
+    // Layout cursor maps to the empty continuation row
+    let layout_cursor = layout_cursor_for_viewport(text, text.len() - 1); // cursor before newline
+    assert_eq!(layout_cursor, text.len()); // maps to continuation row
+}
+
+// Regression: Row column computation identical regardless of viewport width.
+#[test]
+fn row_column_consistent_across_widths() {
+    let text = "short line\n";
+    for w in [20u16, 40, 80, 120] {
+        let wrapped = WrappedTextLayout::new_for_overlay_editor(text, w);
+        let (row, col) = wrapped.row_column_for_offset(text, text.len());
+        assert_eq!(row, 1, "width={w}: cursor row must be 1 (0-indexed second row)");
+        assert_eq!(col, 0, "width={w}: cursor col must be 0 on empty continuation row");
+    }
+}
+
+// Regression: Simple paste of non-wrapping text: cursor at EOF, col equals text width.
+#[test]
+fn paste_simple_cursor_at_eof_column_is_text_display_width() {
+    // Short enough to not trigger VIEWPORT_SLICE path (2048), long enough to wrap.
+    let text = "The quick brown fox jumps over the lazy dog. ".repeat(30);
+    assert!(text.len() < 2048, "keep below viewport slice threshold");
+    let cursor = text.len();
+    let w = 50;
+    let wrapped = WrappedTextLayout::new_for_overlay_editor(&text, w);
+    let (_, cursor_col) = wrapped.row_column_for_offset(&text, cursor);
+    // cursor_col should be the display width of the last wrapped segment
+    let last_line = text.lines().last().unwrap();
+    // Since it's one long line that wraps, the cursor_col is the col within the last wrap-row
+    let wrap_width = w as usize;
+    let remainder = last_line.chars().count() % wrap_width;
+    let expected_col = if remainder == 0 { wrap_width } else { remainder };
+    assert_eq!(cursor_col as usize, expected_col);
 }

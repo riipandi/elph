@@ -34,6 +34,7 @@ pub(crate) fn handle_enter_key(key: EnterKey<'_>) -> Option<TextareaInputResult>
 
     if key.suppress_enter_newline.is_some_and(|s| s.get())
         && key.code == KeyCode::Enter
+        && key.modifiers.is_empty()
         && key.kind != KeyEventKind::Release
     {
         if let Some(mut suppress) = key.suppress_enter_newline {

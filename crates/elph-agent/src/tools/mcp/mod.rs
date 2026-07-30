@@ -47,9 +47,9 @@ mod validate;
 #[cfg(feature = "mcp")]
 pub use auth::AuthStoreFile;
 #[cfg(feature = "mcp")]
-pub use auth::ENV_REF_PREFIX;
-#[cfg(feature = "mcp")]
 pub use auth::AuthStorePathBuilder;
+#[cfg(feature = "mcp")]
+pub use auth::ENV_REF_PREFIX;
 #[cfg(feature = "mcp")]
 pub use auth::FileCredentialStore;
 #[cfg(feature = "mcp")]

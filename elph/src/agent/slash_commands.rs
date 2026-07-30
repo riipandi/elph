@@ -58,7 +58,11 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args("provider", "Manage providers (connect, disconnect, list)", "connect|disconnect|list"),
+        builtin_with_args(
+            "provider",
+            "Manage providers (connect, disconnect, list)",
+            "connect|disconnect|list",
+        ),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
