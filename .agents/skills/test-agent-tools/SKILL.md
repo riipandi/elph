@@ -1,0 +1,39 @@
+---
+name: test-agent-tools
+description: >-
+    Probe, test, and document every tool the agent harness has access to (native tools, subagents, connected MCP servers).
+    Use when the user wants to test, audit, or inventory the harness's tool/capability set, or asks "what tools do you have".
+---
+
+# Test Agent Tools
+
+## Purpose
+
+Enumerate available tools/capabilities — including connected MCP servers — exercise each one (web search, subagents, MCP calls), and produce a final report with a status table + subagent summary, under a timestamped `demo/` run folder.
+
+## Workflow
+
+1. Create folder `demo/YYMMDD_hhmm` (current date/time).
+2. List available tools/capabilities, including any connected MCP servers/tools.
+3. Test each tool:
+    - Non-subagent tools (e.g. web search): run directly, write findings flat inside `demo/YYMMDD_hhmm/`.
+    - Subagent-based exploration: dispatch one subagent per topic/tool; each writes to its own `demo/YYMMDD_hhmm/<subagent_id_or_name>/findings.md`.
+    - MCP tools: if any MCP servers are connected, invoke each connected tool at least once; record request/response/error.
+4. Write `demo/YYMMDD_hhmm/REPORT.md`:
+    - Table: `| Tool | Type (native/MCP/subagent) | Status (OK/FAIL/SKIPPED) | Notes |`
+    - Summary section aggregating each subagent's report (what it tested, key findings).
+
+## Mandatory Rules
+
+- Only create files/folders inside `demo/`.
+- Never create files/folders at the root directory or outside `demo/`.
+- One run = one folder `demo/YYMMDD_hhmm` (current date/time, no suffix/label).
+- No subagent: write markdown files flat inside `demo/YYMMDD_hhmm/`.
+- With subagent: each subagent writes into its own `demo/YYMMDD_hhmm/<subagent_id_or_name>/`.
+- `REPORT.md` always lives flat at `demo/YYMMDD_hhmm/REPORT.md`, never inside a subagent folder.
+
+## Examples
+
+- Flat (non-subagent/MCP): `demo/260731_1420/mcp-github/findings.md` or `demo/260731_1420/findings.md`
+- With subagent: `demo/260731_1420/web-search-agent/findings.md`
+- Final report: `demo/260731_1420/REPORT.md`

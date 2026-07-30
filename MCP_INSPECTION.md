@@ -2,32 +2,32 @@
 
 ## Status
 
-| Item | Status | Detail |
-|------|--------|--------|
-| Audit | ✅ Selesai | Full spec comparison against MCP 2026-07-28 |
-| P0-1: Unused import `ProtocolVersion` | ✅ Selesai | Removed from `client.rs:15` |
-| P0-2: `lifecycle_mode` di config structs | ✅ Selesai | `McpLifecycleMode` enum + field di `McpStdioConfig` & `McpHttpConfig` |
-| P0-3: `default_lifecycle()` → config-driven | ✅ Selesai | `resolve_lifecycle()`, per-server mode via `lifecycle_mode()` |
-| P0-4: Auto mode resilience (DeepWiki -32600) | ✅ Selesai | Fallback + collapsible `if` fixed, `Default` derived via `#[derive]` |
-| P1: `server/discover` result di dashboard | ⬜ Belum | Belum diimplementasi |
-| P2: Tasks/Apps extensions | ⬜ Belum | Belum diimplementasi |
+| Item                                         | Status     | Detail                                                                |
+| -------------------------------------------- | ---------- | --------------------------------------------------------------------- |
+| Audit                                        | ✅ Selesai | Full spec comparison against MCP 2026-07-28                           |
+| P0-1: Unused import `ProtocolVersion`        | ✅ Selesai | Removed from `client.rs:15`                                           |
+| P0-2: `lifecycle_mode` di config structs     | ✅ Selesai | `McpLifecycleMode` enum + field di `McpStdioConfig` & `McpHttpConfig` |
+| P0-3: `default_lifecycle()` → config-driven  | ✅ Selesai | `resolve_lifecycle()`, per-server mode via `lifecycle_mode()`         |
+| P0-4: Auto mode resilience (DeepWiki -32600) | ✅ Selesai | Fallback + collapsible `if` fixed, `Default` derived via `#[derive]`  |
+| P1: `server/discover` result di dashboard    | ⬜ Belum   | Belum diimplementasi                                                  |
+| P2: Tasks/Apps extensions                    | ⬜ Belum   | Belum diimplementasi                                                  |
 
 ## Audit Report
 
 ### Well-Implemented ✅
 
-| Area | Status | Rincian |
-|------|--------|---------|
-| Transport: stdio | ✅ | Child process, env, cwd, timeouts |
-| Transport: streamable HTTP | ✅ | Custom headers, auth token/env |
-| Transport: SSE (2024-11-05) | ✅ | Endpoint discovery, bearer auth |
-| OAuth 2.1 / PKCE | ✅ | Full flow, credential store, AES-256-GCM |
-| Config validation | ✅ | JSON Schema + semantic, editor compat |
-| Session pool | ✅ | Long-lived, reconnect, retry with exponential backoff |
-| Tool policy | ✅ | Allow/deny/approval, per-server overlay |
-| Hot reload | ✅ | tools/list_changed + resource/prompt variants |
-| Cancel / abort | ✅ | CancellationToken support |
-| Progress notifications | ✅ | Via rmcp transport layer |
+| Area                        | Status | Rincian                                               |
+| --------------------------- | ------ | ----------------------------------------------------- |
+| Transport: stdio            | ✅     | Child process, env, cwd, timeouts                     |
+| Transport: streamable HTTP  | ✅     | Custom headers, auth token/env                        |
+| Transport: SSE (2024-11-05) | ✅     | Endpoint discovery, bearer auth                       |
+| OAuth 2.1 / PKCE            | ✅     | Full flow, credential store, AES-256-GCM              |
+| Config validation           | ✅     | JSON Schema + semantic, editor compat                 |
+| Session pool                | ✅     | Long-lived, reconnect, retry with exponential backoff |
+| Tool policy                 | ✅     | Allow/deny/approval, per-server overlay               |
+| Hot reload                  | ✅     | tools/list_changed + resource/prompt variants         |
+| Cancel / abort              | ✅     | CancellationToken support                             |
+| Progress notifications      | ✅     | Via rmcp transport layer                              |
 
 ### Gap Analysis 🚫
 
@@ -80,24 +80,24 @@ Headers `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name` di-handle otomatis oleh
 
 ### Implemented
 
-| File | Change |
-|------|--------|
-| `crates/elph-agent/src/tools/mcp/config.rs` | Tambah `McpLifecycleMode` enum, field `lifecycle` di `McpStdioConfig` & `McpHttpConfig`, method `lifecycle_mode()` di `McpServerConfig` |
-| `crates/elph-agent/src/tools/mcp/client.rs` | Hapus `ProtocolVersion` import, hapus `default_lifecycle()`, tambah `resolve_lifecycle()`, auto fallback, update fungsi connect |
-| `crates/elph-agent/src/tools/mcp/mod.rs` | Export `McpLifecycleMode` |
-| `crates/elph-agent/src/lib.rs` | Re-export `McpLifecycleMode` |
-| `crates/elph-agent/examples/agent_mcp_config.rs` | Update konstruktor `McpStdioConfig` |
-| `schemas/mcp-schema.json` | Tambah definisi `lifecycle` + field di `stdioServer`, `httpServer`, `sseServer` |
-| `elph/src/cli/mcp.rs` | Tampilkan lifecycle di `elph mcp list`, tambah import `McpLifecycleMode` |
-| `crates/elph-agent/docs/mcp.md` | Update dokumentasi config table + limitations |
+| File                                             | Change                                                                                                                                  |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/elph-agent/src/tools/mcp/config.rs`      | Tambah `McpLifecycleMode` enum, field `lifecycle` di `McpStdioConfig` & `McpHttpConfig`, method `lifecycle_mode()` di `McpServerConfig` |
+| `crates/elph-agent/src/tools/mcp/client.rs`      | Hapus `ProtocolVersion` import, hapus `default_lifecycle()`, tambah `resolve_lifecycle()`, auto fallback, update fungsi connect         |
+| `crates/elph-agent/src/tools/mcp/mod.rs`         | Export `McpLifecycleMode`                                                                                                               |
+| `crates/elph-agent/src/lib.rs`                   | Re-export `McpLifecycleMode`                                                                                                            |
+| `crates/elph-agent/examples/agent_mcp_config.rs` | Update konstruktor `McpStdioConfig`                                                                                                     |
+| `schemas/mcp-schema.json`                        | Tambah definisi `lifecycle` + field di `stdioServer`, `httpServer`, `sseServer`                                                         |
+| `elph/src/cli/mcp.rs`                            | Tampilkan lifecycle di `elph mcp list`, tambah import `McpLifecycleMode`                                                                |
+| `crates/elph-agent/docs/mcp.md`                  | Update dokumentasi config table + limitations                                                                                           |
 
 ### Remaining Work
 
-| File | Issue | Tindakan |
-|------|-------|----------|
-| `client.rs:126` | Clippy warning: nested `if` | Gabung `if matches!` + `if let Err` jadi satu kondisi |
-| `session/mod.rs:335` | Clippy warning: nested `if` | Pre-existing, dari auto-compact fix sebelumnya |
-| Config docs | Update JSON config examples | Tambah `lifecycle` field di contoh config |
+| File                 | Issue                       | Tindakan                                              |
+| -------------------- | --------------------------- | ----------------------------------------------------- |
+| `client.rs:126`      | Clippy warning: nested `if` | Gabung `if matches!` + `if let Err` jadi satu kondisi |
+| `session/mod.rs:335` | Clippy warning: nested `if` | Pre-existing, dari auto-compact fix sebelumnya        |
+| Config docs          | Update JSON config examples | Tambah `lifecycle` field di contoh config             |
 
 ## Arsitektur
 
