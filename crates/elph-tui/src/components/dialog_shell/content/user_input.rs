@@ -94,7 +94,6 @@ pub fn DialogUserInputContent(
 
     hooks.use_terminal_events({
         let mut on_submit = props.on_submit.take();
-        let mut on_cancel = props.on_cancel.take();
         move |event| {
             if !has_focus {
                 return;
@@ -108,13 +107,13 @@ pub fn DialogUserInputContent(
             if kind == KeyEventKind::Release {
                 return;
             }
+            // Only intercept plain Enter for submit. All other keys (including Esc) pass
+            // through to the Input component so Option+arrow word navigation works.
             if !modifiers.is_empty() {
                 return;
             }
-            match code {
-                KeyCode::Enter if !on_submit.is_default() => on_submit(()),
-                KeyCode::Esc if !on_cancel.is_default() => on_cancel(()),
-                _ => {}
+            if code == KeyCode::Enter && !on_submit.is_default() {
+                on_submit(());
             }
         }
     });
