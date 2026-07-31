@@ -40,12 +40,9 @@ pub fn build_coding_system_prompt(
     };
 
     let preferred_chat_language: String = preferred_chat_language.into();
-    let use_language_preference = !preferred_chat_language.is_empty() && preferred_chat_language != "english";
-    // Clone the value before it's moved into the template context.
-    let language_for_prompt = preferred_chat_language.clone();
 
     let context = SystemPromptTemplateContext {
-        persona: "You are an advanced AI coding assistant, operate in Elph CLI. Your main goal is to complete the user's request."
+        persona: "You are Elph, an expert coding agent. Complete the user's request end-to-end using the available context and tools."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -61,24 +58,13 @@ pub fn build_coding_system_prompt(
     }
     .with_active_tool_names(tool_names);
 
-    let mut prompt = SystemPromptBuilder::new()
+    SystemPromptBuilder::new()
         .mode(PromptAssemblyMode::Extend)
         .context(context)
         .register_domain_template(CODING_BASE_TEMPLATE, include_str!("../../../templates/agent/coding_base.md"))?
         .domain_template(CODING_BASE_TEMPLATE)
-        .render()?;
-
-    // Append a language preference note for conversational responses.
-    // Code, comments, and documentation remain in English regardless.
-    if use_language_preference {
-        prompt.push_str(&format!(
-            "\n\n<language_preference>\nThe user prefers conversational responses in {language_for_prompt}. \
-Use that language for all user-facing text, explanations, and prose in the transcript. \
-Keep code, comments, and documentation in English.\n</language_preference>"
-        ));
-    }
-
-    Ok(prompt)
+        .render()
+        .map_err(Into::into)
 }
 
 #[cfg(test)]
@@ -98,12 +84,12 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are an advanced AI coding assistant"));
+        assert!(prompt.contains("You are Elph, an expert coding agent"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
-        assert!(prompt.contains("<output_efficiency>"));
-        assert!(prompt.contains("<formatting>"));
+        assert!(prompt.contains("<execution>"));
+        assert!(prompt.contains("<output>"));
         assert!(prompt.contains("<mode_context>"));
         assert!(prompt.contains("Mode: Build"));
         assert!(prompt.contains("<available_tools>"));
@@ -195,5 +181,85 @@ mod tests {
         assert!(prompt.contains("<project_context>"));
         assert!(prompt.contains("<project_instructions path=\"AGENTS.md\">"));
         assert!(prompt.contains("Always run tests."));
+    }
+
+    #[test]
+    fn coding_prompt_prioritizes_context_rules_and_tool_routing() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[
+                "read_file",
+                "grep",
+                "find_path",
+                "edit_file",
+                "write_file",
+                "shell_exec",
+                "diagnostics",
+                "list_available_tools",
+            ]
+            .map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("Follow this precedence"));
+        assert!(prompt.contains("Search file contents and symbols with `grep`"));
+        assert!(prompt.contains("Find files by name or glob with `find_path`"));
+        assert!(prompt.contains("focused changes to existing files"));
+        assert!(prompt.contains("Use `diagnostics` after edits"));
+        assert!(prompt.contains("Run independent tool calls in parallel"));
+    }
+
+    #[test]
+    fn project_rules_remain_after_language_and_mode_context() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[],
+            Some("Always run tests."),
+            AgentMode::Build,
+            "indonesian",
+        )
+        .expect("prompt");
+
+        let language = prompt.find("<language_preference>").expect("language preference");
+        let mode = prompt.find("<mode_context>").expect("mode context");
+        let project = prompt.find("<project_context>").expect("project context");
+        assert!(language < mode);
+        assert!(mode < project);
+        assert!(prompt.contains("Use indonesian for user-facing prose"));
+    }
+
+    #[test]
+    fn static_coding_prompt_stays_compact() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[
+                "read_file",
+                "grep",
+                "find_path",
+                "list_dir",
+                "edit_file",
+                "write_file",
+                "shell_exec",
+                "web_fetch",
+                "web_search",
+                "diagnostics",
+                "ask_user_question",
+                "list_available_tools",
+                "spawn_agent",
+            ]
+            .map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(prompt.len() < 7_000, "static prompt is {} bytes", prompt.len());
     }
 }

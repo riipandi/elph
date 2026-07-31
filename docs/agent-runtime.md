@@ -48,11 +48,14 @@ User message
 
 Assembly order:
 
-1. System template + active tool list
-2. Project context — nearest `AGENTS.md`
-3. Registered skills — metadata in prompt; body read by agent when relevant
-4. Current date, working directory, session mode
-5. Guardrails and thinking instructions
+1. Elph persona and session context — working directory, date, OS, and shell
+2. Registered skill metadata — the agent reads a matching skill body before acting
+3. Coding instructions — rule precedence, safety, tool routing, execution, output, and language preference
+4. Mode-specific constraints — Build, Brave, Plan, or Ask
+5. Project context — nearest `AGENTS.md`, appended after generic instructions so scoped repository rules remain prominent
+6. Optional memory context
+
+The active tool list is rendered dynamically on every turn. Tool guidance names only tools exposed in that mode, prefers dedicated search/edit/file tools over shell workarounds, parallelizes independent calls, and reserves `list_available_tools` for unfamiliar or dynamically added tools.
 
 ## Tool loop
 
