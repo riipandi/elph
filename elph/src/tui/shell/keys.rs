@@ -2195,25 +2195,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
-            // Character typing
-            if !modifiers.is_empty() {
-                // Ignore modified keys
-            } else {
-                match code {
-                    KeyCode::Char(c) => {
-                        let mut current = provider_connect_api_key.read().clone();
-                        current.push(c);
-                        provider_connect_api_key.set(current);
-                        return;
-                    }
-                    KeyCode::Backspace => {
-                        let mut current = provider_connect_api_key.read().clone();
-                        current.pop();
-                        provider_connect_api_key.set(current);
-                        return;
-                    }
-                    _ => {}
-                }
+            // Character typing / backspace: owned by DialogUserInputContent → TextInput
+            // (shared `provider_connect_api_key` State). Do not also push/pop here —
+            // that double-applied each keystroke (`ad` → `adad`).
+            if !shell_global_shortcut(modifiers, code) {
+                return;
             }
         }
 
