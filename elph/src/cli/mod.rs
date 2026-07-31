@@ -58,16 +58,16 @@ pub struct Cli {
     #[arg(
         short = 'c',
         long = "continue",
-        help = "Continue last session for the current project (CWD/PROJECT_DIR); does not start a new session"
+        help = "Continue last session for the current project"
     )]
     pub continue_session: bool,
 
-    /// Resume a specific session by ID (interactive TUI)
+    /// Resume a specific session by session ID (interactive TUI)
     #[arg(
         short = 'r',
         long = "resume",
         value_name = "SESSION_ID",
-        help = "Resume a specific session by ID"
+        help = "Resume a specific session by session ID"
     )]
     pub resume: Option<String>,
 

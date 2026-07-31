@@ -26,7 +26,7 @@ pub struct RunArgs {
     #[arg(short = 'c', long = "continue")]
     pub r#continue: bool,
 
-    /// Resume a specific session by ID
+    /// Resume a specific session by session ID
     #[arg(short = 'r', long = "resume", value_name = "SESSION_ID", visible_alias = "session")]
     pub session: Option<String>,
 
