@@ -395,6 +395,8 @@ pub use tools::mcp::McpLifecycleMode;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpLoadReport;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::McpMrtrElicitationPolicy;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::McpOAuthClientMeta;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpOAuthFlowOptions;
@@ -410,6 +412,8 @@ pub use tools::mcp::McpProbeResult;
 pub use tools::mcp::McpPromptDescriptor;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpResourceDescriptor;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::McpResponseCacheConfig;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpServerConfig;
 #[cfg(feature = "mcp")]
@@ -437,6 +441,8 @@ pub use tools::mcp::call_tool_for_server;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::clear_credentials;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::clear_process_master_key_for_tests;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::connect;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::connect_http;
@@ -455,12 +461,6 @@ pub use tools::mcp::decrypt_string_sync;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_async;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::load_or_create_master_key;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::set_process_master_key_for_tests;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::clear_process_master_key_for_tests;
-#[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_json_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_string_async;
@@ -476,6 +476,8 @@ pub use tools::mcp::is_encrypted_value;
 pub use tools::mcp::list_tools;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::list_tools_for_server;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::load_or_create_master_key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::lock_auth_store;
 #[cfg(feature = "mcp")]
@@ -510,6 +512,8 @@ pub use tools::mcp::resolve_remote_auth;
 pub use tools::mcp::run_oauth_flow;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow_with_scopes;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::set_process_master_key_for_tests;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::shutdown_client;
 #[cfg(feature = "mcp")]

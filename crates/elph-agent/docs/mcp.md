@@ -41,14 +41,16 @@ JSON file (Elph product: `~/.elph/mcp.json`):
 }
 ```
 
-| Field                                            | Transports | Description                          |
-| ------------------------------------------------ | ---------- | ------------------------------------ |
-| `type`                                           | both       | `stdio` or `http`                    |
-| `command` / `args` / `env` / `cwd`               | stdio      | Child process                        |
-| `url` / `headers` / `authToken` / `authTokenEnv` | http       | Streamable HTTP endpoint             |
-| `timeoutMs`                                      | both       | Per list/call timeout (default 60s)  |
-| `disabled`                                       | both       | Skip during discovery and calls      |
-| `lifecycle`                                      | both       | `auto` (default), `legacy`, or `discover`. Auto probes `server/discover` and falls back to `initialize`; `legacy` uses the old handshake only; `discover` requires 2026-07-28+. Set to `legacy` for servers (e.g. DeepWiki) that reject unknown methods with non-standard errors. |
+| Field | Transports | Description |
+| ----- | ---------- | ----------- |
+| `type` | all | `stdio`, `http` (preferred remote), or deprecated `sse` |
+| `command` / `args` / `env` / `cwd` | stdio | Child process |
+| `url` / `headers` / `authToken` / `authTokenEnv` | http/sse | Remote endpoint |
+| `oauth` / `oauthScopes` / `oauthClientMetadataUrl` | http/sse | OAuth 2.1 + PKCE; CIMD URL preferred over DCR |
+| `timeoutMs` | all | Per list/call timeout (default 60s) |
+| `enable` | all | Skip when false |
+| `lifecycle` | all | `auto` (default), `legacy`, or `discover` (2026-07-28). Set `legacy` for servers that reject unknown methods with non-standard errors. |
+| `mrtrElicitation` | all | `decline` (default) or `error` for SEP-2322 elicitation during tool calls |
 
 ## API surface
 
@@ -158,9 +160,24 @@ cargo test -p elph-agent --features mcp --test encrypt_string
 
 Covers: unicode/empty/long strings, nonce uniqueness, wrong key, tamper detection, key reload from disk, JSON blobs, sync API.
 
+## MCP 2026-07-28 client surface
+
+| Spec area | Elph status |
+| --------- | ----------- |
+| Lifecycle `server/discover` + preferred `2026-07-28` | Yes (`lifecycle` auto/legacy/discover) |
+| Streamable HTTP + stdio | Yes |
+| SSE (deprecated) | Yes, with doctor warnings; OAuth token re-resolved on reconnect |
+| Auth SEPs (iss, application_type, issuer-bound DCR) | Via rmcp ≥ 3.0.1 |
+| CIMD (`oauthClientMetadataUrl`) | Config + OAuth flow hook |
+| Sealed `auth.json` `{providers,mcp}` | Yes |
+| List cache SEP-2549 | Yes (`McpLoadOptions.response_cache`) |
+| MRTR elicitation | Policy decline/error (no full TUI) |
+| Tasks extension bridges | Yes when server advertises tasks |
+| Resource/prompt bridges | Yes |
+| MCP Apps / EMA / server role | Out of scope |
+
 ## Limitations
 
 - MCP **server** role (hosting tools for other clients) is out of scope.
-- OAuth browser login for remote MCP is not fully productized (token via `authToken` / `authTokenEnv`).
-- Resource/prompt MCP surfaces are not yet mapped to agent tools (tools only).
-- Tasks and Apps (2026-07-28 Extensions framework) are not yet exposed.
+- Interactive TUI for MRTR elicitation is not implemented (`mrtrElicitation` only).
+- MCP Apps and Enterprise Managed Authorization (EMA) are not exposed.

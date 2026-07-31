@@ -96,6 +96,8 @@ pub struct McpToolRegistry {
     resource_capable: RwLock<Vec<String>>,
     /// Servers that successfully listed prompts (even if empty).
     prompt_capable: RwLock<Vec<String>>,
+    /// Servers that advertise SEP-2663 Tasks extension.
+    task_capable: RwLock<Vec<String>>,
     pool: Arc<McpSessionPool>,
     report: RwLock<McpLoadReport>,
     policy: McpPolicyConfig,
@@ -112,6 +114,7 @@ impl McpToolRegistry {
             prompts: RwLock::new(Vec::new()),
             resource_capable: RwLock::new(Vec::new()),
             prompt_capable: RwLock::new(Vec::new()),
+            task_capable: RwLock::new(Vec::new()),
             pool: Arc::new(McpSessionPool::new()),
             report: RwLock::new(McpLoadReport::default()),
             policy: McpPolicyConfig::default(),
@@ -127,7 +130,9 @@ impl McpToolRegistry {
 
     /// Discover tools (and optionally resources/prompts) from all enabled servers.
     pub async fn load_with_options(config: McpConfig, options: McpLoadOptions) -> Result<Self> {
-        let pool = McpSessionPool::new().with_auth_store_path(options.auth_store_path.clone());
+        let pool = McpSessionPool::new()
+            .with_auth_store_path(options.auth_store_path.clone())
+            .with_response_cache(options.response_cache.clone());
         let (event_tx, event_rx) = if options.enable_list_changed {
             let (tx, rx) = mpsc::unbounded_channel();
             pool.set_event_sender(tx.clone());
@@ -178,6 +183,7 @@ impl McpToolRegistry {
         let mut prompts = Vec::new();
         let mut resource_capable = Vec::new();
         let mut prompt_capable = Vec::new();
+        let mut task_capable = Vec::new();
         let mut report = McpLoadReport {
             servers_skipped: skipped,
             ..Default::default()
@@ -193,6 +199,7 @@ impl McpToolRegistry {
                     prompt_descriptors,
                     resources_ok,
                     prompts_ok,
+                    tasks_ok,
                     message,
                 } => {
                     report.servers_ok += 1;
@@ -215,7 +222,10 @@ impl McpToolRegistry {
                         resource_capable.push(name.clone());
                     }
                     if prompts_ok {
-                        prompt_capable.push(name);
+                        prompt_capable.push(name.clone());
+                    }
+                    if tasks_ok {
+                        task_capable.push(name);
                     }
                 }
                 ServerDiscovery::Failed { name, transport, error } => {
@@ -273,6 +283,7 @@ impl McpToolRegistry {
             prompts: RwLock::new(prompts),
             resource_capable: RwLock::new(resource_capable),
             prompt_capable: RwLock::new(prompt_capable),
+            task_capable: RwLock::new(task_capable),
             pool,
             report: RwLock::new(report),
             policy,
@@ -421,7 +432,7 @@ impl McpToolRegistry {
             | McpServerEvent::ResourceListChanged { server }
             | McpServerEvent::PromptListChanged { server }
             | McpServerEvent::ResourceUpdated { server, .. } => server.as_str(),
-            McpServerEvent::Progress { .. } => return Ok(0),
+            McpServerEvent::Progress { .. } | McpServerEvent::TaskStatus { .. } => return Ok(0),
         };
         log::info!("MCP catalog change; refreshing server: server={server} event={event:?}");
         self.refresh_server(server).await
@@ -462,6 +473,16 @@ impl McpToolRegistry {
                             log::warn!("MCP hot reload failed: {error}");
                         }
                     },
+                    McpServerEvent::TaskStatus {
+                        server,
+                        task_id,
+                        status,
+                        status_message,
+                    } => {
+                        log::info!(
+                            "MCP task status: server={server} task_id={task_id} status={status} message={status_message:?}"
+                        );
+                    }
                 }
             }
         });
@@ -510,8 +531,144 @@ impl McpToolRegistry {
             out.push(self.bridge_list_prompts(server));
             out.push(self.bridge_get_prompt(server));
         }
+        for server in self.task_capable.read().iter() {
+            out.push(self.bridge_tasks_get(server));
+            out.push(self.bridge_tasks_update(server));
+            out.push(self.bridge_tasks_cancel(server));
+        }
 
         out
+    }
+
+    fn bridge_tasks_get(self: &Arc<Self>, server: &str) -> AgentTool {
+        let registry = Arc::clone(self);
+        let server_owned = server.to_string();
+        let name = expose_tool_name(server, "tasks_get");
+        simple_tool(
+            Tool {
+                name,
+                constrained_sampling: None,
+                description: format!(
+                    "[MCP:{server}] Poll SEP-2663 task status (tasks/get). Pass taskId from a prior tool result with resultType=task."
+                ),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "taskId": { "type": "string", "description": "Task id from CreateTaskResult" }
+                    },
+                    "required": ["taskId"]
+                }),
+            },
+            format!("MCP:{server}"),
+            move |_, args| {
+                let registry = registry.clone();
+                let server = server_owned.clone();
+                Box::pin(async move {
+                    let task_id = args
+                        .get("taskId")
+                        .and_then(|v| v.as_str())
+                        .context("taskId is required")?
+                        .to_string();
+                    let Some(server_config) = registry.config.servers.get(&server).cloned() else {
+                        anyhow::bail!("MCP server \"{server}\" not configured");
+                    };
+                    let result = registry.pool.get_task(&server, server_config, &task_id).await?;
+                    let payload = serde_json::to_value(&result).unwrap_or_else(|_| json!({ "taskId": task_id }));
+                    Ok(AgentToolResult::text(payload.to_string()))
+                })
+            },
+        )
+    }
+
+    fn bridge_tasks_update(self: &Arc<Self>, server: &str) -> AgentTool {
+        let registry = Arc::clone(self);
+        let server_owned = server.to_string();
+        let name = expose_tool_name(server, "tasks_update");
+        simple_tool(
+            Tool {
+                name,
+                constrained_sampling: None,
+                description: format!(
+                    "[MCP:{server}] Deliver inputResponses for an in-task input_required state (tasks/update)."
+                ),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "taskId": { "type": "string" },
+                        "inputResponses": {
+                            "type": "object",
+                            "description": "Map of request keys to response values"
+                        }
+                    },
+                    "required": ["taskId", "inputResponses"]
+                }),
+            },
+            format!("MCP:{server}"),
+            move |_, args| {
+                let registry = registry.clone();
+                let server = server_owned.clone();
+                Box::pin(async move {
+                    let task_id = args
+                        .get("taskId")
+                        .and_then(|v| v.as_str())
+                        .context("taskId is required")?
+                        .to_string();
+                    let responses = args
+                        .get("inputResponses")
+                        .cloned()
+                        .context("inputResponses is required")?;
+                    let input_responses: rmcp::model::InputResponses =
+                        serde_json::from_value(responses).context("inputResponses must be a JSON object map")?;
+                    let Some(server_config) = registry.config.servers.get(&server).cloned() else {
+                        anyhow::bail!("MCP server \"{server}\" not configured");
+                    };
+                    registry
+                        .pool
+                        .update_task(&server, server_config, &task_id, input_responses)
+                        .await?;
+                    Ok(AgentToolResult::text(json!({ "ok": true, "taskId": task_id }).to_string()))
+                })
+            },
+        )
+    }
+
+    fn bridge_tasks_cancel(self: &Arc<Self>, server: &str) -> AgentTool {
+        let registry = Arc::clone(self);
+        let server_owned = server.to_string();
+        let name = expose_tool_name(server, "tasks_cancel");
+        simple_tool(
+            Tool {
+                name,
+                constrained_sampling: None,
+                description: format!("[MCP:{server}] Cancel a running task (tasks/cancel)."),
+                parameters: json!({
+                    "type": "object",
+                    "properties": {
+                        "taskId": { "type": "string" }
+                    },
+                    "required": ["taskId"]
+                }),
+            },
+            format!("MCP:{server}"),
+            move |_, args| {
+                let registry = registry.clone();
+                let server = server_owned.clone();
+                Box::pin(async move {
+                    let task_id = args
+                        .get("taskId")
+                        .and_then(|v| v.as_str())
+                        .context("taskId is required")?
+                        .to_string();
+                    let Some(server_config) = registry.config.servers.get(&server).cloned() else {
+                        anyhow::bail!("MCP server \"{server}\" not configured");
+                    };
+                    registry.pool.cancel_task(&server, server_config, &task_id).await?;
+                    Ok(AgentToolResult::text(
+                        json!({ "ok": true, "taskId": task_id, "cancelled": true }).to_string(),
+                    ))
+                })
+            },
+        )
     }
 
     fn bridge_list_resources(self: &Arc<Self>, server: &str) -> AgentTool {
@@ -759,6 +916,7 @@ enum ServerDiscovery {
         prompt_descriptors: Vec<McpPromptDescriptor>,
         resources_ok: bool,
         prompts_ok: bool,
+        tasks_ok: bool,
         message: String,
     },
     Failed {
@@ -822,7 +980,27 @@ async fn discover_one(
             }
         }
 
-        Ok::<_, anyhow::Error>((tools, resource_descriptors, prompt_descriptors, resources_ok, prompts_ok))
+        let tasks_ok = match pool
+            .get_or_insert(server_name, config.clone())
+            .await
+            .supports_tasks()
+            .await
+        {
+            Ok(v) => v,
+            Err(error) => {
+                debug_ignore_capability(server_name, "tasks", &error);
+                false
+            }
+        };
+
+        Ok::<_, anyhow::Error>((
+            tools,
+            resource_descriptors,
+            prompt_descriptors,
+            resources_ok,
+            prompts_ok,
+            tasks_ok,
+        ))
     };
 
     let result = if let Some(t) = override_timeout {
@@ -835,12 +1013,16 @@ async fn discover_one(
     };
 
     match result {
-        Ok((remote_tools, resource_descriptors, prompt_descriptors, resources_ok, prompts_ok)) => {
+        Ok((remote_tools, resource_descriptors, prompt_descriptors, resources_ok, prompts_ok, tasks_ok)) => {
             let descriptors: Vec<_> = remote_tools
                 .into_iter()
                 .map(|tool| descriptor_from_mcp(server_name, &tool))
                 .collect();
             let count = descriptors.len();
+            let mut message = format!("discovered {count} tools");
+            if tasks_ok {
+                message.push_str(", tasks extension");
+            }
             ServerDiscovery::Ok {
                 name: server_name.to_string(),
                 transport,
@@ -849,7 +1031,8 @@ async fn discover_one(
                 prompt_descriptors,
                 resources_ok,
                 prompts_ok,
-                message: format!("discovered {count} tools"),
+                tasks_ok,
+                message,
             }
         }
         Err(error) => ServerDiscovery::Failed {

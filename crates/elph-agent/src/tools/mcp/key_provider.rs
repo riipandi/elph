@@ -41,11 +41,7 @@ pub fn clear_process_master_key_for_tests() {
 
 /// Load the master key from the process override, else OS keychain (create if missing).
 pub fn load_or_create_master_key() -> Result<Aes256Key> {
-    if let Some(key) = process_override()
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
-    {
+    if let Some(key) = process_override().lock().unwrap_or_else(|e| e.into_inner()).clone() {
         return Ok(key);
     }
 
@@ -57,8 +53,8 @@ pub fn load_or_create_master_key() -> Result<Aes256Key> {
         }
     }
 
-    let entry = Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT)
-        .context("open OS keychain entry for Elph auth master key")?;
+    let entry =
+        Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).context("open OS keychain entry for Elph auth master key")?;
 
     match entry.get_password() {
         Ok(secret) => key_from_b64(secret.trim()).context("decode master key from keychain"),

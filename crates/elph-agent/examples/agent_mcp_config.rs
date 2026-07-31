@@ -50,6 +50,7 @@ fn main() {
         timeout_ms: Some(120_000),
         enable: true,
         lifecycle: Default::default(),
+        mrtr_elicitation: Default::default(),
         policy: None,
     });
     println!("  custom stdio: command=uvx, env=1 var, timeout=120s");
@@ -64,6 +65,7 @@ fn main() {
         timeout_ms: None,
         enable: false,
         lifecycle: Default::default(),
+        mrtr_elicitation: Default::default(),
         policy: None,
     });
     println!("  is_disabled: {}", disabled.is_disabled());
@@ -124,6 +126,7 @@ fn main() {
         timeout_ms: Some(60_000),
         enable: true,
         lifecycle: Default::default(),
+        mrtr_elicitation: Default::default(),
         policy: None,
     });
     let http_server = McpServerConfig::http("https://example.com/mcp");

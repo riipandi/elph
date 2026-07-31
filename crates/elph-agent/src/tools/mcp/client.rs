@@ -9,17 +9,20 @@ use anyhow::bail;
 use anyhow::{Context, Result};
 use http::{HeaderName, HeaderValue};
 use rmcp::model::CallToolRequestParams;
+use rmcp::model::CallToolResponse;
 use rmcp::model::CallToolResult;
+use rmcp::model::ContentBlock;
 use rmcp::model::GetPromptRequestParams;
 use rmcp::model::Prompt;
 use rmcp::model::ReadResourceRequestParams;
 use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
 use rmcp::model::Tool;
+use rmcp::service::ClientCacheConfig;
 use rmcp::service::RunningService;
 use rmcp::{ClientLifecycleMode, ClientServiceExt};
 
-use super::config::McpLifecycleMode;
+use super::config::{McpLifecycleMode, McpMrtrElicitationPolicy, McpResponseCacheConfig};
 
 /// Resolve the rmcp `ClientLifecycleMode` from elph's config-level mode.
 ///
@@ -74,6 +77,10 @@ pub struct McpConnectContext {
     /// Full path to shared `auth.json` (or host-chosen name). See [`super::auth::AuthStorePathBuilder`].
     pub auth_store_path: Option<PathBuf>,
     pub events: Option<mpsc::UnboundedSender<McpServerEvent>>,
+    /// SEP-2549 client list-response cache.
+    pub response_cache: McpResponseCacheConfig,
+    /// SEP-2322 MRTR elicitation policy.
+    pub mrtr_elicitation: McpMrtrElicitationPolicy,
 }
 
 impl McpConnectContext {
@@ -82,6 +89,8 @@ impl McpConnectContext {
             server_name: server_name.into(),
             auth_store_path: None,
             events: None,
+            response_cache: McpResponseCacheConfig::default(),
+            mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
         }
     }
 
@@ -95,6 +104,16 @@ impl McpConnectContext {
         self.events = Some(tx);
         self
     }
+
+    pub fn with_response_cache(mut self, cache: McpResponseCacheConfig) -> Self {
+        self.response_cache = cache;
+        self
+    }
+
+    pub fn with_mrtr_elicitation(mut self, policy: McpMrtrElicitationPolicy) -> Self {
+        self.mrtr_elicitation = policy;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +123,51 @@ pub struct McpProbeResult {
     pub tool_count: usize,
     pub transport: String,
     pub message: String,
+    /// Negotiated protocol version string when known (e.g. `2026-07-28`).
+    pub protocol_version: Option<String>,
+    /// Configured lifecycle mode label (`auto` / `legacy` / `discover`).
+    pub lifecycle: String,
+}
+
+fn lifecycle_label(mode: McpLifecycleMode) -> &'static str {
+    match mode {
+        McpLifecycleMode::Auto => "auto",
+        McpLifecycleMode::Legacy => "legacy",
+        McpLifecycleMode::Discover => "discover",
+    }
+}
+
+fn handler_for_ctx(ctx: &McpConnectContext) -> McpClientService {
+    McpClientService::new(&ctx.server_name, ctx.events.clone()).with_mrtr_elicitation(ctx.mrtr_elicitation)
+}
+
+async fn apply_response_cache(client: &McpClient, cache: &McpResponseCacheConfig) {
+    let mut cfg = if cache.enabled {
+        ClientCacheConfig::default()
+    } else {
+        ClientCacheConfig::disabled()
+    };
+    if let Some(ms) = cache.default_ttl_ms {
+        cfg = cfg.with_default_ttl(Duration::from_millis(ms));
+    }
+    if let Some(part) = &cache.private_partition {
+        cfg = cfg.with_private_partition(part.clone());
+    }
+    client.set_response_cache_config(cfg).await;
+}
+
+fn peer_protocol_version(client: &McpClient) -> Option<String> {
+    client
+        .peer_info()
+        .map(|info| info.protocol_version.as_str().to_string())
+}
+
+/// Whether the peer advertised the Tasks extension (SEP-2663).
+pub fn peer_supports_tasks(client: &McpClient) -> bool {
+    client
+        .peer_info()
+        .map(|info| info.capabilities.supports_tasks())
+        .unwrap_or(false)
 }
 
 /// Open a long-lived connection (caller owns lifecycle / cancel).
@@ -163,11 +227,12 @@ pub async fn connect_stdio_with_context(
 
     log::debug!("spawning MCP stdio server: command={} args={:?}", config.command, config.args);
     let transport = TokioChildProcess::new(command.configure(|_| {})).context("spawn MCP stdio transport")?;
-    let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
+    let handler = handler_for_ctx(ctx);
     let client = handler
         .serve_with_lifecycle(transport, lifecycle)
         .await
         .context("initialize MCP stdio client")?;
+    apply_response_cache(&client, &ctx.response_cache).await;
     Ok(client)
 }
 
@@ -180,7 +245,7 @@ pub async fn connect_http_with_context(
     ctx: &McpConnectContext,
     lifecycle: ClientLifecycleMode,
 ) -> Result<McpClient> {
-    let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
+    let handler = handler_for_ctx(ctx);
     let mut transport_config = StreamableHttpClientTransportConfig::with_uri(config.url.clone());
 
     // Custom headers always applied.
@@ -232,6 +297,7 @@ pub async fn connect_http_with_context(
                 .serve_with_lifecycle(transport, lifecycle)
                 .await
                 .context("initialize MCP HTTP OAuth client")?;
+            apply_response_cache(&client, &ctx.response_cache).await;
             Ok(client)
         }
         ResolvedMcpAuth::StaticBearer { token, source } => {
@@ -242,6 +308,7 @@ pub async fn connect_http_with_context(
                 .serve_with_lifecycle(transport, lifecycle.clone())
                 .await
                 .context("initialize MCP HTTP client")?;
+            apply_response_cache(&client, &ctx.response_cache).await;
             Ok(client)
         }
         ResolvedMcpAuth::None => {
@@ -250,6 +317,7 @@ pub async fn connect_http_with_context(
                 .serve_with_lifecycle(transport, lifecycle)
                 .await
                 .context("initialize MCP HTTP client")?;
+            apply_response_cache(&client, &ctx.response_cache).await;
             Ok(client)
         }
     }
@@ -277,14 +345,22 @@ pub async fn connect_sse_with_context(
     );
     let bearer = resolved.bearer_token().map(str::to_string);
 
+    if config.oauth {
+        log::warn!(
+            "MCP SSE + OAuth: transport is deprecated (prefer type=http); token refreshed on reconnect only: server={}",
+            ctx.server_name
+        );
+    }
+
     let transport = SseClientTransport::connect_with_bearer(config, bearer)
         .await
         .with_context(|| format!("connect SSE MCP at {}", config.url))?;
-    let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
+    let handler = handler_for_ctx(ctx);
     let client = handler
         .serve_with_lifecycle(transport, lifecycle)
         .await
         .context("initialize MCP SSE client")?;
+    apply_response_cache(&client, &ctx.response_cache).await;
     Ok(client)
 }
 
@@ -306,7 +382,43 @@ pub async fn call_tool_on_client(client: &McpClient, tool_name: &str, args: Valu
     if let Value::Object(map) = args {
         params = params.with_arguments(map);
     }
-    client.call_tool(params).await.context("call MCP tool")
+    // Prefer high-level call_tool (MRTR). If the server returns a task handle,
+    // rmcp surfaces UnexpectedResponse — recover via call_tool_once.
+    match client.call_tool(params.clone()).await {
+        Ok(result) => Ok(result),
+        Err(err) => {
+            let msg = err.to_string();
+            if msg.contains("Unexpected") || msg.contains("unexpected") {
+                match client.call_tool_once(params).await.context("call MCP tool once")? {
+                    CallToolResponse::Complete(result) => Ok(result),
+                    CallToolResponse::Task(task) => {
+                        let payload = serde_json::json!({
+                            "resultType": "task",
+                            "taskId": task.task.task_id,
+                            "status": format!("{:?}", task.task.status),
+                            "statusMessage": task.task.status_message,
+                            "pollIntervalMs": task.task.poll_interval_ms,
+                            "hint": "Poll with mcp_{server}__tasks_get using taskId",
+                        });
+                        let mut result = CallToolResult::success(vec![ContentBlock::text(payload.to_string())]);
+                        result.structured_content = Some(payload);
+                        Ok(result)
+                    }
+                    CallToolResponse::InputRequired(_) => {
+                        // Should have been driven by call_tool; surface clear error.
+                        Err(anyhow::anyhow!(
+                            "MCP tool returned input_required without completing MRTR rounds: {tool_name}"
+                        ))
+                    }
+                    _ => Err(anyhow::anyhow!(
+                        "MCP tool returned an unexpected call response shape: {tool_name}"
+                    )),
+                }
+            } else {
+                Err(err).context("call MCP tool")
+            }
+        }
+    }
 }
 
 pub async fn read_resource_on_client(client: &McpClient, uri: &str) -> Result<Vec<ResourceContents>> {
@@ -348,33 +460,50 @@ pub async fn probe_server_with_auth(
     auth_store_path: Option<&Path>,
 ) -> McpProbeResult {
     let transport = config.kind_label().to_string();
+    let lifecycle = lifecycle_label(config.lifecycle_mode()).to_string();
     let op_timeout = config.operation_timeout();
-    let mut ctx = McpConnectContext::named(name);
+    let mut ctx = McpConnectContext::named(name).with_mrtr_elicitation(config.mrtr_elicitation());
     if let Some(path) = auth_store_path {
         ctx = ctx.with_auth_store_path(path);
     }
     match timeout(op_timeout, async {
         let client = connect_with_context(config, &ctx).await?;
+        let protocol_version = peer_protocol_version(&client);
+        let tasks = peer_supports_tasks(&client);
         let tools = list_tools_on_client(&client).await.unwrap_or_default();
         let count = tools.len();
         shutdown_client(client).await;
-        Ok::<_, anyhow::Error>(count)
+        Ok::<_, anyhow::Error>((count, protocol_version, tasks))
     })
     .await
     {
-        Ok(Ok(count)) => McpProbeResult {
-            name: name.to_string(),
-            ok: true,
-            tool_count: count,
-            transport,
-            message: format!("connected, {count} tools"),
-        },
+        Ok(Ok((count, protocol_version, tasks))) => {
+            let proto = protocol_version.as_deref().unwrap_or("unknown");
+            let mut message = format!("connected, {count} tools, protocol={proto}, lifecycle={lifecycle}");
+            if tasks {
+                message.push_str(", tasks=yes");
+            }
+            if config.is_sse() {
+                message.push_str(" (sse deprecated; prefer type=http)");
+            }
+            McpProbeResult {
+                name: name.to_string(),
+                ok: true,
+                tool_count: count,
+                transport,
+                message,
+                protocol_version,
+                lifecycle,
+            }
+        }
         Ok(Err(error)) => McpProbeResult {
             name: name.to_string(),
             ok: false,
             tool_count: 0,
             transport,
             message: error.to_string(),
+            protocol_version: None,
+            lifecycle,
         },
         Err(_) => McpProbeResult {
             name: name.to_string(),
@@ -382,8 +511,36 @@ pub async fn probe_server_with_auth(
             tool_count: 0,
             transport,
             message: format!("timed out after {op_timeout:?}"),
+            protocol_version: None,
+            lifecycle,
         },
     }
+}
+
+/// Task helpers (SEP-2663) on a live client.
+pub async fn get_task_on_client(client: &McpClient, task_id: &str) -> Result<rmcp::model::GetTaskResult> {
+    client
+        .get_task(rmcp::model::GetTaskParams::new(task_id.to_string()))
+        .await
+        .context("tasks/get")
+}
+
+pub async fn update_task_on_client(
+    client: &McpClient,
+    task_id: &str,
+    input_responses: rmcp::model::InputResponses,
+) -> Result<()> {
+    client
+        .update_task(rmcp::model::UpdateTaskParams::new(task_id.to_string(), input_responses))
+        .await
+        .context("tasks/update")
+}
+
+pub async fn cancel_task_on_client(client: &McpClient, task_id: &str) -> Result<()> {
+    client
+        .cancel_task(rmcp::model::CancelTaskParams::new(task_id.to_string()))
+        .await
+        .context("tasks/cancel")
 }
 
 /// One-shot list tools (connects, lists, disconnects). Prefer session pool for repeated calls.
@@ -430,6 +587,7 @@ pub fn parse_stdio_config(command: String, args: Vec<String>, env: BTreeMap<Stri
         timeout_ms: None,
         enable: true,
         lifecycle: Default::default(),
+        mrtr_elicitation: Default::default(),
         policy: None,
     }
 }

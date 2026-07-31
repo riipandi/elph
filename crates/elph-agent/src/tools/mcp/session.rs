@@ -17,15 +17,19 @@ use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 use super::client::call_tool_on_client;
+use super::client::cancel_task_on_client;
 use super::client::connect_with_context;
 use super::client::get_prompt_on_client;
+use super::client::get_task_on_client;
 use super::client::list_prompts_on_client;
 use super::client::list_resources_on_client;
 use super::client::list_tools_on_client;
+use super::client::peer_supports_tasks;
 use super::client::read_resource_on_client;
 use super::client::shutdown_client;
+use super::client::update_task_on_client;
 use super::client::{McpClient, McpConnectContext};
-use super::config::McpServerConfig;
+use super::config::{McpResponseCacheConfig, McpServerConfig};
 use super::events::{McpEventBus, McpServerEvent};
 
 /// One connected MCP server with exclusive client access.
@@ -34,6 +38,7 @@ pub struct McpServerSession {
     config: McpServerConfig,
     auth_store_path: Option<PathBuf>,
     events: Option<mpsc::UnboundedSender<McpServerEvent>>,
+    response_cache: McpResponseCacheConfig,
     client: Mutex<Option<McpClient>>,
 }
 
@@ -44,6 +49,7 @@ impl McpServerSession {
             config,
             auth_store_path: None,
             events: None,
+            response_cache: McpResponseCacheConfig::default(),
             client: Mutex::new(None),
         }
     }
@@ -58,6 +64,11 @@ impl McpServerSession {
         self
     }
 
+    pub fn with_response_cache(mut self, response_cache: McpResponseCacheConfig) -> Self {
+        self.response_cache = response_cache;
+        self
+    }
+
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -67,7 +78,10 @@ impl McpServerSession {
     }
 
     fn connect_ctx(&self) -> McpConnectContext {
-        let mut ctx = McpConnectContext::named(&self.name);
+        // Re-resolve OAuth on every connect/reconnect (SSE bearer + HTTP AuthClient store).
+        let mut ctx = McpConnectContext::named(&self.name)
+            .with_mrtr_elicitation(self.config.mrtr_elicitation())
+            .with_response_cache(self.response_cache.clone());
         if let Some(path) = &self.auth_store_path {
             ctx = ctx.with_auth_store_path(path.clone());
         }
@@ -327,6 +341,69 @@ impl McpServerSession {
     pub async fn close(&self) {
         self.drop_client().await;
     }
+
+    /// Whether the peer currently advertises Tasks (requires an open client).
+    pub async fn supports_tasks(&self) -> Result<bool> {
+        let ctx = self.connect_ctx();
+        let mut guard = self.client.lock().await;
+        Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+        let client = guard.as_ref().context("MCP client missing")?;
+        Ok(peer_supports_tasks(client))
+    }
+
+    pub async fn get_task(&self, task_id: &str) -> Result<rmcp::model::GetTaskResult> {
+        let op_timeout = self.config.operation_timeout();
+        timeout(op_timeout, self.get_task_inner(task_id))
+            .await
+            .with_context(|| format!("tasks/get on \"{}\" timed out", self.name))?
+    }
+
+    async fn get_task_inner(&self, task_id: &str) -> Result<rmcp::model::GetTaskResult> {
+        let ctx = self.connect_ctx();
+        let mut guard = self.client.lock().await;
+        Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+        let client = guard.as_ref().context("MCP client missing")?;
+        match get_task_on_client(client, task_id).await {
+            Ok(r) => Ok(r),
+            Err(first) => {
+                log::warn!("MCP tasks/get failed; reconnecting: server={} error={first}", self.name);
+                Self::drop_client_locked(&mut guard).await;
+                Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+                let client = guard.as_ref().context("MCP client missing after reconnect")?;
+                get_task_on_client(client, task_id).await
+            }
+        }
+    }
+
+    pub async fn update_task(&self, task_id: &str, input_responses: rmcp::model::InputResponses) -> Result<()> {
+        let op_timeout = self.config.operation_timeout();
+        timeout(op_timeout, self.update_task_inner(task_id, input_responses))
+            .await
+            .with_context(|| format!("tasks/update on \"{}\" timed out", self.name))?
+    }
+
+    async fn update_task_inner(&self, task_id: &str, input_responses: rmcp::model::InputResponses) -> Result<()> {
+        let ctx = self.connect_ctx();
+        let mut guard = self.client.lock().await;
+        Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+        let client = guard.as_ref().context("MCP client missing")?;
+        update_task_on_client(client, task_id, input_responses).await
+    }
+
+    pub async fn cancel_task(&self, task_id: &str) -> Result<()> {
+        let op_timeout = self.config.operation_timeout();
+        timeout(op_timeout, self.cancel_task_inner(task_id))
+            .await
+            .with_context(|| format!("tasks/cancel on \"{}\" timed out", self.name))?
+    }
+
+    async fn cancel_task_inner(&self, task_id: &str) -> Result<()> {
+        let ctx = self.connect_ctx();
+        let mut guard = self.client.lock().await;
+        Self::ensure_client_locked(&mut guard, &self.name, &self.config, &ctx).await?;
+        let client = guard.as_ref().context("MCP client missing")?;
+        cancel_task_on_client(client, task_id).await
+    }
 }
 
 impl Drop for McpServerSession {
@@ -345,6 +422,7 @@ impl Drop for McpServerSession {
 pub struct McpSessionPool {
     sessions: Mutex<HashMap<String, Arc<McpServerSession>>>,
     auth_store_path: Option<PathBuf>,
+    response_cache: McpResponseCacheConfig,
     event_bus: McpEventBus,
 }
 
@@ -359,12 +437,18 @@ impl McpSessionPool {
         Self {
             sessions: Mutex::new(HashMap::new()),
             auth_store_path: None,
+            response_cache: McpResponseCacheConfig::default(),
             event_bus: McpEventBus::new(),
         }
     }
 
     pub fn with_auth_store_path(mut self, auth_store_path: Option<PathBuf>) -> Self {
         self.auth_store_path = auth_store_path;
+        self
+    }
+
+    pub fn with_response_cache(mut self, response_cache: McpResponseCacheConfig) -> Self {
+        self.response_cache = response_cache;
         self
     }
 
@@ -399,7 +483,8 @@ impl McpSessionPool {
         let session = Arc::new(
             McpServerSession::new(name, config)
                 .with_auth_store_path(self.auth_store_path.clone())
-                .with_events(self.event_bus.sender()),
+                .with_events(self.event_bus.sender())
+                .with_response_cache(self.response_cache.clone()),
         );
         sessions.insert(name.to_string(), Arc::clone(&session));
         session
@@ -480,6 +565,32 @@ impl McpSessionPool {
         }
         let session = self.get_or_insert(name, config).await;
         session.call_tool(tool_name, args).await
+    }
+
+    pub async fn get_task(
+        &self,
+        name: &str,
+        config: McpServerConfig,
+        task_id: &str,
+    ) -> Result<rmcp::model::GetTaskResult> {
+        let session = self.get_or_insert(name, config).await;
+        session.get_task(task_id).await
+    }
+
+    pub async fn update_task(
+        &self,
+        name: &str,
+        config: McpServerConfig,
+        task_id: &str,
+        input_responses: rmcp::model::InputResponses,
+    ) -> Result<()> {
+        let session = self.get_or_insert(name, config).await;
+        session.update_task(task_id, input_responses).await
+    }
+
+    pub async fn cancel_task(&self, name: &str, config: McpServerConfig, task_id: &str) -> Result<()> {
+        let session = self.get_or_insert(name, config).await;
+        session.cancel_task(task_id).await
     }
 }
 

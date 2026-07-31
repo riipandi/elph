@@ -1069,11 +1069,7 @@ mod tests {
         let mut file = elph_agent::AuthStoreFile::default();
         file.set_provider_credential(
             "opencode",
-            format!(
-                "{}{}",
-                elph_agent::ENV_REF_PREFIX,
-                "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"
-            ),
+            format!("{}{}", elph_agent::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
         );
         elph_agent::try_block_on(async {
             // Uses process master key override for this test process.

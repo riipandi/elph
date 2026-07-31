@@ -84,11 +84,34 @@ elph mcp remove --all name    # both layers
 
 ### Transports
 
-| `type`                                        | Meaning                                   |
-| --------------------------------------------- | ----------------------------------------- |
-| `stdio`                                       | Local child process                       |
-| `http`                                            | Streamable HTTP (current remote standard) |
-| `sse`                                             | HTTP+SSE (2024-11-05 protocol)            |
+| `type` | Meaning |
+| ------ | ------- |
+| `stdio` | Local child process |
+| `http` | Streamable HTTP (preferred remote transport; MCP 2026-07-28) |
+| `sse` | **Deprecated** HTTP+SSE (2024-11-05). Prefer `http`. Kept for the 12-month offramp. |
+
+### Protocol lifecycle (MCP 2026-07-28)
+
+Per-server field `lifecycle` (default `auto`):
+
+| Value | Behavior |
+| ----- | -------- |
+| `auto` | Prefer `server/discover` with protocol `2026-07-28`, fall back to legacy `initialize` |
+| `legacy` | Always use `initialize` / `notifications/initialized` |
+| `discover` | Require `server/discover` only (fails on legacy-only servers) |
+
+Client identity advertises name `elph`, protocol preference `2026-07-28`, form elicitation, and the Tasks extension. List responses use the rmcp SEP-2549 client cache (configurable via `McpLoadOptions.response_cache`).
+
+### MRTR elicitation (SEP-2322)
+
+`mrtrElicitation` (default `decline`):
+
+| Value | Behavior |
+| ----- | -------- |
+| `decline` | Decline server elicitation during tool calls |
+| `error` | Fail elicitation with a clear error for the agent |
+
+Interactive TUI elicitation is not implemented; use `decline`/`error` for deterministic agent runs.
 
 ### Auth
 
@@ -99,6 +122,19 @@ elph mcp remove --all name    # both layers
 elph mcp auth remote
 elph mcp logout remote
 ```
+
+Auth SEPs from MCP 2026-07-28 (RFC 9207 `iss`, `application_type`, issuer-bound DCR credentials) are enforced by **rmcp ≥ 3.0.1**. Prefer **CIMD** when you have a public client metadata URL:
+
+```json
+{
+  "type": "http",
+  "url": "https://example.com/mcp",
+  "oauth": true,
+  "oauthClientMetadataUrl": "https://your.app/.well-known/oauth-client"
+}
+```
+
+DCR remains available for backward compatibility (spec-deprecated, still supported).
 
 Credentials: sealed file `CONFIG_DIR/auth.json` (default `~/.config/elph/auth.json`).
 
@@ -139,6 +175,12 @@ Bridge tools (when the server supports the capability):
 - `mcp_{server}__read_resource`
 - `mcp_{server}__list_prompts`
 - `mcp_{server}__get_prompt`
+- **Tasks (SEP-2663)** when the server advertises `io.modelcontextprotocol/tasks`:
+  - `mcp_{server}__tasks_get` — poll task by `taskId`
+  - `mcp_{server}__tasks_update` — deliver `inputResponses`
+  - `mcp_{server}__tasks_cancel` — cancel task
+
+If a tool call returns `resultType: "task"`, the agent result includes `taskId` and a hint to poll with `tasks_get`.
 
 ### Policy
 

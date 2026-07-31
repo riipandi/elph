@@ -162,9 +162,7 @@ pub(crate) fn decrypt_sync_bytes(key: &Aes256Key, nonce: &[u8], ciphertext: &[u8
     if nonce.len() != NONCE_LEN {
         bail!("invalid nonce length {}", nonce.len());
     }
-    let nonce_arr: [u8; NONCE_LEN] = nonce
-        .try_into()
-        .map_err(|_| anyhow::anyhow!("invalid nonce length"))?;
+    let nonce_arr: [u8; NONCE_LEN] = nonce.try_into().map_err(|_| anyhow::anyhow!("invalid nonce length"))?;
     let nonce = Nonce::from(nonce_arr);
     let cipher = Aes256Gcm::new_from_slice(&key.bytes).map_err(|e| anyhow::anyhow!("invalid AES key: {e:?}"))?;
     cipher

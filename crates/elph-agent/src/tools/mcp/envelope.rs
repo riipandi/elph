@@ -75,8 +75,8 @@ pub fn looks_like_envelope(bytes: &[u8]) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::crypto::Aes256Key;
+    use super::*;
 
     #[test]
     fn seal_unseal_roundtrip() {

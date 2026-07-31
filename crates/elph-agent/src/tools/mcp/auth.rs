@@ -138,8 +138,7 @@ impl AuthStoreFile {
     ///
     /// Only format v2 envelopes are accepted (no legacy migration).
     pub async fn load_from_path(path: &Path) -> Result<Self, AuthError> {
-        let key = load_or_create_master_key()
-            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         Self::load_from_path_with_key(path, &key).await
     }
 
@@ -156,8 +155,7 @@ impl AuthStoreFile {
 
     /// Sync load (CLI probes) using the OS keychain master key.
     pub fn load_from_path_sync(path: &Path) -> Result<Self, AuthError> {
-        let key = load_or_create_master_key()
-            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         Self::load_from_path_sync_with_key(path, &key)
     }
 
@@ -166,8 +164,7 @@ impl AuthStoreFile {
         if !path.exists() {
             return Ok(Self::default());
         }
-        let bytes =
-            std::fs::read(path).map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
+        let bytes = std::fs::read(path).map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
         Self::from_sealed_bytes(&bytes, key)
     }
 
@@ -177,30 +174,28 @@ impl AuthStoreFile {
         }
         if !looks_like_envelope(bytes) {
             return Err(AuthError::InternalError(
-                "auth store is not a sealed v2 envelope (legacy formats are not supported — re-authenticate)"
-                    .into(),
+                "auth store is not a sealed v2 envelope (legacy formats are not supported — re-authenticate)".into(),
             ));
         }
-        let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
-            .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
-        let plain = unseal_store(key, &envelope)
-            .map_err(|e| AuthError::InternalError(format!("unseal auth store: {e}")))?;
+        let envelope: super::envelope::AuthStoreEnvelope =
+            serde_json::from_slice(bytes).map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
+        let plain =
+            unseal_store(key, &envelope).map_err(|e| AuthError::InternalError(format!("unseal auth store: {e}")))?;
         serde_json::from_slice(&plain).map_err(|e| AuthError::InternalError(format!("parse auth payload: {e}")))
     }
 
     /// Seal and write without taking the store lock (caller must hold [`lock_auth_store`]).
     pub async fn save_to_path_unlocked(&self, path: &Path) -> Result<(), AuthError> {
-        let key = load_or_create_master_key()
-            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        let key = load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
         self.save_to_path_unlocked_with_key(path, &key).await
     }
 
     /// Seal and write with an explicit master key.
     pub async fn save_to_path_unlocked_with_key(&self, path: &Path, key: &Aes256Key) -> Result<(), AuthError> {
-        let plain = serde_json::to_vec(self)
-            .map_err(|e| AuthError::InternalError(format!("serialize auth payload: {e}")))?;
-        let envelope = seal_store(key, &plain)
-            .map_err(|e| AuthError::InternalError(format!("seal auth store: {e}")))?;
+        let plain =
+            serde_json::to_vec(self).map_err(|e| AuthError::InternalError(format!("serialize auth payload: {e}")))?;
+        let envelope =
+            seal_store(key, &plain).map_err(|e| AuthError::InternalError(format!("seal auth store: {e}")))?;
         let bytes = serde_json::to_vec_pretty(&envelope)
             .map_err(|e| AuthError::InternalError(format!("serialize auth envelope: {e}")))?;
         atomic_write_private(path, &bytes)
@@ -500,10 +495,7 @@ mod sealed_store_tests {
         assert!(!raw.contains("sk-test-secret"));
 
         let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
-        assert_eq!(
-            loaded.get_provider_credential("opencode"),
-            Some("sk-test-secret")
-        );
+        assert_eq!(loaded.get_provider_credential("opencode"), Some("sk-test-secret"));
     }
 
     #[tokio::test]
@@ -814,7 +806,10 @@ mod tests {
         b.save(creds_b.clone()).await.unwrap();
 
         let raw = tokio::fs::read_to_string(&path).await.unwrap();
-        assert!(raw.contains("\"v\":") && raw.contains("ciphertext"), "expected v2 envelope: {raw}");
+        assert!(
+            raw.contains("\"v\":") && raw.contains("ciphertext"),
+            "expected v2 envelope: {raw}"
+        );
         assert!(!raw.contains("client-a"), "client id must not appear in plaintext");
         let mut lock_sidecar = path.as_os_str().to_os_string();
         lock_sidecar.push(".lock");
