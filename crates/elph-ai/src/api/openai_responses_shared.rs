@@ -319,7 +319,7 @@ pub fn convert_responses_tools_with_options(
                 "type": "function",
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": tool.parameters,
+                "parameters": crate::utils::tool_schema::sanitize_openai_tool_parameters(&tool.parameters),
                 "strict": strict
             });
             if options.defer_loading {

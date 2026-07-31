@@ -405,7 +405,7 @@ fn convert_tools(tools: &[crate::types::Tool], compat: &ResolvedOpenAICompletion
             let mut function = json!({
                 "name": t.name,
                 "description": t.description,
-                "parameters": t.parameters,
+                "parameters": crate::utils::tool_schema::sanitize_openai_tool_parameters(&t.parameters),
             });
             if compat.supports_strict_mode {
                 function["strict"] = json!(false);

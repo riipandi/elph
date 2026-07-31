@@ -23,9 +23,7 @@ pub use runtime::{MemoryRuntime, MemoryRuntimeOptions};
 pub async fn slash_run(paths: &crate::platform::Paths, args: &str) -> Result<String, String> {
     let op = ops::MemoryOp::parse_slash(args)?;
     if matches!(op, ops::MemoryOp::Flush) {
-        return Err(
-            "flush requires confirmation — use the TUI dialog or: elph memory flush".into(),
-        );
+        return Err("flush requires confirmation — use the TUI dialog or: elph memory flush".into());
     }
     ops::execute(paths, op).await.map_err(|e| e.to_string())
 }

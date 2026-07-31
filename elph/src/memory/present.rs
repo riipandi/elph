@@ -26,8 +26,7 @@ pub fn present_memory(category: MemoryCategory, content: &str) -> MemoryCard {
 
     let body = strip_leading_tag(raw);
     let is_merge = body.contains("\n---\n") || body.contains("\n---") || body.starts_with("---");
-    let is_consolidated =
-        category == MemoryCategory::Consolidated || raw.trim_start().starts_with("[consolidated]");
+    let is_consolidated = category == MemoryCategory::Consolidated || raw.trim_start().starts_with("[consolidated]");
 
     // Merged / consolidated blobs first — otherwise the first tool-failure
     // regex wins and hides sibling entries after `---`.
@@ -76,13 +75,7 @@ fn dedupe_details(mut card: MemoryCard) -> MemoryCard {
 
 fn strip_leading_tag(s: &str) -> &str {
     let t = s.trim();
-    for tag in [
-        "[consolidated]",
-        "[work]",
-        "[change]",
-        "[discovery]",
-        "[correction]",
-    ] {
+    for tag in ["[consolidated]", "[work]", "[change]", "[discovery]", "[correction]"] {
         if let Some(rest) = t.strip_prefix(tag) {
             return rest.trim_start();
         }
@@ -93,9 +86,7 @@ fn strip_leading_tag(s: &str) -> &str {
 fn present_tool_failure(body: &str) -> Option<MemoryCard> {
     // "Tool `name` failed with args: {...}"
     let lower = body.to_ascii_lowercase();
-    if !(lower.contains("tool `") && lower.contains("failed"))
-        && !lower.contains("tool execution error")
-    {
+    if !(lower.contains("tool `") && lower.contains("failed")) && !lower.contains("tool execution error") {
         return None;
     }
 
@@ -166,11 +157,7 @@ fn present_correction(body: &str) -> Option<MemoryCard> {
             failed = r.trim().to_string();
         } else if let Some(r) = t.strip_prefix("Working approach:") {
             worked = r.trim().to_string();
-        } else if lesson.is_empty()
-            && !t.is_empty()
-            && !t.starts_with("Tool ")
-            && !t.starts_with('{')
-        {
+        } else if lesson.is_empty() && !t.is_empty() && !t.starts_with("Tool ") && !t.starts_with('{') {
             lesson = t.to_string();
         }
     }
@@ -211,8 +198,8 @@ fn present_work_or_change(body: &str) -> Option<MemoryCard> {
         t.starts_with("Paths:") || t.starts_with("Outcome:") || t.starts_with("Note:")
     }) || body.starts_with("Goal ");
 
-    let looks_change = body.lines().any(|l| l.trim().starts_with("Paths:"))
-        && body.lines().any(|l| l.trim().starts_with('-'));
+    let looks_change =
+        body.lines().any(|l| l.trim().starts_with("Paths:")) && body.lines().any(|l| l.trim().starts_with('-'));
 
     if !looks_work && !looks_change {
         return None;
@@ -271,10 +258,7 @@ fn present_work_or_change(body: &str) -> Option<MemoryCard> {
     } else if outcome.eq_ignore_ascii_case("success") {
         // keep silent — success is the default expectation
     }
-    if !note.is_empty()
-        && !note.starts_with("auto-captured")
-        && !note.starts_with("goal_id=")
-    {
+    if !note.is_empty() && !note.starts_with("auto-captured") && !note.starts_with("goal_id=") {
         details.push(clean_line(&note, 90));
     } else if note.starts_with("goal_id=") {
         details.push("from goal completion".into());
@@ -320,11 +304,7 @@ fn present_discovery(body: &str) -> Option<MemoryCard> {
 
 fn present_consolidated(body: &str) -> MemoryCard {
     // Merged entries often join two tool failures with "---"
-    let parts: Vec<&str> = body
-        .split("---")
-        .map(str::trim)
-        .filter(|p| !p.is_empty())
-        .collect();
+    let parts: Vec<&str> = body.split("---").map(str::trim).filter(|p| !p.is_empty()).collect();
 
     if parts.is_empty() {
         return MemoryCard {
@@ -380,11 +360,7 @@ fn present_consolidated(body: &str) -> MemoryCard {
 }
 
 fn shorten_path_list(paths: &str, max_items: usize) -> String {
-    let items: Vec<&str> = paths
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect();
+    let items: Vec<&str> = paths.split(',').map(str::trim).filter(|s| !s.is_empty()).collect();
     if items.len() <= max_items {
         return items.join(", ");
     }
@@ -397,19 +373,16 @@ fn extract_backticked_tool(s: &str) -> Option<String> {
     let rest = &s[start + 1..];
     let end = rest.find('`')?;
     let name = rest[..end].trim();
-    if name.is_empty() {
-        None
-    } else {
-        Some(name.to_string())
-    }
+    if name.is_empty() { None } else { Some(name.to_string()) }
 }
 
 fn extract_after(s: &str, marker: &str) -> Option<String> {
     let idx = s.find(marker)?;
     let rest = s[idx + marker.len()..].trim();
-    let token = rest.split_whitespace().next()?.trim_matches(|c: char| {
-        c == ':' || c == ',' || c == '"' || c == '\''
-    });
+    let token = rest
+        .split_whitespace()
+        .next()?
+        .trim_matches(|c: char| c == ':' || c == ',' || c == '"' || c == '\'');
     if token.is_empty() {
         None
     } else {
@@ -517,7 +490,12 @@ Working approach: unknown"#;
         assert!(!card.headline.contains("new_string"));
         assert!(card.details.iter().any(|d| d.contains("src/main.rs")));
         assert!(!card.details.iter().any(|d| d.contains("huge")));
-        assert!(!card.details.iter().any(|d| d.to_lowercase().contains("tool execution error")));
+        assert!(
+            !card
+                .details
+                .iter()
+                .any(|d| d.to_lowercase().contains("tool execution error"))
+        );
     }
 
     #[test]
@@ -546,10 +524,7 @@ Working approach: unknown"#;
 
     #[test]
     fn presents_user_correction() {
-        let card = present_memory(
-            MemoryCategory::User,
-            "User correction: jangan pakai npm, pakai pnpm",
-        );
+        let card = present_memory(MemoryCategory::User, "User correction: jangan pakai npm, pakai pnpm");
         assert!(card.headline.contains("pnpm") || card.headline.contains("jangan"));
     }
 

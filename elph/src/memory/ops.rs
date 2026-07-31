@@ -5,8 +5,8 @@ use anyhow::{Context, Result, bail};
 use floppy::MemoryCategory;
 
 use super::format::{
-    category_help_list, parse_category_filter, write_consolidate, write_flush, write_help, write_memories, write_note,
-    write_purge, write_search_results, write_status, write_tasks, write_timeline, MemoryStyle,
+    MemoryStyle, category_help_list, parse_category_filter, write_consolidate, write_flush, write_help, write_memories,
+    write_note, write_purge, write_search_results, write_status, write_tasks, write_timeline,
 };
 use super::store::open_store;
 use crate::platform::{Paths, Settings};
@@ -146,9 +146,7 @@ pub async fn execute_with_style(paths: &Paths, op: MemoryOp, sty: MemoryStyle) -
                 let _ = writeln!(out);
                 write_note(
                     &mut out,
-                    &format!(
-                        "Note: reset {cleared} invalid zero-vector embedding(s) (were written by an older bug)."
-                    ),
+                    &format!("Note: reset {cleared} invalid zero-vector embedding(s) (were written by an older bug)."),
                     sty,
                 );
                 write_note(
@@ -201,9 +199,7 @@ pub async fn execute_with_style(paths: &Paths, op: MemoryOp, sty: MemoryStyle) -
                 if cleared > 0 {
                     write_note(
                         &mut out,
-                        &format!(
-                            "Note: reset {cleared} invalid zero-vector embedding(s) before search."
-                        ),
+                        &format!("Note: reset {cleared} invalid zero-vector embedding(s) before search."),
                         sty,
                     );
                 }
@@ -247,11 +243,7 @@ pub async fn execute_with_style(paths: &Paths, op: MemoryOp, sty: MemoryStyle) -
                     );
                 }
                 if embedded > 0 {
-                    write_note(
-                        &mut out,
-                        &format!("Note: embedded {embedded} pending memor(ies)."),
-                        sty,
-                    );
+                    write_note(&mut out, &format!("Note: embedded {embedded} pending memor(ies)."), sty);
                 }
             }
         }

@@ -35,17 +35,10 @@ pub async fn resolve_model(
         settings.session.model_id.as_deref(),
     )?;
 
-    let model = get_builtin_model(&provider, &model_id)
-        .or_else(|| {
-            if model_id.contains('/') {
-                let parts: Vec<&str> = model_id.splitn(2, '/').collect();
-                if parts.len() == 2 {
-                    return get_builtin_model(parts[0], parts[1]);
-                }
-            }
-            None
-        })
-        .with_context(|| format!("Model not found: {provider}/{model_id}"))?;
+    // Look up under the resolved provider only. Gateway model ids often contain `/`
+    // (e.g. `moonshotai/kimi-k3-free`); never re-interpret that as a different provider.
+    let model =
+        get_builtin_model(&provider, &model_id).with_context(|| format!("Model not found: {provider}/{model_id}"))?;
 
     let credentials = load_credentials_from_auth_json(auth_store_path).await?;
     let models = elph_ai::builtin_models(Some(CreateModelsOptions {
@@ -53,6 +46,9 @@ pub async fn resolve_model(
         ..Default::default()
     }))
     .into_arc();
+    models
+        .get_provider(&provider)
+        .with_context(|| format!("Provider not registered in runtime models collection: {provider}"))?;
     let _auth = models.get_auth(&model).await?;
 
     let display_name = model.name.clone();

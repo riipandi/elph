@@ -11,4 +11,5 @@ pub mod provider_env;
 pub mod retry;
 pub mod sanitize_unicode;
 pub mod text;
+pub mod tool_schema;
 pub mod validation;

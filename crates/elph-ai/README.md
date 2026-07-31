@@ -1011,9 +1011,10 @@ Subcommands:
 
 1. **Types** (`src/types/mod.rs`) — add API/provider identifiers and options if needed
 2. **API** (`src/api/<api-id>.rs`) — implement `stream` / `stream_simple` for new wire protocols
-3. **Catalog** — add fetch logic to the upstream catalog `generate-models` script, then run `make generate-models`
-4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; register in `builtin_providers()`
-5. **Tests** (`tests/`) — streaming, tools, auth, cross-provider handoff as applicable
+3. **Catalog** — add fetch logic to the upstream catalog `generate-models` script (or add Elph-only `models/<id>.json`), then run `make generate-models`
+4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; **must** register in `builtin_providers()`. Catalog-only entries show up in the model picker but stream/auth fails with `Unknown provider` until registered. `generate-models chat` fails if any catalog provider is missing from `builtin_providers()`.
+5. **OpenAI-compat gateways** — multi-vendor proxies (`tokenrouter`, `opengateway`, `baseten`, …) are treated as non-standard in `src/api/openai_compat.rs` (no `store` / `developer` / `max_completion_tokens` / tool `strict`). Prefer per-model `compat` in JSON when a vendor route needs extra rules (e.g. Moonshot reasoning content).
+6. **Tests** (`tests/`) — streaming, tools, auth, cross-provider handoff as applicable; keep `catalog_providers_match_builtin_providers` green
 
 ### Running Tests
 

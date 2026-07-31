@@ -79,7 +79,7 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         let json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
 
         // Flatten: merge all api-grouped sub-objects into one (mirrors flattenModelCatalog).
-        let flattened = flatten_catalog_json(json);
+        let flattened = flatten_catalog_json(json, provider_id);
         let count = flattened.as_object().map(|m| m.len()).unwrap_or(0);
         if count == 0 {
             continue;
@@ -128,6 +128,15 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
         );
     }
 
+    // Ensure every catalog provider is wired into builtin_providers() so runtime stream/auth works.
+    let builtin_rs = options
+        .catalog_rs
+        .parent() // src/models
+        .and_then(|p| p.parent()) // src
+        .map(|src| src.join("providers/builtin.rs"))
+        .context("resolve providers/builtin.rs path")?;
+    verify_providers_registered(&index, &builtin_rs)?;
+
     Ok(())
 }
 
@@ -140,17 +149,24 @@ pub fn generate_chat(options: ChatOptions) -> Result<()> {
 ///   return Object.assign({}, ...Object.values(groups));
 /// }
 /// ```
-fn flatten_catalog_json(nested: Value) -> Value {
+///
+/// Also normalizes `provider` / `id` so embedded catalogs always load under the
+/// correct provider key in elph.
+fn flatten_catalog_json(nested: Value, provider_id: &str) -> Value {
     match nested {
         Value::Object(groups) => {
             let mut merged = serde_json::Map::new();
             for (api_type, models) in groups {
                 if let Value::Object(models_map) = models {
                     for (mid, mut model) in models_map {
-                        if let Value::Object(ref mut fields) = model
-                            && !fields.contains_key("api")
-                        {
-                            fields.insert("api".to_string(), Value::String(api_type.clone()));
+                        if let Value::Object(ref mut fields) = model {
+                            if !fields.contains_key("api") {
+                                fields.insert("api".to_string(), Value::String(api_type.clone()));
+                            }
+                            // Always own the provider id from the catalog file name.
+                            fields.insert("provider".to_string(), Value::String(provider_id.to_string()));
+                            // Keep map key and model.id aligned for lookup.
+                            fields.insert("id".to_string(), Value::String(mid.clone()));
                         }
                         merged.insert(mid, model);
                     }
@@ -160,6 +176,128 @@ fn flatten_catalog_json(nested: Value) -> Value {
         }
         other => other,
     }
+}
+
+/// Factory function name → provider id for named `*_provider()` entries in `builtin_providers()`.
+fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
+    Some(match fn_name {
+        "amazon_bedrock_provider" => "amazon-bedrock",
+        "anthropic_provider" => "anthropic",
+        "cloudflare_ai_gateway_provider" => "cloudflare-ai-gateway",
+        "cloudflare_workers_ai_provider" => "cloudflare-workers-ai",
+        "fireworks_provider" => "fireworks",
+        "github_copilot_provider" => "github-copilot",
+        "google_vertex_provider" => "google-vertex",
+        "hyper_provider" => "hyper",
+        "kimi_coding_provider" => "kimi-coding",
+        "mistral_provider" => "mistral",
+        "neuralwatt_provider" => "neuralwatt",
+        "nvidia_provider" => "nvidia",
+        "openai_provider" => "openai",
+        "openai_codex_provider" => "openai-codex",
+        "opencode_provider" => "opencode",
+        "opencode_go_provider" => "opencode-go",
+        "sumopod_provider" => "sumopod",
+        "xai_provider" => "xai",
+        _ => return None,
+    })
+}
+
+/// Parse `builtin_providers()` body for registered provider ids.
+fn parse_registered_provider_ids(builtin_src: &str) -> Result<std::collections::BTreeSet<String>> {
+    use std::collections::BTreeSet;
+
+    let start = builtin_src
+        .find("pub fn builtin_providers()")
+        .context("builtin_providers() not found in providers/builtin.rs")?;
+    let after = &builtin_src[start..];
+    let body_start = after.find("vec![").context("builtin_providers vec![ not found")?;
+    let body = &after[body_start..];
+    // Take until the matching `]\n}` of the function is fragile; scan until we hit `    ]\n}`
+    // after the first vec. Use a simple depth-ish cut at the first `\n    ]\n` after vec![.
+    let end = body
+        .find("\n    ]")
+        .context("could not find end of builtin_providers vec")?;
+    let body = &body[..end];
+
+    let mut ids = BTreeSet::new();
+    // simple_provider!("id", ...)
+    for cap in regex_lite_simple_provider_ids(body) {
+        ids.insert(cap);
+    }
+    // named factories: foo_provider()
+    for name in body.split_whitespace() {
+        let name = name.trim_end_matches([',', '(', ')']);
+        if name.ends_with("_provider")
+            && let Some(id) = named_factory_provider_id(name)
+        {
+            ids.insert(id.to_string());
+        }
+    }
+    // Also catch `openai_provider(),` style with no whitespace split issues
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = trimmed.strip_suffix("(),") {
+            if let Some(id) = named_factory_provider_id(name) {
+                ids.insert(id.to_string());
+            }
+        } else if let Some(name) = trimmed.strip_suffix("()")
+            && let Some(id) = named_factory_provider_id(name)
+        {
+            ids.insert(id.to_string());
+        }
+    }
+
+    Ok(ids)
+}
+
+fn regex_lite_simple_provider_ids(body: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut search = body;
+    while let Some(idx) = search.find("simple_provider!(") {
+        let after = &search[idx + "simple_provider!(".len()..];
+        let after = after.trim_start();
+        if let Some(rest) = after.strip_prefix('"')
+            && let Some(end) = rest.find('"')
+        {
+            out.push(rest[..end].to_string());
+        }
+        search = &search[idx + 1..];
+    }
+    out
+}
+
+fn verify_providers_registered(index: &[CatalogIndexEntry], builtin_rs: &std::path::Path) -> Result<()> {
+    if !builtin_rs.is_file() {
+        bail!("cannot verify provider registration: missing {}", builtin_rs.display());
+    }
+    let src = fs::read_to_string(builtin_rs).with_context(|| format!("read {}", builtin_rs.display()))?;
+    let registered = parse_registered_provider_ids(&src)?;
+    let catalog: std::collections::BTreeSet<String> = index.iter().map(|e| e.provider_id.clone()).collect();
+
+    let missing: Vec<_> = catalog.difference(&registered).cloned().collect();
+    let extra: Vec<_> = registered.difference(&catalog).cloned().collect();
+
+    if !missing.is_empty() {
+        bail!(
+            "catalog providers missing from builtin_providers() — models will load in the UI but stream/auth fails with \
+             \"Unknown provider\":\n  {}\n\n\
+             Register each factory in crates/elph-ai/src/providers/builtin.rs (`builtin_providers`).\n\
+             See crates/elph-ai/README.md → Adding a New Provider.",
+            missing.join(", ")
+        );
+    }
+    if !extra.is_empty() {
+        println!(
+            "note: builtin_providers() has entries not in catalog (ok if intentional): {}",
+            extra.join(", ")
+        );
+    }
+    println!(
+        "Verified {} catalog providers are registered in builtin_providers()",
+        catalog.len()
+    );
+    Ok(())
 }
 
 /// Merge local-only `models/*.json` catalogs (Hyper, Kilo, OpenGateway, …) into the index.

@@ -233,55 +233,36 @@ pub fn get_provider_options_for_auth_method(auth_method: ProviderAuthMethod) -> 
 }
 
 /// Format provider name for display.
+///
+/// Prefer the live factory label from `builtin_providers()` so new providers do not
+/// need a separate hard-coded display map. Fall back to curated labels / title-case.
 pub fn format_provider_name(id: &str) -> String {
-    match id {
-        "amazon-bedrock" => "Amazon Bedrock".to_string(),
-        "anthropic" => "Anthropic".to_string(),
-        "azure-openai-responses" => "Azure OpenAI".to_string(),
-        "baseten" => "Baseten".to_string(),
-        "cerebras" => "Cerebras".to_string(),
-        "cloudflare-ai-gateway" => "Cloudflare AI Gateway".to_string(),
-        "cloudflare-workers-ai" => "Cloudflare Workers AI".to_string(),
-        "deepseek" => "DeepSeek".to_string(),
-        "fireworks" => "Fireworks".to_string(),
-        "faux" => "Faux".to_string(),
-        "github-copilot" => "GitHub Copilot".to_string(),
-        "google" => "Google".to_string(),
-        "google-vertex" => "Google Vertex AI".to_string(),
-        "groq" => "Groq".to_string(),
-        "huggingface" => "Hugging Face".to_string(),
-        "hyper" => "Hyper".to_string(),
-        "kilo" => "Kilo Gateway".to_string(),
-        "kimi-coding" => "Kimi Coding".to_string(),
-        "minimax" => "MiniMax".to_string(),
-        "minimax-cn" => "MiniMax (China)".to_string(),
-        "mistral" => "Mistral".to_string(),
-        "moonshotai" => "Moonshot AI".to_string(),
-        "moonshotai-cn" => "Moonshot AI (China)".to_string(),
-        "neuralwatt" => "Neuralwatt".to_string(),
-        "nvidia" => "NVIDIA NIM".to_string(),
-        "ollama-cloud" => "Ollama Cloud".to_string(),
-        "openai" => "OpenAI".to_string(),
-        "openai-codex" => "OpenAI Codex".to_string(),
-        "opencode" => "OpenCode Zen".to_string(),
-        "opencode-go" => "OpenCode Go".to_string(),
-        "opengateway" => "OpenGateway".to_string(),
-        "openrouter" => "OpenRouter".to_string(),
-        "qwen-token-plan" => "Qwen Token Plan".to_string(),
-        "qwen-token-plan-cn" => "Qwen Token Plan (China)".to_string(),
-        "sumopod" => "Sumopod".to_string(),
-        "tokenrouter" => "TokenRouter".to_string(),
-        "together" => "Together AI".to_string(),
-        "vercel-ai-gateway" => "Vercel AI Gateway".to_string(),
-        "xai" => "xAI".to_string(),
-        "xiaomi" => "Xiaomi".to_string(),
-        "xiaomi-token-plan-ams" => "Xiaomi Token Plan (AMS)".to_string(),
-        "xiaomi-token-plan-cn" => "Xiaomi Token Plan (CN)".to_string(),
-        "xiaomi-token-plan-sgp" => "Xiaomi Token Plan (SGP)".to_string(),
-        "zai" => "ZAI".to_string(),
-        "zai-coding-cn" => "ZAI Coding Plan (China)".to_string(),
-        _ => id.replace(['-', '_'], " "),
+    if let Some(provider) = builtin_providers().into_iter().find(|p| p.id == id) {
+        if !provider.name.is_empty() && provider.name != provider.id {
+            return provider.name;
+        }
     }
+    if let Some(cfg) = crate::agent::provider::provider_config(id) {
+        return cfg.label.to_string();
+    }
+    match id {
+        "faux" => "Faux".to_string(),
+        _ => title_case_provider_id(id),
+    }
+}
+
+fn title_case_provider_id(id: &str) -> String {
+    id.split(['-', '_'])
+        .filter(|s| !s.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Check if provider supports OAuth.

@@ -32,7 +32,7 @@ pub use model_registry::ModelSelection;
 pub use model_registry::resolve_model;
 pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};
 pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
-pub use provider::{provider_api_key_env, provider_config, resolve_provider_and_model};
+pub use provider::{is_known_provider, provider_api_key_env, provider_config, resolve_provider_and_model};
 pub use resource_loader::LoadResourcesResult;
 pub use resource_loader::load_resources;
 pub use run_mode::RunModeOptions;

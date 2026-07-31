@@ -69,11 +69,7 @@ Covering changelog entries from v0.80.7 through v0.82.1 (14 releases). See [READ
 
 ### 2026-07-29 @ `4c18610` (v0.80.6 + Unreleased)
 
-**Test fix: no direct `openai` provider in catalog.**
-
-Two `elph-agent` integration tests used `get_model("openai", "gpt-4o-mini")` which no longer resolves — the model catalog restructured so that `openai` is no longer a directly-registered provider. OpenAI models are now exposed through gateway providers (`kilo`, `sumopod`, `cloudflare-ai-gateway`, `azure-openai-responses`). Tests updated to pick the first available model via `get_models(None).next()`.
-
-No library-level functionality changed — this is a catalog reshape that happened between Sprints 1–4 and now. The `openai.json` model file still exists but the provider registration path changed. If `generate-models chat` is re-run, verify OpenAI registration logic.
+**Historical note (superseded):** tests briefly avoided a direct `openai` provider after a catalog reshape. **Current state:** `openai`, `openai-codex`, and `xai` ship catalog models **and** are registered in `builtin_providers()` so stream/auth work end-to-end. `generate-models chat` verifies catalog ids match `builtin_providers()` and fails if a factory is missing.
 
 ### 2026-07-11T11:23:28Z @ `4c18610` (v0.80.6 + Unreleased)
 

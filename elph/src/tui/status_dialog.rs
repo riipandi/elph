@@ -9,10 +9,9 @@ use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
 use crate::tui::tool_approval::{
-    PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options,
-    memory_flush_footer_hint, memory_flush_select_options, mode_change_footer_hint, mode_change_select_options,
-    plan_confirmation_footer_hint, plan_confirmation_select_options, tool_approval_footer_hint,
-    tool_approval_select_options,
+    PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, memory_flush_footer_hint,
+    memory_flush_select_options, mode_change_footer_hint, mode_change_select_options, plan_confirmation_footer_hint,
+    plan_confirmation_select_options, tool_approval_footer_hint, tool_approval_select_options,
 };
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
@@ -736,11 +735,7 @@ pub fn build_memory_flush_dialog_kind(
     })
 }
 
-fn render_memory_flush_dialog(
-    props: &mut StatusZoneProps,
-    memory_count: u32,
-    task_count: u32,
-) -> AnyElement<'static> {
+fn render_memory_flush_dialog(props: &mut StatusZoneProps, memory_count: u32, task_count: u32) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
     let options = memory_flush_select_options();

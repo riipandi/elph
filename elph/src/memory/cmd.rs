@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use elph_agent::try_block_on;
 
-use super::format::{parse_category_filter, write_flush_cancelled, MemoryStyle};
-use super::ops::{execute_with_style, MemoryOp};
+use super::format::{MemoryStyle, parse_category_filter, write_flush_cancelled};
+use super::ops::{MemoryOp, execute_with_style};
 use crate::cli::MemoryCommands;
 use crate::cli::interactive;
 use crate::platform::Paths;

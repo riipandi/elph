@@ -30,11 +30,10 @@ fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
 
     // Destructive wipe — confirm in the status-zone dialog first.
     if let Ok(crate::memory::ops::MemoryOp::Flush) = crate::memory::ops::MemoryOp::parse_slash(args) {
-        let (memory_count, task_count) =
-            match elph_agent::try_block_on(crate::memory::flush_preview(paths)) {
-                Ok(counts) => counts,
-                Err(err) => return SlashOutcome::Status(format!("Memory error: {err:#}")),
-            };
+        let (memory_count, task_count) = match elph_agent::try_block_on(crate::memory::flush_preview(paths)) {
+            Ok(counts) => counts,
+            Err(err) => return SlashOutcome::Status(format!("Memory error: {err:#}")),
+        };
         return SlashOutcome::OpenMemoryFlushConfirm {
             memory_count,
             task_count,

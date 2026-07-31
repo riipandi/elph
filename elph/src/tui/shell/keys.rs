@@ -1391,8 +1391,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     // No session UI channel — run inline and open result dialog.
                     match elph_agent::try_block_on(crate::memory::execute_flush(&paths)) {
                         Ok(Ok(text)) => {
-                            let body_height =
-                                (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                            let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
                             open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                 pending: &mut pending_system_prompt,
                                 shell_focus: &mut shell_focus,

@@ -14,7 +14,7 @@ use floppy::{
     TimelineEventKind,
 };
 
-use super::present::{present_memory, MemoryCard};
+use super::present::{MemoryCard, present_memory};
 use crate::platform::MemorySettings;
 
 // ── Styles ───────────────────────────────────────────────────────────
@@ -158,12 +158,7 @@ fn on_off(sty: MemoryStyle, v: bool) -> String {
 // ── Writers ──────────────────────────────────────────────────────────
 
 /// Overview: store stats + auto-memory settings.
-pub fn write_status(
-    out: &mut String,
-    status: &StoreStatus,
-    settings: Option<&MemorySettings>,
-    sty: MemoryStyle,
-) {
+pub fn write_status(out: &mut String, status: &StoreStatus, settings: Option<&MemorySettings>, sty: MemoryStyle) {
     use std::fmt::Write;
     rule(out, sty, "Memory store");
     let _ = writeln!(out);
@@ -187,10 +182,7 @@ pub fn write_status(
             sty.paint(S_WARN, format!("{:<18}", "Embeddings pending")),
             sty.paint(
                 S_WARN,
-                format!(
-                    "{}  (search may be incomplete until embedded)",
-                    status.pending_embeddings
-                )
+                format!("{}  (search may be incomplete until embedded)", status.pending_embeddings)
             )
         );
     }
@@ -201,12 +193,7 @@ pub fn write_status(
         kv(out, sty, "enabled", on_off(sty, s.enabled));
         kv(out, sty, "auto recall", on_off(sty, s.auto_recall));
         kv(out, sty, "capture work", on_off(sty, s.auto_capture_work));
-        kv(
-            out,
-            sty,
-            "capture exploration",
-            on_off(sty, s.auto_capture_exploration),
-        );
+        kv(out, sty, "capture exploration", on_off(sty, s.auto_capture_exploration));
         kv(out, sty, "top-k", s.top_k);
         kv(out, sty, "context budget", format!("{} chars", s.context_budget_chars));
         kv(out, sty, "min query length", s.min_query_length);
@@ -253,32 +240,15 @@ pub fn write_status(
         "{}",
         sty.paint(S_TIP, "Tip: memory recent · memory search <q> · memory list work")
     );
-    let _ = writeln!(
-        out,
-        "{}",
-        sty.paint(S_TIP, "     (slash: /memory … · CLI: elph memory …)")
-    );
+    let _ = writeln!(out, "{}", sty.paint(S_TIP, "     (slash: /memory … · CLI: elph memory …)"));
 }
 
-pub fn write_memories(
-    out: &mut String,
-    records: &[MemoryRecord],
-    filter: Option<MemoryCategory>,
-    sty: MemoryStyle,
-) {
+pub fn write_memories(out: &mut String, records: &[MemoryRecord], filter: Option<MemoryCategory>, sty: MemoryStyle) {
     use std::fmt::Write;
     if records.is_empty() {
         let label = filter.map(category_title).unwrap_or("matching");
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(S_MUTED, format!("No {label} memories found."))
-        );
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(S_TIP, format!("Categories: {}", category_help_list()))
-        );
+        let _ = writeln!(out, "{}", sty.paint(S_MUTED, format!("No {label} memories found.")));
+        let _ = writeln!(out, "{}", sty.paint(S_TIP, format!("Categories: {}", category_help_list())));
         return;
     }
 
@@ -366,30 +336,18 @@ fn write_memory_card(
     let _ = writeln!(out, "   {}", bits.join(" · "));
 
     for d in &card.details {
-        let _ = writeln!(
-            out,
-            "   {} {}",
-            sty.paint(S_MUTED, "·"),
-            sty.paint(S_BODY, d)
-        );
+        let _ = writeln!(out, "   {} {}", sty.paint(S_MUTED, "·"), sty.paint(S_BODY, d));
     }
 }
 
 pub fn write_tasks(out: &mut String, tasks: &[TaskRecord], sty: MemoryStyle) {
     use std::fmt::Write;
     if tasks.is_empty() {
+        let _ = writeln!(out, "{}", sty.paint(S_MUTED, "No memory tasks recorded yet."));
         let _ = writeln!(
             out,
             "{}",
-            sty.paint(S_MUTED, "No memory tasks recorded yet.")
-        );
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(
-                S_TIP,
-                "Tasks are created automatically on each substantive agent turn."
-            )
+            sty.paint(S_TIP, "Tasks are created automatically on each substantive agent turn.")
         );
         return;
     }
@@ -448,19 +406,13 @@ pub fn write_tasks(out: &mut String, tasks: &[TaskRecord], sty: MemoryStyle) {
             for r in t.retrievals.iter().take(4) {
                 let sim = r.similarity.unwrap_or(0.0);
                 let preview = first_line(&r.preview, 52);
-                let rated = r
-                    .self_report
-                    .map(|s| format!(" · rated {s}/3"))
-                    .unwrap_or_default();
+                let rated = r.self_report.map(|s| format!(" · rated {s}/3")).unwrap_or_default();
                 let _ = writeln!(
                     out,
                     "   {} {}  {}",
                     sty.paint(S_MUTED, "·"),
                     sty.category(r.category, category_str(r.category)),
-                    sty.paint(
-                        S_MUTED,
-                        format!("{preview}  ({:.0}%{rated})", sim * 100.0)
-                    ),
+                    sty.paint(S_MUTED, format!("{preview}  ({:.0}%{rated})", sim * 100.0)),
                 );
             }
         }
@@ -516,11 +468,7 @@ pub fn write_search_results(out: &mut String, query: &str, memories: &[Memory], 
     let weak_only = meaningful.is_empty() && !memories.is_empty();
 
     if memories.is_empty() {
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(S_MUTED, format!("No memories matched “{query}”."))
-        );
+        let _ = writeln!(out, "{}", sty.paint(S_MUTED, format!("No memories matched “{query}”.")));
         let _ = writeln!(
             out,
             "{}",
@@ -559,11 +507,7 @@ pub fn write_search_results(out: &mut String, query: &str, memories: &[Memory], 
         );
         let _ = writeln!(out);
     } else {
-        rule(
-            out,
-            sty,
-            &format!("Search · {} result(s) for “{query}”", meaningful.len()),
-        );
+        rule(out, sty, &format!("Search · {} result(s) for “{query}”", meaningful.len()));
         let _ = writeln!(out);
     }
 
@@ -600,10 +544,7 @@ pub fn write_purge(out: &mut String, count: u32, threshold: f64, sty: MemoryStyl
         let _ = writeln!(
             out,
             "{}",
-            sty.paint(
-                S_MUTED,
-                format!("Nothing to purge (no memories below weight {threshold:.2}).")
-            )
+            sty.paint(S_MUTED, format!("Nothing to purge (no memories below weight {threshold:.2})."))
         );
     } else {
         let _ = writeln!(
@@ -623,11 +564,7 @@ pub fn write_purge(out: &mut String, count: u32, threshold: f64, sty: MemoryStyl
 pub fn write_flush(out: &mut String, memories: u32, tasks: u32, sty: MemoryStyle) {
     use std::fmt::Write;
     if memories == 0 && tasks == 0 {
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(S_MUTED, "Memory store was already empty.")
-        );
+        let _ = writeln!(out, "{}", sty.paint(S_MUTED, "Memory store was already empty."));
         return;
     }
     let _ = writeln!(
@@ -657,11 +594,7 @@ pub fn write_flush_cancelled(out: &mut String, sty: MemoryStyle) {
 pub fn write_consolidate(out: &mut String, merged: u32, deleted: u32, sty: MemoryStyle) {
     use std::fmt::Write;
     if merged == 0 {
-        let _ = writeln!(
-            out,
-            "{}",
-            sty.paint(S_MUTED, "No near-duplicate memories to consolidate.")
-        );
+        let _ = writeln!(out, "{}", sty.paint(S_MUTED, "No near-duplicate memories to consolidate."));
     } else {
         let _ = writeln!(
             out,
@@ -682,14 +615,14 @@ pub fn write_help(out: &mut String, sty: MemoryStyle) {
     rule(out, sty, "Memory commands");
     let _ = writeln!(out);
     let cmd = |name: &str, desc: &str| -> String {
-        format!(
-            "  {}  {}",
-            sty.paint(S_ACCENT, format!("{name:<22}")),
-            sty.paint(S_MUTED, desc)
-        )
+        format!("  {}  {}", sty.paint(S_ACCENT, format!("{name:<22}")), sty.paint(S_MUTED, desc))
     };
     let _ = writeln!(out, "{}", cmd("status", "Overview + auto-feature flags"));
-    let _ = writeln!(out, "{}", cmd("list [category] [n]", "List memories (optional category & limit)"));
+    let _ = writeln!(
+        out,
+        "{}",
+        cmd("list [category] [n]", "List memories (optional category & limit)")
+    );
     let _ = writeln!(out, "{}", cmd("recent [n] [category]", "Newest entries first (default 10)"));
     let _ = writeln!(out, "{}", cmd("tasks [n]", "Recent recall tasks (default 10)"));
     let _ = writeln!(out, "{}", cmd("log [n]", "Timeline of tasks & memories (default 20)"));
@@ -857,10 +790,7 @@ Working approach: unknown"#
         let mut buf = String::new();
         write_memories(&mut buf, &[rec], None, MemoryStyle::plain());
         // Headline-first card
-        let body = buf
-            .lines()
-            .find(|l| l.starts_with("1."))
-            .unwrap_or("");
+        let body = buf.lines().find(|l| l.starts_with("1.")).unwrap_or("");
         assert!(body.contains("Merged") || body.contains("edit_file"), "{buf}");
         assert!(!buf.contains("new_string"), "{buf}");
         assert!(!buf.contains("embed ready"), "{buf}");
