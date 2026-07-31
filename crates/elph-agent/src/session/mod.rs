@@ -2,6 +2,7 @@
 
 pub mod backends;
 pub mod context;
+pub mod durability;
 pub mod id;
 pub mod migrations;
 pub mod recovery;
@@ -28,7 +29,8 @@ pub use context::default_context_entry_transform;
 pub use context::derive_session_context_state;
 pub use context::{ContextEntryTransform, CustomEntryContextMessageProjector, SessionContextBuildOptions};
 pub use migrations::SESSION_TREE_MIGRATIONS;
-pub use recovery::{RecoveryReport, repair_unanswered_tool_calls};
+pub use durability::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, reduce_durable_state};
+pub use recovery::{RecoveryReport, load_durable_state, reconcile_session, repair_unanswered_tool_calls};
 pub use repo::InMemorySessionCreateOptions;
 pub use repo::InMemorySessionRepo;
 pub use repo::SessionDirListOptions;

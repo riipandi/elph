@@ -184,11 +184,36 @@ TypeID with prefix `sess` — shown in the footer.
 | Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)  |
 | Platform metadata    | Same DB: goals, spawn graph, session index                         |
 | Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)  |
-| Crash recovery       | Synthetic tool results for unanswered tool_use; rehydrate model/thinking/tools from session |
+| Crash recovery       | Semi-durable harness journal + tool-result repair (see below)     |
 | Project memory       | `<project>/.elph/store.db`                                        |
 | Session artifacts    | `APP_DATA/projects/<SESSION_ID>/` (`mcp_cache`, `terminals`, `tool_outputs.jsonl`) |
 | Todo snapshot        | Per-session metadata when TodoList is active                      |
 | Event / request logs | JSONL per session for diagnostics                                 |
+
+### Semi-durable harness recovery
+
+Product open/resume uses `AgentHarness::restore` (wired from `elph/src/agent/runtime.rs`). Session open also runs `reconcile_session` in `SessionManager`.
+
+**Journal** — custom tree entries with type prefix `harness.*`:
+
+| Custom type | Role |
+| ----------- | ---- |
+| `harness.queue_enqueue` / `harness.queue_consume` | Durable steer / follow-up / next-turn queues (stable `queue_id`) |
+| `harness.pending_write` / `harness.pending_write_applied` | Deferred session writes while a turn runs (stable `write_id`) |
+| `harness.operation_started` / `harness.operation_finished` | Run / compaction / branch-summary lifecycle |
+| `harness.turn_started` / `harness.turn_finished` | Per-turn markers (including fail / interrupt outcomes) |
+
+**On restore:**
+
+1. Repair unanswered `tool_use` with synthetic error tool results.
+2. Close open operations as `interrupted`.
+3. Rehydrate model / thinking / active tools / collaboration mode from the session tree.
+4. Rehydrate in-memory queues and pending writes from the journal (`reduce_durable_state`).
+5. Flush remaining pending writes when the harness is idle.
+
+**Policies** (`RestoreOptions`): `MissingActiveToolsPolicy` (`DropMissing` default / `Fail`), `RecoveryPolicy` (`MarkInterrupted` default; `RetryUnfinished` reserved).
+
+**Not journaled:** tool implementations themselves (host re-registers on open). Library hosts using `AgentHarness::new` alone skip rehydrate unless they call `restore` or `apply_durable_state`.
 
 ### Vision images (TUI)
 

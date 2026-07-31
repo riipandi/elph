@@ -28,11 +28,28 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let op_id = self
+            .journal_operation_started(crate::session::durability::OperationKind::Run)
+            .await
+            .unwrap_or_else(|_| crate::session::durability::new_id("op"));
         let result = async {
             let turn_state = self.create_turn_state().await?;
-            self.execute_turn(turn_state, text.into(), options).await
+            self.execute_turn(turn_state, text.into(), options, op_id.clone())
+                .await
         }
         .await;
+        let outcome = if result.is_ok() {
+            crate::session::durability::OperationOutcome::Completed
+        } else {
+            crate::session::durability::OperationOutcome::Failed
+        };
+        let _ = self
+            .journal_operation_finished(
+                op_id,
+                outcome,
+                result.as_ref().err().map(|e| e.to_string()),
+            )
+            .await;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -46,6 +63,10 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let op_id = self
+            .journal_operation_started(crate::session::durability::OperationKind::Run)
+            .await
+            .unwrap_or_else(|_| crate::session::durability::new_id("op"));
         // Transcript + prompt history use `/skill:name [args]` (leading slash required).
         let prompt_title = match additional_instructions.map(str::trim).filter(|s| !s.is_empty()) {
             Some(args) => format!("/skill:{name} {args}"),
@@ -63,10 +84,18 @@ where
                     AgentHarnessError::new(AgentHarnessErrorCode::InvalidArgument, format!("Unknown skill: {name}"))
                 })?;
             let text = format_skill_invocation(skill, additional_instructions);
-            self.execute_turn(turn_state, text, None).await
+            self.execute_turn(turn_state, text, None, op_id.clone()).await
         }
         .await;
         *self.shared.pending_prompt_meta.lock().await = None;
+        let outcome = if result.is_ok() {
+            crate::session::durability::OperationOutcome::Completed
+        } else {
+            crate::session::durability::OperationOutcome::Failed
+        };
+        let _ = self
+            .journal_operation_finished(op_id, outcome, result.as_ref().err().map(|e| e.to_string()))
+            .await;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -80,6 +109,10 @@ where
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Turn;
         self.begin_run().await;
+        let op_id = self
+            .journal_operation_started(crate::session::durability::OperationKind::Run)
+            .await
+            .unwrap_or_else(|_| crate::session::durability::new_id("op"));
         // Transcript + prompt history keep the leading `/` (`/name [args…]`).
         let prompt_title = if args.is_empty() {
             format!("/{name}")
@@ -101,10 +134,18 @@ where
                     )
                 })?;
             let text = format_prompt_template_invocation(template, args);
-            self.execute_turn(turn_state, text, None).await
+            self.execute_turn(turn_state, text, None, op_id.clone()).await
         }
         .await;
         *self.shared.pending_prompt_meta.lock().await = None;
+        let outcome = if result.is_ok() {
+            crate::session::durability::OperationOutcome::Completed
+        } else {
+            crate::session::durability::OperationOutcome::Failed
+        };
+        let _ = self
+            .journal_operation_finished(op_id, outcome, result.as_ref().err().map(|e| e.to_string()))
+            .await;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         }
@@ -123,11 +164,9 @@ where
                 "Cannot steer while idle",
             ));
         }
-        self.shared
-            .steer_queue
-            .lock()
-            .await
-            .push(create_user_message(text.into(), options.and_then(|o| o.images)));
+        let message = create_user_message(text.into(), options.and_then(|o| o.images));
+        self.push_durable_queue(crate::session::durability::QueueKind::Steer, message)
+            .await?;
         self.emit_queue_update().await
     }
 
@@ -142,11 +181,9 @@ where
                 "Cannot follow up while idle",
             ));
         }
-        self.shared
-            .follow_up_queue
-            .lock()
-            .await
-            .push(create_user_message(text.into(), options.and_then(|o| o.images)));
+        let message = create_user_message(text.into(), options.and_then(|o| o.images));
+        self.push_durable_queue(crate::session::durability::QueueKind::FollowUp, message)
+            .await?;
         self.emit_queue_update().await
     }
 
@@ -155,20 +192,19 @@ where
         text: impl Into<String>,
         options: Option<AgentHarnessPromptOptions>,
     ) -> HarnessOpResult<()> {
-        self.shared
-            .next_turn_queue
-            .lock()
-            .await
-            .push(create_user_message(text.into(), options.and_then(|o| o.images)));
+        let message = create_user_message(text.into(), options.and_then(|o| o.images));
+        self.push_durable_queue(crate::session::durability::QueueKind::NextTurn, message)
+            .await?;
         self.emit_queue_update().await
     }
 
     /// Snapshot of steer / follow-up / next-turn queues (read-only).
     pub async fn peek_queues(&self) -> QueueUpdateEvent {
+        let (steer, follow_up, next_turn) = self.queue_messages_snapshot().await;
         QueueUpdateEvent {
-            steer: self.shared.steer_queue.lock().await.clone(),
-            follow_up: self.shared.follow_up_queue.lock().await.clone(),
-            next_turn: self.shared.next_turn_queue.lock().await.clone(),
+            steer,
+            follow_up,
+            next_turn,
         }
     }
 
@@ -182,10 +218,15 @@ where
                 Some(guard.remove(index))
             }
         };
-        if removed.is_some() {
+        if let Some((id, message)) = removed {
+            let _ = self
+                .journal_queue_consume(crate::session::durability::QueueKind::Steer, vec![id], None)
+                .await;
             self.emit_queue_update().await?;
+            Ok(Some(message))
+        } else {
+            Ok(None)
         }
-        Ok(removed)
     }
 
     /// Remove a follow-up queue item by index. Emits [`QueueUpdate`] on success.
@@ -198,10 +239,15 @@ where
                 Some(guard.remove(index))
             }
         };
-        if removed.is_some() {
+        if let Some((id, message)) = removed {
+            let _ = self
+                .journal_queue_consume(crate::session::durability::QueueKind::FollowUp, vec![id], None)
+                .await;
             self.emit_queue_update().await?;
+            Ok(Some(message))
+        } else {
+            Ok(None)
         }
-        Ok(removed)
     }
 
     /// Move the front follow-up message onto the steer queue (interject one queued prompt).
@@ -215,7 +261,7 @@ where
                 "Cannot promote follow-up to steer while idle",
             ));
         }
-        let message = {
+        let item = {
             let mut follow = self.shared.follow_up_queue.lock().await;
             if follow.is_empty() {
                 None
@@ -223,26 +269,58 @@ where
                 Some(follow.remove(0))
             }
         };
-        let Some(message) = message else {
+        let Some((follow_id, message)) = item else {
             return Ok(None);
         };
         // Re-check after dequeue: turn may have ended while we held the follow-up lock.
         if self.phase_async().await == AgentHarnessPhase::Idle {
-            self.shared.follow_up_queue.lock().await.insert(0, message);
+            self.shared
+                .follow_up_queue
+                .lock()
+                .await
+                .insert(0, (follow_id, message));
             return Err(AgentHarnessError::new(
                 AgentHarnessErrorCode::InvalidState,
                 "Cannot promote follow-up to steer while idle",
             ));
         }
-        self.shared.steer_queue.lock().await.push(message.clone());
+        let _ = self
+            .journal_queue_consume(
+                crate::session::durability::QueueKind::FollowUp,
+                vec![follow_id],
+                None,
+            )
+            .await;
+        self.push_durable_queue(crate::session::durability::QueueKind::Steer, message.clone())
+            .await?;
         self.emit_queue_update().await?;
         Ok(Some(message))
     }
 
     /// Clear steer and follow-up queues (keeps next-turn). Emits [`QueueUpdate`].
     pub async fn clear_prompt_queues(&self) -> HarnessOpResult<()> {
-        self.shared.steer_queue.lock().await.clear();
-        self.shared.follow_up_queue.lock().await.clear();
+        let steer_ids: Vec<String> = self
+            .shared
+            .steer_queue
+            .lock()
+            .await
+            .drain(..)
+            .map(|(id, _)| id)
+            .collect();
+        let follow_ids: Vec<String> = self
+            .shared
+            .follow_up_queue
+            .lock()
+            .await
+            .drain(..)
+            .map(|(id, _)| id)
+            .collect();
+        let _ = self
+            .journal_queue_consume(crate::session::durability::QueueKind::Steer, steer_ids, None)
+            .await;
+        let _ = self
+            .journal_queue_consume(crate::session::durability::QueueKind::FollowUp, follow_ids, None)
+            .await;
         self.emit_queue_update().await
     }
 
@@ -263,14 +341,11 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::Custom {
-                    custom_type: custom_type.into(),
-                    data,
-                });
+            self.enqueue_pending_write(PendingSessionWrite::Custom {
+                custom_type: custom_type.into(),
+                data,
+            })
+            .await?;
         }
         Ok(())
     }
@@ -289,11 +364,8 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::SessionInfo { name: Some(name) });
+            self.enqueue_pending_write(PendingSessionWrite::SessionInfo { name: Some(name) })
+                .await?;
         }
         Ok(())
     }
@@ -319,11 +391,8 @@ where
                     .map_err(session_error)?;
             }
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::Message { message });
+            self.enqueue_pending_write(PendingSessionWrite::Message { message })
+                .await?;
         }
         Ok(())
     }

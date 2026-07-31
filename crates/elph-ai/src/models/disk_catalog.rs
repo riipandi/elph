@@ -69,9 +69,23 @@ pub fn load_provider_catalogs_dir(dir: &Path) -> Result<HashMap<String, Vec<Mode
 }
 
 /// Parse a provider catalog JSON body into models.
+///
+/// Accepts:
+/// - map of `modelId → model` (embedded / unpacked shape)
+/// - schema wrapper `{ "baseUrl"?, "headers"?, "models": { … } }` (stamps baseUrl/headers onto models that omit them)
 pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
     let value: serde_json::Value =
         serde_json::from_str(json).map_err(|e| format!("invalid provider catalog JSON: {e}"))?;
+
+    let wrapper_base = value
+        .get("baseUrl")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let wrapper_headers = value
+        .get("headers")
+        .cloned()
+        .and_then(|h| serde_json::from_value::<HashMap<String, String>>(h).ok());
+
     let map_value = if let Some(models) = value.get("models") {
         models.clone()
     } else {
@@ -79,7 +93,20 @@ pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
     };
     let raw: HashMap<String, RawModel> =
         serde_json::from_value(map_value).map_err(|e| format!("invalid provider model map: {e}"))?;
-    Ok(raw.into_values().map(convert_model).collect())
+    Ok(raw
+        .into_values()
+        .map(|mut m| {
+            if m.base_url.is_empty() {
+                if let Some(ref base) = wrapper_base {
+                    m.base_url = base.clone();
+                }
+            }
+            if m.headers.is_none() {
+                m.headers = wrapper_headers.clone();
+            }
+            convert_model(m)
+        })
+        .collect())
 }
 
 /// Merge overlay models over base by model `id` (overlay wins; extras append).
@@ -297,5 +324,54 @@ mod tests {
         assert_eq!(models.len(), 1);
         assert_eq!(models[0].id, "m1");
         assert_eq!(models[0].provider, "custom");
+    }
+
+    #[test]
+    fn parse_schema_wrapper_stamps_base_url_and_headers() {
+        let json = r#"{
+          "baseUrl": "https://gateway.example",
+          "headers": {"X-Custom": "1"},
+          "models": {
+            "m1": {
+              "id": "m1",
+              "name": "M1",
+              "api": "openai-completions",
+              "provider": "custom",
+              "baseUrl": "",
+              "reasoning": false,
+              "input": ["text"],
+              "cost": {"input":1,"output":1,"cacheRead":0,"cacheWrite":0},
+              "contextWindow": 8000,
+              "maxTokens": 1024
+            },
+            "m2": {
+              "id": "m2",
+              "name": "M2",
+              "api": "openai-completions",
+              "provider": "custom",
+              "baseUrl": "https://model-specific",
+              "reasoning": false,
+              "input": ["text"],
+              "cost": {"input":1,"output":1,"cacheRead":0,"cacheWrite":0},
+              "contextWindow": 8000,
+              "maxTokens": 1024,
+              "headers": {"X-Keep": "yes"}
+            }
+          }
+        }"#;
+        let mut models = parse_provider_catalog_json(json).expect("parse");
+        models.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(models.len(), 2);
+        assert_eq!(models[0].base_url, "https://gateway.example");
+        assert_eq!(
+            models[0].headers.as_ref().and_then(|h| h.get("X-Custom")).map(String::as_str),
+            Some("1")
+        );
+        // Per-model baseUrl/headers win over wrapper.
+        assert_eq!(models[1].base_url, "https://model-specific");
+        assert_eq!(
+            models[1].headers.as_ref().and_then(|h| h.get("X-Keep")).map(String::as_str),
+            Some("yes")
+        );
     }
 }

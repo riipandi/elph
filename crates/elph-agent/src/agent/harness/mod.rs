@@ -2,6 +2,7 @@
 
 mod accessors;
 mod compaction_ops;
+mod durability_ops;
 pub mod generic_on;
 mod helpers;
 mod hook_registration;
@@ -26,6 +27,9 @@ pub use types::AgentHarnessError;
 pub use types::AgentHarnessErrorCode;
 pub use types::AgentHarnessOptions;
 pub use types::AgentHarnessOwnEvent;
+pub use types::MissingActiveToolsPolicy;
+pub use types::RecoveryPolicy;
+pub use types::RestoreOptions;
 pub use types::AgentHarnessPhase;
 pub use types::AgentHarnessPromptOptions;
 pub use types::AgentHarnessResources;
@@ -170,7 +174,8 @@ where
     models: Arc<Models>,
     phase: Mutex<AgentHarnessPhase>,
     active_run: Mutex<Option<ActiveRun>>,
-    pending_session_writes: Mutex<Vec<crate::agent::harness::types::PendingSessionWrite>>,
+    /// Pending session writes with durable journal ids: `(write_id, write)`.
+    pending_session_writes: Mutex<Vec<(String, crate::agent::harness::types::PendingSessionWrite)>>,
     model: Mutex<Model>,
     thinking_level: Mutex<AgentThinkingLevel>,
     system_prompt: Mutex<SystemPrompt<S>>,
@@ -178,11 +183,12 @@ where
     resources: Mutex<AgentHarnessResources>,
     tools: Mutex<HashMap<String, AgentTool>>,
     active_tool_names: Mutex<Vec<String>>,
-    steer_queue: Mutex<Vec<AgentMessage>>,
+    /// Queues with durable journal ids: `(queue_id, message)`.
+    steer_queue: Mutex<Vec<(String, AgentMessage)>>,
     steering_queue_mode: Mutex<QueueMode>,
-    follow_up_queue: Mutex<Vec<AgentMessage>>,
+    follow_up_queue: Mutex<Vec<(String, AgentMessage)>>,
     follow_up_queue_mode: Mutex<QueueMode>,
-    next_turn_queue: Mutex<Vec<AgentMessage>>,
+    next_turn_queue: Mutex<Vec<(String, AgentMessage)>>,
     hooks: HookRegistryT,
     convert_to_llm: ConvertToLlmFn,
     collaboration_mode: Mutex<CollaborationMode>,
@@ -226,11 +232,15 @@ where
             let entries = options.session.entries().await;
             crate::session::derive_session_context_state(&entries)
         })
-        .unwrap_or_else(|_| ("off".into(), None, None, CollaborationMode::Default));
+        .unwrap_or_else(|_| (None, None, None, CollaborationMode::Default));
 
         let restored_model = restored_model.and_then(|r| options.models.get_model(&r.provider, &r.model_id));
         let model = restored_model.unwrap_or(options.model);
-        let thinking_level = parse_agent_thinking_level(&restored_thinking).unwrap_or(options.thinking_level);
+        // Only apply session thinking when an explicit ThinkingLevelChange exists.
+        let thinking_level = restored_thinking
+            .as_deref()
+            .and_then(parse_agent_thinking_level)
+            .unwrap_or(options.thinking_level);
 
         let metadata = try_block_on(async { options.session.metadata().await }).map_err(|_| {
             AgentHarnessError::new(
@@ -283,22 +293,19 @@ where
             }
         }
 
+        // Constructor-supplied active tools must stay strict (validate missing names).
+        // Restored session names may reference tools the host no longer registers — drop those.
         let baseline_active_tool_names: Vec<String> = if let Some(names) = restored_active_tools {
-            names
+            let filtered: Vec<String> = names.into_iter().filter(|n| tools_map.contains_key(n)).collect();
+            if filtered.is_empty() {
+                tools_map.keys().cloned().collect()
+            } else {
+                filtered
+            }
         } else if options.active_tool_names.is_empty() {
             tools_map.keys().cloned().collect()
         } else {
             options.active_tool_names
-        };
-        // Drop restored names that the host did not register (tools are not serializable).
-        let baseline_active_tool_names: Vec<String> = baseline_active_tool_names
-            .into_iter()
-            .filter(|n| tools_map.contains_key(n))
-            .collect();
-        let baseline_active_tool_names = if baseline_active_tool_names.is_empty() {
-            tools_map.keys().cloned().collect()
-        } else {
-            baseline_active_tool_names
         };
         validate_unique_names(baseline_active_tool_names.clone(), "Duplicate active tool name(s)")?;
         let active_tool_names = filter_active_tools(collaboration_mode, &baseline_active_tool_names, None);
@@ -336,6 +343,49 @@ where
                 convert_to_llm: default_convert_to_llm_fn(),
             }),
         })
+    }
+
+    /// Open a harness with full semi-durable recovery (reconcile + rehydrate queues/pending writes).
+    ///
+    /// Prefer this over [`Self::new`] when resuming an existing session after process restart.
+    pub async fn restore(
+        mut options: AgentHarnessOptions<S>,
+        restore: crate::agent::harness::types::RestoreOptions,
+    ) -> HarnessOpResult<Self> {
+        // 1) Repair tree (tool results) + close open operations as interrupted.
+        let _ = crate::session::recovery::reconcile_session(&mut options.session).await;
+        let _ = restore.recovery; // RetryUnfinished reserved; MarkInterrupted is default path.
+
+        // 2) Fail if required restored tools missing (policy) — check before `new` drops them.
+        if matches!(
+            restore.missing_active_tools,
+            crate::agent::harness::types::MissingActiveToolsPolicy::Fail
+        ) {
+            let entries = try_block_on(async { options.session.entries().await }).unwrap_or_default();
+            let (_, _, restored_active, _) = crate::session::derive_session_context_state(&entries);
+            if let Some(names) = restored_active {
+                let registered: std::collections::HashSet<String> =
+                    options.tools.iter().map(|t| t.name().to_string()).collect();
+                for name in &names {
+                    if !registered.contains(name) {
+                        return Err(AgentHarnessError::new(
+                            crate::agent::harness::types::AgentHarnessErrorCode::InvalidArgument,
+                            format!("Restored active tool `{name}` is not registered by the host"),
+                        ));
+                    }
+                }
+            }
+        }
+
+        // 3) Construct harness (rehydrates model/thinking/tools/collab from session).
+        let harness = Self::new(options)?;
+
+        // 4) Rehydrate durable queues + pending writes; apply pending immediately if idle.
+        harness.apply_durable_state().await?;
+        if harness.phase_async().await == AgentHarnessPhase::Idle {
+            let _ = harness.flush_pending_session_writes().await;
+        }
+        Ok(harness)
     }
 }
 

@@ -89,8 +89,18 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Host MCP cache | `APP_DATA/mcp_cache/` | CLI MCP ops when no session is active |
 | App / crash / MCP logs | `APP_DATA/logs/` | Rolling JSONL, dated crash logs, MCP stderr |
 | Config files | `CONFIG_DIR/*.json` | Settings, auth, trust, MCP, providers |
+| Provider catalogs | `CONFIG_DIR/providers/*.json` | Disk model overlays (see below) |
 
 Goals remain on `APP_DATA/metadata.db` (`goals` table). Path and table contract must stay stable across layout refactors.
+
+### Provider catalogs (`CONFIG_DIR/providers/`)
+
+Each `*.json` (except `index.json`) is keyed by file stem as the provider id. Shapes accepted:
+
+1. **Map** — `modelId → model` (embedded unpack shape).
+2. **Schema wrapper** — `{ "baseUrl"?, "headers"?, "models": { … } }`. Wrapper `baseUrl` / `headers` are stamped onto models that omit them; per-model values win.
+
+Process-wide merge: `set_disk_catalog_overrides` after load. Lookup uses `merged_models_for_provider` / `merged_get_model` (disk overlays replace embedded models by `id`; unknown provider ids from disk become custom providers).
 
 ## Environment variables
 

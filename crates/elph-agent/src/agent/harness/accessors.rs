@@ -107,7 +107,8 @@ where
     }
 
     pub async fn queue_user_message(&self, message: AgentMessage) -> HarnessOpResult<()> {
-        self.shared.next_turn_queue.lock().await.push(message);
+        self.push_durable_queue(crate::session::durability::QueueKind::NextTurn, message)
+            .await?;
         Ok(())
     }
 

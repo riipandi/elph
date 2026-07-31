@@ -148,10 +148,17 @@ pub fn build_context_entries(
 }
 
 /// Reduce branch entries into harness config: thinking level, model ref, active tools, collab mode.
+///
+/// `thinking_level` is `None` when no `ThinkingLevelChange` entry exists (host options should win).
 pub fn derive_session_context_state(
     path_entries: &[SessionTreeEntry],
-) -> (String, Option<SessionModelRef>, Option<Vec<String>>, CollaborationMode) {
-    let mut thinking_level = "off".to_string();
+) -> (
+    Option<String>,
+    Option<SessionModelRef>,
+    Option<Vec<String>>,
+    CollaborationMode,
+) {
+    let mut thinking_level = None;
     let mut model = None;
     let mut active_tool_names = None;
     let mut collaboration_mode = CollaborationMode::Default;
@@ -161,7 +168,7 @@ pub fn derive_session_context_state(
             SessionTreeEntry::ThinkingLevelChange {
                 thinking_level: level, ..
             } => {
-                thinking_level = level.clone();
+                thinking_level = Some(level.clone());
             }
             SessionTreeEntry::ModelChange { provider, model_id, .. } => {
                 model = Some(SessionModelRef {
@@ -227,7 +234,7 @@ pub fn build_session_context_with_options(
 
     SessionContext {
         messages,
-        thinking_level,
+        thinking_level: thinking_level.unwrap_or_else(|| "off".into()),
         model,
         active_tool_names,
         collaboration_mode,

@@ -1,5 +1,6 @@
 //! Steering and follow-up queue draining.
 
+use crate::session::durability::QueueKind;
 use crate::types::{AgentMessage, QueueMode};
 
 use super::super::AgentHarness;
@@ -11,13 +12,17 @@ where
 {
     pub(super) async fn drain_queued_messages(&self, steering: bool) -> Vec<AgentMessage> {
         if steering {
-            self.drain_queue(&self.shared.steer_queue, *self.shared.steering_queue_mode.lock().await, true)
-                .await
+            self.drain_queue(
+                &self.shared.steer_queue,
+                *self.shared.steering_queue_mode.lock().await,
+                QueueKind::Steer,
+            )
+            .await
         } else {
             self.drain_queue(
                 &self.shared.follow_up_queue,
                 *self.shared.follow_up_queue_mode.lock().await,
-                false,
+                QueueKind::FollowUp,
             )
             .await
         }
@@ -25,9 +30,9 @@ where
 
     async fn drain_queue(
         &self,
-        queue: &tokio::sync::Mutex<Vec<AgentMessage>>,
+        queue: &tokio::sync::Mutex<Vec<(String, AgentMessage)>>,
         mode: QueueMode,
-        is_steer: bool,
+        kind: QueueKind,
     ) -> Vec<AgentMessage> {
         let count = {
             let guard = queue.lock().await;
@@ -37,18 +42,21 @@ where
                 1.min(guard.len())
             }
         };
-        let messages: Vec<_> = queue.lock().await.drain(..count).collect();
-        if messages.is_empty() {
-            return messages;
-        }
-        if let Err(error) = self.emit_queue_update().await {
-            let mut guard = queue.lock().await;
-            for message in messages.into_iter().rev() {
-                guard.insert(0, message);
-            }
-            let _ = (error, is_steer);
+        let drained: Vec<(String, AgentMessage)> = queue.lock().await.drain(..count).collect();
+        if drained.is_empty() {
             return Vec::new();
         }
+        if let Err(_error) = self.emit_queue_update().await {
+            let mut guard = queue.lock().await;
+            for item in drained.into_iter().rev() {
+                guard.insert(0, item);
+            }
+            return Vec::new();
+        }
+        let ids: Vec<String> = drained.iter().map(|(id, _)| id.clone()).collect();
+        let messages: Vec<AgentMessage> = drained.into_iter().map(|(_, m)| m).collect();
+        // Journal consume only after successful dequeue + notify (stable ids match enqueue).
+        let _ = self.journal_queue_consume(kind, ids, None).await;
         messages
     }
 }

@@ -5,7 +5,7 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
+    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -172,25 +172,30 @@ pub async fn create_coding_session_with_events(
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
     let compaction_settings = options.settings.compaction.to_agent_settings();
-    let harness = AgentHarness::new(AgentHarnessOptions {
-        env,
-        session,
-        models,
-        tools,
-        resources,
-        system_prompt,
-        stream_options,
-        model,
-        thinking_level: thinking,
-        active_tool_names: vec![],
-        steering_mode: QueueMode::OneAtATime,
-        follow_up_mode: QueueMode::OneAtATime,
-        compaction_settings,
-        goal_runtime: Some(goal_runtime.clone()),
-        subagent_bootstrap: Some(subagent_bootstrap),
-        shared_registry: None,
-        agent_control: None,
-    })
+    // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
+    let harness = AgentHarness::restore(
+        AgentHarnessOptions {
+            env,
+            session,
+            models,
+            tools,
+            resources,
+            system_prompt,
+            stream_options,
+            model,
+            thinking_level: thinking,
+            active_tool_names: vec![],
+            steering_mode: QueueMode::OneAtATime,
+            follow_up_mode: QueueMode::OneAtATime,
+            compaction_settings,
+            goal_runtime: Some(goal_runtime.clone()),
+            subagent_bootstrap: Some(subagent_bootstrap),
+            shared_registry: None,
+            agent_control: None,
+        },
+        RestoreOptions::default(),
+    )
+    .await
     .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).

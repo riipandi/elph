@@ -4,7 +4,7 @@ use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::{
     Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
-    TursoSessionStorage, repair_unanswered_tool_calls,
+    TursoSessionStorage, reconcile_session,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -70,8 +70,8 @@ impl SessionManager {
             .context("create session")?;
         let id = session.metadata().await.id;
         self.ensure_artifact_dirs(&id)?;
-        // Fresh create has no open tools; still safe if resume id was unknown and became create.
-        if let Err(err) = repair_unanswered_tool_calls(&mut session).await {
+        // Reconcile is cheap on empty sessions; full restore also runs in AgentHarness::restore.
+        if let Err(err) = reconcile_session(&mut session).await {
             log::warn!("session recovery: {err}");
         }
         Ok(session)
@@ -89,12 +89,13 @@ impl SessionManager {
     pub async fn open(&self, metadata: &TursoSessionMetadata) -> Result<Session<TursoSessionStorage>> {
         let mut session = self.repo.open_metadata(metadata).await.context("open session")?;
         self.ensure_artifact_dirs(&metadata.id)?;
-        match repair_unanswered_tool_calls(&mut session).await {
-            Ok(report) if report.repaired_tool_results > 0 => {
+        match reconcile_session(&mut session).await {
+            Ok(report) if report.repaired_tool_results > 0 || report.closed_operations > 0 => {
                 log::info!(
-                    "session {}: repaired {} interrupted tool result(s)",
+                    "session {}: repaired {} tool result(s), closed {} open op(s)",
                     metadata.id,
-                    report.repaired_tool_results
+                    report.repaired_tool_results,
+                    report.closed_operations
                 );
             }
             Err(err) => log::warn!("session recovery: {err}"),

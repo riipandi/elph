@@ -279,3 +279,30 @@ where
     pub shared_registry: Option<std::sync::Arc<crate::agent::subagent::AgentRegistry>>,
     pub agent_control: Option<std::sync::Arc<crate::agent::subagent::AgentControl>>,
 }
+
+/// Policy when restored active tool names are missing from the host registry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MissingActiveToolsPolicy {
+    /// Drop unknown names and continue (default).
+    #[default]
+    DropMissing,
+    /// Fail harness construction.
+    Fail,
+}
+
+/// Recovery policy for unfinished operations after process restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RecoveryPolicy {
+    /// Mark unfinished turns interrupted; do not auto-retry tools (default).
+    #[default]
+    MarkInterrupted,
+    /// Reserved: retry only idempotent tools (falls back to MarkInterrupted today).
+    RetryUnfinished,
+}
+
+/// Options for [`crate::agent::harness::AgentHarness::restore`].
+#[derive(Debug, Clone, Default)]
+pub struct RestoreOptions {
+    pub missing_active_tools: MissingActiveToolsPolicy,
+    pub recovery: RecoveryPolicy,
+}
