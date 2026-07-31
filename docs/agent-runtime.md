@@ -150,9 +150,10 @@ Child agents managed by `AgentControl` on the harness (Codex thread style). Desi
 
 - `spawn_agent` creates a **persistent child** (`SessionDirStorage` + mini `AgentHarness`).
 - Shared `AgentRegistry` across parent and children; `agent_path` for nested identity.
-- `max_depth = 3`; children may spawn further children when depth allows.
+- `max_depth = 3`, `max_concurrent = 4`; children may spawn further children when depth allows.
 - Multi-agent tools: `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`.
 - Graph edges persisted in `metadata.db` (`agent_spawn_edges`).
+- Tool results return status only (`Spawned subagent <id>`, `<id> is idle`): the child's final answer text is streamed to the host UI and stored in the child session, never returned in the parent's tool results. The parent verifies child work through repository state (re-read changed files, `git diff`, tests).
 
 TUI shows `agent_id` + `agent_path` in subagent status lines.
 

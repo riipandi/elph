@@ -468,9 +468,12 @@ impl<'a> Tree<'a> {
             let terminal_size = term.size();
             term.synchronized_update(|mut term| {
                 let output = self.render(terminal_size.map(|(w, _)| w as usize), Some(&mut term));
-                if output.did_clear_terminal_output || prev_canvas.as_ref() != Some(&output.canvas)
+                let full_redraw_requested = self.system_context.take_full_redraw_request();
+                if full_redraw_requested
+                    || output.did_clear_terminal_output
+                    || prev_canvas.as_ref() != Some(&output.canvas)
                 {
-                    let prev = if output.did_clear_terminal_output {
+                    let prev = if full_redraw_requested || output.did_clear_terminal_output {
                         None
                     } else {
                         prev_canvas.as_ref()
@@ -614,6 +617,36 @@ mod tests {
             "tick: 1\nrender count (a): 2\nrender count (b0): 2\nrender count (b1): 2\nrender count (c0): 2\nrender count (c1): 2\n",
         ];
         assert_eq!(actual, expected);
+    }
+
+    #[component]
+    fn FullRedrawComponent(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+        let mut system = hooks.use_context_mut::<SystemContext>();
+        let mut tick = hooks.use_state(|| 0);
+
+        hooks.use_future(async move {
+            tick += 1;
+        });
+
+        if tick == 1 {
+            system.request_full_redraw();
+            system.exit();
+        }
+
+        element!(Text(content: "stable canvas"))
+    }
+
+    #[apply(test!)]
+    async fn full_redraw_writes_an_unchanged_canvas_again() {
+        let canvases: Vec<_> = mock_terminal_render_loop(
+            &mut element!(FullRedrawComponent),
+            MockTerminalConfig::default(),
+        )
+        .collect()
+        .await;
+
+        assert_eq!(canvases.len(), 2);
+        assert!(canvases[0] == canvases[1]);
     }
 
     async fn await_send_future<F: Future<Output = io::Result<()>> + Send>(f: F) {

@@ -1142,8 +1142,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Start at 1 so the first Footer paint depends on chrome_revision (iocraft child identity).
     let mut chrome_ui_revision = hooks.use_state(|| 1u64);
     let mut chrome_tick = hooks.use_ref(|| 0u32);
-    // Ensures one forced chrome repaint after the first shell tick (layout size settled).
+    // A state update only recomputes the canvas; it cannot repair terminal cells overwritten by
+    // startup output when the resulting pixels are unchanged. Request one full terminal rewrite
+    // after the first chrome pass and after each bootstrap event.
     let mut chrome_eager_paint_done = hooks.use_ref(|| false);
+    let mut chrome_full_redraw_pending = hooks.use_ref(|| false);
     let fallback_context_limit = props.context_limit;
     let fallback_model_label = props.model_label.clone();
     let fallback_model_label_for_chrome = fallback_model_label.clone();
@@ -1280,6 +1283,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut messages,
                         &mut prompt_history,
                     );
+                    chrome_full_redraw_pending.set(true);
                     publish_transcript_now(
                         &mut messages_revision,
                         &mut transcript_pending,
@@ -1450,6 +1454,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 // footer blank until the first stats mutation (model pick / first turn).
                 if !chrome_eager_paint_done.get() {
                     chrome_eager_paint_done.set(true);
+                    chrome_full_redraw_pending.set(true);
                     bump_chrome_ui_revision(&mut chrome_ui_revision);
                 }
             }
@@ -5221,6 +5226,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             chrome.turn_count,
         );
         system.exit();
+    }
+
+    if chrome_full_redraw_pending.get() {
+        chrome_full_redraw_pending.set(false);
+        system.request_full_redraw();
     }
 
     let (accent_r, accent_g, accent_b) = agent_mode.get().label_rgb();

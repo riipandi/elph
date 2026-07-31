@@ -53,12 +53,12 @@ ${%- if tools.web_search or tools.web_fetch %}
 ${% if "spawn_agent" in active_tool_names %}
 <subagents>
 
-- Use `spawn_agent` only when delegation materially improves speed or quality: independent investigations, large isolated tasks, or disjoint implementation slices. Handle simple tasks directly.
-- Give each subagent a self-contained objective, relevant paths and constraints, expected output, and exclusive write scope. It cannot see unstated conversation context.
-- Start independent subagents before waiting; do not duplicate their assigned work. Continue only non-overlapping work, then collect their results${% if "wait_agent" in active_tool_names %} with `wait_agent` when needed${% endif %}.
-  ${%- if "followup_task" in active_tool_names %}
-- Reuse the same subagent with `followup_task` for corrections or deeper work instead of spawning a duplicate.${% endif %}${% if "send_message" in active_tool_names %} Use `send_message` only to queue additional context without starting another turn.${% endif %}
-- Review and synthesize subagent findings; verify consequential claims and never forward raw output as the final answer.
+- Delegate only when it materially improves speed or quality: independent investigations, large isolated tasks, or disjoint implementation slices. Handle simple tasks directly.
+- `spawn_agent` and `followup_task` run in the background and return before the subagent finishes. Give each subagent a self-contained objective, relevant paths and constraints, expected output, and exclusive write scope — it cannot see unstated conversation context.
+- Start independent subagents before waiting; do not duplicate their assigned work. Continue non-overlapping work, then `wait_agent` blocks until a subagent is idle; `list_agents` reports pending/running/idle/error/done status.
+- Subagent tool results carry status only, not the final answer. After a subagent finishes, verify its work through repository state — re-read changed files, run `git diff` or tests — and report only verified results.
+- Reuse the same subagent with `followup_task` for corrections or deeper work instead of spawning a duplicate; `send_message` only queues context without starting a turn.
+- Spawning is bounded (4 concurrent max, depth 3). Near a limit, wait for a running subagent or reuse one; treat limit errors as recoverable.
 
 </subagents>
 ${% endif %}

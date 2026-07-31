@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/elph-*", "crates/floppy", "elph"]
-exclude = ["extensions/say-hello"]
+exclude = ["extensions/say-hello", "vendor/iocraft"]
 
 [workspace.package]
 homepage = "https://elph.space"

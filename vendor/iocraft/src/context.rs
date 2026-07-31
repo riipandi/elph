@@ -8,6 +8,7 @@ use core::{
 pub struct SystemContext {
     should_exit: bool,
     mouse_capture: Option<bool>,
+    full_redraw_requested: bool,
 }
 
 impl SystemContext {
@@ -15,6 +16,7 @@ impl SystemContext {
         Self {
             should_exit: false,
             mouse_capture: None,
+            full_redraw_requested: false,
         }
     }
 
@@ -36,6 +38,19 @@ impl SystemContext {
 
     pub(crate) fn mouse_capture(&self) -> Option<bool> {
         self.mouse_capture
+    }
+
+    /// Requests that the next render pass rewrites the complete terminal canvas.
+    ///
+    /// Use this after external output may have changed terminal cells without changing the
+    /// component tree. A normal state update is insufficient in that case because canvas diffing
+    /// assumes the previously rendered cells are still present.
+    pub fn request_full_redraw(&mut self) {
+        self.full_redraw_requested = true;
+    }
+
+    pub(crate) fn take_full_redraw_request(&mut self) -> bool {
+        mem::take(&mut self.full_redraw_requested)
     }
 }
 

@@ -301,7 +301,9 @@ mod tests {
         assert!(with_subagents.contains("Start independent subagents before waiting"));
         assert!(with_subagents.contains("exclusive write scope"));
         assert!(with_subagents.contains("Reuse the same subagent with `followup_task`"));
-        assert!(with_subagents.contains("Use `send_message` only to queue additional context"));
-        assert!(with_subagents.contains("collect their results with `wait_agent`"));
+        assert!(with_subagents.contains("`send_message` only queues context without starting a turn"));
+        assert!(with_subagents.contains("`wait_agent` blocks until a subagent is idle"));
+        assert!(with_subagents.contains("tool results carry status only"));
+        assert!(with_subagents.contains("4 concurrent max, depth 3"));
     }
 }

@@ -251,6 +251,8 @@ The token display format is configurable via `footerTokenDisplay` setting (see [
 
 When no actual token usage data is available (e.g., at startup before the first API call), token counts are estimated from the system prompt.
 
+The footer is painted eagerly from the configured model and project snapshot. During asynchronous agent and MCP bootstrap, Elph requests a full terminal redraw after each startup event so output written outside the canvas diff cannot leave the footer hidden until the first keyboard or model event.
+
 | Format       | Example | Description |
 | ------------ | ------- | ----------- |
 | `both`       | `$0.00  | 131k        | 0.0%  | 262k`                                     | Default — shows used tokens, percentage, and limit |
