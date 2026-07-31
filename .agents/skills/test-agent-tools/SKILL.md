@@ -24,6 +24,9 @@ Enumerate available tools/capabilities — including connected MCP servers — e
 4. Write `demo/YYMMDD_hhmm/REPORT.md`:
     - Table: `| Tool | Type (native/MCP/subagent) | Status (OK/FAIL/SKIPPED) | Notes |`
     - Summary section aggregating each subagent's report (what it tested, key findings).
+5. Post the full content of `REPORT.md` directly in the chat reply (not just a file link) — including the tool status table and the subagent summary. If subagents produced findings, include their key results inline too, not just a reference to the file.
+    - Files (`REPORT.md`, findings, etc.) stay in English regardless of chat language.
+    - The chat-transcript presentation of the report (narration, summary, table labels) uses whatever language the user is currently using in the conversation — translate on the fly, don't just paste the English file verbatim if the chat language differs.
 
 ## Mandatory Rules
 
