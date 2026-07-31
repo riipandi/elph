@@ -55,7 +55,7 @@ Assembly order:
 5. Project context — nearest `AGENTS.md`, appended after generic instructions so scoped repository rules remain prominent
 6. Optional memory context
 
-The active tool list is rendered dynamically on every turn. Tool guidance names only tools exposed in that mode, prefers dedicated search/edit/file tools over shell workarounds, parallelizes independent calls, and reserves `list_available_tools` for unfamiliar or dynamically added tools.
+The active tool list is rendered dynamically on every turn. Tool guidance names only tools exposed in that mode, prefers dedicated search/edit/file tools over shell workarounds, parallelizes independent calls, and reserves `list_available_tools` for unfamiliar or dynamically added tools. When collaboration tools are active, the prompt also defines a conditional subagent lifecycle: delegate only substantial isolated work, assign disjoint write scopes, reuse agents for follow-ups, wait only when results are needed, and synthesize rather than forwarding raw output.
 
 ## Tool loop
 

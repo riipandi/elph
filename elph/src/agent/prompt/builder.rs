@@ -252,6 +252,10 @@ mod tests {
                 "ask_user_question",
                 "list_available_tools",
                 "spawn_agent",
+                "send_message",
+                "followup_task",
+                "wait_agent",
+                "list_agents",
             ]
             .map(String::from),
             None,
@@ -261,5 +265,43 @@ mod tests {
         .expect("prompt");
 
         assert!(prompt.len() < 7_000, "static prompt is {} bytes", prompt.len());
+    }
+
+    #[test]
+    fn subagent_guidance_is_conditional_and_covers_coordination() {
+        let without_subagents = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file".to_string()],
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+        assert!(!without_subagents.contains("<subagents>"));
+
+        let with_subagents = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &[
+                "spawn_agent",
+                "send_message",
+                "followup_task",
+                "wait_agent",
+                "list_agents",
+            ]
+            .map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(with_subagents.contains("<subagents>"));
+        assert!(with_subagents.contains("Start independent subagents before waiting"));
+        assert!(with_subagents.contains("exclusive write scope"));
+        assert!(with_subagents.contains("Reuse the same subagent with `followup_task`"));
+        assert!(with_subagents.contains("Use `send_message` only to queue additional context"));
+        assert!(with_subagents.contains("collect their results with `wait_agent`"));
     }
 }
