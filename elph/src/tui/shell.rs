@@ -81,7 +81,9 @@ use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
-use crate::tui::scroll_text_dialog::{OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog};
+use crate::tui::scroll_text_dialog::{
+    OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog, DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+};
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
@@ -975,6 +977,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut prompt_history_open = hooks.use_state(|| false);
     let mut prompt_history_index = hooks.use_state(|| 0usize);
     let mut prompt_history = hooks.use_ref(Vec::<String>::new);
+    let mut last_arrow_up_at = hooks.use_ref(Instant::now);
     let mut force_palette_sync = hooks.use_ref(|| false);
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
@@ -2032,6 +2035,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 shift_last_pressed.set(Some(Instant::now()));
             }
 
+            // Track Arrow Up timestamps to distinguish deliberate keyboard press from
+            // rapid mouse wheel scroll events. Burst detection: scroll wheel fires
+            // Arrow Up events faster than a human can tap (< 50ms apart).
+            if code == KeyCode::Up {
+                last_arrow_up_at.set(Instant::now());
+            }
+
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
             if file_picker_key_handled.get() {
                 file_picker_key_handled.set(false);
@@ -2084,6 +2094,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     && !select_mode.get()
                     && kind == KeyEventKind::Press
                     && is_prompt_history_open_key(code, modifiers)
+                    && last_arrow_up_at.get().elapsed() >= Duration::from_millis(80)
                 {
                     let draft_body = {
                         let live = live_draft.read().clone();
@@ -4298,6 +4309,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let ext_registry = extension_registry.read();
                         let templates = prompt_templates.read().clone();
                         let loaded_skills = skills.read().clone();
+
+                        // Block session-querying slash commands while agent is streaming.
+                        let trimmed = slash_input.trim();
+                        if agent_turn_active.get()
+                            && (trimmed == "/tools"
+                                || trimmed.starts_with("/tools ")
+                                || trimmed == "/system-prompt"
+                                || trimmed.starts_with("/system-prompt "))
+                        {
+                            let expire_tx = ephemeral_expire.read().tx.clone();
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &expire_tx,
+                                EphemeralBanner {
+                                    key: "transient:slash_busy",
+                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
+                                    kind: EphemeralBannerKind::Warning,
+                                    expires_at: None,
+                                },
+                            );
+                            return;
+                        }
+
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
                             extensions: Some(&ext_registry),
@@ -4376,8 +4411,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
-                                    text,
-                                    width_pct: 65,
+                                    text: text.clone(),
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
                                     body_height: None,
                                     show_copy: true,
                                 });
@@ -4646,7 +4681,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: 65,
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
                                     body_height: None,
                                     show_copy: true,
                                 });
@@ -6124,6 +6159,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let templates = prompt_templates.read().clone();
                         let loaded_skills = skills.read().clone();
                         let paths_snapshot = paths.read().clone();
+
+                        // Block session-querying slash commands while agent is streaming.
+                        if agent_turn_active.get()
+                            && (slash_input.trim() == "/tools"
+                                || slash_input.trim().starts_with("/tools ")
+                                || slash_input.trim() == "/system-prompt"
+                                || slash_input.trim().starts_with("/system-prompt "))
+                        {
+                            let expire_tx = ephemeral_expire.read().tx.clone();
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &expire_tx,
+                                EphemeralBanner {
+                                    key: "transient:slash_busy",
+                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
+                                    kind: EphemeralBannerKind::Warning,
+                                    expires_at: None,
+                                },
+                            );
+                            suppress_enter_newline.set(true);
+                            return;
+                        }
+
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
                             extensions: Some(&ext_registry),
@@ -6378,7 +6437,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: 65,
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
                                     body_height: None,
                                     show_copy: true,
                                 });

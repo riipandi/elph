@@ -146,13 +146,15 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         }
     });
 
-    let messages = messages_state.read();
-    let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
-
-    // Streaming content changes every tick but `messages_revision` only updates at the
-    // publish interval. Detect in-place content growth (e.g. assistant/tool streaming)
-    // so the render cache invalidates before the next publish tick.
-    let streaming_content_fp = messages
+    // Use messages_arc content directly when available (decoupled from shell State).
+    // This ensures render cache always sees the latest content between publish ticks
+    // instead of waiting for the next State sync.
+    let messages: Vec<TranscriptMessage> = if let Some(ref arc) = props.messages_arc {
+        arc.read().expect("transcript arc lock").clone()
+    } else {
+        messages_state.read().clone()
+    };
+    let messages_last_fp = messages
         .last()
         .map(|m| {
             if m.duration_secs.is_none() {
@@ -162,6 +164,13 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             }
         })
         .unwrap_or(0);
+
+    let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
+
+    // Streaming content changes every tick but `messages_revision` only updates at the
+    // publish interval. Detect in-place content growth (e.g. assistant/tool streaming)
+    // so the render cache invalidates before the next publish tick.
+    let streaming_content_fp = messages_last_fp;
 
     let cache_key = (
         messages_revision_value,
