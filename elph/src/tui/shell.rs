@@ -40,6 +40,7 @@ use crate::tui::labels::GitFooterInfo;
 use crate::tui::transcript::TranscriptCache;
 
 use crate::agent::rename_session_title;
+use crate::agent::session_info_slash_message;
 use crate::tui::confetti::{
     ConfettiMode, ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti,
 };
@@ -104,8 +105,8 @@ use crate::tui::status_dialog::{
 };
 use crate::tui::subagent_output_dialog::SubagentOutputDialogOverlay;
 use crate::tui::system_prompt_dialog::{
-    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
-    system_prompt_dialog_chrome,
+    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, SYSTEM_PROMPT_DIALOG_TITLE, close_system_prompt_dialog,
+    open_system_prompt_dialog, system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::{
     FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation,
@@ -2295,6 +2296,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             let system_prompt_open = pending_system_prompt.read().is_some();
+            let session_info_open = pending_system_prompt
+                .read()
+                .as_ref()
+                .is_some_and(|d| d.title == "Session");
             let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
 
@@ -4099,6 +4104,56 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     return;
                 }
 
+                // ── Confirm step (Yes/No) ───────────────────────────────────
+                let confirm_choice = {
+                    let should_submit = pending_user_question
+                        .read()
+                        .as_ref()
+                        .is_some_and(|p| {
+                            p.is_confirm()
+                                && question_input_focus.get().is_choices()
+                                && modifiers.is_empty()
+                                && matches!(
+                                    code,
+                                    KeyCode::Char('y')
+                                        | KeyCode::Char('Y')
+                                        | KeyCode::Char('n')
+                                        | KeyCode::Char('N')
+                                        | KeyCode::Enter
+                                        | KeyCode::Esc
+                                )
+                        });
+                    if should_submit {
+                        let yes = matches!(code, KeyCode::Char('y') | KeyCode::Char('Y'))
+                            || (code == KeyCode::Enter && question_selected.get() == 0);
+                        pending_user_question.write().take().map(|p| p.respond_confirm(yes))
+                    } else {
+                        None
+                    }
+                };
+                if let Some(outcome) = confirm_choice {
+                    if let Some(summary) = apply_step_submit_outcome(
+                        outcome,
+                        &mut pending_user_question,
+                        &mut question_selected,
+                        &mut question_confirm_focus,
+                        &mut question_answer,
+                        &mut question_multi_checked,
+                        &mut question_input_focus,
+                        &mut shell_focus,
+                        &mut activity_label,
+                        &mut question_validation_error,
+                    ) {
+                        push_transcript_message(
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                        );
+                    }
+                    return;
+                }
+
                 let picked_option = {
                     let pending_ref = pending_user_question.read();
                     match pending_ref.as_ref() {
@@ -4317,15 +4372,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
-                                // Compact dialog: narrower width and content-sized height.
-                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: 50,
-                                    body_height: Some(body_height),
+                                    width_pct: 65,
+                                    body_height: None,
                                     show_copy: true,
                                 });
                                 force_editor_clear.set(true);
@@ -4562,6 +4615,60 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || file_picker_snapshot.visible;
 
             match (modifiers, code) {
+                // Ctrl+I — open Session info dialog.
+                (m, KeyCode::Char('i')) | (m, KeyCode::Char('I'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_confetti.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    if pending_system_prompt.read().is_some() {
+                        close_system_prompt_dialog(
+                            &mut pending_system_prompt,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            &mut force_editor_clear,
+                        );
+                    } else {
+                        let skills_snapshot = skills.read().clone();
+                        match session_info_slash_message(agent_session.as_ref(), Some(&skills_snapshot)) {
+                            Ok(text) => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: 65,
+                                    body_height: None,
+                                    show_copy: true,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            Err(msg) => {
+                                let expire_tx = ephemeral_expire.read().tx.clone();
+                                show_ephemeral_banner(
+                                    &mut ephemeral_banner,
+                                    &mut ephemeral_banner_generation,
+                                    &expire_tx,
+                                    EphemeralBanner {
+                                        key: "transient:session_info",
+                                        text: msg,
+                                        kind: EphemeralBannerKind::Error,
+                                        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
                 (m, KeyCode::Char('l')) | (m, KeyCode::Char('L'))
                     if m.contains(KeyModifiers::CONTROL) && pending_user_question.read().is_none() =>
                 {
@@ -5073,6 +5180,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let system_prompt_open = pending_system_prompt.read().is_some();
+    let session_info_open = pending_system_prompt
+        .read()
+        .as_ref()
+        .is_some_and(|d| d.title == "Session");
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
@@ -5842,7 +5953,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 editor_overlay: editor_overlay,
                 text_select_mode: select_mode.get() || shift_held.get(),
                 blocked_hint: if system_prompt_open {
-                    Some("Viewing system prompt — Esc to close".to_string())
+                    if session_info_open {
+                        Some("Viewing session info — Esc to close".to_string())
+                    } else {
+                        Some("Viewing system prompt — Esc to close".to_string())
+                    }
                 } else if user_question_open {
                     Some("Answer the question above".to_string())
                 } else if rename_open {
@@ -6258,15 +6373,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
-                                // Compact dialog: narrower width and content-sized height.
-                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: 50,
-                                    body_height: Some(body_height),
+                                    width_pct: 65,
+                                    body_height: None,
                                     show_copy: true,
                                 });
                                 draft.set(String::new());
