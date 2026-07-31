@@ -16,6 +16,8 @@
 //! ```json
 //! {
 //!   "preferredChatLanguage": "english",
+//!   "maxRetries": 2,
+//!   "defaultTimeout": "120s",
 //!   "ui": { ... },
 //!   "models": {
 //!     "defaultModel": null,
@@ -26,7 +28,6 @@
 //!     "showConfiguredOnly": true,
 //!     "scopedModels": []
 //!   },
-//!   "provider": { ... },
 //!   "memory": { ... },
 //!   "notifications": { ... },
 //!   "compaction": { ... }
@@ -83,15 +84,18 @@ pub struct Settings {
     /// Code, comments, and documentation remain in English regardless of this setting.
     #[serde(default = "default_preferred_chat_language")]
     pub preferred_chat_language: String,
+    /// Retries on 5xx / network errors for LLM HTTP transport.
+    #[serde(default = "default_provider_max_retries")]
+    pub max_retries: u32,
+    /// Inactivity / SSE stall limit for LLM streams (e.g. `"120s"`, `"2m"`).
+    #[serde(default = "default_provider_timeout")]
+    pub default_timeout: String,
     /// Transcript / chrome / picker presentation.
     #[serde(default)]
     pub ui: UiSettings,
     /// Model catalog preferences and **new-session** defaults (not live session state).
     #[serde(default)]
     pub models: ModelsSettings,
-    /// LLM HTTP transport defaults (mapped into harness stream options).
-    #[serde(default)]
-    pub provider: ProviderHttpSettings,
     /// Local embedding / floppy memory.
     #[serde(default)]
     pub memory: MemorySettings,
@@ -271,27 +275,6 @@ impl ModelsSettings {
     }
 }
 
-/// Provider HTTP transport preferences (mapped into harness stream options by the host).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ProviderHttpSettings {
-    /// Retries on 5xx / network errors.
-    #[serde(default = "default_provider_max_retries")]
-    pub max_retries: u32,
-    /// Inactivity / SSE stall limit (e.g. `"120s"`, `"2m"`).
-    #[serde(default = "default_provider_timeout")]
-    pub default_timeout: String,
-}
-
-impl Default for ProviderHttpSettings {
-    fn default() -> Self {
-        Self {
-            max_retries: default_provider_max_retries(),
-            default_timeout: default_provider_timeout(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MemorySettings {
@@ -394,14 +377,14 @@ impl Default for NotificationSettings {
     }
 }
 
-/// Auto-compaction preferences.
+/// Auto-compaction preferences (threshold / keep-recent only).
+///
+/// Automatic compaction is always on after turns when usage exceeds the threshold.
+/// Manual `/compact` is always available. There is no settings kill-switch.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CompactionConfig {
-    /// Master switch — enable automatic compaction after turns.
-    #[serde(default = "default_compaction_enabled")]
-    pub enabled: bool,
-    /// Context-window usage percentage that triggers compaction (1–100).
+    /// Context-window usage percentage that triggers auto-compaction (1–100).
     /// Compact when context tokens exceed `context_window * threshold_pct / 100`.
     #[serde(default = "default_compaction_threshold_pct")]
     pub threshold_pct: u8,
@@ -413,7 +396,6 @@ pub struct CompactionConfig {
 impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
-            enabled: default_compaction_enabled(),
             threshold_pct: default_compaction_threshold_pct(),
             keep_recent_tokens: default_compaction_keep_recent(),
         }
@@ -422,9 +404,11 @@ impl Default for CompactionConfig {
 
 impl CompactionConfig {
     /// Convert to elph-agent's `CompactionSettings`.
+    ///
+    /// Auto-compaction is always enabled at the host; only threshold/keep-recent are user-tunable.
     pub fn to_agent_settings(&self) -> elph_agent::CompactionSettings {
         elph_agent::CompactionSettings {
-            enabled: self.enabled,
+            enabled: true,
             reserve_tokens: elph_agent::HARNESS_DEFAULT_COMPACTION_SETTINGS.reserve_tokens,
             threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
             keep_recent_tokens: self.keep_recent_tokens,
@@ -441,18 +425,19 @@ impl Settings {
     pub fn defaults() -> Self {
         Self {
             preferred_chat_language: default_preferred_chat_language(),
+            max_retries: default_provider_max_retries(),
+            default_timeout: default_provider_timeout(),
             ui: UiSettings::default(),
             models: ModelsSettings::default(),
-            provider: ProviderHttpSettings::default(),
             memory: MemorySettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
         }
     }
 
-    /// Parse `provider.defaultTimeout` into milliseconds for stream options.
+    /// Parse top-level `defaultTimeout` into milliseconds for stream options.
     pub fn provider_timeout_ms(&self) -> Option<u64> {
-        parse_duration_ms(&self.provider.default_timeout)
+        parse_duration_ms(&self.default_timeout)
     }
 
     /// Path for a single layer.
@@ -595,6 +580,27 @@ fn migrate_settings_value(value: &mut Value) {
             models.entry("scopedModels".to_string()).or_insert(scoped);
         }
     }
+
+    // Legacy nested `provider` group → top-level maxRetries / defaultTimeout.
+    if let Some(provider_val) = root.remove("provider")
+        && let Some(provider) = provider_val.as_object()
+    {
+        if let Some(retries) = provider.get("maxRetries").cloned()
+            && !root.contains_key("maxRetries")
+        {
+            root.insert("maxRetries".to_string(), retries);
+        }
+        if let Some(timeout) = provider.get("defaultTimeout").cloned()
+            && !root.contains_key("defaultTimeout")
+        {
+            root.insert("defaultTimeout".to_string(), timeout);
+        }
+    }
+
+    // Drop ambiguous `compaction.enabled` (auto-compact is always on; only threshold knobs remain).
+    if let Some(Value::Object(compaction)) = root.get_mut("compaction") {
+        compaction.remove("enabled");
+    }
 }
 
 fn lift_into_object(root: &mut Map<String, Value>, group: &str, keys: &[&str]) {
@@ -732,10 +738,6 @@ fn default_notification_app_name() -> String {
     "Elph".to_string()
 }
 
-fn default_compaction_enabled() -> bool {
-    true
-}
-
 fn default_compaction_threshold_pct() -> u8 {
     80
 }
@@ -766,8 +768,8 @@ mod tests {
         assert_eq!(decoded.models.tree_branch_summaries, "inherit");
         assert_eq!(decoded.models.default_thinking_level, "high");
         assert_eq!(decoded.preferred_chat_language, "english");
-        assert_eq!(decoded.provider.max_retries, 2);
-        assert_eq!(decoded.provider.default_timeout, "120s");
+        assert_eq!(decoded.max_retries, 2);
+        assert_eq!(decoded.default_timeout, "120s");
         assert!(decoded.ui.show_thinking);
         assert_eq!(decoded.ui.theme, "auto");
         assert!(decoded.ui.themes.dark.is_empty());
@@ -833,7 +835,9 @@ mod tests {
         assert!(obj.contains_key("preferredChatLanguage"));
         assert!(!obj.contains_key("session"));
         assert!(obj.contains_key("models"));
-        assert!(obj.contains_key("provider"));
+        assert!(!obj.contains_key("provider"));
+        assert!(obj.contains_key("maxRetries"));
+        assert!(obj.contains_key("defaultTimeout"));
         assert!(obj.contains_key("memory"));
         assert!(!obj.contains_key("showThinking"));
         assert!(!obj.contains_key("scopedModelItems"));
@@ -852,10 +856,13 @@ mod tests {
             "scopedModelItems": ["opencode/big-pickle"],
             "filePicker": { "showHiddenFiles": true },
             "session": { "agentMode": "plan", "thinkingLevel": "low", "preferredChatLanguage": "indonesian" },
-            "provider": { "maxRetries": 4 }
+            "provider": { "maxRetries": 4, "defaultTimeout": "90s" }
         }"#;
         let mut value: Value = serde_json::from_str(json).expect("parse");
         migrate_settings_value(&mut value);
+        assert!(value.get("provider").is_none());
+        assert_eq!(value["maxRetries"], 4);
+        assert_eq!(value["defaultTimeout"], "90s");
         let decoded: Settings = serde_json::from_value(value).expect("decode");
         assert!(!decoded.ui.show_thinking);
         assert!(!decoded.ui.sticky_scroll);
@@ -866,7 +873,8 @@ mod tests {
         assert_eq!(decoded.models.scoped_models, vec!["opencode/big-pickle".to_string()]);
         assert_eq!(decoded.models.default_thinking_level, "low");
         assert_eq!(decoded.preferred_chat_language, "indonesian");
-        assert_eq!(decoded.provider.max_retries, 4);
+        assert_eq!(decoded.max_retries, 4);
+        assert_eq!(decoded.default_timeout, "90s");
     }
 
     #[test]

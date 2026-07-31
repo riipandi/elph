@@ -194,16 +194,13 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     "showConfiguredOnly": true,
     "scopedModels": []
   },
-  "provider": {
-    "maxRetries": 2,
-    "defaultTimeout": "120s"
-  },
+  "maxRetries": 2,
+  "defaultTimeout": "120s",
   "memory": {
     "embedModel": "AllMiniLML6V2",
     "embedQuantized": true
   },
   "compaction": {
-    "enabled": true,
     "thresholdPct": 80,
     "keepRecentTokens": 20000
   }
@@ -213,11 +210,14 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | Group / field | Fields | Role |
 | ----- | ------ | ---- |
 | **`preferredChatLanguage`** | (top-level) | Language for user-facing chat prose |
+| **`maxRetries`** | (top-level) | LLM HTTP retries on 5xx / network errors |
+| **`defaultTimeout`** | (top-level) | LLM stream inactivity / SSE stall limit (e.g. `120s`) |
 | **`ui`** | `theme`, `themes`, `showThinking`, …, `filePicker.*` | Appearance + transcript / chrome |
 | **`models`** | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking |
-| **`provider`** | `maxRetries`, `defaultTimeout` | LLM HTTP transport defaults |
 | **`memory`** | `embedModel`, `embedQuantized`, … | Floppy / local embeddings |
-| **`compaction`** | `enabled`, `thresholdPct`, `keepRecentTokens` | Auto-compaction policy |
+| **`compaction`** | `thresholdPct`, `keepRecentTokens` | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
+
+Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
 
 **Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
 

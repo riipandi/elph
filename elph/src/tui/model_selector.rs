@@ -473,6 +473,12 @@ impl PendingModelSelector {
         self.catalog.provider_id(self.provider_index)
     }
 
+    /// Rebuild the Scoped tab from the live session scoped list.
+    pub fn refresh_scoped_models(&mut self, scoped_model_items: &[String]) {
+        self.catalog.refresh_scoped_models(scoped_model_items);
+        self.clamp_indices();
+    }
+
     pub fn filtered_models(&self) -> Vec<ModelRow> {
         if !self.filter.trim().is_empty() {
             return filter_models_fuzzy(&self.catalog.all_models, &self.filter);
@@ -606,9 +612,22 @@ pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
 
 pub fn model_selector_footer_hint(in_provider_scope: bool) -> String {
     if in_provider_scope {
-        "↑/↓ model · ←/→ provider · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
+        "↑/↓ model · ←/→ provider · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
     } else {
-        "↑/↓ model · [ ] scope · / focus filter · Enter confirm · Esc cancel".to_string()
+        "↑/↓ model · [ ] scope · + add scoped · − remove · / filter · Enter confirm · Esc".to_string()
+    }
+}
+
+/// Refresh the Scoped tab after the live scoped list changes (add/remove from picker).
+impl ModelCatalogSnapshot {
+    pub fn refresh_scoped_models(&mut self, scoped_model_items: &[String]) {
+        let scoped_models = build_scoped_model_rows(scoped_model_items);
+        let scoped_count = scoped_models.len();
+        if let Some(tab) = self.providers.iter_mut().find(|tab| tab.id == SCOPED_PROVIDERS_TAB_ID) {
+            tab.model_count = scoped_count;
+        }
+        self.models_by_provider
+            .insert(SCOPED_PROVIDERS_TAB_ID.to_string(), scoped_models);
     }
 }
 

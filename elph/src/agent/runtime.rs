@@ -115,7 +115,7 @@ pub async fn create_coding_session_with_events(
     // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
-        max_retries: Some(options.settings.provider.max_retries),
+        max_retries: Some(options.settings.max_retries),
         ..AgentHarnessStreamOptions::default()
     };
     let subagent_bootstrap = SubagentBootstrap {

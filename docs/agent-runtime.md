@@ -103,7 +103,7 @@ A tool is sent to the API only if it is known, has a schema, is executable, and 
 
 ### Compaction
 
-Configured via `settings.compaction` (`enabled`, `thresholdPct`, `keepRecentTokens`) mapped into harness `CompactionSettings`. Summarization can use `models.compactionModel` (`inherit` = session model).
+Configured via `settings.compaction` (`thresholdPct`, `keepRecentTokens`) mapped into harness `CompactionSettings` (auto-compact is always enabled from the host). Summarization can use `models.compactionModel` (`inherit` = session model).
 
 | Path | Behavior |
 | ---- | -------- |

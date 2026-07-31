@@ -93,11 +93,10 @@ impl CodingAgentSession {
     }
 
     /// Auto-compact after a successful turn when usage exceeds threshold.
+    ///
+    /// Always considered; threshold comes from settings. There is no host kill-switch.
     pub(crate) async fn maybe_auto_compact(&self) {
         let settings = self.harness.compaction_settings();
-        if !settings.enabled {
-            return;
-        }
         let Ok((used, window)) = self.estimate_context_usage().await else {
             return;
         };
@@ -131,7 +130,7 @@ impl CodingAgentSession {
             return Ok(());
         };
 
-        let soft_over = settings.enabled && should_compact(used, new_window, settings);
+        let soft_over = should_compact(used, new_window, settings);
         let hard_over = used > hard_budget;
         if !hard_over && !soft_over {
             return Ok(());

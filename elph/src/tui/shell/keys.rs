@@ -805,6 +805,36 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
+            // `+` / `-` — add / remove highlighted model from scoped models.
+            // Works from list *or* filter focus (filter field blocks these chars from typing).
+            if let Some(action) = model_selector_scoped_action(modifiers, code) {
+                let selection = pending_model_selector.read().as_ref().and_then(|pending| {
+                    let mut pending = pending.clone();
+                    sync_pending_filter(&mut pending, &model_filter.read());
+                    pending.selected_model().map(|row| row.value)
+                });
+                if let Some(value) = selection {
+                    let mut session_scoped = session_scoped_items.write();
+                    if let Some(status) = apply_model_scoped_action(&paths, &mut session_scoped, &value, action) {
+                        drop(session_scoped);
+                        if let Some(pending) = pending_model_selector.write().as_mut() {
+                            sync_pending_filter(pending, &model_filter.read());
+                            pending.refresh_scoped_models(&session_scoped_items.read());
+                            model_selected_index.set(pending.model_index);
+                            model_provider_index.set(pending.provider_index);
+                        }
+                        publish_ephemeral_transcript_notice(
+                            &mut messages,
+                            &mut messages_revision,
+                            &mut pending_transcript_notice_expires,
+                            MODEL_SET_NOTICE_KEY,
+                            status,
+                        );
+                    }
+                }
+                return;
+            }
+
             if model_input_focus.get() == ModelSelectorFocus::List
                 && let Some(seed) = model_selector_filter_seed(modifiers, code)
                 && let Some(pending) = pending_model_selector.write().as_mut()

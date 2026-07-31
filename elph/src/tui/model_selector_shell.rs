@@ -147,23 +147,87 @@ pub enum ModelSelectorFilterSeed {
     Append(char),
 }
 
-/// Plain alphabet, digit, space, or `/` — refocus filter and optionally seed the first keystroke.
+/// Letters or `/` only — refocus filter and optionally seed the first keystroke.
 ///
-/// `h` / `j` / `k` / `l` are reserved for vim-style list navigation.
+/// Digits, space, `+`, `-`, and other punctuation never seed the filter from list focus.
+/// Reserved on the list (not filter seeds):
+/// - `h` / `j` / `k` / `l` — vim-style navigation
+/// - `+` / `-` — add / remove from scoped models
 pub fn model_selector_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ModelSelectorFilterSeed> {
-    if !modifiers.is_empty() {
+    // Allow Shift (caps); reject Ctrl/Alt/Meta. Never seed on +/−/=/_.
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
         return None;
     }
     match code {
         KeyCode::Char('/') => Some(ModelSelectorFilterSeed::FocusOnly),
-        KeyCode::Char(' ') => Some(ModelSelectorFilterSeed::Append(' ')),
-        KeyCode::Char(c)
-            if (c.is_ascii_alphabetic() || c.is_ascii_digit())
-                && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') =>
-        {
+        KeyCode::Char(c) if c.is_ascii_alphabetic() && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') => {
             Some(ModelSelectorFilterSeed::Append(c))
         }
+        // Digits, space, +/−, punctuation: never seed filter from list focus.
         _ => None,
+    }
+}
+
+/// Scoped-list shortcut while the model list is focused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelSelectorScopedAction {
+    /// Add the highlighted model to `models.scopedModels` / Ctrl+P cycle list.
+    Add,
+    /// Remove the highlighted model from the scoped list.
+    Remove,
+}
+
+pub fn model_selector_scoped_action(modifiers: KeyModifiers, code: KeyCode) -> Option<ModelSelectorScopedAction> {
+    // `+` is often Shift+'=' on US keyboards — allow Shift, reject Ctrl/Alt/Meta.
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
+        return None;
+    }
+    match code {
+        // `+` (with or without Shift), and bare `=` as a fallback on some terminals.
+        KeyCode::Char('+') | KeyCode::Char('=') => Some(ModelSelectorScopedAction::Add),
+        // `-` is unshifted on most layouts; `_` is Shift+'-' — both remove.
+        KeyCode::Char('-') | KeyCode::Char('_') => Some(ModelSelectorScopedAction::Remove),
+        _ => None,
+    }
+}
+
+/// Apply add/remove to the live scoped list and persist to home settings.
+///
+/// Returns a short status line when the list changed, or `None` if already present/missing.
+pub fn apply_model_scoped_action(
+    paths: &Paths,
+    session_scoped: &mut Vec<String>,
+    model_value: &str,
+    action: ModelSelectorScopedAction,
+) -> Option<String> {
+    // Seed from settings when the session list is still empty (picker may have used settings only).
+    if session_scoped.is_empty() {
+        *session_scoped = Settings::load(paths)
+            .map(|s| s.models.scoped_models)
+            .unwrap_or_default();
+    }
+    let value = model_value.trim();
+    if value.is_empty() || !value.contains('/') {
+        return None;
+    }
+    match action {
+        ModelSelectorScopedAction::Add => {
+            if session_scoped.iter().any(|v| v == value) {
+                return Some(format!("Already in scoped models: {value}"));
+            }
+            session_scoped.push(value.to_string());
+            crate::tui::session_prefs::persist_scoped_model_items(paths, session_scoped);
+            Some(format!("Added to scoped models: {value}"))
+        }
+        ModelSelectorScopedAction::Remove => {
+            let before = session_scoped.len();
+            session_scoped.retain(|v| v != value);
+            if session_scoped.len() == before {
+                return Some(format!("Not in scoped models: {value}"));
+            }
+            crate::tui::session_prefs::persist_scoped_model_items(paths, session_scoped);
+            Some(format!("Removed from scoped models: {value}"))
+        }
     }
 }
 
@@ -257,7 +321,7 @@ mod tests {
     use crate::tui::model_selector::ModelScopeMode;
 
     #[test]
-    fn filter_seed_accepts_alphabet_digits_space_and_slash() {
+    fn filter_seed_accepts_alphabet_and_slash_only() {
         assert_eq!(
             model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('/')),
             Some(ModelSelectorFilterSeed::FocusOnly)
@@ -267,13 +331,14 @@ mod tests {
             Some(ModelSelectorFilterSeed::Append('c'))
         );
         assert_eq!(
-            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('4')),
-            Some(ModelSelectorFilterSeed::Append('4'))
+            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('a')),
+            Some(ModelSelectorFilterSeed::Append('a'))
         );
-        assert_eq!(
-            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char(' ')),
-            Some(ModelSelectorFilterSeed::Append(' '))
-        );
+        // Digits, space, +/− never seed filter.
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('4')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char(' ')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('+')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('-')), None);
     }
 
     #[test]
@@ -281,6 +346,51 @@ mod tests {
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('j')), None);
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('l')), None);
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('H')), None);
+    }
+
+    #[test]
+    fn scoped_action_maps_plus_and_minus() {
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('+')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        // Shift+'+' / Shift+'=' (US keyboard) must still add.
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('+')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('=')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('-')),
+            Some(ModelSelectorScopedAction::Remove)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('_')),
+            Some(ModelSelectorScopedAction::Remove)
+        );
+        assert_eq!(model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('a')), None);
+        assert_eq!(model_selector_scoped_action(KeyModifiers::CONTROL, KeyCode::Char('+')), None);
+    }
+
+    #[test]
+    fn apply_scoped_add_remove_round_trip() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("repo"));
+        Settings::ensure(&paths).expect("ensure");
+        let mut scoped = Vec::new();
+        let msg = apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        assert!(msg.unwrap().contains("Added"));
+        assert_eq!(scoped, vec!["opencode/big-pickle".to_string()]);
+        let again =
+            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        assert!(again.unwrap().contains("Already"));
+        let removed =
+            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Remove);
+        assert!(removed.unwrap().contains("Removed"));
+        assert!(scoped.is_empty());
     }
 
     #[test]
