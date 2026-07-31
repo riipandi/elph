@@ -8,10 +8,9 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
 
-use crate::agent::SkillConflict;
 use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
-use crate::agent::{create_coding_session_with_events, format_skill_conflict_notice};
+use crate::agent::{create_coding_session_with_events, format_resource_conflict_notice, format_resource_load_warnings};
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::markdown::AssistantMarkdownBuffer;
 use crate::tui::transcript::markdown::parse_markdown_on_worker;
@@ -112,14 +111,21 @@ fn upsert_startup_line(
 }
 
 /// Opening transcript lines before async bootstrap begins.
-pub fn initial_startup_messages(skill_conflicts: &[SkillConflict]) -> Vec<TranscriptMessage> {
+pub fn initial_startup_messages(loaded: &LoadResourcesResult) -> Vec<TranscriptMessage> {
     let mut messages = vec![TranscriptMessage::startup_status(
         STARTUP_KEY_PHASE,
         format!("Preparing workspace{STARTUP_ELLIPSIS}"),
         TranscriptStyle::StatusRunning,
     )];
-    if let Some(notice) = format_skill_conflict_notice(skill_conflicts) {
-        messages.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
+    if let Some(notice) = format_resource_conflict_notice(loaded) {
+        let mut msg = TranscriptMessage::text(notice, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
+    }
+    if let Some(warn) = format_resource_load_warnings(loaded) {
+        let mut msg = TranscriptMessage::text(warn, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
     }
     messages
 }
@@ -855,7 +861,7 @@ mod tests {
 
     #[test]
     fn phase_line_upserts_in_place() {
-        let mut messages = initial_startup_messages(&[]);
+        let mut messages = initial_startup_messages(&LoadResourcesResult::default());
         assert_eq!(messages[0].content, "Preparing workspace…");
         begin_agent_startup(&mut messages);
         assert_eq!(messages.len(), 1);

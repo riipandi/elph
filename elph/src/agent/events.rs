@@ -47,6 +47,9 @@ pub struct QueuedPromptItem {
 #[derive(Debug)]
 pub enum AgentUiEvent {
     Status(String),
+    /// Durable transcript notice (conflicts, reload details). Always **appends** a Meta
+    /// card — unlike [`Self::Status`], it is not collapsed into the previous Meta line.
+    TranscriptNotice(String),
     /// Result of a `/memory` command — the shell opens a ScrollTextDialog.
     MemoryResult(String),
     TextDelta(String),

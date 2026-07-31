@@ -34,8 +34,7 @@ where
             .unwrap_or_else(|_| crate::session::durability::new_id("op"));
         let result = async {
             let turn_state = self.create_turn_state().await?;
-            self.execute_turn(turn_state, text.into(), options, op_id.clone())
-                .await
+            self.execute_turn(turn_state, text.into(), options, op_id.clone()).await
         }
         .await;
         let outcome = if result.is_ok() {
@@ -44,11 +43,7 @@ where
             crate::session::durability::OperationOutcome::Failed
         };
         let _ = self
-            .journal_operation_finished(
-                op_id,
-                outcome,
-                result.as_ref().err().map(|e| e.to_string()),
-            )
+            .journal_operation_finished(op_id, outcome, result.as_ref().err().map(|e| e.to_string()))
             .await;
         if result.is_err() {
             *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
@@ -274,22 +269,14 @@ where
         };
         // Re-check after dequeue: turn may have ended while we held the follow-up lock.
         if self.phase_async().await == AgentHarnessPhase::Idle {
-            self.shared
-                .follow_up_queue
-                .lock()
-                .await
-                .insert(0, (follow_id, message));
+            self.shared.follow_up_queue.lock().await.insert(0, (follow_id, message));
             return Err(AgentHarnessError::new(
                 AgentHarnessErrorCode::InvalidState,
                 "Cannot promote follow-up to steer while idle",
             ));
         }
         let _ = self
-            .journal_queue_consume(
-                crate::session::durability::QueueKind::FollowUp,
-                vec![follow_id],
-                None,
-            )
+            .journal_queue_consume(crate::session::durability::QueueKind::FollowUp, vec![follow_id], None)
             .await;
         self.push_durable_queue(crate::session::durability::QueueKind::Steer, message.clone())
             .await?;

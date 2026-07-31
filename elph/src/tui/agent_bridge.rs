@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::agent::format_skill_conflict_notice;
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
 use crate::agent::{SlashDispatch, SubagentUiPhase};
@@ -121,7 +120,16 @@ impl SlashDispatcher {
                     let _ = ui_tx.send(AgentUiEvent::Status(status));
                 }
                 SlashDispatch::Reload => {
-                    let mut messages = Vec::new();
+                    let mut summary = Vec::new();
+                    let mut notices = Vec::new();
+
+                    // ── Providers (disk catalogs → process-wide overrides) ──
+                    if let Some(paths) = paths.as_ref() {
+                        match crate::agent::install_providers_dir(&paths.providers_dir()) {
+                            Ok(n) => summary.push(format!("Providers reloaded ({n} catalog file(s)).")),
+                            Err(err) => summary.push(format!("Provider catalog reload failed: {err}")),
+                        }
+                    }
 
                     // ── Reload and apply Settings ──────────────────────────
                     if let Some(paths) = paths.as_ref() {
@@ -150,27 +158,34 @@ impl SlashDispatcher {
                                     let mode = crate::agent::agent_mode_from_setting(&settings.session.agent_mode);
                                     *session.mode_state().lock().await = mode;
 
-                                    messages.push("Settings reloaded.".into());
+                                    summary.push("Settings reloaded.".into());
                                 }
                                 Err(err) => {
-                                    messages.push(format!("Settings reload (model resolve) failed: {err}"));
+                                    summary.push(format!("Settings reload (model resolve) failed: {err}"));
                                 }
                             }
                         } else if let Err(err) = settings {
-                            messages.push(format!("Settings reload failed: {err}"));
+                            summary.push(format!("Settings reload failed: {err}"));
                         }
                     }
 
-                    // ── Reload Resources (skills, templates) ───────────────
+                    // ── Reload Resources (skills, templates, agent conflicts) ─
                     if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
                         match session.reload_resources(paths, cwd).await {
                             Ok(loaded) => {
-                                messages.push("Resources reloaded.".into());
-                                if let Some(notice) = format_skill_conflict_notice(&loaded.skill_conflicts) {
-                                    messages.push(notice);
+                                summary.push(format!(
+                                    "Resources reloaded ({} skill(s), {} template(s)).",
+                                    loaded.skill_count(),
+                                    loaded.template_count()
+                                ));
+                                if let Some(notice) = crate::agent::format_resource_conflict_notice(&loaded) {
+                                    notices.push(notice);
+                                }
+                                if let Some(warn) = crate::agent::format_resource_load_warnings(&loaded) {
+                                    notices.push(warn);
                                 }
                             }
-                            Err(err) => messages.push(format!("Resource reload failed: {err}")),
+                            Err(err) => summary.push(format!("Resource reload failed: {err}")),
                         }
                     }
 
@@ -179,15 +194,18 @@ impl SlashDispatcher {
                         && let Some(paths) = paths.as_ref()
                     {
                         match host.reload(paths, true) {
-                            Ok(_) => messages.push("Extensions reloaded.".into()),
-                            Err(err) => messages.push(format!("Extension reload failed: {err}")),
+                            Ok(_) => summary.push("Extensions reloaded.".into()),
+                            Err(err) => summary.push(format!("Extension reload failed: {err}")),
                         }
                     }
 
-                    if messages.is_empty() {
-                        messages.push("Reload unavailable.".into());
+                    if summary.is_empty() {
+                        summary.push("Reload unavailable.".into());
                     }
-                    let _ = ui_tx.send(AgentUiEvent::Status(messages.join("\n\n")));
+                    let _ = ui_tx.send(AgentUiEvent::Status(summary.join("\n")));
+                    for notice in notices {
+                        let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(notice));
+                    }
                 }
                 SlashDispatch::Extension { name, args } => {
                     let status = if let Some(host) = extension_host.as_ref() {
@@ -510,6 +528,7 @@ impl TranscriptEventApplier {
                 }
             }
             AgentUiEvent::Status(message) => self.push_status(messages, message.trim()),
+            AgentUiEvent::TranscriptNotice(message) => self.push_transcript_notice(messages, message.trim()),
             // SubagentOutput is NOT pushed to the transcript — it's stored in a
             // shared output buffer in the shell and displayed in the SubagentOutputDialog.
             // Returning false here prevents the transcript from being flooded with
@@ -542,12 +561,29 @@ impl TranscriptEventApplier {
         }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Meta
+            && !last.sticky_meta
         {
             last.content = line.to_string();
             return true;
         }
         self.begin_meta(messages);
         messages.push(TranscriptMessage::text(line, TranscriptStyle::Meta));
+        true
+    }
+
+    /// Always **append** a sticky Meta transcript card (resource conflicts, reload details).
+    ///
+    /// Unlike [`Self::push_status`], never collapses into the previous Meta line and is not
+    /// overwritten by later ephemeral status updates.
+    fn push_transcript_notice(&mut self, messages: &mut Vec<TranscriptMessage>, line: &str) -> bool {
+        let line = line.trim();
+        if line.is_empty() {
+            return false;
+        }
+        self.begin_meta(messages);
+        let mut msg = TranscriptMessage::text(line, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
         true
     }
 
@@ -1075,6 +1111,22 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].style, TranscriptStyle::Meta);
         assert_eq!(messages[0].content, "History compacted.");
+    }
+
+    #[test]
+    fn transcript_notice_is_sticky_and_not_replaced_by_status() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::TranscriptNotice("Resource name conflicts resolved:\n  • review: a → b".into()),
+        ));
+        assert_eq!(messages.len(), 1);
+        assert!(messages[0].sticky_meta);
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("History compacted.".into())));
+        assert_eq!(messages.len(), 2, "status must not overwrite sticky conflict notice");
+        assert!(messages[0].content.contains("conflicts"));
+        assert_eq!(messages[1].content, "History compacted.");
     }
 
     #[test]

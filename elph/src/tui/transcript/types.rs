@@ -166,6 +166,8 @@ pub struct TranscriptMessage {
     pub agent_tag: Option<String>,
     /// User-initiated shell execution (`!`/`!!`) — output renders without truncation limits.
     pub user_shell: bool,
+    /// When true, Meta rows are not replaced by later ephemeral [`TranscriptStyle::Meta`] status updates.
+    pub sticky_meta: bool,
 }
 
 impl TranscriptMessage {
@@ -188,6 +190,7 @@ impl TranscriptMessage {
             agent_tag: None,
             user_pinned: false,
             user_shell: false,
+            sticky_meta: false,
         }
     }
 
@@ -271,6 +274,7 @@ impl TranscriptMessage {
             agent_tag: None,
             user_pinned: false,
             user_shell: false,
+            sticky_meta: false,
         }
     }
 

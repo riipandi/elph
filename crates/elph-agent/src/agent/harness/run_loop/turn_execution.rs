@@ -117,11 +117,7 @@ where
             Ok(r) => r,
             Err(error) => {
                 let _ = self
-                    .journal_turn_finished(
-                        turn_id,
-                        operation_id,
-                        crate::session::durability::OperationOutcome::Failed,
-                    )
+                    .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                     .await;
                 return Err(error);
             }
@@ -193,9 +189,7 @@ where
                 } else {
                     crate::session::durability::OperationOutcome::Failed
                 };
-                let _ = self
-                    .journal_turn_finished(turn_id, operation_id, outcome)
-                    .await;
+                let _ = self.journal_turn_finished(turn_id, operation_id, outcome).await;
                 return self
                     .emit_run_failure(&model, &error, abort_token.is_cancelled(), &emit)
                     .await;
@@ -204,20 +198,12 @@ where
 
         if let Err(error) = self.flush_pending_session_writes().await {
             let _ = self
-                .journal_turn_finished(
-                    turn_id,
-                    operation_id,
-                    crate::session::durability::OperationOutcome::Failed,
-                )
+                .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
                 .await;
             return Err(error);
         }
         let _ = self
-            .journal_turn_finished(
-                turn_id,
-                operation_id,
-                crate::session::durability::OperationOutcome::Completed,
-            )
+            .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Completed)
             .await;
 
         for message in run_result.into_iter().rev() {

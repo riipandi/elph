@@ -106,6 +106,7 @@ pub fn activity_label_for_event(event: &AgentUiEvent, show_thinking: bool) -> Op
         | AgentUiEvent::QueueUpdate { .. }
         | AgentUiEvent::MemoryResult(_)
         | AgentUiEvent::UserPromptCommitted { .. }
+        | AgentUiEvent::TranscriptNotice(_)
         | AgentUiEvent::SubagentOutput { .. } => None,
         AgentUiEvent::ModeChangeRequired(req) => Some(format!("Switch to {} mode?", req.target_mode)),
     }

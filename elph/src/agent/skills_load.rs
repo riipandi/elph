@@ -35,6 +35,11 @@ fn skill_dir_entries(paths: &Paths) -> Vec<(String, String)> {
     let project = paths.project_dir();
     let project_display = project.display();
     vec![
+        // Built-ins unpacked from the binary (CONFIG_DIR/bundled/skills).
+        (
+            paths.bundled_dir().join("skills").to_string_lossy().to_string(),
+            "~/.config/elph/bundled/skills".to_string(),
+        ),
         (
             home.join(".agents/skills").to_string_lossy().to_string(),
             "~/.agents/skills".to_string(),

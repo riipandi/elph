@@ -77,10 +77,7 @@ pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
     let value: serde_json::Value =
         serde_json::from_str(json).map_err(|e| format!("invalid provider catalog JSON: {e}"))?;
 
-    let wrapper_base = value
-        .get("baseUrl")
-        .and_then(|v| v.as_str())
-        .map(str::to_string);
+    let wrapper_base = value.get("baseUrl").and_then(|v| v.as_str()).map(str::to_string);
     let wrapper_headers = value
         .get("headers")
         .cloned()
@@ -364,13 +361,21 @@ mod tests {
         assert_eq!(models.len(), 2);
         assert_eq!(models[0].base_url, "https://gateway.example");
         assert_eq!(
-            models[0].headers.as_ref().and_then(|h| h.get("X-Custom")).map(String::as_str),
+            models[0]
+                .headers
+                .as_ref()
+                .and_then(|h| h.get("X-Custom"))
+                .map(String::as_str),
             Some("1")
         );
         // Per-model baseUrl/headers win over wrapper.
         assert_eq!(models[1].base_url, "https://model-specific");
         assert_eq!(
-            models[1].headers.as_ref().and_then(|h| h.get("X-Keep")).map(String::as_str),
+            models[1]
+                .headers
+                .as_ref()
+                .and_then(|h| h.get("X-Keep"))
+                .map(String::as_str),
             Some("yes")
         );
     }

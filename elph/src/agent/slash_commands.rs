@@ -67,7 +67,7 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
-        builtin("reload", "Reload resources"),
+        builtin("reload", "Reload providers, settings, skills, templates, extensions"),
         builtin("quit", "Quit Elph"),
         builtin_with_args("memory", "Agent memory store (floppy)"),
         builtin("feedback", "Report a bug or join community"),

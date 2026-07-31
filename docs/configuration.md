@@ -12,11 +12,14 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 ~/.config/elph/                              # CONFIG_DIR
 ├── agents/                  # User-managed custom agents (markdown frontmatter)
 ├── bundled/
-│   ├── agents/              # Built-in agents
-│   ├── skills/
-│   ├── user-guide/
+│   ├── agents/              # Built-in agents (placeholder dirs)
+│   ├── skills/              # Built-in skills (embedded, extracted on first run)
+│   │   └── create-skill/SKILL.md
+│   ├── user-guide/          # Built-in docs (embedded from repo assets/user-guide)
+│   │   ├── README.md
+│   │   └── 01-….md …
 │   ├── personas/
-│   └── manifest.json        # Checksums for bundled content
+│   └── manifest.json        # Version + checksums for newly written bundled files
 ├── extensions/              # Global WASM extension bundles (placeholder / installed)
 │   └── <name>/
 │       ├── extension.toml
@@ -90,8 +93,21 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | App / crash / MCP logs | `APP_DATA/logs/` | Rolling JSONL, dated crash logs, MCP stderr |
 | Config files | `CONFIG_DIR/*.json` | Settings, auth, trust, MCP, providers |
 | Provider catalogs | `CONFIG_DIR/providers/*.json` | Disk model overlays (see below) |
+| Bundled assets | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing |
 
 Goals remain on `APP_DATA/metadata.db` (`goals` table). Path and table contract must stay stable across layout refactors.
+
+### Bundled user guide and skills
+
+Source tree (repo): `assets/user-guide/`, `assets/skills/<name>/`.
+
+At compile time these files are embedded in the `elph` binary. Bootstrap unpacks them into
+`CONFIG_DIR/bundled/` **only when the destination file is missing** (user edits are never
+overwritten). Checksums for newly written files are merged into `bundled/manifest.json`.
+
+Skill discovery includes `CONFIG_DIR/bundled/skills` as the lowest-priority directory so
+built-ins (e.g. `create-skill`) appear unless a user/project skill overrides the same name.
+
 
 ### Provider catalogs (`CONFIG_DIR/providers/`)
 

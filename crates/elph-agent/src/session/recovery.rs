@@ -11,8 +11,8 @@ use elph_ai::{ContentBlock, Message};
 use crate::messages::now_iso_timestamp;
 use crate::messages::types::{extract_tool_calls, llm_message_to_agent};
 use crate::session::durability::{
-    CT_OPERATION_FINISHED, DurableHarnessState, OperationFinishedRecord, OperationOutcome,
-    encode_operation_finished, reduce_durable_state,
+    CT_OPERATION_FINISHED, DurableHarnessState, OperationFinishedRecord, OperationOutcome, encode_operation_finished,
+    reduce_durable_state,
 };
 use crate::session::id::generate_entry_id;
 use crate::session::tree::Session;
@@ -69,10 +69,7 @@ pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
         }
     }
 
-    let unanswered: Vec<_> = pending
-        .into_iter()
-        .filter(|(id, _)| !answered.contains(id))
-        .collect();
+    let unanswered: Vec<_> = pending.into_iter().filter(|(id, _)| !answered.contains(id)).collect();
     if unanswered.is_empty() {
         return Ok(RecoveryReport::default());
     }
@@ -93,8 +90,7 @@ pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
             tool_call_id: call_id.clone(),
             tool_name: tool_name.clone(),
             content: vec![ContentBlock::Text {
-                text: "Interrupted: session recovered after process exit before this tool finished."
-                    .into(),
+                text: "Interrupted: session recovered after process exit before this tool finished.".into(),
             }],
             details: None,
             added_tool_names: None,
@@ -149,7 +145,9 @@ fn unix_ms() -> i64 {
 mod tests {
     use super::*;
     use crate::session::backends::{InMemorySessionOptions, InMemorySessionStorage};
-    use crate::session::durability::{CT_OPERATION_STARTED, OperationKind, OperationStartedRecord, encode_operation_started};
+    use crate::session::durability::{
+        CT_OPERATION_STARTED, OperationKind, OperationStartedRecord, encode_operation_started,
+    };
     use crate::session::repo_utils::to_session;
     use elph_ai::{AssistantContentBlock, ToolCall, faux_assistant_message};
 
@@ -202,10 +200,8 @@ mod tests {
 
     #[tokio::test]
     async fn load_durable_state_rehydrates_queues() {
-        use crate::session::durability::{
-            CT_QUEUE_ENQUEUE, QueueEnqueueRecord, QueueKind, encode_queue_enqueue,
-        };
         use crate::messages::types::llm_message_to_agent;
+        use crate::session::durability::{CT_QUEUE_ENQUEUE, QueueEnqueueRecord, QueueKind, encode_queue_enqueue};
         use elph_ai::{Message, UserContent};
 
         let storage = InMemorySessionStorage::new(Some(InMemorySessionOptions::default())).expect("storage");

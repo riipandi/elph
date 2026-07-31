@@ -40,6 +40,15 @@ async fn ensure_creates_full_home() {
         paths.providers_dir().join("anthropic.json").is_file(),
         "bootstrap should unpack anthropic.json"
     );
+    // Embedded user-guide + built-in skills extracted under bundled/.
+    assert!(
+        paths.bundled_dir().join("user-guide/01-getting-started.md").is_file(),
+        "bootstrap should unpack user-guide"
+    );
+    assert!(
+        paths.bundled_dir().join("skills/create-skill/SKILL.md").is_file(),
+        "bootstrap should unpack create-skill"
+    );
     assert!(paths.config_dir().join("AGENTS.md").is_file());
     assert!(paths.projects_dir().is_dir());
     assert!(paths.host_mcp_cache_dir().is_dir());

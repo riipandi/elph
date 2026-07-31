@@ -41,7 +41,9 @@ pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 pub use provider::{is_known_provider, provider_api_key_env, provider_config, resolve_provider_and_model};
 pub use provider_catalog::install_providers_dir;
 pub use resource_loader::LoadResourcesResult;
-pub use resource_loader::load_resources;
+pub use resource_loader::{
+    CrossKindConflict, TemplateConflict, format_resource_conflict_notice, format_resource_load_warnings, load_resources,
+};
 pub use run_mode::RunModeOptions;
 pub use run_mode::run_non_interactive;
 pub use runtime::CreateSessionOptions;
@@ -52,6 +54,7 @@ pub use session_manager::SessionManager;
 pub use skills_load::SkillConflict;
 pub use skills_load::{format_skill_conflict_notice, truncate_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
+// format_skill_conflict_notice kept for callers; prefer format_resource_conflict_notice for full reports.
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,

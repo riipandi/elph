@@ -176,11 +176,7 @@ where
     }
 
     /// Push a message onto a durable queue (journal enqueue then in-memory).
-    pub(crate) async fn push_durable_queue(
-        &self,
-        kind: QueueKind,
-        message: AgentMessage,
-    ) -> HarnessOpResult<String> {
+    pub(crate) async fn push_durable_queue(&self, kind: QueueKind, message: AgentMessage) -> HarnessOpResult<String> {
         let queue_id = self
             .journal_queue_enqueue(kind, &message)
             .await
@@ -204,9 +200,7 @@ where
     }
 
     /// Snapshot queue messages without durable ids (public event / API shape).
-    pub(crate) async fn queue_messages_snapshot(
-        &self,
-    ) -> (Vec<AgentMessage>, Vec<AgentMessage>, Vec<AgentMessage>) {
+    pub(crate) async fn queue_messages_snapshot(&self) -> (Vec<AgentMessage>, Vec<AgentMessage>, Vec<AgentMessage>) {
         let steer = self
             .shared
             .steer_queue

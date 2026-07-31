@@ -464,6 +464,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
 
             if let AgentUiEvent::Status(ref message) = event {
                 if message.to_ascii_lowercase().contains("reloaded") {
+                    // `/reload` refreshes skills/templates — rebuild slash palette.
                     palette_refresh_pending.set(true);
                 }
                 // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.

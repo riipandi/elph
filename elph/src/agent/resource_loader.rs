@@ -1,49 +1,308 @@
-//! Load skills, prompts, and project context into harness resources.
+//! Load skills, prompts, agents, and project context into harness resources.
+//!
+//! Name conflicts across directories use last-wins priority (later path wins).
+//! Callers surface conflicts to the user transcript via [`format_resource_conflict_notice`].
+
+use std::collections::HashMap;
+use std::path::Path;
 
 use crate::utils::path::AppPaths;
 use elph_agent::load_prompt_templates;
-use elph_agent::{AgentHarnessResources, LocalExecutionEnv};
-use std::path::Path;
+use elph_agent::{AgentHarnessResources, LocalExecutionEnv, PromptTemplate};
 
-use super::skills_load::WorkspaceSkills;
-use super::skills_load::load_workspace_skills;
+use super::agents_load::{AgentConflict, WorkspaceAgents, load_workspace_agents};
+use super::skills_load::{SkillConflict, WorkspaceSkills, load_workspace_skills};
 use crate::platform::Paths;
 
-#[derive(Debug, Clone)]
-pub struct LoadResourcesResult {
-    pub resources: AgentHarnessResources,
-    pub skill_conflicts: Vec<super::skills_load::SkillConflict>,
+/// A prompt template name defined in multiple directories; the later directory wins.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateConflict {
+    pub name: String,
+    pub overridden_label: String,
+    pub winner_label: String,
 }
 
-pub fn prompt_template_search_paths(paths: &Paths, cwd: &Path) -> Vec<String> {
-    let mut search_paths = vec![paths.prompts_dir().to_string_lossy().to_string()];
+/// Same slash name defined as both a skill and a prompt template.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CrossKindConflict {
+    pub name: String,
+    /// Which kind wins for slash dispatch when both exist (prompt template before skill).
+    pub slash_winner: &'static str,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LoadResourcesResult {
+    pub resources: AgentHarnessResources,
+    pub skill_conflicts: Vec<SkillConflict>,
+    pub agent_conflicts: Vec<AgentConflict>,
+    pub template_conflicts: Vec<TemplateConflict>,
+    pub cross_kind_conflicts: Vec<CrossKindConflict>,
+    /// Non-fatal load diagnostics (parse/list failures, etc.).
+    pub warnings: Vec<String>,
+}
+
+impl LoadResourcesResult {
+    pub fn has_conflicts(&self) -> bool {
+        !self.skill_conflicts.is_empty()
+            || !self.agent_conflicts.is_empty()
+            || !self.template_conflicts.is_empty()
+            || !self.cross_kind_conflicts.is_empty()
+    }
+
+    pub fn skill_count(&self) -> usize {
+        self.resources.skills.len()
+    }
+
+    pub fn template_count(&self) -> usize {
+        self.resources.prompt_templates.len()
+    }
+}
+
+/// `(absolute path, display label)` for prompt template search (lowest priority first).
+pub fn prompt_template_dir_entries(paths: &Paths, cwd: &Path) -> Vec<(String, String)> {
+    let mut entries = vec![(
+        paths.prompts_dir().to_string_lossy().to_string(),
+        "~/.config/elph/prompts".to_string(),
+    )];
     let project_prompts = paths.project_elph_dir().join("prompts");
+    let project_display = paths.project_dir().display();
     if project_prompts.is_dir() {
-        search_paths.push(project_prompts.to_string_lossy().to_string());
+        entries.push((
+            project_prompts.to_string_lossy().to_string(),
+            format!("{project_display}/.elph/prompts"),
+        ));
     }
     let agents_prompts = cwd.join(".agents").join("prompts");
     if agents_prompts.is_dir() {
-        search_paths.push(agents_prompts.to_string_lossy().to_string());
+        entries.push((
+            agents_prompts.to_string_lossy().to_string(),
+            format!("{project_display}/.agents/prompts"),
+        ));
     }
-    search_paths
+    entries
 }
 
 pub async fn load_resources(paths: &Paths, cwd: &Path, env: &LocalExecutionEnv) -> LoadResourcesResult {
-    let WorkspaceSkills { skills, conflicts } = load_workspace_skills(env, paths).await;
-    let mut resources = AgentHarnessResources {
+    let mut warnings = Vec::new();
+
+    let WorkspaceSkills {
         skills,
+        conflicts: skill_conflicts,
+    } = load_workspace_skills(env, paths).await;
+
+    let WorkspaceAgents {
+        agents: _agents,
+        conflicts: agent_conflicts,
+    } = load_workspace_agents(paths);
+
+    let (prompt_templates, template_conflicts, template_warnings) =
+        load_prompt_templates_resolved(env, paths, cwd).await;
+    warnings.extend(template_warnings);
+
+    let cross_kind_conflicts = detect_cross_kind_conflicts(&skills, &prompt_templates);
+
+    let resources = AgentHarnessResources {
+        skills,
+        prompt_templates,
         ..Default::default()
     };
 
-    let search_paths = prompt_template_search_paths(paths, cwd);
-    let path_refs: Vec<&str> = search_paths.iter().map(String::as_str).collect();
-    let loaded = load_prompt_templates(env, &path_refs).await;
-    for diagnostic in loaded.diagnostics {
-        log::warn!("prompt template load warning ({}): {}", diagnostic.path, diagnostic.message);
-    }
-    resources.prompt_templates = loaded.prompt_templates;
     LoadResourcesResult {
         resources,
-        skill_conflicts: conflicts,
+        skill_conflicts,
+        agent_conflicts,
+        template_conflicts,
+        cross_kind_conflicts,
+        warnings,
+    }
+}
+
+/// Load templates from each directory in priority order; later dirs win on name clash.
+async fn load_prompt_templates_resolved(
+    env: &LocalExecutionEnv,
+    paths: &Paths,
+    cwd: &Path,
+) -> (Vec<PromptTemplate>, Vec<TemplateConflict>, Vec<String>) {
+    let mut source_by_name: HashMap<String, String> = HashMap::new();
+    let mut by_name: HashMap<String, PromptTemplate> = HashMap::new();
+    let mut conflicts = Vec::new();
+    let mut warnings = Vec::new();
+
+    for (path, label) in prompt_template_dir_entries(paths, cwd) {
+        let loaded = load_prompt_templates(env, &[path.as_str()]).await;
+        for diagnostic in loaded.diagnostics {
+            warnings.push(format!("prompt template ({}): {}", diagnostic.path, diagnostic.message));
+        }
+        for template in loaded.prompt_templates {
+            if let Some(previous) = source_by_name.get(&template.name) {
+                conflicts.push(TemplateConflict {
+                    name: template.name.clone(),
+                    overridden_label: previous.clone(),
+                    winner_label: label.clone(),
+                });
+            }
+            source_by_name.insert(template.name.clone(), label.clone());
+            by_name.insert(template.name.clone(), template);
+        }
+    }
+
+    let mut prompt_templates: Vec<PromptTemplate> = by_name.into_values().collect();
+    prompt_templates.sort_by(|a, b| a.name.cmp(&b.name));
+    conflicts.sort_by(|a, b| a.name.cmp(&b.name));
+    (prompt_templates, conflicts, warnings)
+}
+
+fn detect_cross_kind_conflicts(skills: &[elph_agent::Skill], templates: &[PromptTemplate]) -> Vec<CrossKindConflict> {
+    let skill_names: std::collections::HashSet<&str> = skills.iter().map(|s| s.name.as_str()).collect();
+    let mut out = Vec::new();
+    for template in templates {
+        if skill_names.contains(template.name.as_str()) {
+            out.push(CrossKindConflict {
+                name: template.name.clone(),
+                // dispatch_slash_command prefers prompt templates over skills (after builtins/extensions).
+                slash_winner: "prompt template",
+            });
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+/// User-facing multi-section notice for all resource name conflicts.
+///
+/// Prefer sending this via [`crate::agent::AgentUiEvent::TranscriptNotice`] so it
+/// appends to the transcript and is not replaced by later status Meta lines.
+pub fn format_resource_conflict_notice(result: &LoadResourcesResult) -> Option<String> {
+    if !result.has_conflicts() {
+        return None;
+    }
+
+    let mut lines = vec!["Resource name conflicts resolved (higher-priority path wins):".to_string()];
+
+    if !result.skill_conflicts.is_empty() {
+        lines.push("Skills:".into());
+        for c in &result.skill_conflicts {
+            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
+        }
+    }
+    if !result.template_conflicts.is_empty() {
+        lines.push("Prompt templates:".into());
+        for c in &result.template_conflicts {
+            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
+        }
+    }
+    if !result.agent_conflicts.is_empty() {
+        lines.push("Agents:".into());
+        for c in &result.agent_conflicts {
+            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
+        }
+    }
+    if !result.cross_kind_conflicts.is_empty() {
+        lines.push("Same name as skill and prompt template (slash prefers prompt template):".into());
+        for c in &result.cross_kind_conflicts {
+            lines.push(format!("  • /{} → {}", c.name, c.slash_winner));
+        }
+    }
+
+    Some(lines.join("\n"))
+}
+
+/// Non-fatal load warnings for transcript (parse errors, unreadable dirs).
+pub fn format_resource_load_warnings(result: &LoadResourcesResult) -> Option<String> {
+    if result.warnings.is_empty() {
+        return None;
+    }
+    let mut lines = vec!["Resource load warnings:".to_string()];
+    for w in &result.warnings {
+        lines.push(format!("  • {w}"));
+    }
+    Some(lines.join("\n"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elph_agent::Skill;
+    use tempfile::TempDir;
+
+    fn test_paths(tmp: &TempDir) -> Paths {
+        Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"))
+    }
+
+    #[test]
+    fn format_notice_includes_all_sections() {
+        let result = LoadResourcesResult {
+            skill_conflicts: vec![SkillConflict {
+                name: "review".into(),
+                overridden_label: "bundled".into(),
+                winner_label: "user".into(),
+            }],
+            agent_conflicts: vec![AgentConflict {
+                name: "planner".into(),
+                overridden_label: "a".into(),
+                winner_label: "b".into(),
+            }],
+            template_conflicts: vec![TemplateConflict {
+                name: "ship".into(),
+                overridden_label: "home".into(),
+                winner_label: "project".into(),
+            }],
+            cross_kind_conflicts: vec![CrossKindConflict {
+                name: "debug".into(),
+                slash_winner: "prompt template",
+            }],
+            ..Default::default()
+        };
+        let text = format_resource_conflict_notice(&result).expect("notice");
+        assert!(text.contains("Skills:"));
+        assert!(text.contains("review"));
+        assert!(text.contains("Agents:"));
+        assert!(text.contains("Prompt templates:"));
+        assert!(text.contains("ship"));
+        assert!(text.contains("/debug"));
+    }
+
+    #[test]
+    fn format_notice_none_when_empty() {
+        assert!(format_resource_conflict_notice(&LoadResourcesResult::default()).is_none());
+    }
+
+    #[test]
+    fn cross_kind_detects_shared_names() {
+        let skills = vec![Skill {
+            name: "review".into(),
+            description: "s".into(),
+            content: "c".into(),
+            file_path: "/s".into(),
+            ..Default::default()
+        }];
+        let templates = vec![PromptTemplate {
+            name: "review".into(),
+            description: "t".into(),
+            content: "c".into(),
+            argument_hint: None,
+        }];
+        let conflicts = detect_cross_kind_conflicts(&skills, &templates);
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].name, "review");
+    }
+
+    #[tokio::test]
+    async fn template_last_wins_records_conflict() {
+        let tmp = TempDir::new().unwrap();
+        let paths = test_paths(&tmp);
+        let home = paths.prompts_dir();
+        let project = paths.project_elph_dir().join("prompts");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&project).unwrap();
+        std::fs::write(home.join("ship.md"), "---\ndescription: home\n---\nHome body\n").unwrap();
+        std::fs::write(project.join("ship.md"), "---\ndescription: project\n---\nProject body\n").unwrap();
+
+        let env = LocalExecutionEnv::new(paths.project_dir());
+        let loaded = load_resources(&paths, paths.project_dir(), &env).await;
+        assert_eq!(loaded.template_count(), 1);
+        assert_eq!(loaded.resources.prompt_templates[0].description, "project");
+        assert_eq!(loaded.template_conflicts.len(), 1);
+        assert_eq!(loaded.template_conflicts[0].name, "ship");
     }
 }

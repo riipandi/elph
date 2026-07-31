@@ -144,9 +144,7 @@ pub fn encode_turn_finished(record: &TurnFinishedRecord) -> Option<Value> {
 }
 
 /// Reduce journal custom entries into queues / pending writes / open ops.
-pub fn reduce_durable_state(
-    entries: &[crate::session::types::SessionTreeEntry],
-) -> DurableHarnessState {
+pub fn reduce_durable_state(entries: &[crate::session::types::SessionTreeEntry]) -> DurableHarnessState {
     use crate::session::types::SessionTreeEntry;
     use std::collections::HashSet;
 
@@ -160,10 +158,7 @@ pub fn reduce_durable_state(
     let mut consumed: HashSet<String> = HashSet::new();
 
     for entry in entries {
-        let SessionTreeEntry::Custom {
-            custom_type, data, ..
-        } = entry
-        else {
+        let SessionTreeEntry::Custom { custom_type, data, .. } = entry else {
             continue;
         };
         let Some(data) = data else { continue };
@@ -334,10 +329,7 @@ mod tests {
             ),
             custom(
                 CT_PENDING_WRITE_APPLIED,
-                serde_json::to_value(PendingWriteAppliedRecord {
-                    write_id: "pw1".into(),
-                })
-                .unwrap(),
+                serde_json::to_value(PendingWriteAppliedRecord { write_id: "pw1".into() }).unwrap(),
             ),
         ];
         let state = reduce_durable_state(&entries);

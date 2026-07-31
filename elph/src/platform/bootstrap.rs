@@ -1,5 +1,7 @@
 use crate::agent::ensure_global_agents_md;
-use crate::platform::scaffold::{BundledManifest, ChangelogScaffold, ProvidersUnpack, TrustStore, VersionFile};
+use crate::platform::scaffold::{
+    BundledAssets, BundledManifest, ChangelogScaffold, ProvidersUnpack, TrustStore, VersionFile,
+};
 use crate::utils::path::AppPaths;
 use anyhow::Result;
 use elph_agent::InitProgress;
@@ -7,7 +9,7 @@ use elph_agent::{ensure_dirs, try_block_on};
 
 use super::paths::Paths;
 
-const INIT_STEPS: u64 = 4;
+const INIT_STEPS: u64 = 5;
 const APP_ID: &str = "elph";
 
 /// Scaffold required directories and default files for a fresh Elph home.
@@ -53,6 +55,16 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
     // Install disk overrides for get_builtin_* / model resolution this process.
     if let Err(err) = crate::agent::install_providers_dir(&paths.providers_dir()) {
         log::warn!("provider catalog install: {err:#}");
+    }
+
+    progress.advance("Unpacking bundled skills and user guide");
+    let assets = BundledAssets::ensure(paths, APP_ID, app_version)?;
+    if assets.written > 0 {
+        log::debug!(
+            "bundled assets unpack: wrote {} files (skipped {} existing)",
+            assets.written,
+            assets.skipped
+        );
     }
 
     Ok(())

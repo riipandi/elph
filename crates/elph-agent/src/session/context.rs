@@ -152,12 +152,7 @@ pub fn build_context_entries(
 /// `thinking_level` is `None` when no `ThinkingLevelChange` entry exists (host options should win).
 pub fn derive_session_context_state(
     path_entries: &[SessionTreeEntry],
-) -> (
-    Option<String>,
-    Option<SessionModelRef>,
-    Option<Vec<String>>,
-    CollaborationMode,
-) {
+) -> (Option<String>, Option<SessionModelRef>, Option<Vec<String>>, CollaborationMode) {
     let mut thinking_level = None;
     let mut model = None;
     let mut active_tool_names = None;

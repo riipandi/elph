@@ -27,8 +27,7 @@ where
     S::Metadata: crate::session::types::HasSessionId + Send + Sync,
 {
     pub async fn abort(&self) -> HarnessOpResult<AbortResult> {
-        let cleared_steer_items: Vec<(String, AgentMessage)> =
-            self.shared.steer_queue.lock().await.drain(..).collect();
+        let cleared_steer_items: Vec<(String, AgentMessage)> = self.shared.steer_queue.lock().await.drain(..).collect();
         let cleared_follow_up_items: Vec<(String, AgentMessage)> =
             self.shared.follow_up_queue.lock().await.drain(..).collect();
         let steer_ids: Vec<String> = cleared_steer_items.iter().map(|(id, _)| id.clone()).collect();

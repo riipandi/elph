@@ -90,7 +90,6 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
-    let skill_conflicts = bootstrap_resources.skill_conflicts.clone();
     let slash_commands =
         slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
@@ -110,13 +109,13 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         .as_ref()
         .map(|model| model.input.iter().any(|cap| cap == "image"))
         .unwrap_or(false);
+    let startup_messages = initial_startup_messages(&bootstrap_resources);
     let bootstrap_config = TuiBootstrapConfig {
         paths: paths.clone(),
         settings: settings.clone(),
         resume_id: options.resume_id.clone(),
         preloaded_resources: bootstrap_resources,
     };
-    let startup_messages = initial_startup_messages(&skill_conflicts);
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));
     let git_footer = read_git_footer_info(paths.project_dir());

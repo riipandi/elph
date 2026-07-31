@@ -20,7 +20,7 @@ Built-in commands always win over extension and template names.
 | `/exit`                     | `/quit`, `/q` | Quit                                             |
 | `/commit`                   | —             | Generate commit message from staged changes      |
 | `/compact`                  | `/c`          | Compact history; optional percentage arg         |
-| `/reload`                   | —             | Reload extensions + resources; refresh palette   |
+| `/reload`                   | —             | Reload providers, settings, skills/templates, extensions; conflict notices → transcript |
 | `/diagnostic:list-tools`    | —             | List tools in a detail box                       |
 | `/diagnostic:system-prompt` | —             | Show assembled system prompt (collapsed default) |
 | `/diagnostic:open-log`      | —             | Tail session or requests log                     |
