@@ -44,6 +44,11 @@ impl Provider {
         &self.models
     }
 
+    /// Replace the model list for this provider (keeps auth/api adapters).
+    pub fn set_models(&mut self, models: Vec<Model>) {
+        self.models = models;
+    }
+
     pub fn stream(
         &self,
         model: &Model,
@@ -417,6 +422,22 @@ impl MutableModels {
 
     pub fn set_provider(&mut self, provider: Provider) {
         self.inner.providers.insert(provider.id.clone(), provider);
+    }
+
+    /// Apply disk catalog overlays onto existing providers' model lists.
+    ///
+    /// Unknown provider ids (disk-only, no adapter) are logged and skipped.
+    pub fn apply_model_overlays(&mut self, overlays: &HashMap<String, Vec<Model>>) {
+        for (provider_id, overlay) in overlays {
+            if let Some(provider) = self.inner.providers.get_mut(provider_id) {
+                let merged = crate::models::disk_catalog::merge_model_lists(provider.get_models(), overlay);
+                provider.set_models(merged);
+            } else {
+                log::warn!(
+                    "provider catalog file for `{provider_id}` has no built-in adapter; models not registered for streaming"
+                );
+            }
+        }
     }
 
     pub fn delete_provider(&mut self, id: &str) {

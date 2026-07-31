@@ -4,9 +4,13 @@
 //! Downstream apps can bootstrap their config/data trees before app-specific setup.
 
 mod bundled;
+mod changelog;
+mod providers;
 mod trust;
 mod version;
 
 pub use bundled::BundledManifest;
+pub use changelog::{ChangelogEntry, ChangelogFile, ChangelogScaffold};
+pub use providers::{ProvidersUnpack, ProvidersUnpackReport};
 pub use trust::TrustStore;
 pub use version::VersionFile;

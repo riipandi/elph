@@ -14,7 +14,7 @@ mod tests {
         home_env: "TEST_AGENT_HOME",
         data_env: "TEST_AGENT_DATA",
         project_env: "TEST_AGENT_PROJECT",
-        config_dir_name: ".test-agent",
+        config_dir_name: "test-agent",
         data_dir_name: "test-agent",
     };
 
@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn resolver_exposes_static_names() {
-        assert_eq!(TEST_RESOLVER.config_dir_name, ".test-agent");
+        assert_eq!(TEST_RESOLVER.config_dir_name, "test-agent");
         assert_eq!(TEST_RESOLVER.data_dir_name, "test-agent");
     }
 
@@ -57,6 +57,13 @@ mod tests {
 
         assert_eq!(paths.metadata_db_path(), PathBuf::from("/data/metadata.db"));
         assert_eq!(paths.bundled_manifest_path(), PathBuf::from("/cfg/bundled/manifest.json"));
-        assert_eq!(paths.standard_required_dirs().len(), 15);
+        assert_eq!(paths.agents_dir(), PathBuf::from("/cfg/agents"));
+        assert_eq!(paths.projects_dir(), PathBuf::from("/data/projects"));
+        assert_eq!(paths.host_mcp_cache_dir(), PathBuf::from("/data/mcp_cache"));
+        assert_eq!(paths.worktrees_dir(), PathBuf::from("/data/worktrees"));
+        assert_eq!(paths.sessions_dir(), PathBuf::from("/data/sessions"));
+        assert_eq!(paths.session_artifact_dir("sess1"), PathBuf::from("/data/projects/sess1"));
+        // 4 bundled + 15 other standard dirs (incl. host_mcp_cache)
+        assert_eq!(paths.standard_required_dirs().len(), 19);
     }
 }

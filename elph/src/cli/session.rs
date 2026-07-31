@@ -1,8 +1,6 @@
 use std::env;
-use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
-use elph_agent::LocalExecutionEnv;
 
 use super::help;
 use crate::agent::SessionManager;
@@ -47,9 +45,13 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
             return EXIT_ERROR;
         }
     };
+    // Ensure platform schema (sessions/goals/…) exists before listing.
+    if let Err(err) = crate::platform::ensure_datastore_blocking(&paths) {
+        help::cli_error(format!("init datastore: {err}"));
+        return EXIT_ERROR;
+    }
     let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
-    let env = Arc::new(LocalExecutionEnv::new(&cwd));
-    let manager = match SessionManager::new(&paths, env, &cwd) {
+    let manager = match SessionManager::new(&paths, &cwd) {
         Ok(manager) => manager,
         Err(err) => {
             help::cli_error(format!("init session manager: {err}"));
@@ -58,25 +60,8 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
     };
 
     match cmd {
-        SessionCommands::List | SessionCommands::Search { .. } => match elph_agent::block_on(manager.list()) {
-            Ok(sessions) => {
-                if sessions.is_empty() {
-                    println!("No sessions found for {}", cwd.display());
-                } else {
-                    for meta in sessions {
-                        println!(
-                            "{}  created {}  updated {}  {}",
-                            meta.id, meta.created_at, meta.updated_at, meta.dir
-                        );
-                    }
-                }
-                EXIT_SUCCESS
-            }
-            Err(err) => {
-                help::cli_error(format!("list sessions: {err}"));
-                EXIT_ERROR
-            }
-        },
+        SessionCommands::List => list_sessions(&manager, &cwd, None),
+        SessionCommands::Search { query } => list_sessions(&manager, &cwd, query.as_deref()),
         SessionCommands::Delete { id } => {
             match elph_agent::block_on(async {
                 let sessions = manager.list().await?;
@@ -95,6 +80,43 @@ pub fn handle(args: &SessionArgs) -> ExitCode {
                     EXIT_ERROR
                 }
             }
+        }
+    }
+}
+
+fn list_sessions(manager: &SessionManager, cwd: &std::path::Path, query: Option<&str>) -> ExitCode {
+    match elph_agent::block_on(manager.list()) {
+        Ok(sessions) => {
+            let sessions: Vec<_> = match query {
+                Some(q) if !q.trim().is_empty() => {
+                    let q = q.to_lowercase();
+                    sessions
+                        .into_iter()
+                        .filter(|s| {
+                            s.id.to_lowercase().contains(&q)
+                                || s.cwd.to_lowercase().contains(&q)
+                                || s.name.as_ref().is_some_and(|n| n.to_lowercase().contains(&q))
+                        })
+                        .collect()
+                }
+                _ => sessions,
+            };
+            if sessions.is_empty() {
+                println!("No sessions found for {}", cwd.display());
+            } else {
+                for meta in sessions {
+                    let name = meta.name.as_deref().unwrap_or("-");
+                    println!(
+                        "{}  created {}  updated {}  cwd={}  name={}",
+                        meta.id, meta.created_at, meta.updated_at, meta.cwd, name
+                    );
+                }
+            }
+            EXIT_SUCCESS
+        }
+        Err(err) => {
+            help::cli_error(format!("list sessions: {err}"));
+            EXIT_ERROR
         }
     }
 }

@@ -8,8 +8,8 @@ use anyhow::Result;
 use serde_json::Value;
 
 use elph_agent::{
-    AgentEvent, AgentHarness, AgentHarnessEvent, BeforeAgentStartEvent, BeforeAgentStartResult, SessionDirStorage,
-    ToolResultEvent,
+    AgentEvent, AgentHarness, AgentHarnessEvent, BeforeAgentStartEvent, BeforeAgentStartResult, ToolResultEvent,
+    TursoSessionStorage,
 };
 use elph_ai::{Message, Usage};
 use floppy::{ReportCorrectionInput, ReportUserInput, UserInputSource};
@@ -90,7 +90,7 @@ fn count_tool_result_errors(tool_results: &[Message]) -> u32 {
 
 /// Register automatic memory hooks on the harness using the shared runtime.
 pub async fn register_automatic_memory_hooks(
-    harness: &AgentHarness<SessionDirStorage>,
+    harness: &AgentHarness<TursoSessionStorage>,
     runtime: Arc<MemoryRuntime>,
 ) -> Result<()> {
     if !runtime.is_enabled() {

@@ -246,6 +246,23 @@ impl SessionTreeEntry {
             Self::Leaf { .. } => "leaf",
         }
     }
+
+    pub fn timestamp(&self) -> &str {
+        match self {
+            Self::Message { timestamp, .. }
+            | Self::ThinkingLevelChange { timestamp, .. }
+            | Self::ModelChange { timestamp, .. }
+            | Self::CollaborationModeChange { timestamp, .. }
+            | Self::ActiveToolsChange { timestamp, .. }
+            | Self::Compaction { timestamp, .. }
+            | Self::BranchSummary { timestamp, .. }
+            | Self::Custom { timestamp, .. }
+            | Self::CustomMessage { timestamp, .. }
+            | Self::Label { timestamp, .. }
+            | Self::SessionInfo { timestamp, .. }
+            | Self::Leaf { timestamp, .. } => timestamp,
+        }
+    }
 }
 
 /// Session metadata with a stable identifier.
@@ -288,11 +305,28 @@ impl HasSessionId for SessionDirMetadata {
     }
 }
 
+/// Metadata for a Turso/SQLite-backed session (Pi-aligned `sessions` row).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TursoSessionMetadata {
     pub id: String,
     #[serde(rename = "createdAt")]
     pub created_at: String,
+    #[serde(rename = "updatedAt", default)]
+    pub updated_at: String,
+    /// Working directory for this session (`cwd` column; mirrors Pi sqlite-node).
+    #[serde(default)]
+    pub cwd: String,
+    #[serde(rename = "parentSessionId", skip_serializing_if = "Option::is_none")]
+    pub parent_session_id: Option<String>,
+    #[serde(rename = "providerId", skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<String>,
+    #[serde(rename = "modelId", skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    #[serde(rename = "agentMode", skip_serializing_if = "Option::is_none")]
+    pub agent_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Absolute path to the shared database file.
     pub db_path: String,
 }
 

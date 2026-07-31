@@ -1,9 +1,30 @@
 pub mod catalog;
+pub mod disk_catalog;
+pub mod embedded_json;
 
 mod collection;
 
-pub use catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};
 pub use collection::*;
+pub use disk_catalog::{
+    disk_catalog_overrides, load_provider_catalogs_dir, merge_model_lists, merged_get_model,
+    merged_models_for_provider, merged_providers, parse_provider_catalog_json, set_disk_catalog_overrides,
+};
+pub use embedded_json::embedded_provider_json;
+
+/// Model lookup with optional process-wide disk overrides (see [`set_disk_catalog_overrides`]).
+pub fn get_builtin_model(provider: &str, id: &str) -> Option<crate::types::Model> {
+    disk_catalog::merged_get_model(provider, id)
+}
+
+/// Models for a provider with disk overrides merged over the embedded catalog.
+pub fn get_builtin_models(provider: &str) -> Vec<crate::types::Model> {
+    disk_catalog::merged_models_for_provider(provider)
+}
+
+/// Provider ids from embedded catalogs ∪ installed disk overrides (sorted).
+pub fn get_builtin_providers() -> Vec<String> {
+    disk_catalog::merged_providers()
+}
 
 use crate::types::{Model, ModelCostRates, ThinkingLevel, Usage};
 

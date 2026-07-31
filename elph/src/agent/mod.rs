@@ -1,5 +1,6 @@
 //! Pi coding-agent port — session orchestration above `elph-agent`.
 
+mod agents_load;
 mod ask_user;
 mod diagnostics;
 mod events;
@@ -11,6 +12,7 @@ mod overlays;
 pub(crate) mod plan_files;
 mod prompt;
 pub(crate) mod provider;
+mod provider_catalog;
 mod resource_loader;
 mod run_mode;
 mod runtime;
@@ -24,6 +26,10 @@ mod tool_policy;
 mod tools_catalog;
 mod tools_slash;
 
+pub use agents_load::{
+    AgentConflict, WorkspaceAgent, WorkspaceAgents, agent_dir_entries, ensure_global_agents_md,
+    format_agent_conflict_notice, load_workspace_agents,
+};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
@@ -33,6 +39,7 @@ pub use model_registry::resolve_model;
 pub use overlays::{list_model_select_items, list_session_select_items, list_tree_select_items, parse_model_value};
 pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 pub use provider::{is_known_provider, provider_api_key_env, provider_config, resolve_provider_and_model};
+pub use provider_catalog::install_providers_dir;
 pub use resource_loader::LoadResourcesResult;
 pub use resource_loader::load_resources;
 pub use run_mode::RunModeOptions;

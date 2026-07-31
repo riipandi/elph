@@ -106,6 +106,49 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_agent_spawn_parent ON agent_spawn_edges(parent_session_id);
                 CREATE INDEX IF NOT EXISTS idx_agent_spawn_path ON agent_spawn_edges(agent_path);",
         },
+        // Pi-aligned session tree (sqlite-node). Goals table (v4) and spawn edges (v7)
+        // are unchanged — only session index/tree tables evolve here.
+        Migration {
+            version: 8,
+            name: "session_tree_pi_schema",
+            up: r#"
+                -- Projected columns for list UI / leaf pointer (no-op if already present after wipe).
+                ALTER TABLE sessions ADD COLUMN cwd TEXT;
+                ALTER TABLE sessions ADD COLUMN parent_session_id TEXT;
+                ALTER TABLE sessions ADD COLUMN active_leaf_id TEXT;
+                ALTER TABLE sessions ADD COLUMN name TEXT;
+
+                UPDATE sessions SET cwd = work_dir WHERE cwd IS NULL AND work_dir IS NOT NULL;
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_cwd ON sessions(cwd);
+                CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
+
+                CREATE TABLE IF NOT EXISTS session_entries (
+                    session_id TEXT NOT NULL,
+                    id TEXT NOT NULL,
+                    entry_seq INTEGER NOT NULL,
+                    parent_id TEXT,
+                    type TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    PRIMARY KEY (session_id, id)
+                ) STRICT;
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_session_entries_session_seq
+                    ON session_entries(session_id, entry_seq);
+                CREATE INDEX IF NOT EXISTS idx_session_entries_session_parent
+                    ON session_entries(session_id, parent_id);
+                CREATE INDEX IF NOT EXISTS idx_session_entries_session_type
+                    ON session_entries(session_id, type);
+
+                CREATE TABLE IF NOT EXISTS session_sequences (
+                    session_id TEXT PRIMARY KEY,
+                    next_seq INTEGER NOT NULL
+                ) STRICT;
+
+                -- Dual-model chat log never had writers; tree is source of truth.
+                DROP TABLE IF EXISTS messages;
+            "#,
+        },
     ]
 }
 
@@ -139,11 +182,49 @@ pub fn memory_migrations() -> &'static [Migration] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use elph_agent::{GoalStore, TursoSessionRepo, TursoSessionRepoCreateOptions, ensure_database};
     use floppy::migrations;
 
     #[test]
     fn memory_migrations_track_floppy_versions() {
         assert_eq!(memory_migrations().len(), migrations::MIGRATIONS.len());
         assert_eq!(memory_migrations().last().map(|m| m.version), Some(migrations::LAST_VERSION));
+    }
+
+    #[test]
+    fn platform_migrations_end_at_session_tree() {
+        let last = metadata_migrations().last().expect("migrations");
+        assert_eq!(last.version, 8);
+        assert_eq!(last.name, "session_tree_pi_schema");
+        // Goals migration still present and unchanged in sequence.
+        let goals = metadata_migrations().iter().find(|m| m.version == 4).expect("goals");
+        assert_eq!(goals.name, "create_goals_table");
+        assert!(goals.up.contains("CREATE TABLE IF NOT EXISTS goals"));
+    }
+
+    #[tokio::test]
+    async fn platform_metadata_db_supports_sessions_and_goals() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db = tmp.path().join("metadata.db");
+        ensure_database(&db, metadata_migrations()).await.expect("migrate");
+
+        let repo = TursoSessionRepo::new(&db);
+        let session = repo
+            .create(TursoSessionRepoCreateOptions {
+                cwd: "/tmp/proj".into(),
+                id: Some("sess_platform".into()),
+                ..Default::default()
+            })
+            .await
+            .expect("create session");
+        assert_eq!(session.metadata().await.id, "sess_platform");
+
+        let goals = GoalStore::new(&db);
+        let goal = goals
+            .create_goal("sess_platform", "keep goals working", None, 0, 0, 0)
+            .await
+            .expect("create goal");
+        assert!(goal.id.starts_with("goal_"));
+        assert!(goals.get_active_goal("sess_platform").await.expect("get").is_some());
     }
 }

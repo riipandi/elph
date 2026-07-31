@@ -24,7 +24,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-/// Default auth store path under `~/.elph/auth.json`.
+/// Default auth store path under `CONFIG_DIR/auth.json`.
 fn default_auth_store_path() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     PathBuf::from(home).join(".elph").join("auth.json")
@@ -208,11 +208,11 @@ pub fn get_provider_options() -> Vec<ProviderOption> {
     get_builtin_providers()
         .into_iter()
         .map(|id| ProviderOption {
-            id: id.to_string(),
-            name: format_provider_name(id),
-            supports_oauth: oauth_provider_ids.contains(&id),
-            supports_api_key: api_key_provider_ids.contains(id),
-            config_status: get_provider_config_status(id),
+            name: format_provider_name(&id),
+            supports_oauth: oauth_provider_ids.iter().any(|p| *p == id.as_str()),
+            supports_api_key: api_key_provider_ids.contains(&id),
+            config_status: get_provider_config_status(&id),
+            id,
         })
         .collect()
 }

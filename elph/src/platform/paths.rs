@@ -1,8 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub use crate::utils::path::AppPaths;
 use crate::utils::path::{PathResolver, ResolvedPaths};
-use crate::utils::project_key;
 use anyhow::Result;
 
 const PROJECT_DIR_NAME: &str = ".elph";
@@ -11,7 +10,7 @@ pub const RESOLVER: PathResolver = PathResolver {
     home_env: "ELPH_HOME",
     data_env: "ELPH_DATA_DIR",
     project_env: "ELPH_PROJECT_DIR",
-    config_dir_name: ".elph",
+    config_dir_name: "elph",
     data_dir_name: "elph",
 };
 
@@ -68,36 +67,10 @@ impl Paths {
         dirs.push(self.global_extensions_dir());
         dirs.push(self.project_elph_dir());
         dirs.push(self.project_extensions_dir());
-        if let Ok(layout) = self.project_layout_dirs() {
-            dirs.extend(layout);
-        }
         dirs
     }
 
-    /// Stable `{hash}_{folder_name}` key for the current project directory.
-    pub fn project_key(&self) -> Result<String> {
-        project_key::from_path(self.project_dir())
-    }
-
-    /// `~/.elph/projects/<key>/`
-    pub fn project_data_dir(&self) -> Result<PathBuf> {
-        Ok(self.projects_dir().join(self.project_key()?))
-    }
-
-    /// Per-project runtime directories (mcps, terminals, agent-tools).
-    pub fn project_layout_dirs(&self) -> Result<Vec<PathBuf>> {
-        let base = self.project_data_dir()?;
-        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
-    }
-
-    /// Resolve layout dirs for an arbitrary project path (e.g. session resume).
-    pub fn project_layout_dirs_for(&self, project_path: &Path) -> Result<Vec<PathBuf>> {
-        let key = project_key::from_path(project_path)?;
-        let base = self.projects_dir().join(key);
-        Ok(vec![base.join("mcps"), base.join("terminals"), base.join("agent-tools")])
-    }
-
-    /// `~/.elph/extensions/`
+    /// `CONFIG_DIR/extensions/`
     pub fn global_extensions_dir(&self) -> PathBuf {
         elph_agent::global_extensions_dir(self.config_dir())
     }
@@ -115,6 +88,13 @@ impl Paths {
     /// Project settings override: `<project>/.elph/settings.json` (merged over home settings).
     pub fn project_settings_path(&self) -> PathBuf {
         self.project_elph_dir().join("settings.json")
+    }
+
+    /// Derive session artifact dir from a Turso session's `db_path` + `id`
+    /// (`{parent of metadata.db}/projects/{session_id}`).
+    pub fn session_artifact_dir_from_db(db_path: &std::path::Path, session_id: &str) -> PathBuf {
+        let data_dir = db_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+        data_dir.join("projects").join(session_id)
     }
 }
 
@@ -142,12 +122,33 @@ mod tests {
 
         assert_eq!(paths.metadata_db_path(), data.join("metadata.db"));
         assert_eq!(paths.memory_db_path(), project.join(".elph/store.db"));
+        assert_eq!(paths.transcript_db_path(), project.join(".elph/metadata.db"));
         assert_eq!(paths.project_gitignore_path(), project.join(".elph/.gitignore"));
         assert_eq!(paths.project_settings_path(), project.join(".elph/settings.json"));
         assert_eq!(paths.project_mcp_config_path(), project.join(".elph/mcp.json"));
         assert_eq!(paths.bundled_manifest_path(), config.join("bundled/manifest.json"));
+        assert_eq!(paths.agents_dir(), config.join("agents"));
+        assert_eq!(paths.hooks_dir(), config.join("hooks"));
+        assert_eq!(paths.projects_dir(), data.join("projects"));
+        assert_eq!(paths.host_mcp_cache_dir(), data.join("mcp_cache"));
+        assert_eq!(paths.worktrees_dir(), data.join("worktrees"));
+        assert_eq!(paths.sessions_dir(), data.join("sessions"));
         assert_eq!(paths.models_dir(), data.join("models"));
-        // 15 standard + config/data + global/project extensions + project_elph + 3 layout dirs
-        assert_eq!(paths.required_dirs().len(), 23);
+        assert_eq!(paths.session_artifact_dir("abc123"), data.join("projects").join("abc123"));
+        assert_eq!(paths.session_mcp_cache_dir("abc123"), data.join("projects/abc123/mcp_cache"));
+        assert_eq!(
+            paths.mcp_tool_stderr_log_path("my server", "tool/name"),
+            data.join("logs/mcp/my_server/tool_name.stderr.log")
+        );
+        // 4 bundled + 15 standard (incl. host_mcp_cache) = 19
+        // + config + data + global_ext + project_elph + project_ext = 19+2+1+1+1 = 24
+        assert_eq!(paths.standard_required_dirs().len(), 19);
+        assert_eq!(paths.required_dirs().len(), 24);
+    }
+
+    #[test]
+    fn session_artifact_dir_from_db_joins_projects() {
+        let dir = Paths::session_artifact_dir_from_db(std::path::Path::new("/data/metadata.db"), "sess1");
+        assert_eq!(dir, PathBuf::from("/data/projects/sess1"));
     }
 }

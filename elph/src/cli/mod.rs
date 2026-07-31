@@ -164,7 +164,7 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
-            // Panic → ~/.local/share/elph/logs/crash.log (or $ELPH_DATA_DIR/logs/crash.log).
+            // Panic → APP_DATA/logs/crash.log-YYYYMMDD
             elph_agent::logger::install_panic_hook(paths.logs_dir());
             let init = agent_builder.logs_dir(paths.logs_dir()).build();
             elph_agent::logger::init(init.logging)

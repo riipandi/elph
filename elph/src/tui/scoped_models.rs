@@ -213,7 +213,7 @@ impl PendingScopedModels {
 pub fn catalog_model_values() -> Vec<String> {
     let mut out = Vec::new();
     for provider_id in get_builtin_providers() {
-        for model in get_builtin_models(provider_id) {
+        for model in get_builtin_models(&provider_id) {
             out.push(format!("{provider_id}/{}", model.id));
         }
     }

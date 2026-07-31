@@ -6,7 +6,7 @@ use crate::types::AgentMode;
 use anyhow::Result;
 use elph_agent::compaction::{estimate_context_tokens, should_compact};
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
-use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
+use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -36,7 +36,7 @@ const SESSION_TITLE_USER: &str = include_str!("../../../templates/agent/session_
 
 /// Constructor inputs for [`CodingAgentSession::new`] (avoids a long positional arg list).
 pub struct CodingAgentSessionParams {
-    pub harness: Arc<AgentHarness<SessionDirStorage>>,
+    pub harness: Arc<AgentHarness<TursoSessionStorage>>,
     pub session_manager: SessionManager,
     pub session_id: String,
     pub selection: ModelSelection,
@@ -54,7 +54,7 @@ pub struct CodingAgentSessionParams {
 }
 
 pub struct CodingAgentSession {
-    harness: Arc<AgentHarness<SessionDirStorage>>,
+    harness: Arc<AgentHarness<TursoSessionStorage>>,
     session_manager: SessionManager,
     session_id: String,
     /// Live model selection (updated by [`Self::set_model_from_value`] for Ctrl+P / picker).
@@ -205,7 +205,7 @@ impl CodingAgentSession {
         self.ui_tx.clone()
     }
 
-    pub fn harness(&self) -> Arc<AgentHarness<SessionDirStorage>> {
+    pub fn harness(&self) -> Arc<AgentHarness<TursoSessionStorage>> {
         self.harness.clone()
     }
 
@@ -657,7 +657,7 @@ impl CodingAgentSession {
 }
 
 async fn generate_and_store_session_title(
-    harness: Arc<AgentHarness<SessionDirStorage>>,
+    harness: Arc<AgentHarness<TursoSessionStorage>>,
     models: Arc<elph_ai::Models>,
     inherit_model: elph_ai::Model,
     title_model_setting: &str,

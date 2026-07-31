@@ -679,4 +679,4 @@ pub fn builtin_models(options: Option<CreateModelsOptions>) -> MutableModels {
     models
 }
 
-pub use crate::models::catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};
+pub use crate::models::{get_builtin_model, get_builtin_models, get_builtin_providers};

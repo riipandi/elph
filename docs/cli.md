@@ -124,7 +124,7 @@ Export formats: `json`, `markdown`, `zip`. Flags: `--output`, `--clipboard`, `--
 
 ## Bootstrap
 
-First run scaffolds home config, data dirs, default settings, provider directory, project `.elph/` gitignore, and version metadata. Datastore (`metadata.db`) initializes for the default TUI and datastore-dependent subcommands.
+First run scaffolds home config, data dirs, default settings, project `.elph/` gitignore, version metadata, global `AGENTS.md`, and **unpacks** built-in provider catalogs into `CONFIG_DIR/providers/*.json` (only missing files). Datastore (`metadata.db`) initializes for the default TUI and datastore-dependent subcommands.
 
 ## Exit codes
 

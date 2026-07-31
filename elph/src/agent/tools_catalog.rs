@@ -4,14 +4,14 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use elph_agent::create_list_available_tools;
-use elph_agent::{AgentHarness, CollaborationMode, McpToolRegistry, SessionDirStorage};
+use elph_agent::{AgentHarness, CollaborationMode, McpToolRegistry, TursoSessionStorage};
 
 use crate::types::AgentMode;
 
 use super::tool_policy::AgentModePolicy;
 
 /// Rebuild the `list_available_tools` meta tool so its catalog matches `active_names`.
-pub async fn refresh_tools_catalog(harness: &AgentHarness<SessionDirStorage>, active_names: &[String]) -> Result<()> {
+pub async fn refresh_tools_catalog(harness: &AgentHarness<TursoSessionStorage>, active_names: &[String]) -> Result<()> {
     let mut tools = harness.get_tools().await;
     let active_set: HashSet<&str> = active_names.iter().map(String::as_str).collect();
 
@@ -46,7 +46,7 @@ pub async fn refresh_tools_catalog(harness: &AgentHarness<SessionDirStorage>, ac
 
 /// Apply agent-mode tool permissions to the harness and refresh the meta-tool catalog.
 pub async fn reconcile_harness_tools(
-    harness: &AgentHarness<SessionDirStorage>,
+    harness: &AgentHarness<TursoSessionStorage>,
     mode: AgentMode,
     mcp_registry: Option<&McpToolRegistry>,
 ) -> Result<()> {

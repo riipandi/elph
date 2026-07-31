@@ -127,7 +127,7 @@ use crate::collaboration::CollaborationMode;
 use crate::collaboration::filter_active_tools;
 use crate::runtime::try_block_on;
 use crate::session::tree::Session;
-use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
+use crate::session::types::{HasSessionId, SessionStorage};
 #[cfg(feature = "tools-collaboration")]
 use crate::tools::create_collaboration_tools;
 use crate::types::{AgentMessage, AgentThinkingLevel, AgentTool, ConvertToLlmFn, QueueMode, StreamFn};
@@ -221,17 +221,16 @@ where
             tools_map.insert(tool.name().to_string(), tool);
         }
 
-        let collaboration_mode = try_block_on(async {
+        // Rehydrate durable harness config from session entries (semi-durable restore).
+        let (restored_thinking, restored_model, restored_active_tools, collaboration_mode) = try_block_on(async {
             let entries = options.session.entries().await;
-            let mut mode = CollaborationMode::Default;
-            for entry in &entries {
-                if let SessionTreeEntry::CollaborationModeChange { mode: m, .. } = entry {
-                    mode = *m;
-                }
-            }
-            mode
+            crate::session::derive_session_context_state(&entries)
         })
-        .unwrap_or(CollaborationMode::Default);
+        .unwrap_or_else(|_| ("off".into(), None, None, CollaborationMode::Default));
+
+        let restored_model = restored_model.and_then(|r| options.models.get_model(&r.provider, &r.model_id));
+        let model = restored_model.unwrap_or(options.model);
+        let thinking_level = parse_agent_thinking_level(&restored_thinking).unwrap_or(options.thinking_level);
 
         let metadata = try_block_on(async { options.session.metadata().await }).map_err(|_| {
             AgentHarnessError::new(
@@ -262,7 +261,7 @@ where
                 Arc::new(AgentControl::new(
                     SubagentSpawnConfig {
                         env: options.env.clone(),
-                        model: options.model.clone(),
+                        model: model.clone(),
                         system_prompt: String::new(),
                         base_tools: base_tools.clone(),
                         stream_fn,
@@ -284,10 +283,22 @@ where
             }
         }
 
-        let baseline_active_tool_names: Vec<String> = if options.active_tool_names.is_empty() {
+        let baseline_active_tool_names: Vec<String> = if let Some(names) = restored_active_tools {
+            names
+        } else if options.active_tool_names.is_empty() {
             tools_map.keys().cloned().collect()
         } else {
             options.active_tool_names
+        };
+        // Drop restored names that the host did not register (tools are not serializable).
+        let baseline_active_tool_names: Vec<String> = baseline_active_tool_names
+            .into_iter()
+            .filter(|n| tools_map.contains_key(n))
+            .collect();
+        let baseline_active_tool_names = if baseline_active_tool_names.is_empty() {
+            tools_map.keys().cloned().collect()
+        } else {
+            baseline_active_tool_names
         };
         validate_unique_names(baseline_active_tool_names.clone(), "Duplicate active tool name(s)")?;
         let active_tool_names = filter_active_tools(collaboration_mode, &baseline_active_tool_names, None);
@@ -301,8 +312,8 @@ where
                 phase: Mutex::new(AgentHarnessPhase::Idle),
                 active_run: Mutex::new(None),
                 pending_session_writes: Mutex::new(Vec::new()),
-                model: Mutex::new(options.model),
-                thinking_level: Mutex::new(options.thinking_level),
+                model: Mutex::new(model),
+                thinking_level: Mutex::new(thinking_level),
                 system_prompt: Mutex::new(options.system_prompt),
                 stream_options: Mutex::new(clone_stream_options(&options.stream_options)),
                 resources: Mutex::new(options.resources),
@@ -325,5 +336,18 @@ where
                 convert_to_llm: default_convert_to_llm_fn(),
             }),
         })
+    }
+}
+
+fn parse_agent_thinking_level(s: &str) -> Option<AgentThinkingLevel> {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "off" => Some(AgentThinkingLevel::Off),
+        "minimal" => Some(AgentThinkingLevel::Minimal),
+        "low" => Some(AgentThinkingLevel::Low),
+        "medium" => Some(AgentThinkingLevel::Medium),
+        "high" => Some(AgentThinkingLevel::High),
+        "xhigh" => Some(AgentThinkingLevel::Xhigh),
+        "max" => Some(AgentThinkingLevel::Max),
+        _ => None,
     }
 }

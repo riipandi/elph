@@ -39,7 +39,10 @@ fn skill_dir_entries(paths: &Paths) -> Vec<(String, String)> {
             home.join(".agents/skills").to_string_lossy().to_string(),
             "~/.agents/skills".to_string(),
         ),
-        (paths.skills_dir().to_string_lossy().to_string(), "~/.elph/skills".to_string()),
+        (
+            paths.skills_dir().to_string_lossy().to_string(),
+            "~/.config/elph/skills".to_string(),
+        ),
         (
             project.join(".agents/skills").to_string_lossy().to_string(),
             format!("{project_display}/.agents/skills"),
@@ -142,11 +145,11 @@ mod tests {
         let notice = format_skill_conflict_notice(&[SkillConflict {
             name: "debug".into(),
             overridden_label: "~/.agents/skills".into(),
-            winner_label: "~/.elph/skills".into(),
+            winner_label: "~/.config/elph/skills".into(),
         }]);
         let text = notice.expect("notice");
         assert!(text.contains("debug"));
         assert!(text.contains("~/.agents/skills"));
-        assert!(text.contains("~/.elph/skills"));
+        assert!(text.contains("~/.config/elph/skills"));
     }
 }

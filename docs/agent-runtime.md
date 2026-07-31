@@ -159,7 +159,7 @@ TUI shows `agent_id` + `agent_path` in subagent status lines.
 
 ### Extensions (WASM)
 
-Pi-compatible extension bundles discovered from `~/.elph/extensions/` and `<project>/.elph/extensions/`. Phase 1: slash commands via wasmtime Component Model. `/reload` refreshes registry. See [extensions.md](./extensions.md).
+Pi-compatible extension bundles discovered from `CONFIG_DIR/extensions/` (default `~/.config/elph/extensions/`) and `<project>/.elph/extensions/`. Phase 1: slash commands via wasmtime Component Model. `/reload` refreshes registry. See [extensions.md](./extensions.md).
 
 ## Thinking levels
 
@@ -177,15 +177,18 @@ TypeID with prefix `sess` — shown in the footer.
 
 ### Persistence
 
-| Data                 | Location                                     |
-| -------------------- | -------------------------------------------- |
-| Provider / model     | `settings.session` (merged home ← project)   |
-| Mode / thinking      | Merged home + project settings               |
-| Conversation history | In-memory + durable backend                  |
-| Platform metadata    | `metadata.db` in data dir                    |
-| Project memory       | `<project>/.elph/store.db`                   |
-| Todo snapshot        | Per-session metadata when TodoList is active |
-| Event / request logs | JSONL per session for diagnostics            |
+| Data                 | Location                                                          |
+| -------------------- | ----------------------------------------------------------------- |
+| Provider / model     | `settings.session` (merged home ← project)                        |
+| Mode / thinking      | Merged home + project settings                                    |
+| Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)  |
+| Platform metadata    | Same DB: goals, spawn graph, session index                         |
+| Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)  |
+| Crash recovery       | Synthetic tool results for unanswered tool_use; rehydrate model/thinking/tools from session |
+| Project memory       | `<project>/.elph/store.db`                                        |
+| Session artifacts    | `APP_DATA/projects/<SESSION_ID>/` (`mcp_cache`, `terminals`, `tool_outputs.jsonl`) |
+| Todo snapshot        | Per-session metadata when TodoList is active                      |
+| Event / request logs | JSONL per session for diagnostics                                 |
 
 ### Vision images (TUI)
 

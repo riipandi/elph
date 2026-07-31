@@ -9,11 +9,11 @@ use super::registry::AgentRegistry;
 use super::types::{SubagentBootstrap, SubagentInfo, SubagentLimits};
 use crate::agent::harness::{AgentHarness, AgentHarnessError, AgentHarnessOptions, SystemPrompt};
 use crate::runtime::local_env::LocalExecutionEnv;
-use crate::session::{SessionDirRepo, SessionDirRepoCreateOptions, SessionDirStorage};
+use crate::session::{TursoSessionRepo, TursoSessionRepoCreateOptions, TursoSessionStorage};
 use crate::types::{AgentTool, QueueMode};
 
 pub struct SubagentHarness {
-    harness: Arc<AgentHarness<SessionDirStorage>>,
+    harness: Arc<AgentHarness<TursoSessionStorage>>,
     info: SubagentInfo,
 }
 
@@ -22,7 +22,7 @@ impl SubagentHarness {
         &self.info
     }
 
-    pub fn harness(&self) -> &AgentHarness<SessionDirStorage> {
+    pub fn harness(&self) -> &AgentHarness<TursoSessionStorage> {
         &self.harness
     }
 
@@ -55,15 +55,15 @@ pub async fn spawn_subagent_harness(
     agent_control: Arc<AgentControl>,
     system_prompt: String,
 ) -> Result<Arc<SubagentHarness>, String> {
-    let repo = SessionDirRepo::new(env.clone(), bootstrap.sessions_root.clone(), bootstrap.project_key.clone());
+    let repo = TursoSessionRepo::new(&bootstrap.metadata_db_path);
     let child_session_id = crate::session::id::generate_session_id();
     let session = repo
-        .create(SessionDirRepoCreateOptions {
+        .create(TursoSessionRepoCreateOptions {
             cwd: bootstrap.cwd.clone(),
-            project_key: bootstrap.project_key.clone(),
             id: Some(child_session_id.clone()),
             parent_session_id: Some(root_session_id.to_string()),
             system_prompt: Some(system_prompt.clone()),
+            ..Default::default()
         })
         .await
         .map_err(|e| e.to_string())?;

@@ -258,7 +258,7 @@ pub fn is_known_provider(id: &str) -> bool {
 
 fn unknown_provider_error(id: &str) -> anyhow::Error {
     let known = elph_ai::get_builtin_providers();
-    let preview: Vec<&str> = known.iter().copied().take(12).collect();
+    let preview: Vec<&str> = known.iter().map(String::as_str).take(12).collect();
     let more = known.len().saturating_sub(preview.len());
     let list = if more > 0 {
         format!("{}… (+{more} more)", preview.join(", "))
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn all_elph_ai_providers_are_known() {
         for id in elph_ai::get_builtin_providers() {
-            let cfg = provider_config(id).unwrap_or_else(|| panic!("missing provider config for {id}"));
+            let cfg = provider_config(&id).unwrap_or_else(|| panic!("missing provider config for {id}"));
             assert!(!cfg.label.is_empty(), "empty label for {id}");
             assert!(!cfg.api_key_env_key.is_empty(), "empty api_key_env_key for {id}");
             assert!(!cfg.default_model.is_empty(), "empty default_model for {id}");

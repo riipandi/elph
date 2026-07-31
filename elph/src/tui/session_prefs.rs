@@ -6,7 +6,7 @@ use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, ThinkingLevel};
 
 pub fn persist_model_selection(paths: &Paths, provider_id: &str, model_id: &str) {
-    // Home layer only — do not bake project settings overlays into ~/.elph/settings.json.
+    // Home layer only — do not bake project settings overlays into CONFIG_DIR/settings.json.
     let Ok(mut settings) = Settings::load_home(paths) else {
         return;
     };
@@ -18,7 +18,7 @@ pub fn persist_model_selection(paths: &Paths, provider_id: &str, model_id: &str)
 }
 
 pub fn persist_session_prefs(paths: &Paths, mode: AgentMode, thinking: ThinkingLevel) {
-    // Home layer only — do not bake project settings overlays into ~/.elph/settings.json.
+    // Home layer only — do not bake project settings overlays into CONFIG_DIR/settings.json.
     let Ok(mut settings) = Settings::load_home(paths) else {
         return;
     };

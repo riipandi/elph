@@ -98,7 +98,7 @@ pub fn handle(args: &McpArgs) -> ExitCode {
             match mcp_runtime::parse_server_config(raw) {
                 Ok(server) => match mcp_runtime::upsert_server_in(&paths, scope, name, server) {
                     Ok(()) => {
-                        let _ = mcp_runtime::ensure_project_mcp_cache(&paths);
+                        let _ = mcp_runtime::ensure_mcp_cache(&paths, None);
                         println!(
                             "Saved MCP server '{name}' to {} ({})",
                             mcp_runtime::config_path(&paths, scope).display(),
@@ -452,9 +452,9 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
         }
     }
 
-    if let Ok(cache) = mcp_runtime::project_mcp_cache_dir(paths) {
-        println!("Project MCP cache: {}", cache.display());
-    }
+    let cache = mcp_runtime::host_mcp_cache_dir(paths);
+    println!("Host MCP cache: {}", cache.display());
+    println!("Session MCP cache: APP_DATA/projects/<SESSION_ID>/mcp_cache/");
 
     if ok { EXIT_SUCCESS } else { EXIT_ERROR }
 }

@@ -11,12 +11,12 @@ use super::session_manager::SessionManager;
 pub fn list_model_select_items() -> Vec<SelectItem> {
     let mut items = Vec::new();
     for provider in get_builtin_providers() {
-        for model in elph_ai::get_builtin_models(provider) {
+        for model in elph_ai::get_builtin_models(&provider) {
             let value = format!("{provider}/{}", model.id);
             let description = if model.reasoning {
                 format!("{provider} · reasoning")
             } else {
-                provider.to_string()
+                provider.clone()
             };
             items.push(SelectItem::new(value, model.name).with_description(description));
         }

@@ -11,7 +11,9 @@ use elph_ai::types::ProviderEnv;
 use elph_ai::{CreateModelsOptions, CredentialStore, Model, Models};
 
 use super::provider::resolve_provider_and_model;
+use super::provider_catalog::install_providers_dir;
 use crate::platform::Settings;
+use crate::utils::path::AppPaths;
 
 #[derive(Clone)]
 pub struct ModelSelection {
@@ -28,6 +30,16 @@ pub async fn resolve_model(
     model_override: Option<&str>,
     auth_store_path: Option<&Path>,
 ) -> Result<ModelSelection> {
+    // Prefer CONFIG_DIR/providers when available (resolved via auth store path parent).
+    if let Some(auth_path) = auth_store_path {
+        if let Some(config_dir) = auth_path.parent() {
+            let providers_dir = config_dir.join("providers");
+            let _ = install_providers_dir(&providers_dir);
+        }
+    } else if let Ok(paths) = crate::platform::Paths::resolve() {
+        let _ = install_providers_dir(&paths.providers_dir());
+    }
+
     let (provider, model_id) = resolve_provider_and_model(
         provider_override,
         model_override,
@@ -37,15 +49,19 @@ pub async fn resolve_model(
 
     // Look up under the resolved provider only. Gateway model ids often contain `/`
     // (e.g. `moonshotai/kimi-k3-free`); never re-interpret that as a different provider.
+    // Honors disk overrides via set_disk_catalog_overrides.
     let model =
         get_builtin_model(&provider, &model_id).with_context(|| format!("Model not found: {provider}/{model_id}"))?;
 
     let credentials = load_credentials_from_auth_json(auth_store_path).await?;
-    let models = elph_ai::builtin_models(Some(CreateModelsOptions {
+    let mut mutable = elph_ai::builtin_models(Some(CreateModelsOptions {
         credentials: Some(Arc::new(credentials)),
         ..Default::default()
-    }))
-    .into_arc();
+    }));
+    // Apply the same disk overlays to streaming providers' model lists.
+    let overlays = elph_ai::disk_catalog_overrides();
+    mutable.apply_model_overlays(&overlays);
+    let models = mutable.into_arc();
     models
         .get_provider(&provider)
         .with_context(|| format!("Provider not registered in runtime models collection: {provider}"))?;

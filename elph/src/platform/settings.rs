@@ -5,7 +5,7 @@
 //! | Layer    | Path                              | Role                                      |
 //! |----------|-----------------------------------|-------------------------------------------|
 //! | Defaults | (in code)                         | Serde field defaults for missing keys     |
-//! | Home     | `~/.elph/settings.json`           | Global prefs; default write target        |
+//! | Home     | `CONFIG_DIR/settings.json`        | Global prefs; default write target        |
 //! | Project  | `<project>/.elph/settings.json`   | Per-repo overrides (optional)             |
 //!
 //! Runtime load merges **home ← project** (project wins per field / nested object key).
@@ -45,7 +45,7 @@ use super::paths::Paths;
 /// Which settings file to read/write for layer-scoped operations.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum SettingsScope {
-    /// `~/.elph/settings.json` (default write target for runtime prefs).
+    /// `CONFIG_DIR/settings.json` (default write target for runtime prefs).
     #[default]
     Home,
     /// `<project>/.elph/settings.json`.

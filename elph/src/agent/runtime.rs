@@ -41,7 +41,7 @@ pub async fn create_coding_session_with_events(
     crate::platform::ensure_datastore(options.paths).await?;
 
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
-    let session_manager = SessionManager::new(options.paths, env.clone(), options.cwd)?;
+    let session_manager = SessionManager::new(options.paths, options.cwd)?;
     let session = session_manager.create(options.resume_id).await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
@@ -115,9 +115,8 @@ pub async fn create_coding_session_with_events(
         ..AgentHarnessStreamOptions::default()
     };
     let subagent_bootstrap = SubagentBootstrap {
-        project_key: session_manager.project_key().to_string(),
         cwd: options.cwd.display().to_string(),
-        sessions_root: options.paths.sessions_dir().to_string_lossy().to_string(),
+        metadata_db_path: options.paths.metadata_db_path().to_string_lossy().to_string(),
         resources: resources.clone(),
         stream_options: stream_options.clone(),
         thinking_level: thinking,

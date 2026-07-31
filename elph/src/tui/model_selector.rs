@@ -191,7 +191,7 @@ impl ModelCatalogSnapshot {
         let mut all_models: Vec<ModelRow> = Vec::new();
         for provider_id in &provider_ids {
             if let Some(ref allowed) = allowed
-                && !allowed.contains(*provider_id)
+                && !allowed.contains(provider_id.as_str())
             {
                 continue;
             }
@@ -204,11 +204,11 @@ impl ModelCatalogSnapshot {
                 .collect();
             all_models.extend(rows.iter().cloned());
             providers.push(ModelProviderTab {
-                id: (*provider_id).to_string(),
+                id: provider_id.clone(),
                 label: format_provider_label(provider_id),
                 model_count: count,
             });
-            models_by_provider.insert((*provider_id).to_string(), rows);
+            models_by_provider.insert(provider_id.clone(), rows);
         }
 
         let total_providers = providers.len();

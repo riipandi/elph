@@ -24,10 +24,12 @@ See [`crates/elph-agent/docs/tools.md`](../crates/elph-agent/docs/tools.md) for 
 
 The `tracing` Cargo feature enables [`fastrace`](https://crates.io/crates/fastrace) spans (not the `tracing` crate). Logging uses `log` + `logforth`. The `elph` binary enables tracing by default; library embeds opt in per crate.
 
-| Output | Path                           | Control                                                |
-| ------ | ------------------------------ | ------------------------------------------------------ |
-| Logs   | `{logs_dir}/elph.jsonl`        | `ELPH_LOG_LEVEL`, `ELPH_LOG_FILE`, `ELPH_LOG_ROTATION` |
-| Traces | `{logs_dir}/elph-traces.jsonl` | `ELPH_TRACE` (set `0` to disable)                      |
+| Output | Path                                | Control                                                |
+| ------ | ----------------------------------- | ------------------------------------------------------ |
+| Logs   | `{logs_dir}/elph.jsonl` (rolling)   | `ELPH_LOG_LEVEL`, `ELPH_LOG_FILE`, `ELPH_LOG_ROTATION` |
+| Crash  | `{logs_dir}/crash.log-YYYYMMDD`     | Always on after path resolve                           |
+| Traces | `{logs_dir}/elph-traces.jsonl`      | `ELPH_TRACE` (set `0` to disable)                      |
+| MCP    | `{logs_dir}/mcp/<name>/…stderr.log` | Written when MCP stdio capture is enabled              |
 
 See [`crates/elph-agent/docs/observability.md`](../crates/elph-agent/docs/observability.md) for span names, HTTP `traceparent` propagation, and downstream integration.
 
@@ -50,8 +52,18 @@ Output directory: `target/release/`.
 | `make fmt`     | `cargo fmt` (edition 2024 style)                                   |
 | `make run`     | `cargo run --bin elph`                                             |
 | `make watch`   | `cargo watch` + `cargo run --bin elph`                             |
-| `make install` | Copy `elph-dev` (debug) or `elph-next` (release) to `~/.local/bin` |
+| `make install` | Copy debug → `~/.local/bin/elph-dev` or release → `~/.local/bin/elph-next` |
 | `make help`    | List all targets                                                   |
+
+### Installed binaries
+
+| Binary path              | Channel   | Typical source        |
+| ------------------------ | --------- | --------------------- |
+| `~/.local/bin/elph`      | production / stable | Release installers  |
+| `~/.local/bin/elph-next` | next (beta) | `make install` (release profile) |
+| `~/.local/bin/elph-dev`  | dev (unstable) | `make install` (debug profile) |
+
+All share the same config/data layout (`CONFIG_DIR` / `APP_DATA`); override with `ELPH_HOME` / `ELPH_DATA_DIR` when testing channels side by side.
 
 ## Extension development loop
 

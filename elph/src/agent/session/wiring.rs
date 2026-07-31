@@ -217,9 +217,14 @@ impl CodingAgentSession {
                     let event = event.clone();
                     Box::pin(async move {
                         let meta = harness.session_metadata().await;
-                        let dir = std::path::Path::new(&meta.dir);
+                        // Tool outputs: APP_DATA/projects/<SESSION_ID>/tool_outputs.jsonl
+                        let dir = crate::platform::Paths::session_artifact_dir_from_db(
+                            std::path::Path::new(&meta.db_path),
+                            &meta.id,
+                        );
+                        let _ = tokio::fs::create_dir_all(&dir).await;
                         let _ = elph_agent::session::backends::session_dir::tool_outputs::append_tool_output(
-                            dir,
+                            &dir,
                             &event.tool_call_id,
                             &event.tool_name,
                             &event.input,

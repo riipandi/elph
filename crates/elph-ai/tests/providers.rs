@@ -42,10 +42,7 @@ fn builtin_models_registers_every_builtin_provider() {
 fn catalog_providers_match_builtin_providers() {
     use std::collections::BTreeSet;
 
-    let catalog: BTreeSet<String> = elph_ai::get_builtin_providers()
-        .into_iter()
-        .map(str::to_string)
-        .collect();
+    let catalog: BTreeSet<String> = elph_ai::get_builtin_providers().into_iter().collect();
     let registered: BTreeSet<String> = builtin_providers().into_iter().map(|p| p.id).collect();
     assert_eq!(
         catalog,
