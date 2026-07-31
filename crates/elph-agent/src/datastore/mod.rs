@@ -1,12 +1,12 @@
 //! Turso local database helpers and migration runner.
 
+mod conn;
 mod lazy;
 pub(crate) mod migrations;
 
 use std::path::Path;
 
 use anyhow::Result;
-use turso::Builder;
 
 /// One versioned SQL migration applied to a local database.
 pub struct Migration {
@@ -15,6 +15,8 @@ pub struct Migration {
     pub up: &'static str,
 }
 
+pub use conn::is_lock_err;
+pub(crate) use conn::{connect, open_connection, open_local, with_conn};
 pub use lazy::ensure_databases_once;
 pub use migrations::run as run_migrations;
 
@@ -39,8 +41,7 @@ pub async fn ensure_databases(specs: &[DatabaseSpec<'_>]) -> Result<()> {
 }
 
 async fn open_and_migrate(path: &Path, migrations: &'static [Migration]) -> Result<()> {
-    let db = Builder::new_local(&path.to_string_lossy()).build().await?;
-    let conn = db.connect()?;
+    let (_db, conn) = open_connection(path).await?;
     migrations::run(&conn, migrations).await?;
     Ok(())
 }

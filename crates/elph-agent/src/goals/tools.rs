@@ -205,7 +205,6 @@ fn goal_to_json(goal: &Goal) -> Result<Value> {
     let remaining_tokens = remaining(goal.token_budget, goal.tokens_used);
     Ok(json!({
         "id": goal.id,
-        "goal_id": goal.goal_id,
         "session_id": goal.session_id,
         "objective": goal.objective,
         "completion_criterion": goal.completion_criterion,
