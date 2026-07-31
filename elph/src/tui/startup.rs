@@ -335,7 +335,8 @@ pub struct AgentBootstrap {
 
 /// Create the agent session without blocking on MCP discovery.
 pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<AgentBootstrap> {
-    let cwd = std::env::current_dir().map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Match SessionManager / `--continue` listing: always the resolved project dir.
+    let cwd = config.paths.project_dir().clone();
 
     let (session, ui_rx) = create_coding_session_with_events(CreateSessionOptions {
         paths: &config.paths,
@@ -352,15 +353,26 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
     let session = Arc::new(session);
     let session_id = session.session_id().to_string();
+    let is_resume = config.resume_id.is_some();
 
-    // Give the session a memorable ID as an initial human-friendly name.
-    // This gets replaced by the LLM-generated title after the first turn.
-    if let Ok(memorable_id) = memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
+    // Human-friendly title only for brand-new sessions. On resume/continue, keep the
+    // stored name so we don't rewrite metadata (or scramble "latest" ordering).
+    if !is_resume && let Ok(memorable_id) = memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
         let _ = session.harness().set_session_name(&memorable_id).await;
     }
 
-    // Load persisted chat history from the session branch (for --resume).
+    // Load persisted chat history from the session branch (for --resume / --continue).
     let history_messages = load_chat_history(session.as_ref()).await;
+    if is_resume && history_messages.is_empty() {
+        log::warn!(
+            "resumed session {session_id} has no reconstructable transcript entries (empty tree or missing snapshot)"
+        );
+    } else if is_resume {
+        log::info!(
+            "restored {} transcript message(s) for session {session_id}",
+            history_messages.len()
+        );
+    }
 
     Ok(AgentBootstrap {
         session,

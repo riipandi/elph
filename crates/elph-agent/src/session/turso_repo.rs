@@ -79,6 +79,11 @@ impl TursoSessionRepo {
         list_sessions(&self.db_path, options.cwd.as_deref()).await
     }
 
+    /// True when the session tree has at least one stored entry.
+    pub async fn has_entries(&self, session_id: &str) -> Result<bool, SessionError> {
+        session_has_entries(&self.db_path, session_id).await
+    }
+
     pub async fn delete(&self, session_id: &str) -> Result<(), SessionError> {
         delete_session(&self.db_path, session_id).await
     }
@@ -151,6 +156,18 @@ async fn list_sessions(db_path: &Path, cwd: Option<&str>) -> Result<Vec<TursoSes
         out.push(row_to_metadata(&row, &db_path_str)?);
     }
     Ok(out)
+}
+
+async fn session_has_entries(db_path: &Path, session_id: &str) -> Result<bool, SessionError> {
+    let conn = open_migrated(db_path).await?;
+    let mut rows = conn
+        .query(
+            "SELECT 1 FROM session_entries WHERE session_id = ? LIMIT 1",
+            turso::params![session_id],
+        )
+        .await
+        .map_err(map_err)?;
+    Ok(rows.next().await.map_err(map_err)?.is_some())
 }
 
 async fn delete_session(db_path: &Path, session_id: &str) -> Result<(), SessionError> {

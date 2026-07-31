@@ -91,11 +91,52 @@ impl Paths {
     }
 
     /// Derive session artifact dir from a Turso session's `db_path` + `id`
-    /// (`{parent of metadata.db}/projects/{session_id}`).
+    /// (`{parent of metadata.db}/sessions/{session_id}`).
     pub fn session_artifact_dir_from_db(db_path: &std::path::Path, session_id: &str) -> PathBuf {
         let data_dir = db_path.parent().unwrap_or_else(|| std::path::Path::new("."));
-        data_dir.join("projects").join(session_id)
+        data_dir.join("sessions").join(session_id)
     }
+
+    /// One-time move of legacy `APP_DATA/projects/*` → `APP_DATA/sessions/*`.
+    ///
+    /// Safe to call every boot: only renames children that do not already exist under `sessions/`.
+    pub fn migrate_projects_to_sessions(&self) -> std::io::Result<()> {
+        let projects = self.data_dir().join("projects");
+        if !projects.is_dir() {
+            return Ok(());
+        }
+        let sessions = self.sessions_dir();
+        std::fs::create_dir_all(&sessions)?;
+        for entry in std::fs::read_dir(&projects)? {
+            let entry = entry?;
+            let dest = sessions.join(entry.file_name());
+            if dest.exists() {
+                continue;
+            }
+            // Prefer rename (same volume); fall back to recursive copy+remove if needed.
+            if std::fs::rename(entry.path(), &dest).is_err() {
+                copy_dir_recursive(&entry.path(), &dest)?;
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
+        }
+        // Drop empty legacy root when possible.
+        let _ = std::fs::remove_dir(&projects);
+        Ok(())
+    }
+}
+
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let to = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive(&entry.path(), &to)?;
+        } else {
+            std::fs::copy(entry.path(), to)?;
+        }
+    }
+    Ok(())
 }
 
 impl AppPaths for Paths {
@@ -129,26 +170,45 @@ mod tests {
         assert_eq!(paths.bundled_manifest_path(), config.join("bundled/manifest.json"));
         assert_eq!(paths.agents_dir(), config.join("agents"));
         assert_eq!(paths.hooks_dir(), config.join("hooks"));
-        assert_eq!(paths.projects_dir(), data.join("projects"));
         assert_eq!(paths.host_mcp_cache_dir(), data.join("mcp_cache"));
         assert_eq!(paths.worktrees_dir(), data.join("worktrees"));
         assert_eq!(paths.sessions_dir(), data.join("sessions"));
         assert_eq!(paths.models_dir(), data.join("models"));
-        assert_eq!(paths.session_artifact_dir("abc123"), data.join("projects").join("abc123"));
-        assert_eq!(paths.session_mcp_cache_dir("abc123"), data.join("projects/abc123/mcp_cache"));
+        assert_eq!(paths.session_artifact_dir("abc123"), data.join("sessions").join("abc123"));
+        assert_eq!(paths.session_mcp_cache_dir("abc123"), data.join("sessions/abc123/mcp_cache"));
         assert_eq!(
             paths.mcp_tool_stderr_log_path("my server", "tool/name"),
             data.join("logs/mcp/my_server/tool_name.stderr.log")
         );
-        // 4 bundled + 15 standard (incl. host_mcp_cache) = 19
-        // + config + data + global_ext + project_elph + project_ext = 19+2+1+1+1 = 24
-        assert_eq!(paths.standard_required_dirs().len(), 19);
-        assert_eq!(paths.required_dirs().len(), 24);
+        // 4 bundled + 14 standard (sessions, no projects) = 18
+        // + config + data + global_ext + project_elph + project_ext = 18+2+1+1+1 = 23
+        assert_eq!(paths.standard_required_dirs().len(), 18);
+        assert_eq!(paths.required_dirs().len(), 23);
     }
 
     #[test]
-    fn session_artifact_dir_from_db_joins_projects() {
+    fn session_artifact_dir_from_db_joins_sessions() {
         let dir = Paths::session_artifact_dir_from_db(std::path::Path::new("/data/metadata.db"), "sess1");
-        assert_eq!(dir, PathBuf::from("/data/projects/sess1"));
+        assert_eq!(dir, PathBuf::from("/data/sessions/sess1"));
+    }
+
+    #[test]
+    fn migrate_projects_to_sessions_moves_children() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let data = tmp.path().join("data");
+        let projects = data.join("projects");
+        let sid = projects.join("abc");
+        std::fs::create_dir_all(sid.join("mcp_cache")).expect("mkdir");
+        std::fs::write(sid.join("tool_outputs.jsonl"), b"{}").expect("write");
+        let paths = Paths::from_dirs(tmp.path().join("cfg"), data.clone(), tmp.path().join("repo"));
+        paths.migrate_projects_to_sessions().expect("migrate");
+        assert!(data.join("sessions/abc/mcp_cache").is_dir());
+        assert!(data.join("sessions/abc/tool_outputs.jsonl").is_file());
+        assert!(
+            !projects.is_dir()
+                || std::fs::read_dir(&projects)
+                    .map(|mut d| d.next().is_none())
+                    .unwrap_or(true)
+        );
     }
 }

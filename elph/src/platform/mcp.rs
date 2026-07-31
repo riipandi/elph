@@ -176,7 +176,7 @@ pub fn server_sources(paths: &Paths) -> Result<std::collections::BTreeMap<String
     Ok(out)
 }
 
-/// Session-scoped MCP response cache: `APP_DATA/projects/<SESSION_ID>/mcp_cache/`.
+/// Session-scoped MCP response cache: `APP_DATA/sessions/<SESSION_ID>/mcp_cache/`.
 pub fn session_mcp_cache_dir(paths: &Paths, session_id: &str) -> std::path::PathBuf {
     paths.session_mcp_cache_dir(session_id)
 }

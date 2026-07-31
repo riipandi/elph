@@ -14,7 +14,7 @@ use crate::platform::Paths;
 pub struct SessionManager {
     repo: TursoSessionRepo,
     cwd: String,
-    /// `APP_DATA` root — used for `projects/<SESSION_ID>/` artifacts.
+    /// `APP_DATA` root — used for `sessions/<SESSION_ID>/` artifacts.
     data_dir: PathBuf,
 }
 
@@ -22,7 +22,7 @@ impl SessionManager {
     pub fn new(paths: &Paths, cwd: &Path) -> Result<Self> {
         Ok(Self {
             repo: TursoSessionRepo::new(paths.metadata_db_path()),
-            cwd: cwd.display().to_string(),
+            cwd: normalize_cwd(cwd),
             data_dir: paths.data_dir().clone(),
         })
     }
@@ -32,7 +32,7 @@ impl SessionManager {
     }
 
     pub fn artifact_dir_for(&self, session_id: &str) -> PathBuf {
-        self.data_dir.join("projects").join(session_id)
+        self.data_dir.join("sessions").join(session_id)
     }
 
     fn ensure_artifact_dirs(&self, session_id: &str) -> Result<()> {
@@ -80,18 +80,49 @@ impl SessionManager {
     }
 
     /// Sessions for this manager's project cwd, newest `updated_at` first.
+    ///
+    /// Matches exact stored `cwd` first; if none, falls back to canonical-path
+    /// equality so pre-normalize rows (e.g. `/var/...` vs `/private/var/...` on macOS)
+    /// still show up for `--continue`.
     pub async fn list(&self) -> Result<Vec<TursoSessionMetadata>> {
-        self.repo
+        let exact = self
+            .repo
             .list(TursoSessionListOptions {
                 cwd: Some(self.cwd.clone()),
             })
             .await
-            .context("list sessions")
+            .context("list sessions")?;
+        if !exact.is_empty() {
+            return Ok(exact);
+        }
+        let all = self
+            .repo
+            .list(TursoSessionListOptions { cwd: None })
+            .await
+            .context("list all sessions for cwd fallback")?;
+        Ok(all.into_iter().filter(|m| cwd_matches(&m.cwd, &self.cwd)).collect())
     }
 
     /// Most recently updated session id for this project, if any.
+    ///
+    /// Prefers a session that already has tree entries (transcript), so `--continue`
+    /// does not land on an empty shell session that was only opened briefly.
     pub async fn latest_session_id(&self) -> Result<Option<String>> {
-        Ok(self.list().await?.into_iter().next().map(|m| m.id))
+        let sessions = self.list().await?;
+        for meta in &sessions {
+            if self.session_has_entries(&meta.id).await? {
+                return Ok(Some(meta.id.clone()));
+            }
+        }
+        Ok(sessions.into_iter().next().map(|m| m.id))
+    }
+
+    /// True when the session tree has at least one entry (user/assistant/tool/custom).
+    pub async fn session_has_entries(&self, session_id: &str) -> Result<bool> {
+        self.repo
+            .has_entries(session_id)
+            .await
+            .with_context(|| format!("count entries for session {session_id}"))
     }
 
     /// Find session metadata by id (this project first, then global).
@@ -136,4 +167,22 @@ impl SessionManager {
         self.remove_artifact_dirs(session_id);
         Ok(())
     }
+}
+
+/// Stable string for DB `cwd` matching (canonicalize when possible).
+fn normalize_cwd(path: &Path) -> String {
+    path.canonicalize()
+        .unwrap_or_else(|_| path.to_path_buf())
+        .display()
+        .to_string()
+}
+
+fn cwd_matches(stored: &str, normalized: &str) -> bool {
+    if stored == normalized {
+        return true;
+    }
+    Path::new(stored)
+        .canonicalize()
+        .map(|p| p.display().to_string() == normalized)
+        .unwrap_or(false)
 }

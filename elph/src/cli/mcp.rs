@@ -471,7 +471,7 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
 
     let cache = mcp_runtime::host_mcp_cache_dir(paths);
     println!("Host MCP cache: {}", cache.display());
-    println!("Session MCP cache: APP_DATA/projects/<SESSION_ID>/mcp_cache/");
+    println!("Session MCP cache: APP_DATA/sessions/<SESSION_ID>/mcp_cache/");
 
     if ok { EXIT_SUCCESS } else { EXIT_ERROR }
 }

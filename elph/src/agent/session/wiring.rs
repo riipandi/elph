@@ -217,7 +217,7 @@ impl CodingAgentSession {
                     let event = event.clone();
                     Box::pin(async move {
                         let meta = harness.session_metadata().await;
-                        // Tool outputs: APP_DATA/projects/<SESSION_ID>/tool_outputs.jsonl
+                        // Tool outputs: APP_DATA/sessions/<SESSION_ID>/tool_outputs.jsonl
                         let dir = crate::platform::Paths::session_artifact_dir_from_db(
                             std::path::Path::new(&meta.db_path),
                             &meta.id,

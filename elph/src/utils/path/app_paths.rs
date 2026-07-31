@@ -39,22 +39,15 @@ pub trait AppPaths {
         self.config_dir().join("hooks")
     }
 
-    /// Session tool-call artifacts root (`APP_DATA/projects/`).
-    ///
-    /// Nested by session id:
-    /// `projects/<SESSION_ID>/{mcp_cache,terminals,tool_outputs.jsonl,event_log.jsonl}`.
-    fn projects_dir(&self) -> PathBuf {
-        self.data_dir().join("projects")
-    }
-
     /// Host-level MCP cache when no session is active (CLI `mcp` commands).
     fn host_mcp_cache_dir(&self) -> PathBuf {
         self.data_dir().join("mcp_cache")
     }
 
-    /// Legacy multi-file session root (library `SessionDirStorage` only).
+    /// Session root under APP_DATA: `sessions/<SESSION_ID>/` for artifacts
+    /// (`mcp_cache`, `terminals`, `tool_outputs.jsonl`, `event_log.jsonl`).
     ///
-    /// Product sessions live in `metadata.db`; this directory is not required for coding sessions.
+    /// Also used by legacy multi-file `SessionDirStorage` (`sessions/<project_key>/<id>/`).
     fn sessions_dir(&self) -> PathBuf {
         self.data_dir().join("sessions")
     }
@@ -124,9 +117,9 @@ pub trait AppPaths {
         self.data_dir().join("CHANGELOG.json")
     }
 
-    /// Per-session artifact directory: `APP_DATA/projects/<SESSION_ID>/`.
+    /// Per-session artifact directory: `APP_DATA/sessions/<SESSION_ID>/`.
     fn session_artifact_dir(&self, session_id: &str) -> PathBuf {
-        self.projects_dir().join(session_id)
+        self.sessions_dir().join(session_id)
     }
 
     fn session_mcp_cache_dir(&self, session_id: &str) -> PathBuf {
@@ -181,7 +174,6 @@ pub trait AppPaths {
             self.hooks_dir(),
             self.prompts_dir(),
             self.providers_dir(),
-            self.projects_dir(),
             self.host_mcp_cache_dir(),
             self.sessions_dir(),
             self.skills_dir(),

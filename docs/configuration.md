@@ -51,7 +51,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 │           └── <TOOL_NAME>.stderr.log
 ├── mcp_cache/               # Host-level MCP cache (CLI; no session)
 ├── models/                  # Embedding model cache
-├── projects/                # Session tool-call artifacts (by SESSION_ID)
+├── sessions/                # Session tool-call artifacts (by SESSION_ID)
 │   └── <SESSION_ID>/
 │       ├── mcp_cache/       # Session MCP response cache
 │       ├── terminals/       # Shell / terminal capture files
@@ -88,7 +88,7 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 | Platform DB | `APP_DATA/metadata.db` | Goals, agent spawn graph, skill cache, session index + tree |
 | Floppy memory | `PROJECT/.elph/store.db` | Agent long-term memory / embeddings |
 | Transcript archive | `PROJECT/.elph/metadata.db` | TUI card overflow only (not the LLM session tree) |
-| Session artifacts | `APP_DATA/projects/<SESSION_ID>/` | `mcp_cache/`, `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
+| Session artifacts | `APP_DATA/sessions/<SESSION_ID>/` | `mcp_cache/`, `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
 | Host MCP cache | `APP_DATA/mcp_cache/` | CLI MCP ops when no session is active |
 | App / crash / MCP logs | `APP_DATA/logs/` | Rolling JSONL, dated crash logs, MCP stderr |
 | Config files | `CONFIG_DIR/*.json` | Settings, auth, trust, MCP, providers |

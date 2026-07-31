@@ -71,7 +71,12 @@ async fn run_init_steps(paths: &Paths, app_version: &str, progress: &InitProgres
 }
 
 fn ensure_home_dirs(paths: &Paths) -> Result<()> {
-    ensure_dirs(&paths.required_dirs())
+    ensure_dirs(&paths.required_dirs())?;
+    // Legacy layout: APP_DATA/projects/<id> → APP_DATA/sessions/<id>
+    if let Err(err) = paths.migrate_projects_to_sessions() {
+        log::warn!("migrate projects→sessions: {err}");
+    }
+    Ok(())
 }
 
 fn ensure_files(paths: &Paths, app_version: &str) -> Result<()> {

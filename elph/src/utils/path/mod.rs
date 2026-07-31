@@ -58,12 +58,11 @@ mod tests {
         assert_eq!(paths.metadata_db_path(), PathBuf::from("/data/metadata.db"));
         assert_eq!(paths.bundled_manifest_path(), PathBuf::from("/cfg/bundled/manifest.json"));
         assert_eq!(paths.agents_dir(), PathBuf::from("/cfg/agents"));
-        assert_eq!(paths.projects_dir(), PathBuf::from("/data/projects"));
         assert_eq!(paths.host_mcp_cache_dir(), PathBuf::from("/data/mcp_cache"));
         assert_eq!(paths.worktrees_dir(), PathBuf::from("/data/worktrees"));
         assert_eq!(paths.sessions_dir(), PathBuf::from("/data/sessions"));
-        assert_eq!(paths.session_artifact_dir("sess1"), PathBuf::from("/data/projects/sess1"));
-        // 4 bundled + 15 other standard dirs (incl. host_mcp_cache)
-        assert_eq!(paths.standard_required_dirs().len(), 19);
+        assert_eq!(paths.session_artifact_dir("sess1"), PathBuf::from("/data/sessions/sess1"));
+        // 4 bundled + 14 other standard dirs (incl. host_mcp_cache; no projects/)
+        assert_eq!(paths.standard_required_dirs().len(), 18);
     }
 }

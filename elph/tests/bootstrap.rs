@@ -50,7 +50,6 @@ async fn ensure_creates_full_home() {
         "bootstrap should unpack create-skill"
     );
     assert!(paths.config_dir().join("AGENTS.md").is_file());
-    assert!(paths.projects_dir().is_dir());
     assert!(paths.host_mcp_cache_dir().is_dir());
     assert!(paths.sessions_dir().is_dir());
     assert!(paths.skills_dir().is_dir());
@@ -63,14 +62,16 @@ async fn ensure_creates_full_home() {
     assert!(paths.global_extensions_dir().is_dir());
 
     // Runtime layout is under APP_DATA/, not CONFIG_DIR.
-    assert!(paths.projects_dir().starts_with(paths.data_dir()));
     assert!(paths.host_mcp_cache_dir().starts_with(paths.data_dir()));
     assert!(paths.worktrees_dir().starts_with(paths.data_dir()));
     assert!(paths.sessions_dir().starts_with(paths.data_dir()));
-    // No project-hash layout dirs under projects/ at bootstrap.
+    // No leftover legacy projects/ root required at bootstrap.
     assert!(
-        std::fs::read_dir(paths.projects_dir())
-            .map(|mut d| d.next().is_none())
-            .unwrap_or(true)
+        !paths.data_dir().join("projects").is_dir() || {
+            // Empty legacy dir is ok until migration removes it.
+            std::fs::read_dir(paths.data_dir().join("projects"))
+                .map(|mut d| d.next().is_none())
+                .unwrap_or(true)
+        }
     );
 }

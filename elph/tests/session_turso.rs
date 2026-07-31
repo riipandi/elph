@@ -40,7 +40,7 @@ async fn session_manager_create_list_resume_delete() {
     let id = session.metadata().await.id.clone();
     assert!(!id.is_empty());
 
-    // Artifact dirs created (session sidecars under APP_DATA/projects/<id>/)
+    // Artifact dirs created (session sidecars under APP_DATA/sessions/<id>/)
     let artifact = manager.artifact_dir_for(&id);
     assert!(artifact.join("mcp_cache").is_dir());
     assert!(artifact.join("terminals").is_dir());
@@ -60,7 +60,12 @@ async fn session_manager_create_list_resume_delete() {
     let listed = manager.list().await.expect("list");
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].id, id);
-    assert_eq!(listed[0].cwd, project.display().to_string());
+    let expected_cwd = project
+        .canonicalize()
+        .unwrap_or_else(|_| project.clone())
+        .display()
+        .to_string();
+    assert_eq!(listed[0].cwd, expected_cwd);
 
     // Resume by id
     let resumed = manager.create(Some(&id)).await.expect("resume");

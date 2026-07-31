@@ -27,7 +27,7 @@ elph mcp list
 elph mcp …
 ```
 
-Session MCP caches live under `APP_DATA/projects/<SESSION_ID>/mcp_cache/`. Host-level
+Session MCP caches live under `APP_DATA/sessions/<SESSION_ID>/mcp_cache/`. Host-level
 cache (no session): `APP_DATA/mcp_cache/`.
 
 See repo `docs/mcp.md` for approval policy and tool wiring.

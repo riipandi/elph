@@ -1,7 +1,7 @@
 # Sessions
 
 Product sessions live in Turso `APP_DATA/metadata.db` (`session_entries` tree). Artifacts
-(tool outputs, MCP cache, terminals) live under `APP_DATA/projects/<SESSION_ID>/`.
+(tool outputs, MCP cache, terminals) live under `APP_DATA/sessions/<SESSION_ID>/`.
 
 ## Resume
 
