@@ -89,8 +89,12 @@ where
 }
 
 /// Check if a Turso error message indicates a lock-related failure.
+///
+/// Detects `SQLITE_LOCKED` (`"locked"`, `"Locking"`) and `SQLITE_BUSY`
+/// (`"busy"`) error messages. Note: `PRAGMA busy_timeout` handles the
+/// common `SQLITE_BUSY` case at the SQLite level before it reaches Rust.
 pub fn is_lock_err(msg: &str) -> bool {
-    msg.contains("locked") || msg.contains("Locking")
+    msg.contains("locked") || msg.contains("Locking") || msg.contains("busy")
 }
 
 #[cfg(test)]
@@ -162,6 +166,7 @@ mod tests {
     fn is_lock_err_detects_lock_messages() {
         assert!(is_lock_err("database is locked"));
         assert!(is_lock_err("Locking error"));
+        assert!(is_lock_err("database is busy"));
         assert!(!is_lock_err("syntax error"));
         assert!(!is_lock_err("no such table"));
     }
@@ -189,5 +194,52 @@ mod tests {
         assert!(exists, "table should persist across opens");
         drop(conn2);
         drop(db2);
+    }
+
+    #[tokio::test]
+    async fn concurrent_writers_dont_deadlock() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("concurrent.db");
+
+        // Create table first
+        let (_db, conn) = open_connection(&path).await.expect("init");
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS counters (k TEXT PRIMARY KEY, v INT NOT NULL) STRICT",
+            (),
+        )
+        .await
+        .expect("create table");
+        drop(conn);
+        drop(_db);
+
+        // Two concurrent tasks hammering the same file
+        let path_a = path.clone();
+        let path_b = path.clone();
+        let (r1, r2) = tokio::join!(
+            tokio::spawn(async move {
+                for i in 0..5 {
+                    with_conn(&path_a, |conn| async move {
+                        conn.execute("INSERT OR REPLACE INTO counters (k, v) VALUES ('a', ?)", turso::params![i])
+                            .await?;
+                        Ok(())
+                    })
+                    .await
+                    .expect("writer a");
+                }
+            }),
+            tokio::spawn(async move {
+                for i in 0..5 {
+                    with_conn(&path_b, |conn| async move {
+                        conn.execute("INSERT OR REPLACE INTO counters (k, v) VALUES ('b', ?)", turso::params![i])
+                            .await?;
+                        Ok(())
+                    })
+                    .await
+                    .expect("writer b");
+                }
+            }),
+        );
+        r1.expect("task a");
+        r2.expect("task b");
     }
 }

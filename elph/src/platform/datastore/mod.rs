@@ -5,22 +5,18 @@ use super::paths::{AppPaths, Paths};
 use elph_agent::{DatabaseSpec, InitProgress};
 use elph_agent::{ensure_databases_once, try_block_on};
 
-const DATASTORE_STEPS: u64 = 2;
+const DATASTORE_STEPS: u64 = 1;
 
 /// Lazily initialize local databases on first use.
+///
+/// Only the metadata DB is initialized here. The memory DB (`.elph/store.db`)
+/// is opened by `floppy::MemoryStore::init()` which handles its own schema.
 pub async fn ensure(paths: &Paths) -> Result<()> {
     let metadata_db = paths.metadata_db_path();
-    let memory_db = paths.memory_db_path();
-    let specs = [
-        DatabaseSpec {
-            path: &metadata_db,
-            migrations: migrations::metadata_migrations(),
-        },
-        DatabaseSpec {
-            path: &memory_db,
-            migrations: migrations::memory_migrations(),
-        },
-    ];
+    let specs = [DatabaseSpec {
+        path: &metadata_db,
+        migrations: migrations::metadata_migrations(),
+    }];
 
     let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
     progress.advance("Initializing databases");

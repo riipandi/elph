@@ -114,6 +114,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
 /// Composed from floppy schema migrations (ported from
 /// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with
 /// `version > migrations::LAST_VERSION`.
+#[allow(dead_code)]
 pub fn memory_migrations() -> &'static [Migration] {
     const MIGRATIONS: &[Migration] = &[
         Migration {

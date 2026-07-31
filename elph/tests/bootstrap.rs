@@ -21,7 +21,8 @@ async fn ensure_creates_full_home() {
 
     platform::datastore::ensure(&paths).await.expect("ensure datastore");
     assert!(paths.metadata_db_path().exists());
-    assert!(paths.memory_db_path().exists());
+    // Memory DB is lazily opened by MemoryStore::init(), not by ensure_datastore.
+    assert!(paths.project_elph_dir().exists());
     assert!(paths.project_gitignore_path().exists());
     assert!(paths.bundled_dir().join("agents").is_dir());
     assert!(paths.bundled_dir().join("personas").is_dir());

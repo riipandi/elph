@@ -23,7 +23,7 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
 
     let mut builder = FloppyBuilder::new(paths.memory_db_path().to_string_lossy().into_owned(), "elph-cli")
         .dimensions(dims)
-        .apply_migrations(false);
+        .apply_migrations(true);
 
     if needs_embed {
         std::fs::create_dir_all(paths.models_dir())
