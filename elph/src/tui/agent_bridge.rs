@@ -8,10 +8,8 @@ use std::time::Instant;
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
 use crate::agent::{SlashDispatch, SubagentUiPhase};
-use crate::agent::{resolve_model, thinking_level_from_setting, to_agent_thinking};
 use crate::extensions::ExtensionHost;
-use crate::platform::{Paths, Settings};
-use crate::utils::path::AppPaths;
+use crate::platform::Paths;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
@@ -120,90 +118,27 @@ impl SlashDispatcher {
                     let _ = ui_tx.send(AgentUiEvent::Status(status));
                 }
                 SlashDispatch::Reload => {
-                    let mut summary = Vec::new();
-                    let mut notices = Vec::new();
+                    let mut report = if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
+                        session
+                            .reload_workspace(crate::agent::WorkspaceReloadRequest { paths, cwd })
+                            .await
+                    } else {
+                        let mut empty = crate::agent::WorkspaceReloadReport::default();
+                        empty.push_summary("Reload unavailable.");
+                        empty
+                    };
 
-                    // ── Providers (disk catalogs → process-wide overrides) ──
-                    if let Some(paths) = paths.as_ref() {
-                        match crate::agent::install_providers_dir(&paths.providers_dir()) {
-                            Ok(n) => summary.push(format!("Providers reloaded ({n} catalog file(s)).")),
-                            Err(err) => summary.push(format!("Provider catalog reload failed: {err}")),
-                        }
-                    }
-
-                    // ── Reload and apply Settings ──────────────────────────
-                    if let Some(paths) = paths.as_ref() {
-                        let settings = Settings::load(paths);
-                        if let Ok(settings) = settings {
-                            let auth_path = paths.auth_store_path();
-                            match resolve_model(&settings, None, None, Some(&auth_path)).await {
-                                Ok(selection) => {
-                                    let thinking = {
-                                        let raw = thinking_level_from_setting(&settings.session.thinking_level);
-                                        let clamped = raw.clamp_for_model(&selection.model);
-                                        to_agent_thinking(clamped)
-                                    };
-                                    let _ = session.harness().set_model(selection.model).await;
-                                    let _ = session.harness().set_thinking_level(thinking).await;
-
-                                    session
-                                        .harness()
-                                        .set_stream_options(elph_agent::AgentHarnessStreamOptions {
-                                            timeout_ms: settings.provider_timeout_ms(),
-                                            max_retries: Some(settings.provider.max_retries),
-                                            ..elph_agent::AgentHarnessStreamOptions::default()
-                                        })
-                                        .await;
-
-                                    let mode = crate::agent::agent_mode_from_setting(&settings.session.agent_mode);
-                                    *session.mode_state().lock().await = mode;
-
-                                    summary.push("Settings reloaded.".into());
-                                }
-                                Err(err) => {
-                                    summary.push(format!("Settings reload (model resolve) failed: {err}"));
-                                }
-                            }
-                        } else if let Err(err) = settings {
-                            summary.push(format!("Settings reload failed: {err}"));
-                        }
-                    }
-
-                    // ── Reload Resources (skills, templates, agent conflicts) ─
-                    if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
-                        match session.reload_resources(paths, cwd).await {
-                            Ok(loaded) => {
-                                summary.push(format!(
-                                    "Resources reloaded ({} skill(s), {} template(s)).",
-                                    loaded.skill_count(),
-                                    loaded.template_count()
-                                ));
-                                if let Some(notice) = crate::agent::format_resource_conflict_notice(&loaded) {
-                                    notices.push(notice);
-                                }
-                                if let Some(warn) = crate::agent::format_resource_load_warnings(&loaded) {
-                                    notices.push(warn);
-                                }
-                            }
-                            Err(err) => summary.push(format!("Resource reload failed: {err}")),
-                        }
-                    }
-
-                    // ── Reload Extensions ───────────────────────────────────
                     if let Some(host) = extension_host.as_ref()
                         && let Some(paths) = paths.as_ref()
                     {
                         match host.reload(paths, true) {
-                            Ok(_) => summary.push("Extensions reloaded.".into()),
-                            Err(err) => summary.push(format!("Extension reload failed: {err}")),
+                            Ok(_) => report.push_summary("Extensions reloaded."),
+                            Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
                         }
                     }
 
-                    if summary.is_empty() {
-                        summary.push("Reload unavailable.".into());
-                    }
-                    let _ = ui_tx.send(AgentUiEvent::Status(summary.join("\n")));
-                    for notice in notices {
+                    let _ = ui_tx.send(AgentUiEvent::Status(report.summary_text()));
+                    for notice in report.notices {
                         let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(notice));
                     }
                 }

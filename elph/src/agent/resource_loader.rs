@@ -11,24 +11,9 @@ use elph_agent::load_prompt_templates;
 use elph_agent::{AgentHarnessResources, LocalExecutionEnv, PromptTemplate};
 
 use super::agents_load::{AgentConflict, WorkspaceAgents, load_workspace_agents};
+use super::conflict_notice::{self, CrossKindConflict, TemplateConflict};
 use super::skills_load::{SkillConflict, WorkspaceSkills, load_workspace_skills};
 use crate::platform::Paths;
-
-/// A prompt template name defined in multiple directories; the later directory wins.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TemplateConflict {
-    pub name: String,
-    pub overridden_label: String,
-    pub winner_label: String,
-}
-
-/// Same slash name defined as both a skill and a prompt template.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CrossKindConflict {
-    pub name: String,
-    /// Which kind wins for slash dispatch when both exist (prompt template before skill).
-    pub slash_winner: &'static str,
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct LoadResourcesResult {
@@ -172,38 +157,12 @@ fn detect_cross_kind_conflicts(skills: &[elph_agent::Skill], templates: &[Prompt
 /// Prefer sending this via [`crate::agent::AgentUiEvent::TranscriptNotice`] so it
 /// appends to the transcript and is not replaced by later status Meta lines.
 pub fn format_resource_conflict_notice(result: &LoadResourcesResult) -> Option<String> {
-    if !result.has_conflicts() {
-        return None;
-    }
-
-    let mut lines = vec!["Resource name conflicts resolved (higher-priority path wins):".to_string()];
-
-    if !result.skill_conflicts.is_empty() {
-        lines.push("Skills:".into());
-        for c in &result.skill_conflicts {
-            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
-        }
-    }
-    if !result.template_conflicts.is_empty() {
-        lines.push("Prompt templates:".into());
-        for c in &result.template_conflicts {
-            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
-        }
-    }
-    if !result.agent_conflicts.is_empty() {
-        lines.push("Agents:".into());
-        for c in &result.agent_conflicts {
-            lines.push(format!("  • {}: {} → {}", c.name, c.overridden_label, c.winner_label));
-        }
-    }
-    if !result.cross_kind_conflicts.is_empty() {
-        lines.push("Same name as skill and prompt template (slash prefers prompt template):".into());
-        for c in &result.cross_kind_conflicts {
-            lines.push(format!("  • /{} → {}", c.name, c.slash_winner));
-        }
-    }
-
-    Some(lines.join("\n"))
+    conflict_notice::format_name_conflicts(
+        &result.skill_conflicts,
+        &result.agent_conflicts,
+        &result.template_conflicts,
+        &result.cross_kind_conflicts,
+    )
 }
 
 /// Non-fatal load warnings for transcript (parse errors, unreadable dirs).

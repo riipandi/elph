@@ -6,13 +6,11 @@ use agent_client_protocol::schema::v1::{PromptRequest, SessionId};
 use agent_client_protocol::{Client, ConnectionTo};
 use parking_lot::Mutex;
 
+use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
+use super::{AcpAgentState, lookup_session};
 use crate::agent::{
     SlashDispatch, dispatch_slash_command, format_help_message, system_prompt_slash_message, tools_slash_message,
 };
-use crate::utils::path::AppPaths;
-
-use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
-use super::{AcpAgentState, lookup_session};
 
 /// Handle an incoming `session/prompt` request.
 ///
@@ -99,19 +97,14 @@ async fn handle_acp_slash_command(
                 let guard = state.lock();
                 guard.paths.clone()
             };
-            let _ = crate::agent::install_providers_dir(&paths.providers_dir());
-            let loaded = session.reload_resources(&paths, &cwd).await?;
-            let mut parts = vec![format!(
-                "Resources reloaded ({} skill(s), {} template(s)).",
-                loaded.skill_count(),
-                loaded.template_count()
-            )];
-            if let Some(notice) = crate::agent::format_resource_conflict_notice(&loaded) {
-                parts.push(notice);
-            }
-            if let Some(warn) = crate::agent::format_resource_load_warnings(&loaded) {
-                parts.push(warn);
-            }
+            let report = session
+                .reload_workspace(crate::agent::WorkspaceReloadRequest {
+                    paths: &paths,
+                    cwd: &cwd,
+                })
+                .await;
+            let mut parts = vec![report.summary_text()];
+            parts.extend(report.notices);
             send_text_chunks(connection, session_id, &parts.join("\n\n")).await
         }
         Some(SlashDispatch::Goal { args }) => {

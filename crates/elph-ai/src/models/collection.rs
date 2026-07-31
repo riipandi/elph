@@ -426,18 +426,32 @@ impl MutableModels {
 
     /// Apply disk catalog overlays onto existing providers' model lists.
     ///
-    /// Unknown provider ids (disk-only, no adapter) are logged and skipped.
-    pub fn apply_model_overlays(&mut self, overlays: &HashMap<String, Vec<Model>>) {
+    /// Disk-only provider ids (no built-in adapter) are registered when their models
+    /// use a supported API (`openai-completions`, `openai-responses`, `anthropic-messages`,
+    /// `google-generative-ai`, `mistral-conversations`, `azure-openai-responses`).
+    pub fn apply_model_overlays(&mut self, overlays: &HashMap<String, Vec<Model>>) -> OverlayApplyReport {
+        let mut report = OverlayApplyReport::default();
         for (provider_id, overlay) in overlays {
             if let Some(provider) = self.inner.providers.get_mut(provider_id) {
                 let merged = crate::models::disk_catalog::merge_model_lists(provider.get_models(), overlay);
                 provider.set_models(merged);
+                report.updated += 1;
+            } else if let Some(provider) = create_disk_provider(provider_id, overlay.clone()) {
+                log::info!(
+                    "registered disk-only provider `{provider_id}` ({} model(s)) for streaming",
+                    provider.get_models().len()
+                );
+                self.set_provider(provider);
+                report.registered += 1;
             } else {
                 log::warn!(
-                    "provider catalog file for `{provider_id}` has no built-in adapter; models not registered for streaming"
+                    "provider catalog `{provider_id}` skipped: no supported API among {} model(s)",
+                    overlay.len()
                 );
+                report.skipped += 1;
             }
         }
+        report
     }
 
     pub fn delete_provider(&mut self, id: &str) {
@@ -466,6 +480,96 @@ impl std::ops::Deref for MutableModels {
 
 pub fn has_api(model: &Model, api: &str) -> bool {
     model.api == api
+}
+
+/// Result of applying disk catalog overlays onto a [`MutableModels`] collection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OverlayApplyReport {
+    /// Existing built-in providers whose model lists were merged.
+    pub updated: usize,
+    /// New disk-only providers registered with streaming adapters.
+    pub registered: usize,
+    /// Disk providers skipped (unsupported API kinds only).
+    pub skipped: usize,
+}
+
+/// Build a streaming provider from a disk-only catalog when models use known APIs.
+pub fn create_disk_provider(id: &str, models: Vec<Model>) -> Option<Provider> {
+    if models.is_empty() {
+        return None;
+    }
+    let api = disk_provider_api_map(&models)?;
+    let base_url = models
+        .iter()
+        .find(|m| !m.base_url.is_empty())
+        .map(|m| m.base_url.clone());
+    let headers = models.iter().find_map(|m| {
+        m.headers.as_ref().map(|h| {
+            h.iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone())))
+                .collect::<crate::types::ProviderHeaders>()
+        })
+    });
+    // Convention: SOME_PROVIDER_API_KEY from kebab id `some-provider`.
+    let env_name = format!("{}_API_KEY", id.replace('-', "_").to_ascii_uppercase());
+    let display = title_case_provider_id(id);
+    Some(create_provider(CreateProviderOptions {
+        id: id.to_string(),
+        name: Some(display.clone()),
+        base_url,
+        headers,
+        auth: crate::auth::ProviderAuth {
+            api_key: Some(crate::auth::flexible_api_key_auth(format!("{display} API key"), vec![env_name])),
+            oauth: None,
+        },
+        models,
+        refresh_models: None,
+        api,
+    }))
+}
+
+fn disk_provider_api_map(models: &[Model]) -> Option<ProviderApi> {
+    use crate::providers::adapter::{
+        anthropic_messages_api, azure_openai_responses_api, google_generative_ai_api, mistral_conversations_api,
+        openai_completions_api, openai_responses_api,
+    };
+
+    let mut map = HashMap::new();
+    for model in models {
+        let key = model.api.as_str();
+        if map.contains_key(key) {
+            continue;
+        }
+        let api = match key {
+            "openai-completions" => openai_completions_api(),
+            "openai-responses" => openai_responses_api(),
+            "anthropic-messages" => anthropic_messages_api(),
+            "google-generative-ai" => google_generative_ai_api(),
+            "mistral-conversations" => mistral_conversations_api(),
+            "azure-openai-responses" => azure_openai_responses_api(),
+            _ => continue,
+        };
+        map.insert(key.to_string(), api);
+    }
+    if map.is_empty() {
+        None
+    } else {
+        Some(ProviderApi::Map(map))
+    }
+}
+
+fn title_case_provider_id(id: &str) -> String {
+    id.split(['-', '_'])
+        .filter(|s| !s.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 pub fn models_are_equal(a: Option<&Model>, b: Option<&Model>) -> bool {
@@ -532,4 +636,61 @@ pub fn clamp_thinking_level(model: &Model, level: crate::types::ThinkingLevel) -
         }
     }
     crate::types::ThinkingLevel::High
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::ModelCost;
+
+    fn sample_model(provider: &str, api: &str) -> Model {
+        Model {
+            id: "m1".into(),
+            name: "M1".into(),
+            api: api.into(),
+            provider: provider.into(),
+            base_url: "https://example.com/v1".into(),
+            reasoning: false,
+            thinking_level_map: None,
+            input: vec!["text".into()],
+            cost: ModelCost {
+                input: 1.0,
+                output: 1.0,
+                cache_read: 0.0,
+                cache_write: 0.0,
+                tiers: None,
+            },
+            context_window: 8_000,
+            max_tokens: 1_024,
+            headers: None,
+            openai_completions_compat: None,
+            openai_responses_compat: None,
+            anthropic_compat: None,
+        }
+    }
+
+    #[test]
+    fn create_disk_provider_registers_openai_completions() {
+        let p = create_disk_provider("my-gateway", vec![sample_model("my-gateway", "openai-completions")])
+            .expect("provider");
+        assert_eq!(p.id, "my-gateway");
+        assert_eq!(p.get_models().len(), 1);
+        assert!(p.base_url.as_deref() == Some("https://example.com/v1"));
+    }
+
+    #[test]
+    fn create_disk_provider_skips_unknown_api() {
+        assert!(create_disk_provider("x", vec![sample_model("x", "totally-unknown-api")]).is_none());
+    }
+
+    #[test]
+    fn apply_overlays_registers_disk_only() {
+        let mut models = create_models(None);
+        let mut overlays = HashMap::new();
+        overlays.insert("custom-llm".into(), vec![sample_model("custom-llm", "openai-completions")]);
+        let report = models.apply_model_overlays(&overlays);
+        assert_eq!(report.registered, 1);
+        assert_eq!(report.skipped, 0);
+        assert!(models.get_provider("custom-llm").is_some());
+    }
 }

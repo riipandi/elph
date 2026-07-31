@@ -29,7 +29,7 @@ pub async fn resolve_model(
     provider_override: Option<&str>,
     model_override: Option<&str>,
     auth_store_path: Option<&Path>,
-) -> Result<ModelSelection> {
+) -> Result<(ModelSelection, elph_ai::OverlayApplyReport)> {
     // Prefer CONFIG_DIR/providers when available (resolved via auth store path parent).
     if let Some(auth_path) = auth_store_path {
         if let Some(config_dir) = auth_path.parent() {
@@ -58,9 +58,9 @@ pub async fn resolve_model(
         credentials: Some(Arc::new(credentials)),
         ..Default::default()
     }));
-    // Apply the same disk overlays to streaming providers' model lists.
+    // Merge disk overlays and register streaming adapters for disk-only provider ids.
     let overlays = elph_ai::disk_catalog_overrides();
-    mutable.apply_model_overlays(&overlays);
+    let overlay_stats = mutable.apply_model_overlays(&overlays);
     let models = mutable.into_arc();
     models
         .get_provider(&provider)
@@ -94,13 +94,16 @@ pub async fn resolve_model(
     }
 
     let display_name = model.name.clone();
-    Ok(ModelSelection {
-        provider,
-        model_id: model.id.clone(),
-        model,
-        models,
-        display_name,
-    })
+    Ok((
+        ModelSelection {
+            provider,
+            model_id: model.id.clone(),
+            model,
+            models,
+            display_name,
+        },
+        overlay_stats,
+    ))
 }
 
 /// Load provider credentials from `auth.json` into an in-memory credential store.

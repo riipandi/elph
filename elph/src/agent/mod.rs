@@ -2,6 +2,7 @@
 
 mod agents_load;
 mod ask_user;
+mod conflict_notice;
 mod diagnostics;
 mod events;
 pub(crate) mod goal_slash;
@@ -25,11 +26,13 @@ mod system_prompt_slash;
 mod tool_policy;
 mod tools_catalog;
 mod tools_slash;
+mod workspace_reload;
 
 pub use agents_load::{
     AgentConflict, WorkspaceAgent, WorkspaceAgents, agent_dir_entries, ensure_global_agents_md,
     format_agent_conflict_notice, load_workspace_agents,
 };
+pub use conflict_notice::{CrossKindConflict, TemplateConflict, format_name_conflicts};
 pub use events::{AgentUiEvent, SubagentUiPhase, ToolApprovalChoice};
 pub use events::{ModeChangeRequest, PlanConfirmationRequest, QueuedPromptItem, QueuedPromptKind};
 pub use events::{ToolApprovalRequest, UserQuestionOption, UserQuestionRequest, UserQuestionStep};
@@ -41,9 +44,7 @@ pub use provider::{DEFAULT_MODEL_ID, DEFAULT_PROVIDER};
 pub use provider::{is_known_provider, provider_api_key_env, provider_config, resolve_provider_and_model};
 pub use provider_catalog::install_providers_dir;
 pub use resource_loader::LoadResourcesResult;
-pub use resource_loader::{
-    CrossKindConflict, TemplateConflict, format_resource_conflict_notice, format_resource_load_warnings, load_resources,
-};
+pub use resource_loader::{format_resource_conflict_notice, format_resource_load_warnings, load_resources};
 pub use run_mode::RunModeOptions;
 pub use run_mode::run_non_interactive;
 pub use runtime::CreateSessionOptions;
@@ -54,7 +55,6 @@ pub use session_manager::SessionManager;
 pub use skills_load::SkillConflict;
 pub use skills_load::{format_skill_conflict_notice, truncate_palette_description};
 pub use skills_load::{parse_skill_slash, skill_slash_name};
-// format_skill_conflict_notice kept for callers; prefer format_resource_conflict_notice for full reports.
 pub use slash_commands::{OverlayCommand, SlashDispatch};
 pub use slash_commands::{
     SlashArgCompletion, slash_arg_completions, slash_commands_for_palette, slash_palette_submit_on_enter,
@@ -66,3 +66,4 @@ pub use tool_policy::agent_mode_from_setting;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
 pub use tools_slash::tools_slash_message;
+pub use workspace_reload::{WorkspaceReloadReport, WorkspaceReloadRequest};

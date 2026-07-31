@@ -116,7 +116,9 @@ Each `*.json` (except `index.json`) is keyed by file stem as the provider id. Sh
 1. **Map** — `modelId → model` (embedded unpack shape).
 2. **Schema wrapper** — `{ "baseUrl"?, "headers"?, "models": { … } }`. Wrapper `baseUrl` / `headers` are stamped onto models that omit them; per-model values win.
 
-Process-wide merge: `set_disk_catalog_overrides` after load. Lookup uses `merged_models_for_provider` / `merged_get_model` (disk overlays replace embedded models by `id`; unknown provider ids from disk become custom providers).
+Process-wide merge: `set_disk_catalog_overrides` after load. Lookup uses `merged_models_for_provider` / `merged_get_model` (disk overlays replace embedded models by `id`).
+
+**Streaming adapters for disk-only providers:** when a provider id is not built-in, Elph registers a runtime adapter if models use a supported API (`openai-completions`, `openai-responses`, `anthropic-messages`, `google-generative-ai`, `mistral-conversations`, `azure-openai-responses`). Auth resolves from `auth.json` and/or env `PROVIDER_ID_API_KEY` (kebab id → `PROVIDER_ID_API_KEY`). Use `/reload` after editing provider JSON so mid-session catalogs and adapters refresh.
 
 ## Environment variables
 

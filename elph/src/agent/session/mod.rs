@@ -459,6 +459,11 @@ impl CodingAgentSession {
         Ok(loaded)
     }
 
+    /// Replace live model selection (including the streaming [`elph_ai::Models`] Arc).
+    pub(crate) fn replace_selection(&self, selection: ModelSelection) {
+        *self.selection.write() = selection;
+    }
+
     pub async fn invoke_skill(&self, name: &str, args: &str) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();

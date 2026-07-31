@@ -31,12 +31,14 @@ pub use auth::{ApiKeyAuth, ApiKeyCredential, AuthContext, AuthResolveInput, Auth
 pub use auth::{CredentialInfo, ModelsErrorCode, OAuthCredential, ProviderAuth};
 pub use auth::{CredentialStore, DefaultAuthContext, InMemoryCredentialStore, ModelAuth, ModelsError};
 pub use auth::{InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ProviderStore};
-pub use auth::{default_auth_context, env_api_key_auth, resolve_provider_auth};
+pub use auth::{default_auth_context, env_api_key_auth, flexible_api_key_auth, resolve_provider_auth};
 pub use images::{CreateImagesModelsOptions, ImagesModels};
 pub use images::{builtin_images_models, generate_images};
 pub use models::embedded_provider_json;
 pub use models::{CreateModelsOptions, CreateProviderOptions, Models, MutableModels, Provider, ProviderApi};
-pub use models::{calculate_cost, clamp_thinking_level, create_models, create_provider};
+pub use models::{
+    OverlayApplyReport, calculate_cost, clamp_thinking_level, create_disk_provider, create_models, create_provider,
+};
 pub use models::{
     disk_catalog_overrides, load_provider_catalogs_dir, merge_model_lists, parse_provider_catalog_json,
     set_disk_catalog_overrides,
