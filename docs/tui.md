@@ -364,7 +364,7 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | Click header/footer       | Expand/collapse that specific block                                                                |
 | `:q` / `:q!`              | Quit (vim-style)                                                                                   |
 
-Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
+Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Mode is **per-session** (default `build` for new sessions) and is not written to shared `settings.json` — see [agent-runtime.md](./agent-runtime.md).
 
 ## Message timestamps
 
@@ -404,7 +404,7 @@ By default (`settings.models.showConfiguredOnly: true`), the **All** list and **
 | `Ctrl+X`                 | Clear all (or clear matching the filter)            |
 | `Ctrl+P`                 | Toggle every model for the selected item's provider |
 | `Alt+↑` / `Alt+↓`        | Reorder enabled models (cycle order)                |
-| `Ctrl+S`                 | Save to home `settings.models.scoped`               |
+| `Ctrl+S`                 | Save to home `settings.models.scopedModels`         |
 | `Esc`                    | Cancel without saving                               |
 
 Edits are **session-only** until **Ctrl+S** (footer shows `(unsaved)`). Cancel restores the list from when the editor opened.
@@ -415,7 +415,7 @@ Elph does not pick a default model at startup. The footer shows **No model selec
 
 ### Missing API key
 
-If the provider JSON has no resolved `apiKey`, confirming a model still **saves** `session.providerId` / `session.modelId` to `~/.elph/settings.json` and updates the footer. Chat remains blocked until credentials work; the status message points at `~/.elph/providers/<id>.json` or the referenced environment variable.
+If the provider JSON has no resolved `apiKey`, confirming a model still updates the **session** footer and live selection (it does **not** write shared `settings.json`). Chat remains blocked until credentials work; the status message points at `~/.elph/providers/<id>.json` or the referenced environment variable.
 
 ### Draft preservation
 

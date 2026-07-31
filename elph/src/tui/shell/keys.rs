@@ -894,7 +894,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             let clamped = clamp_thinking_for_model_value(thinking_level.get(), &value);
                             if clamped != thinking_level.get() {
                                 thinking_level.set(clamped);
-                                persist_session_prefs(&paths_snapshot, agent_mode.get(), clamped);
                             }
                             publish_ephemeral_transcript_notice(
                                 &mut messages,
@@ -1213,7 +1212,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 } else {
                     pending.respond(approved);
                 }
-                crate::tui::session_prefs::persist_session_prefs(&paths, mode, thinking_level.get());
                 activity_label.set(match approved {
                     true => format!("Switched to {}", mode.label()),
                     false => format!("Stayed in {}", agent_mode.get().label()),
@@ -1974,8 +1972,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 };
 
                 if let Some(pid) = provider_id {
-                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                    let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                    let auth_store_path = paths.auth_store_path();
                     let pid_for_task = pid.clone();
                     tokio::spawn(async move {
                         match crate::tui::provider_credential_store::delete_provider_credential(
@@ -2538,6 +2535,15 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 match outcome {
                     SlashOutcome::OpenModelSelector { filter } => {
                         let settings = Settings::load(&paths).ok();
+                        let default_pm = settings.as_ref().and_then(|s| s.models.default_provider_and_model());
+                        let live_pm = agent_session.as_ref().map(|s| (s.model_provider(), s.model_id()));
+                        let (sel_provider, sel_model) = match live_pm {
+                            Some((p, m)) => (Some(p), Some(m)),
+                            None => match default_pm {
+                                Some((p, m)) => (Some(p), Some(m)),
+                                None => (None, None),
+                            },
+                        };
                         open_model_selector(OpenModelSelectorArgs {
                             pending: &mut pending_model_selector,
                             provider_index: &mut model_provider_index,
@@ -2549,8 +2555,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             shell_focus: &mut shell_focus,
                             initial_filter: filter,
                             paths: &paths,
-                            provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
-                            model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                            provider_id: sel_provider.as_deref(),
+                            model_id: sel_model.as_deref(),
                             session_scoped: Some(session_scoped_items.read().as_slice()),
                         });
                     }
@@ -2673,8 +2679,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         return;
                     }
                     SlashOutcome::OpenProviderDisconnectDialog { provider_id } => {
-                        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                        let auth_store_path = std::path::PathBuf::from(home).join(".elph").join("auth.json");
+                        let auth_store_path = paths.auth_store_path();
                         open_provider_disconnect_dialog(
                             crate::tui::provider_connect_dialog::OpenProviderDisconnectDialogArgs {
                                 pending: &mut pending_provider_disconnect,
@@ -2913,6 +2918,15 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     close_model_selector(&mut pending_model_selector, &mut draft, &mut live_draft, &mut shell_focus);
                 } else {
                     let settings = Settings::load(&paths).ok();
+                    let default_pm = settings.as_ref().and_then(|s| s.models.default_provider_and_model());
+                    let live_pm = agent_session.as_ref().map(|s| (s.model_provider(), s.model_id()));
+                    let (sel_provider, sel_model) = match live_pm {
+                        Some((p, m)) => (Some(p), Some(m)),
+                        None => match default_pm {
+                            Some((p, m)) => (Some(p), Some(m)),
+                            None => (None, None),
+                        },
+                    };
                     open_model_selector(OpenModelSelectorArgs {
                         pending: &mut pending_model_selector,
                         provider_index: &mut model_provider_index,
@@ -2924,8 +2938,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         shell_focus: &mut shell_focus,
                         initial_filter: String::new(),
                         paths: &paths,
-                        provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
-                        model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                        provider_id: sel_provider.as_deref(),
+                        model_id: sel_model.as_deref(),
                         session_scoped: Some(session_scoped_items.read().as_slice()),
                     });
                 }
@@ -3048,7 +3062,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     let clamped = clamp_thinking_for_model_value(thinking_level.get(), &value);
                     if clamped != thinking_level.get() {
                         thinking_level.set(clamped);
-                        persist_session_prefs(&paths, agent_mode.get(), clamped);
                     }
                     // Scoped cycle: `Model set to MODEL_ID (PROVIDER)`.
                     publish_ephemeral_transcript_notice(
@@ -3100,7 +3113,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             } else {
                 let next = agent_mode.get().next();
                 agent_mode.set(next);
-                persist_session_prefs(&paths, next, thinking_level.get());
                 let expire_tx = ephemeral_expire.read().tx.clone();
                 show_ephemeral_banner(
                     &mut ephemeral_banner,
@@ -3146,7 +3158,6 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             };
             thinking_level.set(next);
-            persist_session_prefs(&paths, agent_mode.get(), next);
             if let Some(session) = agent_session.as_ref() {
                 let session = Arc::clone(session);
                 let level = next;

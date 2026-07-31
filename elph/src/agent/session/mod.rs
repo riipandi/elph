@@ -1,10 +1,10 @@
 //! Stateful coding session wrapping `AgentHarness`.
 
+mod compaction;
 mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
-use elph_agent::compaction::{estimate_context_tokens, should_compact};
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
 use std::sync::Arc;
@@ -23,7 +23,7 @@ use super::resource_loader::load_resources;
 use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
 use super::session_manager::SessionManager;
 use super::tool_policy::AgentModePolicy;
-use super::tool_policy::to_agent_thinking;
+use super::tool_policy::{from_agent_thinking, to_agent_thinking};
 use super::tools_catalog::reconcile_harness_tools;
 use crate::platform::Paths;
 use elph_agent::parse_command_args;
@@ -51,6 +51,8 @@ pub struct CodingAgentSessionParams {
     /// User's preferred chat language for transcript responses (e.g. `"english"`, `"indonesian"`).
     /// Code, comments, and documentation remain in English regardless of this value.
     pub preferred_chat_language: String,
+    /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
+    pub compaction_model_ref: String,
 }
 
 pub struct CodingAgentSession {
@@ -58,7 +60,7 @@ pub struct CodingAgentSession {
     session_manager: SessionManager,
     session_id: String,
     /// Live model selection (updated by [`Self::set_model_from_value`] for Ctrl+P / picker).
-    selection: RwLock<ModelSelection>,
+    pub(crate) selection: RwLock<ModelSelection>,
     policy: Arc<Mutex<AgentModePolicy>>,
     mode_state: Arc<Mutex<AgentMode>>,
     ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
@@ -71,11 +73,13 @@ pub struct CodingAgentSession {
     mode_gate: Arc<Mutex<()>>,
     /// Last successfully compiled system prompt for sync slash reads during a busy turn.
     system_prompt_cache: RwLock<Option<String>>,
-    /// Settings `session.titleModel` (`inherit` or `provider/model_id`).
+    /// Settings `models.sessionTitleModel` (`inherit` or `provider/model_id`).
     title_model: String,
     /// User's preferred chat language for transcript responses.
     /// Code, comments, and documentation remain in English regardless of this value.
     preferred_chat_language: String,
+    /// Settings `models.compactionModel` (`inherit` or `provider/model_id`).
+    compaction_model_ref: String,
     /// Ensures at most one background auto-title attempt per session instance.
     title_generation_started: AtomicBool,
 }
@@ -95,6 +99,7 @@ impl CodingAgentSession {
             ui_tx,
             title_model,
             preferred_chat_language,
+            compaction_model_ref,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -119,6 +124,7 @@ impl CodingAgentSession {
             system_prompt_cache: RwLock::new(None),
             title_model,
             preferred_chat_language,
+            compaction_model_ref,
             title_generation_started: AtomicBool::new(already_named),
         };
         session.wire_harness(ui_tx).await?;
@@ -317,38 +323,7 @@ impl CodingAgentSession {
         result.map_err(|err| anyhow::anyhow!("{err}"))
     }
 
-    /// Check context usage and auto-compact if it exceeds the configured threshold.
-    ///
-    /// Runs synchronously within `turn_gate` (already held by the caller) so that
-    /// compaction completes before the next turn starts — preventing the race where
-    /// a new prompt arrives before a background-spawned compact gets scheduled and
-    /// fails with *"compact() requires idle harness"*.
-    async fn maybe_auto_compact(&self) {
-        let settings = self.harness.compaction_settings();
-        if !settings.enabled {
-            return;
-        }
-        let model = self.harness.get_model().await;
-        let context_window = model.context_window as u64;
-        if context_window == 0 {
-            return;
-        }
-        let Ok(entries) = self.harness.session_branch_entries().await else {
-            return;
-        };
-        // Use `build_session_context` so that the compaction transform (removing
-        // entries before `first_kept_entry_id` and projecting the compaction summary)
-        // gives us the actual messages the LLM would see. Without this, we'd count
-        // old compacted messages that are no longer in the context, causing compaction
-        // to trigger too aggressively or re-compact already-compacted history.
-        let context = elph_agent::build_session_context(&entries);
-        let estimate = estimate_context_tokens(&context.messages);
-        if should_compact(estimate.tokens, context_window, settings)
-            && let Err(err) = self.harness.compact(None).await
-        {
-            log::warn!("auto-compact failed: {err}");
-        }
-    }
+    // maybe_auto_compact: see compaction.rs
 
     /// Enqueue a follow-up prompt (delivered after current agent work). Does not end the UI turn.
     ///
@@ -431,22 +406,14 @@ impl CodingAgentSession {
     pub async fn compact(&self) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
         let started = Instant::now();
-        let result = self.harness.compact(None).await;
+        let result = self
+            .run_compact_with_notices(compaction::CompactSource::Manual, None, None)
+            .await;
         self.finish_ui_turn(started).await;
-        match &result {
-            Ok(compact_result) if compact_result.is_noop() => {
-                let _ = self
-                    .ui_tx
-                    .send(AgentUiEvent::Status("History is already up to date.".into()));
-            }
-            Ok(_) => {
-                let _ = self.ui_tx.send(AgentUiEvent::Status("History compacted.".into()));
-            }
-            Err(err) => {
-                let _ = self.ui_tx.send(AgentUiEvent::Status(format!("Compact failed: {err}")));
-            }
+        if let Err(err) = &result {
+            self.notice_compact_failed(err);
         }
-        result.map(|_| ()).map_err(|e| anyhow::anyhow!("{e}"))
+        result.map(|_| ())
     }
 
     pub async fn reload_resources(&self, paths: &Paths, cwd: &Path) -> Result<LoadResourcesResult> {
@@ -508,7 +475,10 @@ impl CodingAgentSession {
     }
 
     pub async fn set_model_from_value(&self, value: &str) -> Result<String> {
+        let _guard = self.turn_gate.lock().await;
         let model = super::overlays::resolve_model_from_value(value)?;
+        let old_window = self.selection.read().model.context_window as u64;
+        let new_window = model.context_window as u64;
         self.harness
             .set_model(model.clone())
             .await
@@ -523,12 +493,29 @@ impl CodingAgentSession {
             *selection = ModelSelection {
                 provider: provider.clone(),
                 model_id,
-                model,
+                model: model.clone(),
                 models,
                 display_name: display_name.clone(),
             };
         }
+        // Clamp thinking to the new catalog map (live per-session state).
+        let current_thinking = self.harness.get_thinking_level().await;
+        let level = from_agent_thinking(current_thinking);
+        let clamped = level.clamp_for_model(&model);
+        if clamped != level {
+            let _ = self.harness.set_thinking_level(to_agent_thinking(clamped)).await;
+        }
+        // If the new model has a smaller context window, compact until history fits.
+        if let Err(err) = self.ensure_context_fits_new_model(old_window, new_window).await {
+            log::warn!("model-switch fit compact: {err}");
+        }
         Ok(format!("{display_name} [{provider}]"))
+    }
+
+    fn notice_compact_failed(&self, err: &anyhow::Error) {
+        let _ = self
+            .ui_tx
+            .send(AgentUiEvent::TranscriptNotice(format!("Compaction failed: {err}")));
     }
 
     pub async fn navigate_tree_to(&self, entry_id: &str) -> Result<()> {
@@ -704,11 +691,7 @@ async fn generate_and_store_session_title(
 }
 
 fn resolve_title_model(setting: &str, inherit: &elph_ai::Model) -> Result<elph_ai::Model> {
-    let trimmed = setting.trim();
-    if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("inherit") {
-        return Ok(inherit.clone());
-    }
-    super::overlays::resolve_model_from_value(trimmed)
+    compaction::resolve_settings_model_ref(setting, inherit)
 }
 
 #[cfg(test)]

@@ -17,8 +17,9 @@ use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
 use super::session_manager::SessionManager;
-use super::tool_policy::{agent_mode_from_setting, thinking_level_from_setting, to_agent_thinking};
+use super::tool_policy::{thinking_level_from_setting, to_agent_thinking};
 use crate::platform::{Paths, Settings};
+use crate::types::AgentMode;
 pub struct CreateSessionOptions<'a> {
     pub paths: &'a Paths,
     pub settings: &'a Settings,
@@ -26,6 +27,9 @@ pub struct CreateSessionOptions<'a> {
     pub resume_id: Option<&'a str>,
     pub provider_override: Option<&'a str>,
     pub model_override: Option<&'a str>,
+    /// Host override for agent mode (e.g. `elph run --brave`). Default: `build`.
+    /// Not read from settings — mode is per-session.
+    pub agent_mode: Option<crate::types::AgentMode>,
     /// When set, skips a second [`load_resources`] pass during session bootstrap.
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
@@ -101,9 +105,9 @@ pub async fn create_coding_session_with_events(
     }));
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
-    // Clamp settings thinking to the resolved model catalog (same rules as footer / Ctrl+.).
+    // Clamp default thinking (new-session seed) to the resolved model catalog.
     let thinking = {
-        let raw = thinking_level_from_setting(&options.settings.session.thinking_level);
+        let raw = thinking_level_from_setting(&options.settings.models.default_thinking_level);
         let clamped = raw.clamp_for_model(&selection.model);
         to_agent_thinking(clamped)
     };
@@ -123,7 +127,8 @@ pub async fn create_coding_session_with_events(
         agent_graph: Some(agent_graph),
     };
 
-    let agent_mode = agent_mode_from_setting(&options.settings.session.agent_mode);
+    // Agent mode is per-session; default build unless the host overrides (e.g. --brave).
+    let agent_mode = options.agent_mode.unwrap_or(AgentMode::Build);
     let mode_state = Arc::new(Mutex::new(agent_mode));
     let cwd = options.cwd.to_path_buf();
     let agents_md = agents_md_for_cwd(options.cwd);
@@ -135,7 +140,7 @@ pub async fn create_coding_session_with_events(
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
-    let preferred_chat_language = options.settings.session.preferred_chat_language.clone();
+    let preferred_chat_language = options.settings.preferred_chat_language.clone();
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
@@ -218,8 +223,9 @@ pub async fn create_coding_session_with_events(
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),
-        title_model: options.settings.session.title_model.clone(),
-        preferred_chat_language: options.settings.session.preferred_chat_language.clone(),
+        title_model: options.settings.models.session_title_model.clone(),
+        preferred_chat_language: options.settings.preferred_chat_language.clone(),
+        compaction_model_ref: options.settings.models.compaction_model.clone(),
     })
     .await?;
 

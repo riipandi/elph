@@ -344,6 +344,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         resume_id: config.resume_id.as_deref(),
         provider_override: None,
         model_override: None,
+        agent_mode: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
     })

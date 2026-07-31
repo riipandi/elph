@@ -13,7 +13,6 @@ use crate::tui::chrome::ChromeStats;
 use crate::tui::focus::ShellFocus;
 use crate::tui::labels::{model_display_label, model_footer_label};
 use crate::tui::model_selector::{ModelCatalogOptions, ModelSelectorFocus, PendingModelSelector};
-use crate::tui::session_prefs::persist_model_selection;
 
 /// Arguments for [`open_model_selector`].
 pub struct OpenModelSelectorArgs<'a> {
@@ -47,7 +46,7 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
     // Prefer non-empty session list (unsaved /scoped-models edits); else settings.json.
     let scoped_model_items = match args.session_scoped {
         Some(items) if !items.is_empty() => items,
-        _ => settings.models.scoped.as_slice(),
+        _ => settings.models.scoped_models.as_slice(),
     };
     let catalog_options = ModelCatalogOptions {
         show_configured_only: settings.models.show_configured_only,
@@ -220,9 +219,8 @@ pub fn apply_model_selector_filter_seed(
     }
 }
 
-pub fn apply_model_selection_locally(value: &str, paths: &Paths, chrome_stats: &mut ChromeStats) -> Result<String> {
+pub fn apply_model_selection_locally(value: &str, _paths: &Paths, chrome_stats: &mut ChromeStats) -> Result<String> {
     let (provider_id, model_id) = parse_model_value(value)?;
-    persist_model_selection(paths, &provider_id, &model_id);
     chrome_stats.model_label = model_footer_label(Some(&provider_id), Some(&model_id));
     chrome_stats.supports_images = get_builtin_model(&provider_id, &model_id)
         .map(|model| model.input.iter().any(|cap| cap == "image"))

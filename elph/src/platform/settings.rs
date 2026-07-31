@@ -15,9 +15,17 @@
 //!
 //! ```json
 //! {
+//!   "preferredChatLanguage": "english",
 //!   "ui": { ... },
-//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel", "preferredChatLanguage" },
-//!   "models": { "scoped": [...], "showConfiguredOnly": true },
+//!   "models": {
+//!     "defaultModel": null,
+//!     "sessionTitleModel": "inherit",
+//!     "compactionModel": "inherit",
+//!     "treeBranchSummaries": "inherit",
+//!     "defaultThinkingLevel": "high",
+//!     "showConfiguredOnly": true,
+//!     "scopedModels": []
+//!   },
 //!   "provider": { ... },
 //!   "memory": { ... },
 //!   "notifications": { ... },
@@ -25,11 +33,16 @@
 //! }
 //! ```
 //!
+//! **Per-session state** (active model, thinking level, agent mode) is **not** stored here —
+//! it lives on the coding session / Turso session tree so concurrent Elph instances do not
+//! race on `settings.json`. New sessions seed model/thinking from `models.defaultModel` /
+//! `models.defaultThinkingLevel`; agent mode always starts as `build`.
+//!
 //! Host-only: `elph-ai` and `elph-agent` never read these paths; the binary maps fields
 //! into agnostic harness options at session creation.
 //!
-//! Flat legacy keys (e.g. top-level `showThinking`, `scopedModelItems`) are migrated on
-//! load and rewritten in the nested shape on the next save.
+//! Flat legacy keys and the old `session` group are migrated on load and rewritten in the
+//! nested shape on the next save.
 
 use std::path::{Path, PathBuf};
 
@@ -65,13 +78,15 @@ impl SettingsScope {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    /// Preferred language for AI chat responses in the transcript.
+    ///
+    /// Code, comments, and documentation remain in English regardless of this setting.
+    #[serde(default = "default_preferred_chat_language")]
+    pub preferred_chat_language: String,
     /// Transcript / chrome / picker presentation.
     #[serde(default)]
     pub ui: UiSettings,
-    /// Last / preferred interactive session state.
-    #[serde(default)]
-    pub session: SessionSettings,
-    /// Model catalog preferences (scoped cycle list, etc.).
+    /// Model catalog preferences and **new-session** defaults (not live session state).
     #[serde(default)]
     pub models: ModelsSettings,
     /// LLM HTTP transport defaults (mapped into harness stream options).
@@ -193,50 +208,66 @@ pub struct FilePickerSettings {
     pub show_hidden_files: bool,
 }
 
-/// Restored session defaults (provider/model/mode/thinking).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionSettings {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub provider_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_id: Option<String>,
-    #[serde(default = "default_agent_mode")]
-    pub agent_mode: String,
-    #[serde(default = "default_thinking_level")]
-    pub thinking_level: String,
-    /// Model for automatic session title generation (`provider/model_id`, or `"inherit"`).
-    ///
-    /// When `"inherit"` (default), the live session model is used for the background title call.
-    #[serde(default = "default_title_model")]
-    pub title_model: String,
-    /// Preferred language for AI chat responses in the transcript.
-    ///
-    /// Code, comments, and documentation remain in English regardless of this setting.
-    #[serde(default = "default_preferred_chat_language")]
-    pub preferred_chat_language: String,
-}
-
-/// Model-catalog preferences.
+/// Model-catalog preferences and seeds for **new** sessions.
+///
+/// Live provider/model, thinking level, and agent mode are per-session — not stored here.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelsSettings {
-    /// `provider/model_id` entries for Ctrl+P cycling and the model picker Scoped tab.
-    /// Edit via `/scoped-models`.
-    #[serde(default)]
-    pub scoped: Vec<String>,
+    /// Optional `provider/model_id` seed for **new** sessions (e.g. `opencode/big-pickle`).
+    /// Empty / omitted → no model until the user picks one (or env / CLI override).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_model: Option<String>,
+    /// Model for automatic session title generation (`provider/model_id`, or `"inherit"`).
+    #[serde(default = "default_inherit_model")]
+    pub session_title_model: String,
+    /// Model used when summarizing history during compaction (`inherit` = session model).
+    #[serde(default = "default_inherit_model")]
+    pub compaction_model: String,
+    /// Model used for tree branch summarization (`inherit` = session model).
+    #[serde(default = "default_inherit_model")]
+    pub tree_branch_summaries: String,
+    /// Thinking / reasoning level seed for **new** sessions (`off`…`max`).
+    #[serde(default = "default_thinking_level")]
+    pub default_thinking_level: String,
     /// When true (default), the model picker's **All** list and **Provider** tabs only
     /// include providers that already have credentials in `auth.json` (API key, OAuth, or env ref).
     #[serde(default = "default_true")]
     pub show_configured_only: bool,
+    /// `provider/model_id` entries for Ctrl+P cycling and the model picker Scoped tab.
+    /// Edit via `/scoped-models`.
+    #[serde(default)]
+    pub scoped_models: Vec<String>,
 }
 
 impl Default for ModelsSettings {
     fn default() -> Self {
         Self {
-            scoped: Vec::new(),
+            default_model: None,
+            session_title_model: default_inherit_model(),
+            compaction_model: default_inherit_model(),
+            tree_branch_summaries: default_inherit_model(),
+            default_thinking_level: default_thinking_level(),
             show_configured_only: true,
+            scoped_models: Vec::new(),
         }
+    }
+}
+
+impl ModelsSettings {
+    /// Split `defaultModel` into `(provider, model_id)` when well-formed.
+    pub fn default_provider_and_model(&self) -> Option<(String, String)> {
+        let raw = self.default_model.as_deref()?.trim();
+        if raw.is_empty() || raw.eq_ignore_ascii_case("inherit") {
+            return None;
+        }
+        let (provider, model) = raw.split_once('/')?;
+        let provider = provider.trim();
+        let model = model.trim();
+        if provider.is_empty() || model.is_empty() {
+            return None;
+        }
+        Some((provider.to_string(), model.to_string()))
     }
 }
 
@@ -404,19 +435,13 @@ impl CompactionConfig {
 impl Settings {
     /// Built-in defaults written on first bootstrap (`Settings::ensure`).
     ///
-    /// No model is pre-selected: `session.providerId` / `session.modelId` and
-    /// `models.scoped` stay empty until the user picks models.
+    /// No model is pre-selected: `models.defaultModel` and `models.scopedModels`
+    /// stay empty until the user configures them. Live session model/mode/thinking
+    /// are never written here.
     pub fn defaults() -> Self {
         Self {
+            preferred_chat_language: default_preferred_chat_language(),
             ui: UiSettings::default(),
-            session: SessionSettings {
-                provider_id: None,
-                model_id: None,
-                agent_mode: default_agent_mode(),
-                thinking_level: default_thinking_level(),
-                title_model: default_title_model(),
-                preferred_chat_language: default_preferred_chat_language(),
-            },
             models: ModelsSettings::default(),
             provider: ProviderHttpSettings::default(),
             memory: MemorySettings::default(),
@@ -509,21 +534,66 @@ fn migrate_settings_value(value: &mut Value) {
         ],
     );
 
-    // Top-level scopedModelItems → models.scoped
+    // Top-level preferredChatLanguage (already top-level in new shape; no-op if present).
+    // Top-level scopedModelItems → models.scopedModels
     if let Some(scoped) = root.remove("scopedModelItems") {
         let models = root
             .entry("models".to_string())
             .or_insert_with(|| Value::Object(Map::new()));
         if let Some(obj) = models.as_object_mut() {
-            obj.entry("scoped".to_string()).or_insert(scoped);
+            obj.entry("scopedModels".to_string()).or_insert(scoped);
         }
     }
 
-    // Also accept models.scopedModelItems if someone nested the old name.
-    if let Some(Value::Object(models)) = root.get_mut("models")
-        && let Some(scoped) = models.remove("scopedModelItems")
+    // Migrate legacy `session` group → models / top-level.
+    if let Some(session_val) = root.remove("session")
+        && let Some(session) = session_val.as_object()
     {
-        models.entry("scoped".to_string()).or_insert(scoped);
+        // preferredChatLanguage → top-level
+        if let Some(lang) = session.get("preferredChatLanguage").cloned()
+            && !root.contains_key("preferredChatLanguage")
+        {
+            root.insert("preferredChatLanguage".to_string(), lang);
+        }
+
+        let models = root
+            .entry("models".to_string())
+            .or_insert_with(|| Value::Object(Map::new()));
+        if let Some(obj) = models.as_object_mut() {
+            // providerId + modelId → defaultModel
+            if !obj.contains_key("defaultModel") {
+                let provider = session
+                    .get("providerId")
+                    .and_then(|v| v.as_str())
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty());
+                let model = session
+                    .get("modelId")
+                    .and_then(|v| v.as_str())
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty());
+                if let (Some(p), Some(m)) = (provider, model) {
+                    obj.insert("defaultModel".to_string(), Value::String(format!("{p}/{m}")));
+                }
+            }
+            if let Some(level) = session.get("thinkingLevel").cloned() {
+                obj.entry("defaultThinkingLevel".to_string()).or_insert(level);
+            }
+            if let Some(title) = session.get("titleModel").cloned() {
+                obj.entry("sessionTitleModel".to_string()).or_insert(title);
+            }
+            // agentMode intentionally dropped — live mode is per-session; default is build.
+        }
+    }
+
+    // models.scoped / scopedModelItems → models.scopedModels
+    if let Some(Value::Object(models)) = root.get_mut("models") {
+        if let Some(scoped) = models.remove("scopedModelItems") {
+            models.entry("scopedModels".to_string()).or_insert(scoped);
+        }
+        if let Some(scoped) = models.remove("scoped") {
+            models.entry("scopedModels".to_string()).or_insert(scoped);
+        }
     }
 }
 
@@ -618,15 +688,11 @@ fn default_memory_min_query_length() -> u32 {
     15
 }
 
-fn default_agent_mode() -> String {
-    "build".to_string()
-}
-
 fn default_thinking_level() -> String {
     "high".to_string()
 }
 
-fn default_title_model() -> String {
+fn default_inherit_model() -> String {
     "inherit".to_string()
 }
 
@@ -694,16 +760,18 @@ mod tests {
         assert_eq!(settings, decoded);
         assert_eq!(decoded.memory.embed_model, "AllMiniLML6V2");
         assert!(decoded.memory.embed_quantized);
-        assert!(decoded.session.provider_id.is_none());
-        assert!(decoded.session.model_id.is_none());
-        assert_eq!(decoded.session.title_model, "inherit");
-        assert_eq!(decoded.session.preferred_chat_language, "english");
+        assert!(decoded.models.default_model.is_none());
+        assert_eq!(decoded.models.session_title_model, "inherit");
+        assert_eq!(decoded.models.compaction_model, "inherit");
+        assert_eq!(decoded.models.tree_branch_summaries, "inherit");
+        assert_eq!(decoded.models.default_thinking_level, "high");
+        assert_eq!(decoded.preferred_chat_language, "english");
         assert_eq!(decoded.provider.max_retries, 2);
         assert_eq!(decoded.provider.default_timeout, "120s");
         assert!(decoded.ui.show_thinking);
         assert_eq!(decoded.ui.theme, "auto");
         assert!(decoded.ui.themes.dark.is_empty());
-        assert!(decoded.models.scoped.is_empty());
+        assert!(decoded.models.scoped_models.is_empty());
     }
 
     #[test]
@@ -747,15 +815,14 @@ mod tests {
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load_home(&paths).expect("load");
-        assert!(loaded.session.provider_id.is_none());
-        assert!(loaded.session.model_id.is_none());
-        assert!(loaded.models.scoped.is_empty());
+        assert!(loaded.models.default_model.is_none());
+        assert!(loaded.models.scoped_models.is_empty());
 
         let raw = std::fs::read_to_string(paths.settings_path()).expect("read");
         let value: Value = serde_json::from_str(&raw).expect("parse");
-        assert!(value["session"].get("providerId").is_none());
-        assert!(value["session"].get("modelId").is_none());
-        assert_eq!(value["models"]["scoped"], serde_json::json!([]));
+        assert!(value.get("session").is_none());
+        assert!(value["models"].get("defaultModel").is_none());
+        assert_eq!(value["models"]["scopedModels"], serde_json::json!([]));
     }
 
     #[test]
@@ -763,14 +830,15 @@ mod tests {
         let json = serde_json::to_value(Settings::defaults()).expect("ser");
         let obj = json.as_object().expect("object");
         assert!(obj.contains_key("ui"));
-        assert!(obj.contains_key("session"));
+        assert!(obj.contains_key("preferredChatLanguage"));
+        assert!(!obj.contains_key("session"));
         assert!(obj.contains_key("models"));
         assert!(obj.contains_key("provider"));
         assert!(obj.contains_key("memory"));
         assert!(!obj.contains_key("showThinking"));
         assert!(!obj.contains_key("scopedModelItems"));
         assert_eq!(json["ui"]["footerTokenDisplay"], "both");
-        assert!(json["models"]["scoped"].as_array().expect("arr").is_empty());
+        assert!(json["models"]["scopedModels"].as_array().expect("arr").is_empty());
     }
 
     #[test]
@@ -783,7 +851,7 @@ mod tests {
             "autoExpandThinking": true,
             "scopedModelItems": ["opencode/big-pickle"],
             "filePicker": { "showHiddenFiles": true },
-            "session": { "agentMode": "plan" },
+            "session": { "agentMode": "plan", "thinkingLevel": "low", "preferredChatLanguage": "indonesian" },
             "provider": { "maxRetries": 4 }
         }"#;
         let mut value: Value = serde_json::from_str(json).expect("parse");
@@ -795,8 +863,9 @@ mod tests {
         assert!(!decoded.ui.colored_status_footer);
         assert!(decoded.ui.auto_expand_thinking);
         assert!(decoded.ui.file_picker.show_hidden_files);
-        assert_eq!(decoded.models.scoped, vec!["opencode/big-pickle".to_string()]);
-        assert_eq!(decoded.session.agent_mode, "plan");
+        assert_eq!(decoded.models.scoped_models, vec!["opencode/big-pickle".to_string()]);
+        assert_eq!(decoded.models.default_thinking_level, "low");
+        assert_eq!(decoded.preferred_chat_language, "indonesian");
         assert_eq!(decoded.provider.max_retries, 4);
     }
 
@@ -857,14 +926,13 @@ mod tests {
         let mut home = Settings::load_home(&paths).expect("load home");
         home.ui.show_thinking = true;
         home.ui.sticky_scroll = true;
-        home.session.agent_mode = "build".into();
-        home.session.provider_id = Some("opencode".into());
-        home.session.model_id = Some("big-pickle".into());
+        home.models.default_model = Some("opencode/big-pickle".into());
+        home.models.default_thinking_level = "high".into();
         Settings::save(&paths, &home).expect("save home");
 
         let project = serde_json::json!({
             "ui": { "showThinking": false },
-            "session": { "agentMode": "plan" }
+            "models": { "defaultThinkingLevel": "low" }
         });
         std::fs::create_dir_all(paths.project_elph_dir()).expect("project dir");
         std::fs::write(
@@ -876,26 +944,23 @@ mod tests {
         let merged = Settings::load(&paths).expect("load merged");
         assert!(!merged.ui.show_thinking);
         assert!(merged.ui.sticky_scroll);
-        assert_eq!(merged.session.agent_mode, "plan");
-        assert_eq!(merged.session.provider_id.as_deref(), Some("opencode"));
-        assert_eq!(merged.session.model_id.as_deref(), Some("big-pickle"));
+        assert_eq!(merged.models.default_thinking_level, "low");
+        assert_eq!(merged.models.default_model.as_deref(), Some("opencode/big-pickle"));
     }
 
     #[test]
-    fn project_can_override_session_model() {
+    fn project_can_override_default_model() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let paths = test_paths(&tmp);
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
-        home.session.provider_id = Some("opencode".into());
-        home.session.model_id = Some("big-pickle".into());
+        home.models.default_model = Some("opencode/big-pickle".into());
         Settings::save(&paths, &home).expect("save home");
 
         let project = serde_json::json!({
-            "session": {
-                "providerId": "anthropic",
-                "modelId": "claude-sonnet-4"
+            "models": {
+                "defaultModel": "anthropic/claude-sonnet-4"
             }
         });
         std::fs::create_dir_all(paths.project_elph_dir()).expect("project dir");
@@ -906,8 +971,11 @@ mod tests {
         .expect("write project");
 
         let merged = Settings::load(&paths).expect("merged");
-        assert_eq!(merged.session.provider_id.as_deref(), Some("anthropic"));
-        assert_eq!(merged.session.model_id.as_deref(), Some("claude-sonnet-4"));
+        assert_eq!(merged.models.default_model.as_deref(), Some("anthropic/claude-sonnet-4"));
+        assert_eq!(
+            merged.models.default_provider_and_model(),
+            Some(("anthropic".into(), "claude-sonnet-4".into()))
+        );
     }
 
     #[test]
@@ -953,16 +1021,16 @@ mod tests {
     #[test]
     fn deep_merge_replaces_arrays_and_scalars() {
         let mut base = serde_json::json!({
-            "models": { "scoped": ["a/b"] },
+            "models": { "scopedModels": ["a/b"] },
             "ui": { "showThinking": true }
         });
         let overlay = serde_json::json!({
-            "models": { "scoped": ["x/y", "z/w"] },
+            "models": { "scopedModels": ["x/y", "z/w"] },
             "ui": { "showThinking": false }
         });
         deep_merge(&mut base, &overlay);
         assert_eq!(base["ui"]["showThinking"], false);
-        assert_eq!(base["models"]["scoped"], serde_json::json!(["x/y", "z/w"]));
+        assert_eq!(base["models"]["scopedModels"], serde_json::json!(["x/y", "z/w"]));
     }
 
     #[test]
@@ -982,26 +1050,29 @@ mod tests {
         std::fs::create_dir_all(paths.config_dir()).expect("config");
         std::fs::write(
             paths.settings_path(),
-            r#"{"showThinking":false,"scopedModelItems":["opencode/big-pickle"],"session":{"agentMode":"ask"}}"#,
+            r#"{"showThinking":false,"scopedModelItems":["opencode/big-pickle"],"session":{"agentMode":"ask","providerId":"opencode","modelId":"big-pickle","thinkingLevel":"medium","titleModel":"inherit","preferredChatLanguage":"english"}}"#,
         )
         .expect("seed");
 
         let loaded = Settings::load_home(&paths).expect("load");
         assert!(!loaded.ui.show_thinking);
-        assert_eq!(loaded.models.scoped, vec!["opencode/big-pickle".to_string()]);
-        assert_eq!(loaded.session.agent_mode, "ask");
+        assert_eq!(loaded.models.scoped_models, vec!["opencode/big-pickle".to_string()]);
+        assert_eq!(loaded.models.default_model.as_deref(), Some("opencode/big-pickle"));
+        assert_eq!(loaded.models.default_thinking_level, "medium");
+        assert_eq!(loaded.preferred_chat_language, "english");
 
         Settings::save(&paths, &loaded).expect("save");
         let raw = std::fs::read_to_string(paths.settings_path()).expect("read");
         assert!(raw.contains("\"ui\""));
         assert!(raw.contains("\"models\""));
         assert!(!raw.contains("scopedModelItems"));
-        assert!(!raw.contains("\"showThinking\": false") || raw.contains("\"ui\""));
-        // Top-level showThinking should be gone after save.
+        // Top-level showThinking should be gone after save; no session group.
         let value: Value = serde_json::from_str(&raw).expect("parse");
         assert!(value.get("showThinking").is_none());
+        assert!(value.get("session").is_none());
         assert_eq!(value["ui"]["showThinking"], false);
-        assert_eq!(value["models"]["scoped"][0], "opencode/big-pickle");
+        assert_eq!(value["models"]["scopedModels"][0], "opencode/big-pickle");
+        assert_eq!(value["models"]["defaultModel"], "opencode/big-pickle");
     }
 
     #[test]

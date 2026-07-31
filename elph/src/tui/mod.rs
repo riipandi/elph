@@ -54,11 +54,10 @@ use elph_agent::LocalExecutionEnv;
 use elph_ai::get_builtin_model;
 use elph_tui::install_theme_config;
 
-use crate::agent::agent_mode_from_setting;
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
-use crate::types::ThinkingLevel;
+use crate::types::{AgentMode, ThinkingLevel};
 
 use chrome::read_git_footer_info;
 use labels::model_footer_label;
@@ -94,12 +93,12 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
-    let (boot_provider, boot_model_id) = resolve_provider_and_model(
-        None,
-        None,
-        settings.session.provider_id.as_deref(),
-        settings.session.model_id.as_deref(),
-    )?;
+    let (default_provider, default_model_id) = match settings.models.default_provider_and_model() {
+        Some((p, m)) => (Some(p), Some(m)),
+        None => (None, None),
+    };
+    let (boot_provider, boot_model_id) =
+        resolve_provider_and_model(None, None, default_provider.as_deref(), default_model_id.as_deref())?;
     let boot_model = get_builtin_model(&boot_provider, &boot_model_id);
     let context_limit = boot_model
         .as_ref()
@@ -128,9 +127,10 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         session_id: session_id,
         startup_messages: startup_messages,
         bootstrap: Some(bootstrap_config),
-        initial_agent_mode: agent_mode_from_setting(&settings.session.agent_mode),
+        // Live agent mode is per-session; new sessions always start in build.
+        initial_agent_mode: AgentMode::Build,
         initial_thinking_level: {
-            let raw = ThinkingLevel::from_setting(&settings.session.thinking_level);
+            let raw = ThinkingLevel::from_setting(&settings.models.default_thinking_level);
             if let Some(model) = boot_model.as_ref() {
                 raw.clamp_for_model(model)
             } else {

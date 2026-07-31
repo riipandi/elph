@@ -104,11 +104,10 @@ impl SlashDispatcher {
             let ui_tx = session.ui_event_sender();
             match dispatch {
                 SlashDispatch::Compact => {
-                    let status = match session.compact().await {
-                        Ok(_) => "History compacted.".into(),
-                        Err(err) => format!("Compact failed: {err}"),
-                    };
-                    let _ = ui_tx.send(AgentUiEvent::Status(status));
+                    // Lifecycle notices are emitted by CodingAgentSession::compact.
+                    if let Err(err) = session.compact().await {
+                        let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(format!("Compaction failed: {err}")));
+                    }
                 }
                 SlashDispatch::Goal { args } => {
                     let status = match handle_goal_slash(session.goal_runtime().as_ref(), &args).await {

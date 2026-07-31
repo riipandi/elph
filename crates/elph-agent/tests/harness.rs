@@ -1368,7 +1368,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         })
         .await;
 
-    harness.compact(Some("original")).await.expect("compact");
+    harness.compact(Some("original"), None).await.expect("compact");
 
     let prompt = captured_prompt.lock().clone();
     assert!(

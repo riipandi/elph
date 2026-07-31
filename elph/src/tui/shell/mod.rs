@@ -86,7 +86,7 @@ use crate::tui::scoped_models_shell::{
 use crate::tui::scroll_text_dialog::{
     DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog,
 };
-use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
+use crate::tui::session_prefs::cycle_and_persist_theme_mode;
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
 };
@@ -471,7 +471,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let scoped_filter = hooks.use_state(String::new);
     let session_scoped_items = hooks.use_ref(|| {
         Settings::load(&props.paths)
-            .map(|s| s.models.scoped)
+            .map(|s| s.models.scoped_models)
             .unwrap_or_default()
     });
     let pending_system_prompt = hooks.use_ref(|| None::<PendingSystemPromptDialog>);

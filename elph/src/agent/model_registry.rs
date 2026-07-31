@@ -40,11 +40,15 @@ pub async fn resolve_model(
         let _ = install_providers_dir(&paths.providers_dir());
     }
 
+    let (default_provider, default_model_id) = match settings.models.default_provider_and_model() {
+        Some((p, m)) => (Some(p), Some(m)),
+        None => (None, None),
+    };
     let (provider, model_id) = resolve_provider_and_model(
         provider_override,
         model_override,
-        settings.session.provider_id.as_deref(),
-        settings.session.model_id.as_deref(),
+        default_provider.as_deref(),
+        default_model_id.as_deref(),
     )?;
 
     // Look up under the resolved provider only. Gateway model ids often contain `/`

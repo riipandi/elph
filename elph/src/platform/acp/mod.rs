@@ -113,6 +113,7 @@ async fn create_acp_session(state: &Arc<Mutex<AcpAgentState>>, cwd: &PathBuf) ->
         resume_id: None,
         provider_override: None,
         model_override: None,
+        agent_mode: None,
         preloaded_resources: None,
         defer_mcp_load: false,
     })

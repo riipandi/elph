@@ -171,6 +171,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 
 ```json
 {
+  "preferredChatLanguage": "english",
   "ui": {
     "theme": "auto",
     "themes": {
@@ -184,13 +185,14 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     "coloredStatusFooter": true,
     "filePicker": { "showHiddenFiles": false }
   },
-  "session": {
-    "agentMode": "build",
-    "thinkingLevel": "high"
-  },
   "models": {
-    "scoped": [],
-    "showConfiguredOnly": true
+    "defaultModel": null,
+    "sessionTitleModel": "inherit",
+    "compactionModel": "inherit",
+    "treeBranchSummaries": "inherit",
+    "defaultThinkingLevel": "high",
+    "showConfiguredOnly": true,
+    "scopedModels": []
   },
   "provider": {
     "maxRetries": 2,
@@ -199,17 +201,25 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
   "memory": {
     "embedModel": "AllMiniLML6V2",
     "embedQuantized": true
+  },
+  "compaction": {
+    "enabled": true,
+    "thresholdPct": 80,
+    "keepRecentTokens": 20000
   }
 }
 ```
 
-| Group | Fields | Role |
+| Group / field | Fields | Role |
 | ----- | ------ | ---- |
+| **`preferredChatLanguage`** | (top-level) | Language for user-facing chat prose |
 | **`ui`** | `theme`, `themes`, `showThinking`, …, `filePicker.*` | Appearance + transcript / chrome |
-| **`session`** | `providerId`, `modelId`, `agentMode`, `thinkingLevel` | Last / preferred session state |
-| **`models`** | `scoped`, `showConfiguredOnly` | Ctrl+P cycle + model picker Scoped tab; filter All/Provider tabs to auth-configured providers (default `true`) |
+| **`models`** | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking |
 | **`provider`** | `maxRetries`, `defaultTimeout` | LLM HTTP transport defaults |
-| **`memory`** | `embedModel`, `embedQuantized` | Floppy / local embeddings |
+| **`memory`** | `embedModel`, `embedQuantized`, … | Floppy / local embeddings |
+| **`compaction`** | `enabled`, `thresholdPct`, `keepRecentTokens` | Auto-compaction policy |
+
+**Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
 
 ### Theme (`ui.theme` / `ui.themes`)
 
@@ -250,13 +260,13 @@ Per-model: `reasoning`, `thinkingLevelMap` (required), `compat`, `cost`, `contex
 
 ## Model selection
 
-Priority:
+Priority for **new** sessions:
 
-1. `ELPH_PROVIDER` + `ELPH_MODEL`
-2. Merged `session.providerId` / `session.modelId` (project overrides home when set)
-3. `ELPH_MODEL` matched across providers
+1. CLI / env (`ELPH_PROVIDER` + `ELPH_MODEL`, or model override)
+2. Merged `models.defaultModel` (`provider/model_id`; project overrides home when set)
+3. Provider fallback default when only a provider is known
 
-Fresh bootstrap leaves `session.providerId` / `session.modelId` and `models.scoped` **empty** — the TUI shows “No model selected” until the user picks one (`Ctrl+L` / `/model`).
+Fresh bootstrap leaves `models.defaultModel` and `models.scopedModels` **empty** — the TUI shows “No model selected” until the user picks one (`Ctrl+L` / `/model`). Changing the live model in a session does **not** write `defaultModel` (avoids multi-instance conflicts).
 
 ## Project context
 

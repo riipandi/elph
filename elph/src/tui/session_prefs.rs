@@ -1,40 +1,18 @@
-//! Persist in-session TUI preferences to settings.
+//! Persist global (not per-session) TUI preferences to settings.
 
 use elph_tui::{ThemeMode, install_theme_config};
 
 use crate::platform::{Paths, Settings};
-use crate::types::{AgentMode, ThinkingLevel};
-
-pub fn persist_model_selection(paths: &Paths, provider_id: &str, model_id: &str) {
-    // Home layer only — do not bake project settings overlays into CONFIG_DIR/settings.json.
-    let Ok(mut settings) = Settings::load_home(paths) else {
-        return;
-    };
-    settings.session.provider_id = Some(provider_id.to_string());
-    settings.session.model_id = Some(model_id.to_string());
-    if let Err(err) = Settings::save(paths, &settings) {
-        log::warn!("failed to save model selection: {err}");
-    }
-}
-
-pub fn persist_session_prefs(paths: &Paths, mode: AgentMode, thinking: ThinkingLevel) {
-    // Home layer only — do not bake project settings overlays into CONFIG_DIR/settings.json.
-    let Ok(mut settings) = Settings::load_home(paths) else {
-        return;
-    };
-    settings.session.agent_mode = mode.footer_label().to_string();
-    settings.session.thinking_level = thinking.label().to_string();
-    if let Err(err) = Settings::save(paths, &settings) {
-        log::warn!("failed to save session preferences: {err}");
-    }
-}
 
 /// Persist scoped model values (`provider/model_id`) to home settings.
+///
+/// Live active model / thinking / agent mode are **not** written to settings —
+/// they are per-session state only.
 pub fn persist_scoped_model_items(paths: &Paths, items: &[String]) {
     let Ok(mut settings) = Settings::load_home(paths) else {
         return;
     };
-    settings.models.scoped = items.to_vec();
+    settings.models.scoped_models = items.to_vec();
     if let Err(err) = Settings::save(paths, &settings) {
         log::warn!("failed to save scoped models: {err}");
     }

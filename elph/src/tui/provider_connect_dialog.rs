@@ -19,15 +19,30 @@ use crate::tui::slash_palette::list_viewport_cap;
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
+use crate::utils::path::AppPaths;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-/// Default auth store path under `CONFIG_DIR/auth.json`.
+/// Default auth store path under `CONFIG_DIR/auth.json` (same as [`crate::platform::Paths`]).
+///
+/// Resolves via `ELPH_HOME` / XDG (`~/.config/elph/auth.json`). Never hardcodes `~/.elph/`.
 fn default_auth_store_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".elph").join("auth.json")
+    match crate::platform::Paths::resolve() {
+        Ok(paths) => paths.auth_store_path(),
+        Err(_) => {
+            // Last-resort fallback aligned with PathResolver defaults (not ~/.elph/).
+            let base = std::env::var_os("ELPH_HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("XDG_CONFIG_HOME").map(|p| PathBuf::from(p).join("elph")))
+                .unwrap_or_else(|| {
+                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                    PathBuf::from(home).join(".config").join("elph")
+                });
+            base.join("auth.json")
+        }
+    }
 }
 
 // ── Data types ───────────────────────────────────────────────────────
@@ -164,22 +179,27 @@ pub fn provider_auth_method_from_index(index: usize) -> ProviderAuthMethod {
 /// Only consults `auth.json` — providers not registered there are treated as
 /// unconfigured even if an env var is set in the process environment.
 /// Register env-var providers with: `elph provider connect <id> --env <VAR>`.
+///
+/// An `env:VAR` entry counts as configured for picker filtering even when the
+/// process currently lacks that env var (the API call will fail later with a
+/// clear error). Presence in `auth.json` is the source of truth for "configured".
 fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
-    let auth_store_path = default_auth_store_path();
+    get_provider_config_status_at(&default_auth_store_path(), provider_id)
+}
 
-    if let Ok(bytes) = std::fs::read(&auth_store_path)
+/// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
+pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
+    if let Ok(bytes) = std::fs::read(auth_store_path)
         && let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes)
     {
         if let Some(entry) = file.get_provider_credential(provider_id) {
             // env ref entries are stored as plaintext "env:VAR_NAME" (not encrypted)
             if entry.starts_with(elph_agent::ENV_REF_PREFIX) && !entry.starts_with(elph_agent::ENC_PREFIX) {
-                let var_name = &entry[elph_agent::ENV_REF_PREFIX.len()..];
-                if std::env::var(var_name).is_ok() {
-                    return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
-                }
-                return ProviderConfigStatus::Unconfigured;
+                let var_name = entry[elph_agent::ENV_REF_PREFIX.len()..].to_string();
+                return ProviderConfigStatus::EnvVarConfigured(var_name);
             }
 
+            // OAuth JSON blobs are long; short values are treated as encrypted API keys.
             if entry.len() > 100 {
                 return ProviderConfigStatus::OAuthConfigured;
             }
@@ -1039,6 +1059,47 @@ mod tests {
             supports_api_key,
             config_status: ProviderConfigStatus::Unconfigured,
         }
+    }
+
+    #[test]
+    fn default_auth_store_path_uses_config_elph_not_dot_elph() {
+        let path = default_auth_store_path();
+        let s = path.to_string_lossy();
+        // Must not use the legacy ~/.elph/auth.json location.
+        assert!(!s.ends_with("/.elph/auth.json"), "legacy path still used: {s}");
+        assert!(s.ends_with("auth.json"), "expected auth.json suffix, got {s}");
+    }
+
+    #[test]
+    fn env_ref_in_auth_counts_as_configured_even_without_env() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let auth_path = dir.path().join("auth.json");
+        std::fs::write(
+            &auth_path,
+            r#"{"providers":{"opencode":"env:OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"}}"#,
+        )
+        .expect("write");
+        // Ensure the env var is unset for this process.
+        // SAFETY: test-only env mutation; single-threaded unit test.
+        unsafe {
+            std::env::remove_var("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ");
+        }
+        let status = get_provider_config_status_at(&auth_path, "opencode");
+        assert_eq!(
+            status,
+            ProviderConfigStatus::EnvVarConfigured("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ".into())
+        );
+        assert!(!matches!(status, ProviderConfigStatus::Unconfigured));
+    }
+
+    #[test]
+    fn missing_auth_file_is_unconfigured() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let auth_path = dir.path().join("missing-auth.json");
+        assert_eq!(
+            get_provider_config_status_at(&auth_path, "opencode"),
+            ProviderConfigStatus::Unconfigured
+        );
     }
 
     #[test]

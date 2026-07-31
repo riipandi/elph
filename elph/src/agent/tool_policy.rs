@@ -206,6 +206,20 @@ pub fn to_agent_thinking(level: crate::types::ThinkingLevel) -> elph_agent::Agen
     }
 }
 
+pub fn from_agent_thinking(level: elph_agent::AgentThinkingLevel) -> crate::types::ThinkingLevel {
+    use crate::types::ThinkingLevel;
+    use elph_agent::AgentThinkingLevel;
+    match level {
+        AgentThinkingLevel::Off => ThinkingLevel::Off,
+        AgentThinkingLevel::Minimal => ThinkingLevel::Minimal,
+        AgentThinkingLevel::Low => ThinkingLevel::Low,
+        AgentThinkingLevel::Medium => ThinkingLevel::Medium,
+        AgentThinkingLevel::High => ThinkingLevel::High,
+        AgentThinkingLevel::Xhigh => ThinkingLevel::Xhigh,
+        AgentThinkingLevel::Max => ThinkingLevel::Max,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

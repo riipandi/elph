@@ -103,9 +103,15 @@ A tool is sent to the API only if it is known, has a schema, is executable, and 
 
 ### Compaction
 
-Compaction uses harness defaults (`CompactionSettings` in `elph-agent`); there is no `settings.json` knob yet.
+Configured via `settings.compaction` (`enabled`, `thresholdPct`, `keepRecentTokens`) mapped into harness `CompactionSettings`. Summarization can use `models.compactionModel` (`inherit` = session model).
 
-Manual: `/compact` when implemented in the slash surface.
+| Path | Behavior |
+| ---- | -------- |
+| **Auto** | After a successful turn, if context usage exceeds the threshold, Elph compact history and posts sticky transcript notices (will / running / done or failed). |
+| **Manual** | `/compact` (or `/c`) — same lifecycle notices; noop when nothing to summarize. |
+| **Model switch** | Switching to a **smaller** context window checks whether history still fits; if not, compact (up to two passes) with notices before the next turn. |
+
+Manual and auto share the harness compact path (with optional compaction-model override so the session footer model is not permanently changed).
 
 ## Agent events → TUI
 
@@ -123,8 +129,8 @@ Manual: `/compact` when implemented in the slash surface.
 
 Modes: `build`, `plan`, `ask`, `brave`.
 
-- Stored in settings → `session.agentMode`
-- Switched with **Ctrl+A** or footer click
+- **Per-session** (not in `settings.json`); new sessions default to **`build`**
+- Switched with **Shift+Tab** / mode UI; persisted on the session store when available
 - Input border and footer colors reflect mode
 
 | Mode               | Design behavior                          |
@@ -179,8 +185,8 @@ TypeID with prefix `sess` — shown in the footer.
 
 | Data                 | Location                                                          |
 | -------------------- | ----------------------------------------------------------------- |
-| Provider / model     | `settings.session` (merged home ← project)                        |
-| Mode / thinking      | Merged home + project settings                                    |
+| Provider / model     | Per-session (tree + Turso row); new sessions seed from `models.defaultModel` |
+| Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`) |
 | Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)  |
 | Platform metadata    | Same DB: goals, spawn graph, session index                         |
 | Model catalog        | Embedded + merge `CONFIG_DIR/providers/*.json` (disk wins by id)  |

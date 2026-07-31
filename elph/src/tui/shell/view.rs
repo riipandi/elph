@@ -1451,6 +1451,17 @@ pub(crate) fn build_shell_view(
                             }
                             SlashOutcome::OpenModelSelector { filter } => {
                                 let settings = Settings::load(&paths_snapshot).ok();
+                                let default_pm = settings
+                                    .as_ref()
+                                    .and_then(|s| s.models.default_provider_and_model());
+                                let live_pm = agent_session.as_ref().map(|s| (s.model_provider(), s.model_id()));
+                                let (sel_provider, sel_model) = match live_pm {
+                                    Some((p, m)) => (Some(p), Some(m)),
+                                    None => match default_pm {
+                                        Some((p, m)) => (Some(p), Some(m)),
+                                        None => (None, None),
+                                    },
+                                };
                                 open_model_selector(OpenModelSelectorArgs {
                                     pending: &mut pending_model_selector,
                                     provider_index: &mut model_provider_index,
@@ -1462,8 +1473,8 @@ pub(crate) fn build_shell_view(
                                     shell_focus: &mut shell_focus,
                                     initial_filter: filter,
                                     paths: &paths_snapshot,
-                                    provider_id: settings.as_ref().and_then(|s| s.session.provider_id.as_deref()),
-                                    model_id: settings.as_ref().and_then(|s| s.session.model_id.as_deref()),
+                                    provider_id: sel_provider.as_deref(),
+                                    model_id: sel_model.as_deref(),
                                     session_scoped: Some(session_scoped_items.read().as_slice()),
                                 });
                                 draft.set(String::new());

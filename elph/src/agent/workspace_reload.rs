@@ -7,7 +7,7 @@ use anyhow::Result;
 use super::model_registry::{ModelSelection, resolve_model};
 use super::resource_loader::{format_resource_conflict_notice, format_resource_load_warnings};
 use super::session::CodingAgentSession;
-use super::tool_policy::{agent_mode_from_setting, thinking_level_from_setting, to_agent_thinking};
+
 use crate::platform::{Paths, Settings};
 use crate::utils::path::AppPaths;
 
@@ -132,17 +132,20 @@ impl CodingAgentSession {
     }
 
     async fn apply_reloaded_selection(&self, selection: ModelSelection, settings: &Settings) -> Result<()> {
-        let thinking = {
-            let raw = thinking_level_from_setting(&settings.session.thinking_level);
-            let clamped = raw.clamp_for_model(&selection.model);
-            to_agent_thinking(clamped)
+        // Keep live thinking / agent mode — reload only adapters, catalog, and stream options.
+        // Prefer keeping the same provider/model id when present in the reloaded catalog.
+        let live = self.selection.read().clone();
+        let model_for_harness = if live.provider == selection.provider && live.model_id == selection.model_id {
+            selection.model.clone()
+        } else if let Some(m) = elph_ai::get_builtin_model(&live.provider, &live.model_id) {
+            m
+        } else {
+            selection.model.clone()
         };
-
         self.harness()
-            .set_model(selection.model.clone())
+            .set_model(model_for_harness.clone())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        let _ = self.harness().set_thinking_level(thinking).await;
         self.harness()
             .set_stream_options(elph_agent::AgentHarnessStreamOptions {
                 timeout_ms: settings.provider_timeout_ms(),
@@ -151,11 +154,15 @@ impl CodingAgentSession {
             })
             .await;
 
-        let mode = agent_mode_from_setting(&settings.session.agent_mode);
-        *self.mode_state().lock().await = mode;
-
-        // Replace live selection including Models Arc so streaming uses reloaded adapters.
-        self.replace_selection(selection);
+        let mut next = selection;
+        if next.provider != live.provider || next.model_id != live.model_id {
+            // Preserve live model identity; only swap Models Arc / catalog entry.
+            next.provider = live.provider;
+            next.model_id = live.model_id;
+            next.model = model_for_harness;
+            next.display_name = live.display_name;
+        }
+        self.replace_selection(next);
         Ok(())
     }
 }

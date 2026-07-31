@@ -12,7 +12,7 @@ Important config files:
 
 | Path                     | Purpose                             |
 | ------------------------ | ----------------------------------- |
-| `settings.json`          | UI / session prefs                  |
+| `settings.json`          | UI / model defaults / prefs         |
 | `auth.json`              | Credentials                         |
 | `mcp.json`               | MCP servers                         |
 | `providers/*.json`       | Model catalogs (disk overlay)       |
@@ -24,8 +24,9 @@ Project overrides: `<project>/.elph/settings.json`, `mcp.json`, `skills/`, `prom
 
 ## Settings merge
 
-Home settings are merged with project overrides (project wins on conflict). Session model
-and thinking preferences live under `settings.session`.
+Home settings are merged with project overrides (project wins on conflict).
+`models.defaultModel` and `models.defaultThinkingLevel` seed **new** sessions only;
+live model, thinking level, and agent mode are per-session (not shared settings).
 
 ## Environment
 
