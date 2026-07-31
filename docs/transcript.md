@@ -112,6 +112,31 @@ control characters — so measurement matches paint at every width. It is used b
 Pre-wrapped text rendered with `TextWrap::NoWrap` (tables, code blocks, user-input cards,
 sticky chrome) intentionally stays on the character-wrap path via `wrapped_transcript_row_count`.
 
+### Row-Gap Parity (card chrome)
+
+Two card renderers paint blank rows between sections that measurement must mirror:
+
+- **Thinking cards** paint a 1-row gap between the phase header and the body
+  (`phase_card_shell` gap). `message_row_count` adds 1 for thinking bodies that have content.
+- **Tool cards** pad the args block 1 row below the header (`padding_top: 1` in
+  `tool_call_card`). `ToolCardDetail::layout_text` emits the matching blank line.
+
+Regression coverage: `all_card_kinds_measure_matches_paint` in `transcript/layout.rs` renders
+every card kind (thinking streaming/expanded/collapsed, assistant, user, status, tool
+running/expanded/collapsed, ask-user, inline diff, and the Thinking+Assistant flush pair) and
+asserts measured rows + margins equal painted rows at widths 36/60/120.
+
+### Sticky Prompt vs Auto-Scroll (panel.rs)
+
+The sticky user-prompt bar is only shown while the user has scrolled away from the bottom.
+While the viewport is auto-scroll pinned, showing the bar would shrink the scroll view by
+`sticky_rows`, shifting the latest card up behind it — the top rows of the newest card
+(heading, first bullet lines) would be permanently hidden behind the bar and the card would
+look clipped mid-line (e.g. an orphaned `…ing glob patterns…` line as the first visible row).
+`sticky_scroll` now defers to `near_bottom`: pinned → no bar, latest card fully visible;
+scroll up → bar appears for orientation and disappears again once the prompt re-enters the
+viewport or the user returns to the bottom.
+
 ### Streaming Content Cap (agent_bridge.rs)
 
 Assistant streaming content is now capped at **200 KB** (similar to `TOOL_OUTPUT_STREAM_CAP` at

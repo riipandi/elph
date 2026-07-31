@@ -260,9 +260,16 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
 
     // Compute sticky_idx using effective_scroll_offset so it correctly detects
     // scrolled-off prompts even while auto-scroll keeps the viewport at the bottom.
+    // While pinned to the bottom the sticky bar would hide the top rows of the latest
+    // card (viewport shrinks by sticky_rows and the card shifts up behind it) — the
+    // card then looks clipped mid-line. Only show the sticky bar once the user actually
+    // scrolls up (near_bottom = false); auto-scroll shows the latest card in full.
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
+            if near_bottom {
+                return None;
+            }
             active_sticky_user_message_index(
                 row_layouts,
                 is_sticky_prompt,

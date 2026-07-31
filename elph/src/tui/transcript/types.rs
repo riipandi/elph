@@ -640,6 +640,8 @@ impl ToolCardDetail {
             format_tool_args_display(&self.args_summary)
         };
         if !args.is_empty() {
+            // ToolParamsView sits one row below the header (tool_call_card pads it with 1).
+            lines.push(String::new());
             lines.extend(args.lines().map(str::to_string));
         }
         let output = format_tool_output_display(&self.output);

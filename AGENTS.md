@@ -45,6 +45,13 @@ Not significant (skip docs update): internal refactor with no behavior change, f
 
 ---
 
+## Implementation Principles
+
+- Choose the simplest implementation that fully meets the current requirements. No speculative abstraction, no extra config/flags/hooks for hypothetical future needs — solve what's asked, not what might be asked later.
+- Do not preserve backward compatibility. Change/remove old APIs, signatures, schemas, or behavior directly when the task calls for it — no compat shims, deprecated-but-kept branches, or dual code paths, unless explicitly requested.
+
+---
+
 ## Import Conventions
 
 Follow these rules for `use` statements in Rust.

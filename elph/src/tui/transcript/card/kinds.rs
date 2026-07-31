@@ -409,14 +409,20 @@ pub fn chat_response_card(
         Vec::new()
     };
     let has_body = !body.is_empty();
-    let mut children: Vec<AnyElement<'static>> = vec![response_phase_header(
-        inner_width,
-        message.duration_secs,
-        status,
-        message_index,
-        message.is_collapsible_detail(),
-        toggle,
-    )];
+    // Slash responses (e.g. `/tools list`) are complete local output, not model replies:
+    // no phase header, no collapse toggle — the markdown body renders directly.
+    let has_header = !message.local_slash_response;
+    let mut children: Vec<AnyElement<'static>> = Vec::new();
+    if has_header {
+        children.push(response_phase_header(
+            inner_width,
+            message.duration_secs,
+            status,
+            message_index,
+            message.is_collapsible_detail(),
+            toggle,
+        ));
+    }
     if has_body {
         children.push(
             element! {
@@ -432,7 +438,7 @@ pub fn chat_response_card(
             .into(),
         );
     }
-    phase_card_shell(&chrome, margin_bottom, if has_body { 1 } else { 0 }, children)
+    phase_card_shell(&chrome, margin_bottom, if has_header && has_body { 1 } else { 0 }, children)
 }
 
 pub fn error_card(screen_width: u16, message: &TranscriptMessage, margin_bottom: u16) -> AnyElement<'static> {

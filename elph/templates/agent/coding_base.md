@@ -50,6 +50,7 @@ ${% endif %}
 - Good candidates: parallel investigations, long isolated tasks, well-defined subtasks.
 - Match model weight to task complexity. On rate limit or unreachable model, fall back to active model silently.
 - Return synthesized subagent results — do not expose raw output unless asked.
+- ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 
 ${% if agent_mode == "build" or agent_mode == "brave" %}
 

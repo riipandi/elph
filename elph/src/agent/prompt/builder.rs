@@ -9,10 +9,8 @@
 use std::path::Path;
 
 use crate::types::AgentMode;
-use elph_agent::{
-    AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext,
-    format_skills_for_system_prompt, now_iso_timestamp,
-};
+use elph_agent::{AgentHarnessResources, PromptAssemblyMode, SystemPromptBuilder, SystemPromptTemplateContext};
+use elph_agent::{format_skills_for_system_prompt, now_iso_timestamp};
 
 use super::modes::{build_mode_section, mode_footer_slug};
 
@@ -47,7 +45,7 @@ pub fn build_coding_system_prompt(
     let language_for_prompt = preferred_chat_language.clone();
 
     let context = SystemPromptTemplateContext {
-        persona: "You are an expert AI coding assistant, operate in Elph CLI. Your main goal is to complete the user's request."
+        persona: "You are an advanced AI coding assistant, operate in Elph CLI. Your main goal is to complete the user's request."
             .to_string(),
         working_directory: Some(cwd.display().to_string()),
         current_date: Some(date),
@@ -100,9 +98,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.contains("You are an expert AI coding assistant"));
-
-        assert!(prompt.contains("You are an expert AI coding assistant"));
+        assert!(prompt.contains("You are an advanced AI coding assistant"));
         assert!(prompt.contains("Working directory: /tmp/project"));
         assert!(prompt.contains("<action_safety>"));
         assert!(prompt.contains("<tool_calling>"));
