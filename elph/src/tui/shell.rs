@@ -2081,6 +2081,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 } else if shell_focus.get() == ShellFocus::Prompt
                     && !select_mode.get()
+                    && kind == KeyEventKind::Press
                     && is_prompt_history_open_key(code, modifiers)
                 {
                     let draft_body = {

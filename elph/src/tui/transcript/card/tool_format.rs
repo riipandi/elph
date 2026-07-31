@@ -2,17 +2,17 @@
 
 pub use crate::tui::tool_params::format_tool_params_display as format_tool_args_display;
 
-pub const TOOL_OUTPUT_MAX_LINES: usize = 10;
+pub const TOOL_OUTPUT_MAX_LINES: usize = 8;
 pub const TOOL_OUTPUT_MAX_CHARS: usize = 1_500;
 /// Cap streaming/expanded thinking body so wrap/layout stay O(viewport), not O(stream).
 pub const THINKING_BODY_MAX_LINES: usize = 48;
 pub const THINKING_BODY_MAX_CHARS: usize = 3_000;
 /// Cap live assistant stream body for layout/render (stable markdown prefix is separate).
-pub const ASSISTANT_STREAM_BODY_MAX_LINES: usize = 20;
+pub const ASSISTANT_STREAM_BODY_MAX_LINES: usize = 16;
 pub const ASSISTANT_STREAM_BODY_MAX_CHARS: usize = 4_000;
 /// Streaming thinking body cap — tighter than the finished-expanded limit so live
 /// deltas stay bounded and the collapse-on-finish transition does not flicker.
-pub const STREAMING_THINKING_BODY_MAX_LINES: usize = 10;
+pub const STREAMING_THINKING_BODY_MAX_LINES: usize = 8;
 pub const STREAMING_THINKING_BODY_MAX_CHARS: usize = 1_500;
 
 /// Truncate long process-phase bodies for display + row measurement.
