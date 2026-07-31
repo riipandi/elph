@@ -59,7 +59,6 @@ base64.workspace = true
 bytes.workspace = true
 crossbeam-channel.workspace = true
 elph-ai.workspace = true
-elph-exec.workspace = true
 elph-tui.workspace = true
 failsafe.workspace = true
 fastrace = { workspace = true, optional = true }
@@ -109,6 +108,9 @@ url.workspace = true
 urlencoding.workspace = true
 walkdir = { workspace = true, optional = true }
 wasmtime = { workspace = true, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true }
 
 [[example]]
 name = "faux_agent"
@@ -261,6 +263,7 @@ elph-ai = { workspace = true }
 httpmock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio-util = { workspace = true }
 
 [[test]]
 name = "tracing_http"

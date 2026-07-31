@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use elph_exec::{ShellConfig, ShellExecOptions, exec_shell_command};
+use elph_agent::exec::{ShellConfig, ShellExecOptions, exec_shell_command};
 use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
@@ -82,7 +82,7 @@ async fn abort_token_cancels_long_running_command() {
     token.cancel();
 
     let result = task.await.expect("join").expect_err("should abort");
-    assert_eq!(result.code, elph_exec::ExecErrorCode::Aborted);
+    assert_eq!(result.code, elph_agent::exec::ExecErrorCode::Aborted);
 }
 
 #[tokio::test]

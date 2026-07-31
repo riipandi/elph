@@ -2987,7 +2987,6 @@ dependencies = [
  "bytes",
  "crossbeam-channel",
  "elph-ai",
- "elph-exec",
  "elph-tui",
  "failsafe",
  "fastrace",
@@ -3012,6 +3011,7 @@ dependencies = [
  "regex",
  "reqwest 0.13.4",
  "rmcp",
+ "rustix 1.1.4",
  "serde",
  "serde_json",
  "tempfile",
@@ -3086,17 +3086,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
-]
-
-[[package]]
-name = "elph-exec"
-version = "0.0.1"
-dependencies = [
- "log",
- "rustix 1.1.4",
- "tempfile",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]

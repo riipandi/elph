@@ -143,7 +143,7 @@ pub trait FileSystem: Send + Sync {
     fn cleanup<'a>(&'a self) -> impl Future<Output = ()> + Send + use<'a, Self>;
 }
 
-pub use elph_exec::{ShellExecOptions, ShellExecResult};
+pub use crate::exec::{ShellExecOptions, ShellExecResult};
 
 /// Shell execution capability used by the harness.
 pub trait Shell: Send + Sync {

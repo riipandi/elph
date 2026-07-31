@@ -37,7 +37,7 @@ impl std::fmt::Display for FileError {
 
 impl std::error::Error for FileError {}
 
-pub use elph_exec::{ExecError as ExecutionError, ExecErrorCode as ExecutionErrorCode};
+pub use crate::exec::{ExecError as ExecutionError, ExecErrorCode as ExecutionErrorCode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompactionErrorCode {
