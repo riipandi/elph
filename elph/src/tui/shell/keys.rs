@@ -142,12 +142,16 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         shift_last_pressed.set(Some(Instant::now()));
     }
 
-    // Track Arrow Up timestamps to distinguish deliberate keyboard press from
-    // rapid mouse wheel scroll events. Burst detection: scroll wheel fires
-    // Arrow Up events faster than a human can tap (< 50ms apart).
-    if code == KeyCode::Up {
+    // Arrow Up burst detection for mouse-wheel vs deliberate keypress.
+    // Must measure gap *before* updating the timestamp — otherwise
+    // `elapsed()` is always ~0 and prompt history can never open.
+    let arrow_up_gap_ok = if code == KeyCode::Up {
+        let since_last = last_arrow_up_at.get().elapsed();
         last_arrow_up_at.set(Instant::now());
-    }
+        crate::tui::prompt_history::is_deliberate_arrow_up(since_last)
+    } else {
+        true
+    };
 
     // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
     if file_picker_key_handled.get() {
@@ -201,7 +205,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             && !select_mode.get()
             && kind == KeyEventKind::Press
             && is_prompt_history_open_key(code, modifiers)
-            && last_arrow_up_at.get().elapsed() >= Duration::from_millis(80)
+            && arrow_up_gap_ok
         {
             let draft_body = {
                 let live = live_draft.read().clone();

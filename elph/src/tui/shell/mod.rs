@@ -398,7 +398,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let prompt_history_open = hooks.use_state(|| false);
     let prompt_history_index = hooks.use_state(|| 0usize);
     let prompt_history = hooks.use_ref(Vec::<String>::new);
-    let last_arrow_up_at = hooks.use_ref(Instant::now);
+    // Far enough in the past so the first deliberate Arrow Up is never treated as a burst.
+    let last_arrow_up_at = hooks.use_ref(|| Instant::now() - Duration::from_secs(1));
     let force_palette_sync = hooks.use_ref(|| false);
     let force_editor_clear = hooks.use_ref(|| false);
     let busy = hooks.use_state(|| false);
