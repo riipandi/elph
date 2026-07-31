@@ -189,30 +189,20 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 
 /// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
 pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
-    if let Ok(bytes) = std::fs::read(auth_store_path)
-        && let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes)
-    {
-        if let Some(entry) = file.get_provider_credential(provider_id) {
-            // env ref entries are stored as plaintext "env:VAR_NAME" (not encrypted)
-            if entry.starts_with(elph_agent::ENV_REF_PREFIX) && !entry.starts_with(elph_agent::ENC_PREFIX) {
-                let var_name = entry[elph_agent::ENV_REF_PREFIX.len()..].to_string();
-                return ProviderConfigStatus::EnvVarConfigured(var_name);
-            }
-
-            // OAuth JSON blobs are long; short values are treated as encrypted API keys.
-            if entry.len() > 100 {
-                return ProviderConfigStatus::OAuthConfigured;
-            }
-            return ProviderConfigStatus::ApiKeyConfigured;
+    let Ok(file) = elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) else {
+        return ProviderConfigStatus::Unconfigured;
+    };
+    if let Some(entry) = file.get_provider_credential(provider_id) {
+        if entry.starts_with(elph_agent::ENV_REF_PREFIX) {
+            let var_name = entry[elph_agent::ENV_REF_PREFIX.len()..].to_string();
+            return ProviderConfigStatus::EnvVarConfigured(var_name);
         }
-
-        // Check legacy prefixed key
-        let prefixed = format!("oauth:{provider_id}");
-        if let Some(_enc) = file.get_provider_credential(&prefixed) {
+        // OAuth JSON blobs are long; short values are API keys.
+        if entry.trim().starts_with('{') || entry.len() > 100 {
             return ProviderConfigStatus::OAuthConfigured;
         }
+        return ProviderConfigStatus::ApiKeyConfigured;
     }
-
     ProviderConfigStatus::Unconfigured
 }
 
@@ -1074,17 +1064,28 @@ mod tests {
     fn env_ref_in_auth_counts_as_configured_even_without_env() {
         let dir = tempfile::tempdir().expect("tempdir");
         let auth_path = dir.path().join("auth.json");
-        std::fs::write(
-            &auth_path,
-            r#"{"providers":{"opencode":"env:OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"}}"#,
-        )
-        .expect("write");
-        // Ensure the env var is unset for this process.
+        let key = elph_agent::Aes256Key::generate();
+        elph_agent::set_process_master_key_for_tests(key);
+        let mut file = elph_agent::AuthStoreFile::default();
+        file.set_provider_credential(
+            "opencode",
+            format!(
+                "{}{}",
+                elph_agent::ENV_REF_PREFIX,
+                "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"
+            ),
+        );
+        elph_agent::try_block_on(async {
+            // Uses process master key override for this test process.
+            file.save_to_path(&auth_path).await.unwrap();
+        })
+        .expect("save sealed auth");
         // SAFETY: test-only env mutation; single-threaded unit test.
         unsafe {
             std::env::remove_var("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ");
         }
         let status = get_provider_config_status_at(&auth_path, "opencode");
+        elph_agent::clear_process_master_key_for_tests();
         assert_eq!(
             status,
             ProviderConfigStatus::EnvVarConfigured("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ".into())

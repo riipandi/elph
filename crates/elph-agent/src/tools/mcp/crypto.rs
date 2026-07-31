@@ -19,11 +19,6 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 /// Prefix for encrypted string values written to disk.
 pub const ENC_PREFIX: &str = "enc:";
 
-/// Default filename for the 32-byte AES key next to the auth store.
-///
-/// For `…/auth.json` the default key path is `…/auth.key`.
-pub const DEFAULT_AUTH_KEY_FILE_NAME: &str = "auth.key";
-
 const NONCE_LEN: usize = 12;
 const KEY_LEN: usize = 32;
 
@@ -93,13 +88,6 @@ impl Aes256Key {
     }
 }
 
-/// Path of the AES key file associated with an auth store file.
-///
-/// `auth.json` → `auth.key` (same directory, extension replaced).
-pub fn default_auth_key_path(auth_store_path: &Path) -> PathBuf {
-    auth_store_path.with_extension("key")
-}
-
 /// True when `value` is an encrypted string (`enc:…`).
 pub fn is_encrypted_value(value: &str) -> bool {
     value.starts_with(ENC_PREFIX)
@@ -157,17 +145,38 @@ pub fn decrypt_string_sync(key: &Aes256Key, encoded: &str) -> Result<String> {
     String::from_utf8(bytes).context("decrypted payload is not valid UTF-8")
 }
 
-fn encrypt_sync(key: &Aes256Key, plaintext: &[u8]) -> Result<String> {
+/// Encrypt to separate nonce + ciphertext (for envelope sealing).
+pub(crate) fn encrypt_sync_bytes(key: &Aes256Key, plaintext: &[u8]) -> Result<([u8; NONCE_LEN], Vec<u8>)> {
     let cipher = Aes256Gcm::new_from_slice(&key.bytes).map_err(|e| anyhow::anyhow!("invalid AES key: {e:?}"))?;
     let nonce = Nonce::generate();
     let ciphertext = cipher
         .encrypt(&nonce, plaintext)
         .map_err(|e| anyhow::anyhow!("AES-256-GCM encrypt failed: {e}"))?;
+    let mut nonce_arr = [0u8; NONCE_LEN];
+    nonce_arr.copy_from_slice(nonce.as_slice());
+    Ok((nonce_arr, ciphertext))
+}
 
+/// Decrypt from separate nonce + ciphertext.
+pub(crate) fn decrypt_sync_bytes(key: &Aes256Key, nonce: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    if nonce.len() != NONCE_LEN {
+        bail!("invalid nonce length {}", nonce.len());
+    }
+    let nonce_arr: [u8; NONCE_LEN] = nonce
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("invalid nonce length"))?;
+    let nonce = Nonce::from(nonce_arr);
+    let cipher = Aes256Gcm::new_from_slice(&key.bytes).map_err(|e| anyhow::anyhow!("invalid AES key: {e:?}"))?;
+    cipher
+        .decrypt(&nonce, ciphertext)
+        .map_err(|e| anyhow::anyhow!("AES-256-GCM decrypt failed: {e}"))
+}
+
+fn encrypt_sync(key: &Aes256Key, plaintext: &[u8]) -> Result<String> {
+    let (nonce, ciphertext) = encrypt_sync_bytes(key, plaintext)?;
     let mut packed = Vec::with_capacity(NONCE_LEN + ciphertext.len());
-    packed.extend_from_slice(nonce.as_slice());
+    packed.extend_from_slice(&nonce);
     packed.extend_from_slice(&ciphertext);
-
     Ok(format!("{ENC_PREFIX}{}", URL_SAFE_NO_PAD.encode(packed)))
 }
 
@@ -182,14 +191,7 @@ fn decrypt_sync(key: &Aes256Key, encoded: &str) -> Result<Vec<u8>> {
         bail!("encrypted payload too short");
     }
     let (nonce_bytes, ct) = packed.split_at(NONCE_LEN);
-    let nonce_arr: [u8; NONCE_LEN] = nonce_bytes
-        .try_into()
-        .map_err(|_| anyhow::anyhow!("invalid nonce length"))?;
-    let nonce = Nonce::from(nonce_arr);
-    let cipher = Aes256Gcm::new_from_slice(&key.bytes).map_err(|e| anyhow::anyhow!("invalid AES key: {e:?}"))?;
-    cipher
-        .decrypt(&nonce, ct)
-        .map_err(|e| anyhow::anyhow!("AES-256-GCM decrypt failed: {e}"))
+    decrypt_sync_bytes(key, nonce_bytes, ct)
 }
 
 fn load_or_create_key_sync(path: &Path) -> Result<Aes256Key> {
@@ -346,12 +348,6 @@ mod tests {
         assert!(is_encrypted_value(&enc));
         let back: serde_json::Value = decrypt_json_async(key, enc).await.unwrap();
         assert_eq!(back, value);
-    }
-
-    #[test]
-    fn default_key_path_from_auth_json() {
-        let p = PathBuf::from("/home/u/.elph/auth.json");
-        assert_eq!(default_auth_key_path(&p), PathBuf::from("/home/u/.elph/auth.key"));
     }
 
     #[test]

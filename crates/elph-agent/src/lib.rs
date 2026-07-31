@@ -355,8 +355,6 @@ pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_AUTH_KEY_FILE_NAME;
-#[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_STRUCTURED_DETAIL_CHARS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_TOOL_RESULT_CHARS;
@@ -455,9 +453,13 @@ pub use tools::mcp::decrypt_string_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::decrypt_string_sync;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::default_auth_key_path;
-#[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_async;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::load_or_create_master_key;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::set_process_master_key_for_tests;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::clear_process_master_key_for_tests;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_json_async;
 #[cfg(feature = "mcp")]

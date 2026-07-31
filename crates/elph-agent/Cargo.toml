@@ -70,6 +70,7 @@ http.workspace = true
 ignore.workspace = true
 jsonschema.workspace = true
 kalid.workspace = true
+keyring.workspace = true
 log.workspace = true
 logforth.workspace = true
 memchr.workspace = true

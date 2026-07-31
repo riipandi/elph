@@ -100,17 +100,17 @@ elph mcp auth remote
 elph mcp logout remote
 ```
 
-Credentials: shared file `~/.elph/auth.json` (keyed by server name under `mcp`, mode `0600` on Unix).
+Credentials: sealed file `CONFIG_DIR/auth.json` (default `~/.config/elph/auth.json`).
 
-Each server entry is **AES-256-GCM** encrypted with prefix `enc:` (URL-safe base64 of
-`nonce || ciphertext`). The 32-byte key lives next to the store as `auth.key` (also `0600`),
-or can be supplied via `FileCredentialStore::with_key` / builder. Crypto runs on
-`spawn_blocking` so the async runtime is not blocked.
+The entire document is an **AES-256-GCM envelope** (`v: 2`). The master key lives only in the
+**OS keychain** (zero-trust) — never as `auth.key` beside the store, and no `auth.json.lock`
+sidecar. Logical payload holds MCP OAuth JSON objects and provider API keys / `env:VAR` refs.
 
-Legacy plaintext objects are still readable and re-encrypted on the next save.
+CI/tests may inject a key via `set_process_master_key_for_tests` or `ELPH_AUTH_MASTER_KEY_B64`.
 
-The library does not hardcode this path — hosts pass it via `AuthStorePathBuilder` /
-`McpLoadOptions.auth_store_path` (default filename `auth.json`).
+Legacy cleartext stores are **not** migrated — re-run `elph provider connect` / `mcp auth`.
+
+Hosts pass the path via `AuthStorePathBuilder` / `McpLoadOptions.auth_store_path`.
 
 ### Config validation
 

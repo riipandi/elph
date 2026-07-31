@@ -120,28 +120,20 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
         return Ok(store);
     }
 
-    let bytes = tokio::fs::read(path)
-        .await
-        .with_context(|| format!("read {}", path.display()))?;
-    if bytes.is_empty() {
-        return Ok(store);
-    }
-
-    let file: elph_agent::AuthStoreFile =
-        serde_json::from_slice(&bytes).with_context(|| format!("parse {}", path.display()))?;
-
-    let key_path = elph_agent::default_auth_key_path(path);
-    if !key_path.exists() {
-        // No key = no encrypted entries to decrypt, but env refs can still be loaded.
-    }
+    let file = match elph_agent::AuthStoreFile::load_from_path(path).await {
+        Ok(f) => f,
+        Err(e) => {
+            log::warn!("auth store load failed ({}): {e}", path.display());
+            return Ok(store);
+        }
+    };
 
     for (provider_id, value) in &file.providers {
         let Some(raw) = value.as_str() else {
             continue;
         };
 
-        if raw.starts_with(elph_agent::ENV_REF_PREFIX) && !raw.starts_with(elph_agent::ENC_PREFIX) {
-            // env ref entry: store as ApiKeyCredential with env map
+        if raw.starts_with(elph_agent::ENV_REF_PREFIX) {
             let var_name = &raw[elph_agent::ENV_REF_PREFIX.len()..];
             let mut env = ProviderEnv::new();
             env.insert(var_name.to_string(), var_name.to_string());
@@ -153,40 +145,24 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
             store
                 .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
                 .await;
-        } else if raw.starts_with(elph_agent::ENC_PREFIX) {
-            // Encrypted entry — attempt to decrypt
-            let Some(ref key_path) = (if key_path.exists() {
-                Some(key_path.clone())
-            } else {
-                None
-            }) else {
-                continue;
-            };
-            let key = match elph_agent::Aes256Key::load_or_create(key_path).await {
-                Ok(k) => Arc::new(k),
-                Err(_) => continue,
-            };
-            let plain = match elph_agent::decrypt_string_async(Arc::clone(&key), raw.to_string()).await {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
+            continue;
+        }
 
-            // Heuristic: if it looks like JSON, try OAuth; otherwise treat as API key
-            if plain.trim().starts_with('{')
-                && let Ok(oauth) = serde_json::from_str::<OAuthCredential>(&plain)
-            {
-                let cred = Credential::OAuth(oauth);
-                store
-                    .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
-                    .await;
-                continue;
-            }
-            // Treat as raw API key
-            let cred = Credential::ApiKey(ApiKeyCredential::new(plain));
+        // Sealed payload stores API keys (or JSON OAuth blobs) as plain strings in-memory.
+        if raw.trim().starts_with('{')
+            && let Ok(oauth) = serde_json::from_str::<OAuthCredential>(raw)
+        {
+            let cred = Credential::OAuth(oauth);
             store
                 .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
                 .await;
+            continue;
         }
+        let plain = raw.to_string();
+        let cred = Credential::ApiKey(ApiKeyCredential::new(plain));
+        store
+            .modify(provider_id, Box::new(move |_| Box::pin(async move { Some(cred) })))
+            .await;
     }
 
     Ok(store)

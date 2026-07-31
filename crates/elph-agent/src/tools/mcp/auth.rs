@@ -1,11 +1,16 @@
 //! OAuth 2.1 credential storage and authorization helpers for remote MCP servers.
 //!
-//! Credentials for all MCP servers live in a single JSON file (default name
-//! [`DEFAULT_AUTH_FILE_NAME`] = `auth.json`). Values are stored as AES-256-GCM
-//! ciphertext with the [`crate::tools::mcp::crypto::ENC_PREFIX`] (`enc:`) prefix.
+//! Credentials live in a **sealed** AES-256-GCM envelope file (default name
+//! [`DEFAULT_AUTH_FILE_NAME`] = `auth.json`). The master key is kept only in the
+//! OS keychain (zero-trust) — never as `auth.key` beside the store.
 //!
-//! The path is **not** hardcoded to `~/.elph` — each host passes
-//! it via [`AuthStorePathBuilder`] / [`McpLoadOptions::auth_store_path`](super::config::McpLoadOptions).
+//! Logical payload (after decrypt):
+//! ```json
+//! { "mcp": { "<server>": { …oauth tokens… } }, "providers": { "<id>": "sk-…" | "env:VAR" } }
+//! ```
+//!
+//! The path is **not** hardcoded — each host passes it via [`AuthStorePathBuilder`] /
+//! [`McpLoadOptions::auth_store_path`](super::config::McpLoadOptions).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -23,8 +28,8 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 
 use super::crypto::Aes256Key;
-use super::crypto::ENC_PREFIX;
-use super::crypto::{decrypt_json_async, default_auth_key_path, encrypt_json_async, is_encrypted_value};
+use super::envelope::{looks_like_envelope, seal_store, unseal_store};
+use super::key_provider::load_or_create_master_key;
 use super::store_lock::{atomic_write_private, lock_auth_store};
 
 /// Default OAuth scopes when the server does not advertise any.
@@ -114,46 +119,97 @@ pub fn auth_store_path(config_dir: &Path) -> PathBuf {
 /// encrypted — they are references, not secrets.
 pub const ENV_REF_PREFIX: &str = "env:";
 
-/// Root document of `auth.json` as stored on disk.
+/// Logical auth store document (plaintext secrets only while in memory).
 ///
-/// Each MCP server entry is an AES-256-GCM string with the `enc:` prefix.
-/// Provider API key credentials live under the `providers` map.
+/// On disk this is sealed as an AES-256-GCM envelope; see [`seal_store`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthStoreFile {
-    /// Map of MCP server name → encrypted credential string (`enc:…`).
+    /// Map of MCP server name → OAuth credential JSON object (or null).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub mcp: BTreeMap<String, Value>,
-    /// Map of provider ID → encrypted API key string (`enc:…`).
+    /// Map of provider ID → API key string or `env:VAR` reference.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub providers: BTreeMap<String, Value>,
 }
 
 impl AuthStoreFile {
+    /// Load and unseal the auth store (OS keychain master key). Missing / empty → empty store.
+    ///
+    /// Only format v2 envelopes are accepted (no legacy migration).
     pub async fn load_from_path(path: &Path) -> Result<Self, AuthError> {
+        let key = load_or_create_master_key()
+            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        Self::load_from_path_with_key(path, &key).await
+    }
+
+    /// Load with an explicit master key (tests / injectors).
+    pub async fn load_from_path_with_key(path: &Path, key: &Aes256Key) -> Result<Self, AuthError> {
         if !path.exists() {
             return Ok(Self::default());
         }
         let bytes = tokio::fs::read(path)
             .await
             .map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
+        Self::from_sealed_bytes(&bytes, key)
+    }
+
+    /// Sync load (CLI probes) using the OS keychain master key.
+    pub fn load_from_path_sync(path: &Path) -> Result<Self, AuthError> {
+        let key = load_or_create_master_key()
+            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        Self::load_from_path_sync_with_key(path, &key)
+    }
+
+    /// Sync load with an explicit master key.
+    pub fn load_from_path_sync_with_key(path: &Path, key: &Aes256Key) -> Result<Self, AuthError> {
+        if !path.exists() {
+            return Ok(Self::default());
+        }
+        let bytes =
+            std::fs::read(path).map_err(|e| AuthError::InternalError(format!("read auth store: {e}")))?;
+        Self::from_sealed_bytes(&bytes, key)
+    }
+
+    fn from_sealed_bytes(bytes: &[u8], key: &Aes256Key) -> Result<Self, AuthError> {
         if bytes.is_empty() {
             return Ok(Self::default());
         }
-        serde_json::from_slice(&bytes).map_err(|e| AuthError::InternalError(format!("parse auth store: {e}")))
+        if !looks_like_envelope(bytes) {
+            return Err(AuthError::InternalError(
+                "auth store is not a sealed v2 envelope (legacy formats are not supported — re-authenticate)"
+                    .into(),
+            ));
+        }
+        let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
+            .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
+        let plain = unseal_store(key, &envelope)
+            .map_err(|e| AuthError::InternalError(format!("unseal auth store: {e}")))?;
+        serde_json::from_slice(&plain).map_err(|e| AuthError::InternalError(format!("parse auth payload: {e}")))
     }
 
-    /// Save without taking the store lock (caller must hold [`lock_auth_store`]).
+    /// Seal and write without taking the store lock (caller must hold [`lock_auth_store`]).
     pub async fn save_to_path_unlocked(&self, path: &Path) -> Result<(), AuthError> {
-        let bytes = serde_json::to_vec_pretty(self)
-            .map_err(|e| AuthError::InternalError(format!("serialize auth store: {e}")))?;
+        let key = load_or_create_master_key()
+            .map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))?;
+        self.save_to_path_unlocked_with_key(path, &key).await
+    }
+
+    /// Seal and write with an explicit master key.
+    pub async fn save_to_path_unlocked_with_key(&self, path: &Path, key: &Aes256Key) -> Result<(), AuthError> {
+        let plain = serde_json::to_vec(self)
+            .map_err(|e| AuthError::InternalError(format!("serialize auth payload: {e}")))?;
+        let envelope = seal_store(key, &plain)
+            .map_err(|e| AuthError::InternalError(format!("seal auth store: {e}")))?;
+        let bytes = serde_json::to_vec_pretty(&envelope)
+            .map_err(|e| AuthError::InternalError(format!("serialize auth envelope: {e}")))?;
         atomic_write_private(path, &bytes)
             .await
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
         Ok(())
     }
 
-    /// Lock the store, then atomic-write.
+    /// Lock the store, then seal + atomic-write.
     pub async fn save_to_path(&self, path: &Path) -> Result<(), AuthError> {
         let _guard = lock_auth_store(path)
             .await
@@ -161,16 +217,26 @@ impl AuthStoreFile {
         self.save_to_path_unlocked(path).await
     }
 
+    /// Lock + save with an explicit master key (tests).
+    pub async fn save_to_path_with_key(&self, path: &Path, key: &Aes256Key) -> Result<(), AuthError> {
+        let _guard = lock_auth_store(path)
+            .await
+            .map_err(|e| AuthError::InternalError(format!("lock auth store: {e}")))?;
+        self.save_to_path_unlocked_with_key(path, key).await
+    }
+
     pub fn contains_server(&self, server_name: &str) -> bool {
         self.mcp.contains_key(server_name)
     }
 
-    /// Set (encrypted) provider credential. Caller must hold the lock.
-    pub fn set_provider_credential(&mut self, provider_id: &str, encrypted: String) {
-        self.providers.insert(provider_id.to_string(), Value::String(encrypted));
+    /// Set provider credential (API key plaintext or `env:VAR`). Caller must hold the lock.
+    /// Secrets are only protected by the sealed envelope on disk.
+    pub fn set_provider_credential(&mut self, provider_id: &str, credential: String) {
+        self.providers
+            .insert(provider_id.to_string(), Value::String(credential));
     }
 
-    /// Get (encrypted) provider credential.
+    /// Get provider credential string (API key or `env:VAR`).
     pub fn get_provider_credential(&self, provider_id: &str) -> Option<&str> {
         self.providers.get(provider_id).and_then(|v| v.as_str())
     }
@@ -185,12 +251,12 @@ impl AuthStoreFile {
         self.providers.keys().cloned().collect()
     }
 
-    /// Check if a provider entry is an env-var reference (`env:VAR_NAME`, not `enc:…`).
+    /// Check if a provider entry is an env-var reference (`env:VAR_NAME`).
     pub fn is_env_ref(&self, provider_id: &str) -> bool {
         self.providers
             .get(provider_id)
             .and_then(|v| v.as_str())
-            .is_some_and(|s| s.starts_with(ENV_REF_PREFIX) && !s.starts_with(ENC_PREFIX))
+            .is_some_and(|s| s.starts_with(ENV_REF_PREFIX))
     }
 
     /// Extract the env var name from an `env:…` entry, e.g. `"env:OPENAI_API_KEY"` → `"OPENAI_API_KEY"`.
@@ -198,7 +264,7 @@ impl AuthStoreFile {
         self.providers
             .get(provider_id)
             .and_then(|v| v.as_str())
-            .filter(|s| s.starts_with(ENV_REF_PREFIX) && !s.starts_with(ENC_PREFIX))
+            .filter(|s| s.starts_with(ENV_REF_PREFIX))
             .map(|s| s[ENV_REF_PREFIX.len()..].to_string())
     }
 }
@@ -207,49 +273,35 @@ impl AuthStoreFile {
 // Per-server CredentialStore backed by shared encrypted auth.json
 // ---------------------------------------------------------------------------
 
-#[derive(Clone)]
-enum CryptoSource {
-    /// Load or create key at this path on first use.
-    AutoKeyFile(PathBuf),
-    /// Explicit key provided by host.
-    Key(Arc<Aes256Key>),
-}
-
-/// File-backed [`CredentialStore`] for **one** MCP server key inside a shared `auth.json`.
+/// File-backed [`CredentialStore`] for **one** MCP server key inside a sealed `auth.json`.
 ///
-/// On-disk values are AES-256-GCM encrypted strings with the `enc:` prefix.
+/// The whole file is envelope-encrypted; MCP credentials are JSON objects inside the payload.
 #[derive(Clone)]
 pub struct FileCredentialStore {
     path: PathBuf,
     server_key: String,
-    crypto: CryptoSource,
-    key_cache: Arc<RwLock<Option<Arc<Aes256Key>>>>,
+    /// When set, used instead of the OS keychain (tests / injectors).
+    master_key: Option<Arc<Aes256Key>>,
     cache: Arc<RwLock<Option<StoredCredentials>>>,
 }
 
 impl FileCredentialStore {
-    /// Create a store for `server_key` inside the shared file at `path`.
-    ///
-    /// Encryption key is loaded/created at [`default_auth_key_path`](path) (`auth.key`).
+    /// Create a store for `server_key` inside the shared sealed file at `path`.
     pub fn new(path: impl Into<PathBuf>, server_key: impl Into<String>) -> Self {
-        let path = path.into();
-        let key_path = default_auth_key_path(&path);
         Self {
-            path,
+            path: path.into(),
             server_key: server_key.into(),
-            crypto: CryptoSource::AutoKeyFile(key_path),
-            key_cache: Arc::new(RwLock::new(None)),
+            master_key: None,
             cache: Arc::new(RwLock::new(None)),
         }
     }
 
-    /// Use an explicit AES key (hosts / tests).
+    /// Use an explicit master key (tests). Does not touch the OS keychain.
     pub fn with_key(path: impl Into<PathBuf>, server_key: impl Into<String>, key: Aes256Key) -> Self {
         Self {
             path: path.into(),
             server_key: server_key.into(),
-            crypto: CryptoSource::Key(Arc::new(key)),
-            key_cache: Arc::new(RwLock::new(None)),
+            master_key: Some(Arc::new(key)),
             cache: Arc::new(RwLock::new(None)),
         }
     }
@@ -266,37 +318,23 @@ impl FileCredentialStore {
         &self.server_key
     }
 
-    async fn resolve_key(&self) -> Result<Arc<Aes256Key>, AuthError> {
-        {
-            let cache = self.key_cache.read().await;
-            if let Some(k) = cache.as_ref() {
-                return Ok(Arc::clone(k));
-            }
+    fn resolve_key(&self) -> Result<Aes256Key, AuthError> {
+        if let Some(k) = &self.master_key {
+            return Ok(Aes256Key::from_bytes(*k.as_bytes()));
         }
-        let key = match &self.crypto {
-            CryptoSource::Key(k) => Arc::clone(k),
-            CryptoSource::AutoKeyFile(key_path) => {
-                let loaded = Aes256Key::load_or_create(key_path.clone())
-                    .await
-                    .map_err(|e| AuthError::InternalError(format!("auth key: {e}")))?;
-                Arc::new(loaded)
-            }
-        };
-        *self.key_cache.write().await = Some(Arc::clone(&key));
-        Ok(key)
+        load_or_create_master_key().map_err(|e| AuthError::InternalError(format!("auth master key: {e}")))
     }
 
     async fn load_entry(&self) -> Result<Option<StoredCredentials>, AuthError> {
-        // Shared lock so we don't read a half-written file during refresh.
         let _guard = lock_auth_store(&self.path)
             .await
             .map_err(|e| AuthError::InternalError(format!("lock auth store: {e}")))?;
-        let file = AuthStoreFile::load_from_path(&self.path).await?;
+        let key = self.resolve_key()?;
+        let file = AuthStoreFile::load_from_path_with_key(&self.path, &key).await?;
         let Some(value) = file.mcp.get(&self.server_key) else {
             return Ok(None);
         };
-        let key = self.resolve_key().await?;
-        decode_entry(key, value).await
+        decode_entry(value)
     }
 
     /// Load-merge-save under exclusive lock (safe for concurrent token refresh).
@@ -304,41 +342,33 @@ impl FileCredentialStore {
         let _guard = lock_auth_store(&self.path)
             .await
             .map_err(|e| AuthError::InternalError(format!("lock auth store: {e}")))?;
-        // Re-read under lock so concurrent writers (other servers / refresh) are not lost.
-        let mut file = AuthStoreFile::load_from_path(&self.path).await?;
+        let key = self.resolve_key()?;
+        let mut file = AuthStoreFile::load_from_path_with_key(&self.path, &key).await?;
         match credentials {
             Some(creds) => {
-                let key = self.resolve_key().await?;
-                let enc = encrypt_json_async(key, creds)
-                    .await
-                    .map_err(|e| AuthError::InternalError(format!("encrypt credentials: {e}")))?;
-                debug_assert!(is_encrypted_value(&enc));
-                file.mcp.insert(self.server_key.clone(), Value::String(enc));
+                let value = serde_json::to_value(&creds)
+                    .map_err(|e| AuthError::InternalError(format!("serialize credentials: {e}")))?;
+                file.mcp.insert(self.server_key.clone(), value);
             }
             None => {
                 file.mcp.remove(&self.server_key);
             }
         }
-        file.save_to_path_unlocked(&self.path).await?;
+        file.save_to_path_unlocked_with_key(&self.path, &key).await?;
         Ok(())
     }
 }
 
-async fn decode_entry(key: Arc<Aes256Key>, value: &Value) -> Result<Option<StoredCredentials>, AuthError> {
+fn decode_entry(value: &Value) -> Result<Option<StoredCredentials>, AuthError> {
     match value {
-        Value::String(s) if is_encrypted_value(s) => {
-            let creds: StoredCredentials = decrypt_json_async(key, s.clone())
-                .await
-                .map_err(|e| AuthError::InternalError(format!("decrypt credentials: {e}")))?;
+        Value::Null => Ok(None),
+        Value::Object(_) => {
+            let creds: StoredCredentials = serde_json::from_value(value.clone())
+                .map_err(|e| AuthError::InternalError(format!("parse MCP credentials: {e}")))?;
             Ok(Some(creds))
         }
-        Value::String(s) => Err(AuthError::InternalError(format!(
-            "credential string must start with {ENC_PREFIX}, got prefix {:?}",
-            s.chars().take(8).collect::<String>()
-        ))),
-        Value::Null => Ok(None),
         other => Err(AuthError::InternalError(format!(
-            "unexpected credential entry type (expected enc: string): {other}"
+            "unexpected MCP credential entry type (expected JSON object): {other}"
         ))),
     }
 }
@@ -349,7 +379,6 @@ pub struct FileCredentialStoreBuilder {
     path_builder: AuthStorePathBuilder,
     server_key: Option<String>,
     key: Option<Aes256Key>,
-    key_path: Option<PathBuf>,
 }
 
 impl FileCredentialStoreBuilder {
@@ -377,15 +406,9 @@ impl FileCredentialStoreBuilder {
         self
     }
 
-    /// Explicit AES-256 key material.
+    /// Explicit AES-256 master key (tests / hosts that inject key material).
     pub fn encryption_key(mut self, key: Aes256Key) -> Self {
         self.key = Some(key);
-        self
-    }
-
-    /// Override path of the key file (default: sibling `auth.key`).
-    pub fn key_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.key_path = Some(path.into());
         self
     }
 
@@ -398,11 +421,7 @@ impl FileCredentialStoreBuilder {
         if let Some(key) = self.key {
             return Ok(FileCredentialStore::with_key(path, server_key, key));
         }
-        let mut store = FileCredentialStore::new(path, server_key);
-        if let Some(key_path) = self.key_path {
-            store.crypto = CryptoSource::AutoKeyFile(key_path);
-        }
-        Ok(store)
+        Ok(FileCredentialStore::new(path, server_key))
     }
 }
 
@@ -428,19 +447,18 @@ impl CredentialStore for FileCredentialStore {
 
     async fn clear(&self) -> Result<(), AuthError> {
         *self.cache.write().await = None;
-        // Remove this server's entry and optionally delete an empty store under one lock
-        // so a concurrent save for another server cannot be lost to a late remove_file.
         let _guard = lock_auth_store(&self.path)
             .await
             .map_err(|e| AuthError::InternalError(format!("lock auth store: {e}")))?;
-        let mut file = AuthStoreFile::load_from_path(&self.path).await?;
+        let key = self.resolve_key()?;
+        let mut file = AuthStoreFile::load_from_path_with_key(&self.path, &key).await?;
         file.mcp.remove(&self.server_key);
-        if file.mcp.is_empty() {
+        if file.mcp.is_empty() && file.providers.is_empty() {
             if self.path.exists() {
                 let _ = tokio::fs::remove_file(&self.path).await;
             }
         } else {
-            file.save_to_path_unlocked(&self.path).await?;
+            file.save_to_path_unlocked_with_key(&self.path, &key).await?;
         }
         Ok(())
     }
@@ -450,19 +468,53 @@ impl CredentialStore for FileCredentialStore {
 // Public helpers
 // ---------------------------------------------------------------------------
 
-/// True when `auth.json` contains an entry for `server_name`.
+/// True when sealed `auth.json` contains an entry for `server_name`.
 pub fn has_stored_credentials(auth_store_path: &Path, server_name: &str) -> bool {
-    // Sync probe for CLI; best-effort read without decrypt.
-    if !auth_store_path.exists() {
-        return false;
+    AuthStoreFile::load_from_path_sync(auth_store_path)
+        .map(|file| file.contains_server(server_name))
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod sealed_store_tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn sealed_provider_roundtrip_no_lock_sidecar() {
+        let key = Aes256Key::generate();
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.json");
+
+        let mut file = AuthStoreFile::default();
+        file.set_provider_credential("opencode", "sk-test-secret".into());
+        file.save_to_path_with_key(&path, &key).await.unwrap();
+
+        let mut lock_sidecar = path.as_os_str().to_os_string();
+        lock_sidecar.push(".lock");
+        assert!(!std::path::PathBuf::from(lock_sidecar).exists());
+        assert!(!path.with_extension("key").exists());
+
+        let raw = std::fs::read_to_string(&path).unwrap();
+        assert!(raw.contains("\"v\": 2") || raw.contains("\"v\":2"));
+        assert!(!raw.contains("sk-test-secret"));
+
+        let loaded = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
+        assert_eq!(
+            loaded.get_provider_credential("opencode"),
+            Some("sk-test-secret")
+        );
     }
-    let Ok(bytes) = std::fs::read(auth_store_path) else {
-        return false;
-    };
-    let Ok(file) = serde_json::from_slice::<AuthStoreFile>(&bytes) else {
-        return false;
-    };
-    file.contains_server(server_name)
+
+    #[tokio::test]
+    async fn rejects_cleartext_legacy_store() {
+        let key = Aes256Key::generate();
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("auth.json");
+        std::fs::write(&path, r#"{"providers":{"x":"sk"}}"#).unwrap();
+        let err = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap_err();
+        assert!(err.to_string().to_ascii_lowercase().contains("envelope") || err.to_string().contains("legacy"));
+    }
 }
 
 /// Remove stored OAuth credentials for a server from the shared store.
@@ -748,11 +800,12 @@ mod tests {
 
     #[tokio::test]
     async fn multi_server_store_encrypted_roundtrip() {
+        let key = Aes256Key::generate();
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.json");
 
-        let a = FileCredentialStore::new(&path, "server-a");
-        let b = FileCredentialStore::new(&path, "server-b");
+        let a = FileCredentialStore::with_key(&path, "server-a", key.clone());
+        let b = FileCredentialStore::with_key(&path, "server-b", key.clone());
 
         let creds_a = StoredCredentials::new("client-a".into(), None, vec!["read".into()], Some(1));
         a.save(creds_a.clone()).await.unwrap();
@@ -760,13 +813,12 @@ mod tests {
         let creds_b = StoredCredentials::new("client-b".into(), None, vec![], Some(2));
         b.save(creds_b.clone()).await.unwrap();
 
-        // On disk: entries must be enc: strings
         let raw = tokio::fs::read_to_string(&path).await.unwrap();
-        assert!(raw.contains(ENC_PREFIX), "expected encrypted payload: {raw}");
+        assert!(raw.contains("\"v\":") && raw.contains("ciphertext"), "expected v2 envelope: {raw}");
         assert!(!raw.contains("client-a"), "client id must not appear in plaintext");
-
-        assert!(has_stored_credentials(&path, "server-a"));
-        assert!(has_stored_credentials(&path, "server-b"));
+        let mut lock_sidecar = path.as_os_str().to_os_string();
+        lock_sidecar.push(".lock");
+        assert!(!std::path::PathBuf::from(lock_sidecar).exists());
 
         let loaded_a = a.load().await.unwrap().unwrap();
         assert_eq!(loaded_a.client_id, "client-a");
@@ -774,8 +826,7 @@ mod tests {
         assert_eq!(loaded_b.client_id, "client-b");
 
         a.clear().await.unwrap();
-        assert!(!has_stored_credentials(&path, "server-a"));
-        assert!(has_stored_credentials(&path, "server-b"));
+        assert!(b.load().await.unwrap().is_some());
         assert!(path.exists());
 
         b.clear().await.unwrap();
@@ -784,9 +835,9 @@ mod tests {
 
     #[tokio::test]
     async fn concurrent_saves_do_not_lose_entries() {
+        let key = Aes256Key::generate();
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.json");
-        let key = Aes256Key::generate();
 
         let mut handles = Vec::new();
         for i in 0..12 {
@@ -802,7 +853,7 @@ mod tests {
             h.await.unwrap();
         }
 
-        let file = AuthStoreFile::load_from_path(&path).await.unwrap();
+        let file = AuthStoreFile::load_from_path_with_key(&path, &key).await.unwrap();
         assert_eq!(file.mcp.len(), 12, "lost entries under concurrent save: {:?}", file.mcp.keys());
         for i in 0..12 {
             let store = FileCredentialStore::with_key(&path, format!("server-{i}"), key.clone());
