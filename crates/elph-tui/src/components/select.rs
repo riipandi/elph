@@ -1,7 +1,7 @@
 //! Vertical list selector (OpenTUI Select analogue).
 
 use crate::types::SelectOption;
-use crate::wrapped_transcript_row_count;
+use crate::wrapped_text_row_count;
 use iocraft::prelude::*;
 
 use super::theme::{
@@ -91,7 +91,7 @@ pub fn select_measured_row_counts(
         .map(|opt| {
             let mut rows = 1usize;
             if show_description && !opt.description.is_empty() {
-                rows += wrapped_transcript_row_count(&opt.description, content_width) as usize;
+                rows += wrapped_text_row_count(&opt.description, content_width as usize);
             }
             rows
         })

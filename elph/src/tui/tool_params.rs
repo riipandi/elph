@@ -1,7 +1,7 @@
 //! Structured parsing and rendering for tool call parameters.
 
 use elph_tui::components::UiTheme;
-use elph_tui::wrapped_transcript_row_count;
+use elph_tui::wrapped_text_row_count;
 use iocraft::prelude::*;
 use serde_json::Value;
 
@@ -898,7 +898,9 @@ pub fn tool_approval_summary_row_count_for_summary(summary: &str, width: u16) ->
     if summary.is_empty() {
         return 0;
     }
-    wrapped_transcript_row_count(summary, width.max(1)).clamp(1, APPROVAL_SUMMARY_MAX_ROWS)
+    wrapped_text_row_count(summary, width.max(1) as usize)
+        .min(u16::MAX as usize)
+        .clamp(1, APPROVAL_SUMMARY_MAX_ROWS as usize) as u16
 }
 
 /// Wrapped row budget for [`format_tool_approval_summary`].
@@ -976,7 +978,9 @@ fn params_display_row_count(
         .iter()
         .map(|param| {
             let value = value_for_display(param.key.as_deref(), &param.value);
-            wrapped_transcript_row_count(&value, value_width).max(1)
+            wrapped_text_row_count(&value, value_width as usize)
+                .min(u16::MAX as usize)
+                .max(1) as u16
         })
         .sum()
 }

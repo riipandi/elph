@@ -1,11 +1,11 @@
 //! Scroll row measurement for markdown assistant cards.
 
-use elph_tui::{markdown_document_row_count, streaming_tail_document, wrapped_transcript_row_count};
+use elph_tui::{markdown_document_row_count, streaming_tail_document, wrapped_text_row_count};
 
 use super::buffer::AssistantMarkdownBuffer;
 
 pub fn markdown_part_row_count(source: &str, wrap_width: u16) -> u16 {
-    wrapped_transcript_row_count(source, wrap_width)
+    wrapped_text_row_count(source, wrap_width as usize).min(u16::MAX as usize) as u16
 }
 
 /// Prefer plain wrap for large streaming tails — full markdown parse of the live tail is too costly.
@@ -15,7 +15,7 @@ const STREAMING_TAIL_MEASURE_MAX_CHARS: usize = 4_000;
 
 pub fn assistant_row_count(content: &str, markdown: Option<&AssistantMarkdownBuffer>, wrap_width: u16) -> u16 {
     let Some(md) = markdown else {
-        return wrapped_transcript_row_count(content, wrap_width);
+        return wrapped_text_row_count(content, wrap_width as usize).min(u16::MAX as usize) as u16;
     };
     let stable_rows: u16 = md
         .parts
@@ -45,7 +45,8 @@ pub fn assistant_row_count(content: &str, markdown: Option<&AssistantMarkdownBuf
     };
     // Cheap path for large live tails — avoid re-parsing markdown every layout.
     if tail.len() > STREAMING_TAIL_MARKDOWN_MAX_CHARS {
-        return stable_rows.saturating_add(wrapped_transcript_row_count(tail, wrap_width));
+        return stable_rows
+            .saturating_add(wrapped_text_row_count(tail, wrap_width as usize).min(u16::MAX as usize) as u16);
     }
     let tail_doc = streaming_tail_document(tail);
     stable_rows.saturating_add(markdown_document_row_count(&tail_doc, wrap_width))

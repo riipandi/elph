@@ -16,7 +16,7 @@ pub use toggle_ctx::CollapsibleToggleCtx;
 
 pub(crate) use chrome::{
     COLORED_CARD_GAP, COLORED_CARD_PAD, COLORED_CARD_PAD_H, FLUSH_CARD_GAP, FLUSH_CARD_PAD, LOG_ROW_GAP,
-    THINKING_RESPONSE_GAP, TOOL_TO_RESPONSE_GAP,
+    PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP, TOOL_TO_RESPONSE_GAP,
 };
 pub(crate) use kinds::tool_status_marker;
 pub(crate) use tool_format::{

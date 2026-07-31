@@ -3143,6 +3143,7 @@ dependencies = [
  "textwrap",
  "tokio",
  "two-face",
+ "unicode-linebreak",
  "unicode-segmentation",
  "unicode-width 0.2.2",
  "url",

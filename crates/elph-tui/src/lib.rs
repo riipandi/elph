@@ -18,6 +18,7 @@ pub mod theme_config;
 pub mod transcript_layout;
 pub mod types;
 pub mod utils;
+pub mod word_wrap;
 
 pub use cli_progress::{CliProgress, CliSpinner};
 pub use cli_progress::{progress_enabled, progress_spinner};

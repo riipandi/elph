@@ -3,7 +3,7 @@
 use std::hash::{Hash, Hasher};
 
 use elph_tui::TranscriptRowLayout;
-use elph_tui::{transcript_bubble_inner_width, wrapped_transcript_row_count};
+use elph_tui::wrapped_text_row_count;
 
 use super::card::timestamp_layout::{layout_user_input_lines, user_input_right_rail};
 use super::markdown::assistant_row_count;
@@ -63,9 +63,7 @@ pub fn layout_transcript_rows_cached(
     let mut first_changed = messages.len();
     for index in (0..messages.len()).rev() {
         let message = &messages[index];
-        let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding())
-            .saturating_sub(message.style.content_chrome_cols())
-            .max(1);
+        let wrap_width = message.content_inner_width(screen_width);
         let fingerprint = message_layout_fingerprint(message, wrap_width);
         if cache.fingerprints[index] != fingerprint {
             first_changed = index;
@@ -118,9 +116,7 @@ pub fn layout_transcript_rows_cached(
 
     // Emit recomputed suffix from `start`.
     for (index, message) in messages.iter().enumerate().skip(start) {
-        let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding())
-            .saturating_sub(message.style.content_chrome_cols())
-            .max(1);
+        let wrap_width = message.content_inner_width(screen_width);
         let fingerprint = message_layout_fingerprint(message, wrap_width);
         if cache.fingerprints[index] != fingerprint {
             cache.fingerprints[index] = fingerprint;
@@ -154,7 +150,9 @@ fn message_row_count(message: &TranscriptMessage, wrap_width: u16) -> u32 {
         let right_rail = user_input_right_rail(message.submitted_at, message.duration_secs);
         layout_user_input_lines(&message.content, right_rail.as_deref(), wrap_width).len() as u32
     } else {
-        wrapped_transcript_row_count(&message.layout_text(), wrap_width) as u32
+        // Plain-text cards (thinking body, tool output, status) paint with word-wrap; measure
+        // with the same wrap so the scroll viewport matches the painted height exactly.
+        wrapped_text_row_count(&message.layout_text(), wrap_width as usize).min(u32::MAX as usize) as u32
     };
     let vertical_pad = message
         .transcript_padding_top()

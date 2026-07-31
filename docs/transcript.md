@@ -89,6 +89,29 @@ This reduces recomputation from O(n) to O(changed_suffix) for streaming workload
 The "near bottom" threshold was lowered from **10 → 6** rows to match the scroll step (3 rows).
 Previously, pressing Up required 4 presses to unpin auto-scroll; now 2 presses suffice.
 
+### Measure–Paint Wrap Parity (word_wrap.rs)
+
+Transcript row measurement must predict exactly what iocraft paints, because auto-scroll pins
+the viewport bottom to the *measured* height. Text rendered with `TextWrap::Wrap` (markdown
+paragraphs/list items, plain-text cards, tool param values) is word-wrapped by iocraft on
+Unicode line-break opportunities; older measurement used a character-wrap layout that packs
+more characters per row, under-counting rows at narrow widths (e.g. width 36 → 55 measured vs
+62 painted). The clipped painted tail (often the `…` of a truncated line) fell outside the
+viewport, so `/tools list` output appeared cut mid-line.
+
+`elph_tui::wrapped_text_row_count` replicates the single-segment case of iocraft's
+`SegmentedString::wrap` — same `unicode-linebreak` tables (Unicode 15.0.0) and zero-width
+control characters — so measurement matches paint at every width. It is used by:
+
+- Markdown paragraphs / list items and the raw-source fallback (`elph-tui markdown/layout.rs`).
+- Plain-text cards: thinking body, tool output, status (`transcript/layout.rs`).
+- Streaming markdown tail and markdown part fallback (`transcript/markdown/layout.rs`).
+- Tool param values and approval summaries (`tool_params.rs`).
+- Dialog/select descriptions (`elph-tui` select + dialog_shell).
+
+Pre-wrapped text rendered with `TextWrap::NoWrap` (tables, code blocks, user-input cards,
+sticky chrome) intentionally stays on the character-wrap path via `wrapped_transcript_row_count`.
+
 ### Streaming Content Cap (agent_bridge.rs)
 
 Assistant streaming content is now capped at **200 KB** (similar to `TOOL_OUTPUT_STREAM_CAP` at

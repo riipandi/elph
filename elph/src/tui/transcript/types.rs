@@ -11,7 +11,7 @@ use crate::tui::theme::{
 
 use super::card::{
     COLORED_CARD_GAP, COLORED_CARD_PAD, COLORED_CARD_PAD_H, FLUSH_CARD_GAP, FLUSH_CARD_PAD, LOG_ROW_GAP,
-    THINKING_RESPONSE_GAP, TOOL_TO_RESPONSE_GAP,
+    PROCESS_LOG_PAD_H, THINKING_RESPONSE_GAP, TOOL_TO_RESPONSE_GAP,
 };
 use crate::tui::ask_user_tool_card::format_ask_user_tool_layout_text;
 
@@ -470,6 +470,35 @@ impl TranscriptMessage {
                     self.content.clone()
                 }
             }
+        }
+    }
+
+    /// Inner wrap width this message's card renderer actually uses.
+    ///
+    /// The transcript measures scroll rows (layout + windowing) at this same width so the
+    /// measured height matches what iocraft paints. It mirrors the `padding_h` each card
+    /// renderer applies — `PROCESS_LOG_PAD_H` for process-log rows (thinking / response /
+    /// tool / status) and `COLORED_CARD_PAD_H` for tinted cards and local slash responses —
+    /// which the style-level [`TranscriptStyle::horizontal_padding`] does not reflect.
+    /// When the two widths drift, painted rows overflow the measured layout and the scroll
+    /// viewport clips the tail of the last message (e.g. `/tools list` bullet fragments).
+    pub fn content_inner_width(&self, screen_width: u16) -> u16 {
+        let outer = elph_tui::transcript_text_width(screen_width);
+        outer
+            .saturating_sub(self.content_padding_h().saturating_mul(2))
+            .saturating_sub(self.style.content_chrome_cols())
+            .max(1)
+    }
+
+    /// Horizontal padding the card renderer applies for this message's body.
+    fn content_padding_h(&self) -> u16 {
+        if self.style.is_user_input_card()
+            || matches!(self.style, TranscriptStyle::Error | TranscriptStyle::Meta)
+            || self.local_slash_response
+        {
+            COLORED_CARD_PAD_H
+        } else {
+            PROCESS_LOG_PAD_H
         }
     }
 

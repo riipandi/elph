@@ -33,7 +33,7 @@ pub fn partition_assistant_markdown(messages: &mut [TranscriptMessage], screen_w
         if !streaming && seen_assistants > PARTITION_TAIL_ASSISTANTS {
             continue;
         }
-        let wrap_width = elph_tui::transcript_bubble_inner_width(screen_width, message.style.horizontal_padding());
+        let wrap_width = message.content_inner_width(screen_width);
         if message.markdown.is_none() {
             message.markdown = Some(AssistantMarkdownBuffer::new());
         }
