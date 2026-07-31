@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use elph_agent::{AgentTool, AgentToolResult};
 use elph_ai::Tool;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use floppy::{
     MemoryCategory, MemoryReportInput, ReportCorrectionInput, ReportUserInput, SelfReportEntry, StartTaskResult,
@@ -347,9 +347,7 @@ async fn execute_report(runtime: Arc<MemoryRuntime>, args: Value) -> Result<Agen
                 _ => UserInputSource::UserInput,
             };
 
-            let id = runtime
-                .report_user_input(ReportUserInput { lesson, source })
-                .await?;
+            let id = runtime.report_user_input(ReportUserInput { lesson, source }).await?;
 
             Ok(AgentToolResult::text(format!("User input stored (id={id})")))
         }
@@ -404,9 +402,7 @@ async fn execute_contradict(runtime: Arc<MemoryRuntime>, args: Value) -> Result<
         .to_string();
     let correction = args.get("correction").and_then(Value::as_str).map(str::to_string);
 
-    let (deleted, correction_id) = runtime
-        .contradict_memory(&memory_id, correction.as_deref())
-        .await?;
+    let (deleted, correction_id) = runtime.contradict_memory(&memory_id, correction.as_deref()).await?;
 
     if deleted {
         let mut msg = format!("Memory {memory_id} deleted.");
@@ -511,9 +507,7 @@ async fn execute_search(runtime: Arc<MemoryRuntime>, args: Value) -> Result<Agen
 
     let memories = runtime.search_memories(query).await?;
     if memories.is_empty() {
-        return Ok(AgentToolResult::text(format!(
-            "No memories matched query: {query}"
-        )));
+        return Ok(AgentToolResult::text(format!("No memories matched query: {query}")));
     }
 
     let lines: Vec<String> = memories
@@ -583,18 +577,15 @@ async fn execute_recent(runtime: Arc<MemoryRuntime>, args: Value) -> Result<Agen
         .and_then(Value::as_u64)
         .map(|n| n.clamp(1, 50) as u32)
         .unwrap_or(10);
-    let category = args
-        .get("category")
-        .and_then(Value::as_str)
-        .and_then(|s| match s {
-            "correction" => Some(MemoryCategory::Correction),
-            "user" => Some(MemoryCategory::User),
-            "insight" => Some(MemoryCategory::Insight),
-            "discovery" => Some(MemoryCategory::Discovery),
-            "work" => Some(MemoryCategory::Work),
-            "consolidated" => Some(MemoryCategory::Consolidated),
-            _ => None,
-        });
+    let category = args.get("category").and_then(Value::as_str).and_then(|s| match s {
+        "correction" => Some(MemoryCategory::Correction),
+        "user" => Some(MemoryCategory::User),
+        "insight" => Some(MemoryCategory::Insight),
+        "discovery" => Some(MemoryCategory::Discovery),
+        "work" => Some(MemoryCategory::Work),
+        "consolidated" => Some(MemoryCategory::Consolidated),
+        _ => None,
+    });
 
     let records = runtime.list_recent_memories(limit, category).await?;
     if records.is_empty() {

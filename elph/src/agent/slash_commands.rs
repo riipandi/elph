@@ -188,7 +188,7 @@ pub enum SlashDispatch {
         name: String,
         args: String,
     },
-    /// Memory store commands (status, list, tasks, log, search, purge).
+    /// Memory store commands (status, list, tasks, log, search, purge, flush).
     Memory {
         args: String,
     },
@@ -270,6 +270,10 @@ const MEMORY_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
         description: "List memory entries",
     },
     SlashArgCompletion {
+        value: "recent",
+        description: "Newest memories first",
+    },
+    SlashArgCompletion {
         value: "tasks",
         description: "Show memory tasks",
     },
@@ -283,7 +287,15 @@ const MEMORY_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
     SlashArgCompletion {
         value: "purge",
-        description: "Purge all memory",
+        description: "Delete weak memories by weight",
+    },
+    SlashArgCompletion {
+        value: "flush",
+        description: "Wipe entire store (confirm first)",
+    },
+    SlashArgCompletion {
+        value: "consolidate",
+        description: "Merge near-duplicate entries",
     },
 ];
 

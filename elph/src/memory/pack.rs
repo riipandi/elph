@@ -38,23 +38,14 @@ fn format_entry_line(index: usize, ranked: &RankedMemory) -> String {
     };
     format!(
         "{}. [{} | id={}{} | w={:.2} | used={}x] {}",
-        index,
-        category,
-        ranked.memory.id,
-        score_part,
-        ranked.memory.weight,
-        ranked.memory.retrieval_count,
-        preview,
+        index, category, ranked.memory.id, score_part, ranked.memory.weight, ranked.memory.retrieval_count, preview,
     )
 }
 
 fn is_lesson(cat: MemoryCategory) -> bool {
     matches!(
         cat,
-        MemoryCategory::Correction
-            | MemoryCategory::User
-            | MemoryCategory::Insight
-            | MemoryCategory::Consolidated
+        MemoryCategory::Correction | MemoryCategory::User | MemoryCategory::Insight | MemoryCategory::Consolidated
     )
 }
 
@@ -68,10 +59,7 @@ fn is_discovery(cat: MemoryCategory) -> bool {
 
 fn is_priority_sticky(r: &RankedMemory) -> bool {
     matches!(r.source, RankSource::Sticky)
-        && matches!(
-            r.memory.category,
-            MemoryCategory::User | MemoryCategory::Correction
-        )
+        && matches!(r.memory.category, MemoryCategory::User | MemoryCategory::Correction)
         && r.memory.weight > 3.0
 }
 
@@ -157,9 +145,7 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
     if !map.is_empty() {
         sections.project_map = map.len();
         let mut block = String::from("<project_map>\n");
-        block.push_str(
-            "Known project layout (prefer over re-running broad list_dir unless stale):\n",
-        );
+        block.push_str("Known project layout (prefer over re-running broad list_dir unless stale):\n");
         block.push_str(&map.join("\n"));
         block.push_str("\n</project_map>");
         parts.push(block);
@@ -206,22 +192,10 @@ mod tests {
     fn budget_never_exceeded() {
         let long = "y".repeat(400);
         let items: Vec<RankedMemory> = (0..20)
-            .map(|i| {
-                ranked(
-                    &format!("id{i}"),
-                    MemoryCategory::Insight,
-                    1.0,
-                    1.0 - i as f64 * 0.01,
-                    &long,
-                )
-            })
+            .map(|i| ranked(&format!("id{i}"), MemoryCategory::Insight, 1.0, 1.0 - i as f64 * 0.01, &long))
             .collect();
         let packed = pack_ranked_context(&items, 3000);
-        assert!(
-            packed.text.chars().count() <= 3000,
-            "got {} chars",
-            packed.text.chars().count()
-        );
+        assert!(packed.text.chars().count() <= 3000, "got {} chars", packed.text.chars().count());
         assert!(!packed.injected_ids.is_empty());
     }
 

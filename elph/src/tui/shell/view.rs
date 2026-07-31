@@ -65,6 +65,7 @@ pub(crate) fn build_shell_view(
         paths,
         mut pending_confetti,
         mut pending_feedback,
+        mut pending_memory_flush,
         pending_mode_change,
         mut pending_model_selector,
         pending_plan_confirmation,
@@ -283,6 +284,7 @@ pub(crate) fn build_shell_view(
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
+        || pending_memory_flush.read().is_some()
         || *pending_feedback.read()
         || user_question_open
         || model_selector_open
@@ -321,6 +323,7 @@ pub(crate) fn build_shell_view(
     let approval_has_focus = (pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
+        || pending_memory_flush.read().is_some()
         || *pending_feedback.read()
         || provider_connect_open
         || provider_disconnect_open
@@ -610,6 +613,7 @@ pub(crate) fn build_shell_view(
     let status_dialog = build_status_dialog_kind(pending_tool_approval.read().as_ref())
         .or_else(|| build_mode_change_dialog_kind(pending_mode_change.read().as_ref()))
         .or_else(|| build_plan_confirmation_dialog_kind(pending_plan_confirmation.read().as_ref()))
+        .or_else(|| build_memory_flush_dialog_kind(pending_memory_flush.read().as_ref()))
         .or_else(|| build_feedback_dialog_kind(*pending_feedback.read()))
         .or_else(|| {
             let pending = pending_provider_connect.read();
@@ -1568,6 +1572,22 @@ pub(crate) fn build_shell_view(
                                     shell_focus: &mut shell_focus,
                                     mode,
                                 });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMemoryFlushConfirm {
+                                memory_count,
+                                task_count,
+                            } => {
+                                *pending_memory_flush.write() = Some(PendingMemoryFlush {
+                                    memory_count,
+                                    task_count,
+                                });
+                                approval_selected.set(1); // Cancel by default
+                                shell_focus.set(ShellFocus::StatusDialog);
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

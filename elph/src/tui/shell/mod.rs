@@ -103,9 +103,9 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mode_change_dialog_kind,
-    build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
-    build_provider_connect_dialog_kind, build_status_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_memory_flush_dialog_kind,
+    build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind,
+    build_provider_api_key_dialog_kind, build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
 use crate::tui::subagent_output_dialog::{PendingSubagentOutputDialog, SubagentOutputDialogOverlay};
 use crate::tui::system_prompt_dialog::{
@@ -113,11 +113,11 @@ use crate::tui::system_prompt_dialog::{
     system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::{
-    FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation,
-    PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index, feedback_url_at_index, open_url,
-    pick_feedback_index_from_key, pick_mode_change_index_from_key, pick_plan_confirmation_index_from_key,
-    pick_tool_approval_index_from_key, plan_choice_at_index, plan_confirmation_transcript_key, to_harness_choice,
-    tool_approval_transcript_key,
+    FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingMemoryFlush, PendingModeChange,
+    PendingPlanConfirmation, PendingToolApproval, PlanChoice, TOOL_APPROVAL_DEFAULT_INDEX, choice_at_index,
+    feedback_url_at_index, open_url, pick_feedback_index_from_key, pick_memory_flush_index_from_key,
+    pick_mode_change_index_from_key, pick_plan_confirmation_index_from_key, pick_tool_approval_index_from_key,
+    plan_choice_at_index, plan_confirmation_transcript_key, to_harness_choice, tool_approval_transcript_key,
 };
 use crate::tui::tool_params::tool_display_verb;
 use crate::tui::transcript::{
@@ -433,6 +433,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let pending_tool_approval = hooks.use_ref(|| None::<PendingToolApproval>);
     let pending_plan_confirmation = hooks.use_ref(|| None::<PendingPlanConfirmation>);
     let pending_feedback = hooks.use_ref(|| false);
+    let pending_memory_flush = hooks.use_ref(|| None::<PendingMemoryFlush>);
     let pending_user_question = hooks.use_ref(|| None::<PendingUserQuestion>);
     let slash_commands = hooks.use_state(|| props.slash_commands.clone());
     let prompt_templates = hooks.use_state(|| props.prompt_templates.clone());
@@ -675,6 +676,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         paths,
         pending_confetti,
         pending_feedback,
+        pending_memory_flush,
         pending_mode_change,
         pending_model_selector,
         pending_plan_confirmation,

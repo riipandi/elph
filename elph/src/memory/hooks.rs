@@ -14,7 +14,7 @@ use elph_agent::{
 use elph_ai::{Message, Usage};
 use floppy::{ReportCorrectionInput, ReportUserInput, UserInputSource};
 
-use super::runtime::{build_self_report, MemoryRuntime};
+use super::runtime::{MemoryRuntime, build_self_report};
 
 /// Keywords that suggest a user message is a correction (not a normal continuation).
 fn is_user_correction(text: &str) -> Option<&'static str> {

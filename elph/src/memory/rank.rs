@@ -70,11 +70,7 @@ pub fn is_continuation_prompt(prompt: &str) -> bool {
 
 /// Adjust adaptive recall threshold for continuation prompts (lower = more permissive).
 pub fn adaptive_threshold_adjustment(prompt: &str) -> f64 {
-    if is_continuation_prompt(prompt) {
-        -0.05
-    } else {
-        0.0
-    }
+    if is_continuation_prompt(prompt) { -0.05 } else { 0.0 }
 }
 
 /// Detect structure / layout questions (prefer discovery / project map).

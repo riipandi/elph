@@ -5,10 +5,21 @@ use super::super::store::MemoryStore;
 use super::super::types::{TimelineEvent, TimelineEventKind};
 use super::super::util::drain_rows;
 
+fn preview_text(s: &str, max_chars: usize) -> String {
+    let trimmed = s.trim();
+    if trimmed.chars().count() <= max_chars {
+        trimmed.to_string()
+    } else {
+        let t: String = trimmed.chars().take(max_chars).collect();
+        format!("{t}…")
+    }
+}
+
 impl MemoryStore {
-    /// Merged timeline of tasks and memory events.
+    /// Merged timeline of tasks and memory events (newest first).
     pub async fn get_timeline(&self, limit: u32) -> Result<Vec<TimelineEvent>> {
         self.init().await?;
+        let limit = limit.max(1);
         self.with_db(move |conn| async move {
             let mut events = Vec::new();
 
@@ -24,26 +35,26 @@ impl MemoryStore {
             while let Some(row) = task_rows.next().await? {
                 let started_at: i64 = row.get(5)?;
                 let completed: Option<i64> = row.get(4)?;
-                let status = if completed == Some(1) { "OK" } else { "FAIL" };
+                let status = match completed {
+                    Some(1) => "ok",
+                    Some(0) => "failed",
+                    _ => "open",
+                };
                 let score = row
                     .get::<Option<f64>>(1)?
                     .map(|s| format!("{s:.2}"))
-                    .unwrap_or_else(|| "?".into());
+                    .unwrap_or_else(|| "—".into());
                 let tokens = row
                     .get::<Option<i64>>(2)?
                     .map(|n| n.to_string())
-                    .unwrap_or_else(|| "?".into());
+                    .unwrap_or_else(|| "—".into());
                 let errors = row.get::<Option<i64>>(3)?.unwrap_or(0);
                 let desc: String = row.get::<Option<String>>(0)?.unwrap_or_default();
-                let desc = if desc.len() > 80 {
-                    format!("{}...", &desc[..80])
-                } else {
-                    desc
-                };
+                let desc = preview_text(&desc, 72);
                 events.push(TimelineEvent {
                     timestamp: started_at,
                     kind: TimelineEventKind::Task,
-                    summary: format!("TASK [{status}] score={score} {tokens}tok {errors}err — {desc}"),
+                    summary: format!("[{status}] score={score} {tokens} tok, {errors} err — {desc}"),
                 });
             }
             drain_rows(&mut task_rows).await?;
@@ -59,20 +70,19 @@ impl MemoryStore {
                 let category: String = row.get(1)?;
                 let weight: f64 = row.get(2)?;
                 let content: String = row.get(0)?;
-                let preview = if content.len() > 80 {
-                    format!("{}...", &content[..80])
-                } else {
-                    content
-                };
+                let preview = preview_text(&content, 72);
                 events.push(TimelineEvent {
                     timestamp: created_at,
                     kind: TimelineEventKind::Memory,
-                    summary: format!("MEM  [{category}] w={weight:.2} — {preview}"),
+                    summary: format!("[{category}] w={weight:.2} — {preview}"),
                 });
             }
             drain_rows(&mut mem_rows).await?;
 
-            events.sort_by_key(|e| e.timestamp);
+            // Newest first for "log" UX.
+            events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            // Cap total merged list so output stays readable.
+            events.truncate(limit as usize * 2);
             Ok(events)
         })
         .await

@@ -2,7 +2,7 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::create_goal_tools;
+use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
     GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
@@ -63,8 +63,7 @@ pub async fn create_coding_session_with_events(
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
     // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
-    let memory_opts =
-        crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
+    let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
     let memory_runtime = Arc::new(crate::memory::MemoryRuntime::with_options(
         options.paths.clone(),
         session_id.clone(),
@@ -87,7 +86,20 @@ pub async fn create_coding_session_with_events(
 
     let goal_store = Arc::new(GoalStore::new(options.paths.metadata_db_path()));
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
-    tools.extend(create_goal_tools(goal_store, session_id.clone()));
+    // Goals bridge: terminal goal status → work memory for future recall.
+    let memory_for_goals = Arc::clone(&memory_runtime);
+    let goal_hook: Option<elph_agent::GoalStatusHook> = Some(Arc::new(move |goal| {
+        let runtime = Arc::clone(&memory_for_goals);
+        Box::pin(async move {
+            let status = goal.status.as_str();
+            if let Err(err) = runtime.record_goal_outcome(&goal.id, &goal.objective, status).await {
+                log::warn!("memory goals bridge: {err:#}");
+            } else {
+                log::debug!("memory.write kind=work source=goal id={} status={status}", goal.id);
+            }
+        })
+    }));
+    tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
     let thinking = to_agent_thinking(thinking_level_from_setting(&options.settings.session.thinking_level));
     let agent_graph = Arc::new(AgentGraphStore::new(options.paths.metadata_db_path()));
@@ -179,8 +191,7 @@ pub async fn create_coding_session_with_events(
 
     // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).
     // Runs best-effort: errors are logged and don't prevent session startup.
-    if let Err(err) =
-        crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
+    if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
     {
         log::warn!("automatic memory hooks: {err:#}");
     }

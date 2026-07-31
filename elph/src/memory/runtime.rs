@@ -12,13 +12,13 @@ use floppy::{
 };
 
 use super::capture::{
-    build_discovery_entries, discovery_area_matches, format_change_entry, format_work_entry, is_mutation_tool,
-    is_sensitive_path, now_unix, paths_from_tool_input, record_exploration, truncate_chars, ExplorationScratch,
-    MAX_PATHS_PER_TURN,
+    ExplorationScratch, MAX_PATHS_PER_TURN, build_discovery_entries, discovery_area_matches, format_change_entry,
+    format_work_entry, is_mutation_tool, is_sensitive_path, now_unix, paths_from_tool_input, record_exploration,
+    truncate_chars,
 };
-use super::pack::{pack_ranked_context, CONTEXT_BUDGET_CHARS};
+use super::pack::{CONTEXT_BUDGET_CHARS, pack_ranked_context};
 use super::rank::{
-    adaptive_threshold_adjustment, filter_sticky, is_continuation_prompt, merge_and_rank, now_secs, RankOptions,
+    RankOptions, adaptive_threshold_adjustment, filter_sticky, is_continuation_prompt, merge_and_rank, now_secs,
 };
 // re-export for callers/tests that used runtime::PER_MEMORY_CHARS
 pub use super::pack::PER_MEMORY_CHARS;
@@ -102,11 +102,7 @@ impl MemoryRuntime {
         Self::with_options(paths, session_id, MemoryRuntimeOptions::default())
     }
 
-    pub fn with_options(
-        paths: Paths,
-        session_id: impl Into<String>,
-        options: MemoryRuntimeOptions,
-    ) -> Self {
+    pub fn with_options(paths: Paths, session_id: impl Into<String>, options: MemoryRuntimeOptions) -> Self {
         Self {
             paths,
             session_id: session_id.into(),
@@ -172,11 +168,7 @@ impl MemoryRuntime {
             if is_sensitive_path(&path) {
                 continue;
             }
-            if turn
-                .paths_touched
-                .iter()
-                .any(|(p, t)| p == &path && t == tool_name)
-            {
+            if turn.paths_touched.iter().any(|(p, t)| p == &path && t == tool_name) {
                 continue;
             }
             turn.paths_touched.push((path, tool_name.to_string()));
@@ -359,8 +351,7 @@ impl MemoryRuntime {
     }
 
     pub async fn insert_work_memory(&self, content: String) -> Result<String> {
-        self.insert_category_memory(content, MemoryCategory::Work, "work")
-            .await
+        self.insert_category_memory(content, MemoryCategory::Work, "work").await
     }
 
     pub async fn insert_discovery_memory(&self, content: String) -> Result<String> {
@@ -368,12 +359,25 @@ impl MemoryRuntime {
             .await
     }
 
-    async fn insert_category_memory(
-        &self,
-        content: String,
-        category: MemoryCategory,
-        kind: &str,
-    ) -> Result<String> {
+    /// Persist a terminal goal outcome as a work memory (goals bridge).
+    pub async fn record_goal_outcome(&self, goal_id: &str, objective: &str, status: &str) -> Result<String> {
+        if !self.options.enabled || !self.options.auto_capture_work {
+            log::debug!("memory.auto_capture goal skipped_reason=settings_disabled");
+            return Ok(String::new());
+        }
+        let outcome = match status {
+            "complete" => "success",
+            "blocked" => "blocked",
+            other => other,
+        };
+        let obj = truncate_chars(objective.trim(), 160);
+        let content = format!(
+            "[work] Goal {status}: {obj}\nPaths: (goal)\nOutcome: {outcome}\nNote: goal_id={goal_id} auto-captured from update_goal"
+        );
+        self.insert_work_memory(content).await
+    }
+
+    async fn insert_category_memory(&self, content: String, category: MemoryCategory, kind: &str) -> Result<String> {
         self.ensure_store().await?;
         let guard = self.store.lock().await;
         let store = guard.as_ref().context("memory store missing")?;
@@ -445,10 +449,7 @@ impl MemoryRuntime {
             if written >= 2 {
                 break;
             }
-            if recent
-                .iter()
-                .any(|m| discovery_area_matches(&m.content, &area))
-            {
+            if recent.iter().any(|m| discovery_area_matches(&m.content, &area)) {
                 log::debug!("memory.auto_capture discovery skipped_reason=duplicate area={area}");
                 continue;
             }
@@ -484,11 +485,7 @@ impl MemoryRuntime {
         let mut threshold = adaptive_recall_threshold(total_count, &weights);
         threshold = (threshold + adaptive_threshold_adjustment(prompt)).clamp(0.30, 0.85);
 
-        let semantic_filtered: Vec<Memory> = semantic
-            .iter()
-            .filter(|m| m.score >= threshold)
-            .cloned()
-            .collect();
+        let semantic_filtered: Vec<Memory> = semantic.iter().filter(|m| m.score >= threshold).cloned().collect();
 
         // Always pull recent work/discovery even if semantic was sparse.
         let recent_work = self
@@ -646,11 +643,7 @@ impl MemoryRuntime {
         }
     }
 
-    pub async fn contradict_memory(
-        &self,
-        memory_id: &str,
-        correction: Option<&str>,
-    ) -> Result<(bool, Option<String>)> {
+    pub async fn contradict_memory(&self, memory_id: &str, correction: Option<&str>) -> Result<(bool, Option<String>)> {
         self.ensure_store().await?;
         let guard = self.store.lock().await;
         let store = guard.as_ref().context("memory store missing")?;
@@ -699,6 +692,12 @@ impl MemoryRuntime {
         let Some(store) = guard.as_ref() else {
             return;
         };
+
+        match store.clear_zero_embeddings().await {
+            Ok(n) if n > 0 => log::info!("memory session-end: cleared {n} invalid zero embeddings"),
+            Ok(_) => {}
+            Err(err) => log::warn!("memory session-end: clear_zero_embeddings failed: {err:#}"),
+        }
 
         match store.embed_pending().await {
             Ok(n) if n > 0 => log::info!("memory session-end: embedded {n} pending memories"),

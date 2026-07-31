@@ -7,7 +7,7 @@ mod export;
 mod extensions;
 mod help;
 mod import;
-mod interactive;
+pub(crate) mod interactive;
 mod mcp;
 mod memory;
 mod models;

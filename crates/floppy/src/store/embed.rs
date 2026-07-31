@@ -7,6 +7,18 @@ use super::{new_id, now_secs};
 use crate::types::MemoryCategory;
 use crate::util::{category_str, drain_rows, vec_buf};
 
+fn is_zero_embedding(v: &[f32]) -> bool {
+    v.is_empty() || v.iter().all(|x| *x == 0.0)
+}
+
+fn embedding_bytes_all_zero(emb: &[u8]) -> bool {
+    if emb.len() < 4 || emb.len() % 4 != 0 {
+        return true;
+    }
+    emb.chunks_exact(4)
+        .all(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]) == 0.0)
+}
+
 impl MemoryStore {
     pub async fn insert_raw_memory(&self, content: &str, category: MemoryCategory, weight: f64) -> Result<String> {
         self.init().await?;
@@ -65,10 +77,18 @@ impl MemoryStore {
         let mut embedded = Vec::with_capacity(rows.len());
         for (id, content) in &rows {
             let vec = (self.embed)(content).await?;
+            // Never persist all-zero vectors (noop embedder) — they corrupt semantic search.
+            if is_zero_embedding(&vec) {
+                continue;
+            }
             embedded.push((id.clone(), vec_buf(&vec)));
         }
 
-        let n = rows.len();
+        if embedded.is_empty() {
+            return Ok(0);
+        }
+
+        let n = embedded.len();
         self.with_db(move |conn| async move {
             for (id, emb) in embedded {
                 conn.execute("UPDATE memories SET embedding = ? WHERE id = ?", params![emb.as_slice(), id])
@@ -79,6 +99,36 @@ impl MemoryStore {
         .await?;
 
         Ok(n)
+    }
+
+    /// Clear all-zero embedding blobs left by a previous noop `embed_pending` run.
+    ///
+    /// Returns the number of rows reset to `embedding IS NULL` so a real model can re-embed them.
+    pub async fn clear_zero_embeddings(&self) -> Result<u32> {
+        self.init().await?;
+        let dims = self.dimensions() as usize;
+        let expected_bytes = dims * std::mem::size_of::<f32>();
+        self.with_db(move |conn| async move {
+            let mut rows = conn
+                .query("SELECT id, embedding FROM memories WHERE embedding IS NOT NULL", ())
+                .await?;
+            let mut bad_ids = Vec::new();
+            while let Some(row) = rows.next().await? {
+                let id: String = row.get(0)?;
+                let emb: Vec<u8> = row.get(1)?;
+                if emb.len() != expected_bytes || embedding_bytes_all_zero(&emb) {
+                    bad_ids.push(id);
+                }
+            }
+            drain_rows(&mut rows).await?;
+            let n = bad_ids.len() as u32;
+            for id in bad_ids {
+                conn.execute("UPDATE memories SET embedding = NULL WHERE id = ?", params![id])
+                    .await?;
+            }
+            Ok(n)
+        })
+        .await
     }
 
     pub async fn contradict_memory(&self, memory_id: &str, correction: Option<&str>) -> Result<(bool, Option<String>)> {

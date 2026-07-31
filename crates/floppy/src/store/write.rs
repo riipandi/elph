@@ -4,7 +4,7 @@ use turso::params;
 use super::MemoryStore;
 use super::delete_orphan_retrievals;
 use super::{new_id, now_secs};
-use crate::types::{ConsolidateResult, DecayResult};
+use crate::types::{ConsolidateResult, DecayResult, FlushResult};
 use crate::util::drain_rows;
 
 impl MemoryStore {
@@ -58,11 +58,7 @@ impl MemoryStore {
     ///
     /// Conservative MVP: at most `max_merges` pairs; only weights below `max_weight`.
     /// `distance_threshold` is cosine **distance** (1 - similarity); lower = stricter.
-    pub async fn consolidate_similar(
-        &self,
-        distance_threshold: f64,
-        max_merges: u32,
-    ) -> Result<ConsolidateResult> {
+    pub async fn consolidate_similar(&self, distance_threshold: f64, max_merges: u32) -> Result<ConsolidateResult> {
         self.init().await?;
         const MAX_WEIGHT: f64 = 2.5;
         const BATCH: i64 = 200;
@@ -185,6 +181,33 @@ impl MemoryStore {
                 .await?;
             delete_orphan_retrievals(&conn).await?;
             Ok(n as u32)
+        })
+        .await
+    }
+
+    /// Delete **all** memories, retrieval links, and tasks (full store wipe).
+    ///
+    /// Unlike [`Self::purge`], this ignores weight and does not leave any rows.
+    /// Schema / `meta` are preserved.
+    pub async fn flush(&self) -> Result<FlushResult> {
+        self.init().await?;
+        self.with_db(move |conn| async move {
+            // Count first so the result is meaningful even when tables are empty.
+            let mut mem_rows = conn.query("SELECT COUNT(*) FROM memories", ()).await?;
+            let memories = match mem_rows.next().await? {
+                Some(row) => row.get::<i64>(0)? as u32,
+                None => 0,
+            };
+            let mut task_rows = conn.query("SELECT COUNT(*) FROM tasks", ()).await?;
+            let tasks = match task_rows.next().await? {
+                Some(row) => row.get::<i64>(0)? as u32,
+                None => 0,
+            };
+
+            conn.execute("DELETE FROM memory_retrievals", ()).await?;
+            conn.execute("DELETE FROM memories", ()).await?;
+            conn.execute("DELETE FROM tasks", ()).await?;
+            Ok(FlushResult { memories, tasks })
         })
         .await
     }

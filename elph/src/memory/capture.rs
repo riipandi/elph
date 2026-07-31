@@ -19,13 +19,7 @@ pub const EXPLORATION_READ_THRESHOLD: u32 = 3;
 pub const MAX_DISCOVERY_NOTES: usize = 8;
 
 /// Mutation tools that leave a durable work footprint when successful.
-pub const MUTATION_TOOLS: &[&str] = &[
-    "edit_file",
-    "write_file",
-    "delete_path",
-    "move_path",
-    "copy_path",
-];
+pub const MUTATION_TOOLS: &[&str] = &["edit_file", "write_file", "delete_path", "move_path", "copy_path"];
 
 /// True when the path likely holds secrets and must not be journaled in detail.
 pub fn is_sensitive_path(path: &str) -> bool {
@@ -46,14 +40,7 @@ pub fn is_sensitive_path(path: &str) -> bool {
         return true;
     }
 
-    const NEEDLES: &[&str] = &[
-        "credentials",
-        "secret",
-        "secrets",
-        "/token",
-        "\\token",
-        ".token",
-    ];
+    const NEEDLES: &[&str] = &["credentials", "secret", "secrets", "/token", "\\token", ".token"];
     NEEDLES.iter().any(|n| lower.contains(n))
 }
 
@@ -162,10 +149,7 @@ pub fn record_exploration(scratch: &mut ExplorationScratch, tool_name: &str, inp
     }
     match tool_name {
         "list_dir" => {
-            let path = input
-                .get("path")
-                .and_then(Value::as_str)
-                .unwrap_or(".");
+            let path = input.get("path").and_then(Value::as_str).unwrap_or(".");
             if is_sensitive_path(path) {
                 return;
             }
@@ -198,11 +182,7 @@ pub fn record_exploration(scratch: &mut ExplorationScratch, tool_name: &str, inp
         }
         "grep" => {
             // Prefer path/glob scope when present.
-            if let Some(path) = input
-                .get("path")
-                .or_else(|| input.get("glob"))
-                .and_then(Value::as_str)
-            {
+            if let Some(path) = input.get("path").or_else(|| input.get("glob")).and_then(Value::as_str) {
                 if is_sensitive_path(path) {
                     return;
                 }
@@ -228,12 +208,7 @@ pub fn build_discovery_entries(
             if is_sensitive_path(area) {
                 continue;
             }
-            let content = format_discovery_entry(
-                area,
-                &[("list_dir", *count)],
-                basename_notes,
-                now,
-            );
+            let content = format_discovery_entry(area, &[("list_dir", *count)], basename_notes, now);
             areas.push((area.clone(), content));
         }
     }
@@ -244,15 +219,13 @@ pub fn build_discovery_entries(
                 continue;
             }
             // Avoid duplicate if already covered as list_dir area prefix.
-            if areas.iter().any(|(a, _)| a == prefix || a.starts_with(&format!("{prefix}/"))) {
+            if areas
+                .iter()
+                .any(|(a, _)| a == prefix || a.starts_with(&format!("{prefix}/")))
+            {
                 continue;
             }
-            let content = format_discovery_entry(
-                prefix,
-                &[("read_file", *count)],
-                basename_notes,
-                now,
-            );
+            let content = format_discovery_entry(prefix, &[("read_file", *count)], basename_notes, now);
             areas.push((prefix.clone(), content));
         }
     }
@@ -260,12 +233,7 @@ pub fn build_discovery_entries(
     areas
 }
 
-pub fn format_discovery_entry(
-    area: &str,
-    tools: &[(&str, u32)],
-    notes: &[(String, String)],
-    now: i64,
-) -> String {
+pub fn format_discovery_entry(area: &str, tools: &[(&str, u32)], notes: &[(String, String)], now: i64) -> String {
     let tools_s = tools
         .iter()
         .map(|(name, n)| format!("{name}×{n}"))
@@ -281,9 +249,7 @@ pub fn format_discovery_entry(
             .collect::<Vec<_>>()
             .join(", ")
     };
-    let raw = format!(
-        "[discovery] Area: {area}/\nObserved tools: {tools_s}\nNotes: {notes_s}\nObserved at unix={now}"
-    );
+    let raw = format!("[discovery] Area: {area}/\nObserved tools: {tools_s}\nNotes: {notes_s}\nObserved at unix={now}");
     truncate_chars(&raw, 500)
 }
 
@@ -303,7 +269,9 @@ pub fn discovery_area_matches(content: &str, area: &str) -> bool {
 /// Whether path components look like a relative project path (not absolute-only noise).
 #[allow(dead_code)]
 pub fn is_simple_relative(path: &str) -> bool {
-    !Path::new(path).components().any(|c| matches!(c, Component::RootDir | Component::Prefix(_)))
+    !Path::new(path)
+        .components()
+        .any(|c| matches!(c, Component::RootDir | Component::Prefix(_)))
 }
 
 /// Display path for journals: redact sensitive; keep short.
@@ -384,22 +352,10 @@ mod tests {
     #[test]
     fn exploration_threshold_triggers_discovery() {
         let mut scratch = ExplorationScratch::default();
-        record_exploration(
-            &mut scratch,
-            "list_dir",
-            &json!({"path": "elph/src/memory"}),
-        );
-        record_exploration(
-            &mut scratch,
-            "list_dir",
-            &json!({"path": "elph/src/memory"}),
-        );
-        let entries = build_discovery_entries(
-            &scratch.list_dir_roots,
-            &scratch.read_prefixes,
-            &scratch.basename_notes,
-            42,
-        );
+        record_exploration(&mut scratch, "list_dir", &json!({"path": "elph/src/memory"}));
+        record_exploration(&mut scratch, "list_dir", &json!({"path": "elph/src/memory"}));
+        let entries =
+            build_discovery_entries(&scratch.list_dir_roots, &scratch.read_prefixes, &scratch.basename_notes, 42);
         assert_eq!(entries.len(), 1);
         assert!(entries[0].1.contains("[discovery]"));
         assert!(entries[0].1.contains("elph/src/memory"));
@@ -412,12 +368,8 @@ mod tests {
     fn exploration_below_threshold_no_discovery() {
         let mut scratch = ExplorationScratch::default();
         record_exploration(&mut scratch, "list_dir", &json!({"path": "src"}));
-        let entries = build_discovery_entries(
-            &scratch.list_dir_roots,
-            &scratch.read_prefixes,
-            &scratch.basename_notes,
-            1,
-        );
+        let entries =
+            build_discovery_entries(&scratch.list_dir_roots, &scratch.read_prefixes, &scratch.basename_notes, 1);
         assert!(entries.is_empty());
     }
 

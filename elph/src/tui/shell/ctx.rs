@@ -86,6 +86,7 @@ pub(crate) struct ShellCtx {
     pub(crate) paths: State<Paths>,
     pub(crate) pending_confetti: Ref<Option<PendingConfetti>>,
     pub(crate) pending_feedback: Ref<bool>,
+    pub(crate) pending_memory_flush: Ref<Option<crate::tui::tool_approval::PendingMemoryFlush>>,
     pub(crate) pending_mode_change: Ref<Option<PendingModeChange>>,
     pub(crate) pending_model_selector: Ref<Option<PendingModelSelector>>,
     pub(crate) pending_plan_confirmation: Ref<Option<PendingPlanConfirmation>>,

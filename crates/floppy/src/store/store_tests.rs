@@ -1,6 +1,7 @@
 use super::*;
 use crate::create_memory_store;
 use crate::scoring::{compute_credit, update_weight};
+use crate::store::noop_embedder;
 use crate::types::{
     FloppyConfig, MemoryCategory, MemoryReportInput, MemoryReportType, ReportCorrectionInput, ReportUserInput,
 };
@@ -234,6 +235,47 @@ async fn report_correction_sets_weight_from_tokens_wasted() {
 }
 
 #[tokio::test]
+async fn embed_pending_skips_noop_zero_vectors() {
+    let ctx = TestCtx::new();
+    let store = create_memory_store(test_config(&ctx.db_path), noop_embedder(4));
+    store
+        .insert_raw_memory("must stay pending under noop", MemoryCategory::Insight, 1.0)
+        .await
+        .expect("insert");
+    let n = store.embed_pending().await.expect("embed_pending");
+    assert_eq!(n, 0, "noop zeros must not be written");
+    let list = store.list_memories(None).await.expect("list");
+    assert_eq!(list[0].embedding_status, crate::types::EmbeddingStatus::Pending);
+}
+
+#[tokio::test]
+async fn clear_zero_embeddings_resets_corrupt_blobs() {
+    let ctx = TestCtx::new();
+    let store = ctx.store();
+    store
+        .insert_raw_memory("corrupt me", MemoryCategory::Work, 1.0)
+        .await
+        .expect("insert");
+    // Force a zero blob (simulates legacy noop embed_pending bug).
+    store
+        .with_db(|conn| async move {
+            let zeros = vec![0u8; 16]; // 4 f32
+            conn.execute(
+                "UPDATE memories SET embedding = ? WHERE content = 'corrupt me'",
+                turso::params![zeros.as_slice()],
+            )
+            .await?;
+            Ok(())
+        })
+        .await
+        .expect("force zero emb");
+    let cleared = store.clear_zero_embeddings().await.expect("clear");
+    assert_eq!(cleared, 1);
+    let list = store.list_memories(None).await.expect("list");
+    assert_eq!(list[0].embedding_status, crate::types::EmbeddingStatus::Pending);
+}
+
+#[tokio::test]
 async fn insert_raw_memory_and_embed_pending() {
     let ctx = TestCtx::new();
     let store = ctx.store();
@@ -248,6 +290,37 @@ async fn insert_raw_memory_and_embed_pending() {
 
     let start = store.start_task("discovery task").await.expect("start");
     assert!(start.memories.iter().any(|m| m.id == id));
+}
+
+#[tokio::test]
+async fn flush_wipes_all_memories_and_tasks() {
+    let ctx = TestCtx::new();
+    let store = ctx.store();
+
+    store
+        .report_user_input(ReportUserInput {
+            lesson: "keep me until flush".to_string(),
+            source: UserInputSource::UserInput,
+        })
+        .await
+        .expect("report");
+    store
+        .insert_raw_memory("strong insight", MemoryCategory::Insight, 2.0)
+        .await
+        .expect("insert");
+    let _ = store.start_task("task to wipe").await.expect("start");
+
+    let result = store.flush().await.expect("flush");
+    assert!(result.memories >= 2, "expected memories wiped, got {}", result.memories);
+    assert!(result.tasks >= 1, "expected tasks wiped, got {}", result.tasks);
+
+    let status = store.get_status().await.expect("status");
+    assert_eq!(status.total_memories, 0);
+    assert_eq!(status.total_tasks, 0);
+
+    let again = store.flush().await.expect("second flush");
+    assert_eq!(again.memories, 0);
+    assert_eq!(again.tasks, 0);
 }
 
 #[tokio::test]
@@ -344,10 +417,7 @@ async fn decay_drops_work_faster_than_user() {
         .find(|m| m.category == MemoryCategory::User)
         .map(|m| m.weight)
         .expect("user");
-    assert!(
-        work_w < user_w,
-        "work weight {work_w} should decay faster than user {user_w}"
-    );
+    assert!(work_w < user_w, "work weight {work_w} should decay faster than user {user_w}");
 }
 
 #[tokio::test]
@@ -369,10 +439,7 @@ async fn consolidate_similar_merges_near_duplicates() {
     let before = store.list_memories(None).await.expect("list").len();
     assert_eq!(before, 2);
 
-    let result = store
-        .consolidate_similar(0.08, 10)
-        .await
-        .expect("consolidate");
+    let result = store.consolidate_similar(0.08, 10).await.expect("consolidate");
     assert_eq!(result.merged, 1);
     assert_eq!(result.deleted, 2);
 
@@ -534,6 +601,82 @@ fn is_lock_err_detects_lock_messages() {
     assert!(is_lock_err("database is locked"));
     assert!(is_lock_err("Locking error"));
     assert!(!is_lock_err("syntax error"));
+}
+
+#[test]
+fn is_wal_io_err_detects_truncated_wal() {
+    assert!(is_wal_io_err(
+        "I/O error: short read on WAL frame at offset 1652152: expected 4096 bytes, got 0"
+    ));
+    assert!(is_wal_io_err("unable to open database file"));
+    assert!(!is_wal_io_err("syntax error near FROM"));
+}
+
+#[test]
+fn clear_broken_wal_removes_empty_wal_when_db_missing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db = dir.path().join("store.db");
+    let db_s = db.to_string_lossy().into_owned();
+    // No main db — only orphan empty WAL (common after crash / partial create).
+    let wal = dir.path().join("store.db-wal");
+    std::fs::write(&wal, b"").expect("empty wal");
+    std::fs::write(dir.path().join("store.db-shm"), b"x").expect("shm");
+    clear_broken_wal_sidecars(&db_s);
+    assert!(!wal.exists(), "empty wal should be removed");
+    assert!(!dir.path().join("store.db-shm").exists());
+}
+
+#[tokio::test]
+async fn open_creates_db_when_missing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("nested/new/store.db");
+    let db_s = db_path.to_string_lossy().into_owned();
+    // Parent dirs + file must not exist yet.
+    assert!(!db_path.exists());
+
+    let store = create_memory_store(test_config(&db_s), mock_embed());
+    store.init().await.expect("init should create missing store");
+    assert!(db_path.is_file(), "store.db should be created");
+    let status = store.get_status().await.expect("status");
+    assert_eq!(status.total_memories, 0);
+}
+
+#[tokio::test]
+async fn open_recovers_from_empty_wal_with_existing_db() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let db_path = dir.path().join("store.db");
+    let db_s = db_path.to_string_lossy().into_owned();
+
+    // Create a healthy store first, checkpoint so data lives in the main file.
+    {
+        let store = create_memory_store(test_config(&db_s), mock_embed());
+        store.init().await.expect("seed init");
+        store
+            .insert_raw_memory("keep me", MemoryCategory::Insight, 1.0)
+            .await
+            .expect("insert");
+        store
+            .with_db(|conn| async move {
+                let mut rows = conn.query("PRAGMA wal_checkpoint(TRUNCATE)", ()).await?;
+                while rows.next().await?.is_some() {}
+                Ok(())
+            })
+            .await
+            .expect("checkpoint");
+        store.close().await.ok();
+    }
+
+    // Simulate the bug: empty WAL left behind next to a healthy main file.
+    let _ = std::fs::remove_file(format!("{db_s}-wal"));
+    let _ = std::fs::remove_file(format!("{db_s}-shm"));
+    std::fs::write(format!("{db_s}-wal"), b"").expect("empty wal");
+    std::fs::write(format!("{db_s}-shm"), b"garbage").ok();
+
+    let store = create_memory_store(test_config(&db_s), mock_embed());
+    store.init().await.expect("recover init");
+    let list = store.list_memories(None).await.expect("list");
+    assert_eq!(list.len(), 1, "data in main db should survive empty-wal recovery");
+    assert!(list[0].content.contains("keep me"));
 }
 
 #[tokio::test]

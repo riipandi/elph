@@ -5,8 +5,8 @@ mod task;
 
 pub use config::{FloppyConfig, MemoryCategory, UserInputSource, VectorType};
 pub use memory::{
-    CategoryCount, ConsolidateResult, DecayResult, EmbeddingStatus, Memory, MemoryRecord, MemoryStats, StoreStatus,
-    TopMemory,
+    CategoryCount, ConsolidateResult, DecayResult, EmbeddingStatus, FlushResult, Memory, MemoryRecord, MemoryStats,
+    StoreStatus, TopMemory,
 };
 pub use report::{ContradictResult, MemoryReportInput, MemoryReportType, ReportCorrectionInput, ReportUserInput};
 pub use task::{

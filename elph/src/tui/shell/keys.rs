@@ -49,6 +49,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         paths,
         mut pending_confetti,
         mut pending_feedback,
+        mut pending_memory_flush,
         mut pending_mode_change,
         pending_model_selector,
         mut pending_plan_confirmation,
@@ -437,6 +438,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let status_dialog_open = pending_tool_approval.read().is_some()
         || pending_mode_change.read().is_some()
         || pending_plan_confirmation.read().is_some()
+        || pending_memory_flush.read().is_some()
         || *pending_feedback.read()
         || pending_user_question.read().is_some()
         || model_selector_open
@@ -1345,6 +1347,73 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 });
             }
             shell_focus.set(ShellFocus::Prompt);
+            return;
+        }
+
+        // ── Memory flush confirmation ──────────────────────────────
+        let memory_flush_choice = {
+            let user_question_active = pending_user_question.read().is_some();
+            if pending_memory_flush.read().is_some() && !user_question_active {
+                if modifiers.is_empty() && code == KeyCode::Esc {
+                    Some(false)
+                } else {
+                    pick_memory_flush_index_from_key(modifiers, code)
+                        .or_else(|| {
+                            (modifiers.is_empty() && code == KeyCode::Enter)
+                                .then(|| match approval_selected.get() {
+                                    0 => Some(0),
+                                    _ => Some(1),
+                                })
+                                .flatten()
+                        })
+                        .map(|idx| idx == 0)
+                }
+            } else {
+                None
+            }
+        };
+        if let Some(confirmed) = memory_flush_choice {
+            let _ = pending_memory_flush.write().take();
+            shell_focus.set(ShellFocus::Prompt);
+            if confirmed {
+                let paths = paths.clone();
+                let ui_tx = agent_session.as_ref().map(|s| s.ui_event_sender());
+                activity_label.set("Flushing memory store…".to_string());
+                if let Some(tx) = ui_tx {
+                    tokio::spawn(async move {
+                        let output = match crate::memory::execute_flush(&paths).await {
+                            Ok(text) => text,
+                            Err(err) => format!("Memory error: {err}"),
+                        };
+                        let _ = tx.send(crate::agent::AgentUiEvent::MemoryResult(output));
+                    });
+                } else {
+                    // No session UI channel — run inline and open result dialog.
+                    match elph_agent::try_block_on(crate::memory::execute_flush(&paths)) {
+                        Ok(Ok(text)) => {
+                            let body_height =
+                                (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                            open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                pending: &mut pending_system_prompt,
+                                shell_focus: &mut shell_focus,
+                                title: "Memory".to_string(),
+                                text,
+                                width_pct: 80,
+                                body_height: Some(body_height),
+                                show_copy: false,
+                            });
+                        }
+                        Ok(Err(err)) => {
+                            activity_label.set(format!("Memory error: {err}"));
+                        }
+                        Err(err) => {
+                            activity_label.set(format!("Memory error: {err:#}"));
+                        }
+                    }
+                }
+            } else {
+                activity_label.set("Flush cancelled".to_string());
+            }
             return;
         }
 
@@ -2560,6 +2629,20 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         });
                         force_editor_clear.set(true);
                     }
+                    SlashOutcome::OpenMemoryFlushConfirm {
+                        memory_count,
+                        task_count,
+                    } => {
+                        *pending_memory_flush.write() = Some(PendingMemoryFlush {
+                            memory_count,
+                            task_count,
+                        });
+                        // Default selection to Cancel (index 1) for safety.
+                        approval_selected.set(1);
+                        shell_focus.set(ShellFocus::StatusDialog);
+                        suppress_enter_newline.set(true);
+                        force_editor_clear.set(true);
+                    }
                     SlashOutcome::OpenFeedbackDialog => {
                         *pending_feedback.write() = true;
                         approval_selected.set(FEEDBACK_DEFAULT_INDEX);
@@ -3139,6 +3222,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                     mode_change.respond(false);
                 }
                 let _ = pending_plan_confirmation.write().take();
+                let _ = pending_memory_flush.write().take();
                 if let Some(question) = pending_user_question.write().take() {
                     question.cancel();
                 }

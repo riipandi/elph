@@ -38,7 +38,7 @@ pub use store::noop_embedder;
 pub use store::{EmbedFn, MemoryStore};
 pub use types::{
     CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
-    FloppyConfig, Memory,
+    FloppyConfig, FlushResult, Memory,
 };
 pub use types::{
     MemoryCategory, MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, ReportCorrectionInput,

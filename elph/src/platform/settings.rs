@@ -590,7 +590,7 @@ fn default_embed_model() -> String {
 }
 
 fn default_embed_quantized() -> bool {
-    false
+    true
 }
 
 fn default_memory_top_k() -> u32 {
@@ -680,7 +680,7 @@ mod tests {
         let decoded: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(settings, decoded);
         assert_eq!(decoded.memory.embed_model, "AllMiniLML6V2");
-        assert!(!decoded.memory.embed_quantized);
+        assert!(decoded.memory.embed_quantized);
         assert!(decoded.session.provider_id.is_none());
         assert!(decoded.session.model_id.is_none());
         assert_eq!(decoded.session.title_model, "inherit");
