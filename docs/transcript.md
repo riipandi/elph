@@ -23,6 +23,31 @@ Every row in the transcript is a [`TranscriptMessage`] with a [`TranscriptStyle`
 | `Error`                                            | API / provider failure (red tint)             |
 | `StatusRunning` / `StatusSuccess` / `StatusFailed` | Process log (flush, foreground-only)          |
 
+## State ↔ Arc Sync
+
+The shell keeps two views of the active transcript:
+
+- **`messages_arc_inner`** (`Arc<RwLock<Vec<TranscriptMessage>>>`) — written by the agent
+  event applier (streaming, tool calls) and by bootstrap events.
+- **`messages` State** — the render source the panel reads from.
+
+Every tick, when an agent event changed the transcript, the shell copies the arc into the
+State (`*messages.write() = messages_arc_inner.read()...`). Because that copy **overwrites**
+the State, any message written only to the State would disappear on the next agent event.
+
+To prevent that loss, every State write must be mirrored into the arc first:
+
+- `push_transcript_message_synced()` — pushes to the shared arc *and* the State. Used for
+  slash-command output, status notices, and error lines.
+- Bootstrap messages are synced from State back to the arc once the bootstrap event loop
+  finishes, so the first agent event cannot wipe them.
+- Pre-echoed user prompts (`pre_echoed_user_prompts`) push to the arc directly before
+  writing the State, following the same rule.
+
+The one exception is ephemeral notices and in-place mutations (collapse toggles, approval
+row updates) that only touch the State; they are intentionally not mirrored back because
+copying the State into the arc mid-stream could clobber un-synced streaming content.
+
 ## Performance Optimizations
 
 ### Render Cache (panel.rs)

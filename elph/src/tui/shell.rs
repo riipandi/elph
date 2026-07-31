@@ -82,7 +82,7 @@ use crate::tui::scoped_models_shell::{
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
 use crate::tui::scroll_text_dialog::{
-    OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog, DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+    DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog,
 };
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
@@ -735,6 +735,24 @@ fn push_transcript_message(
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
+/// Push a transcript message to both the shared arc and the messages State.
+///
+/// The arc-to-state sync (`*messages.write() = messages_arc_inner.read()...`)
+/// overwrites the State with the arc content. Messages written only to the
+/// State (slash output, notices) would be lost on the next sync, so they must
+/// also be written to the shared arc.
+fn push_transcript_message_synced(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_arc: Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    messages_revision: &mut State<u64>,
+    prompt_history: &mut Ref<Vec<String>>,
+    message: TranscriptMessage,
+) {
+    let mut arc = messages_arc;
+    arc.write().write().unwrap().push(message.clone());
+    push_transcript_message(messages, messages_revision, prompt_history, message);
+}
+
 /// Upsert a `transient:*` notice in the scrollable transcript (subtle grey ephemeral styling).
 fn upsert_ephemeral_transcript_notice(
     messages: &mut State<Vec<TranscriptMessage>>,
@@ -1269,6 +1287,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     );
                 }
             }
+
+            // Sync bootstrap messages from State back to the arc so the arc sync
+            // (which runs on the next agent event) does not overwrite them.
+            *messages_arc_inner.write().unwrap() = messages.read().clone();
 
             // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
             // and restart the bootstrap worker — all without exiting the TUI.
@@ -2579,8 +2601,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     {
                         if let Some(pending) = pending_scoped_models.write().as_mut() {
                             save_scoped_models(pending, &paths_snapshot, &mut session_scoped_items.write());
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -2816,8 +2839,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     }
                                 }
                                 Err(err) => {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                         &mut messages,
+                                        messages_arc,
                                         &mut messages_revision,
                                         &mut prompt_history,
                                         TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -2999,8 +3023,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3823,8 +3848,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                             // Push transcript notification immediately
                             let provider_name = format_provider_name(&pid);
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -4089,8 +4115,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -4155,8 +4182,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut activity_label,
                         &mut question_validation_error,
                     ) {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -4200,8 +4228,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -4509,32 +4538,36 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Status(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -4880,8 +4913,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         Err(err) => {
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -5416,16 +5450,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         match result {
                             Ok(()) => {
                                 let notice = format!("Session renamed to “{}”.", title.trim());
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(notice, TranscriptStyle::Meta),
                                 );
                             }
                             Err(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -5764,8 +5800,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         &mut question_validation_error,
                                     )
                                 {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5793,8 +5830,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         &mut question_validation_error,
                                     )
                                 {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5840,8 +5878,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut question_validation_error,
                                 )
                             {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5892,8 +5931,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut question_validation_error,
                                 )
                             {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -6077,8 +6117,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let (prefix_kind, body) =
                             resolve_submit_draft(input_prefix_kind.get(), &text, &PromptPrefixConfig::default());
                         if body.trim().is_empty() {
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text("Empty command.", TranscriptStyle::Meta),
@@ -6096,10 +6137,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let with_context = prefix_kind == InputPrefixKind::ShellWithContext;
                             let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
-                                &mut prompt_history, submitted);
+                                &mut prompt_history,
+                                submitted);
 
                             let tool_id = next_user_shell_tool_id();
                             {
@@ -6321,24 +6364,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 new_session_requested.set(true);
                             }
                             SlashOutcome::Status(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -6520,8 +6566,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -6588,8 +6635,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                     TurnDispatcher::spawn_turn(Arc::clone(session), body.clone(), false);
                                 } else {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
