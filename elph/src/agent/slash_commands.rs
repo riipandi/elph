@@ -244,10 +244,6 @@ const TOOLS_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
         description: "Markdown table (default)",
     },
     SlashArgCompletion {
-        value: "json",
-        description: "Pretty-printed JSON",
-    },
-    SlashArgCompletion {
         value: "list",
         description: "Grouped bullet list",
     },
@@ -524,12 +520,12 @@ mod tests {
             Some(SlashDispatch::Tools { args: String::new() })
         );
         assert_eq!(
-            dispatch_slash_command("/tools json", None, None, None),
-            Some(SlashDispatch::Tools { args: "json".into() })
-        );
-        assert_eq!(
             dispatch_slash_command("/tools table", None, None, None),
             Some(SlashDispatch::Tools { args: "table".into() })
+        );
+        assert_eq!(
+            dispatch_slash_command("/tools list", None, None, None),
+            Some(SlashDispatch::Tools { args: "list".into() })
         );
         assert_eq!(
             dispatch_slash_command("/system-prompt", None, None, None),

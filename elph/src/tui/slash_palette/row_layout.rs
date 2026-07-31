@@ -32,7 +32,7 @@ pub fn palette_command_label_width(name: &str) -> usize {
     ROW_PREFIX_CHARS.saturating_add(display_width(name))
 }
 
-/// Width of a command row including an optional dimmed args hint (` /tools [json|list]`).
+/// Width of a command row including an optional dimmed args hint (` /tools [list|table]`).
 pub fn palette_slash_row_label_width(command_name: &str, args_hint: Option<&str>) -> usize {
     let mut width = palette_command_label_width(command_name);
     if let Some(hint) = args_hint {
@@ -234,15 +234,15 @@ mod tests {
 
     #[test]
     fn truncate_command_label_keeps_args_hint_when_possible() {
-        let (name, hint) = truncate_command_label("/tools", Some("[json|list|table]"), 40);
+        let (name, hint) = truncate_command_label("/tools", Some("[list|table]"), 40);
         assert_eq!(name, "/tools");
-        assert_eq!(hint.as_deref(), Some("[json|list|table]"));
+        assert_eq!(hint.as_deref(), Some("[list|table]"));
     }
 
     #[test]
     fn truncate_command_label_drops_hint_when_too_narrow() {
         // content_max=8 → budget=7 → "/tools" (6) + 1 = 7, hint_budget = 0 < 3 → hint dropped.
-        let (name, hint) = truncate_command_label("/tools", Some("[json|list|table]"), 8);
+        let (name, hint) = truncate_command_label("/tools", Some("[list|table]"), 8);
         assert!(hint.is_none(), "hint should be dropped when very narrow");
         assert!(display_width(&name) <= 7);
     }
@@ -258,7 +258,7 @@ mod tests {
     #[test]
     fn truncate_command_label_shares_space_when_tight() {
         // content_max=16 → budget=15 → name_budget = 15-1-12=2 (<4) → shares space.
-        let (name, hint) = truncate_command_label("/tools", Some("[json|list]"), 16);
+        let (name, hint) = truncate_command_label("/tools", Some("[list|table]"), 16);
         assert!(name.starts_with("/"));
         assert!(name.ends_with('…') || display_width(&name) == display_width("/tools"));
         // Hint should be truncated but still present (budget ≥ 3).

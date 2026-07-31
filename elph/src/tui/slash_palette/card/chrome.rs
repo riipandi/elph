@@ -95,10 +95,10 @@ mod tests {
 
     #[test]
     fn title_labels_args_phase() {
-        let commands = vec![SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]")];
+        let commands = vec![SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]")];
         let snapshot = build_snapshot("/tools ", &commands, 40);
         let chrome = PaletteCardChrome::from_snapshot(80, AgentMode::Build, &snapshot);
-        assert_eq!(chrome.title, "03 Args");
+        assert_eq!(chrome.title, "02 Args");
     }
 
     #[test]
