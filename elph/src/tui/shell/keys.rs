@@ -169,7 +169,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             48, // height only affects viewport cap; real height applied at render
         );
         if history_open {
-            if let Some(action) =
+            // Dismiss prompt history when text-select mode is active (Ctrl+S or Shift-held).
+            if select_mode.get() || shift_held.get() {
+                prompt_history_open.set(false);
+                prompt_history_index.set(0);
+            } else if let Some(action) =
                 resolve_prompt_history_key_action(&history_snap, prompt_history_index.get(), code, modifiers)
             {
                 match action {
@@ -204,6 +208,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             }
         } else if shell_focus.get() == ShellFocus::Prompt
             && !select_mode.get()
+            && !shift_held.get()
             && kind == KeyEventKind::Press
             && is_prompt_history_open_key(code, modifiers)
             && arrow_up_gap_ok
@@ -223,7 +228,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
         } else if shell_focus.get() == ShellFocus::Prompt
-            && select_mode.get()
+            && (select_mode.get() || shift_held.get())
             && modifiers.is_empty()
             && matches!(code, KeyCode::Up | KeyCode::Down)
         {

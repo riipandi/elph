@@ -83,17 +83,17 @@ Override with `ELPH_HOME` (config) and `ELPH_DATA_DIR` (data).
 
 ### Storage roles
 
-| Store | Path | Contents |
-| ----- | ---- | -------- |
-| Platform DB | `APP_DATA/metadata.db` | Goals, agent spawn graph, skill cache, session index + tree |
-| Floppy memory | `PROJECT/.elph/store.db` | Agent long-term memory / embeddings |
-| Transcript archive | `PROJECT/.elph/metadata.db` | TUI card overflow only (not the LLM session tree) |
-| Session artifacts | `APP_DATA/sessions/<SESSION_ID>/` | `mcp_cache/`, `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
-| Host MCP cache | `APP_DATA/mcp_cache/` | CLI MCP ops when no session is active |
-| App / crash / MCP logs | `APP_DATA/logs/` | Rolling JSONL, dated crash logs, MCP stderr |
-| Config files | `CONFIG_DIR/*.json` | Settings, auth, trust, MCP, providers |
-| Provider catalogs | `CONFIG_DIR/providers/*.json` | Disk model overlays (see below) |
-| Bundled assets | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing |
+| Store                  | Path                                      | Contents                                                                     |
+| ---------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| Platform DB            | `APP_DATA/metadata.db`                    | Goals, agent spawn graph, skill cache, session index + tree                  |
+| Floppy memory          | `PROJECT/.elph/store.db`                  | Agent long-term memory / embeddings                                          |
+| Transcript archive     | `PROJECT/.elph/metadata.db`               | TUI card overflow only (not the LLM session tree)                            |
+| Session artifacts      | `APP_DATA/sessions/<SESSION_ID>/`         | `mcp_cache/`, `terminals/`, `tool_outputs.jsonl`, optional `event_log.jsonl` |
+| Host MCP cache         | `APP_DATA/mcp_cache/`                     | CLI MCP ops when no session is active                                        |
+| App / crash / MCP logs | `APP_DATA/logs/`                          | Rolling JSONL, dated crash logs, MCP stderr                                  |
+| Config files           | `CONFIG_DIR/*.json`                       | Settings, auth, trust, MCP, providers                                        |
+| Provider catalogs      | `CONFIG_DIR/providers/*.json`             | Disk model overlays (see below)                                              |
+| Bundled assets         | `CONFIG_DIR/bundled/{user-guide,skills}/` | Embedded in the binary; extracted on bootstrap if missing                    |
 
 Goals remain on `APP_DATA/metadata.db` (`goals` table). Path and table contract must stay stable across layout refactors.
 
@@ -108,7 +108,6 @@ overwritten). Checksums for newly written files are merged into `bundled/manifes
 Skill discovery includes `CONFIG_DIR/bundled/skills` as the lowest-priority directory so
 built-ins (e.g. `create-skill`) appear unless a user/project skill overrides the same name.
 
-
 ### Provider catalogs (`CONFIG_DIR/providers/`)
 
 Each `*.json` (except `index.json`) is keyed by file stem as the provider id. Shapes accepted:
@@ -122,22 +121,22 @@ Process-wide merge: `set_disk_catalog_overrides` after load. Lookup uses `merged
 
 ## Environment variables
 
-| Variable               | Effect                                                |
-| ---------------------- | ----------------------------------------------------- |
-| `ELPH_HOME`            | Override config dir (default `~/.config/elph`)        |
-| `ELPH_DATA_DIR`        | Override data directory                               |
-| `ELPH_PROJECT_DIR`     | Project root for `.elph/`                             |
-| `ELPH_PROVIDER`        | Force provider id                                     |
-| `ELPH_MODEL`           | Force model id                                        |
-| `ELPH_PROMPT_ENCODING` | Tool-result prompt encoding: `off`, `toon`, or `auto` |
-| `ELPH_PROMPT_ENCODING_MIN_BYTES` | Minimum JSON byte length before TOON encoding applies (default `2048`) |
-| `ELPH_PROMPT_ENCODING_DELIMITER` | General TOON delimiter: `comma`, `tab`, or `pipe` (default `comma`) |
-| `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` | Tabular TOON delimiter: `comma`, `tab`, or `pipe` (default `tab`) |
-| `ELPH_QUIET`           | Suppress bootstrap output                             |
-| `ELPH_TRACE`           | Distributed tracing (`fastrace`): default on; set `0`, `false`, `off`, or `no` to disable |
-| `ELPH_LOG_LEVEL`       | Log level: `trace`, `debug`, `info`, `warn`, `error` (default `info`) |
-| `ELPH_LOG_FILE`        | Rolling JSONL log file: default on; set `0` to disable |
-| `ELPH_LOG_ROTATION`    | Log rotation: `hourly`, `daily` (default), or `weekly` |
+| Variable                                 | Effect                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `ELPH_HOME`                              | Override config dir (default `~/.config/elph`)                                            |
+| `ELPH_DATA_DIR`                          | Override data directory                                                                   |
+| `ELPH_PROJECT_DIR`                       | Project root for `.elph/`                                                                 |
+| `ELPH_PROVIDER`                          | Force provider id                                                                         |
+| `ELPH_MODEL`                             | Force model id                                                                            |
+| `ELPH_PROMPT_ENCODING`                   | Tool-result prompt encoding: `off`, `toon`, or `auto`                                     |
+| `ELPH_PROMPT_ENCODING_MIN_BYTES`         | Minimum JSON byte length before TOON encoding applies (default `2048`)                    |
+| `ELPH_PROMPT_ENCODING_DELIMITER`         | General TOON delimiter: `comma`, `tab`, or `pipe` (default `comma`)                       |
+| `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` | Tabular TOON delimiter: `comma`, `tab`, or `pipe` (default `tab`)                         |
+| `ELPH_QUIET`                             | Suppress bootstrap output                                                                 |
+| `ELPH_TRACE`                             | Distributed tracing (`fastrace`): default on; set `0`, `false`, `off`, or `no` to disable |
+| `ELPH_LOG_LEVEL`                         | Log level: `trace`, `debug`, `info`, `warn`, `error` (default `info`)                     |
+| `ELPH_LOG_FILE`                          | Rolling JSONL log file: default on; set `0` to disable                                    |
+| `ELPH_LOG_ROTATION`                      | Log rotation: `hourly`, `daily` (default), or `weekly`                                    |
 
 Provider JSON may reference API keys via `env.VAR`, `$VAR`, `${VAR}`, `!shell-command`, or literals.
 
@@ -171,51 +170,51 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 
 ```json
 {
-  "preferredChatLanguage": "english",
-  "ui": {
-    "theme": "auto",
-    "themes": {
-      "dark": { "accent": "#6699ff", "textPrimary": "#d4d5d9" },
-      "light": { "accent": "rgb(51, 111, 241)", "codeBlockBg": "#e8eaed" }
+    "preferredChatLanguage": "english",
+    "ui": {
+        "theme": "auto",
+        "themes": {
+            "dark": { "accent": "#6699ff", "textPrimary": "#d4d5d9" },
+            "light": { "accent": "rgb(51, 111, 241)", "codeBlockBg": "#e8eaed" }
+        },
+        "showThinking": true,
+        "autoExpandThinking": false,
+        "stickyScroll": true,
+        "footerTokenDisplay": "both",
+        "coloredStatusFooter": true,
+        "filePicker": { "showHiddenFiles": false }
     },
-    "showThinking": true,
-    "autoExpandThinking": false,
-    "stickyScroll": true,
-    "footerTokenDisplay": "both",
-    "coloredStatusFooter": true,
-    "filePicker": { "showHiddenFiles": false }
-  },
-  "models": {
-    "defaultModel": null,
-    "sessionTitleModel": "inherit",
-    "compactionModel": "inherit",
-    "treeBranchSummaries": "inherit",
-    "defaultThinkingLevel": "high",
-    "showConfiguredOnly": true,
-    "scopedModels": []
-  },
-  "maxRetries": 2,
-  "defaultTimeout": "120s",
-  "memory": {
-    "embedModel": "AllMiniLML6V2",
-    "embedQuantized": true
-  },
-  "compaction": {
-    "thresholdPct": 80,
-    "keepRecentTokens": 20000
-  }
+    "models": {
+        "defaultModel": null,
+        "sessionTitleModel": "inherit",
+        "compactionModel": "inherit",
+        "treeBranchSummaries": "inherit",
+        "defaultThinkingLevel": "high",
+        "showConfiguredOnly": true,
+        "scopedModels": []
+    },
+    "maxRetries": 2,
+    "defaultTimeout": "120s",
+    "memory": {
+        "embedModel": "AllMiniLML6V2",
+        "embedQuantized": true
+    },
+    "compaction": {
+        "thresholdPct": 80,
+        "keepRecentTokens": 20000
+    }
 }
 ```
 
-| Group / field | Fields | Role |
-| ----- | ------ | ---- |
-| **`preferredChatLanguage`** | (top-level) | Language for user-facing chat prose |
-| **`maxRetries`** | (top-level) | LLM HTTP retries on 5xx / network errors |
-| **`defaultTimeout`** | (top-level) | LLM stream inactivity / SSE stall limit (e.g. `120s`) |
-| **`ui`** | `theme`, `themes`, `showThinking`, …, `filePicker.*` | Appearance + transcript / chrome |
-| **`models`** | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking |
-| **`memory`** | `embedModel`, `embedQuantized`, … | Floppy / local embeddings |
-| **`compaction`** | `thresholdPct`, `keepRecentTokens` | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
+| Group / field               | Fields                                                                                                                                      | Role                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`preferredChatLanguage`** | (top-level)                                                                                                                                 | Language for user-facing chat prose                                                                                                                 |
+| **`maxRetries`**            | (top-level)                                                                                                                                 | LLM HTTP retries on 5xx / network errors                                                                                                            |
+| **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
+| **`ui`**                    | `theme`, `themes`, `showThinking`, …, `filePicker.*`                                                                                        | Appearance + transcript / chrome                                                                                                                    |
+| **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking                                                                        |
+| **`memory`**                | `embedModel`, `embedQuantized`, …                                                                                                           | Floppy / local embeddings                                                                                                                           |
+| **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
 
 Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
 
@@ -223,11 +222,11 @@ Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root o
 
 ### Theme (`ui.theme` / `ui.themes`)
 
-| Mode | Behavior |
-| ---- | -------- |
+| Mode             | Behavior                                                               |
+| ---------------- | ---------------------------------------------------------------------- |
 | `auto` (default) | Detect terminal via `COLORFGBG` (dark if background ANSI index &lt; 8) |
-| `dark` | Built-in Ghostty dark base |
-| `light` | Built-in light base |
+| `dark`           | Built-in Ghostty dark base                                             |
+| `light`          | Built-in light base                                                    |
 
 In the TUI, **Ctrl+Shift+T** rolls `Auto` → `Light` → `Dark` → `Auto`, persists `ui.theme` to home settings, and reinstalls the palette (project `ui.themes.*` overrides still apply).
 
@@ -235,12 +234,12 @@ In the TUI, **Ctrl+Shift+T** rolls `Auto` → `Light` → `Dark` → `Auto`, per
 
 Supported color forms (→ iocraft `Color::Rgb` / named):
 
-| Form | Example |
-| ---- | ------- |
-| Hex | `#d4d5d9`, `#fff`, `#6699ffff` |
-| CSS | `rgb(102, 153, 255)`, `rgba(255,107,102,0.5)` |
-| CSV | `18, 26, 29` |
-| Named | `white`, `reset`, `darkgrey`, … |
+| Form  | Example                                       |
+| ----- | --------------------------------------------- |
+| Hex   | `#d4d5d9`, `#fff`, `#6699ffff`                |
+| CSS   | `rgb(102, 153, 255)`, `rgba(255,107,102,0.5)` |
+| CSV   | `18, 26, 29`                                  |
+| Named | `white`, `reset`, `darkgrey`, …               |
 
 Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`, `accent`, `accentSoft`, `border`, `borderFocus`, `borderSubtle`, `shellBorder`, `shellBorderDimmed`, `surface`, `codeBlockBg`, `selectionBg`, `dialogSelectionBg`, `success`, `warning`, `error`.
 
@@ -270,12 +269,12 @@ Fresh bootstrap leaves `models.defaultModel` and `models.scopedModels` **empty**
 
 ## Project context
 
-| Source           | Discovery (last wins on name conflict)                                              |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `AGENTS.md`      | Walk up from workDir; bootstrap creates empty `CONFIG_DIR/AGENTS.md` if missing     |
-| Custom agents    | `bundled/agents` → `CONFIG_DIR/agents` → project `.agents/agents` → `.elph/agents`  |
-| `SKILL.md`       | Shared `.agents/skills` → `CONFIG_DIR/skills` → project `.agents` / `.elph` skills  |
-| Prompt templates | Global and project `prompts/*.md`                                                   |
+| Source           | Discovery (last wins on name conflict)                                             |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `AGENTS.md`      | Walk up from workDir; bootstrap creates empty `CONFIG_DIR/AGENTS.md` if missing    |
+| Custom agents    | `bundled/agents` → `CONFIG_DIR/agents` → project `.agents/agents` → `.elph/agents` |
+| `SKILL.md`       | Shared `.agents/skills` → `CONFIG_DIR/skills` → project `.agents` / `.elph` skills |
+| Prompt templates | Global and project `prompts/*.md`                                                  |
 
 ### Custom agents
 
@@ -289,8 +288,8 @@ Markdown files with optional YAML frontmatter. Supported layouts:
 name: reviewer
 description: Review code changes
 tools:
-  - read
-  - grep
+    - read
+    - grep
 model: anthropic/claude-sonnet-4
 ---
 
@@ -301,11 +300,11 @@ You are a careful code reviewer. Focus on correctness and security.
 
 ```json
 {
-  "directories": {
-    "~/Developer/Experimental": true,
-    "$HOME/Developer/github.com": true,
-    "/Users/johndoe/gitlab.com": true
-  }
+    "directories": {
+        "~/Developer/Experimental": true,
+        "$HOME/Developer/github.com": true,
+        "/Users/johndoe/gitlab.com": true
+    }
 }
 ```
 
@@ -315,10 +314,10 @@ Empty default: `{ "directories": {} }`.
 
 ```json
 {
-  "version": "0.2.114",
-  "stable_version": "0.2.114",
-  "canary_version": "0.2.114",
-  "last_checked_at": "2026-07-29T10:41:42.215675Z"
+    "version": "0.2.114",
+    "stable_version": "0.2.114",
+    "canary_version": "0.2.114",
+    "last_checked_at": "2026-07-29T10:41:42.215675Z"
 }
 ```
 
