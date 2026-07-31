@@ -232,7 +232,7 @@ where
             let entries = options.session.entries().await;
             crate::session::derive_session_context_state(&entries)
         })
-        .unwrap_or_else(|_| (None, None, None, CollaborationMode::Default));
+        .unwrap_or((None, None, None, CollaborationMode::Default));
 
         let restored_model = restored_model.and_then(|r| options.models.get_model(&r.provider, &r.model_id));
         let model = restored_model.unwrap_or(options.model);

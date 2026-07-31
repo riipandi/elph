@@ -805,11 +805,13 @@ mod tests {
 
     #[test]
     fn options_from_settings_respect_kill_switch() {
-        let mut s = crate::platform::MemorySettings::default();
-        s.enabled = false;
-        s.auto_recall = false;
-        s.top_k = 0;
-        s.context_budget_chars = 100;
+        let s = crate::platform::MemorySettings {
+            enabled: false,
+            auto_recall: false,
+            top_k: 0,
+            context_budget_chars: 100,
+            ..Default::default()
+        };
         let opts = MemoryRuntimeOptions::from_settings(&s);
         assert!(!opts.enabled);
         assert!(!opts.auto_recall);

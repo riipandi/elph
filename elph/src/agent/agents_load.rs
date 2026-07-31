@@ -108,10 +108,10 @@ fn load_agents_from_dir(dir: &Path, source_label: &str) -> Vec<WorkspaceAgent> {
                 if let Some(agent) = parse_agent_file(&agent_md, source_label, Some(&path)) {
                     agents.push(agent);
                 }
-            } else if skill_like.is_file() {
-                if let Some(agent) = parse_agent_file(&skill_like, source_label, Some(&path)) {
-                    agents.push(agent);
-                }
+            } else if skill_like.is_file()
+                && let Some(agent) = parse_agent_file(&skill_like, source_label, Some(&path))
+            {
+                agents.push(agent);
             }
             continue;
         }

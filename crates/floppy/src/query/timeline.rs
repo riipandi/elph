@@ -80,7 +80,7 @@ impl MemoryStore {
             drain_rows(&mut mem_rows).await?;
 
             // Newest first for "log" UX.
-            events.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+            events.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
             // Cap total merged list so output stays readable.
             events.truncate(limit as usize * 2);
             Ok(events)

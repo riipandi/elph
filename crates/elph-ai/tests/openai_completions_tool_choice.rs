@@ -123,7 +123,7 @@ fn enables_tool_stream_for_supported_zai_models_with_tools() {
 fn stores_zai_tool_stream_support_in_model_compat_metadata() {
     let glm_5_1 = get_builtin_model("zai", "glm-5.1").expect("model");
     let glm_4_7 = get_builtin_model("zai", "glm-4.7").expect("model");
-    let glm_5_turbo = get_builtin_model("zai", "glm-5-turbo").expect("model");
+    let glm_5_turbo = get_builtin_model("zai", "glm-5v-turbo").expect("model");
     let glm_4_5_air = get_builtin_model("zai", "glm-4.5-air").expect("model");
 
     assert_eq!(
@@ -167,15 +167,17 @@ fn stores_zai_glm_5_2_effort_metadata() {
             .and_then(|c| c.supports_reasoning_effort),
         Some(true)
     );
-    // Catalog maps adaptive effort including native "max" (pi 0.80.6+).
+    // Catalog maps adaptive effort including native "max" (full thinkingLevelMap keys).
     assert_eq!(
         model.thinking_level_map,
         Some(
             [
+                ("off".to_string(), None),
                 ("minimal".to_string(), None),
                 ("low".to_string(), Some("high".to_string())),
                 ("medium".to_string(), Some("high".to_string())),
                 ("high".to_string(), Some("high".to_string())),
+                ("xhigh".to_string(), None),
                 ("max".to_string(), Some("max".to_string())),
             ]
             .into_iter()

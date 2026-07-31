@@ -133,7 +133,7 @@ fn category_title(c: MemoryCategory) -> &'static str {
 fn rule(out: &mut String, sty: MemoryStyle, title: &str) {
     use std::fmt::Write;
     let _ = writeln!(out, "{}", sty.paint(S_TITLE, title));
-    let bar = "─".repeat(title.chars().count().max(12).min(48));
+    let bar = "─".repeat(title.chars().count().clamp(12, 48));
     let _ = writeln!(out, "{}", sty.paint(S_RULE, bar));
 }
 
@@ -318,10 +318,10 @@ fn write_memory_card(
             bits.push(sty.paint(S_MUTED, format!("weight {w:.1}")));
         }
     }
-    if let Some(u) = meta.used {
-        if u > 0 {
-            bits.push(sty.paint(S_MUTED, format!("used {u}×")));
-        }
+    if let Some(u) = meta.used
+        && u > 0
+    {
+        bits.push(sty.paint(S_MUTED, format!("used {u}×")));
     }
     if let Some(when) = &meta.when {
         bits.push(sty.paint(S_MUTED, when));

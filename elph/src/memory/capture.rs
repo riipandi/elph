@@ -125,21 +125,11 @@ pub fn basename_note(path: &str) -> Option<String> {
 }
 
 /// Exploration counters + notes (subset of turn scratch used by capture helpers).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExplorationScratch {
     pub list_dir_roots: HashMap<String, u32>,
     pub read_prefixes: HashMap<String, u32>,
     pub basename_notes: Vec<(String, String)>,
-}
-
-impl Default for ExplorationScratch {
-    fn default() -> Self {
-        Self {
-            list_dir_roots: HashMap::new(),
-            read_prefixes: HashMap::new(),
-            basename_notes: Vec::new(),
-        }
-    }
 }
 
 /// Update exploration counters from a successful tool call.
@@ -171,12 +161,11 @@ pub fn record_exploration(scratch: &mut ExplorationScratch, tool_name: &str, inp
                 }
                 let prefix = top_level_prefix(path);
                 *scratch.read_prefixes.entry(prefix).or_insert(0) += 1;
-                if let Some(note) = basename_note(path) {
-                    if scratch.basename_notes.len() < MAX_DISCOVERY_NOTES
-                        && !scratch.basename_notes.iter().any(|(n, _)| n == &note)
-                    {
-                        scratch.basename_notes.push((note, "read_file".into()));
-                    }
+                if let Some(note) = basename_note(path)
+                    && scratch.basename_notes.len() < MAX_DISCOVERY_NOTES
+                    && !scratch.basename_notes.iter().any(|(n, _)| n == &note)
+                {
+                    scratch.basename_notes.push((note, "read_file".into()));
                 }
             }
         }

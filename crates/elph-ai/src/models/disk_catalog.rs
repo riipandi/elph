@@ -93,10 +93,10 @@ pub fn parse_provider_catalog_json(json: &str) -> Result<Vec<Model>, String> {
     Ok(raw
         .into_values()
         .map(|mut m| {
-            if m.base_url.is_empty() {
-                if let Some(ref base) = wrapper_base {
-                    m.base_url = base.clone();
-                }
+            if m.base_url.is_empty()
+                && let Some(ref base) = wrapper_base
+            {
+                m.base_url = base.clone();
             }
             if m.headers.is_none() {
                 m.headers = wrapper_headers.clone();

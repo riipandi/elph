@@ -12,7 +12,7 @@ fn is_zero_embedding(v: &[f32]) -> bool {
 }
 
 fn embedding_bytes_all_zero(emb: &[u8]) -> bool {
-    if emb.len() < 4 || emb.len() % 4 != 0 {
+    if emb.len() < 4 || !emb.len().is_multiple_of(4) {
         return true;
     }
     emb.chunks_exact(4)

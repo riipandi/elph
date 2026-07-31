@@ -209,7 +209,7 @@ pub fn get_provider_options() -> Vec<ProviderOption> {
         .into_iter()
         .map(|id| ProviderOption {
             name: format_provider_name(&id),
-            supports_oauth: oauth_provider_ids.iter().any(|p| *p == id.as_str()),
+            supports_oauth: oauth_provider_ids.contains(&id.as_str()),
             supports_api_key: api_key_provider_ids.contains(&id),
             config_status: get_provider_config_status(&id),
             id,
@@ -237,10 +237,11 @@ pub fn get_provider_options_for_auth_method(auth_method: ProviderAuthMethod) -> 
 /// Prefer the live factory label from `builtin_providers()` so new providers do not
 /// need a separate hard-coded display map. Fall back to curated labels / title-case.
 pub fn format_provider_name(id: &str) -> String {
-    if let Some(provider) = builtin_providers().into_iter().find(|p| p.id == id) {
-        if !provider.name.is_empty() && provider.name != provider.id {
-            return provider.name;
-        }
+    if let Some(provider) = builtin_providers().into_iter().find(|p| p.id == id)
+        && !provider.name.is_empty()
+        && provider.name != provider.id
+    {
+        return provider.name;
     }
     if let Some(cfg) = crate::agent::provider::provider_config(id) {
         return cfg.label.to_string();

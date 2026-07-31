@@ -28,10 +28,10 @@ pub struct RecoveryReport {
 
 /// Full reconcile: tool-result repair + close open operations as interrupted.
 pub async fn reconcile_session<S: SessionStorage>(session: &mut Session<S>) -> Result<RecoveryReport, SessionError> {
-    let mut report = RecoveryReport::default();
-    report.repaired_tool_results = repair_unanswered_tool_calls(session).await?.repaired_tool_results;
-    report.closed_operations = close_open_operations(session).await?;
-    Ok(report)
+    Ok(RecoveryReport {
+        repaired_tool_results: repair_unanswered_tool_calls(session).await?.repaired_tool_results,
+        closed_operations: close_open_operations(session).await?,
+    })
 }
 
 /// Reduce durable queues/ops/pending writes from the full session log.
@@ -50,11 +50,12 @@ pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
     let mut answered = std::collections::HashSet::new();
 
     for entry in &path {
-        match entry {
-            SessionTreeEntry::Message {
-                message: AgentMessage::Llm(llm),
-                ..
-            } => match llm.as_ref() {
+        if let SessionTreeEntry::Message {
+            message: AgentMessage::Llm(llm),
+            ..
+        } = entry
+        {
+            match llm.as_ref() {
                 Message::Assistant(assistant) => {
                     for tc in extract_tool_calls(assistant) {
                         pending.push((tc.id.clone(), tc.name.clone()));
@@ -64,8 +65,7 @@ pub async fn repair_unanswered_tool_calls<S: SessionStorage>(
                     answered.insert(tool_call_id.clone());
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
     }
 

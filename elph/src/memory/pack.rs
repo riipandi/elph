@@ -42,13 +42,6 @@ fn format_entry_line(index: usize, ranked: &RankedMemory) -> String {
     )
 }
 
-fn is_lesson(cat: MemoryCategory) -> bool {
-    matches!(
-        cat,
-        MemoryCategory::Correction | MemoryCategory::User | MemoryCategory::Insight | MemoryCategory::Consolidated
-    )
-}
-
 fn is_work(cat: MemoryCategory) -> bool {
     matches!(cat, MemoryCategory::Work)
 }
@@ -112,9 +105,8 @@ pub fn pack_ranked_context(ranked: &[RankedMemory], budget: usize) -> PackedCont
             work.push(line);
         } else if is_discovery(r.memory.category) {
             map.push(line);
-        } else if is_lesson(r.memory.category) {
-            lessons.push(line);
         } else {
+            // Lessons + unknown categories share the lessons section.
             lessons.push(line);
         }
     }

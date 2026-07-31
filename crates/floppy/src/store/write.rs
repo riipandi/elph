@@ -234,7 +234,7 @@ impl MemoryStore {
 }
 
 fn cosine_distance_bytes(a: &[u8], b: &[u8]) -> f64 {
-    if a.len() != b.len() || a.len() < 4 || a.len() % 4 != 0 {
+    if a.len() != b.len() || a.len() < 4 || !a.len().is_multiple_of(4) {
         return 1.0;
     }
     let n = a.len() / 4;

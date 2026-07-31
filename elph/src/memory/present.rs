@@ -122,10 +122,10 @@ fn present_tool_failure(body: &str) -> Option<MemoryCard> {
         }
     }
 
-    if details.is_empty() {
-        if let Some(hint) = summarize_tool_args(body) {
-            details.push(hint);
-        }
+    if details.is_empty()
+        && let Some(hint) = summarize_tool_args(body)
+    {
+        details.push(hint);
     }
 
     Some(MemoryCard {
@@ -512,7 +512,7 @@ Working approach: unknown"#;
         let content = "[consolidated] Tool `edit_file` failed with args: {\"path\":\"a.rs\"}\n---\nTool `update_goal` failed with args: {\"status\":\"complete\"}";
         let card = present_memory(MemoryCategory::Consolidated, content);
         assert!(
-            card.headline.to_lowercase().contains("merged") || card.details.len() >= 1,
+            card.headline.to_lowercase().contains("merged") || !card.details.is_empty(),
             "card={card:?}"
         );
         assert!(!card.headline.contains("new_string"));

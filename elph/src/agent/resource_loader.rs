@@ -104,7 +104,6 @@ pub async fn load_resources(paths: &Paths, cwd: &Path, env: &LocalExecutionEnv) 
     let resources = AgentHarnessResources {
         skills,
         prompt_templates,
-        ..Default::default()
     };
 
     LoadResourcesResult {

@@ -47,9 +47,7 @@ fn all_null_map() -> Value {
 }
 
 fn complete_from_partial(prev: &Value) -> Option<Value> {
-    let Some(obj) = prev.as_object() else {
-        return None;
-    };
+    let obj = prev.as_object()?;
     let mut out = serde_json::Map::new();
     for k in LEVELS {
         out.insert((*k).to_string(), obj.get(*k).cloned().unwrap_or(Value::Null));

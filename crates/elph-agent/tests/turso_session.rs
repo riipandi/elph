@@ -148,7 +148,7 @@ async fn turso_repo_fork_copies_entries() {
         .expect("e1");
     source
         .storage_mut()
-        .append_entry(message_entry("e2", Some("e1".into()), user_agent_message("two")))
+        .append_entry(message_entry("e2", Some("e1"), user_agent_message("two")))
         .await
         .expect("e2");
 

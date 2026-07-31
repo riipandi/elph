@@ -166,6 +166,7 @@ pub struct ModelCatalogSnapshot {
 
 impl ModelCatalogSnapshot {
     /// Full unfiltered catalog (tests / callers that want every builtin provider).
+    #[cfg(test)]
     pub fn build(scoped_model_items: &[String]) -> Self {
         Self::build_with_options(scoped_model_items, &ModelCatalogOptions::unfiltered())
     }
@@ -366,6 +367,7 @@ pub struct PendingModelSelector {
 }
 
 impl PendingModelSelector {
+    #[cfg(test)]
     pub fn open(initial_filter: String, stashed_prompt_draft: Option<String>, scoped_model_items: &[String]) -> Self {
         Self::open_with_options(
             initial_filter,
@@ -398,6 +400,7 @@ impl PendingModelSelector {
     ///
     /// Remembers the built-in provider for later Provider-tab navigation; does not land on
     /// Scoped/Provider unless the user switches with `[` / `]`.
+    #[cfg(test)]
     pub fn open_with_selection(
         initial_filter: String,
         stashed_prompt_draft: Option<String>,

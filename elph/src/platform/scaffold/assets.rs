@@ -153,7 +153,7 @@ mod tests {
     fn embedded_inventory_is_non_empty() {
         let paths = BundledAssets::embedded_paths();
         assert!(paths.iter().any(|p| p.starts_with("user-guide/")));
-        assert!(paths.iter().any(|p| *p == "skills/create-skill/SKILL.md"));
+        assert!(paths.contains(&"skills/create-skill/SKILL.md"));
     }
 
     #[test]
