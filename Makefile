@@ -176,7 +176,8 @@ release-windows: ## Build Windows release (x86_64 + arm64; APP=elph)
 lint: lint-elph ## Run clippy linter
 
 lint-elph: ## Run clippy for elph and its workspace deps
-	@$(CARGO) clippy -p elph -p elph-agent -p elph-ai --all-targets -- -D warnings
+	@$(CARGO) clippy -p elph -p elph-ai --all-targets -- -D warnings
+	@$(CARGO) clippy -p elph-agent --features full --all-targets -- -D warnings
 
 lint-elph-tui: ## Run clippy for elph-tui
 	@$(CARGO) clippy -p elph-tui --all-targets -- -D warnings

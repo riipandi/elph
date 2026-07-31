@@ -107,8 +107,8 @@ use crate::tui::status_dialog::{
 };
 use crate::tui::subagent_output_dialog::SubagentOutputDialogOverlay;
 use crate::tui::system_prompt_dialog::{
-    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, SYSTEM_PROMPT_DIALOG_TITLE, close_system_prompt_dialog,
-    open_system_prompt_dialog, system_prompt_dialog_chrome,
+    OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
+    system_prompt_dialog_chrome,
 };
 use crate::tui::tool_approval::{
     FEEDBACK_DEFAULT_INDEX, PLAN_CONFIRM_DEFAULT_INDEX, PendingModeChange, PendingPlanConfirmation,
@@ -1934,20 +1934,15 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     tokio::spawn(async move {
                         if let Ok(cache) = TranscriptCache::open(&paths_for_archive.transcript_db_path(), &sid).await {
                             let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
-                            let archived: Vec<(usize, &TranscriptMessage)> = snapshot[..archive_count]
-                                .iter()
-                                .enumerate()
-                                .map(|(i, m)| (i, m))
-                                .collect();
+                            let archived: Vec<(usize, &TranscriptMessage)> =
+                                snapshot[..archive_count].iter().enumerate().collect();
                             if let Err(err) = cache.push_batch(archived).await {
                                 log::warn!("transcript archive failed: {err:#}");
                             }
-                            if let Err(err) = cache.archived_count().await {
-                                log::warn!("transcript archive count failed: {err:#}");
-                            }
                         }
                     });
-                    // Truncate messages_arc_inner BEFORE the sync below.
+                    // Truncate messages_arc_inner. The panel reads the arc directly, so the
+                    // State copy can stay as-is until the next event tick re-syncs it.
                     let keep = KEEP_MESSAGES;
                     {
                         let mut msgs = messages_arc_inner.write().unwrap();
@@ -1956,7 +1951,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             msgs.drain(..archive_count);
                         }
                     }
-                    transcript_changed = true;
                 }
 
                 pending_quit_confirm.set(false);
@@ -2334,10 +2328,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             let system_prompt_open = pending_system_prompt.read().is_some();
-            let session_info_open = pending_system_prompt
-                .read()
-                .as_ref()
-                .is_some_and(|d| d.title == "Session");
             let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
 

@@ -180,12 +180,11 @@ Event Loop                          Panel
 │  200-500 messages   │    │  panel reads from    │
 └──────────┬──────────┘    └──────────────────────┘
            │
-           │ drain oldest saat run_completed
+           │ drain oldest on run_completed
            ▼
 ┌─────────────────────┐
 │  TranscriptCache    │  ← turso SQLite
 │  push_batch()       │    project/.elph/metadata.db
-│  load_range()       │
 └─────────────────────┘
 ```
 
@@ -233,7 +232,8 @@ const KEEP_MESSAGES: usize = 200;                // keep after truncation
 1. Clone the first 300 messages from `messages_arc_inner`.
 2. Spawn a background `tokio::spawn` to push them to SQLite via `push_batch()`.
 3. Drain the first 300 from `messages_arc_inner` in-place.
-4. Set `transcript_changed = true` so the next sync propagates the truncation.
+4. The panel reads `messages_arc_inner` directly, so the truncation shows up without
+   a State re-sync; the State copy refreshes on the next event tick.
 
 ### Core API (`TranscriptCache`)
 
@@ -241,20 +241,6 @@ const KEEP_MESSAGES: usize = 200;                // keep after truncation
 | -------------------------------- | ----- | -------------------------------------------- |
 | `open(db_path, session_id)`      | ✅    | Open/create DB, run migrations               |
 | `push_batch(batch)`              | ✅    | Insert batch (individual `INSERT OR IGNORE`) |
-| `load_range(start_seq, end_seq)` | ✅    | Load archived messages by seq range          |
-| `archived_count()`               | ✅    | Count archived messages for this session     |
-| `clear_session()`                | ✅    | Delete all data for this session             |
-
-### Hybrid In-Memory Cache (`CachedTranscript`)
-
-A sliding-window wrapper for future use (not yet wired as the primary message store):
-
-- `active: Vec<TranscriptMessage>` — in-memory window (max 200 messages)
-- `base_seq: usize` — global seq offset of `active[0]`
-- `total: usize` — total messages ever pushed (active + archived)
-- Auto-archives when `active.len() > 200` by draining 100 to `pending_archive`
-- `flush()` flushes pending archive rows to SQLite
-- `suppress_archival()` / `resume_archival()` — used during bootstrap
 
 ### Database Location
 
@@ -267,19 +253,19 @@ The path is resolved via [`Paths::transcript_db_path()`] in `platform/paths.rs`.
 
 ## File Map
 
-| File                                      | Role                                                     |
-| ----------------------------------------- | -------------------------------------------------------- |
-| `elph/src/tui/transcript/cache.rs`        | `TranscriptCache` + `CachedTranscript`                   |
-| `elph/src/tui/transcript/mod.rs`          | Module exports                                           |
-| `elph/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                 |
-| `elph/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                    |
-| `elph/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail` |
-| `elph/src/tui/transcript/card/builder.rs` | Bubble building + windowing                              |
-| `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                |
-| `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                   |
-| `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                   |
-| `elph/src/tui/shell.rs`                   | Event loop + archive trigger                             |
-| `elph/src/tui/platform/paths.rs`          | `transcript_db_path()`                                   |
+| File                                      | Role                                                      |
+| ----------------------------------------- | --------------------------------------------------------- |
+| `elph/src/tui/transcript/cache.rs`        | `TranscriptCache` (SQLite archive store)                  |
+| `elph/src/tui/transcript/mod.rs`          | Module exports                                            |
+| `elph/src/tui/transcript/panel.rs`        | TranscriptPanel component + render cache                  |
+| `elph/src/tui/transcript/layout.rs`       | `IncrementalLayoutCache` + row layout                     |
+| `elph/src/tui/transcript/types.rs`        | `TranscriptMessage`, `TranscriptStyle`, `ToolCardDetail`  |
+| `elph/src/tui/transcript/card/builder.rs` | Bubble building + windowing                               |
+| `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                 |
+| `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                    |
+| `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                    |
+| `elph/src/tui/shell.rs`                   | Event loop + archive trigger                              |
+| `elph/src/tui/platform/paths.rs`          | `transcript_db_path()`                                    |
 
 [`TranscriptMessage`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs
 [`TranscriptStyle`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs

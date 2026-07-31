@@ -77,8 +77,7 @@ pub fn layout_transcript_rows_cached(
             .start_rows
             .iter()
             .zip(&cache.row_counts)
-            .enumerate()
-            .map(|(index, (&start_row, &row_count))| TranscriptRowLayout { start_row, row_count })
+            .map(|(&start_row, &row_count)| TranscriptRowLayout { start_row, row_count })
             .collect();
     }
 
@@ -311,10 +310,15 @@ mod tests {
         let content = "## Tools\n\n- `find_path` — Quickly finds files by matching glob patterns (like `*.rs`), returning matching file paths alphabetically.\n- `list_dir` — Lists files and directories.\n\n| Tool | Group |\n| --- | --- |\n| `read_file` | Read |\n| `write_file` | Write |\n";
         let message = TranscriptMessage::assistant_slash_markdown(content);
         for width in [36u16, 40, 80, 120] {
-            let layouts = layout_transcript_rows(&[message.clone()], width);
+            let layouts = layout_transcript_rows(std::slice::from_ref(&message), width);
             let row_count = layouts[0].row_count;
             let margin = message.transcript_margin_bottom(None) as u32;
-            let bubbles = crate::tui::transcript::card::build_transcript_bubbles(width, &[message.clone()], None, None);
+            let bubbles = crate::tui::transcript::card::build_transcript_bubbles(
+                width,
+                std::slice::from_ref(&message),
+                None,
+                None,
+            );
             let rendered = element! { View(width: width) { #(bubbles) } }.to_string();
             let painted = rendered.lines().count() as u32;
             assert_eq!(
@@ -391,13 +395,13 @@ mod tests {
             not double-count vertical padding, otherwise the viewport drifts and mid-card lines get \
             clipped at the bottom of the window."
             .to_string();
-        let mut thinking_stream = TranscriptMessage::text(&thinking_text, TranscriptStyle::Thinking);
+        let thinking_stream = TranscriptMessage::text(&thinking_text, TranscriptStyle::Thinking);
         let mut thinking_done = TranscriptMessage::text(&thinking_text, TranscriptStyle::Thinking);
         thinking_done.duration_secs = Some(1.5);
         let mut thinking_done_collapsed = thinking_done.clone();
         thinking_done_collapsed.detail_expanded = false;
 
-        let mut assistant_stream = TranscriptMessage::assistant_markdown(
+        let assistant_stream = TranscriptMessage::assistant_markdown(
             "Let me lay out the steps.\n\nFirst I will measure the painted height, then compare it \
             against the measured row count at every terminal width so the auto-scroll viewport stays \
             pinned exactly to the bottom of the transcript.",
@@ -414,7 +418,7 @@ mod tests {
         let user_prompt = TranscriptMessage::text("what does this module do?", TranscriptStyle::User);
         let status = TranscriptMessage::text("read_file src/main.rs", TranscriptStyle::StatusSuccess);
 
-        let mut tool_running =
+        let tool_running =
             TranscriptMessage::tool_call("read_file", r#"{"path":"src/main.rs"}"#, TranscriptStyle::ToolRunning);
         let mut tool_done_expanded =
             TranscriptMessage::tool_call("read_file", r#"{"path":"src/main.rs"}"#, TranscriptStyle::ToolSuccess);

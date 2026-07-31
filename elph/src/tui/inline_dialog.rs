@@ -6,9 +6,6 @@ use iocraft::prelude::*;
 use crate::tui::model_selector::PROVIDER_HEADER_TABS_PER_PAGE;
 use crate::tui::user_question::{QuestionStepTab, QuestionStepTabState};
 
-/// Gap between sections inside inline dialog bodies (tighter than modal dialogs).
-pub const INLINE_SECTION_GAP: u16 = 0;
-
 /// Space above the first selectable answer row in inline dialogs.
 pub const OPTIONS_LIST_TOP_GAP: u16 = 1;
 

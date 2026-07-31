@@ -8,9 +8,7 @@ use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
 use crate::agent::UserQuestionOption;
-use crate::tui::inline_dialog::{
-    INLINE_SECTION_GAP, InlineDialogShell, InlineDialogTab, OPTIONS_LIST_TOP_GAP, inline_body_width,
-};
+use crate::tui::inline_dialog::{InlineDialogShell, InlineDialogTab, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::user_question::{
     PendingUserQuestion, QuestionInputFocus, question_footer_hint, user_question_select_options,
 };
