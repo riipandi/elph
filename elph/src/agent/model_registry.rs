@@ -49,7 +49,33 @@ pub async fn resolve_model(
     models
         .get_provider(&provider)
         .with_context(|| format!("Provider not registered in runtime models collection: {provider}"))?;
-    let _auth = models.get_auth(&model).await?;
+
+    // Auth is optional at bootstrap: revoked OAuth should not block the session.
+    // First API call will surface a clear re-auth error; clear dead tokens from disk.
+    match models.get_auth(&model).await {
+        Ok(_) => {}
+        Err(e) if matches!(e.code, elph_ai::ModelsErrorCode::OAuth) => {
+            log::warn!("OAuth unavailable for {provider}/{model_id}: {e}");
+            if let Some(path) = auth_store_path {
+                let detail = e.to_string().to_ascii_lowercase();
+                if detail.contains("invalid_grant")
+                    || detail.contains("revoked")
+                    || detail.contains("token has been expired")
+                {
+                    if let Err(clear_err) =
+                        crate::tui::provider_credential_store::delete_provider_credential(path, &provider).await
+                    {
+                        log::warn!("failed to clear revoked OAuth for {provider}: {clear_err}");
+                    } else {
+                        log::info!("cleared revoked OAuth credential for {provider}; re-connect to continue");
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return Err(e).with_context(|| format!("resolve auth for {provider}/{model_id}"));
+        }
+    }
 
     let display_name = model.name.clone();
     Ok(ModelSelection {

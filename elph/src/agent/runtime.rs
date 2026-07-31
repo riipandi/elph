@@ -101,7 +101,12 @@ pub async fn create_coding_session_with_events(
     }));
     tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
-    let thinking = to_agent_thinking(thinking_level_from_setting(&options.settings.session.thinking_level));
+    // Clamp settings thinking to the resolved model catalog (same rules as footer / Ctrl+.).
+    let thinking = {
+        let raw = thinking_level_from_setting(&options.settings.session.thinking_level);
+        let clamped = raw.clamp_for_model(&selection.model);
+        to_agent_thinking(clamped)
+    };
     let agent_graph = Arc::new(AgentGraphStore::new(options.paths.metadata_db_path()));
     // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
     let stream_options = AgentHarnessStreamOptions {

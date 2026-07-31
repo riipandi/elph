@@ -17,7 +17,7 @@
 //! {
 //!   "ui": { ... },
 //!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel", "preferredChatLanguage" },
-//!   "models": { "scoped": [...] },
+//!   "models": { "scoped": [...], "showConfiguredOnly": true },
 //!   "provider": { ... },
 //!   "memory": { ... },
 //!   "notifications": { ... },
@@ -218,13 +218,26 @@ pub struct SessionSettings {
 }
 
 /// Model-catalog preferences.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelsSettings {
     /// `provider/model_id` entries for Ctrl+P cycling and the model picker Scoped tab.
     /// Edit via `/scoped-models`.
     #[serde(default)]
     pub scoped: Vec<String>,
+    /// When true (default), the model picker's **All** list and **Provider** tabs only
+    /// include providers that already have credentials in `auth.json` (API key, OAuth, or env ref).
+    #[serde(default = "default_true")]
+    pub show_configured_only: bool,
+}
+
+impl Default for ModelsSettings {
+    fn default() -> Self {
+        Self {
+            scoped: Vec::new(),
+            show_configured_only: true,
+        }
+    }
 }
 
 /// Provider HTTP transport preferences (mapped into harness stream options by the host).

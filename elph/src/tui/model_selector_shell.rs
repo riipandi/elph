@@ -12,7 +12,7 @@ use crate::platform::{Paths, Settings};
 use crate::tui::chrome::ChromeStats;
 use crate::tui::focus::ShellFocus;
 use crate::tui::labels::{model_display_label, model_footer_label};
-use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
+use crate::tui::model_selector::{ModelCatalogOptions, ModelSelectorFocus, PendingModelSelector};
 use crate::tui::session_prefs::persist_model_selection;
 
 /// Arguments for [`open_model_selector`].
@@ -43,20 +43,23 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
         args.live_draft.set(String::new());
     }
 
-    let scoped_from_settings = Settings::load(args.paths)
-        .map(|settings| settings.models.scoped)
-        .unwrap_or_default();
+    let settings = Settings::load(args.paths).unwrap_or_else(|_| Settings::defaults());
     // Prefer non-empty session list (unsaved /scoped-models edits); else settings.json.
     let scoped_model_items = match args.session_scoped {
         Some(items) if !items.is_empty() => items,
-        _ => scoped_from_settings.as_slice(),
+        _ => settings.models.scoped.as_slice(),
     };
-    let selector = PendingModelSelector::open_with_selection(
+    let catalog_options = ModelCatalogOptions {
+        show_configured_only: settings.models.show_configured_only,
+        include_provider_ids: args.provider_id.map(|id| vec![id.to_string()]).unwrap_or_default(),
+    };
+    let selector = PendingModelSelector::open_with_selection_options(
         args.initial_filter,
         stashed,
         scoped_model_items,
         args.provider_id,
         args.model_id,
+        &catalog_options,
     );
     args.provider_index.set(selector.provider_index);
     args.model_index.set(selector.model_index);
@@ -227,10 +230,28 @@ pub fn apply_model_selection_locally(value: &str, paths: &Paths, chrome_stats: &
     Ok(model_display_label(&provider_id, &model_id))
 }
 
-pub fn spawn_runtime_model_switch(session: Arc<CodingAgentSession>, value: String) {
+/// Clamp UI/settings thinking level to the selected model's catalog map (footer + Ctrl+. stay in sync).
+pub fn clamp_thinking_for_model_value(
+    level: crate::types::ThinkingLevel,
+    value: &str,
+) -> crate::types::ThinkingLevel {
+    match parse_model_value(value) {
+        Ok((provider, model_id)) => level.clamp_for_provider_model(&provider, &model_id),
+        Err(_) => level,
+    }
+}
+
+pub fn spawn_runtime_model_switch(
+    session: Arc<CodingAgentSession>,
+    value: String,
+    thinking: crate::types::ThinkingLevel,
+) {
     tokio::spawn(async move {
         if let Err(err) = session.set_model_from_value(&value).await {
             log::warn!("failed to switch runtime model: {err}");
+        }
+        if let Err(err) = session.set_thinking_level(thinking).await {
+            log::warn!("failed to sync thinking level after model switch: {err}");
         }
     });
 }

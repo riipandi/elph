@@ -14,7 +14,7 @@ use crate::api::openai_responses_shared::ResponsesStreamState;
 use crate::api::openai_responses_shared::process_responses_stream_event;
 use crate::api::openai_responses_shared::{convert_responses_messages, convert_responses_tools};
 use crate::api::simple_options::build_base_options;
-use crate::models::{clamp_thinking_level, thinking_level_to_str};
+use crate::models::map_thinking_level_for_api;
 use crate::types::{AssistantMessage, AssistantMessageEvent, Context, Model, ProviderStreams, SimpleStreamOptions};
 use crate::types::{StopReason, StreamOptions};
 use crate::utils::event_stream::AssistantMessageEventStream;
@@ -59,8 +59,7 @@ impl ProviderStreams for AzureOpenAIResponsesApi {
     ) -> AssistantMessageEventStream {
         let opts = options.as_ref();
         let base = build_base_options(model, context, opts, opts.and_then(|o| o.base.api_key.clone()));
-        let reasoning = opts.and_then(|o| o.reasoning).map(|r| clamp_thinking_level(model, r));
-        let reasoning_effort = reasoning.map(|r| thinking_level_to_str(r).to_string());
+        let reasoning_effort = opts.and_then(|o| o.reasoning).and_then(|r| map_thinking_level_for_api(model, r));
         self.stream_with_options(
             model,
             context,

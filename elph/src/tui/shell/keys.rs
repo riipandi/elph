@@ -890,6 +890,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         Ok(label) => {
                             publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                             chrome_refresh_pending.set(true);
+                            // Keep footer / Ctrl+. levels aligned with the new model catalog.
+                            let clamped = clamp_thinking_for_model_value(thinking_level.get(), &value);
+                            if clamped != thinking_level.get() {
+                                thinking_level.set(clamped);
+                                persist_session_prefs(&paths_snapshot, agent_mode.get(), clamped);
+                            }
                             publish_ephemeral_transcript_notice(
                                 &mut messages,
                                 &mut messages_revision,
@@ -898,7 +904,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                                 model_set_notice_text(&label),
                             );
                             if let Some(session) = agent {
-                                spawn_runtime_model_switch(session, value);
+                                spawn_runtime_model_switch(session, value, thinking_level.get());
                             }
                         }
                         Err(err) => {
@@ -3039,6 +3045,11 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 Ok((_label, value)) => {
                     publish_chrome_stats(&mut chrome_stats, &mut chrome_ui_revision, stats);
                     chrome_refresh_pending.set(true);
+                    let clamped = clamp_thinking_for_model_value(thinking_level.get(), &value);
+                    if clamped != thinking_level.get() {
+                        thinking_level.set(clamped);
+                        persist_session_prefs(&paths, agent_mode.get(), clamped);
+                    }
                     // Scoped cycle: `Model set to MODEL_ID (PROVIDER)`.
                     publish_ephemeral_transcript_notice(
                         &mut messages,
@@ -3048,7 +3059,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                         model_set_notice_from_value(&value),
                     );
                     if let Some(session) = agent {
-                        spawn_runtime_model_switch(session, value);
+                        spawn_runtime_model_switch(session, value, thinking_level.get());
                     }
                 }
                 Err(err) => {
@@ -3113,9 +3124,27 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
         }
-        // Ctrl+.: cycle thinking level.
+        // Ctrl+.: cycle thinking level from the active model's catalog (thinkingLevelMap).
         (m, KeyCode::Char('.')) if m.contains(KeyModifiers::CONTROL) => {
-            let next = thinking_level.get().next();
+            let current = thinking_level.get();
+            let next = {
+                let (provider, model_id) = if let Some(session) = agent_session.as_ref() {
+                    (session.model_provider(), session.model_id())
+                } else {
+                    // Pre-session: parse footer model label (`provider/model`).
+                    let label = chrome_stats.read().model_label.clone();
+                    match crate::agent::parse_model_value(&label) {
+                        Ok((p, m)) => (p, m),
+                        Err(_) => (String::new(), String::new()),
+                    }
+                };
+                if let Some(model) = elph_ai::get_builtin_model(&provider, &model_id) {
+                    // Only catalog-supported levels (+ Off). Stale levels re-enter the cycle from Off.
+                    current.next_for_model(&model)
+                } else {
+                    current.next()
+                }
+            };
             thinking_level.set(next);
             persist_session_prefs(&paths, agent_mode.get(), next);
             if let Some(session) = agent_session.as_ref() {

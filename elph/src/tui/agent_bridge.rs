@@ -130,11 +130,12 @@ impl SlashDispatcher {
                             let auth_path = paths.auth_store_path();
                             match resolve_model(&settings, None, None, Some(&auth_path)).await {
                                 Ok(selection) => {
+                                    let thinking = {
+                                        let raw = thinking_level_from_setting(&settings.session.thinking_level);
+                                        let clamped = raw.clamp_for_model(&selection.model);
+                                        to_agent_thinking(clamped)
+                                    };
                                     let _ = session.harness().set_model(selection.model).await;
-
-                                    let thinking = to_agent_thinking(thinking_level_from_setting(
-                                        &settings.session.thinking_level,
-                                    ));
                                     let _ = session.harness().set_thinking_level(thinking).await;
 
                                     session

@@ -13,7 +13,7 @@ use crate::api::openai_compat::{get_compat, has_tool_history};
 use crate::api::openai_prompt_cache::clamp_openai_prompt_cache_key;
 use crate::api::simple_options::build_base_options;
 use crate::api::transform_messages::transform_messages;
-use crate::models::{calculate_cost, clamp_thinking_level, thinking_level_to_str};
+use crate::models::calculate_cost;
 use crate::types::{AssistantContentBlock, AssistantMessage, AssistantMessageEvent, ContentBlock, Context, Message};
 use crate::types::{Model, ProviderStreams, SimpleStreamOptions, StopReason, StreamOptions, UserContent};
 use crate::utils::event_stream::AssistantMessageEventStream;
@@ -52,14 +52,10 @@ impl ProviderStreams for OpenAICompletionsApi {
     ) -> AssistantMessageEventStream {
         let opts = options.as_ref();
         let base = build_base_options(model, context, opts, opts.and_then(|o| o.base.api_key.clone()));
-        let reasoning = opts.and_then(|o| o.reasoning).map(|r| clamp_thinking_level(model, r));
-        let reasoning_effort = reasoning.map(|r| {
-            if r == crate::types::ThinkingLevel::Minimal {
-                "minimal".to_string()
-            } else {
-                thinking_level_to_str(r).to_string()
-            }
-        });
+        // Map through catalog thinkingLevelMap so wire values match provider APIs.
+        let reasoning_effort = opts
+            .and_then(|o| o.reasoning)
+            .and_then(|r| crate::models::map_thinking_level_for_api(model, r));
         self.stream_with_options(
             model,
             context,
@@ -572,6 +568,8 @@ fn apply_thinking_params(
             }
         }
         _ => {
+            // `reasoning_effort` is already catalog-mapped by stream_simple when set.
+            // Prefer map lookup; fall back to the string as-is only when no map entry exists.
             if let Some(effort) = effort {
                 if compat.supports_reasoning_effort {
                     let mapped = thinking_level_value(model, effort).unwrap_or_else(|| effort.to_string());

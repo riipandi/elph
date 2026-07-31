@@ -36,7 +36,7 @@ pub use images::{CreateImagesModelsOptions, ImagesModels};
 pub use images::{builtin_images_models, generate_images};
 pub use models::{CreateModelsOptions, CreateProviderOptions, Models, MutableModels, Provider, ProviderApi};
 pub use models::{calculate_cost, clamp_thinking_level, create_models, create_provider};
-pub use models::{get_supported_thinking_levels, has_api, models_are_equal};
+pub use models::{get_supported_thinking_levels, has_api, map_thinking_level_for_api, models_are_equal};
 pub use providers::faux::{FauxModelDefinition, FauxProviderHandle, FauxResponseStep, RegisterFauxProviderOptions};
 pub use providers::faux::{faux_assistant_message, faux_provider, faux_text, faux_thinking, faux_tool_call};
 pub use providers::{builtin_models, get_builtin_model, get_builtin_models, get_builtin_providers};

@@ -53,6 +53,20 @@ pub fn thinking_level_to_str(level: ThinkingLevel) -> &'static str {
     }
 }
 
+/// Map a UI/agent thinking level to the wire string for this model.
+///
+/// Uses [`clamp_thinking_level`] then `thinkingLevelMap` when present so providers
+/// that only accept a subset of values (e.g. xAI: `low` | `high` | `max`) never
+/// receive unsupported effort names like `medium` or `minimal`.
+pub fn map_thinking_level_for_api(model: &Model, level: ThinkingLevel) -> Option<String> {
+    let clamped = clamp_thinking_level(model, level);
+    let key = thinking_level_to_str(clamped);
+    if let Some(map) = &model.thinking_level_map {
+        return map.get(key).cloned().flatten();
+    }
+    Some(key.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,5 +123,31 @@ mod tests {
     #[test]
     fn thinking_level_max_stringifies() {
         assert_eq!(thinking_level_to_str(ThinkingLevel::Max), "max");
+    }
+
+    #[test]
+    fn map_thinking_level_for_api_uses_catalog_map() {
+        use crate::get_builtin_model;
+        let Some(model) = get_builtin_model("xai", "grok-4.5") else {
+            return;
+        };
+        assert_eq!(
+            map_thinking_level_for_api(&model, ThinkingLevel::Medium).as_deref(),
+            Some("high"),
+            "medium should clamp to a supported xAI effort"
+        );
+        assert_eq!(
+            map_thinking_level_for_api(&model, ThinkingLevel::Low).as_deref(),
+            Some("low")
+        );
+        assert_eq!(
+            map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(),
+            Some("max")
+        );
+        let wire = map_thinking_level_for_api(&model, ThinkingLevel::High).unwrap();
+        assert!(
+            matches!(wire.as_str(), "low" | "high" | "max"),
+            "wire effort must be xAI-legal: {wire}"
+        );
     }
 }

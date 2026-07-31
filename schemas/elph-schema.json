@@ -194,7 +194,7 @@
         "models": {
             "type": "object",
             "additionalProperties": false,
-            "description": "Model catalog preferences (picker Scoped tab and Ctrl+P cycle).",
+            "description": "Model catalog preferences (picker Scoped tab, Ctrl+P cycle, and configured-provider filter).",
             "properties": {
                 "scoped": {
                     "type": "array",
@@ -205,6 +205,11 @@
                         "description": "provider/model_id entry (e.g. opencode/big-pickle)."
                     },
                     "description": "Models enabled for Ctrl+P cycling and the Scoped tab (`settings.models.scoped`). Edit via /scoped-models."
+                },
+                "showConfiguredOnly": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, the model picker's All list and Provider tabs only show providers with credentials stored in auth.json (API key, OAuth, or env ref). Set false to list every builtin provider/model."
                 }
             }
         },

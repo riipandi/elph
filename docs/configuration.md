@@ -121,7 +121,8 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     "thinkingLevel": "high"
   },
   "models": {
-    "scoped": []
+    "scoped": [],
+    "showConfiguredOnly": true
   },
   "provider": {
     "maxRetries": 2,
@@ -138,7 +139,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | ----- | ------ | ---- |
 | **`ui`** | `theme`, `themes`, `showThinking`, …, `filePicker.*` | Appearance + transcript / chrome |
 | **`session`** | `providerId`, `modelId`, `agentMode`, `thinkingLevel` | Last / preferred session state |
-| **`models`** | `scoped` | Ctrl+P cycle + model picker Scoped tab (`/scoped-models`) |
+| **`models`** | `scoped`, `showConfiguredOnly` | Ctrl+P cycle + model picker Scoped tab; filter All/Provider tabs to auth-configured providers (default `true`) |
 | **`provider`** | `maxRetries`, `defaultTimeout` | LLM HTTP transport defaults |
 | **`memory`** | `embedModel`, `embedQuantized` | Floppy / local embeddings |
 

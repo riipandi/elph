@@ -130,7 +130,14 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         startup_messages: startup_messages,
         bootstrap: Some(bootstrap_config),
         initial_agent_mode: agent_mode_from_setting(&settings.session.agent_mode),
-        initial_thinking_level: ThinkingLevel::from_setting(&settings.session.thinking_level),
+        initial_thinking_level: {
+            let raw = ThinkingLevel::from_setting(&settings.session.thinking_level);
+            if let Some(model) = boot_model.as_ref() {
+                raw.clamp_for_model(model)
+            } else {
+                raw
+            }
+        },
         model_label: model_label,
         context_limit: context_limit,
         supports_images: supports_images,

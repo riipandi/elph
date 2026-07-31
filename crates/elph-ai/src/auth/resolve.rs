@@ -131,6 +131,15 @@ pub struct ProviderAuthHolder {
     pub auth: ProviderAuth,
 }
 
+/// True when the OAuth refresh response indicates the refresh token is dead.
+fn is_revoked_oauth_refresh_error(detail: &str) -> bool {
+    let lower = detail.to_ascii_lowercase();
+    lower.contains("invalid_grant")
+        || lower.contains("revoked")
+        || lower.contains("token has been expired")
+        || lower.contains("refresh token") && lower.contains("invalid")
+}
+
 struct OverlayAuthContext {
     base: Arc<dyn AuthContext>,
     env: ProviderEnv,
@@ -161,6 +170,21 @@ async fn resolve_stored_oauth(
         let refreshed = match refresh_result {
             Ok(next) => next,
             Err(e) => {
+                let detail = e.to_string();
+                // Revoked / expired refresh tokens cannot be recovered — drop the stored
+                // credential so bootstrap and later calls do not loop on invalid_grant.
+                if is_revoked_oauth_refresh_error(&detail) {
+                    let _ = credentials
+                        .modify(
+                            provider_id,
+                            Box::new(move |_| Box::pin(async move { None })),
+                        )
+                        .await;
+                    log::warn!(
+                        "OAuth refresh token revoked for {provider_id}; cleared in-memory credential. Re-connect the provider."
+                    );
+                    return Ok(None);
+                }
                 return Err(ModelsError::with_cause(
                     ModelsErrorCode::OAuth,
                     format!("OAuth refresh failed for {provider_id}"),

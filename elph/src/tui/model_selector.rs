@@ -1,12 +1,13 @@
 //! Model picker state, catalog snapshot, and fuzzy filtering.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use elph_ai::Model;
 use elph_ai::{get_builtin_model, get_builtin_models, get_builtin_providers};
 use elph_tui::components::{DialogChrome, UiTheme, dialog_max_content_height};
 
 use crate::agent::parse_model_value;
+use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
 
 use super::slash_palette::fuzzy::{field_score, max_score};
 use super::slash_palette::list_viewport_cap;
@@ -113,6 +114,43 @@ pub fn format_model_capability_label(reasoning: bool, images: bool) -> Option<St
     }
 }
 
+/// Options for building the model picker catalog.
+#[derive(Debug, Clone)]
+pub struct ModelCatalogOptions {
+    /// When true, only providers with stored credentials appear in All / Provider tabs.
+    pub show_configured_only: bool,
+    /// Always include these provider ids even if unconfigured (e.g. the active session provider).
+    pub include_provider_ids: Vec<String>,
+}
+
+impl ModelCatalogOptions {
+    /// Full builtin catalog (no auth filter). Used by unit tests and diagnostics.
+    pub fn unfiltered() -> Self {
+        Self {
+            show_configured_only: false,
+            include_provider_ids: Vec::new(),
+        }
+    }
+}
+
+impl Default for ModelCatalogOptions {
+    fn default() -> Self {
+        Self {
+            show_configured_only: true,
+            include_provider_ids: Vec::new(),
+        }
+    }
+}
+
+/// Provider ids that already have credentials in `auth.json`.
+pub fn configured_provider_ids() -> HashSet<String> {
+    get_provider_options()
+        .into_iter()
+        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
+        .map(|p| p.id)
+        .collect()
+}
+
 /// Built-in model catalog for the picker UI.
 #[derive(Debug, Clone)]
 pub struct ModelCatalogSnapshot {
@@ -122,10 +160,29 @@ pub struct ModelCatalogSnapshot {
     pub all_models: Vec<ModelRow>,
     pub total_providers: usize,
     pub total_models: usize,
+    /// Whether this snapshot was built with the configured-only filter.
+    pub show_configured_only: bool,
 }
 
 impl ModelCatalogSnapshot {
+    /// Full unfiltered catalog (tests / callers that want every builtin provider).
     pub fn build(scoped_model_items: &[String]) -> Self {
+        Self::build_with_options(scoped_model_items, &ModelCatalogOptions::unfiltered())
+    }
+
+    pub fn build_with_options(scoped_model_items: &[String], options: &ModelCatalogOptions) -> Self {
+        let allowed: Option<HashSet<String>> = if options.show_configured_only {
+            let mut set = configured_provider_ids();
+            for id in &options.include_provider_ids {
+                if !id.is_empty() {
+                    set.insert(id.clone());
+                }
+            }
+            Some(set)
+        } else {
+            None
+        };
+
         let provider_ids = get_builtin_providers();
         let mut providers = Vec::new();
         let mut models_by_provider = HashMap::new();
@@ -133,6 +190,11 @@ impl ModelCatalogSnapshot {
 
         let mut all_models: Vec<ModelRow> = Vec::new();
         for provider_id in &provider_ids {
+            if let Some(ref allowed) = allowed
+                && !allowed.contains(*provider_id)
+            {
+                continue;
+            }
             let models = get_builtin_models(provider_id);
             let count = models.len();
             total_models = total_models.saturating_add(count);
@@ -181,6 +243,7 @@ impl ModelCatalogSnapshot {
             all_models,
             total_providers,
             total_models,
+            show_configured_only: options.show_configured_only,
         }
     }
 
@@ -304,7 +367,21 @@ pub struct PendingModelSelector {
 
 impl PendingModelSelector {
     pub fn open(initial_filter: String, stashed_prompt_draft: Option<String>, scoped_model_items: &[String]) -> Self {
-        let catalog = ModelCatalogSnapshot::build(scoped_model_items);
+        Self::open_with_options(
+            initial_filter,
+            stashed_prompt_draft,
+            scoped_model_items,
+            &ModelCatalogOptions::unfiltered(),
+        )
+    }
+
+    pub fn open_with_options(
+        initial_filter: String,
+        stashed_prompt_draft: Option<String>,
+        scoped_model_items: &[String],
+        catalog_options: &ModelCatalogOptions,
+    ) -> Self {
+        let catalog = ModelCatalogSnapshot::build_with_options(scoped_model_items, catalog_options);
         let last_builtin_provider_index = catalog.first_builtin_provider_index();
         Self {
             catalog,
@@ -328,7 +405,29 @@ impl PendingModelSelector {
         provider_id: Option<&str>,
         model_id: Option<&str>,
     ) -> Self {
-        let mut pending = Self::open(initial_filter, stashed_prompt_draft, scoped_model_items);
+        Self::open_with_selection_options(
+            initial_filter,
+            stashed_prompt_draft,
+            scoped_model_items,
+            provider_id,
+            model_id,
+            &ModelCatalogOptions::unfiltered(),
+        )
+    }
+
+    pub fn open_with_selection_options(
+        initial_filter: String,
+        stashed_prompt_draft: Option<String>,
+        scoped_model_items: &[String],
+        provider_id: Option<&str>,
+        model_id: Option<&str>,
+        catalog_options: &ModelCatalogOptions,
+    ) -> Self {
+        let mut options = catalog_options.clone();
+        if let Some(provider) = provider_id {
+            options.include_provider_ids.push(provider.to_string());
+        }
+        let mut pending = Self::open_with_options(initial_filter, stashed_prompt_draft, scoped_model_items, &options);
         // Always start on All.
         pending.provider_index = ALL_PROVIDERS_TAB_INDEX;
         if let (Some(provider), Some(model)) = (provider_id, model_id) {
@@ -492,10 +591,17 @@ pub fn model_selector_list_viewport_height(screen_width: u16, screen_height: u16
 }
 
 pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
-    format!(
-        "{} providers · {} models available",
-        catalog.total_providers, catalog.total_models
-    )
+    if catalog.show_configured_only {
+        format!(
+            "{} configured · {} models",
+            catalog.total_providers, catalog.total_models
+        )
+    } else {
+        format!(
+            "{} providers · {} models available",
+            catalog.total_providers, catalog.total_models
+        )
+    }
 }
 
 pub fn model_selector_footer_hint(in_provider_scope: bool) -> String {
@@ -567,7 +673,16 @@ pub fn filter_models_fuzzy(models: &[ModelRow], query: &str) -> Vec<ModelRow> {
         .iter()
         .filter_map(|row| model_row_match_score(row, query).map(|score| (row.clone(), score)))
         .collect();
-    scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.name.cmp(&right.0.name)));
+    // Group by provider first so search results stay clustered; within a provider
+    // keep higher fuzzy scores (then name) for scanability.
+    scored.sort_by(|left, right| {
+        left.0
+            .provider_id
+            .cmp(&right.0.provider_id)
+            .then_with(|| right.1.cmp(&left.1))
+            .then_with(|| left.0.name.cmp(&right.0.name))
+            .then_with(|| left.0.model_id.cmp(&right.0.model_id))
+    });
     scored.into_iter().map(|(row, _)| row).collect()
 }
 
@@ -713,6 +828,53 @@ mod tests {
     }
 
     #[test]
+    fn search_results_are_grouped_by_provider() {
+        let rows = vec![
+            ModelRow {
+                value: "zeta/claude-a".into(),
+                name: "Claude A".into(),
+                provider_id: "zeta".into(),
+                model_id: "claude-a".into(),
+                context_k: 100,
+                reasoning: false,
+                images: false,
+            },
+            ModelRow {
+                value: "alpha/claude-b".into(),
+                name: "Claude B".into(),
+                provider_id: "alpha".into(),
+                model_id: "claude-b".into(),
+                context_k: 100,
+                reasoning: false,
+                images: false,
+            },
+            ModelRow {
+                value: "zeta/claude-c".into(),
+                name: "Claude C".into(),
+                provider_id: "zeta".into(),
+                model_id: "claude-c".into(),
+                context_k: 100,
+                reasoning: false,
+                images: false,
+            },
+            ModelRow {
+                value: "alpha/claude-d".into(),
+                name: "Claude D".into(),
+                provider_id: "alpha".into(),
+                model_id: "claude-d".into(),
+                context_k: 100,
+                reasoning: false,
+                images: false,
+            },
+        ];
+        let filtered = filter_models_fuzzy(&rows, "claude");
+        assert_eq!(filtered.len(), 4);
+        let providers: Vec<&str> = filtered.iter().map(|r| r.provider_id.as_str()).collect();
+        // All alpha rows appear before zeta (alphabetical group), not interleaved.
+        assert_eq!(providers, vec!["alpha", "alpha", "zeta", "zeta"]);
+    }
+
+    #[test]
     fn context_label_uses_k_and_m_suffixes() {
         assert_eq!(format_model_context_label(128), "128K");
         assert_eq!(format_model_context_label(1000), "1M");
@@ -749,8 +911,14 @@ mod tests {
             all_models: vec![],
             total_providers: 3,
             total_models: 12,
+            show_configured_only: false,
         };
         assert_eq!(global_count_label(&catalog), "3 providers · 12 models available");
+        let configured = ModelCatalogSnapshot {
+            show_configured_only: true,
+            ..catalog
+        };
+        assert_eq!(global_count_label(&configured), "3 configured · 12 models");
     }
 
     #[test]
@@ -948,6 +1116,70 @@ mod tests {
         pending.apply_provider_nav(-1);
         assert_eq!(pending.provider_index, *builtins.last().expect("last provider"));
         assert!(pending.is_provider_scope_mode());
+    }
+
+    #[test]
+    fn show_configured_only_filters_providers_and_all_models() {
+        // With an explicit empty allow-list, no builtin providers should appear.
+        let empty_allow = ModelCatalogOptions {
+            show_configured_only: true,
+            // include none; configured_provider_ids() may find real auth — force empty via
+            // building with show_configured_only and then asserting filter path exists.
+            include_provider_ids: Vec::new(),
+        };
+        let filtered = ModelCatalogSnapshot::build_with_options(&[], &empty_allow);
+        let full = ModelCatalogSnapshot::build(&[]);
+        // Filtered catalog never has more providers than full catalog.
+        assert!(filtered.total_providers <= full.total_providers);
+        assert!(filtered.total_models <= full.total_models);
+        // Synthetic All/Scoped always present.
+        assert!(filtered.is_all_providers_tab(ALL_PROVIDERS_TAB_INDEX));
+        assert!(filtered.is_scoped_providers_tab(SCOPED_PROVIDERS_TAB_INDEX));
+        // Every listed builtin provider is either configured or in include list.
+        if empty_allow.show_configured_only {
+            let allowed = configured_provider_ids();
+            for tab in &filtered.providers {
+                if is_synthetic_provider_tab(&tab.id) {
+                    continue;
+                }
+                assert!(
+                    allowed.contains(&tab.id),
+                    "unconfigured provider leaked into catalog: {}",
+                    tab.id
+                );
+            }
+            for row in &filtered.all_models {
+                assert!(
+                    allowed.contains(&row.provider_id),
+                    "unconfigured model leaked: {}",
+                    row.value
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn include_provider_ids_keep_active_provider_when_unconfigured() {
+        let full = ModelCatalogSnapshot::build(&[]);
+        let Some(sample_id) = full
+            .providers
+            .iter()
+            .find(|t| !is_synthetic_provider_tab(&t.id))
+            .map(|t| t.id.clone())
+        else {
+            return;
+        };
+        // Only include one specific provider (ignore real configured set by using
+        // show_configured_only + include that forces at least this id).
+        let opts = ModelCatalogOptions {
+            show_configured_only: true,
+            include_provider_ids: vec![sample_id.clone()],
+        };
+        let catalog = ModelCatalogSnapshot::build_with_options(&[], &opts);
+        assert!(
+            catalog.providers.iter().any(|t| t.id == sample_id),
+            "included provider must appear even if unconfigured"
+        );
     }
 
     #[test]

@@ -284,7 +284,9 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 
 ### Thinking Level → Color
 
-Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`):
+Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`).
+
+**Ctrl+.** and the footer model segment (`provider/model (level)`) only cycle/show levels supported by the **active model catalog** (`thinkingLevelMap` / `get_supported_thinking_levels`). Unsupported values from settings are clamped when the model changes or on boot. Example: xAI Grok 4.5 → `off` · `low` · `high` · `max` only.
 
 | Level   | Color            | Hex       |
 | ------- | ---------------- | --------- |
@@ -387,6 +389,8 @@ When the agent is busy, an activity line shows between the content area and inpu
 ## Model selector
 
 `Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models`.
+
+By default (`settings.models.showConfiguredOnly: true`), the **All** list and **Provider** tabs only include providers that already have credentials in `auth.json` (API key, OAuth, or env ref). Set `showConfiguredOnly` to `false` to browse every builtin provider. The active session provider is always included so you can re-select its models.
 
 ## Scoped models
 

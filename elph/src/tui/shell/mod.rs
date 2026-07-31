@@ -53,11 +53,11 @@ use crate::tui::file_picker::{
 use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
 use crate::tui::model_selector_shell::{
-    OpenModelSelectorArgs, apply_model_selection_locally, apply_model_selector_filter_seed, close_model_selector,
-    focus_model_selector_list, model_selector_confirm_on_enter, model_selector_filter_seed,
-    model_selector_list_backspace, model_selector_list_nav_delta, model_selector_provider_delta,
-    model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector, spawn_runtime_model_switch,
-    sync_pending_filter,
+    OpenModelSelectorArgs, apply_model_selection_locally, apply_model_selector_filter_seed,
+    clamp_thinking_for_model_value, close_model_selector, focus_model_selector_list, model_selector_confirm_on_enter,
+    model_selector_filter_seed, model_selector_list_backspace, model_selector_list_nav_delta,
+    model_selector_provider_delta, model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector,
+    spawn_runtime_model_switch, sync_pending_filter,
 };
 use crate::tui::notifier;
 use crate::tui::prompt::PromptChrome;

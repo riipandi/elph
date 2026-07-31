@@ -116,6 +116,74 @@ impl ThinkingLevel {
             Self::Max => Self::Off,
         }
     }
+
+    /// Cycle through Off + levels supported by this model catalog entry.
+    ///
+    /// Uses [`elph_ai::get_supported_thinking_levels`] so Ctrl+. never lands on a
+    /// value the provider API will reject (e.g. `medium` on xAI Grok 4.5).
+    pub fn next_for_model(self, model: &elph_ai::Model) -> Self {
+        let cycle = Self::cycle_for_model(model);
+        if cycle.len() <= 1 {
+            return Self::Off;
+        }
+        // Unsupported current level (stale settings) starts from Off so the next
+        // press always lands on a catalog-valid value.
+        let start = if cycle.contains(&self) { self } else { Self::Off };
+        let idx = cycle.iter().position(|l| *l == start).unwrap_or(0);
+        cycle[(idx + 1) % cycle.len()]
+    }
+
+    /// Off + catalog-supported levels for this model (footer / switcher source of truth).
+    pub fn cycle_for_model(model: &elph_ai::Model) -> Vec<Self> {
+        let mut cycle = vec![Self::Off];
+        if !model.reasoning {
+            return cycle;
+        }
+        for level in elph_ai::get_supported_thinking_levels(model) {
+            cycle.push(Self::from_ai(level));
+        }
+        cycle
+    }
+
+    /// Clamp to Off or a supported catalog level for this model.
+    pub fn clamp_for_model(self, model: &elph_ai::Model) -> Self {
+        if self == Self::Off || !model.reasoning {
+            return Self::Off;
+        }
+        let ai = elph_ai::clamp_thinking_level(model, self.to_ai());
+        Self::from_ai(ai)
+    }
+
+    /// Clamp using a builtin catalog lookup (`provider` + `model_id`).
+    ///
+    /// Unknown models leave the level unchanged so footer/Ctrl+. stay usable offline.
+    pub fn clamp_for_provider_model(self, provider: &str, model_id: &str) -> Self {
+        elph_ai::get_builtin_model(provider, model_id)
+            .map(|model| self.clamp_for_model(&model))
+            .unwrap_or(self)
+    }
+
+    fn from_ai(level: elph_ai::ThinkingLevel) -> Self {
+        match level {
+            elph_ai::ThinkingLevel::Minimal => Self::Minimal,
+            elph_ai::ThinkingLevel::Low => Self::Low,
+            elph_ai::ThinkingLevel::Medium => Self::Medium,
+            elph_ai::ThinkingLevel::High => Self::High,
+            elph_ai::ThinkingLevel::Xhigh => Self::Xhigh,
+            elph_ai::ThinkingLevel::Max => Self::Max,
+        }
+    }
+
+    fn to_ai(self) -> elph_ai::ThinkingLevel {
+        match self {
+            Self::Off | Self::Minimal => elph_ai::ThinkingLevel::Minimal,
+            Self::Low => elph_ai::ThinkingLevel::Low,
+            Self::Medium => elph_ai::ThinkingLevel::Medium,
+            Self::High => elph_ai::ThinkingLevel::High,
+            Self::Xhigh => elph_ai::ThinkingLevel::Xhigh,
+            Self::Max => elph_ai::ThinkingLevel::Max,
+        }
+    }
 }
 
 /// Actions the prompt can signal to the parent app.
@@ -154,6 +222,45 @@ mod tests {
         assert_eq!(ThinkingLevel::High.next(), ThinkingLevel::Xhigh);
         assert_eq!(ThinkingLevel::Xhigh.next(), ThinkingLevel::Max);
         assert_eq!(ThinkingLevel::Max.next(), ThinkingLevel::Off);
+    }
+
+    #[test]
+    fn thinking_next_for_model_respects_catalog_map() {
+        let Some(model) = elph_ai::get_builtin_model("xai", "grok-4.5") else {
+            return;
+        };
+        let cycle = ThinkingLevel::cycle_for_model(&model);
+        assert_eq!(
+            cycle,
+            vec![
+                ThinkingLevel::Off,
+                ThinkingLevel::Low,
+                ThinkingLevel::High,
+                ThinkingLevel::Max,
+            ]
+        );
+        // Supported: low, high, max (+ Off). medium/minimal/xhigh must not appear.
+        let mut level = ThinkingLevel::Off;
+        let mut seen = Vec::new();
+        for _ in 0..8 {
+            level = level.next_for_model(&model);
+            seen.push(level);
+            if level == ThinkingLevel::Off && seen.len() > 1 {
+                break;
+            }
+        }
+        assert!(seen.contains(&ThinkingLevel::Low));
+        assert!(seen.contains(&ThinkingLevel::High));
+        assert!(seen.contains(&ThinkingLevel::Max));
+        assert!(!seen.contains(&ThinkingLevel::Medium));
+        assert!(!seen.contains(&ThinkingLevel::Minimal));
+        assert!(!seen.contains(&ThinkingLevel::Xhigh));
+        // Stale medium snaps into the catalog cycle.
+        assert_eq!(
+            ThinkingLevel::Medium.next_for_model(&model),
+            ThinkingLevel::Low
+        );
+        assert_eq!(ThinkingLevel::Medium.clamp_for_model(&model), ThinkingLevel::High);
     }
 
     #[test]
