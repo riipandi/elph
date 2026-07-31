@@ -8,9 +8,9 @@ use std::time::Duration;
 use tokio::process::Command;
 use tokio::time;
 
-use crate::error::{ExecError, ExecErrorCode, Result};
-use crate::output::sanitize_binary_output;
-use crate::types::{ShellConfig, ShellExecOptions, ShellExecResult, ShellOutputCallback};
+use super::error::{ExecError, ExecErrorCode, Result};
+use super::output::sanitize_binary_output;
+use super::types::{ShellConfig, ShellExecOptions, ShellExecResult, ShellOutputCallback};
 
 const MAX_TIMEOUT_MS: u64 = 2_147_483_647;
 const MAX_TIMEOUT_SECONDS: u64 = MAX_TIMEOUT_MS / 1000;
@@ -86,14 +86,14 @@ struct PtyExecRequest<'a> {
     cwd: &'a Path,
     options: &'a ShellExecOptions,
     timeout_ms: Option<u64>,
-    pty_size: crate::pty::PtySize,
+    pty_size: super::pty::PtySize,
 }
 
 #[cfg(unix)]
 async fn exec_pty(request: &PtyExecRequest<'_>) -> Result<ShellExecResult> {
     use tokio::io::unix::AsyncFd;
 
-    use crate::pty::open_pty;
+    use super::pty::open_pty;
 
     let PtyExecRequest {
         config,

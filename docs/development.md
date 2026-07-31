@@ -8,7 +8,7 @@ Design notes for building and working on the Elph workspace locally. Operational
 | ------ | ------- | ---------------------- |
 | `elph` | `elph/` | Coding agent CLI + TUI |
 
-Library crates (`elph-ai`, `elph-agent`, `elph-tui`, `elph-exec`, `floppy`, `elph-swarm`) are consumed by `elph` and published to crates.io.
+Library crates (`elph-ai`, `elph-agent`, `elph-tui`, `floppy`, `elph-swarm`) are consumed by `elph` and published to crates.io. `elph-exec` has been merged into `elph-agent` as `crate::exec` (gated behind the `tools-shell-exec` feature).
 
 ### `elph-agent` feature flags
 

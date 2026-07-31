@@ -1,15 +1,14 @@
 //! Inline ask-user dialog above the status row.
 
 use elph_tui::components::{
-    ConfirmButtonFocus, DIALOG_SELECT_AUTO_HEIGHT, DialogConfirmButtonsContent, DialogMultiChoiceContent,
-    DialogUserInputContent, UiTheme, dialog_body_min_height, dialog_header_title_fit, dialog_max_content_height,
+    ConfirmButtonFocus, DIALOG_SELECT_AUTO_HEIGHT, DialogMultiChoiceContent, DialogUserInputContent, UiTheme,
+    dialog_body_min_height, dialog_header_title_fit, dialog_max_content_height,
 };
+use elph_tui::types::SelectOption;
 use iocraft::prelude::*;
 
 use crate::agent::UserQuestionOption;
-use crate::tui::inline_dialog::{
-    INLINE_SECTION_GAP, InlineDialogShell, InlineDialogTab, OPTIONS_LIST_TOP_GAP, inline_body_width,
-};
+use crate::tui::inline_dialog::{InlineDialogShell, InlineDialogTab, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::user_question::{
     PendingUserQuestion, QuestionInputFocus, question_footer_hint, user_question_select_options,
 };
@@ -244,6 +243,15 @@ fn render_question_body(props: &mut UserQuestionBarProps, body_width: u16, list_
     let summary = render_review_summary(body_width, &view.review_summary, theme);
 
     if view.is_confirm {
+        let yes_no_label = if view.step_count > 1 {
+            String::new()
+        } else {
+            view.question.clone()
+        };
+        let confirm_options = vec![
+            SelectOption::new("Yes", "y".to_string()),
+            SelectOption::new("No", "n".to_string()),
+        ];
         return element! {
             View(
                 width: body_width,
@@ -252,18 +260,28 @@ fn render_question_body(props: &mut UserQuestionBarProps, body_width: u16, list_
                 flex_shrink: 0f32,
             ) {
                 #(summary)
-                DialogConfirmButtonsContent(
-                    width: body_width,
-                    message: view.question.clone(),
-                    yes_label: "Yes".to_string(),
-                    no_label: "No".to_string(),
-                    focused_button: props.confirm_focus,
-                    has_focus: choices_focused,
-                    theme: Some(theme),
-                    section_gap: Some(INLINE_SECTION_GAP),
-                    on_yes: props.on_confirm_yes.take(),
-                    on_no: props.on_confirm_no.take(),
-                )
+                #(if !yes_no_label.is_empty() {
+                    Some(render_prompt_line(body_width, &yes_no_label, theme))
+                } else {
+                    None
+                })
+                View(width: body_width, padding_top: OPTIONS_LIST_TOP_GAP, flex_shrink: 0f32) {
+                    UserQuestionOptionList(
+                        width: body_width,
+                        height: list_height,
+                        options: confirm_options,
+                        selected_index: props.selected_index,
+                        has_focus: choices_focused,
+                        theme: Some(theme),
+                        custom_row_index: None,
+                        custom_input_active: false,
+                        custom_answer: None,
+                        custom_input_placeholder: String::new(),
+                        custom_input_focused: false,
+                        on_custom_submit: HandlerMut::default(),
+                        on_custom_cancel: HandlerMut::default(),
+                    )
+                }
             }
         }
         .into();

@@ -1,7 +1,8 @@
 //! Build scroll-view bubbles from transcript messages.
 
-use elph_tui::TranscriptRowLayout;
 use iocraft::prelude::*;
+
+use elph_tui::TranscriptRowLayout;
 
 use super::super::types::{TranscriptMessage, TranscriptStyle};
 use super::kinds::{
@@ -15,13 +16,16 @@ const WINDOW_OVERSCAN_ROWS: u32 = 24;
 /// Always keep at least this many trailing messages fully mounted (streaming tail).
 const WINDOW_MIN_TAIL_MESSAGES: usize = 12;
 
+/// Subagent click handler type: (agent_id, title).
+pub type SubagentClickHandler = HandlerMut<'static, (String, String)>;
+
 pub fn build_transcript_bubbles(
     screen_width: u16,
     messages: &[TranscriptMessage],
     suppress_sticky_source: Option<usize>,
     toggle: Option<CollapsibleToggleCtx>,
 ) -> Vec<AnyElement<'static>> {
-    build_transcript_bubbles_range(screen_width, messages, 0, messages.len(), suppress_sticky_source, toggle)
+    build_transcript_bubbles_range(screen_width, messages, 0, messages.len(), suppress_sticky_source, toggle, None)
 }
 
 /// Windowed bubble list: off-screen runs become fixed-height spacers so scroll metrics
@@ -107,6 +111,7 @@ pub fn build_transcript_bubbles_windowed(
         last_visible.saturating_add(1),
         suppress_sticky_source,
         toggle,
+        None,
     ));
 
     if last_visible + 1 < messages.len() {
@@ -162,6 +167,7 @@ fn build_transcript_bubbles_range(
     end: usize,
     suppress_sticky_source: Option<usize>,
     toggle: Option<CollapsibleToggleCtx>,
+    _on_subagent_click: Option<&SubagentClickHandler>,
 ) -> Vec<AnyElement<'static>> {
     let end = end.min(messages.len());
     let start = start.min(end);

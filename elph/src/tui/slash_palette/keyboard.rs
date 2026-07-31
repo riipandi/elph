@@ -342,11 +342,11 @@ mod tests {
         use super::super::model::{build_snapshot, palette_visible};
 
         let mut commands = sample_commands();
-        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]"));
-        assert!(!palette_visible("/tools json"));
-        let snapshot = build_snapshot("/tools json", &commands, 40);
+        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]"));
+        assert!(!palette_visible("/tools list"));
+        let snapshot = build_snapshot("/tools list", &commands, 40);
         assert!(!snapshot.should_render());
-        assert!(resolve_snapshot_key_action("/tools json", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).is_none());
+        assert!(resolve_snapshot_key_action("/tools list", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).is_none());
     }
 
     #[test]
@@ -354,13 +354,13 @@ mod tests {
         use super::super::model::build_snapshot;
 
         let mut commands = sample_commands();
-        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]"));
-        let snapshot = build_snapshot("/tools j", &commands, 40);
-        let action = resolve_snapshot_key_action("/tools j", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).unwrap();
+        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]"));
+        let snapshot = build_snapshot("/tools l", &commands, 40);
+        let action = resolve_snapshot_key_action("/tools l", &snapshot, 0, KeyCode::Enter, KeyModifiers::NONE).unwrap();
         assert_eq!(
             action,
             SlashPaletteKeyAction::SubmitCommand {
-                slash_input: "/tools json".into(),
+                slash_input: "/tools list".into(),
             }
         );
     }
@@ -370,13 +370,13 @@ mod tests {
         use super::super::model::build_snapshot;
 
         let mut commands = sample_commands();
-        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[json|list|table]"));
-        let snapshot = build_snapshot("/tools j", &commands, 40);
-        let action = resolve_snapshot_key_action("/tools j", &snapshot, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
+        commands.push(crate::types::SlashCommand::new("tools", "Show tools").with_args_hint("[list|table]"));
+        let snapshot = build_snapshot("/tools l", &commands, 40);
+        let action = resolve_snapshot_key_action("/tools l", &snapshot, 0, KeyCode::Tab, KeyModifiers::NONE).unwrap();
         assert_eq!(
             action,
             SlashPaletteKeyAction::CompleteDraft {
-                text: "/tools json ".into(),
+                text: "/tools list ".into(),
                 suppress_enter_newline: false,
             }
         );

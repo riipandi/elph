@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/elph-schema.json",
     "title": "Elph settings configuration",
-    "description": "User preferences for the Elph coding agent, grouped by domain (ui, session, models, provider, memory). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults ← home ← project (project wins per nested key). Runtime saves write the home layer only. Flat legacy keys are migrated on load; unknown keys are ignored.",
+    "description": "User preferences for the Elph coding agent, grouped by domain (ui, session, models, provider, memory, notifications). Home: ~/.elph/settings.json. Optional project overrides: <workDir>/.elph/settings.json (same shape). Merge: defaults ← home ← project (project wins per nested key). Runtime saves write the home layer only. Flat legacy keys are migrated on load; unknown keys are ignored.",
     "type": "object",
     "additionalProperties": false,
     "properties": {
@@ -24,6 +24,12 @@
         },
         "memory": {
             "$ref": "#/definitions/memory"
+        },
+        "notifications": {
+            "$ref": "#/definitions/notifications"
+        },
+        "compaction": {
+            "$ref": "#/definitions/compaction"
         }
     },
     "definitions": {
@@ -177,6 +183,11 @@
                     "type": "string",
                     "default": "inherit",
                     "description": "Model for session title generation. Use a provider/model_id or \"inherit\" to reuse the session model."
+                },
+                "preferredChatLanguage": {
+                    "type": "string",
+                    "default": "english",
+                    "description": "Preferred language for AI chat responses in the transcript. The AI responds in this language for conversational text; code, comments, and documentation remain in English."
                 }
             }
         },
@@ -230,6 +241,85 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
+                }
+            }
+        },
+        "notifications": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Desktop notification preferences. Controls which events trigger native OS notifications (macOS Notification Center, Linux D-Bus, Windows Toast).",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch — disable all desktop notifications."
+                },
+                "onTurnComplete": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Notify when the agent finishes a turn."
+                },
+                "onToolPermission": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Notify when the agent requests tool permission."
+                },
+                "onUserQuestion": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Notify when the agent asks a question."
+                },
+                "onError": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Notify on errors (agent / MCP / bootstrap failure)."
+                },
+                "onTurnCancel": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Notify when a running turn is canceled."
+                },
+                "onStartupReady": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Notify when bootstrap / startup completes."
+                },
+                "minTurnDurationSecs": {
+                    "type": "number",
+                    "default": 5.0,
+                    "minimum": 0,
+                    "description": "Minimum turn duration (seconds) before sending a turn-complete notification. Prevents noise from quick turns."
+                },
+                "appName": {
+                    "type": "string",
+                    "default": "Elph",
+                    "minLength": 1,
+                    "description": "Application name shown in the notification banner."
+                }
+            }
+        },
+        "compaction": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Auto-compaction preferences. Compresses conversation history when context approaches the configured threshold.",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch — automatically compact history after turns when threshold is exceeded."
+                },
+                "thresholdPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 80,
+                    "description": "Context-window usage percentage (1–100) that triggers compaction. Compact when context tokens exceed contextWindow * thresholdPct / 100."
+                },
+                "keepRecentTokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 20000,
+                    "description": "Number of recent tokens to retain after compaction."
                 }
             }
         }

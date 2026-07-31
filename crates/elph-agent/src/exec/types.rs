@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 #[cfg(unix)]
-use crate::pty::PtySize;
+use super::pty::PtySize;
 
 /// Streaming chunk callback for stdout/stderr during shell execution.
 pub type ShellOutputCallback = Arc<dyn Fn(&str) + Send + Sync>;

@@ -48,8 +48,8 @@ impl GoalStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Goal {
-    pub id: i64,
-    pub goal_id: String,
+    /// Prefixed Kalid primary key (`goal_<16>`).
+    pub id: String,
     pub session_id: String,
     pub objective: String,
     pub completion_criterion: Option<String>,

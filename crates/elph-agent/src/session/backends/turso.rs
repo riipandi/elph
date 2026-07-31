@@ -2,8 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use turso::Builder;
-
 use crate::datastore::migrations::run as run_migrations;
 use crate::session::id::{generate_entry_id, generate_session_id};
 use crate::session::migrations::SESSION_TREE_MIGRATIONS;
@@ -105,11 +103,8 @@ impl TursoSessionStorage {
 }
 
 async fn open_db(path: &Path) -> Result<turso::Database, SessionError> {
-    let db = Builder::new_local(path.to_string_lossy().as_ref())
-        .build()
-        .await
-        .map_err(map_storage_error)?;
-    let conn = db.connect().map_err(map_storage_error)?;
+    let db = crate::datastore::open_local(path).await.map_err(map_storage_error)?;
+    let conn = crate::datastore::connect(&db).await.map_err(map_storage_error)?;
     run_migrations(&conn, &SESSION_TREE_MIGRATIONS)
         .await
         .map_err(|error| SessionError::new(SessionErrorCode::Storage, error.to_string()))?;

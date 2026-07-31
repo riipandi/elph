@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
             600_000,
         )
         .await?;
-    println!("  Created:  goal_id={}, objective={}", goal.goal_id, goal.objective);
+    println!("  Created:  id={}, objective={}", goal.id, goal.objective);
     println!("  Status:   {:?}", goal.status);
     println!(
         "  Budgets:  {} tokens, {} turns, {}ms wall-clock",
@@ -42,8 +42,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Get latest goal
     let latest = store.get_latest_goal(session_id).await?.expect("goal exists");
-    assert_eq!(latest.goal_id, goal.goal_id);
-    println!("  Latest:   goal_id={}, status={:?}", latest.goal_id, latest.status);
+    assert_eq!(latest.id, goal.id);
+    println!("  Latest:   id={}, status={:?}", latest.id, latest.status);
 
     // Update status to Complete
     let updated = store.update_goal_status(session_id, GoalStatus::Complete).await?;
@@ -119,7 +119,6 @@ async fn main() -> anyhow::Result<()> {
     println!("\n=== Goal Struct ===");
     let g = store.get_latest_goal(session_id).await?.expect("goal exists");
     println!("  id:                   {}", g.id);
-    println!("  goal_id:              {}", g.goal_id);
     println!("  session_id:           {}", g.session_id);
     println!("  objective:            {}", g.objective);
     println!("  completion_criterion: {:?}", g.completion_criterion);

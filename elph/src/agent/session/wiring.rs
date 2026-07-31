@@ -6,7 +6,8 @@ use elph_agent::{
     ToolCallHookResult,
 };
 use elph_ai::AssistantMessageEvent;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
 use super::CodingAgentSession;
@@ -73,13 +74,21 @@ impl CodingAgentSession {
         // Resolve active model id for subagent status display (e.g. `claude-sonnet-4-20250514`).
         let active_model_id = self.selection.read().model.id.clone();
 
+        // Accumulator per agent for output text deltas.
+        // Batching: flush after every N deltas to avoid flooding the UI channel.
+        const BATCH_INTERVAL: usize = 8;
+
         let forwarder: SubagentEventForwarder = Arc::new({
             let ui_tx = ui_tx.clone();
             let model_id = active_model_id.clone();
+            let output_buf: Arc<Mutex<HashMap<String, (String, usize)>>> = Arc::new(Mutex::new(HashMap::new()));
             move |event, info: &SubagentInfo| {
                 use crate::agent::SubagentUiPhase;
+
+                let mut buf = output_buf.lock().unwrap();
+                let entry = buf.entry(info.id.clone()).or_insert_with(|| (String::new(), 0));
+
                 match event {
-                    // Lifecycle: clear status words (not every token/tool delta).
                     AgentEvent::AgentStart => {
                         let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
                             agent_id: info.id.clone(),
@@ -91,6 +100,14 @@ impl CodingAgentSession {
                         });
                     }
                     AgentEvent::AgentEnd { .. } => {
+                        // Flush remaining output, then send completion marker.
+                        if !entry.0.is_empty() {
+                            let _ = ui_tx.send(AgentUiEvent::SubagentOutput {
+                                agent_id: info.id.clone(),
+                                content: std::mem::take(&mut entry.0),
+                            });
+                            entry.1 = 0;
+                        }
                         let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
                             agent_id: info.id.clone(),
                             agent_path: info.agent_path.clone(),
@@ -100,7 +117,7 @@ impl CodingAgentSession {
                             model: model_id.clone(),
                         });
                     }
-                    // Tool activity: upsert running row with human verb (low noise via upsert).
+                    // Tool activity: upsert running row with human verb.
                     AgentEvent::ToolExecutionStart { tool_name, .. } => {
                         let _ = ui_tx.send(AgentUiEvent::SubagentStatus {
                             agent_id: info.id.clone(),
@@ -125,6 +142,59 @@ impl CodingAgentSession {
                             model: model_id.clone(),
                         });
                     }
+                    // — Output deltas: accumulate into the buffer —
+                    AgentEvent::MessageUpdate {
+                        ref assistant_message_event,
+                        ..
+                    } => {
+                        let delta = match &**assistant_message_event {
+                            AssistantMessageEvent::TextDelta { delta, .. } => delta.as_str(),
+                            AssistantMessageEvent::ThinkingDelta { delta, .. } => delta.as_str(),
+                            _ => return,
+                        };
+                        entry.0.push_str(delta);
+                        entry.1 += 1;
+                        if entry.1 >= BATCH_INTERVAL {
+                            let _ = ui_tx.send(AgentUiEvent::SubagentOutput {
+                                agent_id: info.id.clone(),
+                                content: std::mem::take(&mut entry.0),
+                            });
+                            entry.1 = 0;
+                        }
+                    }
+                    AgentEvent::ToolExecutionUpdate { ref partial_result, .. } => {
+                        let output = summarize_tool_result(partial_result);
+                        if !output.is_empty() {
+                            entry.0.push_str(&output);
+                            entry.1 += 1;
+                            if entry.1 >= BATCH_INTERVAL {
+                                let _ = ui_tx.send(AgentUiEvent::SubagentOutput {
+                                    agent_id: info.id.clone(),
+                                    content: std::mem::take(&mut entry.0),
+                                });
+                                entry.1 = 0;
+                            }
+                        }
+                    }
+                    // Successful tool execution: append result text.
+                    AgentEvent::ToolExecutionEnd {
+                        ref result,
+                        is_error: false,
+                        ..
+                    } => {
+                        let output = summarize_tool_result(result);
+                        if !output.is_empty() {
+                            entry.0.push_str(&output);
+                            entry.1 += 1;
+                            if entry.1 >= BATCH_INTERVAL {
+                                let _ = ui_tx.send(AgentUiEvent::SubagentOutput {
+                                    agent_id: info.id.clone(),
+                                    content: std::mem::take(&mut entry.0),
+                                });
+                                entry.1 = 0;
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -133,6 +203,42 @@ impl CodingAgentSession {
             .agent_control()
             .await
             .set_event_forwarder(Some(forwarder))
+            .await;
+
+        // ── Tool execution output persistence ──────────────────────────────────
+        // Persist every tool call result to `tool_outputs.jsonl` in the session
+        // directory so results survive session resume and can be browsed.
+        let harness_for_tool_output = self.harness.clone();
+        let tool_sink = harness_for_tool_output.clone();
+        tool_sink
+            .on_tool_result({
+                move |event: &elph_agent::ToolResultEvent| {
+                    let harness = harness_for_tool_output.clone();
+                    let event = event.clone();
+                    Box::pin(async move {
+                        let meta = harness.session_metadata().await;
+                        let dir = std::path::Path::new(&meta.dir);
+                        let _ = elph_agent::session::backends::session_dir::tool_outputs::append_tool_output(
+                            dir,
+                            &event.tool_call_id,
+                            &event.tool_name,
+                            &event.input,
+                            &event
+                                .content
+                                .iter()
+                                .filter_map(|c| match c {
+                                    elph_agent::ToolResultContent::Text(t) => Some(t.text.as_str()),
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                            event.is_error,
+                        )
+                        .await;
+                        None::<elph_agent::ToolResultPatch>
+                    })
+                }
+            })
             .await;
 
         Ok(())

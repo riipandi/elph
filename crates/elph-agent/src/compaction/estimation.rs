@@ -122,7 +122,11 @@ pub fn should_compact(context_tokens: u64, context_window: u64, settings: Compac
     if !settings.enabled {
         return false;
     }
-    context_tokens > context_window.saturating_sub(settings.reserve_tokens)
+    let threshold = match settings.threshold_pct {
+        Some(pct) => context_window * (pct as u64) / 100,
+        None => context_window.saturating_sub(settings.reserve_tokens),
+    };
+    context_tokens > threshold
 }
 
 // Image tokens estimated separately — not subject to the char-based heuristic.

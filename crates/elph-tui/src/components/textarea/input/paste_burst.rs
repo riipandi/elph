@@ -102,6 +102,13 @@ pub(crate) fn handle_raw_burst_key(key: RawBurstKey<'_>) -> Option<TextareaInput
     }
 
     if !key.burst.active {
+        // Don't start a burst when the cursor is mid-buffer — the burst
+        // append model (anchor + splice) clobbers characters after the caret.
+        // Let these keystrokes fall through to insert_char which does a
+        // proper splice insert at the live cursor position.
+        if key.state.cursor < key.state.text.len() {
+            return None;
+        }
         paste_burst_begin_with_rewind(key.burst, &key.state.text, key.state.cursor);
     }
     if paste_burst_append_key(key.burst, key.code, key.kind, key.modifiers, true) {

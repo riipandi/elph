@@ -2,13 +2,14 @@
 
 use std::path::{Path, PathBuf};
 
-use anyhow::bail;
-use anyhow::{Context, Result};
-use turso::{Builder, Connection};
+use anyhow::{Context, Result, bail};
+use turso::Connection;
+
+use crate::datastore::with_conn;
 
 use super::types::{Goal, GoalStatus};
 
-const GOAL_COLUMNS: &str = "id, goal_id, session_id, objective, completion_criterion, status,
+const GOAL_COLUMNS: &str = "id, session_id, objective, completion_criterion, status,
     turns_used, tokens_used, wall_clock_ms, wall_clock_budget_ms,
     turn_budget, token_budget, created_at, completed_at";
 
@@ -28,61 +29,69 @@ impl GoalStore {
         &self.db_path
     }
 
-    async fn connection(&self) -> Result<Connection> {
-        let db = Builder::new_local(self.db_path.to_string_lossy().as_ref())
-            .build()
+    async fn with_conn<T, F, Fut>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(Connection) -> Fut,
+        Fut: std::future::Future<Output = Result<T>>,
+    {
+        with_conn(&self.db_path, f)
             .await
-            .with_context(|| format!("open goal database {}", self.db_path.display()))?;
-        db.connect().context("connect goal database")
+            .with_context(|| format!("open goal database {}", self.db_path.display()))
     }
 
     pub async fn get_active_goal(&self, session_id: &str) -> Result<Option<Goal>> {
-        let conn = self.connection().await?;
-        let mut rows = conn
-            .query(
-                &format!(
-                    "SELECT {GOAL_COLUMNS} FROM goals
-                     WHERE session_id = ? AND status = 'active'
-                     ORDER BY id DESC LIMIT 1"
-                ),
-                turso::params![session_id],
-            )
-            .await?;
-        if let Some(row) = rows.next().await? {
-            return Ok(Some(row_to_goal(&row)?));
-        }
-        Ok(None)
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    &format!(
+                        "SELECT {GOAL_COLUMNS} FROM goals
+                         WHERE session_id = ? AND status = 'active'
+                         ORDER BY id DESC LIMIT 1"
+                    ),
+                    turso::params![session_id],
+                )
+                .await?;
+            if let Some(row) = rows.next().await? {
+                return Ok(Some(row_to_goal(&row)?));
+            }
+            Ok(None)
+        })
+        .await
     }
 
     pub async fn get_latest_goal(&self, session_id: &str) -> Result<Option<Goal>> {
-        let conn = self.connection().await?;
-        let mut rows = conn
-            .query(
-                &format!(
-                    "SELECT {GOAL_COLUMNS} FROM goals
-                     WHERE session_id = ?
-                     ORDER BY id DESC LIMIT 1"
-                ),
-                turso::params![session_id],
-            )
-            .await?;
-        if let Some(row) = rows.next().await? {
-            return Ok(Some(row_to_goal(&row)?));
-        }
-        Ok(None)
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    &format!(
+                        "SELECT {GOAL_COLUMNS} FROM goals
+                         WHERE session_id = ?
+                         ORDER BY id DESC LIMIT 1"
+                    ),
+                    turso::params![session_id],
+                )
+                .await?;
+            if let Some(row) = rows.next().await? {
+                return Ok(Some(row_to_goal(&row)?));
+            }
+            Ok(None)
+        })
+        .await
     }
 
     pub async fn has_unfinished_goal(&self, session_id: &str) -> Result<bool> {
-        let conn = self.connection().await?;
-        let mut rows = conn
-            .query(
-                "SELECT 1 FROM goals
-                 WHERE session_id = ? AND status NOT IN ('complete')
-                 ORDER BY id DESC LIMIT 1",
-                turso::params![session_id],
-            )
-            .await?;
-        Ok(rows.next().await?.is_some())
+        self.with_conn(|conn| async move {
+            let mut rows = conn
+                .query(
+                    "SELECT 1 FROM goals
+                     WHERE session_id = ? AND status NOT IN ('complete')
+                     ORDER BY id DESC LIMIT 1",
+                    turso::params![session_id],
+                )
+                .await?;
+            Ok(rows.next().await?.is_some())
+        })
+        .await
     }
 
     pub async fn create_goal(
@@ -104,23 +113,26 @@ impl GoalStore {
             bail!("budgets must be non-negative");
         }
 
-        let goal_id = crate::session::id::create_kalid();
-        let conn = self.connection().await?;
-        conn.execute(
-            "INSERT INTO goals (
-                goal_id, session_id, objective, completion_criterion, status,
-                token_budget, turn_budget, wall_clock_budget_ms
-             ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
-            turso::params![
-                goal_id.as_str(),
-                session_id,
-                objective.trim(),
-                completion_criterion,
-                token_budget,
-                turn_budget,
-                wall_clock_budget_ms,
-            ],
-        )
+        let goal_id = crate::session::id::create_goal_id();
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "INSERT INTO goals (
+                    id, session_id, objective, completion_criterion, status,
+                    token_budget, turn_budget, wall_clock_budget_ms
+                 ) VALUES (?, ?, ?, ?, 'active', ?, ?, ?)",
+                turso::params![
+                    goal_id.as_str(),
+                    session_id,
+                    objective.trim(),
+                    completion_criterion,
+                    token_budget,
+                    turn_budget,
+                    wall_clock_budget_ms,
+                ],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         self.get_active_goal(session_id)
@@ -139,11 +151,14 @@ impl GoalStore {
             None
         };
 
-        let conn = self.connection().await?;
-        conn.execute(
-            "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
-            turso::params![status.as_str(), completed_at, goal.id],
-        )
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
+                turso::params![status.as_str(), completed_at, goal.id.as_str()],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         self.get_latest_goal(session_id)
@@ -166,11 +181,14 @@ impl GoalStore {
             None
         };
 
-        let conn = self.connection().await?;
-        conn.execute(
-            "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
-            turso::params![status.as_str(), completed_at, goal.id],
-        )
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE goals SET status = ?, completed_at = ? WHERE id = ?",
+                turso::params![status.as_str(), completed_at, goal.id.as_str()],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         self.get_latest_goal(session_id)
@@ -193,11 +211,14 @@ impl GoalStore {
             bail!("another active goal exists");
         }
 
-        let conn = self.connection().await?;
-        conn.execute(
-            "UPDATE goals SET status = 'active', completed_at = NULL WHERE id = ?",
-            turso::params![goal.id],
-        )
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE goals SET status = 'active', completed_at = NULL WHERE id = ?",
+                turso::params![goal.id.as_str()],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         self.get_active_goal(session_id)
@@ -206,10 +227,12 @@ impl GoalStore {
     }
 
     pub async fn clear_goal(&self, session_id: &str) -> Result<()> {
-        let conn = self.connection().await?;
-        conn.execute("DELETE FROM goals WHERE session_id = ?", turso::params![session_id])
-            .await?;
-        Ok(())
+        self.with_conn(|conn| async move {
+            conn.execute("DELETE FROM goals WHERE session_id = ?", turso::params![session_id])
+                .await?;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn replace_goal(
@@ -255,14 +278,17 @@ impl GoalStore {
             bail!("budgets must be non-negative");
         }
 
-        let conn = self.connection().await?;
-        conn.execute(
-            "UPDATE goals
-             SET token_budget = ?, turn_budget = ?, wall_clock_budget_ms = ?,
-                 status = CASE WHEN status = 'budget_limited' THEN 'active' ELSE status END
-             WHERE id = ?",
-            turso::params![token_budget, turn_budget, wall_clock_budget_ms, goal.id],
-        )
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE goals
+                 SET token_budget = ?, turn_budget = ?, wall_clock_budget_ms = ?,
+                     status = CASE WHEN status = 'budget_limited' THEN 'active' ELSE status END
+                 WHERE id = ?",
+                turso::params![token_budget, turn_budget, wall_clock_budget_ms, goal.id.as_str()],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         if let Some(goal) = self.get_active_goal(session_id).await? {
@@ -302,21 +328,25 @@ impl GoalStore {
             None
         };
 
-        let conn = self.connection().await?;
-        conn.execute(
-            "UPDATE goals
-             SET tokens_used = ?, turns_used = ?, wall_clock_ms = ?,
-                 status = ?, completed_at = COALESCE(?, completed_at)
-             WHERE id = ?",
-            turso::params![
-                new_tokens,
-                new_turns,
-                new_wall,
-                new_status.as_str(),
-                completed_at,
-                goal.id,
-            ],
-        )
+        let id = goal.id.clone();
+        self.with_conn(|conn| async move {
+            conn.execute(
+                "UPDATE goals
+                 SET tokens_used = ?, turns_used = ?, wall_clock_ms = ?,
+                     status = ?, completed_at = COALESCE(?, completed_at)
+                 WHERE id = ?",
+                turso::params![
+                    new_tokens,
+                    new_turns,
+                    new_wall,
+                    new_status.as_str(),
+                    completed_at,
+                    id.as_str(),
+                ],
+            )
+            .await?;
+            Ok(())
+        })
         .await?;
 
         self.get_latest_goal(session_id).await
@@ -324,22 +354,21 @@ impl GoalStore {
 }
 
 fn row_to_goal(row: &turso::Row) -> Result<Goal> {
-    let status_str: String = row.get(5)?;
+    let status_str: String = row.get(4)?;
     let status = GoalStatus::parse(&status_str).context("invalid goal status in database")?;
     Ok(Goal {
         id: row.get(0)?,
-        goal_id: row.get(1)?,
-        session_id: row.get(2)?,
-        objective: row.get(3)?,
-        completion_criterion: row.get(4)?,
+        session_id: row.get(1)?,
+        objective: row.get(2)?,
+        completion_criterion: row.get(3)?,
         status,
-        turns_used: row.get(6)?,
-        tokens_used: row.get(7)?,
-        wall_clock_ms: row.get(8)?,
-        wall_clock_budget_ms: row.get(9)?,
-        turn_budget: row.get(10)?,
-        token_budget: row.get(11)?,
-        created_at: row.get(12)?,
-        completed_at: row.get(13)?,
+        turns_used: row.get(5)?,
+        tokens_used: row.get(6)?,
+        wall_clock_ms: row.get(7)?,
+        wall_clock_budget_ms: row.get(8)?,
+        turn_budget: row.get(9)?,
+        token_budget: row.get(10)?,
+        created_at: row.get(11)?,
+        completed_at: row.get(12)?,
     })
 }

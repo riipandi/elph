@@ -40,6 +40,7 @@ syntect.workspace = true
 textwrap.workspace = true
 tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "signal", "sync", "time"] }
 two-face.workspace = true
+unicode-linebreak.workspace = true
 unicode-segmentation.workspace = true
 unicode-width.workspace = true
 url.workspace = true

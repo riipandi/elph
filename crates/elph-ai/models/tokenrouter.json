@@ -1,0 +1,1294 @@
+{
+    "MiniMax-M3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 512000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "MiniMax-M3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "MiniMax M3",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "claude-haiku-4-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "claude-haiku-4-5",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Claude Haiku 4.5",
+        "provider": "tokenrouter",
+        "reasoning": false
+    },
+    "claude-opus-4-8-m-aws": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "claude-opus-4-8-m-aws",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Claude Opus 4.8 AWS",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "deepseek/deepseek-v3.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek/deepseek-v3.2",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V3.2",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "deepseek/deepseek-v4-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek/deepseek-v4-flash",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V4 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "deepseek/deepseek-v4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "deepseek/deepseek-v4-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V4 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "ex/gpt-5.4": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "ex/gpt-5.4",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5.4 EX",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2-her": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2-her",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2 HER",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2.1",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2.1",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2.1-highspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2.1-highspeed",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2.1 Highspeed",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2.5",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 196608,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2.7",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2.7",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "minimax/minimax-m2.7-highspeed": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "minimax/minimax-m2.7-highspeed",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiniMax M2.7 Highspeed",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "miromind/mirothinker-1-7-deepresearch": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "miromind/mirothinker-1-7-deepresearch",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Mirothinker Deep Research",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "miromind/mirothinker-1-7-deepresearch-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "miromind/mirothinker-1-7-deepresearch-mini",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Mirothinker Deep Research Mini",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "mistralai/devstral-2512": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "mistralai/devstral-2512",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Devstral 2",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "mistralai/mistral-medium-3-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "mistralai/mistral-medium-3-5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Mistral Medium 3.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "mistralai/mistral-small-2603": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "mistralai/mistral-small-2603",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Mistral Small 4",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/kimi-k2.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k2.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/kimi-k2.6",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.6",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k2.7-code": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/kimi-k2.7-code",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Kimi K2.7 Code",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/kimi-k3",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Kimi K3",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "moonshotai/kimi-k3-free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "moonshotai/kimi-k3-free",
+        "input": ["text", "image", "video"],
+        "maxTokens": 65536,
+        "name": "Kimi K3 Free",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3 Nano Omni (Free)",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "nvidia/nemotron-3-super-120b-a12b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "nvidia/nemotron-3-super-120b-a12b",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Nemotron 3 Super 120B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-4o-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-4o-mini",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 4o Mini",
+        "provider": "tokenrouter",
+        "reasoning": false
+    },
+    "openai/gpt-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5-mini",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5 Mini",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.2",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5.2",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.4": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.4",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.4",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.4-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.4-mini",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5.4 Mini",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.4-nano": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 400000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.4-nano",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GPT 5.4 Nano",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.4-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.4-pro",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.4 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.5-pro",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.5 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.6-luna": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.6-luna",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.6 Luna",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.6-sol": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.6-sol",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.6 Sol",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-5.6-terra": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1050000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-5.6-terra",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GPT 5.6 Terra",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "openai/gpt-oss-120b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "openai/gpt-oss-120b",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT-OSS 120B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3-coder-next": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3-coder-next",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3 Coder Next",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-122b-a10b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-122b-a10b",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 122B A10B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-35b-a3b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-35b-a3b",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 35B A3B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-397b-a17b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-397b-a17b",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 397B A17B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-9b": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-9b",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 9B",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-flash",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.5-plus-02-15": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.5-plus-02-15",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.5 Plus",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.6-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.6-plus",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.6 Plus",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.7-max": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.7-max",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.7 Max",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen/qwen3.7-plus": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen/qwen3.7-plus",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.7 Plus",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "qwen3.6-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "qwen3.6-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Qwen 3.6 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "sakana/fugu-ultra": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "sakana/fugu-ultra",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Fugu Ultra",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "seed-2-0-code-preview-260328": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "seed-2-0-code-preview-260328",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Seed 2.0 Code Preview",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "seed-2-0-lite-260428": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "seed-2-0-lite-260428",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Seed 2.0 Lite",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "seed-2-0-mini-260428": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "seed-2-0-mini-260428",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Seed 2.0 Mini",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "seed-2-0-pro-260328": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "seed-2-0-pro-260328",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Seed 2.0 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "stepfun/step-3.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "stepfun/step-3.5-flash",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Step 3.5 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "stepfun/step-3.7-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "stepfun/step-3.7-flash",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Step 3.7 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "tencent/hy3-preview": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "tencent/hy3-preview",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Hy3 Preview",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "x-ai/grok-4.1-fast": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "x-ai/grok-4.1-fast",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "Grok 4.1 Fast",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "x-ai/grok-4.20-beta": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "x-ai/grok-4.20-beta",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Grok 4.20 Beta",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "x-ai/grok-4.3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "x-ai/grok-4.3",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Grok 4.3",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "x-ai/grok-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 500000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "x-ai/grok-4.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Grok 4.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "x-ai/grok-build-0.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 256000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "x-ai/grok-build-0.1",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "Grok Build 0.1",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "xiaomi/mimo-v2-flash",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiMo V2 Flash",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2-omni": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "xiaomi/mimo-v2-omni",
+        "input": ["text", "image", "audio"],
+        "maxTokens": 65536,
+        "name": "MiMo V2 Omni",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "xiaomi/mimo-v2-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiMo V2 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "xiaomi/mimo-v2.5",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "MiMo V2.5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "xiaomi/mimo-v2.5-pro": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "xiaomi/mimo-v2.5-pro",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "MiMo V2.5 Pro",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-4.5-air": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-4.5-air",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 4.5 Air",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-4.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-4.6",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 4.6",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-4.6v": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-4.6v",
+        "input": ["text", "image"],
+        "maxTokens": 65536,
+        "name": "GLM 4.6V",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-4.7": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-4.7",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 4.7",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-5",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 5",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-5-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-5-turbo",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 5 Turbo",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-5.1": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-5.1",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 5.1",
+        "provider": "tokenrouter",
+        "reasoning": true
+    },
+    "z-ai/glm-5.2": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.tokenrouter.com/v1",
+        "contextWindow": 976000,
+        "cost": {
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "input": 0,
+            "output": 0
+        },
+        "id": "z-ai/glm-5.2",
+        "input": ["text"],
+        "maxTokens": 65536,
+        "name": "GLM 5.2",
+        "provider": "tokenrouter",
+        "reasoning": true
+    }
+}

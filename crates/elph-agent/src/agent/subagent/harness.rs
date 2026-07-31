@@ -95,6 +95,7 @@ pub async fn spawn_subagent_harness(
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        compaction_settings: crate::agent::harness::types::DEFAULT_COMPACTION_SETTINGS,
         goal_runtime: None,
         subagent_bootstrap: Some(bootstrap.clone()),
         shared_registry: Some(shared_registry),

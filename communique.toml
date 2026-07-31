@@ -1,0 +1,23 @@
+# Extra instructions appended to the system prompt.
+# Use this to customize tone, style, or project-specific conventions.
+system_extra = """
+Write in a direct, practical tone.
+Avoid marketing language.
+"""
+
+# Extra context included in every user prompt.
+# Useful for project descriptions or recurring context.
+context = """
+This is a Rust CLI used by platform engineers.
+Call out breaking changes and migration steps clearly.
+"""
+
+[defaults]
+model = "deepseek-v4-flash"
+max_tokens = 16384
+repo = "riipandi/elph"
+provider = "openai"
+base_url = "https://opencode.ai/zen/go/v1"
+emoji = true
+verify_links = true
+match_style = true

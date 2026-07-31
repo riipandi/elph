@@ -8,7 +8,6 @@ use std::time::Duration;
 use anyhow::bail;
 use anyhow::{Context, Result};
 use http::{HeaderName, HeaderValue};
-use rmcp::ServiceExt;
 use rmcp::model::CallToolRequestParams;
 use rmcp::model::CallToolResult;
 use rmcp::model::GetPromptRequestParams;
@@ -18,6 +17,34 @@ use rmcp::model::Resource;
 use rmcp::model::ResourceContents;
 use rmcp::model::Tool;
 use rmcp::service::RunningService;
+use rmcp::{ClientLifecycleMode, ClientServiceExt};
+
+use super::config::McpLifecycleMode;
+
+/// Resolve the rmcp `ClientLifecycleMode` from elph's config-level mode.
+///
+/// `Auto` → probe `server/discover`, fall back to `initialize` on legacy.
+/// `Legacy` → always use the `initialize` / `notifications/initialized` handshake.
+/// `Discover` → use `server/discover` exclusively.
+fn resolve_lifecycle(elph_mode: McpLifecycleMode) -> ClientLifecycleMode {
+    match elph_mode {
+        McpLifecycleMode::Auto => ClientLifecycleMode::Auto {
+            preferred_versions: vec![
+                rmcp::model::ProtocolVersion::V_2026_07_28,
+                rmcp::model::ProtocolVersion::V_2025_11_25,
+            ],
+            legacy_version: Some(rmcp::model::ProtocolVersion::V_2025_11_25),
+        },
+        McpLifecycleMode::Legacy => ClientLifecycleMode::Initialize,
+        McpLifecycleMode::Discover => ClientLifecycleMode::Discover {
+            preferred_versions: vec![
+                rmcp::model::ProtocolVersion::V_2026_07_28,
+                rmcp::model::ProtocolVersion::V_2025_11_25,
+            ],
+        },
+    }
+}
+
 use rmcp::transport::auth::AuthClient;
 use rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig;
 use rmcp::transport::{ConfigureCommandExt, StreamableHttpClientTransport, TokioChildProcess};
@@ -86,18 +113,42 @@ pub async fn connect(config: &McpServerConfig) -> Result<McpClient> {
 
 #[cfg_attr(feature = "tracing", fastrace::trace(name = "elph.mcp.connect"))]
 pub async fn connect_with_context(config: &McpServerConfig, ctx: &McpConnectContext) -> Result<McpClient> {
-    match config {
-        McpServerConfig::Stdio(cfg) => connect_stdio_with_context(cfg, ctx).await,
-        McpServerConfig::Http(cfg) => connect_http_with_context(cfg, ctx).await,
-        McpServerConfig::Sse(cfg) => connect_sse_with_context(cfg, ctx).await,
+    let lifecycle = resolve_lifecycle(config.lifecycle_mode());
+    let result = match config {
+        McpServerConfig::Stdio(cfg) => connect_stdio_with_context(cfg, ctx, lifecycle.clone()).await,
+        McpServerConfig::Http(cfg) => connect_http_with_context(cfg, ctx, lifecycle.clone()).await,
+        McpServerConfig::Sse(cfg) => connect_sse_with_context(cfg, ctx, lifecycle.clone()).await,
+    };
+
+    // Auto mode resilience: some servers (e.g. DeepWiki) reject `server/discover`
+    // with non-standard error codes instead of `METHOD_NOT_FOUND`. Fall back to
+    // the legacy handshake when Auto mode fails.
+    if matches!(lifecycle, ClientLifecycleMode::Auto { .. })
+        && let Err(ref err) = result
+    {
+        log::warn!(
+            "MCP Auto mode failed for \"{}\", falling back to Initialize: {err}",
+            ctx.server_name
+        );
+        return match config {
+            McpServerConfig::Stdio(cfg) => connect_stdio_with_context(cfg, ctx, ClientLifecycleMode::Initialize).await,
+            McpServerConfig::Http(cfg) => connect_http_with_context(cfg, ctx, ClientLifecycleMode::Initialize).await,
+            McpServerConfig::Sse(cfg) => connect_sse_with_context(cfg, ctx, ClientLifecycleMode::Initialize).await,
+        };
     }
+
+    result
 }
 
 pub async fn connect_stdio(config: &McpStdioConfig) -> Result<McpClient> {
-    connect_stdio_with_context(config, &McpConnectContext::default()).await
+    connect_stdio_with_context(config, &McpConnectContext::default(), ClientLifecycleMode::Initialize).await
 }
 
-pub async fn connect_stdio_with_context(config: &McpStdioConfig, ctx: &McpConnectContext) -> Result<McpClient> {
+pub async fn connect_stdio_with_context(
+    config: &McpStdioConfig,
+    ctx: &McpConnectContext,
+    lifecycle: ClientLifecycleMode,
+) -> Result<McpClient> {
     let mut command = Command::new(&config.command);
     command.args(&config.args);
     command.envs(config.env.iter());
@@ -113,15 +164,22 @@ pub async fn connect_stdio_with_context(config: &McpStdioConfig, ctx: &McpConnec
     log::debug!("spawning MCP stdio server: command={} args={:?}", config.command, config.args);
     let transport = TokioChildProcess::new(command.configure(|_| {})).context("spawn MCP stdio transport")?;
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
-    let client = handler.serve(transport).await.context("initialize MCP stdio client")?;
+    let client = handler
+        .serve_with_lifecycle(transport, lifecycle)
+        .await
+        .context("initialize MCP stdio client")?;
     Ok(client)
 }
 
 pub async fn connect_http(config: &McpHttpConfig) -> Result<McpClient> {
-    connect_http_with_context(config, &McpConnectContext::default()).await
+    connect_http_with_context(config, &McpConnectContext::default(), ClientLifecycleMode::Initialize).await
 }
 
-pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectContext) -> Result<McpClient> {
+pub async fn connect_http_with_context(
+    config: &McpHttpConfig,
+    ctx: &McpConnectContext,
+    lifecycle: ClientLifecycleMode,
+) -> Result<McpClient> {
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
     let mut transport_config = StreamableHttpClientTransportConfig::with_uri(config.url.clone());
 
@@ -171,7 +229,7 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
             let auth_client = AuthClient::new(http, manager);
             let transport = StreamableHttpClientTransport::with_client(auth_client, transport_config);
             let client = handler
-                .serve(transport)
+                .serve_with_lifecycle(transport, lifecycle)
                 .await
                 .context("initialize MCP HTTP OAuth client")?;
             Ok(client)
@@ -180,18 +238,28 @@ pub async fn connect_http_with_context(config: &McpHttpConfig, ctx: &McpConnectC
             log::debug!("MCP HTTP using static bearer: source={source:?}");
             transport_config = transport_config.auth_header(token);
             let transport = StreamableHttpClientTransport::from_config(transport_config);
-            let client = handler.serve(transport).await.context("initialize MCP HTTP client")?;
+            let client = handler
+                .serve_with_lifecycle(transport, lifecycle.clone())
+                .await
+                .context("initialize MCP HTTP client")?;
             Ok(client)
         }
         ResolvedMcpAuth::None => {
             let transport = StreamableHttpClientTransport::from_config(transport_config);
-            let client = handler.serve(transport).await.context("initialize MCP HTTP client")?;
+            let client = handler
+                .serve_with_lifecycle(transport, lifecycle)
+                .await
+                .context("initialize MCP HTTP client")?;
             Ok(client)
         }
     }
 }
 
-pub async fn connect_sse_with_context(config: &McpHttpConfig, ctx: &McpConnectContext) -> Result<McpClient> {
+pub async fn connect_sse_with_context(
+    config: &McpHttpConfig,
+    ctx: &McpConnectContext,
+    lifecycle: ClientLifecycleMode,
+) -> Result<McpClient> {
     log::debug!("connecting MCP SSE server: url={}", config.url);
 
     if config.oauth && ctx.auth_store_path.is_none() {
@@ -213,7 +281,10 @@ pub async fn connect_sse_with_context(config: &McpHttpConfig, ctx: &McpConnectCo
         .await
         .with_context(|| format!("connect SSE MCP at {}", config.url))?;
     let handler = McpClientService::new(&ctx.server_name, ctx.events.clone());
-    let client = handler.serve(transport).await.context("initialize MCP SSE client")?;
+    let client = handler
+        .serve_with_lifecycle(transport, lifecycle)
+        .await
+        .context("initialize MCP SSE client")?;
     Ok(client)
 }
 
@@ -358,6 +429,7 @@ pub fn parse_stdio_config(command: String, args: Vec<String>, env: BTreeMap<Stri
         cwd: None,
         timeout_ms: None,
         enable: true,
+        lifecycle: Default::default(),
         policy: None,
     }
 }

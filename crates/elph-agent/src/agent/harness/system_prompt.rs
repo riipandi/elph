@@ -10,9 +10,7 @@ pub fn format_skills_for_system_prompt(skills: &[Skill]) -> String {
     }
 
     let mut lines = vec![
-        "The following skills provide specialized instructions for specific tasks.".to_string(),
-        "Read the full skill file when the task matches its description.".to_string(),
-        "When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.".to_string(),
+        "Use a skill when the task matches its description. Read its full file first and resolve relative references from the skill directory.".to_string(),
         String::new(),
         "<available_skills>".to_string(),
     ];

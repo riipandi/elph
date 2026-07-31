@@ -131,6 +131,7 @@ macro_rules! define_catalog {
 
 define_catalog!(AMAZON_BEDROCK_MODELS, "amazon_bedrock.json");
 define_catalog!(ANT_LING_MODELS, "ant_ling.json");
+define_catalog!(BASETEN_MODELS, "baseten.json");
 define_catalog!(ANTHROPIC_MODELS, "anthropic.json");
 define_catalog!(AZURE_OPENAI_RESPONSES_MODELS, "azure_openai_responses.json");
 define_catalog!(CEREBRAS_MODELS, "cerebras.json");
@@ -153,6 +154,7 @@ define_catalog!(MOONSHOTAI_MODELS, "moonshotai.json");
 define_catalog!(MOONSHOTAI_CN_MODELS, "moonshotai_cn.json");
 define_catalog!(NEURALWATT_MODELS, "neuralwatt.json");
 define_catalog!(NVIDIA_MODELS, "nvidia.json");
+define_catalog!(OLLAMA_CLOUD_MODELS, "ollama_cloud.json");
 define_catalog!(OPENAI_MODELS, "openai.json");
 define_catalog!(OPENAI_CODEX_MODELS, "openai_codex.json");
 define_catalog!(OPENCODE_MODELS, "opencode.json");
@@ -163,6 +165,7 @@ define_catalog!(QWEN_TOKEN_PLAN_MODELS, "qwen_token_plan.json");
 define_catalog!(QWEN_TOKEN_PLAN_CN_MODELS, "qwen_token_plan_cn.json");
 define_catalog!(SUMOPOD_MODELS, "sumopod.json");
 define_catalog!(TOGETHER_MODELS, "together.json");
+define_catalog!(TOKENROUTER_MODELS, "tokenrouter.json");
 define_catalog!(VERCEL_AI_GATEWAY_MODELS, "vercel_ai_gateway.json");
 define_catalog!(XAI_MODELS, "xai.json");
 define_catalog!(XIAOMI_MODELS, "xiaomi.json");
@@ -178,6 +181,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("ant-ling", ANT_LING_MODELS.as_slice()),
         ("anthropic", ANTHROPIC_MODELS.as_slice()),
         ("azure-openai-responses", AZURE_OPENAI_RESPONSES_MODELS.as_slice()),
+        ("baseten", BASETEN_MODELS.as_slice()),
         ("cerebras", CEREBRAS_MODELS.as_slice()),
         ("cloudflare-ai-gateway", CLOUDFLARE_AI_GATEWAY_MODELS.as_slice()),
         ("cloudflare-workers-ai", CLOUDFLARE_WORKERS_AI_MODELS.as_slice()),
@@ -198,6 +202,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("moonshotai-cn", MOONSHOTAI_CN_MODELS.as_slice()),
         ("neuralwatt", NEURALWATT_MODELS.as_slice()),
         ("nvidia", NVIDIA_MODELS.as_slice()),
+        ("ollama-cloud", OLLAMA_CLOUD_MODELS.as_slice()),
         ("openai", OPENAI_MODELS.as_slice()),
         ("openai-codex", OPENAI_CODEX_MODELS.as_slice()),
         ("opencode", OPENCODE_MODELS.as_slice()),
@@ -208,6 +213,7 @@ pub fn all_builtin_models() -> HashMap<&'static str, &'static [Model]> {
         ("qwen-token-plan-cn", QWEN_TOKEN_PLAN_CN_MODELS.as_slice()),
         ("sumopod", SUMOPOD_MODELS.as_slice()),
         ("together", TOGETHER_MODELS.as_slice()),
+        ("tokenrouter", TOKENROUTER_MODELS.as_slice()),
         ("vercel-ai-gateway", VERCEL_AI_GATEWAY_MODELS.as_slice()),
         ("xai", XAI_MODELS.as_slice()),
         ("xiaomi", XIAOMI_MODELS.as_slice()),

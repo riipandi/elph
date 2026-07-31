@@ -476,6 +476,13 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["AZURE_OPENAI_API_KEY"], "Azure OpenAI API key")
         ),
         simple_provider!(
+            "baseten",
+            "Baseten",
+            BASETEN_MODELS,
+            openai_completions_api,
+            (vec!["BASETEN_API_KEY"], "Baseten API key")
+        ),
+        simple_provider!(
             "cerebras",
             "Cerebras",
             CEREBRAS_MODELS,
@@ -518,6 +525,13 @@ pub fn builtin_providers() -> Vec<Provider> {
         mistral_provider(),
         neuralwatt_provider(),
         nvidia_provider(),
+        simple_provider!(
+            "ollama-cloud",
+            "Ollama Cloud",
+            OLLAMA_CLOUD_MODELS,
+            openai_completions_api,
+            (vec!["OLLAMA_API_KEY"], "Ollama API key")
+        ),
         hyper_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
@@ -529,9 +543,86 @@ pub fn builtin_providers() -> Vec<Provider> {
             (vec!["KILO_API_KEY"], "Kilo API key")
         ),
         kimi_coding_provider(),
+        simple_provider!(
+            "minimax",
+            "MiniMax",
+            MINIMAX_MODELS,
+            openai_completions_api,
+            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
+        ),
+        simple_provider!(
+            "minimax-cn",
+            "MiniMax (China)",
+            MINIMAX_CN_MODELS,
+            openai_completions_api,
+            (vec!["MINIMAX_API_KEY"], "MiniMax API key")
+        ),
+        simple_provider!(
+            "moonshotai",
+            "Moonshot AI",
+            MOONSHOTAI_MODELS,
+            openai_completions_api,
+            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
+        ),
+        simple_provider!(
+            "moonshotai-cn",
+            "Moonshot AI (China)",
+            MOONSHOTAI_CN_MODELS,
+            openai_completions_api,
+            (vec!["MOONSHOT_API_KEY"], "Moonshot API key")
+        ),
         opencode_provider(),
         opencode_go_provider(),
+        simple_provider!(
+            "opengateway",
+            "OpenGateway",
+            OPENGATEWAY_MODELS,
+            openai_completions_api,
+            (vec!["OGW_API_KEY"], "OpenGateway API key")
+        ),
+        simple_provider!(
+            "openrouter",
+            "OpenRouter",
+            OPENROUTER_MODELS,
+            openai_completions_api,
+            (vec!["OPENROUTER_API_KEY"], "OpenRouter API key")
+        ),
+        simple_provider!(
+            "qwen-token-plan",
+            "Qwen Token Plan",
+            QWEN_TOKEN_PLAN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_API_KEY"], "Qwen Token Plan API key")
+        ),
+        simple_provider!(
+            "qwen-token-plan-cn",
+            "Qwen Token Plan (China)",
+            QWEN_TOKEN_PLAN_CN_MODELS,
+            openai_completions_api,
+            (vec!["QWEN_TOKEN_PLAN_CN_API_KEY"], "Qwen Token Plan CN API key")
+        ),
         sumopod_provider(),
+        simple_provider!(
+            "tokenrouter",
+            "TokenRouter",
+            TOKENROUTER_MODELS,
+            openai_completions_api,
+            (vec!["TOKENROUTER_API_KEY"], "TokenRouter API key")
+        ),
+        simple_provider!(
+            "together",
+            "Together AI",
+            TOGETHER_MODELS,
+            openai_completions_api,
+            (vec!["TOGETHER_API_KEY"], "Together API key")
+        ),
+        simple_provider!(
+            "vercel-ai-gateway",
+            "Vercel AI Gateway",
+            VERCEL_AI_GATEWAY_MODELS,
+            openai_completions_api,
+            (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
+        ),
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",

@@ -156,6 +156,43 @@ impl System {
         self.particles.extend(new_particles);
     }
 
+    /// Return only visible particles with their discrete screen positions.
+    /// This is a sparse representation — no full grid allocation.
+    pub fn visible_particles(&self) -> Vec<VisibleParticle> {
+        let mut out = Vec::with_capacity(self.particles.len());
+        for particle in &self.particles {
+            if !self.visible(particle) {
+                continue;
+            }
+            let pos = particle.physics.position();
+            let y = pos.y as i32;
+            let x = pos.x as i32;
+            out.push(VisibleParticle {
+                ch: particle.ch.clone(),
+                color: particle.color,
+                x,
+                y,
+            });
+
+            // Append tail cells for shooting fireworks.
+            if particle.shooting {
+                let tail_length = (-particle.physics.velocity().y) as i32;
+                for offset in 1..tail_length {
+                    let tail_y = y + offset;
+                    if tail_y > 0 && tail_y < self.frame.height - 1 {
+                        out.push(VisibleParticle {
+                            ch: particle.tail_char.clone(),
+                            color: particle.color,
+                            x,
+                            y: tail_y,
+                        });
+                    }
+                }
+            }
+        }
+        out
+    }
+
     pub fn visible(&self, particle: &Particle) -> bool {
         let pos = particle.physics.position();
         let x = pos.x as i32;
@@ -164,56 +201,11 @@ impl System {
     }
 }
 
+/// A single visible particle at a discrete screen position.
 #[derive(Debug, Clone)]
-pub struct RenderedCell {
+pub struct VisibleParticle {
     pub ch: String,
     pub color: Color,
-}
-
-impl System {
-    pub fn render_plane(&self) -> Vec<Vec<RenderedCell>> {
-        let width = self.frame.width.max(0) as usize;
-        let height = self.frame.height.max(0) as usize;
-        let mut plane = vec![
-            vec![
-                RenderedCell {
-                    ch: " ".to_string(),
-                    color: Color::Reset,
-                };
-                width
-            ];
-            height
-        ];
-
-        for particle in &self.particles {
-            if !self.visible(particle) {
-                continue;
-            }
-            let pos = particle.physics.position();
-            let y = pos.y as usize;
-            let x = pos.x as usize;
-            if y >= plane.len() || x >= plane[y].len() {
-                continue;
-            }
-            plane[y][x] = RenderedCell {
-                ch: particle.ch.clone(),
-                color: particle.color,
-            };
-
-            if particle.shooting {
-                let tail_length = (-particle.physics.velocity().y) as i32;
-                for offset in 1..tail_length {
-                    let tail_y = (pos.y as i32 + offset) as usize;
-                    if tail_y > 0 && tail_y < (self.frame.height - 1) as usize && tail_y < plane.len() {
-                        plane[tail_y][x] = RenderedCell {
-                            ch: particle.tail_char.clone(),
-                            color: particle.color,
-                        };
-                    }
-                }
-            }
-        }
-
-        plane
-    }
+    pub x: i32,
+    pub y: i32,
 }

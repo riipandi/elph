@@ -24,6 +24,7 @@ When a design is implemented, technical detail belongs in openwiki — not dupli
 | Configuration & paths   | [configuration.md](./configuration.md)                               |
 | TOON prompt encoding    | [agent-runtime.md](./agent-runtime.md#toon-prompt-encoding-optional) |
 | TUI & interaction       | [tui.md](./tui.md)                                                   |
+| Transcript panel        | [transcript.md](./transcript.md)                                     |
 | Slash commands          | [slash-commands.md](./slash-commands.md)                             |
 | Prompt templates        | [prompt-templates.md](./prompt-templates.md)                         |
 | CLI surface             | [cli.md](./cli.md)                                                   |

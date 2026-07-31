@@ -15,16 +15,13 @@
 //!
 //! ```json
 //! {
-//!   "ui": {
-//!     "theme": "auto",
-//!     "themes": { "dark": { "accent": "#6699ff" }, "light": {} },
-//!     "showThinking", "autoExpandThinking", "stickyScroll",
-//!     "footerTokenDisplay", "coloredStatusFooter", "filePicker"
-//!   },
-//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel" },
-//!   "models": { "scoped": ["provider/model_id", ...] },
-//!   "provider": { "maxRetries", "defaultTimeout" },
-//!   "memory": { "embedModel", "embedQuantized" }
+//!   "ui": { ... },
+//!   "session": { "providerId", "modelId", "agentMode", "thinkingLevel", "titleModel", "preferredChatLanguage" },
+//!   "models": { "scoped": [...] },
+//!   "provider": { ... },
+//!   "memory": { ... },
+//!   "notifications": { ... },
+//!   "compaction": { ... }
 //! }
 //! ```
 //!
@@ -83,6 +80,12 @@ pub struct Settings {
     /// Local embedding / floppy memory.
     #[serde(default)]
     pub memory: MemorySettings,
+    /// Desktop notification preferences.
+    #[serde(default)]
+    pub notifications: NotificationSettings,
+    /// Auto-compaction preferences.
+    #[serde(default)]
+    pub compaction: CompactionConfig,
 }
 
 /// TUI presentation preferences.
@@ -207,6 +210,11 @@ pub struct SessionSettings {
     /// When `"inherit"` (default), the live session model is used for the background title call.
     #[serde(default = "default_title_model")]
     pub title_model: String,
+    /// Preferred language for AI chat responses in the transcript.
+    ///
+    /// Code, comments, and documentation remain in English regardless of this setting.
+    #[serde(default = "default_preferred_chat_language")]
+    pub preferred_chat_language: String,
 }
 
 /// Model-catalog preferences.
@@ -260,6 +268,97 @@ impl Default for MemorySettings {
     }
 }
 
+/// Desktop notification preferences.
+///
+/// Controls which events trigger native OS notifications
+/// (macOS Notification Center, Linux D-Bus, Windows Toast).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationSettings {
+    /// Master switch — disable all desktop notifications.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Notify when the agent finishes a turn.
+    #[serde(default = "default_true")]
+    pub on_turn_complete: bool,
+    /// Notify when the agent requests tool permission.
+    #[serde(default = "default_true")]
+    pub on_tool_permission: bool,
+    /// Notify when the agent asks a question.
+    #[serde(default = "default_true")]
+    pub on_user_question: bool,
+    /// Notify on errors (agent / MCP / bootstrap failure).
+    #[serde(default = "default_true")]
+    pub on_error: bool,
+    /// Notify when a running turn is canceled.
+    #[serde(default = "default_false")]
+    pub on_turn_cancel: bool,
+    /// Notify when bootstrap / startup completes.
+    #[serde(default = "default_true")]
+    pub on_startup_ready: bool,
+    /// Minimum turn duration (seconds) before sending a turn-complete notification.
+    /// Prevents noise from quick turns.
+    #[serde(default = "default_min_turn_duration_secs")]
+    pub min_turn_duration_secs: f64,
+    /// Application name shown in the notification banner.
+    #[serde(default = "default_notification_app_name")]
+    pub app_name: String,
+}
+
+impl Default for NotificationSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            on_turn_complete: true,
+            on_tool_permission: true,
+            on_user_question: true,
+            on_error: true,
+            on_turn_cancel: false,
+            on_startup_ready: true,
+            min_turn_duration_secs: 5.0,
+            app_name: "Elph".to_string(),
+        }
+    }
+}
+
+/// Auto-compaction preferences.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactionConfig {
+    /// Master switch — enable automatic compaction after turns.
+    #[serde(default = "default_compaction_enabled")]
+    pub enabled: bool,
+    /// Context-window usage percentage that triggers compaction (1–100).
+    /// Compact when context tokens exceed `context_window * threshold_pct / 100`.
+    #[serde(default = "default_compaction_threshold_pct")]
+    pub threshold_pct: u8,
+    /// Number of recent tokens to keep after compaction.
+    #[serde(default = "default_compaction_keep_recent")]
+    pub keep_recent_tokens: u64,
+}
+
+impl Default for CompactionConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_compaction_enabled(),
+            threshold_pct: default_compaction_threshold_pct(),
+            keep_recent_tokens: default_compaction_keep_recent(),
+        }
+    }
+}
+
+impl CompactionConfig {
+    /// Convert to elph-agent's `CompactionSettings`.
+    pub fn to_agent_settings(&self) -> elph_agent::CompactionSettings {
+        elph_agent::CompactionSettings {
+            enabled: self.enabled,
+            reserve_tokens: elph_agent::HARNESS_DEFAULT_COMPACTION_SETTINGS.reserve_tokens,
+            threshold_pct: Some(self.threshold_pct.clamp(1, 100)),
+            keep_recent_tokens: self.keep_recent_tokens,
+        }
+    }
+}
+
 impl Settings {
     /// Built-in defaults written on first bootstrap (`Settings::ensure`).
     ///
@@ -274,10 +373,13 @@ impl Settings {
                 agent_mode: default_agent_mode(),
                 thinking_level: default_thinking_level(),
                 title_model: default_title_model(),
+                preferred_chat_language: default_preferred_chat_language(),
             },
             models: ModelsSettings::default(),
             provider: ProviderHttpSettings::default(),
             memory: MemorySettings::default(),
+            notifications: NotificationSettings::default(),
+            compaction: CompactionConfig::default(),
         }
     }
 
@@ -474,6 +576,10 @@ fn default_title_model() -> String {
     "inherit".to_string()
 }
 
+fn default_preferred_chat_language() -> String {
+    "english".to_string()
+}
+
 fn default_footer_token_display() -> String {
     "both".to_string()
 }
@@ -498,6 +604,26 @@ fn default_false() -> bool {
     false
 }
 
+fn default_min_turn_duration_secs() -> f64 {
+    5.0
+}
+
+fn default_notification_app_name() -> String {
+    "Elph".to_string()
+}
+
+fn default_compaction_enabled() -> bool {
+    true
+}
+
+fn default_compaction_threshold_pct() -> u8 {
+    80
+}
+
+fn default_compaction_keep_recent() -> u64 {
+    20_000
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -517,6 +643,7 @@ mod tests {
         assert!(decoded.session.provider_id.is_none());
         assert!(decoded.session.model_id.is_none());
         assert_eq!(decoded.session.title_model, "inherit");
+        assert_eq!(decoded.session.preferred_chat_language, "english");
         assert_eq!(decoded.provider.max_retries, 2);
         assert_eq!(decoded.provider.default_timeout, "120s");
         assert!(decoded.ui.show_thinking);

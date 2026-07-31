@@ -56,7 +56,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
             version: 4,
             name: "create_goals_table",
             up: "CREATE TABLE IF NOT EXISTS goals (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id TEXT PRIMARY KEY,
                     session_id TEXT NOT NULL,
                     objective TEXT NOT NULL,
                     completion_criterion TEXT,
@@ -89,12 +89,8 @@ pub fn metadata_migrations() -> &'static [Migration] {
                 CREATE INDEX IF NOT EXISTS idx_skill_cache_name ON skill_cache(skill_name);
                 CREATE INDEX IF NOT EXISTS idx_skill_cache_expires ON skill_cache(expires_at);",
         },
-        Migration {
-            version: 6,
-            name: "add_goal_id_column",
-            up: "ALTER TABLE goals ADD COLUMN goal_id TEXT;
-                CREATE INDEX IF NOT EXISTS idx_goals_goal_id ON goals(goal_id);",
-        },
+        // v6 (add_goal_id_column) intentionally deleted — goal_id is no longer a separate column.
+        // The prefixed Kalid `goal_<16>` now serves as the primary key `id`.
         Migration {
             version: 7,
             name: "create_agent_spawn_edges_table",
@@ -118,6 +114,7 @@ pub fn metadata_migrations() -> &'static [Migration] {
 /// Composed from floppy schema migrations (ported from
 /// [memelord](https://github.com/glommer/memelord)); append Elph-specific entries with
 /// `version > migrations::LAST_VERSION`.
+#[allow(dead_code)]
 pub fn memory_migrations() -> &'static [Migration] {
     const MIGRATIONS: &[Migration] = &[
         Migration {

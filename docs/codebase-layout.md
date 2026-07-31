@@ -142,4 +142,5 @@ Each crate's integration tests exercise that crate's public API. `elph/tests/` c
 - [extensions.md](./extensions.md)
 - [agent-runtime.md](./agent-runtime.md)
 - [cli.md](./cli.md)
+- [transcript.md](./transcript.md) — Transcript panel architecture, performance, and disk caching
 ```

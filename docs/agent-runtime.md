@@ -48,11 +48,14 @@ User message
 
 Assembly order:
 
-1. System template + active tool list
-2. Project context — nearest `AGENTS.md`
-3. Registered skills — metadata in prompt; body read by agent when relevant
-4. Current date, working directory, session mode
-5. Guardrails and thinking instructions
+1. Elph persona and session context — working directory, date, OS, and shell
+2. Registered skill metadata — the agent reads a matching skill body before acting
+3. Coding instructions — rule precedence, safety, tool routing, execution, output, and language preference
+4. Mode-specific constraints — Build, Brave, Plan, or Ask
+5. Project context — nearest `AGENTS.md`, appended after generic instructions so scoped repository rules remain prominent
+6. Optional memory context
+
+The active tool list is rendered dynamically on every turn. Tool guidance names only tools exposed in that mode, prefers dedicated search/edit/file tools over shell workarounds, parallelizes independent calls, and reserves `list_available_tools` for unfamiliar or dynamically added tools. When collaboration tools are active, the prompt also defines a conditional subagent lifecycle: delegate only substantial isolated work, assign disjoint write scopes, reuse agents for follow-ups, wait only when results are needed, and synthesize rather than forwarding raw output.
 
 ## Tool loop
 
@@ -147,9 +150,10 @@ Child agents managed by `AgentControl` on the harness (Codex thread style). Desi
 
 - `spawn_agent` creates a **persistent child** (`SessionDirStorage` + mini `AgentHarness`).
 - Shared `AgentRegistry` across parent and children; `agent_path` for nested identity.
-- `max_depth = 3`; children may spawn further children when depth allows.
+- `max_depth = 3`, `max_concurrent = 4`; children may spawn further children when depth allows.
 - Multi-agent tools: `spawn_agent`, `send_message`, `followup_task`, `wait_agent`, `list_agents`.
 - Graph edges persisted in `metadata.db` (`agent_spawn_edges`).
+- Tool results return status only (`Spawned subagent <id>`, `<id> is idle`): the child's final answer text is streamed to the host UI and stored in the child session, never returned in the parent's tool results. The parent verifies child work through repository state (re-read changed files, `git diff`, tests).
 
 TUI shows `agent_id` + `agent_path` in subagent status lines.
 

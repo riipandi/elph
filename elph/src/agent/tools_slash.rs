@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use elph_agent::{AgentTool, BuiltinToolsBuilder, LocalExecutionEnv};
-use serde::Serialize;
 
 use crate::types::AgentMode;
 
@@ -45,7 +44,6 @@ const GROUPS: &[(&str, &[&str])] = &[
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolsOutputFormat {
     List,
-    Json,
     Table,
 }
 
@@ -54,33 +52,22 @@ impl ToolsOutputFormat {
         match args.trim().to_ascii_lowercase().as_str() {
             "" | "table" => Ok(Self::Table),
             "list" => Ok(Self::List),
-            "json" => Ok(Self::Json),
-            other => Err(format!("unknown /tools format: {other} (use json, list, or table)")),
-        }
-    }
-
-    fn label(self) -> &'static str {
-        match self {
-            Self::List => "list",
-            Self::Json => "json",
-            Self::Table => "table",
+            other => Err(format!("unknown /tools format: {other} (use list or table)")),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ToolRow {
     name: String,
     group: String,
     description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     server: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ToolsPayload {
     mode: String,
-    format: String,
     count: usize,
     session_attached: bool,
     tools: Vec<ToolRow>,
@@ -184,15 +171,9 @@ fn collect_tool_rows(tools: &[AgentTool]) -> Vec<ToolRow> {
     rows
 }
 
-fn tools_payload(
-    mode: AgentMode,
-    tools: &[AgentTool],
-    session_attached: bool,
-    format: ToolsOutputFormat,
-) -> ToolsPayload {
+fn tools_payload(mode: AgentMode, tools: &[AgentTool], session_attached: bool) -> ToolsPayload {
     ToolsPayload {
         mode: mode.label().to_string(),
-        format: format.label().to_string(),
         count: tools.len(),
         session_attached,
         tools: collect_tool_rows(tools),
@@ -274,27 +255,16 @@ fn format_tools_table(payload: &ToolsPayload, session_attached: bool) -> String 
     lines.join("\n")
 }
 
-fn format_tools_json(payload: &ToolsPayload, session_attached: bool) -> String {
-    let json = serde_json::to_string_pretty(payload).unwrap_or_else(|_| "{}".to_string());
-    let mut lines = vec![format_header(payload), String::new(), format!("```json\n{json}\n```")];
-    if let Some(note) = session_note(session_attached) {
-        lines.push(String::new());
-        lines.push(note);
-    }
-    lines.join("\n")
-}
-
 pub fn format_tools_message(
     mode: AgentMode,
     tools: &[AgentTool],
     session_attached: bool,
     format: ToolsOutputFormat,
 ) -> String {
-    let payload = tools_payload(mode, tools, session_attached, format);
+    let payload = tools_payload(mode, tools, session_attached);
     match format {
         ToolsOutputFormat::List => format_tools_list(&payload, session_attached),
         ToolsOutputFormat::Table => format_tools_table(&payload, session_attached),
-        ToolsOutputFormat::Json => format_tools_json(&payload, session_attached),
     }
 }
 
@@ -377,8 +347,8 @@ mod tests {
         assert_eq!(ToolsOutputFormat::parse("").unwrap(), ToolsOutputFormat::Table);
         assert_eq!(ToolsOutputFormat::parse("table").unwrap(), ToolsOutputFormat::Table);
         assert_eq!(ToolsOutputFormat::parse("list").unwrap(), ToolsOutputFormat::List);
-        assert_eq!(ToolsOutputFormat::parse("json").unwrap(), ToolsOutputFormat::Json);
         assert_eq!(ToolsOutputFormat::parse("TABLE").unwrap(), ToolsOutputFormat::Table);
+        assert!(ToolsOutputFormat::parse("json").is_err());
         assert!(ToolsOutputFormat::parse("yaml").is_err());
     }
 
@@ -390,14 +360,6 @@ mod tests {
         assert!(message.contains("**`read_file`**"));
         assert!(message.contains("### Edit"));
         assert!(message.contains("**`shell_exec`**"));
-    }
-
-    #[test]
-    fn format_tools_json_wraps_pretty_payload() {
-        let message = format_tools_message(AgentMode::Plan, &sample_tools(), true, ToolsOutputFormat::Json);
-        assert!(message.contains("```json"));
-        assert!(message.contains("\"name\": \"read_file\""));
-        assert!(message.contains("\"format\": \"json\""));
     }
 
     #[test]

@@ -9,7 +9,7 @@ use std::process::Stdio;
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
 use rustix::termios::{Winsize, tcsetwinsize};
 
-use crate::error::{ExecError, ExecErrorCode, Result};
+use super::super::error::{ExecError, ExecErrorCode, Result};
 
 /// Terminal dimensions for a newly allocated PTY.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

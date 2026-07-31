@@ -39,6 +39,7 @@ pub use crate::transcript_layout::{layout_sticky_header, scroll_viewport_height,
 pub use crate::transcript_layout::{
     sticky_body_line_clamp, sticky_header_display_rows, sticky_header_row_count, sticky_panel_body_cap,
 };
+pub use crate::word_wrap::wrapped_text_row_count;
 pub use ascii_font::{AsciiText, AsciiTextProps};
 pub use card::{Card, CardBorderStyle, CardProps};
 pub use code::{CodeBlock, CodeBlockProps};

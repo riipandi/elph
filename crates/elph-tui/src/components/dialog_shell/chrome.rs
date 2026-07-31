@@ -3,7 +3,7 @@
 use crate::components::select::{SELECT_LIST_AUTO_HEIGHT, select_list_total_rows};
 use crate::components::theme::UiTheme;
 use crate::types::{DialogTodoItem, SelectOption};
-use crate::wrapped_transcript_row_count;
+use crate::wrapped_text_row_count;
 use iocraft::prelude::Color;
 
 /// Visual tokens for [`super::DialogShell`].
@@ -152,7 +152,9 @@ pub fn dialog_text_rows(text: &str, width: u16) -> u16 {
     if text.is_empty() {
         0
     } else {
-        wrapped_transcript_row_count(text, width.max(1)).max(1)
+        wrapped_text_row_count(text, width.max(1) as usize)
+            .max(1)
+            .min(u16::MAX as usize) as u16
     }
 }
 
@@ -232,7 +234,7 @@ pub fn dialog_todo_list_content_rows(items: &[DialogTodoItem], list_width: u16, 
     for item in items {
         rows = rows.saturating_add(1);
         if !item.detail.is_empty() {
-            rows = rows.saturating_add(wrapped_transcript_row_count(&item.detail, detail_width));
+            rows = rows.saturating_add(wrapped_text_row_count(&item.detail, detail_width as usize) as u16);
         }
     }
     let gaps = row_gap.saturating_mul((items.len() as u16).saturating_sub(1));

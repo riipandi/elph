@@ -284,7 +284,7 @@ mod tests {
         assert!(palette_visible("/model"));
         assert!(palette_visible("  /go"));
         assert!(!palette_visible("/goal pause"));
-        assert!(palette_visible("/tools j"));
+        assert!(palette_visible("/tools l"));
         assert!(!palette_visible("/help args"));
         assert!(!palette_visible("/model filter"));
     }
@@ -298,26 +298,26 @@ mod tests {
     #[test]
     fn palette_hides_after_args_selected() {
         assert!(palette_visible("/goal "));
-        assert!(!palette_visible("/tools json "));
-        assert!(!palette_visible("/tools json"));
+        assert!(!palette_visible("/tools list "));
+        assert!(!palette_visible("/tools list"));
         assert!(!palette_visible("/goal pause "));
-        assert!(palette_visible("/tools j"));
+        assert!(palette_visible("/tools l"));
     }
 
     #[test]
     fn args_phase_lists_tools_formats() {
         let mut commands = sample_commands();
-        commands.push(SlashCommand::new("tools", "Show active tools").with_args_hint("[json|list|table]"));
-        let snapshot = build_snapshot("/tools j", &commands, 40);
+        commands.push(SlashCommand::new("tools", "Show active tools").with_args_hint("[list|table]"));
+        let snapshot = build_snapshot("/tools l", &commands, 40);
         assert!(snapshot.is_args_phase());
         assert_eq!(snapshot.match_count, 1);
-        assert_eq!(snapshot.options[0].name, "json");
+        assert_eq!(snapshot.options[0].name, "list");
     }
 
     #[test]
     fn complete_slash_arg_preserves_trailing_tokens() {
-        assert_eq!(complete_slash_arg("/tools j extra", "tools", "json"), "/tools json extra");
-        assert_eq!(complete_slash_arg("/tools j", "tools", "json"), "/tools json ");
+        assert_eq!(complete_slash_arg("/tools l extra", "tools", "list"), "/tools list extra");
+        assert_eq!(complete_slash_arg("/tools l", "tools", "list"), "/tools list ");
     }
 
     #[test]

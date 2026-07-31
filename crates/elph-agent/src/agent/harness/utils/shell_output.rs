@@ -25,8 +25,8 @@ pub struct ShellCaptureResult {
     pub full_output_path: Option<String>,
 }
 
-pub use elph_exec::ShellOutputCallback;
-pub use elph_exec::sanitize_binary_output;
+pub use crate::exec::ShellOutputCallback;
+pub use crate::exec::sanitize_binary_output;
 
 /// Sanitize and truncate captured shell output from the tail.
 pub fn finalize_shell_capture(output: &str, options: Option<TruncationOptions>) -> ShellCaptureResult {

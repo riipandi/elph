@@ -1,5 +1,8 @@
 # TUI Layout Docs
 
+> **Transcript system** — see [transcript.md](./transcript.md) for architecture, performance
+> optimizations, disk caching, and tool labels.
+
 ## Layout Structure
 
 ```
@@ -247,6 +250,8 @@ project_dir [session_id] mode               turn: 0 | branch [+N -N]
 The token display format is configurable via `footerTokenDisplay` setting (see [configuration.md](./configuration.md#settings-reference)). Context limit is always displayed.
 
 When no actual token usage data is available (e.g., at startup before the first API call), token counts are estimated from the system prompt.
+
+The footer is painted eagerly from the configured model and project snapshot. During asynchronous agent and MCP bootstrap, Elph requests a full terminal redraw after each startup event so output written outside the canvas diff cannot leave the footer hidden until the first keyboard or model event.
 
 | Format       | Example | Description |
 | ------------ | ------- | ----------- |

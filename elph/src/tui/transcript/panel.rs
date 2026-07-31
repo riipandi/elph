@@ -27,7 +27,7 @@ const MARKDOWN_DEBOUNCE_MS: u64 = 120;
 const MARKDOWN_STREAMING_DEBOUNCE_MS: u64 = 400;
 const MAX_MARKDOWN_PARSE_JOBS_PER_TICK: usize = 1;
 
-#[derive(Clone, Default, Props)]
+#[derive(Default, Props)]
 pub struct TranscriptPanelProps {
     pub screen_width: u16,
     pub messages: Option<State<Vec<TranscriptMessage>>>,
@@ -48,12 +48,16 @@ pub struct TranscriptPanelProps {
     /// Arc<RwLock> messages — decouples panel from shell's State dirt chain.
     /// Panel reads/writes this directly instead of the `messages` State.
     pub messages_arc: Option<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    /// Click handler for subagent status lines. Fires with `(agent_id, title)` when
+    /// a subagent status row is clicked.
+    pub on_subagent_click: Option<HandlerMut<'static, (String, String)>>,
 }
 
 struct TranscriptRenderCache {
     messages_revision: u64,
     markdown_layout_revision: u64,
     screen_width: u16,
+    streaming_content_fp: u64,
     row_layouts: Vec<elph_tui::TranscriptRowLayout>,
     is_sticky_prompt: Vec<bool>,
     /// Fingerprinted row-count slots — survives revision bumps for unchanged prefix messages.
@@ -141,10 +145,33 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
 
     let messages = messages_state.read();
     let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
-    let cache_key = (messages_revision_value, markdown_layout_revision.get(), props.screen_width);
+
+    // Streaming content changes every tick but `messages_revision` only updates at the
+    // publish interval. Detect in-place content growth (e.g. assistant/tool streaming)
+    // so the render cache invalidates before the next publish tick.
+    let streaming_content_fp = messages
+        .last()
+        .map(|m| {
+            if m.duration_secs.is_none() {
+                m.content.len() as u64
+            } else {
+                0
+            }
+        })
+        .unwrap_or(0);
+
+    let cache_key = (
+        messages_revision_value,
+        markdown_layout_revision.get(),
+        props.screen_width,
+        streaming_content_fp,
+    );
 
     if render_cache.read().as_ref().is_none_or(|c| {
-        c.messages_revision != cache_key.0 || c.markdown_layout_revision != cache_key.1 || c.screen_width != cache_key.2
+        c.messages_revision != cache_key.0
+            || c.markdown_layout_revision != cache_key.1
+            || c.screen_width != cache_key.2
+            || c.streaming_content_fp != cache_key.3
     }) {
         let mut layout_cache = render_cache
             .read()
@@ -157,6 +184,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             messages_revision: cache_key.0,
             markdown_layout_revision: cache_key.1,
             screen_width: cache_key.2,
+            streaming_content_fp: cache_key.3,
             row_layouts,
             is_sticky_prompt,
             layout_cache,
@@ -200,30 +228,49 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .map(|o| o as i32)
         .unwrap_or_else(|| handle.scroll_offset());
     // Only leave near_bottom when user has scrolled meaningfully away from bottom.
-    // Threshold: 10 rows above bottom (vs. previous 2).
-    let is_near = auto_pinned || raw_offset >= max_off.saturating_sub(10);
+    // Threshold: 6 rows (2 scroll steps) above bottom.
+    let is_near = auto_pinned || raw_offset >= max_off.saturating_sub(6);
     let near_bottom = if auto_pinned {
         near_bottom_sticky.set(true);
         true
     } else if is_near && *near_bottom_sticky.read() {
         // Stay near-bottom if was near-bottom (hysteresis hold).
         true
-    } else if raw_offset < max_off.saturating_sub(10) {
+    } else if raw_offset < max_off.saturating_sub(6) {
         near_bottom_sticky.set(false);
         false
     } else {
         *near_bottom_sticky.read()
     };
 
-    // Compute sticky_idx BEFORE sticky_rows to break circular dep with panel_viewport.
-    // Use scroll_zone as the viewport parameter (conservative lower bound).
+    // Compute effective_scroll_offset BEFORE sticky_idx so sticky uses the correct
+    // visual offset (not the raw handle offset, which stays at 0 during auto-scroll).
+    // Also used for bubble windowing — must reflect the actual scroll position
+    // (not the content bottom) so windowed mounting covers in-viewport rows.
+    let effective_scroll_offset = if near_bottom {
+        let bottom = layout_content_rows.saturating_sub(scroll_zone as u32);
+        last_committed_bottom.set(bottom);
+        bottom
+    } else {
+        raw_offset.max(0) as u32
+    };
+
+    // Compute sticky_idx using effective_scroll_offset so it correctly detects
+    // scrolled-off prompts even while auto-scroll keeps the viewport at the bottom.
+    // While pinned to the bottom the sticky bar would hide the top rows of the latest
+    // card (viewport shrinks by sticky_rows and the card shifts up behind it) — the
+    // card then looks clipped mid-line. Only show the sticky bar once the user actually
+    // scrolls up (near_bottom = false); auto-scroll shows the latest card in full.
     let sticky_idx = props
         .sticky_scroll
         .then(|| {
+            if near_bottom {
+                return None;
+            }
             active_sticky_user_message_index(
                 row_layouts,
                 is_sticky_prompt,
-                handle.scroll_offset(),
+                effective_scroll_offset as i32,
                 near_bottom,
                 scroll_zone,
             )
@@ -259,19 +306,10 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         }
     };
     // panel_viewport uses stable sticky_rows (no one-frame lag).
-    let sticky_inset = if near_bottom { 0 } else { sticky_rows };
+    let sticky_inset = sticky_rows;
     let panel_viewport = scroll_zone.saturating_add(sticky_inset);
     let panel_height = panel_viewport;
 
-    // effective_scroll_offset: always use raw_offset when not near_bottom.
-    // When near_bottom, use stable committed bottom from layout_metrics.
-    let effective_scroll_offset = if near_bottom {
-        let bottom = layout_content_rows.saturating_sub(scroll_zone as u32);
-        last_committed_bottom.set(bottom);
-        bottom
-    } else {
-        raw_offset.max(0) as u32
-    };
     let suppress_sticky_source =
         sticky_source_bubble_suppressed(row_layouts, sticky_idx, effective_scroll_offset as i32, scroll_zone);
     let toggle = match (props.messages, props.messages_revision) {

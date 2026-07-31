@@ -38,6 +38,12 @@
             "default": true,
             "description": "When false, the server is skipped during discovery and tool calls."
         },
+        "lifecycle": {
+            "type": "string",
+            "enum": ["auto", "legacy", "discover"],
+            "default": "auto",
+            "description": "Protocol lifecycle mode. 'auto' probes server/discover and falls back to initialize; 'legacy' uses the old handshake exclusively; 'discover' requires the 2026-07-28+ stateless protocol."
+        },
         "policyAction": {
             "type": "string",
             "enum": ["allow", "requireApproval", "deny"],
@@ -111,6 +117,7 @@
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
                 "enable": { "$ref": "#/definitions/enable" },
+                "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "policy": { "$ref": "#/definitions/policy" }
             }
         },
@@ -153,6 +160,7 @@
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
                 "enable": { "$ref": "#/definitions/enable" },
+                "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "oauth": {
                     "type": "boolean",
                     "default": false,
@@ -197,6 +205,7 @@
                 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
                 "enable": { "$ref": "#/definitions/enable" },
+                "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "oauth": {
                     "type": "boolean",
                     "default": false
@@ -237,6 +246,7 @@
                 "deepwiki": {
                     "type": "http",
                     "url": "https://mcp.deepwiki.com/mcp",
+                    "lifecycle": "legacy",
                     "timeoutMs": 120000
                 }
             }

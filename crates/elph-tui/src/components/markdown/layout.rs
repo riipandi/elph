@@ -1,7 +1,6 @@
 //! Row measurement for cached markdown documents.
 
-use crate::text_input_layout::WrappedTextLayout;
-use crate::wrapped_transcript_row_count;
+use crate::wrapped_text_row_count;
 use unicode_width::UnicodeWidthChar;
 
 use super::blocks::CODE_VERTICAL_PADDING;
@@ -74,9 +73,11 @@ fn wrapped_line_row_count(text: &str, wrap_width: u16) -> u16 {
     if text.is_empty() {
         return 0;
     }
-    WrappedTextLayout::new_for_overlay_editor(text, wrap_width)
-        .row_count()
-        .max(1)
+    // Paragraphs and list items paint with `TextWrap::Wrap` (word-wrap), so the row count must
+    // mirror iocraft's wrap instead of character wrapping.
+    wrapped_text_row_count(text, wrap_width as usize)
+        .min(u16::MAX as usize)
+        .max(1) as u16
 }
 
 fn line_row_count(line: &MarkdownLine, wrap_width: u16) -> u16 {
@@ -143,9 +144,9 @@ pub fn markdown_document_row_count(document: &MarkdownDocument, wrap_width: u16)
     total.max(1)
 }
 
-/// Fallback row count from raw markdown source.
+/// Fallback row count from raw markdown source (painted as word-wrapped markdown).
 pub fn markdown_source_row_count(source: &str, wrap_width: u16) -> u16 {
-    wrapped_transcript_row_count(source, wrap_width)
+    wrapped_text_row_count(source, wrap_width as usize).min(u16::MAX as usize) as u16
 }
 
 #[cfg(test)]

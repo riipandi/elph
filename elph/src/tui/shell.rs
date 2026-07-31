@@ -21,8 +21,7 @@ use crate::agent::slash_commands_for_palette;
 use crate::agent::{AgentUiEvent, CodingAgentSession, ToolApprovalChoice};
 use crate::extensions::ExtensionHost;
 use crate::platform::exit_message::{ExitSnapshot, record_if_active};
-use crate::platform::handle_prompt_interrupt_text;
-use crate::platform::{Paths, PromptInterrupt, Settings};
+use crate::platform::{Paths, Settings};
 use crate::types::{AgentMode, SlashCommand, ThinkingLevel};
 use crate::types::{is_force_quit_command, is_quit_command};
 use crate::utils::path::AppPaths;
@@ -38,9 +37,13 @@ use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_gi
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
+use crate::tui::transcript::TranscriptCache;
 
 use crate::agent::rename_session_title;
-use crate::tui::confetti::{ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti};
+use crate::agent::session_info_slash_message;
+use crate::tui::confetti::{
+    ConfettiMode, ConfettiOverlay, OpenConfettiArgs, PendingConfetti, close_confetti, open_confetti,
+};
 use crate::tui::file_picker::FilePickerKeyAction;
 use crate::tui::file_picker::{
     FilePickerApplyContext, FilePickerSnapshot, active_mention_at_cursor, apply_file_picker_key,
@@ -56,6 +59,7 @@ use crate::tui::model_selector_shell::{
     model_selector_sanitize_filter, model_selector_scope_delta, open_model_selector, spawn_runtime_model_switch,
     sync_pending_filter,
 };
+use crate::tui::notifier;
 use crate::tui::prompt::PromptChrome;
 use crate::tui::prompt_history::is_open_key as is_prompt_history_open_key;
 use crate::tui::prompt_history::{
@@ -77,7 +81,9 @@ use crate::tui::scoped_models_shell::{
     OpenScopedModelsArgs, apply_scoped_session, cancel_scoped_models, cycle_scoped_model_selection, open_scoped_models,
     save_scoped_models, scoped_models_list_nav_delta, scoped_models_reorder_delta, sync_scoped_filter,
 };
-use crate::tui::scroll_text_dialog::{OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog};
+use crate::tui::scroll_text_dialog::{
+    DEFAULT_SCROLL_TEXT_WIDTH_PCT, OpenScrollTextDialogArgs, ScrollTextDialogOverlay, open_scroll_text_dialog,
+};
 use crate::tui::session_prefs::{cycle_and_persist_theme_mode, persist_session_prefs};
 use crate::tui::shell_submit::{
     UserShellEvent, format_shell_agent_context, next_user_shell_tool_id, shell_exec_args_summary, spawn_user_shell,
@@ -99,6 +105,7 @@ use crate::tui::status_dialog::{
     build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind,
     build_provider_connect_dialog_kind, build_status_dialog_kind,
 };
+use crate::tui::subagent_output_dialog::SubagentOutputDialogOverlay;
 use crate::tui::system_prompt_dialog::{
     OpenSystemPromptDialogArgs, PendingSystemPromptDialog, close_system_prompt_dialog, open_system_prompt_dialog,
     system_prompt_dialog_chrome,
@@ -266,6 +273,11 @@ const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 33;
 /// Back off publish rate under heavy event bursts (CPU/memory headroom for input + scroll).
 const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
 const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
+
+/// Max messages kept in memory before oldest are archived to SQLite.
+const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 500;
+/// How many recent messages to keep after archival.
+const KEEP_MESSAGES: usize = 200;
 const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.
@@ -356,6 +368,7 @@ fn agent_event_keeps_busy(event: &AgentUiEvent) -> bool {
             | AgentUiEvent::ToolUpdate { .. }
             | AgentUiEvent::ToolEnd { .. }
             | AgentUiEvent::SubagentStatus { .. }
+            | AgentUiEvent::SubagentOutput { .. }
     )
 }
 
@@ -722,6 +735,24 @@ fn push_transcript_message(
     messages_revision.set(messages_revision.get().wrapping_add(1));
 }
 
+/// Push a transcript message to both the shared arc and the messages State.
+///
+/// The arc-to-state sync (`*messages.write() = messages_arc_inner.read()...`)
+/// overwrites the State with the arc content. Messages written only to the
+/// State (slash output, notices) would be lost on the next sync, so they must
+/// also be written to the shared arc.
+fn push_transcript_message_synced(
+    messages: &mut State<Vec<TranscriptMessage>>,
+    messages_arc: Ref<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    messages_revision: &mut State<u64>,
+    prompt_history: &mut Ref<Vec<String>>,
+    message: TranscriptMessage,
+) {
+    let mut arc = messages_arc;
+    arc.write().write().unwrap().push(message.clone());
+    push_transcript_message(messages, messages_revision, prompt_history, message);
+}
+
 /// Upsert a `transient:*` notice in the scrollable transcript (subtle grey ephemeral styling).
 fn upsert_ephemeral_transcript_notice(
     messages: &mut State<Vec<TranscriptMessage>>,
@@ -935,10 +966,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let (screen_width, screen_height) = layout_screen_size.get();
     let mut system = hooks.use_context_mut::<SystemContext>();
     let mut should_exit = hooks.use_state(|| false);
+    // Track whether Shift is held so the transcript can hide the scrollbar and disable
+    // mouse capture during native text selection (like a temporary Ctrl+S toggle).
+    // Declared early so mouse capture can reference it.
+    let mut shift_held = hooks.use_state(|| false);
+    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     // When true, mouse capture is off so the terminal can native-select transcript text.
     let mut select_mode = hooks.use_state(|| false);
     // Apply every frame; iocraft only reconfigures the terminal when the value changes.
-    system.set_mouse_capture(!select_mode.get());
+    // Shift-held mode also disables mouse capture (temporary Ctrl+S toggle).
+    system.set_mouse_capture(!select_mode.get() && !shift_held.get());
     let mut agent_mode = hooks.use_state(|| props.initial_agent_mode);
     let mut thinking_level = hooks.use_state(|| props.initial_thinking_level);
     let mut draft = hooks.use_state(String::new);
@@ -958,6 +995,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut prompt_history_open = hooks.use_state(|| false);
     let mut prompt_history_index = hooks.use_state(|| 0usize);
     let mut prompt_history = hooks.use_ref(Vec::<String>::new);
+    let mut last_arrow_up_at = hooks.use_ref(Instant::now);
     let mut force_palette_sync = hooks.use_ref(|| false);
     let mut force_editor_clear = hooks.use_ref(|| false);
     let mut busy = hooks.use_state(|| false);
@@ -1011,8 +1049,6 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut mention_index_requested = hooks.use_ref(|| false);
     let mut file_picker_show_hidden = hooks.use_state(|| props.file_picker_show_hidden);
     let allow_mode_change_while_busy = hooks.use_state(|| props.allow_mode_change_while_busy);
-    let mut shift_held = hooks.use_state(|| false);
-    let mut shift_last_pressed = hooks.use_ref(|| None::<Instant>);
     let mut palette_refresh_pending = hooks.use_state(|| false);
     let mut shell_focus = hooks.use_state(ShellFocus::default);
     let mut question_selected = hooks.use_state(|| 0usize);
@@ -1050,7 +1086,21 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let mut provider_connect_api_key = hooks.use_state(String::new);
     let mut provider_connect_input_focus = hooks.use_state(ProviderConnectFocus::default);
     let mut confetti_runtime = hooks.use_ref(|| None::<crate::tui::confetti::ConfettiRuntime>);
-    let mut confetti_frame = hooks.use_ref(|| 0u32);
+    let mut confetti_frame = hooks.use_state(|| 0u32);
+
+    // Shared output buffers for real-time subagent dialog display.
+    // Maps agent_id → (text: Arc<RwLock<String>>, is_running: Arc<AtomicBool>).
+    // The shell writes SubagentOutput events into these buffers; the dialog reads them.
+    // Using Arc<RwLock> so both the async event loop and the render phase can access.
+    type SubagentBuf = (Arc<RwLock<String>>, Arc<std::sync::atomic::AtomicBool>);
+    let subagent_output_buffers: Arc<RwLock<HashMap<String, SubagentBuf>>> = Arc::new(RwLock::new(HashMap::new()));
+    let subagent_output_buffers_state = hooks.use_ref(|| subagent_output_buffers.clone());
+    let mut subagent_output_scroll_tick = hooks.use_state(|| 0u32);
+    // Pending dialog state — when Some, the SubagentOutputDialogOverlay is rendered.
+    let pending_subagent_output =
+        hooks.use_ref(|| None::<crate::tui::subagent_output_dialog::PendingSubagentOutputDialog>);
+    // Scroll handle for subagent output dialog.
+    let subagent_output_scroll = hooks.use_ref_default::<ScrollViewHandle>();
 
     let extension_host = props.extension_host.clone();
     let cwd = props.cwd.clone();
@@ -1092,8 +1142,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     // Start at 1 so the first Footer paint depends on chrome_revision (iocraft child identity).
     let mut chrome_ui_revision = hooks.use_state(|| 1u64);
     let mut chrome_tick = hooks.use_ref(|| 0u32);
-    // Ensures one forced chrome repaint after the first shell tick (layout size settled).
+    // A state update only recomputes the canvas; it cannot repair terminal cells overwritten by
+    // startup output when the resulting pixels are unchanged. Request one full terminal rewrite
+    // after the first chrome pass and after each bootstrap event.
     let mut chrome_eager_paint_done = hooks.use_ref(|| false);
+    let mut chrome_full_redraw_pending = hooks.use_ref(|| false);
     let fallback_context_limit = props.context_limit;
     let fallback_model_label = props.model_label.clone();
     let fallback_model_label_for_chrome = fallback_model_label.clone();
@@ -1151,13 +1204,16 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
             poll_layout_screen_size(&mut layout_screen_size_for_loop);
 
-            // Safety timeout: auto-clear shift-held after 60s so the scrollbar never
-            // stays stuck hidden if Shift is released without a follow-up key event.
+            // Time-based debounce: auto-clear shift-held after 10 seconds of no Shift
+            // key press. The user holds Shift, selects text for several seconds,
+            // then has 10s after the last Shift press to press Ctrl+C/Cmd+V
+            // (which arrive without modifiers on macOS terminals). After 10s
+            // of no Shift key, the scrollbar comes back.
             let shift_timed_out = shift_held.get()
                 && shift_last_pressed
                     .read()
                     .as_ref()
-                    .is_some_and(|last| last.elapsed() > Duration::from_secs(60));
+                    .is_some_and(|last| last.elapsed() > Duration::from_secs(10));
             if shift_timed_out {
                 shift_held.set(false);
                 shift_last_pressed.set(None);
@@ -1193,6 +1249,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         break;
                     };
                     bootstrap_events += 1;
+                    // Desktop notification for bootstrap events
+                    match &event {
+                        BootstrapUiEvent::AgentReady(_) => {
+                            if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                                notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
+                            }
+                        }
+                        BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
+                            if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                                notifier::notify(
+                                    &settings.notifications,
+                                    notifier::NotifKind::Error { message: msg.as_str() },
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
                     apply_bootstrap_ui_event(
                         event,
                         &mut bootstrap_phase,
@@ -1210,6 +1283,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         &mut messages,
                         &mut prompt_history,
                     );
+                    chrome_full_redraw_pending.set(true);
                     publish_transcript_now(
                         &mut messages_revision,
                         &mut transcript_pending,
@@ -1217,6 +1291,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     );
                 }
             }
+
+            // Sync bootstrap messages from State back to the arc so the arc sync
+            // (which runs on the next agent event) does not overwrite them.
+            *messages_arc_inner.write().unwrap() = messages.read().clone();
 
             // Handle `/new` command: reload resources, create fresh bootstrap config (resume_id: None),
             // and restart the bootstrap worker — all without exiting the TUI.
@@ -1376,6 +1454,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 // footer blank until the first stats mutation (model pick / first turn).
                 if !chrome_eager_paint_done.get() {
                     chrome_eager_paint_done.set(true);
+                    chrome_full_redraw_pending.set(true);
                     bump_chrome_ui_revision(&mut chrome_ui_revision);
                 }
             }
@@ -1434,254 +1513,318 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let mut run_completed = false;
             let mut run_completed_elapsed: Option<f64> = None;
 
-            if let Some(rx) = ui_events.as_ref()
-                && let Ok(mut guard) = rx.lock()
-            {
-                // Drain + coalesce stream deltas so one tick applies O(1) text/tool appends
-                // instead of dozens of tiny mutations that each rebuild layout.
-                let mut raw_events = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
-                while raw_events.len() < MAX_UI_EVENTS_PER_TICK {
-                    let Ok(event) = guard.try_recv() else {
-                        break;
-                    };
-                    raw_events.push(event);
+            let drained_events: Vec<AgentUiEvent> = if let Some(rx) = ui_events.as_ref() {
+                if let Ok(mut guard) = rx.lock() {
+                    let mut raw = Vec::with_capacity(MAX_UI_EVENTS_PER_TICK);
+                    while raw.len() < MAX_UI_EVENTS_PER_TICK {
+                        let Ok(event) = guard.try_recv() else {
+                            break;
+                        };
+                        raw.push(event);
+                    }
+                    drop(guard);
+                    last_event_burst.set(raw.len());
+                    crate::tui::agent_bridge::coalesce_agent_ui_events(raw)
+                } else {
+                    Vec::new()
                 }
-                last_event_burst.set(raw_events.len());
-                let events = crate::tui::agent_bridge::coalesce_agent_ui_events(raw_events);
-                for event in events {
-                    if agent_event_keeps_busy(&event) {
-                        // Stream/tool activity means a real harness turn (not bootstrap chrome).
-                        agent_turn_active.set(true);
-                        if !busy.get() {
-                            mark_busy(
-                                &mut BusyActivation {
-                                    busy: &mut busy,
-                                    busy_started_at: &mut busy_started_at,
-                                    activity_started_at: &mut activity_started_at,
-                                    activity_label: &mut activity_label,
-                                    last_activity_label: &mut last_activity_label,
-                                },
-                                false,
-                                None,
+            } else {
+                Vec::new()
+            };
+
+            for event in drained_events {
+                if agent_event_keeps_busy(&event) {
+                    // Stream/tool activity means a real harness turn (not bootstrap chrome).
+                    agent_turn_active.set(true);
+                    if !busy.get() {
+                        mark_busy(
+                            &mut BusyActivation {
+                                busy: &mut busy,
+                                busy_started_at: &mut busy_started_at,
+                                activity_started_at: &mut activity_started_at,
+                                activity_label: &mut activity_label,
+                                last_activity_label: &mut last_activity_label,
+                            },
+                            false,
+                            None,
+                        );
+                    }
+                }
+                if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
+                    run_completed = true;
+                    run_completed_elapsed = Some(*elapsed_secs);
+                }
+
+                match &event {
+                    AgentUiEvent::TextDelta(delta) => {
+                        if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                            tracker.record_delta(delta);
+                        }
+                    }
+                    AgentUiEvent::ThinkingDelta(delta) if show_thinking => {
+                        if let Some(tracker) = turn_token_tracker.write().as_mut() {
+                            tracker.record_delta(delta);
+                        }
+                    }
+                    _ => {}
+                }
+
+                if let AgentUiEvent::Status(ref message) = event {
+                    if message.to_ascii_lowercase().contains("reloaded") {
+                        palette_refresh_pending.set(true);
+                    }
+                    // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
+                    if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
+                        let toast = crate::tui::api_error_display::format_ephemeral_api_error(message);
+                        show_ephemeral_banner(
+                            &mut ephemeral_banner,
+                            &mut ephemeral_banner_generation,
+                            &ephemeral_expire.read().tx,
+                            api_error_banner(toast),
+                        );
+                    }
+                }
+
+                if let AgentUiEvent::MemoryResult(ref text) = event {
+                    let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
+                    open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                        pending: &mut pending_system_prompt,
+                        shell_focus: &mut shell_focus,
+                        title: "Memory".to_string(),
+                        text: text.clone(),
+                        width_pct: 80,
+                        body_height: Some(body_height),
+                        show_copy: false,
+                    });
+                    continue;
+                }
+
+                if let AgentUiEvent::ToolApprovalRequired(req) = event {
+                    let tool_name = req.tool_name.clone();
+                    let tool_call_id = req.tool_call_id.clone();
+                    let verb = tool_display_verb(&tool_name);
+                    activity_label.set(format!("Approve: {verb}"));
+                    approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
+                    // Desktop notification: tool permission request
+                    {
+                        let paths = paths.read().clone();
+                        if let Ok(settings) = Settings::load(&paths) {
+                            notifier::notify(
+                                &settings.notifications,
+                                notifier::NotifKind::ToolPermission { tool_name: &tool_name },
                             );
                         }
                     }
-                    if let AgentUiEvent::RunCompleted { elapsed_secs } = &event {
-                        run_completed = true;
-                        run_completed_elapsed = Some(*elapsed_secs);
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        // Process status line (colored, consistent gaps) — not a flush Meta dump.
+                        let key = tool_approval_transcript_key(&tool_call_id);
+                        if let Some(existing) = msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
+                        {
+                            existing.content = "Tool approval".to_string();
+                            existing.status_detail = Some(verb.clone());
+                            existing.style = TranscriptStyle::StatusRunning;
+                        } else {
+                            let mut row = TranscriptMessage::startup_status(
+                                key,
+                                "Tool approval".to_string(),
+                                TranscriptStyle::StatusRunning,
+                            );
+                            row.status_detail = Some(verb);
+                            msgs.push(row);
+                        }
                     }
+                    transcript_changed = true;
+                    continue;
+                }
 
-                    match &event {
-                        AgentUiEvent::TextDelta(delta) => {
-                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
-                                tracker.record_delta(delta);
+                if let AgentUiEvent::UserQuestionRequired(req) = event {
+                    let question_summary: String = req
+                        .steps
+                        .first()
+                        .map(|s| s.question.clone())
+                        .unwrap_or_else(|| "Agent has a question".into());
+                    let pending = PendingUserQuestion::from_request(req);
+                    activity_label.set(step_activity_label(&pending));
+                    reset_ui_for_step(
+                        &pending,
+                        &mut question_selected,
+                        &mut question_confirm_focus,
+                        &mut question_answer,
+                        &mut question_multi_checked,
+                        &mut question_input_focus,
+                    );
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_user_question.set(Some(pending));
+                    // Desktop notification: user question
+                    {
+                        let paths = paths.read().clone();
+                        if let Ok(settings) = Settings::load(&paths) {
+                            notifier::notify(
+                                &settings.notifications,
+                                notifier::NotifKind::UserQuestion {
+                                    summary: question_summary,
+                                },
+                            );
+                        }
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::ModeChangeRequired(req) = event {
+                    if busy.get() && !allow_mode_change_while_busy.get() {
+                        // Auto-reject mode change while busy when setting disallows it.
+                        let _ = req.response_tx.send("false".to_string());
+                        continue;
+                    }
+                    let mode_label = req.target_mode.to_ascii_uppercase();
+                    activity_label.set(format!("Approve: switch to {mode_label}"));
+                    approval_selected.set(0);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_mode_change.set(Some(PendingModeChange {
+                        target_mode: req.target_mode.clone(),
+                        reason: req.reason.clone(),
+                        response_tx: req.response_tx,
+                    }));
+                    // Push a status row for the transcript.
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let key = "mode-change:pending".to_string();
+                        let mut row = TranscriptMessage::startup_status(
+                            key,
+                            format!("Switch to {mode_label} mode?"),
+                            TranscriptStyle::StatusRunning,
+                        );
+                        row.status_detail = Some(req.reason);
+                        msgs.push(row);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::PlanConfirmationRequired(req) = event {
+                    // Save plan to disk FIRST so user can read it before deciding.
+                    let plan_file = {
+                        let paths = paths.read().clone();
+                        let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
+                        crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
+                            .map_err(|e| log::error!("Failed to save plan: {e}"))
+                            .ok()
+                    };
+
+                    activity_label.set("Plan proposed".to_string());
+                    approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
+                    shell_focus.set(ShellFocus::StatusDialog);
+                    pending_plan_confirmation.set(Some(PendingPlanConfirmation {
+                        plan_text: req.plan_text.clone(),
+                        plan_file,
+                        session: agent_session_for_loop.clone(),
+                    }));
+                    // Push a status row for the transcript.
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let key = plan_confirmation_transcript_key();
+                        let mut row = TranscriptMessage::startup_status(
+                            key,
+                            "Plan confirmation".to_string(),
+                            TranscriptStyle::StatusRunning,
+                        );
+                        row.status_detail = Some("Review the proposed plan".to_string());
+                        msgs.push(row);
+                    }
+                    transcript_changed = true;
+                    continue;
+                }
+
+                if let AgentUiEvent::QueueUpdate { items } = event {
+                    prompt_queue.write().replace(items);
+                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                    if prompt_queue.read().is_empty() {
+                        if queue_manager_open.get() {
+                            queue_manager_open.set(false);
+                            queue_manager_selected.set(0);
+                            if pending_tool_approval.read().is_none() && pending_user_question.read().is_none() {
+                                shell_focus.set(ShellFocus::Prompt);
                             }
                         }
-                        AgentUiEvent::ThinkingDelta(delta) if show_thinking => {
-                            if let Some(tracker) = turn_token_tracker.write().as_mut() {
-                                tracker.record_delta(delta);
+                    } else {
+                        let len = prompt_queue.read().len();
+                        let idx = queue_manager_selected.get().min(len.saturating_sub(1));
+                        queue_manager_selected.set(idx);
+                    }
+                    continue;
+                }
+
+                if let AgentUiEvent::UserPromptCommitted { text } = event {
+                    // Idle submit and Ctrl+Enter already painted the user card.
+                    let pending = pre_echoed_user_prompts.get();
+                    if pending > 0 {
+                        pre_echoed_user_prompts.set(pending.saturating_sub(1));
+                    } else {
+                        let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
+                        submitted.submitted_at = Some(chrono::Utc::now());
+                        // Write to arc directly (no State dirty mark);
+                        // sync to messages State happens at end of tick.
+                        {
+                            let mut msgs = messages_arc_inner.write().unwrap();
+                            if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
+                                crate::tui::prompt_history::push_history_entry_styled(
+                                    &mut prompt_history.write(),
+                                    &submitted.content,
+                                    submitted.style,
+                                );
+                            }
+                            msgs.push(submitted);
+                        }
+                        transcript_changed = true;
+                    }
+                    continue;
+                }
+
+                if let Some(label) = activity_label_for_event(&event, show_thinking) {
+                    activity_label.set(label);
+                }
+                // Handle SubagentStatus: init/cleanup output buffers for real-time dialog.
+                if let AgentUiEvent::SubagentStatus { agent_id, phase, .. } = &event {
+                    let buffers_arc = subagent_output_buffers_state.read().clone();
+                    let mut buffers = buffers_arc.write().expect("subagent output buffers lock");
+                    let phase = *phase;
+                    match phase {
+                        crate::agent::SubagentUiPhase::Running => {
+                            use std::collections::hash_map::Entry;
+                            if let Entry::Vacant(e) = buffers.entry(agent_id.clone()) {
+                                e.insert((
+                                    Arc::new(RwLock::new(String::new())),
+                                    Arc::new(std::sync::atomic::AtomicBool::new(true)),
+                                ));
+                            }
+                        }
+                        crate::agent::SubagentUiPhase::Done | crate::agent::SubagentUiPhase::Error => {
+                            if let Some((_text, is_running)) = buffers.get(agent_id) {
+                                is_running.store(false, std::sync::atomic::Ordering::Relaxed);
                             }
                         }
                         _ => {}
                     }
-
-                    if let AgentUiEvent::Status(ref message) = event {
-                        if message.to_ascii_lowercase().contains("reloaded") {
-                            palette_refresh_pending.set(true);
+                }
+                // Handle SubagentOutput: update shared output buffer for real-time dialog.
+                if let AgentUiEvent::SubagentOutput { agent_id, content } = &event {
+                    let buffers_arc = subagent_output_buffers_state.read().clone();
+                    let buffers = buffers_arc.read().expect("subagent output buffers lock");
+                    if let Some((text_arc, _is_running_arc)) = buffers.get(agent_id) {
+                        if let Ok(mut current) = text_arc.write() {
+                            current.push_str(content);
                         }
-                        // Sticky red toast — friendly text only (no raw JSON); transcript keeps fuller line.
-                        if crate::tui::api_error_display::is_user_facing_api_error_line(message) {
-                            let toast = crate::tui::api_error_display::format_ephemeral_api_error(message);
-                            show_ephemeral_banner(
-                                &mut ephemeral_banner,
-                                &mut ephemeral_banner_generation,
-                                &ephemeral_expire.read().tx,
-                                api_error_banner(toast),
-                            );
-                        }
+                        subagent_output_scroll_tick.set(subagent_output_scroll_tick.get().wrapping_add(1));
                     }
-
-                    if let AgentUiEvent::MemoryResult(ref text) = event {
-                        let body_height = (text.lines().count() as u16).saturating_add(3).clamp(8, 40);
-                        open_scroll_text_dialog(OpenScrollTextDialogArgs {
-                            pending: &mut pending_system_prompt,
-                            shell_focus: &mut shell_focus,
-                            title: "Memory".to_string(),
-                            text: text.clone(),
-                            width_pct: 80,
-                            body_height: Some(body_height),
-                            show_copy: false,
-                        });
-                        continue;
-                    }
-
-                    if let AgentUiEvent::ToolApprovalRequired(req) = event {
-                        let tool_name = req.tool_name.clone();
-                        let tool_call_id = req.tool_call_id.clone();
-                        let verb = tool_display_verb(&tool_name);
-                        activity_label.set(format!("Approve: {verb}"));
-                        approval_selected.set(TOOL_APPROVAL_DEFAULT_INDEX);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_tool_approval.set(Some(PendingToolApproval::from_request(req)));
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            // Process status line (colored, consistent gaps) — not a flush Meta dump.
-                            let key = tool_approval_transcript_key(&tool_call_id);
-                            if let Some(existing) =
-                                msgs.iter_mut().find(|m| m.startup_key.as_deref() == Some(key.as_str()))
-                            {
-                                existing.content = "Tool approval".to_string();
-                                existing.status_detail = Some(verb.clone());
-                                existing.style = TranscriptStyle::StatusRunning;
-                            } else {
-                                let mut row = TranscriptMessage::startup_status(
-                                    key,
-                                    "Tool approval".to_string(),
-                                    TranscriptStyle::StatusRunning,
-                                );
-                                row.status_detail = Some(verb);
-                                msgs.push(row);
-                            }
-                        }
+                }
+                {
+                    let mut msgs = messages_arc_inner.write().unwrap();
+                    if event_applier.write().apply(&mut msgs, event) {
                         transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::UserQuestionRequired(req) = event {
-                        let pending = PendingUserQuestion::from_request(req);
-                        activity_label.set(step_activity_label(&pending));
-                        reset_ui_for_step(
-                            &pending,
-                            &mut question_selected,
-                            &mut question_confirm_focus,
-                            &mut question_answer,
-                            &mut question_multi_checked,
-                            &mut question_input_focus,
-                        );
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_user_question.set(Some(pending));
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::ModeChangeRequired(req) = event {
-                        if busy.get() && !allow_mode_change_while_busy.get() {
-                            // Auto-reject mode change while busy when setting disallows it.
-                            let _ = req.response_tx.send("false".to_string());
-                            continue;
-                        }
-                        let mode_label = req.target_mode.to_ascii_uppercase();
-                        activity_label.set(format!("Approve: switch to {mode_label}"));
-                        approval_selected.set(0);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_mode_change.set(Some(PendingModeChange {
-                            target_mode: req.target_mode.clone(),
-                            reason: req.reason.clone(),
-                            response_tx: req.response_tx,
-                        }));
-                        // Push a status row for the transcript.
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            let key = "mode-change:pending".to_string();
-                            let mut row = TranscriptMessage::startup_status(
-                                key,
-                                format!("Switch to {mode_label} mode?"),
-                                TranscriptStyle::StatusRunning,
-                            );
-                            row.status_detail = Some(req.reason);
-                            msgs.push(row);
-                        }
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::PlanConfirmationRequired(req) = event {
-                        // Save plan to disk FIRST so user can read it before deciding.
-                        let plan_file = {
-                            let paths = paths.read().clone();
-                            let sid = agent_session_for_loop.as_ref().map(|s| s.session_id().to_string());
-                            crate::agent::plan_files::save_plan_to_disk(&req.plan_text, &paths, sid.as_deref())
-                                .map_err(|e| log::error!("Failed to save plan: {e}"))
-                                .ok()
-                        };
-
-                        activity_label.set("Plan proposed".to_string());
-                        approval_selected.set(PLAN_CONFIRM_DEFAULT_INDEX);
-                        shell_focus.set(ShellFocus::StatusDialog);
-                        pending_plan_confirmation.set(Some(PendingPlanConfirmation {
-                            plan_text: req.plan_text.clone(),
-                            plan_file,
-                            session: agent_session_for_loop.clone(),
-                        }));
-                        // Push a status row for the transcript.
-                        {
-                            let mut msgs = messages_arc_inner.write().unwrap();
-                            let key = plan_confirmation_transcript_key();
-                            let mut row = TranscriptMessage::startup_status(
-                                key,
-                                "Plan confirmation".to_string(),
-                                TranscriptStyle::StatusRunning,
-                            );
-                            row.status_detail = Some("Review the proposed plan".to_string());
-                            msgs.push(row);
-                        }
-                        transcript_changed = true;
-                        continue;
-                    }
-
-                    if let AgentUiEvent::QueueUpdate { items } = event {
-                        prompt_queue.write().replace(items);
-                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                        if prompt_queue.read().is_empty() {
-                            if queue_manager_open.get() {
-                                queue_manager_open.set(false);
-                                queue_manager_selected.set(0);
-                                if pending_tool_approval.read().is_none() && pending_user_question.read().is_none() {
-                                    shell_focus.set(ShellFocus::Prompt);
-                                }
-                            }
-                        } else {
-                            let len = prompt_queue.read().len();
-                            let idx = queue_manager_selected.get().min(len.saturating_sub(1));
-                            queue_manager_selected.set(idx);
-                        }
-                        continue;
-                    }
-
-                    if let AgentUiEvent::UserPromptCommitted { text } = event {
-                        // Idle submit and Ctrl+Enter already painted the user card.
-                        let pending = pre_echoed_user_prompts.get();
-                        if pending > 0 {
-                            pre_echoed_user_prompts.set(pending.saturating_sub(1));
-                        } else {
-                            let mut submitted = TranscriptMessage::text(text, TranscriptStyle::User);
-                            submitted.submitted_at = Some(chrono::Utc::now());
-                            // Write to arc directly (no State dirty mark);
-                            // sync to messages State happens at end of tick.
-                            {
-                                let mut msgs = messages_arc_inner.write().unwrap();
-                                if matches!(submitted.style, TranscriptStyle::User | TranscriptStyle::SkillPrompt) {
-                                    crate::tui::prompt_history::push_history_entry_styled(
-                                        &mut prompt_history.write(),
-                                        &submitted.content,
-                                        submitted.style,
-                                    );
-                                }
-                                msgs.push(submitted);
-                            }
-                            transcript_changed = true;
-                        }
-                        continue;
-                    }
-
-                    if let Some(label) = activity_label_for_event(&event, show_thinking) {
-                        activity_label.set(label);
-                    }
-                    {
-                        let mut msgs = messages_arc_inner.write().unwrap();
-                        if event_applier.write().apply(&mut msgs, event) {
-                            transcript_changed = true;
-                        }
                     }
                 }
             }
@@ -1779,6 +1922,37 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             if run_completed {
+                // ── Archive old messages to SQLite when memory grows large ──
+                let should_archive = {
+                    let msgs = messages_arc_inner.read().unwrap();
+                    msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
+                };
+                if should_archive {
+                    let paths_for_archive = paths.read().clone();
+                    let sid = live_session_id.read().clone();
+                    let snapshot: Vec<TranscriptMessage> = messages_arc_inner.read().unwrap().clone();
+                    tokio::spawn(async move {
+                        if let Ok(cache) = TranscriptCache::open(&paths_for_archive.transcript_db_path(), &sid).await {
+                            let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
+                            let archived: Vec<(usize, &TranscriptMessage)> =
+                                snapshot[..archive_count].iter().enumerate().collect();
+                            if let Err(err) = cache.push_batch(archived).await {
+                                log::warn!("transcript archive failed: {err:#}");
+                            }
+                        }
+                    });
+                    // Truncate messages_arc_inner. The panel reads the arc directly, so the
+                    // State copy can stay as-is until the next event tick re-syncs it.
+                    let keep = KEEP_MESSAGES;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let archive_count = msgs.len().saturating_sub(keep);
+                        if archive_count > 0 {
+                            msgs.drain(..archive_count);
+                        }
+                    }
+                }
+
                 pending_quit_confirm.set(false);
                 clear_quit_busy_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation);
 
@@ -1825,11 +1999,22 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         text: format_turn_canceled_notice(elapsed),
                         since: Instant::now(),
                     }));
+                    // Desktop notification
+                    if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                        notifier::notify(
+                            &settings.notifications,
+                            notifier::NotifKind::TurnCancel { elapsed_secs: elapsed },
+                        );
+                    }
                 } else if let Some(elapsed_secs) = run_completed_elapsed {
                     idle_status_notice.set(Some(IdleStatusNotice {
                         text: format_turn_complete_notice(elapsed_secs),
                         since: Instant::now(),
                     }));
+                    // Desktop notification
+                    if let Ok(settings) = Settings::load(&paths.read().clone()) {
+                        notifier::notify(&settings.notifications, notifier::NotifKind::TurnComplete { elapsed_secs });
+                    }
                 }
             }
         }
@@ -1858,16 +2043,24 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             // Track whether Shift is held so the transcript can hide the scrollbar
-            // during native text selection (similar to Ctrl+S toggle mode).
-            // Only key events with Shift set it; only key events without Shift clear it.
-            // Safety timeout in the main loop prevents stuck state (no key-up events
-            // from terminal when Shift is released without pressing another key).
+            // during native text selection (like a temporary Ctrl+S toggle).
+            // Shift sets the flag and resets a 10-second timer. Only Shift press
+            // extends the timer — non-Shift keys do nothing. This allows:
+            // 1. Hold Shift → select text with mouse (timer starts at 10s)
+            // 2. Release Shift → 10s grace to press Ctrl+C/Cmd+V (modifier chords
+            //    arrive without visible modifiers on macOS terminals)
+            // 3. Hold Shift again → timer resets to 10s
+            // 4. After 10s of no Shift → scrollbar reappears automatically
             if modifiers.contains(KeyModifiers::SHIFT) {
                 shift_held.set(true);
                 shift_last_pressed.set(Some(Instant::now()));
-            } else {
-                shift_held.set(false);
-                shift_last_pressed.set(None);
+            }
+
+            // Track Arrow Up timestamps to distinguish deliberate keyboard press from
+            // rapid mouse wheel scroll events. Burst detection: scroll wheel fires
+            // Arrow Up events faster than a human can tap (< 50ms apart).
+            if code == KeyCode::Up {
+                last_arrow_up_at.set(Instant::now());
             }
 
             // Textarea handles `@` picker keys before this hook; do not fall through to agent-mode Tab.
@@ -1920,7 +2113,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     }
                 } else if shell_focus.get() == ShellFocus::Prompt
                     && !select_mode.get()
+                    && kind == KeyEventKind::Press
                     && is_prompt_history_open_key(code, modifiers)
+                    && last_arrow_up_at.get().elapsed() >= Duration::from_millis(80)
                 {
                     let draft_body = {
                         let live = live_draft.read().clone();
@@ -2019,6 +2214,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         push_transcript_message(&mut messages, &mut messages_revision, &mut prompt_history, submitted);
                         pre_echoed_user_prompts.set(pre_echoed_user_prompts.get().saturating_add(1));
                         if agent_turn_active.get() {
+                            // Suppress the text from the queue list: `spawn_steer` adds it to the
+                            // harness queue, which will send back a `QueueUpdate`. Without this,
+                            // the prompt reappears in the queue UI as if it was never sent.
+                            prompt_queue.write().suppress_sent(body.clone());
+                            queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
                             TurnDispatcher::spawn_steer(Arc::clone(session), body);
                         } else {
                             // Idle: start a normal turn (steer while idle falls back the same way).
@@ -2130,6 +2330,19 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             let system_prompt_open = pending_system_prompt.read().is_some();
             let rename_open = pending_rename.read().is_some();
             let confetti_open = pending_confetti.read().is_some();
+
+            // Escape closes confetti/fireworks overlay.
+            if confetti_open && modifiers.is_empty() && code == KeyCode::Esc {
+                close_confetti(
+                    &mut pending_confetti,
+                    &mut confetti_runtime,
+                    &mut draft,
+                    &mut live_draft,
+                    &mut shell_focus,
+                );
+                return;
+            }
+
             let model_selector_open = pending_model_selector.read().is_some();
             let scoped_models_open = pending_scoped_models.read().is_some();
             let provider_connect_open = pending_provider_connect.read().is_some();
@@ -2383,8 +2596,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     {
                         if let Some(pending) = pending_scoped_models.write().as_mut() {
                             save_scoped_models(pending, &paths_snapshot, &mut session_scoped_items.write());
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -2620,8 +2834,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     }
                                 }
                                 Err(err) => {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                         &mut messages,
+                                        messages_arc,
                                         &mut messages_revision,
                                         &mut prompt_history,
                                         TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -2803,8 +3018,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -2917,6 +3133,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         }
                         messages_revision.set(messages_revision.get().wrapping_add(1));
                         if let Some(session) = agent_session.as_ref() {
+                            // Eagerly invalidate cache and set mode_state so
+                            // the agent's next turn and /system-prompt reflect
+                            // the new mode before the background task completes.
+                            session.invalidate_system_prompt_cache();
+                            session.try_set_mode_sync(mode);
                             let session = session.clone();
                             let mode_for_session = mode;
                             let pending_for_response = pending;
@@ -3018,6 +3239,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         // The plan confirmation dialog IS the user's approval; no second dialog needed.
                         if matches!(choice, PlanChoice::Implement | PlanChoice::ImplementFresh) {
                             agent_mode.set(AgentMode::Build);
+                            // Eagerly invalidate cache and set mode_state so
+                            // /system-prompt and the next turn see the new mode
+                            // before the background resolve task completes.
+                            if let Some(session) = pending.session.as_ref() {
+                                session.invalidate_system_prompt_cache();
+                                session.try_set_mode_sync(AgentMode::Build);
+                            }
                             // Show ephemeral banner about the mode switch.
                             let expire_tx = ephemeral_expire.read().tx.clone();
                             show_ephemeral_banner(
@@ -3615,8 +3843,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
 
                             // Push transcript notification immediately
                             let provider_name = format_provider_name(&pid);
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -3881,8 +4110,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -3904,6 +4134,57 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                     )
                 {
                     question_validation_error.set(Some(err));
+                    return;
+                }
+
+                // ── Confirm step (Yes/No) ───────────────────────────────────
+                let confirm_choice = {
+                    let should_submit = pending_user_question
+                        .read()
+                        .as_ref()
+                        .is_some_and(|p| {
+                            p.is_confirm()
+                                && question_input_focus.get().is_choices()
+                                && modifiers.is_empty()
+                                && matches!(
+                                    code,
+                                    KeyCode::Char('y')
+                                        | KeyCode::Char('Y')
+                                        | KeyCode::Char('n')
+                                        | KeyCode::Char('N')
+                                        | KeyCode::Enter
+                                        | KeyCode::Esc
+                                )
+                        });
+                    if should_submit {
+                        let yes = matches!(code, KeyCode::Char('y') | KeyCode::Char('Y'))
+                            || (code == KeyCode::Enter && question_selected.get() == 0);
+                        pending_user_question.write().take().map(|p| p.respond_confirm(yes))
+                    } else {
+                        None
+                    }
+                };
+                if let Some(outcome) = confirm_choice {
+                    if let Some(summary) = apply_step_submit_outcome(
+                        outcome,
+                        &mut pending_user_question,
+                        &mut question_selected,
+                        &mut question_confirm_focus,
+                        &mut question_answer,
+                        &mut question_multi_checked,
+                        &mut question_input_focus,
+                        &mut shell_focus,
+                        &mut activity_label,
+                        &mut question_validation_error,
+                    ) {
+                        push_transcript_message_synced(
+                            &mut messages,
+                            messages_arc,
+                            &mut messages_revision,
+                            &mut prompt_history,
+                            TranscriptMessage::text(summary, TranscriptStyle::Meta),
+                        );
+                    }
                     return;
                 }
 
@@ -3942,8 +4223,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             &mut question_validation_error,
                         )
                     {
-                        push_transcript_message(
+                        push_transcript_message_synced(
                             &mut messages,
+                            messages_arc,
                             &mut messages_revision,
                             &mut prompt_history,
                             TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -4051,6 +4333,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let ext_registry = extension_registry.read();
                         let templates = prompt_templates.read().clone();
                         let loaded_skills = skills.read().clone();
+
+                        // Block session-querying slash commands while agent is streaming.
+                        let trimmed = slash_input.trim();
+                        if agent_turn_active.get()
+                            && (trimmed == "/tools"
+                                || trimmed.starts_with("/tools ")
+                                || trimmed == "/system-prompt"
+                                || trimmed.starts_with("/system-prompt "))
+                        {
+                            let expire_tx = ephemeral_expire.read().tx.clone();
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &expire_tx,
+                                EphemeralBanner {
+                                    key: "transient:slash_busy",
+                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
+                                    kind: EphemeralBannerKind::Warning,
+                                    expires_at: None,
+                                },
+                            );
+                            return;
+                        }
+
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
                             extensions: Some(&ext_registry),
@@ -4125,15 +4431,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 });
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
-                                // Compact dialog: narrower width and content-sized height.
-                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
-                                    text,
-                                    width_pct: 50,
-                                    body_height: Some(body_height),
+                                    text: text.clone(),
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    body_height: None,
                                     show_copy: true,
                                 });
                                 force_editor_clear.set(true);
@@ -4229,32 +4533,36 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Status(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -4370,6 +4678,60 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 || file_picker_snapshot.visible;
 
             match (modifiers, code) {
+                // Ctrl+I — open Session info dialog.
+                (m, KeyCode::Char('i')) | (m, KeyCode::Char('I'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_confetti.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    if pending_system_prompt.read().is_some() {
+                        close_system_prompt_dialog(
+                            &mut pending_system_prompt,
+                            &mut draft,
+                            &mut live_draft,
+                            &mut shell_focus,
+                            &mut force_editor_clear,
+                        );
+                    } else {
+                        let skills_snapshot = skills.read().clone();
+                        match session_info_slash_message(agent_session.as_ref(), Some(&skills_snapshot)) {
+                            Ok(text) => {
+                                open_scroll_text_dialog(OpenScrollTextDialogArgs {
+                                    pending: &mut pending_system_prompt,
+                                    shell_focus: &mut shell_focus,
+                                    title: "Session".to_string(),
+                                    text,
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    body_height: None,
+                                    show_copy: true,
+                                });
+                                force_editor_clear.set(true);
+                            }
+                            Err(msg) => {
+                                let expire_tx = ephemeral_expire.read().tx.clone();
+                                show_ephemeral_banner(
+                                    &mut ephemeral_banner,
+                                    &mut ephemeral_banner_generation,
+                                    &expire_tx,
+                                    EphemeralBanner {
+                                        key: "transient:session_info",
+                                        text: msg,
+                                        kind: EphemeralBannerKind::Error,
+                                        expires_at: Some(Instant::now() + AGENT_MODE_NOTICE_TTL),
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
                 (m, KeyCode::Char('l')) | (m, KeyCode::Char('L'))
                     if m.contains(KeyModifiers::CONTROL) && pending_user_question.read().is_none() =>
                 {
@@ -4416,6 +4778,58 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             });
                         }
                     }
+                }
+                // Ctrl+R — play confetti rain (if no overlays open).
+                (m, KeyCode::Char('r')) | (m, KeyCode::Char('R'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_confetti.read().is_none()
+                        && pending_tool_approval.read().is_none()
+                        && pending_mode_change.read().is_none()
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    open_confetti(OpenConfettiArgs {
+                        pending: &mut pending_confetti,
+                        state: &mut confetti_runtime,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        mode: ConfettiMode::Confetti,
+                    });
+                }
+                // Ctrl+F — play fireworks (if no overlays open).
+                (m, KeyCode::Char('f')) | (m, KeyCode::Char('F'))
+                    if m.contains(KeyModifiers::CONTROL)
+                        && !m.contains(KeyModifiers::ALT)
+                        && !m.contains(KeyModifiers::META)
+                        && pending_confetti.read().is_none()
+                        && pending_tool_approval.read().is_none()
+                        && pending_mode_change.read().is_none()
+                        && pending_user_question.read().is_none()
+                        && pending_model_selector.read().is_none()
+                        && pending_scoped_models.read().is_none()
+                        && pending_system_prompt.read().is_none()
+                        && pending_rename.read().is_none()
+                        && pending_provider_connect.read().is_none()
+                        && pending_provider_disconnect.read().is_none()
+                        && pending_provider_api_key.read().is_none() =>
+                {
+                    open_confetti(OpenConfettiArgs {
+                        pending: &mut pending_confetti,
+                        state: &mut confetti_runtime,
+                        draft: &mut draft,
+                        live_draft: &mut live_draft,
+                        shell_focus: &mut shell_focus,
+                        mode: ConfettiMode::Firework,
+                    });
                 }
                 // Ctrl+Y — always copy the full prompt body (not the selection).
                 // Plain `y` yanks selected text in the Textarea (separate toast path).
@@ -4494,8 +4908,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             }
                         }
                         Err(err) => {
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(format!("{err}"), TranscriptStyle::Meta),
@@ -4541,6 +4956,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             agent_mode_banner(next),
                         );
                         if let Some(session) = agent_session.as_ref() {
+                            // Eagerly invalidate cache and set mode_state so
+                            // /system-prompt and the next harness turn see the
+                            // new mode before the background task completes.
+                            session.invalidate_system_prompt_cache();
+                            session.try_set_mode_sync(next);
                             let session = Arc::clone(session);
                             let mode = next;
                             tokio::spawn(async move {
@@ -4633,63 +5053,63 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         false,
                     );
                 }
-                (m, KeyCode::Char('c')) if m.contains(KeyModifiers::CONTROL) && busy.get() => {
-                    turn_cancel_requested.set(true);
-                    activity_label.set("Cancelling…".to_string());
-                    prompt_queue.write().clear();
-                    queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
-                    pre_echoed_user_prompts.set(0);
-                    agent_turn_active.set(false);
-                    queue_manager_open.set(false);
-                    queue_manager_selected.set(0);
-                    if let Some(pending) = pending_tool_approval.write().take() {
-                        pending.respond(ToolApprovalChoice::Reject);
-                    }
-                    if let Some(mode_change) = pending_mode_change.write().take() {
-                        mode_change.respond(false);
-                    }
-                    let _ = pending_plan_confirmation.write().take();
-                    if let Some(question) = pending_user_question.write().take() {
-                        question.cancel();
-                    }
-                    shell_focus.set(ShellFocus::Prompt);
-                    question_answer.set(String::new());
-                    question_input_focus.set(QuestionInputFocus::Choices);
-                    if let Some(token) = user_shell_abort.read().clone() {
-                        token.cancel();
-                    }
-                    if let Some(session) = agent_session.as_ref() {
-                        TurnDispatcher::spawn_abort(Arc::clone(session));
-                    } else if user_shell_abort.read().is_none() {
-                        let canceled_elapsed = busy_started_at
-                            .read()
-                            .as_ref()
-                            .map(|started| format_elapsed_secs(*started))
-                            .unwrap_or(0.0);
-                        session_elapsed_secs
-                            .set(accumulate_session_elapsed(session_elapsed_secs.get(), canceled_elapsed));
-                        busy.set(false);
-                        busy_started_at.set(None);
-                        activity_started_at.set(None);
-                        turn_token_tracker.set(None);
-                        turn_cancel_requested.set(false);
-                        idle_status_notice.set(Some(IdleStatusNotice {
-                            text: format_turn_canceled_notice(canceled_elapsed),
-                            since: Instant::now(),
-                        }));
-                    }
-                }
                 (m, KeyCode::Char('c'))
-                    if m.contains(KeyModifiers::CONTROL) && !busy.get() && pending_tool_approval.read().is_none() =>
+                    if m.contains(KeyModifiers::CONTROL) && pending_tool_approval.read().is_none() =>
                 {
-                    // Ctrl+C always clears / cancels — never used for yank (`y` = selection, Ctrl+Y = full prompt).
-                    if matches!(handle_prompt_interrupt_text(&draft_text), PromptInterrupt::Cleared) {
+                    // Ctrl+C: if textarea has content → clear it; if empty and busy → cancel stream.
+                    // Never used for yank (`y` = selection, Ctrl+Y = full prompt).
+                    if !draft_body.is_empty() {
                         draft.set(String::new());
                         live_draft.set(String::new());
                         force_editor_clear.set(true);
                         slash_palette_index.set(0);
                         slash_palette_query.write().clear();
                         suppress_enter_newline.set(true);
+                    } else if busy.get() {
+                        turn_cancel_requested.set(true);
+                        activity_label.set("Cancelling…".to_string());
+                        prompt_queue.write().clear();
+                        queue_ui_revision.set(queue_ui_revision.get().wrapping_add(1));
+                        pre_echoed_user_prompts.set(0);
+                        agent_turn_active.set(false);
+                        queue_manager_open.set(false);
+                        queue_manager_selected.set(0);
+                        if let Some(pending) = pending_tool_approval.write().take() {
+                            pending.respond(ToolApprovalChoice::Reject);
+                        }
+                        if let Some(mode_change) = pending_mode_change.write().take() {
+                            mode_change.respond(false);
+                        }
+                        let _ = pending_plan_confirmation.write().take();
+                        if let Some(question) = pending_user_question.write().take() {
+                            question.cancel();
+                        }
+                        shell_focus.set(ShellFocus::Prompt);
+                        question_answer.set(String::new());
+                        question_input_focus.set(QuestionInputFocus::Choices);
+                        if let Some(token) = user_shell_abort.read().clone() {
+                            token.cancel();
+                        }
+                        if let Some(session) = agent_session.as_ref() {
+                            TurnDispatcher::spawn_abort(Arc::clone(session));
+                        } else if user_shell_abort.read().is_none() {
+                            let canceled_elapsed = busy_started_at
+                                .read()
+                                .as_ref()
+                                .map(|started| format_elapsed_secs(*started))
+                                .unwrap_or(0.0);
+                            session_elapsed_secs
+                                .set(accumulate_session_elapsed(session_elapsed_secs.get(), canceled_elapsed));
+                            busy.set(false);
+                            busy_started_at.set(None);
+                            activity_started_at.set(None);
+                            turn_token_tracker.set(None);
+                            turn_cancel_requested.set(false);
+                            idle_status_notice.set(Some(IdleStatusNotice {
+                                text: format_turn_canceled_notice(canceled_elapsed),
+                                since: Instant::now(),
+                            }));
+                        }
                     }
                 }
                 _ => {}
@@ -4798,6 +5218,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         system.exit();
     }
 
+    if chrome_full_redraw_pending.get() {
+        chrome_full_redraw_pending.set(false);
+        system.request_full_redraw();
+    }
+
     let (accent_r, accent_g, accent_b) = agent_mode.get().label_rgb();
     let scanner_accent = rgb(accent_r, accent_g, accent_b);
     let chrome = chrome_stats.read().clone();
@@ -4824,6 +5249,10 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let system_prompt_open = pending_system_prompt.read().is_some();
+    let session_info_open = pending_system_prompt
+        .read()
+        .as_ref()
+        .is_some_and(|d| d.title == "Session");
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
@@ -5021,16 +5450,18 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         match result {
                             Ok(()) => {
                                 let notice = format!("Session renamed to “{}”.", title.trim());
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(notice, TranscriptStyle::Meta),
                                 );
                             }
                             Err(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -5060,9 +5491,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let editor_overlay = rename_overlay.or(model_selector_overlay).or(scoped_models_overlay);
     let _confetti_frame = confetti_frame.get();
     let confetti_overlay = pending_confetti.read().as_ref().map(|_| -> AnyElement<'static> {
-        let plane = if let Some(runtime) = confetti_runtime.write().as_mut() {
+        let particles = if let Some(runtime) = confetti_runtime.write().as_mut() {
             runtime.resize(screen_width, screen_height);
-            runtime.system.render_plane()
+            runtime.system.visible_particles()
         } else {
             Vec::new()
         };
@@ -5070,7 +5501,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             ConfettiOverlay(
                 screen_width: screen_width,
                 screen_height: screen_height,
-                plane: plane,
+                particles: particles,
             )
         }
         .into()
@@ -5319,7 +5750,23 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 text_select_mode: select_mode.get() || shift_held.get(),
                 streaming_active: Some(busy.get()),
                 messages_arc: Some(messages_arc.read().clone()),
-
+                on_subagent_click: {
+                    use crate::tui::subagent_output_dialog::PendingSubagentOutputDialog;
+                    let mut pending_subagent_output = pending_subagent_output;
+                    let subagent_output_buffers = subagent_output_buffers_state.read().clone();
+                    Some(HandlerMut::from(move |(agent_id, title): (String, String)| {
+                        let buffers = subagent_output_buffers.read().expect("subagent output buffers lock");
+                        if let Some((text, is_running)) = buffers.get(&agent_id) {
+                            let pending = PendingSubagentOutputDialog::open(
+                                &agent_id,
+                                &title,
+                                text.clone(),
+                                is_running.clone(),
+                            );
+                            pending_subagent_output.set(Some(pending));
+                        }
+                    }))
+                },
             )
             #(user_question_view.map(|view| -> AnyElement<'static> {
                 element! {
@@ -5353,8 +5800,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         &mut question_validation_error,
                                     )
                                 {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5382,8 +5830,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                         &mut question_validation_error,
                                     )
                                 {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                     &mut messages,
+                                    messages_arc,
                                     &mut messages_revision,
                                     &mut prompt_history,
                                     TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5429,8 +5878,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut question_validation_error,
                                 )
                             {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5481,8 +5931,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     &mut question_validation_error,
                                 )
                             {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(summary, TranscriptStyle::Meta),
@@ -5577,7 +6028,11 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                 editor_overlay: editor_overlay,
                 text_select_mode: select_mode.get() || shift_held.get(),
                 blocked_hint: if system_prompt_open {
-                    Some("Viewing system prompt — Esc to close".to_string())
+                    if session_info_open {
+                        Some("Viewing session info — Esc to close".to_string())
+                    } else {
+                        Some("Viewing system prompt — Esc to close".to_string())
+                    }
                 } else if user_question_open {
                     Some("Answer the question above".to_string())
                 } else if rename_open {
@@ -5662,8 +6117,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let (prefix_kind, body) =
                             resolve_submit_draft(input_prefix_kind.get(), &text, &PromptPrefixConfig::default());
                         if body.trim().is_empty() {
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text("Empty command.", TranscriptStyle::Meta),
@@ -5681,10 +6137,12 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                             let with_context = prefix_kind == InputPrefixKind::ShellWithContext;
                             let mut submitted = TranscriptMessage::text(body.clone(), TranscriptStyle::User);
                             submitted.submitted_at = Some(chrono::Utc::now());
-                            push_transcript_message(
+                            push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
-                                &mut prompt_history, submitted);
+                                &mut prompt_history,
+                                submitted);
 
                             let tool_id = next_user_shell_tool_id();
                             {
@@ -5744,6 +6202,30 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                         let templates = prompt_templates.read().clone();
                         let loaded_skills = skills.read().clone();
                         let paths_snapshot = paths.read().clone();
+
+                        // Block session-querying slash commands while agent is streaming.
+                        if agent_turn_active.get()
+                            && (slash_input.trim() == "/tools"
+                                || slash_input.trim().starts_with("/tools ")
+                                || slash_input.trim() == "/system-prompt"
+                                || slash_input.trim().starts_with("/system-prompt "))
+                        {
+                            let expire_tx = ephemeral_expire.read().tx.clone();
+                            show_ephemeral_banner(
+                                &mut ephemeral_banner,
+                                &mut ephemeral_banner_generation,
+                                &expire_tx,
+                                EphemeralBanner {
+                                    key: "transient:slash_busy",
+                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
+                                    kind: EphemeralBannerKind::Warning,
+                                    expires_at: None,
+                                },
+                            );
+                            suppress_enter_newline.set(true);
+                            return;
+                        }
+
                         let outcome = handle_slash_submit(SlashContext {
                             input: &slash_input,
                             extensions: Some(&ext_registry),
@@ -5882,24 +6364,27 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 new_session_requested.set(true);
                             }
                             SlashOutcome::Status(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
                                 );
                             }
                             SlashOutcome::Assistant(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::assistant_slash_markdown(message),
                                 );
                             }
                             SlashOutcome::Unimplemented(message) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(message, TranscriptStyle::Meta),
@@ -5993,15 +6478,13 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OpenSessionInfoDialog { text } => {
-                                // Compact dialog: narrower width and content-sized height.
-                                let body_height = (text.lines().count() as u16).saturating_add(3).clamp(6, 30);
                                 open_scroll_text_dialog(OpenScrollTextDialogArgs {
                                     pending: &mut pending_system_prompt,
                                     shell_focus: &mut shell_focus,
                                     title: "Session".to_string(),
                                     text,
-                                    width_pct: 50,
-                                    body_height: Some(body_height),
+                                    width_pct: DEFAULT_SCROLL_TEXT_WIDTH_PCT,
+                                    body_height: None,
                                     show_copy: true,
                                 });
                                 draft.set(String::new());
@@ -6083,8 +6566,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                 return;
                             }
                             SlashOutcome::OverlayDeferred(overlay) => {
-                                push_transcript_message(
+                                push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(overlay_deferred_message(&overlay), TranscriptStyle::Meta),
@@ -6151,8 +6635,9 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
                                     begin_turn_token_tracking(&mut turn_token_tracker, &chrome_stats.read());
                                     TurnDispatcher::spawn_turn(Arc::clone(session), body.clone(), false);
                                 } else {
-                                    push_transcript_message(
+                                    push_transcript_message_synced(
                                 &mut messages,
+                                messages_arc,
                                 &mut messages_revision,
                                 &mut prompt_history,
                                 TranscriptMessage::text(
@@ -6173,6 +6658,33 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             )
             #(confetti_overlay)
             #(system_prompt_overlay)
+            #(pending_subagent_output.read().as_ref().map(|pending| -> AnyElement<'static> {
+                let (chrome, body_height) = crate::tui::subagent_output_dialog::subagent_output_dialog_chrome(
+                    screen_width, screen_height, pending.width_pct
+                );
+                let mut pending_subagent_output = pending_subagent_output;
+                let mut shell_focus = shell_focus;
+                element! {
+                    SubagentOutputDialogOverlay(
+                        screen_width: screen_width,
+                        screen_height: screen_height,
+                        agent_id: pending.agent_id.clone(),
+                        title: pending.title.clone(),
+                        text: pending.text.clone(),
+                        is_running: pending.is_running.clone(),
+                        body_height: body_height,
+                        chrome: chrome,
+                        scroll_handle: Some(subagent_output_scroll),
+                        scroll_tick: subagent_output_scroll_tick.get(),
+                        has_focus: true,
+                        on_esc: move |_| {
+                            pending_subagent_output.set(None);
+                            shell_focus.set(ShellFocus::Prompt);
+                        },
+                    )
+                }
+                .into()
+            }))
         }
     }
 }

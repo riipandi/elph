@@ -1,8 +1,8 @@
-//! Local shell execution — delegates to [`elph_exec`].
+//! Local shell execution — delegates to [`crate::exec`].
 
 use std::path::Path;
 
-use elph_exec::exec_shell_command;
+use crate::exec::exec_shell_command;
 
 use crate::agent::harness::types::ExecutionEnv;
 use crate::agent::harness::types::ExecutionError;
@@ -35,12 +35,12 @@ impl Shell for LocalExecutionEnv {
 impl ExecutionEnv for LocalExecutionEnv {}
 
 impl LocalExecutionEnv {
-    pub fn shell_config(&self) -> elph_exec::ShellConfig {
-        elph_exec::ShellConfig {
+    pub fn shell_config(&self) -> crate::exec::ShellConfig {
+        crate::exec::ShellConfig {
             shell_path: self.shell_path.clone(),
             shell_args: vec!["-c".to_string()],
             base_env: self.shell_env.clone(),
-            ..elph_exec::ShellConfig::default()
+            ..crate::exec::ShellConfig::default()
         }
     }
 

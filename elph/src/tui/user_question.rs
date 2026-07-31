@@ -735,7 +735,7 @@ pub fn question_footer_hint(
         }
     }
     if pending.is_confirm() {
-        parts.push("←/→ focus · Enter/y yes · n/Esc no".to_string());
+        parts.push("↑↓ move · Enter/y yes · n/Esc no".to_string());
         return parts.join(" · ");
     }
     if pending.is_multi_select() {

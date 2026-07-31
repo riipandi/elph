@@ -11,6 +11,7 @@ pub mod logger;
 pub mod messages;
 
 pub mod collaboration;
+pub mod exec;
 #[cfg(feature = "extensions")]
 pub mod plugins;
 pub mod prompt;
@@ -25,6 +26,9 @@ pub mod trace;
 pub mod types;
 pub mod utils;
 
+#[cfg(unix)]
+pub use crate::exec::pty::{PtySize, open_pty};
+pub use crate::exec::{ExecError, ExecErrorCode, ShellConfig, exec_shell_command, resolve_shell};
 pub use agent::default_model;
 pub use agent::harness::AfterProviderResponseEvent;
 pub use agent::harness::AgentHarness;
@@ -187,9 +191,6 @@ pub use datastore::DatabaseSpec;
 pub use datastore::Migration;
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
-pub use elph_exec::{ExecError, ExecErrorCode, ShellConfig, exec_shell_command, resolve_shell};
-#[cfg(unix)]
-pub use elph_exec::{PtySize, open_pty};
 pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
 pub use goals::create_goal_tools;
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
@@ -378,6 +379,8 @@ pub use tools::mcp::McpConnectContext;
 pub use tools::mcp::McpEventBus;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpHttpConfig;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::McpLifecycleMode;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpLoadReport;
 #[cfg(feature = "mcp")]

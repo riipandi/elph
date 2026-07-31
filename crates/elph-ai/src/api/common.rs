@@ -336,7 +336,12 @@ pub async fn send_with_resilience_retry(
                     continue;
                 }
 
-                // Non-retryable error — fail immediately
+                // Non-retryable error — fail immediately.
+                // 4xx errors (except 408/409/429) are client errors, not provider
+                // outages — don't trip the circuit breaker on them.
+                if code < 500 {
+                    return Err(anyhow!("{code}: {body}"));
+                }
                 record_provider_failure(provider_id);
                 return Err(anyhow!("{code}: {body}"));
             }

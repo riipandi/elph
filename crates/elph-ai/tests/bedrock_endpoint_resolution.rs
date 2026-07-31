@@ -38,7 +38,9 @@ fn does_not_pin_standard_endpoints_when_aws_region_is_configured() {
 #[test]
 fn derives_region_from_builtin_eu_endpoint_when_no_region_or_profile_is_configured() {
     let model = get_builtin_model("amazon-bedrock", "eu.anthropic.claude-sonnet-4-5-20250929-v1:0").expect("model");
-    let config = resolve_bedrock_runtime_config(&model, &thinking_options(None, None, None, None));
+    // Isolate from ambient AWS environment variables so the test is deterministic.
+    let empty_env = std::collections::HashMap::new();
+    let config = resolve_bedrock_runtime_config(&model, &thinking_options(None, None, None, Some(&empty_env)));
     assert_eq!(
         config.endpoint.as_deref(),
         Some("https://bedrock-runtime.eu-central-1.amazonaws.com")
@@ -49,8 +51,13 @@ fn derives_region_from_builtin_eu_endpoint_when_no_region_or_profile_is_configur
 #[test]
 fn handles_missing_regions_for_explicit_scoped_and_ambient_profiles() {
     let model = get_builtin_model("amazon-bedrock", "eu.anthropic.claude-sonnet-4-5-20250929-v1:0").expect("model");
+    // Isolate from ambient AWS environment variables so the test is deterministic.
+    let empty_env = std::collections::HashMap::new();
 
-    let explicit = resolve_bedrock_runtime_config(&model, &thinking_options(None, Some("bedrock-profile"), None, None));
+    let explicit = resolve_bedrock_runtime_config(
+        &model,
+        &thinking_options(None, Some("bedrock-profile"), None, Some(&empty_env)),
+    );
     assert_eq!(explicit.profile.as_deref(), Some("bedrock-profile"));
     assert_eq!(
         explicit.endpoint.as_deref(),
@@ -68,8 +75,10 @@ fn handles_missing_regions_for_explicit_scoped_and_ambient_profiles() {
     );
     assert_eq!(scoped.region.as_deref(), Some("eu-central-1"));
 
-    let ambient =
-        resolve_bedrock_runtime_config(&model, &thinking_options(None, None, Some("ambient-bedrock-profile"), None));
+    let ambient = resolve_bedrock_runtime_config(
+        &model,
+        &thinking_options(None, None, Some("ambient-bedrock-profile"), Some(&empty_env)),
+    );
     assert_eq!(ambient.profile.as_deref(), Some("ambient-bedrock-profile"));
     assert!(ambient.endpoint.is_none());
     assert!(ambient.region.is_none());

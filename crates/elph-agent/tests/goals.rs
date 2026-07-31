@@ -6,12 +6,11 @@ use elph_agent::goals::{GoalStatus, GoalStore};
 use elph_agent::{AgentToolResult, Migration};
 use serde_json::json;
 
-const GOALS_MIGRATIONS: &[Migration] = &[
-    Migration {
-        version: 4,
-        name: "create_goals_table",
-        up: "CREATE TABLE IF NOT EXISTS goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+const GOALS_MIGRATIONS: &[Migration] = &[Migration {
+    version: 4,
+    name: "create_goals_table",
+    up: "CREATE TABLE IF NOT EXISTS goals (
+            id TEXT PRIMARY KEY,
             session_id TEXT NOT NULL,
             objective TEXT NOT NULL,
             completion_criterion TEXT,
@@ -28,14 +27,7 @@ const GOALS_MIGRATIONS: &[Migration] = &[
         ) STRICT;
         CREATE INDEX IF NOT EXISTS idx_goals_session_id ON goals(session_id);
         CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);",
-    },
-    Migration {
-        version: 6,
-        name: "add_goal_id_column",
-        up: "ALTER TABLE goals ADD COLUMN goal_id TEXT;
-            CREATE INDEX IF NOT EXISTS idx_goals_goal_id ON goals(goal_id);",
-    },
-];
+}];
 
 fn tool_text(result: AgentToolResult) -> String {
     result
@@ -64,7 +56,8 @@ async fn goal_store_lifecycle() {
         .expect("create goal");
     assert_eq!(goal.objective, "Ship feature X");
     assert_eq!(goal.status, GoalStatus::Active);
-    assert!(!goal.goal_id.is_empty());
+    assert!(!goal.id.is_empty());
+    assert!(goal.id.starts_with("goal_"));
 
     let active = store.get_active_goal(session_id).await.expect("get active");
     assert!(active.is_some());

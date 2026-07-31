@@ -109,6 +109,7 @@ impl McpServerConfig {
             cwd: None,
             timeout_ms: None,
             enable: true,
+            lifecycle: McpLifecycleMode::Auto,
             policy: None,
         })
     }
@@ -130,6 +131,14 @@ impl McpServerConfig {
         match self {
             Self::Stdio(c) => !c.enable,
             Self::Http(c) | Self::Sse(c) => !c.enable,
+        }
+    }
+
+    /// The protocol lifecycle mode for this server.
+    pub fn lifecycle_mode(&self) -> McpLifecycleMode {
+        match self {
+            Self::Stdio(c) => c.lifecycle,
+            Self::Http(c) | Self::Sse(c) => c.lifecycle,
         }
     }
 
@@ -207,6 +216,11 @@ pub struct McpStdioConfig {
     /// When false, the server is skipped during discovery and tool calls.
     #[serde(default = "default_true")]
     pub enable: bool,
+    /// Protocol lifecycle mode. `"auto"` probes `server/discover` first and
+    /// falls back to `initialize` when unsupported; `"legacy"` uses the old
+    /// handshake exclusively; `"discover"` requires 2026-07-28+.
+    #[serde(default, skip_serializing_if = "is_default_lifecycle")]
+    pub lifecycle: McpLifecycleMode,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
@@ -221,6 +235,34 @@ pub struct McpOAuthClientMeta {
     pub client_secret: Option<String>,
     pub client_metadata_url: Option<String>,
     pub redirect_port: Option<u16>,
+}
+
+/// Protocol lifecycle mode for MCP connections.
+///
+/// Controls whether the client uses the legacy `initialize` handshake or the
+/// 2026-07-28+ stateless `server/discover` protocol.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum McpLifecycleMode {
+    /// Probe with `server/discover`, falling back to `initialize` when the
+    /// server does not support it (non-standard errors such as -32600 are also
+    /// treated as "not supported").
+    #[serde(rename = "auto")]
+    #[default]
+    Auto,
+    /// Always use the legacy `initialize` / `notifications/initialized`
+    /// handshake. Required for servers (e.g. DeepWiki, Context7) that reject
+    /// unknown methods with non-standard JSON-RPC error codes.
+    #[serde(rename = "legacy")]
+    Legacy,
+    /// Use `server/discover` exclusively. Fails if the server does not support
+    /// the 2026-07-28 protocol.
+    #[serde(rename = "discover")]
+    Discover,
+}
+
+fn is_default_lifecycle(m: &McpLifecycleMode) -> bool {
+    *m == McpLifecycleMode::Auto
 }
 
 /// How to resolve competing credentials (env/inline bearer vs `auth.json` OAuth).
@@ -291,6 +333,11 @@ pub struct McpHttpConfig {
     /// Conflict policy when both static bearer and auth.json OAuth are present.
     #[serde(default, skip_serializing_if = "is_default_auth_conflict")]
     pub auth_conflict: McpAuthConflictPolicy,
+    /// Protocol lifecycle mode. `"auto"` probes `server/discover` first and
+    /// falls back to `initialize` when unsupported; `"legacy"` uses the old
+    /// handshake exclusively; `"discover"` requires 2026-07-28+.
+    #[serde(default, skip_serializing_if = "is_default_lifecycle")]
+    pub lifecycle: McpLifecycleMode,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
@@ -317,6 +364,7 @@ impl McpHttpConfig {
             oauth_client_metadata_url: None,
             oauth_redirect_port: None,
             auth_conflict: McpAuthConflictPolicy::Error,
+            lifecycle: McpLifecycleMode::Auto,
             policy: None,
         }
     }
@@ -458,6 +506,7 @@ mod tests {
                 cwd: None,
                 timeout_ms: None,
                 enable: false,
+                lifecycle: McpLifecycleMode::Auto,
                 policy: None,
             }),
         );

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/elph-*", "crates/floppy", "elph"]
-exclude = ["extensions/say-hello"]
+exclude = ["extensions/say-hello", "vendor/iocraft"]
 
 [workspace.package]
 homepage = "https://elph.space"
@@ -34,7 +34,6 @@ crossbeam-channel = "0.5.16"
 crossterm = { version = "0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 elph-agent = { path = "crates/elph-agent", version = "0.0.28" }
 elph-ai = { path = "crates/elph-ai", version = "0.0.28" }
-elph-exec = { path = "crates/elph-exec", version = "0.0.1" }
 elph-tui = { path = "crates/elph-tui", version = "0.0.27" }
 embed_anything = { version = "0.7.1", default-features = true }
 eventsource-stream = "0.2.3"
@@ -74,7 +73,7 @@ logforth = { version = "0.30.1", features = [
 memchr = "2.8.3"
 memorable-ids = "0.1.1"
 minijinja = "2.10.2"
-notify = { version = "8.2.0", features = ["serde"] }
+notify-rust = { version = "4.18.0", features = ["tokio"] }
 obscura = { version = "0.1" }
 parking_lot = "0.12"
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["simd"] }
@@ -84,7 +83,7 @@ rayon = "1.12.0"
 regex = "1.13.1"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
 serde_urlencoded = "0.7.1"
-rmcp = { version = "2.2.0", features = [
+rmcp = { version = "3.0.0", features = [
   "auth",
   "client",
   "transport-child-process",
@@ -119,8 +118,9 @@ tokio-tungstenite = { version = "0.30.0", default-features = false, features = [
 tokio-util = "0.7.19"
 toml = "1.1.4"
 toon-format = { version = "0.5.0", default-features = false }
-turso = { version = "0.7.1", default-features = false }
+turso = { version = "0.7.2", default-features = false }
 two-face = "0.5.1"
+unicode-linebreak = "0.1.5"
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.2"
 url = "2.5.8"

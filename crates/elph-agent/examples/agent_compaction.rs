@@ -87,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
     let settings = CompactionSettings {
         enabled: true,
         reserve_tokens: 16384,
+        threshold_pct: None,
         keep_recent_tokens: 20000,
     };
 

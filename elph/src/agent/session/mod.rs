@@ -4,6 +4,7 @@ mod wiring;
 
 use crate::types::AgentMode;
 use anyhow::Result;
+use elph_agent::compaction::{estimate_context_tokens, should_compact};
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, SessionDirStorage};
 use std::sync::Arc;
@@ -47,6 +48,9 @@ pub struct CodingAgentSessionParams {
     pub ui_tx: mpsc::UnboundedSender<AgentUiEvent>,
     /// Model for auto session titles (`provider/model_id` or `"inherit"`).
     pub title_model: String,
+    /// User's preferred chat language for transcript responses (e.g. `"english"`, `"indonesian"`).
+    /// Code, comments, and documentation remain in English regardless of this value.
+    pub preferred_chat_language: String,
 }
 
 pub struct CodingAgentSession {
@@ -69,6 +73,9 @@ pub struct CodingAgentSession {
     system_prompt_cache: RwLock<Option<String>>,
     /// Settings `session.titleModel` (`inherit` or `provider/model_id`).
     title_model: String,
+    /// User's preferred chat language for transcript responses.
+    /// Code, comments, and documentation remain in English regardless of this value.
+    preferred_chat_language: String,
     /// Ensures at most one background auto-title attempt per session instance.
     title_generation_started: AtomicBool,
 }
@@ -87,6 +94,7 @@ impl CodingAgentSession {
             mcp_registry,
             ui_tx,
             title_model,
+            preferred_chat_language,
         } = params;
         let mut policy = AgentModePolicy::new(agent_mode);
         let mcp_slot = Arc::new(RwLock::new(mcp_registry));
@@ -110,6 +118,7 @@ impl CodingAgentSession {
             mode_gate: Arc::new(Mutex::new(())),
             system_prompt_cache: RwLock::new(None),
             title_model,
+            preferred_chat_language,
             title_generation_started: AtomicBool::new(already_named),
         };
         session.wire_harness(ui_tx).await?;
@@ -131,6 +140,34 @@ impl CodingAgentSession {
 
     pub fn mode_state(&self) -> Arc<Mutex<AgentMode>> {
         self.mode_state.clone()
+    }
+
+    /// Eagerly invalidate the system prompt cache synchronously so the next
+    /// `/system-prompt` read (or fresh compile) reflects the current mode.
+    ///
+    /// Safe to call from the TUI input path while a turn is streaming.
+    /// The cache is repopulated by [`apply_agent_mode`] when the mode-change
+    /// background task completes, or on the next fresh compile via
+    /// [`system_prompt_slash_message`].
+    pub fn invalidate_system_prompt_cache(&self) {
+        *self.system_prompt_cache.write() = None;
+    }
+
+    /// Try to set the agent mode synchronously using `try_lock`.
+    ///
+    /// Returns `true` on success. Falls back to `set_agent_mode` (async) when
+    /// the lock is contended (unlikely — `mode_state` is held only briefly).
+    ///
+    /// Use this from the TUI key handler to eagerly update `mode_state` before
+    /// spawning the full `set_agent_mode` background task, eliminating the race
+    /// between mode change and the next prompt submission.
+    pub fn try_set_mode_sync(&self, mode: AgentMode) -> bool {
+        if let Ok(mut guard) = self.mode_state.try_lock() {
+            *guard = mode;
+            true
+        } else {
+            false
+        }
     }
 
     /// Re-apply tool permissions after MCP hot-reload or tool set changes.
@@ -219,7 +256,14 @@ impl CodingAgentSession {
         let tool_names: Vec<String> = tools.iter().map(|tool| tool.name().to_string()).collect();
         let agents_md = agents_md_for_cwd(cwd);
         let mode = *self.mode_state.lock().await;
-        let text = build_coding_system_prompt(cwd, &resources, &tool_names, agents_md.as_deref(), mode)?;
+        let text = build_coding_system_prompt(
+            cwd,
+            &resources,
+            &tool_names,
+            agents_md.as_deref(),
+            mode,
+            &self.preferred_chat_language,
+        )?;
         *self.system_prompt_cache.write() = Some(text.clone());
         Ok(text)
     }
@@ -258,6 +302,8 @@ impl CodingAgentSession {
             Ok(()) => {
                 self.finish_ui_turn(started).await;
                 self.maybe_generate_session_title();
+                // Check auto-compaction after a successful turn.
+                self.maybe_auto_compact().await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
@@ -269,6 +315,39 @@ impl CodingAgentSession {
             }
         }
         result.map_err(|err| anyhow::anyhow!("{err}"))
+    }
+
+    /// Check context usage and auto-compact if it exceeds the configured threshold.
+    ///
+    /// Runs synchronously within `turn_gate` (already held by the caller) so that
+    /// compaction completes before the next turn starts — preventing the race where
+    /// a new prompt arrives before a background-spawned compact gets scheduled and
+    /// fails with *"compact() requires idle harness"*.
+    async fn maybe_auto_compact(&self) {
+        let settings = self.harness.compaction_settings();
+        if !settings.enabled {
+            return;
+        }
+        let model = self.harness.get_model().await;
+        let context_window = model.context_window as u64;
+        if context_window == 0 {
+            return;
+        }
+        let Ok(entries) = self.harness.session_branch_entries().await else {
+            return;
+        };
+        // Use `build_session_context` so that the compaction transform (removing
+        // entries before `first_kept_entry_id` and projecting the compaction summary)
+        // gives us the actual messages the LLM would see. Without this, we'd count
+        // old compacted messages that are no longer in the context, causing compaction
+        // to trigger too aggressively or re-compact already-compacted history.
+        let context = elph_agent::build_session_context(&entries);
+        let estimate = estimate_context_tokens(&context.messages);
+        if should_compact(estimate.tokens, context_window, settings)
+            && let Err(err) = self.harness.compact(None).await
+        {
+            log::warn!("auto-compact failed: {err}");
+        }
     }
 
     /// Enqueue a follow-up prompt (delivered after current agent work). Does not end the UI turn.

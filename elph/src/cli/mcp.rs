@@ -6,7 +6,7 @@ use crate::platform::mcp as mcp_runtime;
 use crate::platform::mcp::{McpConfigScope, McpServerSource};
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 use crate::utils::path::AppPaths;
-use elph_agent::{McpAuthSourceReport, McpOAuthFlowOptions, McpServerConfig};
+use elph_agent::{McpAuthSourceReport, McpLifecycleMode, McpOAuthFlowOptions, McpServerConfig};
 use elph_agent::{clear_credentials, has_stored_credentials, probe_server_with_auth, run_oauth_flow};
 
 #[derive(Parser, Default)]
@@ -278,6 +278,14 @@ fn handle_list(paths: &Paths, project_only: bool, home_only: bool) -> ExitCode {
             })
             .unwrap_or("");
         println!("{name}: type={}{disabled}{oauth}{source}", server.kind_label());
+        println!(
+            "  lifecycle: {}",
+            match server.lifecycle_mode() {
+                McpLifecycleMode::Auto => "auto",
+                McpLifecycleMode::Legacy => "legacy",
+                McpLifecycleMode::Discover => "discover",
+            }
+        );
         if let Some(url) = server.remote_url() {
             println!("  url: {url}");
         }

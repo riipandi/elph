@@ -133,7 +133,7 @@ pub async fn format_session_info(session: &CodingAgentSession, skills: Option<&[
     )
 }
 
-/// MCP servers summary line (server name, status, tool/resource counts).
+/// MCP servers as a multi-line list (one per row).
 fn format_mcp_info(session: &CodingAgentSession) -> String {
     match session.mcp_registry() {
         Some(registry) => {
@@ -141,18 +141,16 @@ fn format_mcp_info(session: &CodingAgentSession) -> String {
             if report.servers.is_empty() {
                 return "MCP: —\n".to_string();
             }
-            let parts: Vec<String> = report
-                .servers
-                .iter()
-                .map(|s| {
-                    if s.ok {
-                        format!("{} ✓ ({} tools)", s.name, s.tool_count)
-                    } else {
-                        format!("{} ✗ ({})", s.name, s.message)
-                    }
-                })
-                .collect();
-            format!("MCP: {}\n", parts.join(" · "))
+            let mut lines = vec!["MCP:".to_string()];
+            for s in &report.servers {
+                let detail = if s.ok {
+                    format!("  {}  ✓  {} tools", s.name, s.tool_count)
+                } else {
+                    format!("  {}  ✗  ({})", s.name, s.message)
+                };
+                lines.push(detail);
+            }
+            format!("{}\n", lines.join("\n"))
         }
         None => "MCP: —\n".to_string(),
     }
@@ -279,7 +277,10 @@ Working directory: /tmp\n\
 Model: openai/gpt-4o\n\
 API Backend: Responses\n\
 Last activity: 2026-07-27 12:00\n\
-MCP: —\n\
+MCP:\n\
+  server-1  ✓  3 tools\n\
+  server-2  ✗  (connection refused)\n\
+\n\
 Context: 75K / 500K tokens (15%)\n\
 Tools: 5 tools\n\
 Skills: 3 skills\n\
@@ -299,6 +300,9 @@ Turn: 15";
         ] {
             assert!(sample.contains(key), "missing {key}");
         }
+        assert!(sample.contains("server-1"), "missing server name");
+        assert!(sample.contains("3 tools"), "missing tool count");
+        assert!(sample.contains("connection refused"), "missing error detail");
     }
 
     #[test]

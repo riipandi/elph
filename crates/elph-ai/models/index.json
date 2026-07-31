@@ -20,6 +20,11 @@
         "count": 38
     },
     {
+        "providerId": "baseten",
+        "rustMod": "baseten",
+        "count": 8
+    },
+    {
         "providerId": "cerebras",
         "rustMod": "cerebras",
         "count": 3
@@ -120,6 +125,11 @@
         "count": 30
     },
     {
+        "providerId": "ollama-cloud",
+        "rustMod": "ollama_cloud",
+        "count": 19
+    },
+    {
         "providerId": "openai",
         "rustMod": "openai",
         "count": 38
@@ -142,7 +152,7 @@
     {
         "providerId": "opengateway",
         "rustMod": "opengateway",
-        "count": 10
+        "count": 12
     },
     {
         "providerId": "openrouter",
@@ -168,6 +178,11 @@
         "providerId": "together",
         "rustMod": "together",
         "count": 17
+    },
+    {
+        "providerId": "tokenrouter",
+        "rustMod": "tokenrouter",
+        "count": 76
     },
     {
         "providerId": "vercel-ai-gateway",

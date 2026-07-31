@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn tools_json_returns_assistant_markdown_without_session() {
+    fn tools_json_is_rejected_without_session() {
         let outcome = handle_slash_submit(SlashContext {
             input: "/tools json",
             extensions: None,
@@ -369,12 +369,9 @@ mod tests {
             cwd: None,
             spawn_agent_work: true,
         });
-        assert!(!slash_echoes_prompt_in_transcript(&outcome));
         assert!(matches!(
             outcome,
-            SlashOutcome::Assistant(message)
-                if message.contains("```json")
-                    && message.contains("\"format\": \"json\"")
+            SlashOutcome::Status(message) if message.contains("unknown /tools format")
         ));
     }
 

@@ -289,8 +289,12 @@ impl MemoryStore {
     }
 }
 
+/// Check if a Turso error message indicates a lock-related failure.
+///
+/// Detects `SQLITE_LOCKED` (`"locked"`, `"Locking"`) and `SQLITE_BUSY`
+/// (`"busy"`) error messages.
 fn is_lock_err(msg: &str) -> bool {
-    msg.contains("locked") || msg.contains("Locking")
+    msg.contains("locked") || msg.contains("Locking") || msg.contains("busy")
 }
 
 #[cfg(test)]

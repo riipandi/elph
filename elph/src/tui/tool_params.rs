@@ -1,7 +1,7 @@
 //! Structured parsing and rendering for tool call parameters.
 
 use elph_tui::components::UiTheme;
-use elph_tui::wrapped_transcript_row_count;
+use elph_tui::wrapped_text_row_count;
 use iocraft::prelude::*;
 use serde_json::Value;
 
@@ -180,8 +180,18 @@ const COLLAPSED_TARGET_MAX_CHARS: usize = 44;
 const SUMMARY_PATH_MAX_CHARS: usize = 52;
 
 /// Human-readable verb for transcript tool headers (`read_file` → `Read`).
+///
+/// MCP tools (names starting with `mcp_`) are prefixed with `[MCP:<server>] ` so users can
+/// distinguish external tool calls from built-ins and see which MCP server is being used.
 pub fn tool_display_verb(tool_name: &str) -> String {
-    match tool_base_name(tool_name) {
+    let mcp_prefix = if let Some((server, _)) = parse_exposed_tool_name(tool_name) {
+        format!("[MCP:{}] ", server)
+    } else if tool_name.starts_with("mcp_") {
+        "[MCP] ".to_string()
+    } else {
+        String::new()
+    };
+    let verb = match tool_base_name(tool_name) {
         "read_file" => "Read".to_string(),
         "edit_file" => "Edit".to_string(),
         "write_file" => "Write".to_string(),
@@ -195,13 +205,27 @@ pub fn tool_display_verb(tool_name: &str) -> String {
         "move_path" => "Move".to_string(),
         "web_search" => "Search".to_string(),
         "web_fetch" => "Fetch".to_string(),
-        "spawn_agent" => "Agent".to_string(),
-        "wait_agent" => "Wait".to_string(),
-        "send_message" => "Message".to_string(),
-        "followup_task" => "Follow-up".to_string(),
-        "list_agents" => "Agents".to_string(),
+        "spawn_agent" => "Spawning agent".to_string(),
+        "wait_agent" => "Waiting agent".to_string(),
+        "send_message" => "Messaging agent".to_string(),
+        "followup_task" => "Following up".to_string(),
+        "list_agents" => "Listing agents".to_string(),
         "ask_user" | "ask_user_question" => "Ask".to_string(),
         other => title_case_snake(other),
+    };
+    format!("{mcp_prefix}{verb}")
+}
+
+/// Parse an MCP exposed tool name (`mcp_{server}__{tool}`) into `(server, tool)`.
+///
+/// Returns `None` when the name does not match the MCP pattern.
+fn parse_exposed_tool_name(tool_name: &str) -> Option<(&str, &str)> {
+    let rest = tool_name.strip_prefix("mcp_")?;
+    let (server, tool) = rest.split_once("__")?;
+    if server.is_empty() || tool.is_empty() {
+        None
+    } else {
+        Some((server, tool))
     }
 }
 
@@ -874,7 +898,9 @@ pub fn tool_approval_summary_row_count_for_summary(summary: &str, width: u16) ->
     if summary.is_empty() {
         return 0;
     }
-    wrapped_transcript_row_count(summary, width.max(1)).clamp(1, APPROVAL_SUMMARY_MAX_ROWS)
+    wrapped_text_row_count(summary, width.max(1) as usize)
+        .min(u16::MAX as usize)
+        .clamp(1, APPROVAL_SUMMARY_MAX_ROWS as usize) as u16
 }
 
 /// Wrapped row budget for [`format_tool_approval_summary`].
@@ -952,7 +978,9 @@ fn params_display_row_count(
         .iter()
         .map(|param| {
             let value = value_for_display(param.key.as_deref(), &param.value);
-            wrapped_transcript_row_count(&value, value_width).max(1)
+            wrapped_text_row_count(&value, value_width as usize)
+                .min(u16::MAX as usize)
+                .max(1) as u16
         })
         .sum()
 }
@@ -1222,15 +1250,21 @@ mod tests {
         assert_eq!(tool_display_verb("read_file"), "Read");
         assert_eq!(tool_display_verb("edit_file"), "Edit");
         assert_eq!(tool_display_verb("shell_exec"), "Shell");
-        assert_eq!(tool_display_verb("wait_agent"), "Wait");
-        assert_eq!(tool_display_verb("mcp__ctx__read_file"), "Read");
+        assert_eq!(tool_display_verb("wait_agent"), "Waiting agent");
+        assert_eq!(tool_display_verb("spawn_agent"), "Spawning agent");
+        assert_eq!(tool_display_verb("mcp_deepwiki__read_wiki"), "[MCP:deepwiki] Read Wiki");
+        assert_eq!(tool_display_verb("mcp_context7__query_docs"), "[MCP:context7] Query Docs");
+        assert_eq!(
+            tool_display_verb("mcp_code_review_graph__list_issues"),
+            "[MCP:code_review_graph] List Issues"
+        );
         assert_eq!(tool_display_verb("custom_thing"), "Custom Thing");
     }
 
     #[test]
     fn wait_agent_collapsed_label_shows_short_agent_id() {
         let label = format_collapsed_tool_label("wait_agent", r#"{"agent_id":"main/worker-web-search"}"#);
-        assert_eq!(label, "Wait worker-web-search");
+        assert_eq!(label, "Waiting agent worker-web-search");
         assert!(!label.contains("main/"));
     }
 

@@ -279,6 +279,7 @@ fn should_compact_respects_settings() {
     let settings = CompactionSettings {
         enabled: true,
         reserve_tokens: 10_000,
+        threshold_pct: None,
         keep_recent_tokens: 20_000,
     };
     assert!(should_compact(95_000, 100_000, settings));
@@ -686,6 +687,7 @@ fn prepare_compaction_split_turn_includes_prior_file_ops() {
         CompactionSettings {
             enabled: true,
             reserve_tokens: 100,
+            threshold_pct: None,
             keep_recent_tokens: 1,
         },
     )
@@ -720,6 +722,7 @@ fn prepare_compaction_includes_branch_and_custom_entries() {
         CompactionSettings {
             enabled: true,
             reserve_tokens: 100,
+            threshold_pct: None,
             keep_recent_tokens: 1,
         },
     )
@@ -954,6 +957,7 @@ async fn compact_clamps_summary_max_tokens_to_model_cap() {
         settings: CompactionSettings {
             enabled: true,
             reserve_tokens: 500_000,
+            threshold_pct: None,
             keep_recent_tokens: 20_000,
         },
     };
@@ -980,6 +984,7 @@ async fn compact_returns_errors_without_panicking() {
         settings: CompactionSettings {
             enabled: true,
             reserve_tokens: 2000,
+            threshold_pct: None,
             keep_recent_tokens: 20,
         },
     };
@@ -1036,6 +1041,7 @@ async fn compact_passes_reasoning_for_turn_prefix_summaries() {
         settings: CompactionSettings {
             enabled: true,
             reserve_tokens: 2000,
+            threshold_pct: None,
             keep_recent_tokens: 20,
         },
     };
@@ -1061,6 +1067,7 @@ async fn compact_returns_turn_prefix_errors_without_panicking() {
         settings: CompactionSettings {
             enabled: true,
             reserve_tokens: 2000,
+            threshold_pct: None,
             keep_recent_tokens: 20,
         },
     };

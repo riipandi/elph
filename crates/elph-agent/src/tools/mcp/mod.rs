@@ -117,6 +117,8 @@ pub use config::McpConfig;
 #[cfg(feature = "mcp")]
 pub use config::McpHttpConfig;
 #[cfg(feature = "mcp")]
+pub use config::McpLifecycleMode;
+#[cfg(feature = "mcp")]
 pub use config::McpOAuthClientMeta;
 #[cfg(feature = "mcp")]
 pub use config::McpServerConfig;

@@ -39,7 +39,7 @@ use render::{diff_line_row, render_unified_hunk, side_by_side_lines};
 use similar::ChangeTag;
 
 /// Default cap for embedded / transcript diff bodies (rows, including headers).
-pub const EMBEDDED_DIFF_MAX_LINES: usize = 20;
+pub const EMBEDDED_DIFF_MAX_LINES: usize = 16;
 
 // ── Diff display mode ──────────────────────────────────────────────────────
 

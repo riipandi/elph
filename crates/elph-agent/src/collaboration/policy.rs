@@ -13,6 +13,10 @@ pub struct ToolExposurePolicy {
 }
 
 /// Default exploration tools for generic Plan mode (read-only builtins).
+///
+/// These tools are safe for Plan mode because they only read state or
+/// interact with the user — they never mutate files, execute commands, or
+/// make irreversible changes.
 pub fn default_exploration_tools() -> Vec<String> {
     vec![
         "read_file".into(),
@@ -22,6 +26,8 @@ pub fn default_exploration_tools() -> Vec<String> {
         "web_fetch".into(),
         "web_search".into(),
         "list_available_tools".into(),
+        "ask_user_question".into(),
+        "request_mode_change".into(),
     ]
 }
 
@@ -197,6 +203,35 @@ mod tests {
         assert!(!filtered.contains(&"shell_exec".to_string()));
         assert!(filtered.contains(&"read_file".to_string()));
         assert!(filtered.contains(&"grep".to_string()));
+    }
+
+    #[test]
+    fn plan_mode_includes_ask_user_question() {
+        // ask_user_question is read-only — it only prompts the user, never mutates.
+        assert!(is_plan_mode_tool("ask_user_question", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "ask_user_question", None));
+        let filtered = filter_active_tools(
+            CollaborationMode::Plan,
+            &["ask_user_question".into(), "write_file".into()],
+            None,
+        );
+        assert!(filtered.contains(&"ask_user_question".to_string()));
+        assert!(!filtered.contains(&"write_file".to_string()));
+    }
+
+    #[test]
+    fn plan_mode_includes_request_mode_change() {
+        // request_mode_change is safe in Plan mode — it lets the agent escalate to
+        // Build mode when code changes are needed.
+        assert!(is_plan_mode_tool("request_mode_change", None));
+        assert!(!plan_mode_blocks_tool(CollaborationMode::Plan, "request_mode_change", None));
+        let filtered = filter_active_tools(
+            CollaborationMode::Plan,
+            &["request_mode_change".into(), "shell_exec".into()],
+            None,
+        );
+        assert!(filtered.contains(&"request_mode_change".to_string()));
+        assert!(!filtered.contains(&"shell_exec".to_string()));
     }
 
     #[test]

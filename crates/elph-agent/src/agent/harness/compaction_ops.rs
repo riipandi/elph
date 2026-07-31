@@ -8,7 +8,6 @@ use crate::agent::harness::types::AgentHarnessOwnEvent;
 use crate::agent::harness::types::AgentHarnessPhase;
 use crate::agent::harness::types::CompactResult;
 use crate::agent::harness::types::SessionBeforeCompactEvent;
-use crate::compaction::DEFAULT_COMPACTION_SETTINGS;
 use crate::compaction::{compact, prepare_compaction};
 use crate::session::types::{CompactionRetryEvent, HasSessionId, SessionStorage, SessionTreeEntry};
 
@@ -154,7 +153,7 @@ where
             .await
             .map_err(session_error)?;
         let Some(preparation) =
-            prepare_compaction(&branch_entries, DEFAULT_COMPACTION_SETTINGS).map_err(compaction_error)?
+            prepare_compaction(&branch_entries, self.shared.compaction_settings).map_err(compaction_error)?
         else {
             return Ok(CompactResult::empty());
         };

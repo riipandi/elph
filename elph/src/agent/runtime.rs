@@ -113,20 +113,29 @@ pub async fn create_coding_session_with_events(
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
+    let preferred_chat_language = options.settings.session.preferred_chat_language.clone();
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
         let agents_md = agents_md.clone();
         let mode_state = Arc::clone(&mode_for_prompt);
         let memory_section = injected_memory.clone();
+        let preferred_chat_language = preferred_chat_language.clone();
         Box::pin(async move {
             let mode = *mode_state.lock().await;
             let tool_names: Vec<String> = ctx.active_tools.iter().map(|t| t.name().to_string()).collect();
-            let mut prompt = build_coding_system_prompt(&cwd, &ctx.resources, &tool_names, agents_md.as_deref(), mode)
-                .unwrap_or_else(|error| {
-                    log::warn!("coding system prompt render failed: {error}");
-                    elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
-                });
+            let mut prompt = build_coding_system_prompt(
+                &cwd,
+                &ctx.resources,
+                &tool_names,
+                agents_md.as_deref(),
+                mode,
+                preferred_chat_language,
+            )
+            .unwrap_or_else(|error| {
+                log::warn!("coding system prompt render failed: {error}");
+                elph_agent::DEFAULT_SYSTEM_PROMPT.to_string()
+            });
 
             // Append memory context section at the end of the system prompt.
             if let Some(ref mem) = memory_section {
@@ -140,6 +149,7 @@ pub async fn create_coding_session_with_events(
 
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
+    let compaction_settings = options.settings.compaction.to_agent_settings();
     let harness = AgentHarness::new(AgentHarnessOptions {
         env,
         session,
@@ -153,6 +163,7 @@ pub async fn create_coding_session_with_events(
         active_tool_names: vec![],
         steering_mode: QueueMode::OneAtATime,
         follow_up_mode: QueueMode::OneAtATime,
+        compaction_settings,
         goal_runtime: Some(goal_runtime.clone()),
         subagent_bootstrap: Some(subagent_bootstrap),
         shared_registry: None,
@@ -180,6 +191,7 @@ pub async fn create_coding_session_with_events(
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),
         title_model: options.settings.session.title_model.clone(),
+        preferred_chat_language: options.settings.session.preferred_chat_language.clone(),
     })
     .await?;
 

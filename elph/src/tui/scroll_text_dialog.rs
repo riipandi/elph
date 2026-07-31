@@ -21,6 +21,8 @@ pub const MIN_SCROLL_TEXT_WIDTH_PCT: u8 = 20;
 pub const MAX_SCROLL_TEXT_WIDTH_PCT: u8 = 100;
 /// Floor width on wide terminals so the dialog stays readable.
 const MIN_DIALOG_WIDTH: u16 = 40;
+/// Ceiling width so the dialog doesn't span the full terminal on wide displays.
+const MAX_DIALOG_WIDTH: u16 = 100;
 const SCREEN_WIDTH_MARGIN: u16 = 2;
 const SCREEN_HEIGHT_MARGIN: u16 = 4;
 const DEFAULT_SCROLL_STEP: u16 = 3;
@@ -129,6 +131,9 @@ pub fn scroll_text_dialog_width(screen_width: u16, width_pct: u8) -> u16 {
     } else {
         width = width.min(usable as u16);
     }
+    // Cap at MAX_DIALOG_WIDTH so the dialog doesn't span the whole terminal
+    // on maximized wide displays. Narrow terminals are unaffected.
+    width = width.min(MAX_DIALOG_WIDTH);
     width
 }
 
@@ -409,12 +414,20 @@ mod tests {
     fn dialog_width_uses_percent_of_terminal() {
         // usable = 100 - 2 = 98; 80% → 78, floored up to MIN_DIALOG_WIDTH (40)
         assert_eq!(scroll_text_dialog_width(100, 80), 78);
-        // 100% of usable
+        // 100% of usable → 98, still under MAX_DIALOG_WIDTH (100)
         assert_eq!(scroll_text_dialog_width(100, 100), 98);
         // 50% of 98 = 49, still above min floor
         assert_eq!(scroll_text_dialog_width(100, 50), 49);
         // Narrow terminal: no floor above usable
         assert_eq!(scroll_text_dialog_width(30, 80), 22); // usable 28 * 80% = 22
+    }
+
+    #[test]
+    fn dialog_width_caps_at_max_on_wide_terminal() {
+        // usable = 248; 80% → 198, capped to MAX_DIALOG_WIDTH (100)
+        assert_eq!(scroll_text_dialog_width(250, 80), 100);
+        // 100% of 248 = 248, capped to 100
+        assert_eq!(scroll_text_dialog_width(250, 100), 100);
     }
 
     #[test]
