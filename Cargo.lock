@@ -2973,6 +2973,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
+ "turso",
 ]
 
 [[package]]

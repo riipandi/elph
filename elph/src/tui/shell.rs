@@ -37,6 +37,7 @@ use crate::tui::chrome::{chrome_stats_from_session, format_elapsed_secs, read_gi
 use crate::tui::focus::ShellFocus;
 use crate::tui::focus::{is_ctrl_enter_interject, is_text_select_toggle_key, prompt_focus_char, shell_global_shortcut};
 use crate::tui::labels::GitFooterInfo;
+use crate::tui::transcript::TranscriptCache;
 
 use crate::agent::rename_session_title;
 use crate::tui::confetti::{
@@ -269,6 +270,11 @@ const STARTUP_TRANSCRIPT_PUBLISH_MS: u64 = 33;
 /// Back off publish rate under heavy event bursts (CPU/memory headroom for input + scroll).
 const TRANSCRIPT_PUBLISH_HEAVY_MS: u64 = 150;
 const TRANSCRIPT_PUBLISH_BURST_MS: u64 = 180;
+
+/// Max messages kept in memory before oldest are archived to SQLite.
+const MAX_MESSAGES_BEFORE_ARCHIVE: usize = 500;
+/// How many recent messages to keep after archival.
+const KEEP_MESSAGES: usize = 200;
 const MAX_UI_EVENTS_PER_TICK: usize = 48;
 const MAX_BOOTSTRAP_EVENTS_PER_TICK: usize = 32;
 /// How long the status row shows turn elapsed after completion before returning to tips.
@@ -1885,6 +1891,43 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
             }
 
             if run_completed {
+                // ── Archive old messages to SQLite when memory grows large ──
+                let should_archive = {
+                    let msgs = messages_arc_inner.read().unwrap();
+                    msgs.len() > MAX_MESSAGES_BEFORE_ARCHIVE
+                };
+                if should_archive {
+                    let paths_for_archive = paths.read().clone();
+                    let sid = live_session_id.read().clone();
+                    let snapshot: Vec<TranscriptMessage> = messages_arc_inner.read().unwrap().clone();
+                    tokio::spawn(async move {
+                        if let Ok(cache) = TranscriptCache::open(&paths_for_archive.transcript_db_path(), &sid).await {
+                            let archive_count = snapshot.len().saturating_sub(KEEP_MESSAGES);
+                            let archived: Vec<(usize, &TranscriptMessage)> = snapshot[..archive_count]
+                                .iter()
+                                .enumerate()
+                                .map(|(i, m)| (i, m))
+                                .collect();
+                            if let Err(err) = cache.push_batch(archived).await {
+                                log::warn!("transcript archive failed: {err:#}");
+                            }
+                            if let Err(err) = cache.archived_count().await {
+                                log::warn!("transcript archive count failed: {err:#}");
+                            }
+                        }
+                    });
+                    // Truncate messages_arc_inner BEFORE the sync below.
+                    let keep = KEEP_MESSAGES;
+                    {
+                        let mut msgs = messages_arc_inner.write().unwrap();
+                        let archive_count = msgs.len().saturating_sub(keep);
+                        if archive_count > 0 {
+                            msgs.drain(..archive_count);
+                        }
+                    }
+                    transcript_changed = true;
+                }
+
                 pending_quit_confirm.set(false);
                 clear_quit_busy_banner(&mut ephemeral_banner, &mut ephemeral_banner_generation);
 

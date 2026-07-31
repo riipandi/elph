@@ -58,6 +58,7 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tokio-util = { workspace = true }
+turso.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

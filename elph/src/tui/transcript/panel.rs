@@ -48,6 +48,9 @@ pub struct TranscriptPanelProps {
     /// Arc<RwLock> messages — decouples panel from shell's State dirt chain.
     /// Panel reads/writes this directly instead of the `messages` State.
     pub messages_arc: Option<Arc<RwLock<Vec<TranscriptMessage>>>>,
+    /// CachedTranscript — hybrid in-memory + disk-backed transcript store.
+    /// When set, the markdown future reads from this instead of `messages_arc`.
+    pub transcript: Option<Arc<RwLock<super::cache::CachedTranscript>>>,
     /// Click handler for subagent status lines. Fires with `(agent_id, title)` when
     /// a subagent status row is clicked.
     pub on_subagent_click: Option<HandlerMut<'static, (String, String)>>,

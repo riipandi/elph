@@ -1,5 +1,8 @@
 # TUI Layout Docs
 
+> **Transcript system** — see [transcript.md](./transcript.md) for architecture, performance
+> optimizations, disk caching, and tool labels.
+
 ## Layout Structure
 
 ```

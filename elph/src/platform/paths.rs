@@ -53,6 +53,11 @@ impl Paths {
         self.project_elph_dir().join("store.db")
     }
 
+    /// Project-local transcript cache (Turso DB).
+    pub fn transcript_db_path(&self) -> PathBuf {
+        self.project_elph_dir().join("transcript.db")
+    }
+
     pub fn project_gitignore_path(&self) -> PathBuf {
         self.project_elph_dir().join(".gitignore")
     }
