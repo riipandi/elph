@@ -416,6 +416,33 @@ mod tests {
     }
 
     #[test]
+    fn typing_mid_buffer_then_rapid_key_does_not_overwrite() {
+        let mut state = TextareaState::from_text("hello".into());
+        state.cursor = 2; // between "he" and "llo"
+        let mut esc = false;
+        let mut burst = PasteBurstState::default();
+        let mut last = None;
+        let mut on_escape = HandlerMut::default();
+
+        // First char — goes through insert_char normally.
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('X')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "heXllo");
+
+        // Second char within 100ms burst window — must still splice, not overwrite.
+        let ctx = test_context(&mut esc, &mut burst, &mut last, false, &mut on_escape);
+        assert_eq!(
+            handle_textarea_terminal_event(key_press(KeyCode::Char('Y')), &mut state, ctx),
+            TextareaInputResult::Changed
+        );
+        assert_eq!(state.text, "heXYllo");
+        assert_eq!(state.cursor, 4);
+    }
+
+    #[test]
     fn rapid_short_word_does_not_lose_characters() {
         // Regression: first char applied normally, subsequent rapid keys used to buffer
         // invisibly until the *next* key — empty-prompt typing looked like auto-delete.
