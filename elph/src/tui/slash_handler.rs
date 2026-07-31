@@ -116,6 +116,10 @@ pub enum SlashOutcome {
     OpenProviderDisconnectDialog {
         provider_id: Option<String>,
     },
+    /// Open MCP OAuth dialog (`/mcp auth [name]`).
+    OpenMcpAuthDialog {
+        server_name: Option<String>,
+    },
 }
 
 pub struct SlashContext<'a> {
@@ -175,6 +179,29 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::ProviderList => SlashOutcome::OpenProviderListDialog {
             text: provider_list_slash_message(),
         },
+        SlashDispatch::McpAuth { server_name } => SlashOutcome::OpenMcpAuthDialog { server_name },
+        SlashDispatch::McpLogout { server_name } => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /mcp logout.".into());
+            };
+            match server_name {
+                Some(name) => match crate::tui::mcp_auth_dialog::logout_mcp_server(paths, &name) {
+                    Ok(msg) => SlashOutcome::Status(msg),
+                    Err(msg) => SlashOutcome::Status(msg),
+                },
+                None => SlashOutcome::Status(
+                    "Usage: /mcp logout <server> — e.g. /mcp logout figma\nList servers: /mcp list".into(),
+                ),
+            }
+        }
+        SlashDispatch::McpList => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /mcp list.".into());
+            };
+            SlashOutcome::OpenProviderListDialog {
+                text: crate::tui::mcp_auth_dialog::mcp_list_slash_message(paths),
+            }
+        }
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -256,6 +283,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
             | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
     )
 }

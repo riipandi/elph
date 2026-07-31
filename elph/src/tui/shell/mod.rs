@@ -50,6 +50,9 @@ use crate::tui::file_picker::{
     build_snapshot as build_file_picker_snapshot, file_picker_open, mention_highlight_ansi, mention_picker_visible,
     resolve_key_action as resolve_file_picker_key_action, sync_selection as sync_file_picker_selection,
 };
+use crate::tui::mcp_auth_dialog::{
+    OpenMcpAuthDialogArgs, PendingMcpAuthDialog, open_mcp_auth_dialog, start_mcp_oauth_for_server,
+};
 use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
 use crate::tui::model_selector_bar::{ModelSelectorBar, ModelSelectorView};
 use crate::tui::model_selector_shell::{
@@ -103,9 +106,10 @@ use crate::tui::startup::{
     mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
-    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_memory_flush_dialog_kind,
-    build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind, build_prompt_queue_dialog_kind,
-    build_provider_api_key_dialog_kind, build_provider_connect_dialog_kind, build_status_dialog_kind,
+    PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_auth_dialog_kind,
+    build_memory_flush_dialog_kind, build_mode_change_dialog_kind, build_plan_confirmation_dialog_kind,
+    build_prompt_queue_dialog_kind, build_provider_api_key_dialog_kind, build_provider_connect_dialog_kind,
+    build_status_dialog_kind,
 };
 use crate::tui::subagent_output_dialog::{PendingSubagentOutputDialog, SubagentOutputDialogOverlay};
 use crate::tui::system_prompt_dialog::{
@@ -484,6 +488,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let pending_provider_connect = hooks.use_ref(|| None::<PendingProviderConnectDialog>);
     let pending_provider_disconnect = hooks.use_ref(|| None::<PendingProviderDisconnectDialog>);
     let pending_provider_api_key = hooks.use_ref(|| None::<PendingProviderApiKeyDialog>);
+    let pending_mcp_auth = hooks.use_ref(|| None::<PendingMcpAuthDialog>);
     let provider_disconnect_selected = hooks.use_state(|| 0usize);
     let provider_connect_selected = hooks.use_state(|| 0usize);
     let provider_connect_filter = hooks.use_state(String::new);
@@ -583,6 +588,7 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
     let extension_host_for_loop = extension_host.clone();
     let pending_provider_connect_for_tick = pending_provider_connect;
     let pending_provider_disconnect_for_tick = pending_provider_disconnect;
+    let pending_mcp_auth_for_tick = pending_mcp_auth;
     let messages_for_tick = messages;
     let messages_revision_for_tick = messages_revision;
     let provider_connect_api_key_for_tick = provider_connect_api_key;
@@ -682,6 +688,8 @@ pub fn MainShell(props: &mut MainShellProps, mut hooks: Hooks) -> impl Into<AnyE
         pending_model_selector,
         pending_plan_confirmation,
         pending_provider_api_key,
+        pending_mcp_auth,
+        pending_mcp_auth_for_tick,
         pending_provider_connect,
         pending_provider_connect_for_tick,
         pending_provider_disconnect,

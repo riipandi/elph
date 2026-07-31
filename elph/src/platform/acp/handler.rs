@@ -154,6 +154,29 @@ async fn handle_acp_slash_command(
             let message = crate::tui::slash_handler::provider_list_slash_message();
             send_text_chunks(connection, session_id, &message).await
         }
+        Some(SlashDispatch::McpAuth { .. }) => Err(anyhow::anyhow!(
+            "Command '/mcp auth' opens a TUI OAuth dialog and is not available via ACP. Use `elph mcp auth <name>`."
+        )),
+        Some(SlashDispatch::McpLogout { server_name }) => {
+            let Some(name) = server_name else {
+                return Err(anyhow::anyhow!("Usage: /mcp logout <server>"));
+            };
+            let paths = {
+                let guard = state.lock();
+                guard.paths.clone()
+            };
+            let message =
+                crate::tui::mcp_auth_dialog::logout_mcp_server(&paths, &name).map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::McpList) => {
+            let paths = {
+                let guard = state.lock();
+                guard.paths.clone()
+            };
+            let message = crate::tui::mcp_auth_dialog::mcp_list_slash_message(&paths);
+            send_text_chunks(connection, session_id, &message).await
+        }
         Some(SlashDispatch::Unimplemented(cmd)) => {
             Err(anyhow::anyhow!("Slash command '{cmd}' is not available via ACP."))
         }

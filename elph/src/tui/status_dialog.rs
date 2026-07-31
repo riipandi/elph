@@ -363,6 +363,10 @@ pub enum StatusDialogKind {
     ProviderDisconnect {
         provider_ids: Vec<String>,
     },
+    /// MCP OAuth dialog (`/mcp auth`).
+    McpAuth {
+        pending: crate::tui::mcp_auth_dialog::PendingMcpAuthDialog,
+    },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
         items: Vec<crate::agent::QueuedPromptItem>,
@@ -560,6 +564,25 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                 props.approval_has_focus,
                 provider_ids,
                 selected_index,
+            ))
+        }
+        Some(StatusDialogKind::McpAuth { pending }) => {
+            let selected_index = props
+                .provider_connect_selected
+                .or(props.approval_selected)
+                .map(|s| s.read().clone())
+                .unwrap_or(pending.selected);
+            let filter = props
+                .provider_connect_filter
+                .map(|s| s.read().clone())
+                .unwrap_or_else(|| pending.filter.clone());
+            Some(crate::tui::mcp_auth_dialog::render_mcp_auth_dialog(
+                props.screen_width,
+                props.screen_height,
+                props.approval_has_focus,
+                selected_index,
+                &filter,
+                &pending,
             ))
         }
         _ => None,
@@ -830,6 +853,17 @@ pub fn build_provider_connect_dialog_kind(
     } else {
         None
     }
+}
+
+/// Build the MCP OAuth dialog when pending.
+pub fn build_mcp_auth_dialog_kind(
+    pending: Option<&crate::tui::mcp_auth_dialog::PendingMcpAuthDialog>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if !has_focus {
+        return None;
+    }
+    pending.cloned().map(|pending| StatusDialogKind::McpAuth { pending })
 }
 
 /// Build the dedicated API key input dialog when pending.

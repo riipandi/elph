@@ -69,6 +69,7 @@ pub(crate) fn build_shell_view(
         pending_mode_change,
         mut pending_model_selector,
         pending_plan_confirmation,
+        mut pending_mcp_auth,
         pending_provider_api_key,
         mut pending_provider_connect,
         mut pending_provider_disconnect,
@@ -278,6 +279,7 @@ pub(crate) fn build_shell_view(
     let rename_open = pending_rename.read().is_some();
     let confetti_open = pending_confetti.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
+    let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
@@ -293,6 +295,7 @@ pub(crate) fn build_shell_view(
         || rename_open
         || confetti_open
         || provider_connect_open
+        || mcp_auth_open
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open;
@@ -307,6 +310,7 @@ pub(crate) fn build_shell_view(
         && !confetti_open
         && !scoped_models_open
         && !provider_connect_open
+        && !mcp_auth_open
         && !provider_disconnect_open;
     let scoped_models_has_focus = scoped_models_open
         && !user_question_open
@@ -315,9 +319,14 @@ pub(crate) fn build_shell_view(
         && !confetti_open
         && !model_selector_open
         && !provider_connect_open
+        && !mcp_auth_open
         && !provider_disconnect_open;
-    let system_prompt_has_focus =
-        system_prompt_open && !rename_open && !confetti_open && !provider_connect_open && !provider_disconnect_open;
+    let system_prompt_has_focus = system_prompt_open
+        && !rename_open
+        && !confetti_open
+        && !provider_connect_open
+        && !mcp_auth_open
+        && !provider_disconnect_open;
     let rename_has_focus =
         rename_open && !user_question_open && !system_prompt_open && !confetti_open && !model_selector_open;
     let approval_has_focus = (pending_tool_approval.read().is_some()
@@ -326,6 +335,7 @@ pub(crate) fn build_shell_view(
         || pending_memory_flush.read().is_some()
         || *pending_feedback.read()
         || provider_connect_open
+        || mcp_auth_open
         || provider_disconnect_open
         || provider_api_key_open)
         && !user_question_open
@@ -655,6 +665,7 @@ pub(crate) fn build_shell_view(
             dialog
         })
         .or_else(|| build_provider_api_key_dialog_kind(pending_provider_api_key.read().as_ref(), approval_has_focus))
+        .or_else(|| build_mcp_auth_dialog_kind(pending_mcp_auth.read().as_ref(), approval_has_focus))
         .or_else(|| {
             let pending = pending_provider_disconnect.read();
             pending.as_ref().map(|p| StatusDialogKind::ProviderDisconnect {
@@ -1425,6 +1436,42 @@ pub(crate) fn build_shell_view(
                                     shell_focus: &mut shell_focus,
                                     provider_id,
                                 });
+                                draft.set(String::new());
+                                live_draft.set(String::new());
+                                force_editor_clear.set(true);
+                                suppress_enter_newline.set(true);
+                                return;
+                            }
+                            SlashOutcome::OpenMcpAuthDialog { server_name } => {
+                                open_mcp_auth_dialog(OpenMcpAuthDialogArgs {
+                                    pending: &mut pending_mcp_auth,
+                                    selected: &mut provider_connect_selected,
+                                    filter: &mut provider_connect_filter,
+                                    draft: &mut draft,
+                                    live_draft: &mut live_draft,
+                                    shell_focus: &mut shell_focus,
+                                    paths: &paths_snapshot,
+                                    server_name: server_name.clone(),
+                                });
+                                // Auto-start when a unique server matches the prefill (e.g. `/mcp auth figma`).
+                                if let Some(name) = server_name {
+                                    let auto = pending_mcp_auth.read().as_ref().and_then(|p| {
+                                        let matches: Vec<_> = p
+                                            .servers
+                                            .iter()
+                                            .filter(|s| s.name.eq_ignore_ascii_case(&name))
+                                            .map(|s| s.name.clone())
+                                            .collect();
+                                        (matches.len() == 1).then(|| matches[0].clone())
+                                    });
+                                    if let Some(server) = auto {
+                                        let _ = start_mcp_oauth_for_server(
+                                            pending_mcp_auth,
+                                            &paths_snapshot,
+                                            &server,
+                                        );
+                                    }
+                                }
                                 draft.set(String::new());
                                 live_draft.set(String::new());
                                 force_editor_clear.set(true);

@@ -165,6 +165,38 @@ clear multi-error message instead of being half-applied.
 | `elph mcp auth <name>`             | OAuth browser flow                  |
 | `elph mcp logout <name>`           | Clear OAuth tokens                  |
 
+## TUI slash commands
+
+Same sealed `auth.json` store as the CLI / `/provider connect`.
+
+| Command | Behavior |
+| ------- | -------- |
+| `/mcp` or `/mcp list` | List merged servers (home + project) + OAuth status |
+| `/mcp auth` | Open MCP OAuth dialog — pick a remote server |
+| `/mcp auth figma` | Prefill/filter; **auto-starts** OAuth when the name matches uniquely |
+| `/mcp login` / `/mcp connect` | Aliases for `auth` |
+| `/mcp logout <name>` | Clear OAuth tokens for that server |
+
+Example Figma entry in `~/.config/elph/mcp.json` (or project `.elph/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "oauth": true,
+      "oauthScopes": ["mcp:connect"],
+      "oauthClientName": "Elph MCP Client"
+    }
+  }
+}
+```
+
+Then in the TUI: `/mcp auth figma` → browser PKCE → tokens sealed under `auth.json` → `mcp.figma`.
+
+**OAuth discovery:** the client loads protected-resource + authorization-server metadata (RFC 9728 / 8414) and installs it on the OAuth manager before dynamic registration (DCR). If DCR is rejected (some hosts only allowlist known clients), set `oauthClientId` / `oauthClientSecret` or `oauthClientMetadataUrl` (CIMD).
+
 ## Agent surface
 
 Tools are named `mcp_{server}__{tool}` (sanitized).

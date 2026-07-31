@@ -53,6 +53,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         mut pending_mode_change,
         pending_model_selector,
         mut pending_plan_confirmation,
+        mut pending_mcp_auth,
         mut pending_provider_api_key,
         mut pending_provider_connect,
         mut pending_provider_disconnect,
@@ -436,6 +437,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
     let model_selector_open = pending_model_selector.read().is_some();
     let scoped_models_open = pending_scoped_models.read().is_some();
     let provider_connect_open = pending_provider_connect.read().is_some();
+    let mcp_auth_open = pending_mcp_auth.read().is_some();
     let provider_disconnect_open = pending_provider_disconnect.read().is_some();
     let provider_api_key_open = pending_provider_api_key.read().is_some();
     let queue_manager_is_open = queue_manager_open.get();
@@ -451,6 +453,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         || rename_open
         || confetti_open
         || provider_connect_open
+        || mcp_auth_open
         || provider_disconnect_open
         || provider_api_key_open
         || queue_manager_is_open;
@@ -1485,6 +1488,123 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 shell_focus.set(ShellFocus::Prompt);
                 return;
             }
+        }
+
+        // ── MCP OAuth dialog ───────────────────────────────────────
+        if mcp_auth_open {
+            use crate::tui::mcp_auth_dialog::{
+                McpAuthStep, close_mcp_auth_dialog, count_filtered_mcp_servers, get_filtered_mcp_server_at,
+                start_mcp_oauth_for_server,
+            };
+
+            if modifiers.is_empty() && code == KeyCode::Esc && kind == KeyEventKind::Press {
+                close_mcp_auth_dialog(&mut pending_mcp_auth, &mut draft, &mut live_draft, &mut shell_focus);
+                force_editor_clear.set(true);
+                return;
+            }
+
+            let step = pending_mcp_auth.read().as_ref().map(|p| p.step);
+            let filter = provider_connect_filter.read().clone();
+            let selected = *provider_connect_selected.read();
+
+            if step == Some(McpAuthStep::SelectServer) {
+                if modifiers.is_empty() && kind == KeyEventKind::Press {
+                    match code {
+                        KeyCode::Up => {
+                            let count = pending_mcp_auth
+                                .read()
+                                .as_ref()
+                                .map(|p| count_filtered_mcp_servers(&p.servers, &filter))
+                                .unwrap_or(0);
+                            if count > 0 {
+                                let next = selected.saturating_sub(1);
+                                provider_connect_selected.set(next);
+                                if let Some(p) = pending_mcp_auth.write().as_mut() {
+                                    p.selected = next;
+                                }
+                            }
+                            return;
+                        }
+                        KeyCode::Down => {
+                            let count = pending_mcp_auth
+                                .read()
+                                .as_ref()
+                                .map(|p| count_filtered_mcp_servers(&p.servers, &filter))
+                                .unwrap_or(0);
+                            if count > 0 {
+                                let next = (selected + 1).min(count - 1);
+                                provider_connect_selected.set(next);
+                                if let Some(p) = pending_mcp_auth.write().as_mut() {
+                                    p.selected = next;
+                                }
+                            }
+                            return;
+                        }
+                        KeyCode::Enter => {
+                            // Suppress accidental Enter from slash submit.
+                            if pending_mcp_auth
+                                .read()
+                                .as_ref()
+                                .is_some_and(|p| p.opened_at.elapsed().as_millis() < 200)
+                            {
+                                return;
+                            }
+                            let server_name = pending_mcp_auth.read().as_ref().and_then(|p| {
+                                get_filtered_mcp_server_at(&p.servers, &filter, selected).map(|s| s.name.clone())
+                            });
+                            if let Some(name) = server_name {
+                                if let Err(err) = start_mcp_oauth_for_server(pending_mcp_auth, &paths, &name) {
+                                    if let Some(p) = pending_mcp_auth.write().as_mut() {
+                                        p.step = McpAuthStep::Failed;
+                                        p.status_message = err;
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                        KeyCode::Backspace => {
+                            let mut f = filter;
+                            f.pop();
+                            provider_connect_filter.set(f.clone());
+                            provider_connect_selected.set(0);
+                            if let Some(p) = pending_mcp_auth.write().as_mut() {
+                                p.filter = f;
+                                p.selected = 0;
+                            }
+                            return;
+                        }
+                        KeyCode::Char(c) if !c.is_control() => {
+                            let mut f = filter;
+                            f.push(c);
+                            provider_connect_filter.set(f.clone());
+                            provider_connect_selected.set(0);
+                            if let Some(p) = pending_mcp_auth.write().as_mut() {
+                                p.filter = f;
+                                p.selected = 0;
+                            }
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
+                return;
+            }
+
+            if step == Some(McpAuthStep::Failed)
+                && modifiers.is_empty()
+                && code == KeyCode::Enter
+                && kind == KeyEventKind::Press
+            {
+                // Retry: back to list.
+                if let Some(p) = pending_mcp_auth.write().as_mut() {
+                    p.step = McpAuthStep::SelectServer;
+                    p.status_message.clear();
+                }
+                return;
+            }
+
+            // WaitingBrowser: ignore keys except Esc (handled above).
+            return;
         }
 
         // ── Provider connect dialog ────────────────────────────────
@@ -2693,6 +2813,36 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             shell_focus: &mut shell_focus,
                             provider_id,
                         });
+                        approval_selected.set(0);
+                        suppress_enter_newline.set(true);
+                        force_editor_clear.set(true);
+                        return;
+                    }
+                    SlashOutcome::OpenMcpAuthDialog { server_name } => {
+                        open_mcp_auth_dialog(OpenMcpAuthDialogArgs {
+                            pending: &mut pending_mcp_auth,
+                            selected: &mut provider_connect_selected,
+                            filter: &mut provider_connect_filter,
+                            draft: &mut draft,
+                            live_draft: &mut live_draft,
+                            shell_focus: &mut shell_focus,
+                            paths: &paths,
+                            server_name: server_name.clone(),
+                        });
+                        if let Some(name) = server_name {
+                            let auto = pending_mcp_auth.read().as_ref().and_then(|p| {
+                                let matches: Vec<_> = p
+                                    .servers
+                                    .iter()
+                                    .filter(|s| s.name.eq_ignore_ascii_case(&name))
+                                    .map(|s| s.name.clone())
+                                    .collect();
+                                (matches.len() == 1).then(|| matches[0].clone())
+                            });
+                            if let Some(server) = auto {
+                                let _ = start_mcp_oauth_for_server(pending_mcp_auth, &paths, &server);
+                            }
+                        }
                         approval_selected.set(0);
                         suppress_enter_newline.set(true);
                         force_editor_clear.set(true);

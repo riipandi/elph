@@ -358,12 +358,19 @@ mod tests {
         let store_path = dir.path().join("auth.json");
         let key = Aes256Key::generate();
         // has_stored_credentials loads with the process/keychain master key.
+        // Keep the override for the whole test body (other tests share the process slot).
         crate::tools::mcp::key_provider::set_process_master_key_for_tests(key.clone());
-        let store = FileCredentialStore::with_key(&store_path, "svc", key);
+        let store = FileCredentialStore::with_key(&store_path, "svc", key.clone());
         store
             .save(StoredCredentials::new("cid".into(), None, vec![], Some(1)))
             .await
             .unwrap();
+        // Re-assert override (parallel tests may clear it).
+        crate::tools::mcp::key_provider::set_process_master_key_for_tests(key);
+        assert!(
+            has_stored_credentials(&store_path, "svc"),
+            "oauth entry must be visible under process master key"
+        );
 
         let mut cfg = base_config();
         cfg.auth_token = Some("inline-token".into());

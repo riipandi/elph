@@ -578,11 +578,22 @@ pub async fn run_oauth_flow(
         .map_err(|e| anyhow::anyhow!("init OAuth manager: {e}"))?;
     manager.set_credential_store(store);
 
-    // Resolve metadata (replaces discover_metadata).
-    let _metadata_resolution = manager
+    // Discover AS metadata (RFC 9728 protected-resource → AS metadata, with legacy fallback).
+    // rmcp does **not** install the result automatically — callers must `set_metadata`.
+    let metadata_resolution = manager
         .resolve_metadata()
         .await
         .map_err(|e| anyhow::anyhow!("resolve OAuth metadata: {e}"))?;
+    log::info!(
+        "MCP OAuth metadata resolved: server={server_name} source={:?} registration={}",
+        metadata_resolution.source,
+        metadata_resolution
+            .metadata
+            .registration_endpoint
+            .as_deref()
+            .unwrap_or("(none)"),
+    );
+    manager.set_metadata(metadata_resolution.metadata);
 
     let bind_addr = match options.redirect_port {
         Some(port) => format!("127.0.0.1:{port}"),
@@ -594,8 +605,15 @@ pub async fn run_oauth_flow(
     let port = listener.local_addr()?.port();
     let redirect_uri = format!("http://127.0.0.1:{port}/callback");
 
+    // Prefer explicit config scopes; otherwise seed from AS/resource discovery (e.g. Figma `mcp:connect`).
+    let scopes = if options.scopes.is_empty() {
+        manager.select_scopes(None, &[])
+    } else {
+        options.scopes.clone()
+    };
+
     let mut auth_request = AuthorizationRequest::new(&redirect_uri)
-        .with_scopes(options.scopes.clone())
+        .with_scopes(scopes)
         .with_client_name(
             options
                 .client_name
@@ -615,7 +633,20 @@ pub async fn run_oauth_flow(
 
     let session = AuthorizationSession::new(manager, auth_request)
         .await
-        .map_err(|(_, e)| anyhow::anyhow!("start OAuth session: {e}"))?;
+        .map_err(|(_, e)| {
+            // Surface actionable guidance when DCR is blocked (common for gated MCP hosts like Figma).
+            let msg = e.to_string();
+            if msg.contains("Registration failed") || msg.contains("registration") {
+                anyhow::anyhow!(
+                    "start OAuth session: {e}. \
+                     Tips: set oauthClientId (pre-registered) or oauthClientMetadataUrl (CIMD) in mcp.json; \
+                     some hosts (e.g. Figma) only allowlisted client_name values for dynamic registration. \
+                     Also ensure scopes include what the server requires (e.g. mcp:connect)."
+                )
+            } else {
+                anyhow::anyhow!("start OAuth session: {e}")
+            }
+        })?;
     let auth_url = session.get_authorization_url().to_string();
 
     log::info!("opening browser for MCP OAuth: server={server_name} auth_url={auth_url}");

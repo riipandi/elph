@@ -176,6 +176,9 @@ impl SlashDispatcher {
                 | SlashDispatch::ProviderConnect { .. }
                 | SlashDispatch::ProviderDisconnect { .. }
                 | SlashDispatch::ProviderList
+                | SlashDispatch::McpAuth { .. }
+                | SlashDispatch::McpLogout { .. }
+                | SlashDispatch::McpList
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}

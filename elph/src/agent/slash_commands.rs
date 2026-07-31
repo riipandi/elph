@@ -30,6 +30,19 @@ fn builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSl
     }
 }
 
+fn builtin_with_args_hint(
+    name: &'static str,
+    description: &'static str,
+    args_hint: &'static str,
+) -> BuiltinSlashCommand {
+    BuiltinSlashCommand {
+        name,
+        description,
+        args_hint: Some(args_hint),
+        hidden: false,
+    }
+}
+
 fn hidden_builtin_with_args(name: &'static str, description: &'static str) -> BuiltinSlashCommand {
     BuiltinSlashCommand {
         name,
@@ -63,7 +76,12 @@ pub fn builtin_slash_commands() -> Vec<BuiltinSlashCommand> {
         builtin("clone", "Clone current session"),
         builtin("tree", "Navigate session tree"),
         builtin("trust", "Save project trust decision"),
-        builtin_with_args("provider", "Manage providers (connect, disconnect, list)"),
+        builtin_with_args_hint(
+            "provider",
+            "Manage providers (connect, disconnect, list)",
+            "[connect|disconnect|list]",
+        ),
+        builtin_with_args_hint("mcp", "MCP servers (auth, logout, list)", "[auth|logout|list]"),
         builtin("new", "Start a new session"),
         builtin("compact", "Compact conversation history"),
         builtin("resume", "Resume a different session"),
@@ -205,6 +223,16 @@ pub enum SlashDispatch {
     },
     /// List configured providers in the transcript.
     ProviderList,
+    /// Open MCP OAuth dialog (`/mcp auth [name]`).
+    McpAuth {
+        server_name: Option<String>,
+    },
+    /// Clear MCP OAuth credentials (`/mcp logout [name]`).
+    McpLogout {
+        server_name: Option<String>,
+    },
+    /// List MCP servers in the transcript (`/mcp list`).
+    McpList,
     Unimplemented(String),
 }
 
@@ -314,6 +342,21 @@ const PROVIDER_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     },
 ];
 
+const MCP_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
+    SlashArgCompletion {
+        value: "auth",
+        description: "OAuth login for a remote MCP server",
+    },
+    SlashArgCompletion {
+        value: "logout",
+        description: "Clear OAuth credentials for an MCP server",
+    },
+    SlashArgCompletion {
+        value: "list",
+        description: "List configured MCP servers",
+    },
+];
+
 const GOAL_ARG_COMPLETIONS: &[SlashArgCompletion] = &[
     SlashArgCompletion {
         value: "status",
@@ -349,6 +392,7 @@ pub fn slash_arg_completions(command_name: &str) -> Option<&'static [SlashArgCom
         "confetti" | "conffety" | "confetty" => Some(CONFETTI_ARG_COMPLETIONS),
         "memory" | "mem" => Some(MEMORY_ARG_COMPLETIONS),
         "provider" => Some(PROVIDER_ARG_COMPLETIONS),
+        "mcp" => Some(MCP_ARG_COMPLETIONS),
         _ => None,
     }
 }
@@ -421,6 +465,26 @@ fn builtin_dispatch(name: &str, args: String) -> Option<SlashDispatch> {
                 Some(SlashDispatch::ProviderList)
             } else {
                 Some(SlashDispatch::Unimplemented(format!("/provider {args}")))
+            }
+        }
+        "mcp" => {
+            let args = args.trim();
+            if args.is_empty() || args == "list" || args == "ls" {
+                Some(SlashDispatch::McpList)
+            } else if let Some(rest) = args
+                .strip_prefix("auth")
+                .or_else(|| args.strip_prefix("login"))
+                .or_else(|| args.strip_prefix("connect"))
+            {
+                let rest = rest.trim();
+                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
+                Some(SlashDispatch::McpAuth { server_name })
+            } else if let Some(rest) = args.strip_prefix("logout").or_else(|| args.strip_prefix("disconnect")) {
+                let rest = rest.trim();
+                let server_name = if rest.is_empty() { None } else { Some(rest.to_string()) };
+                Some(SlashDispatch::McpLogout { server_name })
+            } else {
+                Some(SlashDispatch::Unimplemented(format!("/mcp {args}")))
             }
         }
         _ => None,
@@ -512,6 +576,30 @@ mod tests {
         assert_eq!(
             dispatch_slash_command("/provider", None, None, None),
             Some(SlashDispatch::ProviderConnect { provider_id: None })
+        );
+    }
+
+    #[test]
+    fn mcp_auth_dispatch() {
+        assert_eq!(
+            dispatch_slash_command("/mcp auth", None, None, None),
+            Some(SlashDispatch::McpAuth { server_name: None })
+        );
+        assert_eq!(
+            dispatch_slash_command("/mcp auth figma", None, None, None),
+            Some(SlashDispatch::McpAuth {
+                server_name: Some("figma".to_string())
+            })
+        );
+        assert_eq!(
+            dispatch_slash_command("/mcp list", None, None, None),
+            Some(SlashDispatch::McpList)
+        );
+        assert_eq!(
+            dispatch_slash_command("/mcp logout figma", None, None, None),
+            Some(SlashDispatch::McpLogout {
+                server_name: Some("figma".to_string())
+            })
         );
     }
 
@@ -660,7 +748,12 @@ mod tests {
         assert!(slash_arg_completions("memory").is_some());
         assert!(slash_arg_completions("mem").is_some());
         assert!(slash_arg_completions("provider").is_some());
+        assert!(slash_arg_completions("mcp").is_some());
         assert!(slash_arg_completions("model").is_none());
+        let mcp = slash_arg_completions("mcp").unwrap();
+        assert!(mcp.iter().any(|c| c.value == "auth"));
+        assert!(mcp.iter().any(|c| c.value == "logout"));
+        assert!(mcp.iter().any(|c| c.value == "list"));
     }
 
     #[test]
@@ -668,8 +761,17 @@ mod tests {
         let names: Vec<_> = builtin_slash_commands().into_iter().map(|cmd| cmd.name).collect();
         assert!(names.contains(&"goal"));
         assert!(names.contains(&"provider"));
+        assert!(names.contains(&"mcp"));
         assert!(names.contains(&"session"));
         assert!(names.contains(&"rename"));
+    }
+
+    #[test]
+    fn mcp_palette_args_hint() {
+        let commands = slash_commands_for_palette(None, None, None);
+        let mcp = commands.iter().find(|cmd| cmd.name == "mcp").expect("mcp");
+        assert_eq!(mcp.args_hint.as_deref(), Some("[auth|logout|list]"));
+        assert_eq!(mcp.palette_command_label(), "/mcp [auth|logout|list]");
     }
 
     #[test]

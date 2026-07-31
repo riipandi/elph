@@ -59,6 +59,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut pending_confetti,
         mut pending_mode_change,
         mut pending_plan_confirmation,
+        mut pending_mcp_auth_for_tick,
         mut pending_provider_connect_for_tick,
         mut pending_provider_disconnect_for_tick,
         mut pending_quit_confirm,
@@ -262,6 +263,22 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         }
 
         chrome_tick.set(chrome_tick.get().wrapping_add(1));
+
+        // ── MCP OAuth completed: close dialog ────────────────────
+        if pending_mcp_auth_for_tick.read().as_ref().is_some_and(|p| p.done) {
+            let notice = pending_mcp_auth_for_tick
+                .read()
+                .as_ref()
+                .and_then(|p| p.success_notice.clone());
+            pending_mcp_auth_for_tick.set(None);
+            shell_focus_for_tick.set(ShellFocus::Prompt);
+            if let Some(notice) = notice {
+                let mut msgs = messages_for_tick.write().clone();
+                msgs.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
+                messages_for_tick.set(msgs);
+                messages_revision_for_tick.set(messages_revision_for_tick.get().wrapping_add(1));
+            }
+        }
 
         // ── OAuth completed: close dialog ──────────────────────────
         if pending_provider_connect_for_tick

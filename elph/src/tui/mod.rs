@@ -12,6 +12,7 @@ mod file_picker;
 mod focus;
 mod inline_dialog;
 pub(crate) mod labels;
+pub(crate) mod mcp_auth_dialog;
 mod model_option_list;
 mod model_selector;
 mod model_selector_bar;
