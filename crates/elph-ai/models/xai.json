@@ -1,4 +1,82 @@
 {
+    "grok-4.20-0309-non-reasoning": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 2.5
+        },
+        "id": "grok-4.20-0309-non-reasoning",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 30000,
+        "name": "Grok 4.20 (Non-Reasoning)",
+        "provider": "xai",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-4.20-0309-reasoning": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 2.5
+        },
+        "id": "grok-4.20-0309-reasoning",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 30000,
+        "name": "Grok 4.20 (Reasoning)",
+        "provider": "xai",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-4.20-multi-agent-0309": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.25,
+            "output": 2.5
+        },
+        "id": "grok-4.20-multi-agent-0309",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 30000,
+        "name": "Grok 4.20 Multi-Agent",
+        "provider": "xai",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "grok-4.3": {
         "api": "openai-completions",
         "baseUrl": "https://api.x.ai/v1",
@@ -10,19 +88,25 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.25,
             "output": 2.5
         },
         "id": "grok-4.3",
-        "input": [
-            "text",
-            "image"
-        ],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 30000,
         "name": "Grok 4.3",
         "provider": "xai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "grok-4.5": {
         "api": "openai-responses",
@@ -33,27 +117,24 @@
         "contextWindow": 500000,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 6
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
         },
         "id": "grok-4.5",
-        "input": [
-            "text",
-            "image"
-        ],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 500000,
         "name": "Grok 4.5",
         "provider": "xai",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null,
-            "minimal": null,
-            "low": "low",
-            "medium": null,
             "high": "high",
-            "xhigh": null,
-            "max": "max"
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "grok-build-0.1": {
@@ -67,42 +148,128 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
-            "input": 1,
-            "output": 2
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 2.0
         },
         "id": "grok-build-0.1",
-        "input": [
-            "text",
-            "image"
-        ],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 256000,
         "name": "Grok Build 0.1",
         "provider": "xai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "grok-build-4.5": {
+    "grok-imagine-image": {
         "api": "openai-completions",
         "baseUrl": "https://api.x.ai/v1",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false
-        },
-        "contextWindow": 131072,
+        "contextWindow": 8000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 1,
-            "output": 2
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
-        "id": "grok-build-4.5",
-        "input": [
-            "text"
-        ],
-        "maxTokens": 131072,
-        "name": "Grok Build 4.5",
+        "id": "grok-imagine-image",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 0,
+        "name": "Grok Imagine Image",
         "provider": "xai",
-        "reasoning": true
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-imagine-image-quality": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 8000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "grok-imagine-image-quality",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 0,
+        "name": "Grok Imagine Image Quality",
+        "provider": "xai",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-imagine-video": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 1024,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "grok-imagine-video",
+        "input": ["text", "image", "video", "pdf"],
+        "maxTokens": 0,
+        "name": "Grok Imagine Video",
+        "provider": "xai",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "grok-imagine-video-1.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.x.ai/v1",
+        "contextWindow": 1024,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "grok-imagine-video-1.5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 0,
+        "name": "Grok Imagine Video 1.5",
+        "provider": "xai",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

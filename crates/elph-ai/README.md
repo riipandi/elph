@@ -983,38 +983,44 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 
 ### Regenerating Model Catalogs
 
-Chat and image model catalogs are generated from [pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai) scripts.
-
-Catalog source path is **fixed**: `../../earendil-works/pi/packages/ai` relative to the elph workspace root (local pi clone). No `--catalog-dir` flag.
+Chat model catalogs are generated from **[models.dev](https://models.dev)** (`api.json`) as the **origin** source of truth. Pricing prefers live provider APIs when available, then models.dev. Every model entry includes a full `thinkingLevelMap` (7 keys: `off`…`max`). Image fixtures may still use an optional local pi clone.
 
 ```sh
-# From the repo root (requires earendil-works/pi checkout + npm deps in packages/ai)
+# Rebuild chat catalogs from models.dev
+cargo run -p elph-ai --bin generate-models -- chat
+
+# Offline (uses models/.cache/models.dev/api.json)
+cargo run -p elph-ai --bin generate-models -- chat --offline
+
+# Skip live pricing HTTP probes
+cargo run -p elph-ai --bin generate-models -- chat --no-live-pricing
+
+# Or via make
 make generate-models
-
-# Or directly:
-cargo run -p elph-ai --bin generate-models -- all
-
-# Convert existing catalog output without re-running npm scripts:
-make generate-models ARGS="--skip-scripts"
 ```
+
+Agent skill: `/update-models` (`.agents/skills/update-models/SKILL.md`).
 
 Subcommands:
 
-| Command      | Catalog npm script      | Output                                          |
-| ------------ | ----------------------- | ----------------------------------------------- |
-| `chat`       | `generate-models`       | `models/*.json` + `src/models/catalog.rs`       |
-| `image`      | `generate-image-models` | `models/images/*.json` + `src/images/models.rs` |
-| `test-image` | `generate-test-image`   | `tests/data/red-circle.png`                     |
-| `all`        | all of the above        | everything                                      |
+| Command      | Source                         | Output                                          |
+| ------------ | ------------------------------ | ----------------------------------------------- |
+| `chat`       | models.dev + Elph overlays     | `models/*.json` + `src/models/catalog.rs`       |
+| `enrich`     | same as chat (pricing refresh) | rewritten catalogs                              |
+| `image`      | optional pi image scripts      | `models/images/*.json` + `src/images/models.rs` |
+| `test-image` | local fixture                  | `tests/data/red-circle.png`                     |
+| `all`        | chat + image + test-image      | everything                                      |
+
+Forward-looking user override schema: [`schemas/provider-schema.json`](../../schemas/provider-schema.json) (runtime merge not implemented yet).
 
 ### Adding a New Provider
 
 1. **Types** (`src/types/mod.rs`) — add API/provider identifiers and options if needed
 2. **API** (`src/api/<api-id>.rs`) — implement `stream` / `stream_simple` for new wire protocols
-3. **Catalog** — add fetch logic to the upstream catalog `generate-models` script (or add Elph-only `models/<id>.json`), then run `make generate-models`
-4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; **must** register in `builtin_providers()`. Catalog-only entries show up in the model picker but stream/auth fails with `Unknown provider` until registered. `generate-models chat` fails if any catalog provider is missing from `builtin_providers()`.
-5. **OpenAI-compat gateways** — multi-vendor proxies (`tokenrouter`, `opengateway`, `baseten`, …) are treated as non-standard in `src/api/openai_compat.rs` (no `store` / `developer` / `max_completion_tokens` / tool `strict`). Prefer per-model `compat` in JSON when a vendor route needs extra rules (e.g. Moonshot reasoning content).
-6. **Tests** (`tests/`) — streaming, tools, auth, cross-provider handoff as applicable; keep `catalog_providers_match_builtin_providers` green
+3. **Catalog** — add row in `bin/generate_models/provider_sources.rs` (models.dev keys + defaults); run `generate-models chat`
+4. **Provider factory** (`src/providers/builtin.rs`) — wire catalog + auth + API adapter; **must** register in `builtin_providers()`. `generate-models chat` fails if any catalog provider is missing from `builtin_providers()`.
+5. **OpenAI-compat gateways** — multi-vendor proxies are treated as non-standard in `src/api/openai_compat.rs`. Prefer per-model `compat` when a vendor route needs extra rules.
+6. **Tests** (`tests/`) — keep `catalog_providers_match_builtin_providers` green
 
 ### Running Tests
 

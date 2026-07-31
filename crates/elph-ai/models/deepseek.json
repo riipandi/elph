@@ -1,4 +1,56 @@
 {
+    "deepseek-chat": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.deepseek.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "deepseek-chat",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek Chat",
+        "provider": "deepseek",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-reasoner": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.deepseek.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
+        },
+        "id": "deepseek-reasoner",
+        "input": ["text"],
+        "maxTokens": 384000,
+        "name": "DeepSeek Reasoner",
+        "provider": "deepseek",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "deepseek-v4-flash": {
         "api": "openai-completions",
         "baseUrl": "https://api.deepseek.com",
@@ -11,7 +63,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
@@ -26,7 +78,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -41,7 +95,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.003625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
@@ -56,7 +110,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

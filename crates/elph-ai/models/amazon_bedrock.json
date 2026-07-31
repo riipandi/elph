@@ -4,17 +4,26 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.33,
             "output": 2.75
         },
         "id": "amazon.nova-2-lite-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 4096,
         "name": "Nova 2 Lite",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "amazon.nova-lite-v1:0": {
         "api": "bedrock-converse-stream",
@@ -22,16 +31,25 @@
         "contextWindow": 300000,
         "cost": {
             "cacheRead": 0.015,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.06,
             "output": 0.24
         },
         "id": "amazon.nova-lite-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 8192,
         "name": "Nova Lite",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "amazon.nova-micro-v1:0": {
         "api": "bedrock-converse-stream",
@@ -39,7 +57,7 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.00875,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.035,
             "output": 0.14
         },
@@ -48,7 +66,16 @@
         "maxTokens": 8192,
         "name": "Nova Micro",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "amazon.nova-pro-v1:0": {
         "api": "bedrock-converse-stream",
@@ -56,35 +83,48 @@
         "contextWindow": 300000,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.8,
             "output": 3.2
         },
         "id": "amazon.nova-pro-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 8192,
         "name": "Nova Pro",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1,
+            "cacheRead": 1.0,
             "cacheWrite": 12.5,
-            "input": 10,
-            "output": 50
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "anthropic.claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -99,15 +139,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "anthropic.claude-opus-4-1-20250805-v1:0": {
         "api": "bedrock-converse-stream",
@@ -116,15 +165,24 @@
         "cost": {
             "cacheRead": 1.5,
             "cacheWrite": 18.75,
-            "input": 15,
-            "output": 75
+            "input": 15.0,
+            "output": 75.0
         },
         "id": "anthropic.claude-opus-4-1-20250805-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.1",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -136,15 +194,24 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "anthropic.claude-opus-4-5-20251101-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -156,17 +223,23 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "anthropic.claude-opus-4-6-v1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "anthropic.claude-opus-4-7": {
@@ -176,17 +249,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "anthropic.claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -197,17 +275,48 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "anthropic.claude-opus-5": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "anthropic.claude-opus-5",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "amazon-bedrock",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -221,15 +330,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -241,17 +359,23 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "anthropic.claude-sonnet-5": {
@@ -264,17 +388,22 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -288,15 +417,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "au.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (AU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "au.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -312,13 +450,19 @@
             "output": 82.5
         },
         "id": "au.anthropic.claude-opus-4-6-v1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "AU Anthropic Claude Opus 4.6",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "au.anthropic.claude-opus-4-8": {
@@ -328,17 +472,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "au.anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8 (AU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -349,17 +498,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "au.anthropic.claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5 (AU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -373,15 +527,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "au.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (AU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "au.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -397,13 +560,19 @@
             "output": 16.5
         },
         "id": "au.anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "AU Anthropic Claude Sonnet 4.6",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "au.anthropic.claude-sonnet-5": {
@@ -416,17 +585,22 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "au.anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (AU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -435,8 +609,8 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 1.35,
             "output": 5.4
         },
@@ -445,7 +619,16 @@
         "maxTokens": 32768,
         "name": "DeepSeek-R1",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "deepseek.v3-v1:0": {
         "api": "bedrock-converse-stream",
@@ -455,8 +638,8 @@
         },
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.58,
             "output": 1.68
         },
@@ -465,7 +648,16 @@
         "maxTokens": 81920,
         "name": "DeepSeek-V3.1",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "deepseek.v3.2": {
         "api": "bedrock-converse-stream",
@@ -475,8 +667,8 @@
         },
         "contextWindow": 163840,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.62,
             "output": 1.85
         },
@@ -485,7 +677,16 @@
         "maxTokens": 81920,
         "name": "DeepSeek-V3.2",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "eu.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
@@ -494,17 +695,21 @@
         "cost": {
             "cacheRead": 1.1,
             "cacheWrite": 13.75,
-            "input": 11,
-            "output": 55
+            "input": 11.0,
+            "output": 55.0
         },
         "id": "eu.anthropic.claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -523,11 +728,20 @@
             "output": 5.5
         },
         "id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "eu.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -543,11 +757,20 @@
             "output": 27.5
         },
         "id": "eu.anthropic.claude-opus-4-5-20251101-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "eu.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -563,13 +786,19 @@
             "output": 27.5
         },
         "id": "eu.anthropic.claude-opus-4-6-v1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "eu.anthropic.claude-opus-4-7": {
@@ -583,13 +812,18 @@
             "output": 27.5
         },
         "id": "eu.anthropic.claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -604,13 +838,18 @@
             "output": 27.5
         },
         "id": "eu.anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -625,13 +864,18 @@
             "output": 27.5
         },
         "id": "eu.anthropic.claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -649,11 +893,20 @@
             "output": 16.5
         },
         "id": "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (EU)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "eu.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -669,13 +922,19 @@
             "output": 16.5
         },
         "id": "eu.anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "eu.anthropic.claude-sonnet-5": {
@@ -689,16 +948,21 @@
             "cacheRead": 0.22,
             "cacheWrite": 2.75,
             "input": 2.2,
-            "output": 11
+            "output": 11.0
         },
         "id": "eu.anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (EU)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -707,19 +971,23 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1,
+            "cacheRead": 1.0,
             "cacheWrite": 12.5,
-            "input": 10,
-            "output": 50
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "global.anthropic.claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -734,15 +1002,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "global.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -754,15 +1031,24 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "global.anthropic.claude-opus-4-5-20251101-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "global.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -774,17 +1060,23 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "global.anthropic.claude-opus-4-6-v1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "global.anthropic.claude-opus-4-7": {
@@ -794,17 +1086,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "global.anthropic.claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -815,17 +1112,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "global.anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -836,17 +1138,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "global.anthropic.claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -860,15 +1167,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (Global)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "global.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -880,17 +1196,23 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "global.anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "global.anthropic.claude-sonnet-5": {
@@ -903,18 +1225,49 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "global.anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (Global)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
+        }
+    },
+    "google.gemma-3-12b-it": {
+        "api": "bedrock-converse-stream",
+        "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.049999999999999996,
+            "output": 0.09999999999999999
+        },
+        "id": "google.gemma-3-12b-it",
+        "input": ["text", "image"],
+        "maxTokens": 8192,
+        "name": "Google Gemma 3 12B",
+        "provider": "amazon-bedrock",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "google.gemma-3-27b-it": {
@@ -925,8 +1278,8 @@
         },
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.12,
             "output": 0.2
         },
@@ -935,15 +1288,24 @@
         "maxTokens": 8192,
         "name": "Google Gemma 3 27B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "google.gemma-3-4b-it": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.04,
             "output": 0.08
         },
@@ -952,7 +1314,16 @@
         "maxTokens": 4096,
         "name": "Gemma 3 4B IT",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "jp.anthropic.claude-haiku-4-5-20251001-v1:0": {
         "api": "bedrock-converse-stream",
@@ -964,15 +1335,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (JP)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "jp.anthropic.claude-opus-4-7": {
         "api": "bedrock-converse-stream",
@@ -981,17 +1361,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "jp.anthropic.claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7 (JP)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1002,17 +1387,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "jp.anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8 (JP)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1023,17 +1413,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "jp.anthropic.claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5 (JP)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1047,15 +1442,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "jp.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (JP)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "jp.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -1067,17 +1471,23 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "jp.anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (JP)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "jp.anthropic.claude-sonnet-5": {
@@ -1090,17 +1500,22 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "jp.anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (JP)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1109,8 +1524,8 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.72,
             "output": 0.72
         },
@@ -1119,15 +1534,24 @@
         "maxTokens": 4096,
         "name": "Llama 3.1 70B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "meta.llama3-1-8b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.22,
             "output": 0.22
         },
@@ -1136,15 +1560,24 @@
         "maxTokens": 4096,
         "name": "Llama 3.1 8B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "meta.llama3-3-70b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.72,
             "output": 0.72
         },
@@ -1153,15 +1586,24 @@
         "maxTokens": 4096,
         "name": "Llama 3.3 70B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "meta.llama4-maverick-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.24,
             "output": 0.97
         },
@@ -1170,15 +1612,24 @@
         "maxTokens": 16384,
         "name": "Llama 4 Maverick 17B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "meta.llama4-scout-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 3500000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.17,
             "output": 0.66
         },
@@ -1187,15 +1638,24 @@
         "maxTokens": 16384,
         "name": "Llama 4 Scout 17B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "minimax.minimax-m2": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 204608,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
@@ -1204,15 +1664,24 @@
         "maxTokens": 128000,
         "name": "MiniMax M2",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "minimax.minimax-m2.1": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
@@ -1221,15 +1690,24 @@
         "maxTokens": 131072,
         "name": "MiniMax M2.1",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "minimax.minimax-m2.5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 196608,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
@@ -1238,7 +1716,16 @@
         "maxTokens": 98304,
         "name": "MiniMax M2.5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.devstral-2-123b": {
         "api": "bedrock-converse-stream",
@@ -1248,17 +1735,26 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.4,
-            "output": 2
+            "output": 2.0
         },
         "id": "mistral.devstral-2-123b",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Devstral 2 123B",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.magistral-small-2509": {
         "api": "bedrock-converse-stream",
@@ -1268,8 +1764,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.5,
             "output": 1.5
         },
@@ -1278,7 +1774,16 @@
         "maxTokens": 40000,
         "name": "Magistral Small 1.2",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.ministral-3-14b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1288,8 +1793,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.2,
             "output": 0.2
         },
@@ -1298,7 +1803,16 @@
         "maxTokens": 4096,
         "name": "Ministral 14B 3.0",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.ministral-3-3b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1308,8 +1822,8 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.1
         },
@@ -1318,7 +1832,16 @@
         "maxTokens": 8192,
         "name": "Ministral 3 3B",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.ministral-3-8b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1328,8 +1851,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.15
         },
@@ -1338,7 +1861,16 @@
         "maxTokens": 4096,
         "name": "Ministral 3 8B",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.mistral-large-3-675b-instruct": {
         "api": "bedrock-converse-stream",
@@ -1348,8 +1880,8 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.5,
             "output": 1.5
         },
@@ -1358,24 +1890,42 @@
         "maxTokens": 8192,
         "name": "Mistral Large 3",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.pixtral-large-2502-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 6
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
         },
         "id": "mistral.pixtral-large-2502-v1:0",
         "input": ["text", "image"],
         "maxTokens": 8192,
         "name": "Pixtral Large (25.02)",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.voxtral-mini-3b-2507": {
         "api": "bedrock-converse-stream",
@@ -1385,17 +1935,26 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.04,
             "output": 0.04
         },
         "id": "mistral.voxtral-mini-3b-2507",
-        "input": ["text"],
+        "input": ["audio", "text"],
         "maxTokens": 4096,
         "name": "Voxtral Mini 3B 2507",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mistral.voxtral-small-24b-2507": {
         "api": "bedrock-converse-stream",
@@ -1405,17 +1964,26 @@
         },
         "contextWindow": 32000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.35
         },
         "id": "mistral.voxtral-small-24b-2507",
-        "input": ["text"],
+        "input": ["text", "audio"],
         "maxTokens": 8192,
         "name": "Voxtral Small 24B 2507",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "moonshot.kimi-k2-thinking": {
         "api": "bedrock-converse-stream",
@@ -1425,8 +1993,8 @@
         },
         "contextWindow": 262143,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.6,
             "output": 2.5
         },
@@ -1435,7 +2003,16 @@
         "maxTokens": 16000,
         "name": "Kimi K2 Thinking",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "moonshotai.kimi-k2.5": {
         "api": "bedrock-converse-stream",
@@ -1445,17 +2022,26 @@
         },
         "contextWindow": 262143,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.6,
-            "output": 3
+            "output": 3.0
         },
         "id": "moonshotai.kimi-k2.5",
         "input": ["text", "image"],
         "maxTokens": 16000,
         "name": "Kimi K2.5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "nvidia.nemotron-nano-12b-v2": {
         "api": "bedrock-converse-stream",
@@ -1465,8 +2051,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.2,
             "output": 0.6
         },
@@ -1475,7 +2061,16 @@
         "maxTokens": 4096,
         "name": "NVIDIA Nemotron Nano 12B v2 VL BF16",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "nvidia.nemotron-nano-3-30b": {
         "api": "bedrock-converse-stream",
@@ -1485,8 +2080,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.06,
             "output": 0.24
         },
@@ -1495,7 +2090,16 @@
         "maxTokens": 4096,
         "name": "NVIDIA Nemotron Nano 3 30B",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "nvidia.nemotron-nano-9b-v2": {
         "api": "bedrock-converse-stream",
@@ -1505,8 +2109,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.06,
             "output": 0.23
         },
@@ -1515,7 +2119,16 @@
         "maxTokens": 4096,
         "name": "NVIDIA Nemotron Nano 9B v2",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "nvidia.nemotron-super-3-120b": {
         "api": "bedrock-converse-stream",
@@ -1525,8 +2138,8 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.65
         },
@@ -1535,7 +2148,16 @@
         "maxTokens": 131072,
         "name": "NVIDIA Nemotron 3 Super 120B A12B",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-5.4": {
         "api": "bedrock-converse-stream",
@@ -1546,17 +2168,23 @@
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.275,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.75,
             "output": 16.5
         },
         "id": "openai.gpt-5.4",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1569,17 +2197,23 @@
         "contextWindow": 272000,
         "cost": {
             "cacheRead": 0.55,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 5.5,
-            "output": 33
+            "output": 33.0
         },
         "id": "openai.gpt-5.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1591,18 +2225,24 @@
         },
         "contextWindow": 272000,
         "cost": {
-            "cacheRead": 0.1,
-            "cacheWrite": 1.25,
-            "input": 1,
-            "output": 6
+            "cacheRead": 0.022,
+            "cacheWrite": 0.275,
+            "input": 0.22,
+            "output": 1.32
         },
         "id": "openai.gpt-5.6-luna",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1614,18 +2254,24 @@
         },
         "contextWindow": 272000,
         "cost": {
-            "cacheRead": 0.5,
-            "cacheWrite": 6.25,
-            "input": 5,
-            "output": 30
+            "cacheRead": 0.55,
+            "cacheWrite": 6.88,
+            "input": 5.5,
+            "output": 33.0
         },
         "id": "openai.gpt-5.6-sol",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1637,18 +2283,24 @@
         },
         "contextWindow": 272000,
         "cost": {
-            "cacheRead": 0.25,
-            "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15
+            "cacheRead": 0.22,
+            "cacheWrite": 2.75,
+            "input": 2.2,
+            "output": 13.2
         },
         "id": "openai.gpt-5.6-terra",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -1660,8 +2312,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -1670,7 +2322,16 @@
         "maxTokens": 16384,
         "name": "gpt-oss-120b",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-oss-120b-1:0": {
         "api": "bedrock-converse-stream",
@@ -1680,8 +2341,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -1690,7 +2351,16 @@
         "maxTokens": 16384,
         "name": "gpt-oss-120b",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-oss-20b": {
         "api": "bedrock-converse-stream",
@@ -1700,8 +2370,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.3
         },
@@ -1710,7 +2380,16 @@
         "maxTokens": 16384,
         "name": "gpt-oss-20b",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-oss-20b-1:0": {
         "api": "bedrock-converse-stream",
@@ -1720,8 +2399,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.3
         },
@@ -1730,7 +2409,16 @@
         "maxTokens": 16384,
         "name": "gpt-oss-20b",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-oss-safeguard-120b": {
         "api": "bedrock-converse-stream",
@@ -1740,8 +2428,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -1750,7 +2438,16 @@
         "maxTokens": 16384,
         "name": "GPT OSS Safeguard 120B",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai.gpt-oss-safeguard-20b": {
         "api": "bedrock-converse-stream",
@@ -1760,8 +2457,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.2
         },
@@ -1770,7 +2467,16 @@
         "maxTokens": 16384,
         "name": "GPT OSS Safeguard 20B",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-235b-a22b-2507-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1780,8 +2486,8 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.22,
             "output": 0.88
         },
@@ -1790,7 +2496,16 @@
         "maxTokens": 131072,
         "name": "Qwen3 235B A22B 2507",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-32b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1800,8 +2515,8 @@
         },
         "contextWindow": 16384,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -1810,7 +2525,16 @@
         "maxTokens": 16384,
         "name": "Qwen3 32B (dense)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-coder-30b-a3b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1820,8 +2544,8 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -1830,7 +2554,16 @@
         "maxTokens": 131072,
         "name": "Qwen3 Coder 30B A3B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-coder-480b-a35b-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1840,8 +2573,8 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.22,
             "output": 1.8
         },
@@ -1850,7 +2583,16 @@
         "maxTokens": 65536,
         "name": "Qwen3 Coder 480B A35B Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-coder-next": {
         "api": "bedrock-converse-stream",
@@ -1860,8 +2602,8 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.22,
             "output": 1.8
         },
@@ -1870,7 +2612,16 @@
         "maxTokens": 65536,
         "name": "Qwen3 Coder Next",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-next-80b-a3b": {
         "api": "bedrock-converse-stream",
@@ -1880,8 +2631,8 @@
         },
         "contextWindow": 262000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 1.4
         },
@@ -1890,7 +2641,16 @@
         "maxTokens": 262000,
         "name": "Qwen/Qwen3-Next-80B-A3B-Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen.qwen3-vl-235b-a22b": {
         "api": "bedrock-converse-stream",
@@ -1900,8 +2660,8 @@
         },
         "contextWindow": 262000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.5
         },
@@ -1910,26 +2670,39 @@
         "maxTokens": 262000,
         "name": "Qwen/Qwen3-VL-235B-A22B-Instruct",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.anthropic.claude-fable-5": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1,
+            "cacheRead": 1.0,
             "cacheWrite": 12.5,
-            "input": 10,
-            "output": 50
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "us.anthropic.claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -1944,15 +2717,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.anthropic.claude-opus-4-1-20250805-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1961,15 +2743,24 @@
         "cost": {
             "cacheRead": 1.5,
             "cacheWrite": 18.75,
-            "input": 15,
-            "output": 75
+            "input": 15.0,
+            "output": 75.0
         },
         "id": "us.anthropic.claude-opus-4-1-20250805-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.1 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.anthropic.claude-opus-4-5-20251101-v1:0": {
         "api": "bedrock-converse-stream",
@@ -1981,15 +2772,24 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "us.anthropic.claude-opus-4-5-20251101-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.anthropic.claude-opus-4-6-v1": {
         "api": "bedrock-converse-stream",
@@ -2001,17 +2801,23 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "us.anthropic.claude-opus-4-6-v1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "us.anthropic.claude-opus-4-7": {
@@ -2021,17 +2827,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "us.anthropic.claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -2042,17 +2853,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "us.anthropic.claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -2063,17 +2879,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "us.anthropic.claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -2087,15 +2908,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.anthropic.claude-sonnet-4-6": {
         "api": "bedrock-converse-stream",
@@ -2107,17 +2937,23 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "us.anthropic.claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.6 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "us.anthropic.claude-sonnet-5": {
@@ -2130,17 +2966,22 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "us.anthropic.claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5 (US)",
         "provider": "amazon-bedrock",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -2149,8 +2990,8 @@
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 1.35,
             "output": 5.4
         },
@@ -2159,15 +3000,24 @@
         "maxTokens": 32768,
         "name": "DeepSeek-R1 (US)",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.meta.llama4-maverick-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.24,
             "output": 0.97
         },
@@ -2176,15 +3026,24 @@
         "maxTokens": 16384,
         "name": "Llama 4 Maverick 17B Instruct (US)",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "us.meta.llama4-scout-17b-instruct-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 3500000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.17,
             "output": 0.66
         },
@@ -2193,41 +3052,68 @@
         "maxTokens": 16384,
         "name": "Llama 4 Scout 17B Instruct (US)",
         "provider": "amazon-bedrock",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "writer.palmyra-x4-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 122880,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 2.5,
-            "output": 10
+            "output": 10.0
         },
         "id": "writer.palmyra-x4-v1:0",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Palmyra X4",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "writer.palmyra-x5-v1:0": {
         "api": "bedrock-converse-stream",
         "baseUrl": "https://bedrock-runtime.us-east-1.amazonaws.com",
         "contextWindow": 1040000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.6,
-            "output": 6
+            "output": 6.0
         },
         "id": "writer.palmyra-x5-v1:0",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "Palmyra X5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "xai.grok-4.3": {
         "api": "bedrock-converse-stream",
@@ -2238,7 +3124,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.25,
             "output": 2.5
         },
@@ -2247,7 +3133,16 @@
         "maxTokens": 131072,
         "name": "Grok 4.3",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "zai.glm-4.7": {
         "api": "bedrock-converse-stream",
@@ -2257,8 +3152,8 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.6,
             "output": 2.2
         },
@@ -2267,7 +3162,16 @@
         "maxTokens": 131072,
         "name": "GLM-4.7",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "zai.glm-4.7-flash": {
         "api": "bedrock-converse-stream",
@@ -2277,8 +3181,8 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.4
         },
@@ -2287,7 +3191,16 @@
         "maxTokens": 131072,
         "name": "GLM-4.7-Flash",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "zai.glm-5": {
         "api": "bedrock-converse-stream",
@@ -2297,9 +3210,9 @@
         },
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 1,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.0,
             "output": 3.2
         },
         "id": "zai.glm-5",
@@ -2307,6 +3220,15 @@
         "maxTokens": 101376,
         "name": "GLM-5",
         "provider": "amazon-bedrock",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

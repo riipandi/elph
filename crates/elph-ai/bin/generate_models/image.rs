@@ -51,24 +51,23 @@ pub fn generate_image(options: ImageOptions) -> Result<()> {
         let out_path = options.images_dir.join(format!("{provider_id}.json"));
         let pretty = serde_json::to_string_pretty(json).context("serialize image catalog json")?;
         fs::write(&out_path, format!("{pretty}\n")).with_context(|| format!("write {}", out_path.display()))?;
-        println!("Converted image provider {provider_id}: {count} models");
+        super::term::provider_ok(provider_id, count, &format!("{provider_id}.json"));
     }
 
     if options.no_regenerate_catalog {
-        println!(
-            "\nWrote {} image catalogs to {} (skipped models.rs regeneration)",
+        super::term::success(format!(
+            "Wrote {} image catalogs to {} (skipped models.rs regeneration)",
             provider_ids.len(),
             options.images_dir.display()
-        );
+        ));
     } else {
         let catalog_source = render_image_catalog_rs(&provider_ids);
         fs::write(&options.models_rs, catalog_source).context("write src/images/models.rs")?;
-        println!(
-            "\nWrote {} image catalogs to {} and regenerated {}",
+        super::term::success(format!(
+            "Wrote {} image catalogs + {}",
             provider_ids.len(),
-            options.images_dir.display(),
             options.models_rs.display()
-        );
+        ));
     }
 
     Ok(())

@@ -136,14 +136,8 @@ mod tests {
             Some("high"),
             "medium should clamp to a supported xAI effort"
         );
-        assert_eq!(
-            map_thinking_level_for_api(&model, ThinkingLevel::Low).as_deref(),
-            Some("low")
-        );
-        assert_eq!(
-            map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(),
-            Some("max")
-        );
+        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Low).as_deref(), Some("low"));
+        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(), Some("max"));
         let wire = map_thinking_level_for_api(&model, ThinkingLevel::High).unwrap();
         assert!(
             matches!(wire.as_str(), "low" | "high" | "max"),

@@ -8,19 +8,23 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 1,
+            "cacheRead": 1.0,
             "cacheWrite": 12.5,
-            "input": 10,
-            "output": 50
+            "input": 10.0,
+            "output": 50.0
         },
         "id": "claude-fable-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Fable 5",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -35,15 +39,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "claude-haiku-4-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5 (latest)",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "claude-haiku-4-5-20251001": {
         "api": "anthropic-messages",
@@ -55,15 +68,24 @@
         "cost": {
             "cacheRead": 0.1,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 5
+            "input": 1.0,
+            "output": 5.0
         },
         "id": "claude-haiku-4-5-20251001",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Haiku 4.5",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "claude-opus-4-1": {
         "api": "anthropic-messages",
@@ -75,15 +97,24 @@
         "cost": {
             "cacheRead": 1.5,
             "cacheWrite": 18.75,
-            "input": 15,
-            "output": 75
+            "input": 15.0,
+            "output": 75.0
         },
         "id": "claude-opus-4-1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.1 (latest)",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "claude-opus-4-1-20250805": {
         "api": "anthropic-messages",
@@ -95,15 +126,24 @@
         "cost": {
             "cacheRead": 1.5,
             "cacheWrite": 18.75,
-            "input": 15,
-            "output": 75
+            "input": 15.0,
+            "output": 75.0
         },
         "id": "claude-opus-4-1-20250805",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "Claude Opus 4.1",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "claude-opus-4-5": {
         "api": "anthropic-messages",
@@ -115,15 +155,24 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5 (latest)",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "claude-opus-4-5-20251101": {
         "api": "anthropic-messages",
@@ -135,15 +184,24 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-5-20251101",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Opus 4.5",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "claude-opus-4-6": {
         "api": "anthropic-messages",
@@ -156,17 +214,23 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.6",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-opus-4-7": {
@@ -181,17 +245,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-7",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.7",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -207,17 +276,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-4-8",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 4.8",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -233,17 +307,22 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 25
+            "input": 5.0,
+            "output": 25.0
         },
         "id": "claude-opus-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Opus 5",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     },
@@ -257,15 +336,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5 (latest)",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "claude-sonnet-4-5-20250929": {
         "api": "anthropic-messages",
@@ -277,15 +365,24 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-5-20250929",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 64000,
         "name": "Claude Sonnet 4.5",
         "provider": "anthropic",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "claude-sonnet-4-6": {
         "api": "anthropic-messages",
@@ -298,17 +395,23 @@
         "cost": {
             "cacheRead": 0.3,
             "cacheWrite": 3.75,
-            "input": 3,
-            "output": 15
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "claude-sonnet-4-6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 4.6",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
-            "max": "max"
+            "high": null,
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "claude-sonnet-5": {
@@ -322,17 +425,22 @@
         "cost": {
             "cacheRead": 0.2,
             "cacheWrite": 2.5,
-            "input": 2,
-            "output": 10
+            "input": 2.0,
+            "output": 10.0
         },
         "id": "claude-sonnet-5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "Claude Sonnet 5",
         "provider": "anthropic",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": "xhigh"
         }
     }

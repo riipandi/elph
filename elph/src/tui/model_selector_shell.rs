@@ -231,10 +231,7 @@ pub fn apply_model_selection_locally(value: &str, paths: &Paths, chrome_stats: &
 }
 
 /// Clamp UI/settings thinking level to the selected model's catalog map (footer + Ctrl+. stay in sync).
-pub fn clamp_thinking_for_model_value(
-    level: crate::types::ThinkingLevel,
-    value: &str,
-) -> crate::types::ThinkingLevel {
+pub fn clamp_thinking_for_model_value(level: crate::types::ThinkingLevel, value: &str) -> crate::types::ThinkingLevel {
     match parse_model_value(value) {
         Ok((provider, model_id)) => level.clamp_for_provider_model(&provider, &model_id),
         Err(_) => level,

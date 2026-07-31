@@ -58,7 +58,9 @@ impl ProviderStreams for OpenAICodexResponsesApi {
     ) -> AssistantMessageEventStream {
         let opts = options.as_ref();
         let base = build_base_options(model, context, opts, opts.and_then(|o| o.base.api_key.clone()));
-        let reasoning_effort = opts.and_then(|o| o.reasoning).and_then(|r| map_thinking_level_for_api(model, r));
+        let reasoning_effort = opts
+            .and_then(|o| o.reasoning)
+            .and_then(|r| map_thinking_level_for_api(model, r));
         self.stream_with_options(
             model,
             context,

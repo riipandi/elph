@@ -12,14 +12,14 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
         "id": "deepseek-v4-flash",
         "input": ["text"],
         "maxTokens": 384000,
-        "name": "DeepSeek V4 Flash",
+        "name": "DeepSeek V4 Flash (New)",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -27,7 +27,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -43,7 +45,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.003625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
@@ -58,7 +60,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "glm-5.1": {
@@ -72,7 +76,7 @@
         "contextWindow": 202752,
         "cost": {
             "cacheRead": 0.26,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },
@@ -81,7 +85,16 @@
         "maxTokens": 32768,
         "name": "GLM-5.1",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -94,7 +107,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.26,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },
@@ -123,9 +136,9 @@
         "contextWindow": 500000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 6
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 6.0
         },
         "id": "grok-4.5",
         "input": ["text", "image"],
@@ -154,7 +167,7 @@
         "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.035,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.58
         },
@@ -188,20 +201,24 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.16,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "kimi-k2.6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Kimi K2.6",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
             "low": null,
+            "max": null,
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "kimi-k2.7-code": {
@@ -215,16 +232,25 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.19,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "kimi-k2.7-code",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k3": {
         "api": "openai-completions",
@@ -237,14 +263,14 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 3,
-            "output": 15
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "kimi-k3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
-        "name": "Kimi K3 (2x usage)",
+        "name": "Kimi K3",
         "provider": "opencode-go",
         "reasoning": true,
         "thinkingLevelMap": {
@@ -268,16 +294,25 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
         "id": "mimo-v2.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 128000,
         "name": "MiMo V2.5",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -290,7 +325,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.003625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
@@ -299,7 +334,16 @@
         "maxTokens": 128000,
         "name": "MiMo V2.5 Pro",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "minimax-m2.7": {
         "api": "openai-completions",
@@ -312,7 +356,7 @@
         "contextWindow": 204800,
         "cost": {
             "cacheRead": 0.06,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
@@ -321,7 +365,16 @@
         "maxTokens": 131072,
         "name": "MiniMax-M2.7",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "minimax-m3": {
         "api": "anthropic-messages",
@@ -329,16 +382,25 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.06,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
         "id": "minimax-m3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "MiniMax-M3",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.6-plus": {
         "api": "openai-completions",
@@ -354,14 +416,23 @@
             "cacheRead": 0.05,
             "cacheWrite": 0.625,
             "input": 0.5,
-            "output": 3
+            "output": 3.0
         },
         "id": "qwen3.6-plus",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.6 Plus",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.7-max": {
         "api": "anthropic-messages",
@@ -378,7 +449,16 @@
         "maxTokens": 65536,
         "name": "Qwen3.7 Max",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.7-plus": {
         "api": "anthropic-messages",
@@ -391,10 +471,19 @@
             "output": 1.6
         },
         "id": "qwen3.7-plus",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.7 Plus",
         "provider": "opencode-go",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

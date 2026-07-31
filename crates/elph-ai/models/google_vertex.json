@@ -1,20 +1,419 @@
 {
+    "claude-haiku-4-5@20251001": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 1.25,
+            "input": 1.0,
+            "output": 5.0
+        },
+        "id": "claude-haiku-4-5@20251001",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Haiku 4.5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-1@20250805": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 1.5,
+            "cacheWrite": 18.75,
+            "input": 15.0,
+            "output": 75.0
+        },
+        "id": "claude-opus-4-1@20250805",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 32000,
+        "name": "Claude Opus 4.1",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-5@20251101": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-5@20251101",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Opus 4.5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-6@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-6@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.6",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-4-7@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-7@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.7",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4-8@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-4-8@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 4.8",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-opus-4@20250514": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 1.5,
+            "cacheWrite": 18.75,
+            "input": 15.0,
+            "output": 75.0
+        },
+        "id": "claude-opus-4@20250514",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 32000,
+        "name": "Claude Opus 4",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-opus-5@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.5,
+            "cacheWrite": 6.25,
+            "input": 5.0,
+            "output": 25.0
+        },
+        "id": "claude-opus-5@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Opus 5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "claude-sonnet-4-5@20250929": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "claude-sonnet-4-5@20250929",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4.5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4-6@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "claude-sonnet-4-6@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Sonnet 4.6",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-4@20250514": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75,
+            "input": 3.0,
+            "output": 15.0
+        },
+        "id": "claude-sonnet-4@20250514",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 64000,
+        "name": "Claude Sonnet 4",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "claude-sonnet-5@default": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1000000,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 2.5,
+            "input": 2.0,
+            "output": 10.0
+        },
+        "id": "claude-sonnet-5@default",
+        "input": ["text", "image", "pdf"],
+        "maxTokens": 128000,
+        "name": "Claude Sonnet 5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
+    },
+    "deepseek-ai/deepseek-v3.1-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 163840,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 1.7
+        },
+        "id": "deepseek-ai/deepseek-v3.1-maas",
+        "input": ["text", "pdf"],
+        "maxTokens": 32768,
+        "name": "DeepSeek V3.1",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "deepseek-ai/deepseek-v3.2-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 163840,
+        "cost": {
+            "cacheRead": 0.056,
+            "cacheWrite": 0.0,
+            "input": 0.56,
+            "output": 1.68
+        },
+        "id": "deepseek-ai/deepseek-v3.2-maas",
+        "input": ["text", "pdf"],
+        "maxTokens": 65536,
+        "name": "DeepSeek V3.2",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "gemini-2.5-flash": {
         "api": "google-vertex",
         "baseUrl": "https://{location}-aiplatform.googleapis.com",
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0.03,
-            "cacheWrite": 0,
+            "cacheRead": 0.075,
+            "cacheWrite": 0.383,
             "input": 0.3,
             "output": 2.5
         },
         "id": "gemini-2.5-flash",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash",
         "provider": "google-vertex",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-2.5-flash-image": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 32768,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 30.0
+        },
+        "id": "gemini-2.5-flash-image",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Nano Banana",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gemini-2.5-flash-lite": {
         "api": "google-vertex",
@@ -22,16 +421,51 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.01,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.4
         },
         "id": "gemini-2.5-flash-lite",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 2.5 Flash-Lite",
         "provider": "google-vertex",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-2.5-flash-tts": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 32768,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 10.0
+        },
+        "id": "gemini-2.5-flash-tts",
+        "input": ["text"],
+        "maxTokens": 16384,
+        "name": "Gemini 2.5 Flash TTS",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gemini-2.5-pro": {
         "api": "google-vertex",
@@ -39,16 +473,51 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.125,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.25,
-            "output": 10
+            "output": 10.0
         },
         "id": "gemini-2.5-pro",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 2.5 Pro",
         "provider": "google-vertex",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-2.5-pro-tts": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 32768,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 20.0
+        },
+        "id": "gemini-2.5-pro-tts",
+        "input": ["text"],
+        "maxTokens": 16384,
+        "name": "Gemini 2.5 Pro TTS",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gemini-3-flash-preview": {
         "api": "google-vertex",
@@ -56,18 +525,76 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.05,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.5,
-            "output": 3
+            "output": 3.0
         },
         "id": "gemini-3-flash-preview",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3 Flash Preview",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3-pro-image": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 65536,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 120.0
+        },
+        "id": "gemini-3-pro-image",
+        "input": ["text", "image"],
+        "maxTokens": 32768,
+        "name": "Nano Banana Pro",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.1-flash-image": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 60.0
+        },
+        "id": "gemini-3.1-flash-image",
+        "input": ["text", "image", "video", "pdf"],
+        "maxTokens": 32768,
+        "name": "Nano Banana 2",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.1-flash-lite": {
@@ -76,18 +603,50 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.025,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.25,
             "output": 1.5
         },
         "id": "gemini-3.1-flash-lite",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Flash Lite",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-3.1-flash-lite-preview": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 1048576,
+        "cost": {
+            "cacheRead": 0.025,
+            "cacheWrite": 0.0,
+            "input": 0.25,
+            "output": 1.5
+        },
+        "id": "gemini-3.1-flash-lite-preview",
+        "input": ["text", "image", "video", "audio", "pdf"],
+        "maxTokens": 65536,
+        "name": "Gemini 3.1 Flash Lite Preview",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.1-pro-preview": {
@@ -96,12 +655,12 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 12
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 12.0
         },
         "id": "gemini-3.1-pro-preview",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Pro Preview",
         "provider": "google-vertex",
@@ -109,9 +668,11 @@
         "thinkingLevelMap": {
             "high": "HIGH",
             "low": "LOW",
+            "max": null,
             "medium": null,
             "minimal": null,
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.1-pro-preview-customtools": {
@@ -120,12 +681,12 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.2,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 12
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 12.0
         },
         "id": "gemini-3.1-pro-preview-customtools",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.1 Pro Preview Custom Tools",
         "provider": "google-vertex",
@@ -133,9 +694,11 @@
         "thinkingLevelMap": {
             "high": "HIGH",
             "low": "LOW",
+            "max": null,
             "medium": null,
             "minimal": null,
-            "off": null
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.5-flash": {
@@ -144,18 +707,24 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.15,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.5,
-            "output": 9
+            "output": 9.0
         },
         "id": "gemini-3.5-flash",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.5-flash-lite": {
@@ -164,18 +733,24 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.03,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 2.5
         },
         "id": "gemini-3.5-flash-lite",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.5 Flash Lite",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-3.6-flash": {
@@ -184,18 +759,50 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.15,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.5,
             "output": 7.5
         },
         "id": "gemini-3.6-flash",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini 3.6 Flash",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "gemini-embedding-001": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 2048,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.0
+        },
+        "id": "gemini-embedding-001",
+        "input": ["text"],
+        "maxTokens": 1,
+        "name": "Gemini Embedding 001",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-flash-latest": {
@@ -204,18 +811,24 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.15,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.5,
-            "output": 9
+            "output": 9.0
         },
         "id": "gemini-flash-latest",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini Flash Latest",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gemini-flash-lite-latest": {
@@ -224,18 +837,232 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.025,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.25,
             "output": 1.5
         },
         "id": "gemini-flash-lite-latest",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "audio", "pdf"],
         "maxTokens": 65536,
         "name": "Gemini Flash-Lite Latest",
         "provider": "google-vertex",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "meta/llama-3.3-70b-instruct-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.72,
+            "output": 0.72
+        },
+        "id": "meta/llama-3.3-70b-instruct-maas",
+        "input": ["text"],
+        "maxTokens": 8192,
+        "name": "Llama 3.3 70B Instruct",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "meta/llama-4-maverick-17b-128e-instruct-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 524288,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.35,
+            "output": 1.15
+        },
+        "id": "meta/llama-4-maverick-17b-128e-instruct-maas",
+        "input": ["text", "image"],
+        "maxTokens": 8192,
+        "name": "Llama 4 Maverick 17B 128E Instruct",
+        "provider": "google-vertex",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "moonshotai/kimi-k2-thinking-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.5
+        },
+        "id": "moonshotai/kimi-k2-thinking-maas",
+        "input": ["text"],
+        "maxTokens": 262144,
+        "name": "Kimi K2 Thinking",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "openai/gpt-oss-120b-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.09,
+            "output": 0.36
+        },
+        "id": "openai/gpt-oss-120b-maas",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT OSS 120B",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "openai/gpt-oss-20b-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.07,
+            "output": 0.25
+        },
+        "id": "openai/gpt-oss-20b-maas",
+        "input": ["text"],
+        "maxTokens": 32768,
+        "name": "GPT OSS 20B",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "qwen/qwen3-235b-a22b-instruct-2507-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 262144,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.22,
+            "output": 0.88
+        },
+        "id": "qwen/qwen3-235b-a22b-instruct-2507-maas",
+        "input": ["text"],
+        "maxTokens": 16384,
+        "name": "Qwen3 235B A22B Instruct",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "zai-org/glm-4.7-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.2
+        },
+        "id": "zai-org/glm-4.7-maas",
+        "input": ["text", "pdf"],
+        "maxTokens": 128000,
+        "name": "GLM-4.7",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "zai-org/glm-5-maas": {
+        "api": "google-vertex",
+        "baseUrl": "https://aiplatform.googleapis.com",
+        "contextWindow": 202752,
+        "cost": {
+            "cacheRead": 0.1,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 3.2
+        },
+        "id": "zai-org/glm-5-maas",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5",
+        "provider": "google-vertex",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     }
 }

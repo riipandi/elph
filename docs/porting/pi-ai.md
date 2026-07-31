@@ -124,14 +124,16 @@ Initial gap audit.
 
 ## Remaining / watch
 
-- After every `generate-models chat`, re-add **Hyper** (`define_catalog!(HYPER_MODELS, …)` + `index.json`) — not in pi.
-- **[Catalog]** The `openai` provider is no longer directly registered in the catalog. OpenAI models are served through gateway providers (`kilo`, `sumopod`, etc.). Verify `generate-models` still produces correct provider routing when re-run.
-- OpenRouter context windows from top provider (#6481) — re-run catalog regen from latest pi.
+- **[Catalog SSOT]** Chat catalogs origin = **models.dev** via `generate-models chat` / skill **`update-models`**. Not pi `packages/ai` data scripts. Gateways (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …) are preserved by the generator — no manual re-add after regen unless dropped from `provider_sources` / `builtin_providers`.
+- **[Catalog]** `openai`, `openai-codex`, and `xai` ship catalog models **and** register in `builtin_providers()`; generator fails if a catalog provider lacks a factory.
+- OpenRouter / gateway context windows and pricing — refresh with `/update-models` (live pricing when keys allow), not pi JSON seed.
 - OpenAI Completions does not use native deferred tool search (same as pi).
-- **[P2]** New OAuth providers: Kimi Code subscription, OpenRouter PKCE, Radius pi-messages gateway — implement when provider integration is needed.
+- **[P2]** OAuth providers already implemented for Kimi / OpenRouter / Radius — watch for upstream protocol drift, not re-port from scratch.
 - **[P2]** `uuidv7` utility — elph uses `ulid`; pi moved to `uuidv7`. Align if cross-compat needed.
 - **[P2]** `toolChoice` for OpenAI/Codex Responses (required + named tool selection) — types exist, provider adapters need wiring.
 
 ## Elph-only
 
 - Hyper provider + OAuth (`providers/`, `models/hyper.json`, `auth/oauth/hyper.rs`)
+- models.dev catalog pipeline (`bin/generate_models/`: `models_dev`, `provider_sources`, `thinking_map`, …)
+- OpenAI-compat gateway hardening + tool schema sanitize for non-standard gateways

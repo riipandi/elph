@@ -11,7 +11,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
@@ -20,7 +20,16 @@
         "maxTokens": 384000,
         "name": "DeepSeek V4 Flash",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/deepseek-v4-pro": {
         "api": "anthropic-messages",
@@ -34,7 +43,7 @@
         "contextWindow": 1000000,
         "cost": {
             "cacheRead": 0.145,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.74,
             "output": 3.48
         },
@@ -43,7 +52,16 @@
         "maxTokens": 384000,
         "name": "DeepSeek V4 Pro",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/glm-5p2": {
         "api": "openai-completions",
@@ -55,7 +73,7 @@
         "contextWindow": 1048575,
         "cost": {
             "cacheRead": 0.14,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },
@@ -87,7 +105,7 @@
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.015,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -96,7 +114,16 @@
         "maxTokens": 32768,
         "name": "GPT OSS 120B",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/gpt-oss-20b": {
         "api": "anthropic-messages",
@@ -110,7 +137,7 @@
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.035,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.07,
             "output": 0.3
         },
@@ -119,7 +146,16 @@
         "maxTokens": 32768,
         "name": "GPT OSS 20B",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/kimi-k2p6": {
         "api": "anthropic-messages",
@@ -133,16 +169,25 @@
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.16,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "accounts/fireworks/models/kimi-k2p6",
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.6",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/kimi-k2p7-code": {
         "api": "anthropic-messages",
@@ -156,16 +201,25 @@
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.19,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "accounts/fireworks/models/kimi-k2p7-code",
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.7 Code",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/kimi-k3": {
         "api": "anthropic-messages",
@@ -179,16 +233,25 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 3,
-            "output": 15
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
         },
         "id": "accounts/fireworks/models/kimi-k3",
         "input": ["text", "image"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/minimax-m2p7": {
         "api": "anthropic-messages",
@@ -202,7 +265,7 @@
         "contextWindow": 196608,
         "cost": {
             "cacheRead": 0.06,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
@@ -211,7 +274,16 @@
         "maxTokens": 196608,
         "name": "MiniMax-M2.7",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/minimax-m3": {
         "api": "anthropic-messages",
@@ -225,16 +297,25 @@
         "contextWindow": 512000,
         "cost": {
             "cacheRead": 0.06,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.3,
             "output": 1.2
         },
         "id": "accounts/fireworks/models/minimax-m3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 512000,
         "name": "MiniMax-M3",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/models/qwen3p7-plus": {
         "api": "anthropic-messages",
@@ -248,7 +329,7 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.08,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.4,
             "output": 1.6
         },
@@ -257,7 +338,16 @@
         "maxTokens": 65536,
         "name": "Qwen 3.7 Plus",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/routers/glm-5p2-fast": {
         "api": "openai-completions",
@@ -269,7 +359,7 @@
         "contextWindow": 1048575,
         "cost": {
             "cacheRead": 0.21,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.1,
             "output": 6.6
         },
@@ -301,16 +391,25 @@
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 8
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 8.0
         },
         "id": "accounts/fireworks/routers/kimi-k2p6-fast",
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.6 Fast",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/routers/kimi-k2p6-turbo": {
         "api": "anthropic-messages",
@@ -324,16 +423,25 @@
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 8
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 8.0
         },
         "id": "accounts/fireworks/routers/kimi-k2p6-turbo",
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.6 Turbo",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/routers/kimi-k2p7-code-fast": {
         "api": "anthropic-messages",
@@ -347,16 +455,25 @@
         "contextWindow": 262000,
         "cost": {
             "cacheRead": 0.38,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.9,
-            "output": 8
+            "output": 8.0
         },
         "id": "accounts/fireworks/routers/kimi-k2p7-code-fast",
         "input": ["text", "image"],
         "maxTokens": 262000,
         "name": "Kimi K2.7 Code Fast",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "accounts/fireworks/routers/kimi-k3-fast": {
         "api": "anthropic-messages",
@@ -370,7 +487,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.45,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 4.5,
             "output": 22.5
         },
@@ -379,6 +496,15 @@
         "maxTokens": 131072,
         "name": "Kimi K3 Fast",
         "provider": "fireworks",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

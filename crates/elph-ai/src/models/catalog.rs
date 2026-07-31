@@ -131,9 +131,9 @@ macro_rules! define_catalog {
 
 define_catalog!(AMAZON_BEDROCK_MODELS, "amazon_bedrock.json");
 define_catalog!(ANT_LING_MODELS, "ant_ling.json");
-define_catalog!(BASETEN_MODELS, "baseten.json");
 define_catalog!(ANTHROPIC_MODELS, "anthropic.json");
 define_catalog!(AZURE_OPENAI_RESPONSES_MODELS, "azure_openai_responses.json");
+define_catalog!(BASETEN_MODELS, "baseten.json");
 define_catalog!(CEREBRAS_MODELS, "cerebras.json");
 define_catalog!(CLOUDFLARE_AI_GATEWAY_MODELS, "cloudflare_ai_gateway.json");
 define_catalog!(CLOUDFLARE_WORKERS_AI_MODELS, "cloudflare_workers_ai.json");

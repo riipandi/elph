@@ -9,15 +9,15 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.3,
-            "cacheWrite": 0,
-            "input": 3,
-            "output": 15
+            "cacheWrite": 0.0,
+            "input": 3.0,
+            "output": 15.0
         },
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "k3",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "Kimi K3",
         "provider": "kimi-coding",
@@ -40,10 +40,10 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
         "headers": {
             "User-Agent": "KimiCLI/1.5"
@@ -74,19 +74,28 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.19,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "kimi-for-coding",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32768,
         "name": "Kimi K2.7 Code",
         "provider": "kimi-coding",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-for-coding-highspeed": {
         "api": "anthropic-messages",
@@ -97,18 +106,27 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.38,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.9,
-            "output": 8
+            "output": 8.0
         },
         "headers": {
             "User-Agent": "KimiCLI/1.5"
         },
         "id": "kimi-for-coding-highspeed",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 32768,
         "name": "Kimi For Coding HighSpeed",
         "provider": "kimi-coding",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

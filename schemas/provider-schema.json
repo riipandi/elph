@@ -2,9 +2,144 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://elph.space/provider-schema.json",
     "title": "Elph AI provider configuration",
-    "description": "One provider per JSON file in ~/.elph/providers. The provider id is the filename without .json. Toggle availability with elph provider enable/disable and elph provider model enable/disable.",
+    "description": "One provider per JSON file in ~/.elph/providers/<id>.json (id = filename without extension). Forward-looking contract aligned with crates/elph-ai/models/*.json. Runtime still uses the embedded catalog until override merge is implemented.",
     "type": "object",
-    "required": ["baseUrl", "api", "models"],
-    "properties": {},
-    "additionalProperties": false
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Display name for the provider."
+        },
+        "baseUrl": {
+            "type": "string",
+            "description": "Default base URL for this provider (may be overridden per model)."
+        },
+        "api": {
+            "$ref": "#/$defs/ApiKind",
+            "description": "Default wire protocol when models omit per-model api."
+        },
+        "headers": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Optional static HTTP headers."
+        },
+        "auth": {
+            "type": "object",
+            "description": "Reserved for future credential hints (env var names, oauth id). Not loaded by runtime yet.",
+            "additionalProperties": true
+        },
+        "models": {
+            "type": "object",
+            "description": "Map of modelId → model entry (same shape as crates/elph-ai/models/<provider>.json).",
+            "additionalProperties": { "$ref": "#/$defs/ModelEntry" }
+        }
+    },
+    "required": ["models"],
+    "$defs": {
+        "ApiKind": {
+            "type": "string",
+            "enum": [
+                "openai-completions",
+                "openai-responses",
+                "openai-codex-responses",
+                "azure-openai-responses",
+                "anthropic-messages",
+                "google-generative-ai",
+                "google-vertex",
+                "bedrock-converse-stream",
+                "mistral-conversations"
+            ]
+        },
+        "ThinkingLevelMap": {
+            "type": "object",
+            "description": "Wire mapping for reasoning effort. Keys always present; null = unsupported.",
+            "additionalProperties": false,
+            "required": ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
+            "properties": {
+                "off": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "minimal": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "low": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "medium": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "high": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "xhigh": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+                "max": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+        },
+        "ModelCost": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["input", "output", "cacheRead", "cacheWrite"],
+            "properties": {
+                "input": { "type": "number" },
+                "output": { "type": "number" },
+                "cacheRead": { "type": "number" },
+                "cacheWrite": { "type": "number" },
+                "tiers": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "inputTokensAbove",
+                            "input",
+                            "output",
+                            "cacheRead",
+                            "cacheWrite"
+                        ],
+                        "properties": {
+                            "inputTokensAbove": { "type": "integer", "minimum": 0 },
+                            "input": { "type": "number" },
+                            "output": { "type": "number" },
+                            "cacheRead": { "type": "number" },
+                            "cacheWrite": { "type": "number" }
+                        }
+                    }
+                }
+            }
+        },
+        "ModelEntry": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "id",
+                "name",
+                "api",
+                "baseUrl",
+                "reasoning",
+                "thinkingLevelMap",
+                "input",
+                "contextWindow",
+                "maxTokens",
+                "cost"
+            ],
+            "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "name": { "type": "string", "minLength": 1 },
+                "api": { "$ref": "#/$defs/ApiKind" },
+                "provider": {
+                    "type": "string",
+                    "description": "Must match provider file id when set."
+                },
+                "baseUrl": { "type": "string" },
+                "reasoning": { "type": "boolean" },
+                "thinkingLevelMap": { "$ref": "#/$defs/ThinkingLevelMap" },
+                "input": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1
+                },
+                "contextWindow": { "type": "integer", "minimum": 1 },
+                "maxTokens": { "type": "integer", "minimum": 1 },
+                "cost": { "$ref": "#/$defs/ModelCost" },
+                "compat": {
+                    "type": "object",
+                    "description": "Provider-specific compatibility flags.",
+                    "additionalProperties": true
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                }
+            }
+        }
+    }
 }

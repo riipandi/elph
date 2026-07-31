@@ -22,7 +22,16 @@
         "maxTokens": 65536,
         "name": "Ling 2.6 1T",
         "provider": "ant-ling",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "Ling-2.6-flash": {
         "api": "openai-completions",
@@ -47,7 +56,16 @@
         "maxTokens": 65536,
         "name": "Ling 2.6 Flash",
         "provider": "ant-ling",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "Ring-2.6-1T": {
         "api": "openai-completions",
@@ -76,6 +94,7 @@
         "thinkingLevelMap": {
             "high": "high",
             "low": null,
+            "max": null,
             "medium": null,
             "minimal": null,
             "off": null,

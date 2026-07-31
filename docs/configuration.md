@@ -170,13 +170,13 @@ Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`,
 
 One file per provider; id = filename without extension.
 
-Schema: [schemas/provider-schema.json](../schemas/provider-schema.json).
+Schema: [schemas/provider-schema.json](../schemas/provider-schema.json) — full model shape aligned with `crates/elph-ai/models/*.json` (including required `thinkingLevelMap` with keys `off|minimal|low|medium|high|xhigh|max`).
 
-Supported APIs: `openai-completions`, `anthropic-messages`.
+Supported APIs (see schema enum): `openai-completions`, `openai-responses`, `openai-codex-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`, `google-vertex`, `bedrock-converse-stream`, `mistral-conversations`.
 
-Bootstrap templates: OpenAI, Anthropic, OpenCode Zen, DeepSeek, Kimi, etc.
+Embedded chat catalogs are generated from **[models.dev](https://models.dev)** via `make generate-models` / skill `update-models`. Files under `~/.elph/providers/` are reserved for **future** user overrides of that shape; runtime still uses the embedded catalog until override merge is implemented.
 
-Per-model: `reasoning`, `thinkingLevelMap`, `compat` overrides.
+Per-model: `reasoning`, `thinkingLevelMap` (required), `compat`, `cost`, `contextWindow`, `maxTokens`, `input`.
 
 ## Model selection
 

@@ -9,7 +9,7 @@
         "contextWindow": 1048560,
         "cost": {
             "cacheRead": 0.026,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.104,
             "output": 0.207
         },
@@ -18,7 +18,16 @@
         "maxTokens": 65536,
         "name": "DeepSeek V4 Flash",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": "max",
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gemma-4-31b": {
         "api": "openai-completions",
@@ -30,7 +39,7 @@
         "contextWindow": 262128,
         "cost": {
             "cacheRead": 0.036,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.144,
             "output": 0.42
         },
@@ -39,7 +48,16 @@
         "maxTokens": 16384,
         "name": "Gemma 4 31B",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -51,16 +69,25 @@
         "contextWindow": 1048560,
         "cost": {
             "cacheRead": 0.3625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
         },
         "id": "glm-5.2",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 1048560,
         "name": "GLM 5.2",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "glm-5.2-fast": {
         "api": "openai-completions",
@@ -72,16 +99,25 @@
         "contextWindow": 1048560,
         "cost": {
             "cacheRead": 0.3625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
         },
         "id": "glm-5.2-fast",
         "input": ["text"],
-        "maxTokens": 65536,
+        "maxTokens": 1048560,
         "name": "GLM 5.2 Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.2-short": {
         "api": "openai-completions",
@@ -93,16 +129,25 @@
         "contextWindow": 199984,
         "cost": {
             "cacheRead": 0.3625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
         },
         "id": "glm-5.2-short",
         "input": ["text"],
-        "maxTokens": 32000,
+        "maxTokens": 199984,
         "name": "GLM 5.2 Short",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "glm-5.2-short-fast": {
         "api": "openai-completions",
@@ -114,16 +159,25 @@
         "contextWindow": 199984,
         "cost": {
             "cacheRead": 0.3625,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.45,
             "output": 4.5
         },
         "id": "glm-5.2-short-fast",
         "input": ["text"],
-        "maxTokens": 32000,
+        "maxTokens": 199984,
         "name": "GLM 5.2 Short Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.6": {
         "api": "openai-completions",
@@ -132,19 +186,28 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 262128,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.1725,
-            "cacheWrite": 0,
-            "input": 0.69,
-            "output": 3.22
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
         },
         "id": "kimi-k2.6",
-        "input": ["text", "image"],
-        "maxTokens": 65536,
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.6-fast": {
         "api": "openai-completions",
@@ -156,16 +219,25 @@
         "contextWindow": 262128,
         "cost": {
             "cacheRead": 0.1725,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.69,
             "output": 3.22
         },
         "id": "kimi-k2.6-fast",
         "input": ["text", "image"],
-        "maxTokens": 65536,
+        "maxTokens": 262128,
         "name": "Kimi K2.6 Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
@@ -174,19 +246,28 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 262128,
+        "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0.2375,
-            "cacheWrite": 0,
+            "cacheRead": 0.19,
+            "cacheWrite": 0.0,
             "input": 0.95,
             "output": 4.0
         },
         "id": "kimi-k2.7-code",
-        "input": ["text", "image"],
-        "maxTokens": 65536,
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.7-code-fast": {
         "api": "openai-completions",
@@ -207,7 +288,16 @@
         "maxTokens": 65536,
         "name": "Kimi K2.7 Code Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.5-397b": {
         "api": "openai-completions",
@@ -228,7 +318,16 @@
         "maxTokens": 65536,
         "name": "Qwen 3.5 397B",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.5-397b-fast": {
         "api": "openai-completions",
@@ -240,16 +339,25 @@
         "contextWindow": 262128,
         "cost": {
             "cacheRead": 0.1725,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.69,
             "output": 4.14
         },
         "id": "qwen3.5-397b-fast",
         "input": ["text"],
-        "maxTokens": 65536,
-        "name": "Qwen 3.5 397B Fast",
+        "maxTokens": 262128,
+        "name": "Qwen3.5 397B Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.6-35b": {
         "api": "openai-completions",
@@ -258,19 +366,28 @@
             "supportsDeveloperRole": false,
             "supportsStore": false
         },
-        "contextWindow": 131056,
+        "contextWindow": 256000,
         "cost": {
             "cacheRead": 0.0725,
-            "cacheWrite": 0,
-            "input": 0.29,
-            "output": 1.15
+            "cacheWrite": 0.0,
+            "input": 0.15,
+            "output": 0.5
         },
         "id": "qwen3.6-35b",
         "input": ["text", "image"],
-        "maxTokens": 65536,
-        "name": "Qwen 3.6 35B",
+        "maxTokens": 32768,
+        "name": "Qwen3.6 35B-A3B",
         "provider": "neuralwatt",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.6-35b-fast": {
         "api": "openai-completions",
@@ -282,15 +399,24 @@
         "contextWindow": 131056,
         "cost": {
             "cacheRead": 0.0725,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.29,
             "output": 1.15
         },
         "id": "qwen3.6-35b-fast",
         "input": ["text", "image"],
-        "maxTokens": 65536,
-        "name": "Qwen 3.6 35B Fast",
+        "maxTokens": 131056,
+        "name": "Qwen3.6 35B Fast",
         "provider": "neuralwatt",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

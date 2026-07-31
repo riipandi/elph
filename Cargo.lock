@@ -3034,6 +3034,7 @@ dependencies = [
 name = "elph-ai"
 version = "0.0.28"
 dependencies = [
+ "anstyle",
  "anyhow",
  "aws-config",
  "aws-sdk-bedrockruntime",

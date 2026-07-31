@@ -175,10 +175,7 @@ async fn resolve_stored_oauth(
                 // credential so bootstrap and later calls do not loop on invalid_grant.
                 if is_revoked_oauth_refresh_error(&detail) {
                     let _ = credentials
-                        .modify(
-                            provider_id,
-                            Box::new(move |_| Box::pin(async move { None })),
-                        )
+                        .modify(provider_id, Box::new(move |_| Box::pin(async move { None })))
                         .await;
                     log::warn!(
                         "OAuth refresh token revoked for {provider_id}; cleared in-memory credential. Re-connect the provider."

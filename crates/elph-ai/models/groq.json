@@ -1,11 +1,115 @@
 {
+    "canopylabs/orpheus-arabic-saudi": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 4000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "canopylabs/orpheus-arabic-saudi",
+        "input": ["text"],
+        "maxTokens": 50000,
+        "name": "Canopy Labs Orpheus Arabic Saudi",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "canopylabs/orpheus-v1-english": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 4000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "canopylabs/orpheus-v1-english",
+        "input": ["text"],
+        "maxTokens": 50000,
+        "name": "Canopy Labs Orpheus V1 English",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "groq/compound": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "groq/compound",
+        "input": ["text"],
+        "maxTokens": 8192,
+        "name": "Compound",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "groq/compound-mini": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "groq/compound-mini",
+        "input": ["text"],
+        "maxTokens": 8192,
+        "name": "Compound Mini",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "llama-3.1-8b-instant": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.05,
             "output": 0.08
         },
@@ -14,15 +118,24 @@
         "maxTokens": 131072,
         "name": "Llama 3.1 8B",
         "provider": "groq",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "llama-3.3-70b-versatile": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.59,
             "output": 0.79
         },
@@ -31,15 +144,24 @@
         "maxTokens": 32768,
         "name": "Llama 3.3 70B",
         "provider": "groq",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "meta-llama/llama-4-scout-17b-16e-instruct": {
         "api": "openai-completions",
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.11,
             "output": 0.34
         },
@@ -48,7 +170,68 @@
         "maxTokens": 8192,
         "name": "Llama 4 Scout 17B 16E",
         "provider": "groq",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "meta-llama/llama-prompt-guard-2-22m": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 512,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.03,
+            "output": 0.03
+        },
+        "id": "meta-llama/llama-prompt-guard-2-22m",
+        "input": ["text"],
+        "maxTokens": 512,
+        "name": "Llama Prompt Guard 2 22M",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "meta-llama/llama-prompt-guard-2-86m": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 512,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.04,
+            "output": 0.04
+        },
+        "id": "meta-llama/llama-prompt-guard-2-86m",
+        "input": ["text"],
+        "maxTokens": 512,
+        "name": "Prompt Guard 2 86M",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "openai/gpt-oss-120b": {
         "api": "openai-completions",
@@ -56,7 +239,7 @@
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.075,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -82,7 +265,7 @@
         "contextWindow": 131072,
         "cost": {
             "cacheRead": 0.0375,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.075,
             "output": 0.3
         },
@@ -107,8 +290,8 @@
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.075,
             "output": 0.3
         },
@@ -133,8 +316,8 @@
         "baseUrl": "https://api.groq.com/openai/v1",
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.29,
             "output": 0.59
         },
@@ -151,6 +334,58 @@
             "medium": null,
             "minimal": null,
             "off": "none",
+            "xhigh": null
+        }
+    },
+    "whisper-large-v3": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 0,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.003,
+            "output": 0.0
+        },
+        "id": "whisper-large-v3",
+        "input": ["audio"],
+        "maxTokens": 0,
+        "name": "Whisper",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "whisper-large-v3-turbo": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "contextWindow": 0,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "whisper-large-v3-turbo",
+        "input": ["audio"],
+        "maxTokens": 0,
+        "name": "Whisper Large V3 Turbo",
+        "provider": "groq",
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
             "xhigh": null
         }
     }

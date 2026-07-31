@@ -256,10 +256,7 @@ mod tests {
         assert!(!seen.contains(&ThinkingLevel::Minimal));
         assert!(!seen.contains(&ThinkingLevel::Xhigh));
         // Stale medium snaps into the catalog cycle.
-        assert_eq!(
-            ThinkingLevel::Medium.next_for_model(&model),
-            ThinkingLevel::Low
-        );
+        assert_eq!(ThinkingLevel::Medium.next_for_model(&model), ThinkingLevel::Low);
         assert_eq!(ThinkingLevel::Medium.clamp_for_model(&model), ThinkingLevel::High);
     }
 

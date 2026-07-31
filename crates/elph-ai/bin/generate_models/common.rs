@@ -4,34 +4,25 @@ use std::process::Command;
 use anyhow::bail;
 use anyhow::{Context, Result};
 
-/// Catalog generator script path (relative to the pi-ai package root).
-pub const CATALOG_CHAT_SCRIPT: &str = "scripts/generate-models.ts";
-
-/// Permanent catalog source package root relative to the **elph workspace root**.
+/// Optional local pi clone for **image** catalog scripts only (not chat origin).
 ///
-/// Layout (see `docs/porting/README.md` — local pi clone):
-/// ```text
-/// github.com/
-///   earendil-works/pi/packages/ai/   ← this path
-///   riipandi/elph/                   ← this repo
-///     crates/elph-ai/
-/// ```
+/// Chat catalogs use models.dev. Image generation may still read from a sibling
+/// earendil-works/pi checkout when present.
 pub const DEFAULT_CATALOG_DIR_FROM_WORKSPACE: &str = "../../earendil-works/pi/packages/ai";
 
-/// Resolve the fixed catalog source directory from `CARGO_MANIFEST_DIR` (`crates/elph-ai`).
+/// Resolve optional pi packages/ai path for image tooling.
 pub fn default_catalog_dir(crate_root: &Path) -> PathBuf {
     let workspace_root = crate_root
         .parent()
         .and_then(|crates| crates.parent())
         .unwrap_or(crate_root);
     let raw = workspace_root.join(DEFAULT_CATALOG_DIR_FROM_WORKSPACE);
-    // Prefer a cleaned absolute path for error messages; fall back to raw if missing.
     raw.canonicalize().unwrap_or(raw)
 }
 
-/// Run the upstream pi-ai npm script that regenerates the `src/providers/data/*.json` files.
+/// Run an npm script in a directory (image catalog helper).
 pub fn run_catalog_npm_script(catalog_dir: &Path, script: &str) -> Result<()> {
-    println!("Running catalog source {script} in {}...", catalog_dir.display());
+    super::term::info(format!("Running catalog source {script} in {}…", catalog_dir.display()));
 
     if Command::new("npm")
         .args(["run", script, "--silent"])

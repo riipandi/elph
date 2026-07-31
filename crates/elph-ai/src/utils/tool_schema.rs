@@ -30,8 +30,7 @@ pub fn sanitize_openai_tool_parameters(schema: &Value) -> Value {
 
     if has_object_shape {
         out.entry("type".to_string()).or_insert_with(|| json!("object"));
-        out.entry("properties".to_string())
-            .or_insert_with(|| json!({}));
+        out.entry("properties".to_string()).or_insert_with(|| json!({}));
     }
 
     for key in ["anyOf", "oneOf", "allOf"] {
@@ -77,9 +76,7 @@ fn is_required_only_branch(branch: &Value) -> bool {
     let Some(obj) = branch.as_object() else {
         return false;
     };
-    !obj.is_empty()
-        && obj.keys().all(|k| k == "required")
-        && obj.get("required").map(|r| r.is_array()).unwrap_or(false)
+    !obj.is_empty() && obj.keys().all(|k| k == "required") && obj.get("required").map(|r| r.is_array()).unwrap_or(false)
 }
 
 #[cfg(test)]

@@ -1,23 +1,18 @@
-//! Model catalog generator. Reads flattened model JSON from the upstream pi-ai data
-//! directory (`src/providers/data/*.json`) and writes them as embedded catalog files.
-//!
-//! Each data JSON is keyed by API type, with models nested inside:
-//! ```json
-//! { "openai-completions": { "model-id": { ... } } }
-//! ```
-//! The generator merges all API groups into a single flat object per provider.
+//! Build chat model catalogs from models.dev (origin) + Elph provider overlays.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::bail;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use serde_json::Value;
 
-use super::common::CATALOG_CHAT_SCRIPT;
-use super::common::run_catalog_npm_script;
+use super::models_dev::{default_cache_dir, find_model, find_model_fuzzy, load_models_dev, models_for_provider_keys};
+use super::normalize::{enrich_existing, from_models_dev};
+use super::pricing::{apply_cost, fetch_all_live_pricing, resolve_cost};
+use super::provider_sources::all_provider_sources;
+use super::term;
 
 #[derive(Serialize)]
 pub struct CatalogIndexEntry {
@@ -29,156 +24,154 @@ pub struct CatalogIndexEntry {
 }
 
 pub struct ChatOptions {
-    pub catalog_dir: PathBuf,
-    pub skip_scripts: bool,
     pub models_dir: PathBuf,
     pub catalog_rs: PathBuf,
     pub no_regenerate_catalog: bool,
+    pub offline: bool,
+    pub no_live_pricing: bool,
 }
 
 pub fn generate_chat(options: ChatOptions) -> Result<()> {
-    if !options.catalog_dir.join(CATALOG_CHAT_SCRIPT).is_file() {
-        bail!(
-            "catalog source package not found at {}\n  expected {} under earendil-works/pi (see docs/porting/README.md)",
-            options.catalog_dir.display(),
-            CATALOG_CHAT_SCRIPT
-        );
-    }
-
-    if !options.skip_scripts {
-        run_catalog_npm_script(&options.catalog_dir, "generate-models")?;
-    }
-
-    let data_dir = options.catalog_dir.join("src/providers/data");
-    if !data_dir.is_dir() {
-        bail!("missing catalog data directory at {}", data_dir.display());
-    }
-
+    term::header("generate-models chat · models.dev origin");
     fs::create_dir_all(&options.models_dir).context("create models output directory")?;
+    let cache_dir = default_cache_dir(&options.models_dir);
+    let models_dev = load_models_dev(&cache_dir, options.offline)?;
+    let live = fetch_all_live_pricing(options.no_live_pricing);
 
-    let mut catalogs: BTreeMap<String, (String, Value)> = BTreeMap::new();
-    for entry in fs::read_dir(&data_dir).context("read catalog data directory")? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
-            continue;
-        };
-        let Some(provider_id) = file_name.strip_suffix(".json") else {
-            continue;
-        };
-        // Skip the manifest file if present
-        if provider_id.starts_with('.') {
-            continue;
-        }
+    let mut index: Vec<CatalogIndexEntry> = Vec::new();
+    let mut total_models = 0usize;
+    let mut maps_ok = 0usize;
+    let mut maps_bad = 0usize;
 
-        let rust_mod = provider_id.replace('-', "_");
-        let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
-        let json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
-
-        // Flatten: merge all api-grouped sub-objects into one (mirrors flattenModelCatalog).
-        let flattened = flatten_catalog_json(json, provider_id);
-        let count = flattened.as_object().map(|m| m.len()).unwrap_or(0);
-        if count == 0 {
-            continue;
-        }
-        catalogs.insert(provider_id.to_string(), (rust_mod, flattened));
-        println!("Converted {provider_id}: {count} models");
-    }
-
-    if catalogs.is_empty() {
-        bail!("no model catalog data files found under {}", data_dir.display());
-    }
-
-    let mut index = Vec::new();
-    for (provider_id, (rust_mod, json)) in &catalogs {
+    term::header("providers");
+    for src in all_provider_sources() {
+        let rust_mod = src.id.replace('-', "_");
         let out_path = options.models_dir.join(format!("{rust_mod}.json"));
-        let pretty = serde_json::to_string_pretty(json).context("serialize catalog json")?;
+        let previous = load_previous_catalog(&out_path)?;
+
+        let mut catalog = BTreeMap::new();
+
+        if src.gateway_preserve_ids || models_for_provider_keys(&models_dev, src.models_dev_keys).is_none() {
+            // Keep existing model ids (gateway / Elph-only) and enrich from models.dev.
+            let prev_map = previous.as_ref().and_then(|v| v.as_object());
+            if let Some(prev_map) = prev_map {
+                for (mid, prev_entry) in prev_map {
+                    let mut entry = if let Some(m) = find_model(&models_dev, src.models_dev_keys, mid) {
+                        enrich_existing(src, mid, prev_entry, Some(m))
+                    } else if let Some((_, m)) = find_model_fuzzy(&models_dev, mid) {
+                        enrich_existing(src, mid, prev_entry, Some(&m))
+                    } else {
+                        enrich_existing(src, mid, prev_entry, None)
+                    };
+                    let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, entry.get("cost"));
+                    apply_cost(&mut entry, i, o, cr, cw);
+                    tally_map(&entry, &mut maps_ok, &mut maps_bad);
+                    catalog.insert(mid.clone(), entry);
+                }
+            } else if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
+                for (mid, mdev) in mdev_models {
+                    let mut entry = from_models_dev(src, mid, mdev, None);
+                    let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, None);
+                    apply_cost(&mut entry, i, o, cr, cw);
+                    tally_map(&entry, &mut maps_ok, &mut maps_bad);
+                    catalog.insert(mid.clone(), entry);
+                }
+            } else {
+                term::warn(format!("{}: no previous catalog and not on models.dev — skipped", src.id));
+                continue;
+            }
+        } else if let Some((_, mdev_models)) = models_for_provider_keys(&models_dev, src.models_dev_keys) {
+            // Origin: models.dev list
+            let prev_map = previous.as_ref().and_then(|v| v.as_object());
+            for (mid, mdev) in mdev_models {
+                let prev = prev_map.and_then(|m| m.get(mid));
+                let mut entry = from_models_dev(src, mid, mdev, prev);
+                let (i, o, cr, cw, _) = resolve_cost(src, mid, &models_dev, &live, entry.get("cost"));
+                apply_cost(&mut entry, i, o, cr, cw);
+                tally_map(&entry, &mut maps_ok, &mut maps_bad);
+                catalog.insert(mid.clone(), entry);
+            }
+        } else {
+            term::warn(format!("{}: not on models.dev and not gateway — skipped", src.id));
+            continue;
+        }
+
+        if catalog.is_empty() {
+            term::warn(format!("{}: empty catalog — skipped", src.id));
+            continue;
+        }
+
+        let count = catalog.len();
+        total_models += count;
+        let json = Value::Object(catalog.into_iter().collect());
+        let pretty = serde_json::to_string_pretty(&json).context("serialize catalog")?;
         fs::write(&out_path, format!("{pretty}\n")).with_context(|| format!("write {}", out_path.display()))?;
+        let file_name = out_path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+        term::provider_ok(src.id, count, file_name);
         index.push(CatalogIndexEntry {
-            provider_id: provider_id.clone(),
-            rust_mod: rust_mod.clone(),
-            count: json.as_object().map(|m| m.len()).unwrap_or(0),
+            provider_id: src.id.to_string(),
+            rust_mod,
+            count,
         });
     }
 
-    // Keep Elph-only catalogs that live only under models/*.json (not in upstream pi).
-    merge_local_only_catalogs(&options.models_dir, &mut index)?;
-
+    index.sort_by(|a, b| a.provider_id.cmp(&b.provider_id));
     let index_path = options.models_dir.join("index.json");
-    let index_json = serde_json::to_string_pretty(&index).context("serialize index.json")?;
+    let index_json = serde_json::to_string_pretty(&index).context("serialize index")?;
     fs::write(&index_path, format!("{index_json}\n")).context("write index.json")?;
 
+    term::header("summary");
     if options.no_regenerate_catalog {
-        println!(
-            "\nWrote {} chat catalogs to {} (skipped catalog.rs regeneration)",
-            index.len(),
-            options.models_dir.display()
-        );
+        term::success(format!(
+            "Wrote {} providers / {total_models} models (skipped catalog.rs)",
+            index.len()
+        ));
     } else {
         let catalog_source = render_chat_catalog_rs(&index);
-        fs::write(&options.catalog_rs, catalog_source).context("write src/models/catalog.rs")?;
-        println!(
-            "\nWrote {} chat catalogs to {} and regenerated {}",
-            index.len(),
-            options.models_dir.display(),
-            options.catalog_rs.display()
-        );
+        fs::write(&options.catalog_rs, catalog_source).context("write catalog.rs")?;
+        term::success(format!("Wrote {} providers / {total_models} models + catalog.rs", index.len()));
+        term::info(format!("{}", options.catalog_rs.display()));
     }
 
-    // Ensure every catalog provider is wired into builtin_providers() so runtime stream/auth works.
+    term::metric("thinkingLevelMap", maps_ok, maps_bad);
+    if maps_bad > 0 {
+        term::err(format!("{maps_bad} models missing complete thinkingLevelMap"));
+        bail!("{maps_bad} models missing complete thinkingLevelMap");
+    }
+
     let builtin_rs = options
         .catalog_rs
-        .parent() // src/models
-        .and_then(|p| p.parent()) // src
+        .parent()
+        .and_then(|p| p.parent())
         .map(|src| src.join("providers/builtin.rs"))
-        .context("resolve providers/builtin.rs path")?;
+        .context("resolve builtin.rs")?;
     verify_providers_registered(&index, &builtin_rs)?;
 
     Ok(())
 }
 
-/// Flatten a nested `{ api_type: { model_id: model } }` structure into
-/// a flat `{ model_id: model }` object, injecting the `api` field from the key.
-///
-/// This mirrors the JavaScript `flattenModelCatalog` function from pi-ai:
-/// ```js
-/// flattenModelCatalog(provider, groups) {
-///   return Object.assign({}, ...Object.values(groups));
-/// }
-/// ```
-///
-/// Also normalizes `provider` / `id` so embedded catalogs always load under the
-/// correct provider key in elph.
-fn flatten_catalog_json(nested: Value, provider_id: &str) -> Value {
-    match nested {
-        Value::Object(groups) => {
-            let mut merged = serde_json::Map::new();
-            for (api_type, models) in groups {
-                if let Value::Object(models_map) = models {
-                    for (mid, mut model) in models_map {
-                        if let Value::Object(ref mut fields) = model {
-                            if !fields.contains_key("api") {
-                                fields.insert("api".to_string(), Value::String(api_type.clone()));
-                            }
-                            // Always own the provider id from the catalog file name.
-                            fields.insert("provider".to_string(), Value::String(provider_id.to_string()));
-                            // Keep map key and model.id aligned for lookup.
-                            fields.insert("id".to_string(), Value::String(mid.clone()));
-                        }
-                        merged.insert(mid, model);
-                    }
-                }
-            }
-            Value::Object(merged)
-        }
-        other => other,
+fn load_previous_catalog(path: &std::path::Path) -> Result<Option<Value>> {
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
+    Ok(Some(json))
+}
+
+fn tally_map(entry: &Value, ok: &mut usize, bad: &mut usize) {
+    const KEYS: &[&str] = &["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+    let Some(map) = entry.get("thinkingLevelMap").and_then(|v| v.as_object()) else {
+        *bad += 1;
+        return;
+    };
+    if KEYS.iter().all(|k| map.contains_key(*k)) {
+        *ok += 1;
+    } else {
+        *bad += 1;
     }
 }
 
-/// Factory function name → provider id for named `*_provider()` entries in `builtin_providers()`.
 fn named_factory_provider_id(fn_name: &str) -> Option<&'static str> {
     Some(match fn_name {
         "amazon_bedrock_provider" => "amazon-bedrock",
@@ -288,59 +281,15 @@ fn verify_providers_registered(index: &[CatalogIndexEntry], builtin_rs: &std::pa
         );
     }
     if !extra.is_empty() {
-        println!(
-            "note: builtin_providers() has entries not in catalog (ok if intentional): {}",
+        term::note(format!(
+            "builtin_providers() has entries not in catalog (ok if intentional): {}",
             extra.join(", ")
-        );
+        ));
     }
-    println!(
+    term::verified(format!(
         "Verified {} catalog providers are registered in builtin_providers()",
         catalog.len()
-    );
-    Ok(())
-}
-
-/// Merge local-only `models/*.json` catalogs (Hyper, Kilo, OpenGateway, …) into the index.
-///
-/// Upstream pi only writes providers present in its data directory; Elph-only JSON
-/// files already on disk must stay registered in `index.json` / `catalog.rs`.
-fn merge_local_only_catalogs(models_dir: &std::path::Path, index: &mut Vec<CatalogIndexEntry>) -> Result<()> {
-    let known: std::collections::HashSet<String> = index.iter().map(|e| e.rust_mod.clone()).collect();
-    let mut added = 0usize;
-    for entry in fs::read_dir(models_dir).with_context(|| format!("read {}", models_dir.display()))? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-            continue;
-        };
-        let Some(rust_mod) = name.strip_suffix(".json") else {
-            continue;
-        };
-        if rust_mod == "index" || known.contains(rust_mod) {
-            continue;
-        }
-        let raw = fs::read_to_string(&path).with_context(|| format!("read local catalog {}", path.display()))?;
-        let json: Value =
-            serde_json::from_str(&raw).with_context(|| format!("parse local catalog {}", path.display()))?;
-        let count = json.as_object().map(|m| m.len()).unwrap_or(0);
-        if count == 0 {
-            continue;
-        }
-        let provider_id = rust_mod.replace('_', "-");
-        println!("Preserved local-only catalog {provider_id}: {count} models");
-        index.push(CatalogIndexEntry {
-            provider_id,
-            rust_mod: rust_mod.to_string(),
-            count,
-        });
-        added += 1;
-    }
-    if added > 0 {
-        index.sort_by(|a, b| a.provider_id.cmp(&b.provider_id));
-    }
+    ));
     Ok(())
 }
 

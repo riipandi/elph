@@ -32,6 +32,6 @@ pub fn generate_test_image(options: TestImageOptions) -> Result<()> {
     }
     img.save(&options.output)
         .with_context(|| format!("write {}", options.output.display()))?;
-    println!("Generated test image at: {}", options.output.display());
+    super::term::success(format!("Generated test image at {}", options.output.display()));
     Ok(())
 }

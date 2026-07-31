@@ -1,24 +1,22 @@
-//! Regenerate embedded model catalogs from [@earendil-works/pi-ai](https://github.com/earendil-works/pi/tree/main/packages/ai).
-//!
-//! Catalog source path is fixed: `../../earendil-works/pi/packages/ai` relative to the elph
-//! workspace root (see [`common::default_catalog_dir`]). No `--catalog-dir` flag.
+//! Regenerate embedded model catalogs from [models.dev](https://models.dev) (origin).
 //!
 //! Usage:
 //!   make generate-models
-//!   make generate-models ARGS="--skip-scripts"
 //!   cargo run -p elph-ai --bin generate-models -- chat
-//!   cargo run -p elph-ai --bin generate-models -- chat --enrich-pricing
+//!   cargo run -p elph-ai --bin generate-models -- chat --offline
 //!   cargo run -p elph-ai --bin generate-models -- enrich
-//!   cargo run -p elph-ai --bin generate-models -- image
-//!   cargo run -p elph-ai --bin generate-models -- test-image
-//!   cargo run -p elph-ai --bin generate-models -- all
-//!   cargo run -p elph-ai --bin generate-models -- all --skip-scripts --enrich-pricing
+//!   cargo run -p elph-ai --bin generate-models -- all --no-live-pricing
 
 mod chat;
 mod common;
 mod image;
+mod models_dev;
+mod normalize;
 mod pricing;
+mod provider_sources;
+mod term;
 mod test_image;
+mod thinking_map;
 
 use std::path::PathBuf;
 
@@ -27,17 +25,15 @@ use clap::{Parser, Subcommand};
 
 use chat::ChatOptions;
 use chat::generate_chat;
-use common::default_catalog_dir;
 use image::ImageOptions;
 use image::generate_image;
-use pricing::run_enrich;
 use test_image::TestImageOptions;
 use test_image::generate_test_image;
 
 #[derive(Parser, Debug)]
 #[command(
     name = "generate-models",
-    about = "Regenerate elph-ai model catalogs from the fixed catalog source (earendil-works/pi/packages/ai)"
+    about = "Regenerate elph-ai model catalogs from models.dev (origin) + provider pricing APIs"
 )]
 struct Args {
     #[command(subcommand)]
@@ -46,153 +42,135 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Command {
-    /// Regenerate chat model catalogs from catalog npm scripts
+    /// Rebuild chat catalogs from models.dev + overlays
     Chat(ChatCmd),
-    /// Regenerate image model catalogs from catalog npm scripts
+    /// Image model catalogs (legacy upstream scripts when available)
     Image(ImageCmd),
     /// Generate tests/data/red-circle.png test fixture
     TestImage(TestImageCmd),
-    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
+    /// Re-run pricing probes against existing JSON (live → models.dev)
     Enrich(EnrichCmd),
-    /// Run chat, image, test-image, and pricing enrichment
+    /// chat + image + test-image
     All(AllCmd),
 }
 
 #[derive(Parser, Debug)]
-struct SkipScripts {
-    /// Skip running catalog source npm scripts and only convert existing generated files
-    #[arg(long)]
-    skip_scripts: bool,
-}
-
-#[derive(Parser, Debug)]
 struct ChatCmd {
-    #[command(flatten)]
-    skip: SkipScripts,
-
-    /// Output directory for JSON catalogs (default: crates/elph-ai/models)
     #[arg(long)]
     models_dir: Option<PathBuf>,
-
-    /// Only write JSON catalogs; skip regenerating src/models/catalog.rs
     #[arg(long)]
     no_regenerate_catalog: bool,
-
-    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
+    /// Use cached models.dev snapshot only
     #[arg(long)]
-    enrich_pricing: bool,
+    offline: bool,
+    /// Skip live provider pricing HTTP probes
+    #[arg(long)]
+    no_live_pricing: bool,
 }
 
 #[derive(Parser, Debug)]
 struct EnrichCmd {
-    /// Output directory for JSON catalogs (default: crates/elph-ai/models)
     #[arg(long)]
     models_dir: Option<PathBuf>,
+    #[arg(long)]
+    offline: bool,
+    #[arg(long)]
+    no_live_pricing: bool,
 }
 
 #[derive(Parser, Debug)]
 struct ImageCmd {
-    #[command(flatten)]
-    skip: SkipScripts,
-
-    /// Output directory for image JSON catalogs (default: crates/elph-ai/models/images)
+    #[arg(long)]
+    skip_scripts: bool,
     #[arg(long)]
     images_dir: Option<PathBuf>,
-
-    /// Only write JSON catalogs; skip regenerating src/images/models.rs
     #[arg(long)]
     no_regenerate_catalog: bool,
 }
 
 #[derive(Parser, Debug)]
 struct TestImageCmd {
-    /// Output path (default: crates/elph-ai/tests/data/red-circle.png)
     #[arg(long)]
     output: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
 struct AllCmd {
-    #[command(flatten)]
-    skip: SkipScripts,
-
     #[arg(long)]
     models_dir: Option<PathBuf>,
-
     #[arg(long)]
     images_dir: Option<PathBuf>,
-
     #[arg(long)]
     test_image_output: Option<PathBuf>,
-
     #[arg(long)]
     no_regenerate_catalog: bool,
-
-    /// Enrich zero-priced models with actual pricing from models.dev and provider APIs
     #[arg(long)]
-    enrich_pricing: bool,
+    offline: bool,
+    #[arg(long)]
+    no_live_pricing: bool,
+    #[arg(long)]
+    skip_scripts: bool,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
     let crate_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let catalog_dir = default_catalog_dir(&crate_root);
 
     match args.command {
-        Command::Chat(cmd) => {
-            generate_chat(ChatOptions {
-                catalog_dir,
-                skip_scripts: cmd.skip.skip_scripts,
-                models_dir: cmd.models_dir.clone().unwrap_or_else(|| crate_root.join("models")),
-                catalog_rs: crate_root.join("src/models/catalog.rs"),
-                no_regenerate_catalog: cmd.no_regenerate_catalog,
-            })?;
-            if cmd.enrich_pricing {
-                let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
-                run_enrich(&models_dir)?;
-            }
-            Ok(())
-        }
-        Command::Image(cmd) => generate_image(ImageOptions {
-            catalog_dir,
-            skip_scripts: cmd.skip.skip_scripts,
-            images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
-            models_rs: crate_root.join("src/images/models.rs"),
+        Command::Chat(cmd) => generate_chat(ChatOptions {
+            models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
+            catalog_rs: crate_root.join("src/models/catalog.rs"),
             no_regenerate_catalog: cmd.no_regenerate_catalog,
+            offline: cmd.offline,
+            no_live_pricing: cmd.no_live_pricing,
         }),
+        Command::Image(cmd) => {
+            // Image path still uses optional local pi clone when present.
+            let catalog_dir = common::default_catalog_dir(&crate_root);
+            generate_image(ImageOptions {
+                catalog_dir,
+                skip_scripts: cmd.skip_scripts,
+                images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
+                models_rs: crate_root.join("src/images/models.rs"),
+                no_regenerate_catalog: cmd.no_regenerate_catalog,
+            })
+        }
         Command::TestImage(cmd) => generate_test_image(TestImageOptions {
             output: cmd
                 .output
                 .unwrap_or_else(|| crate_root.join("tests/data/red-circle.png")),
         }),
         Command::Enrich(cmd) => {
-            let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
-            run_enrich(&models_dir)
+            // Re-run full chat rebuild (includes pricing); dedicated enrich keeps same entry.
+            generate_chat(ChatOptions {
+                models_dir: cmd.models_dir.unwrap_or_else(|| crate_root.join("models")),
+                catalog_rs: crate_root.join("src/models/catalog.rs"),
+                no_regenerate_catalog: false,
+                offline: cmd.offline,
+                no_live_pricing: cmd.no_live_pricing,
+            })
         }
         Command::All(cmd) => {
             generate_chat(ChatOptions {
-                catalog_dir: catalog_dir.clone(),
-                skip_scripts: cmd.skip.skip_scripts,
                 models_dir: cmd.models_dir.clone().unwrap_or_else(|| crate_root.join("models")),
                 catalog_rs: crate_root.join("src/models/catalog.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
+                offline: cmd.offline,
+                no_live_pricing: cmd.no_live_pricing,
             })?;
-            generate_image(ImageOptions {
+            let catalog_dir = common::default_catalog_dir(&crate_root);
+            let _ = generate_image(ImageOptions {
                 catalog_dir,
-                skip_scripts: cmd.skip.skip_scripts,
+                skip_scripts: cmd.skip_scripts,
                 images_dir: cmd.images_dir.unwrap_or_else(|| crate_root.join("models/images")),
                 models_rs: crate_root.join("src/images/models.rs"),
                 no_regenerate_catalog: cmd.no_regenerate_catalog,
-            })?;
+            });
             generate_test_image(TestImageOptions {
                 output: cmd
                     .test_image_output
                     .unwrap_or_else(|| crate_root.join("tests/data/red-circle.png")),
             })?;
-            if cmd.enrich_pricing {
-                let models_dir = cmd.models_dir.unwrap_or_else(|| crate_root.join("models"));
-                run_enrich(&models_dir)?;
-            }
             Ok(())
         }
     }

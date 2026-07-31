@@ -1,4 +1,30 @@
 {
+    "glm-4.5": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.11,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.2
+        },
+        "id": "glm-4.5",
+        "input": ["text"],
+        "maxTokens": 98304,
+        "name": "GLM-4.5",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
     "glm-4.5-air": {
         "api": "openai-completions",
         "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
@@ -10,17 +36,130 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
+            "input": 0.2,
+            "output": 1.1
         },
         "id": "glm-4.5-air",
         "input": ["text"],
         "maxTokens": 98304,
         "name": "GLM-4.5-Air",
         "provider": "zai-coding-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4.5-flash": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 131072,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
+        },
+        "id": "glm-4.5-flash",
+        "input": ["text"],
+        "maxTokens": 98304,
+        "name": "GLM-4.5-Flash",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4.5v": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 64000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 1.8
+        },
+        "id": "glm-4.5v",
+        "input": ["text", "image", "video"],
+        "maxTokens": 16384,
+        "name": "GLM-4.5V",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4.6": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.11,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.2
+        },
+        "id": "glm-4.6",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-4.6",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4.6v": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 128000,
+        "cost": {
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.3,
+            "output": 0.9
+        },
+        "id": "glm-4.6v",
+        "input": ["text", "image", "video"],
+        "maxTokens": 32768,
+        "name": "GLM-4.6V",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-4.7": {
         "api": "openai-completions",
@@ -34,41 +173,104 @@
         },
         "contextWindow": 204800,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.11,
+            "cacheWrite": 0.0,
+            "input": 0.6,
+            "output": 2.2
         },
         "id": "glm-4.7",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-4.7",
         "provider": "zai-coding-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
-    "glm-5-turbo": {
+    "glm-4.7-flash": {
         "api": "openai-completions",
         "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
-        "compat": {
-            "supportsDeveloperRole": false,
-            "supportsReasoningEffort": false,
-            "supportsStore": false,
-            "thinkingFormat": "zai",
-            "zaiToolStream": true
-        },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.01,
+            "cacheWrite": 0.0,
+            "input": 0.09,
+            "output": 0.53
         },
-        "id": "glm-5-turbo",
+        "id": "glm-4.7-flash",
         "input": ["text"],
         "maxTokens": 131072,
-        "name": "GLM-5-Turbo",
+        "name": "GLM-4.7-Flash",
         "provider": "zai-coding-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-4.7-flashx": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 200000,
+        "cost": {
+            "cacheRead": 0.01,
+            "cacheWrite": 0.0,
+            "input": 0.07,
+            "output": 0.4
+        },
+        "id": "glm-4.7-flashx",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-4.7-FlashX",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
+    },
+    "glm-5": {
+        "api": "openai-completions",
+        "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
+        "contextWindow": 204800,
+        "cost": {
+            "cacheRead": 0.2,
+            "cacheWrite": 0.0,
+            "input": 1.0,
+            "output": 3.2
+        },
+        "id": "glm-5",
+        "input": ["text"],
+        "maxTokens": 131072,
+        "name": "GLM-5",
+        "provider": "zai-coding-cn",
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.1": {
         "api": "openai-completions",
@@ -82,17 +284,26 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.1",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.1",
         "provider": "zai-coding-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -106,10 +317,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.2",
         "input": ["text"],
@@ -122,7 +333,9 @@
             "low": "high",
             "max": "max",
             "medium": "high",
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "glm-5v-turbo": {
@@ -137,16 +350,25 @@
         },
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 1.2,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 22.0
         },
         "id": "glm-5v-turbo",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video", "pdf"],
         "maxTokens": 131072,
         "name": "GLM-5V-Turbo",
         "provider": "zai-coding-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

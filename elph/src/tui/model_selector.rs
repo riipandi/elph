@@ -592,10 +592,7 @@ pub fn model_selector_list_viewport_height(screen_width: u16, screen_height: u16
 
 pub fn global_count_label(catalog: &ModelCatalogSnapshot) -> String {
     if catalog.show_configured_only {
-        format!(
-            "{} configured · {} models",
-            catalog.total_providers, catalog.total_models
-        )
+        format!("{} configured · {} models", catalog.total_providers, catalog.total_models)
     } else {
         format!(
             "{} providers · {} models available",
@@ -1149,11 +1146,7 @@ mod tests {
                 );
             }
             for row in &filtered.all_models {
-                assert!(
-                    allowed.contains(&row.provider_id),
-                    "unconfigured model leaked: {}",
-                    row.value
-                );
+                assert!(allowed.contains(&row.provider_id), "unconfigured model leaked: {}", row.value);
             }
         }
     }

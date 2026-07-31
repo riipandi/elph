@@ -85,7 +85,10 @@ impl Default for ModelSelectorBarProps {
             screen_width: 80,
             screen_height: 24,
             view: ModelSelectorView {
-                catalog: ModelCatalogSnapshot::build_with_options(&[], &super::model_selector::ModelCatalogOptions::unfiltered()),
+                catalog: ModelCatalogSnapshot::build_with_options(
+                    &[],
+                    &super::model_selector::ModelCatalogOptions::unfiltered(),
+                ),
                 provider_index: 0,
                 filtered_models: Vec::new(),
                 global_count: String::new(),
