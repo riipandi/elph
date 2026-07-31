@@ -1,10 +1,15 @@
+mod capture;
 mod cmd;
 mod format;
 pub mod hooks;
+mod pack;
+mod rank;
+pub mod runtime;
 pub(crate) mod store;
 pub mod tools;
 
 pub use cmd::run;
+pub use runtime::{MemoryRuntime, MemoryRuntimeOptions};
 
 /// Run a memory slash command and return formatted output.
 ///
@@ -86,11 +91,12 @@ pub async fn slash_run(paths: &crate::platform::Paths, args: &str) -> Result<Str
         "help" | "h" | "--help" | "-h" => Ok(concat!(
             "Memory commands:\n",
             "  /memory status            Overview: counts, categories, top memories\n",
-            "  /memory list [category]   List all memories (optionally filter by category)\n",
+            "  /memory list [category]   List memories (correction|user|insight|discovery|work|consolidated)\n",
             "  /memory tasks [n]         Show last N tasks with retrievals and outcomes\n",
             "  /memory log [n]           Compact timeline of tasks and memory events\n",
             "  /memory search <query>    Semantic search across memories\n",
             "  /memory purge [threshold] Delete memories below weight threshold\n",
+            "\nAuto recall/work/discovery are controlled by settings.memory.* (enabled, autoRecall, …).\n",
         )
         .to_string()),
         other => Err(format!("unknown memory subcommand: {other}. Try /memory help")),

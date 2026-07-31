@@ -37,7 +37,8 @@ pub use paths::{DB_FILE_NAME, DEFAULT_DATA_DIR};
 pub use store::noop_embedder;
 pub use store::{EmbedFn, MemoryStore};
 pub use types::{
-    CategoryCount, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult, FloppyConfig, Memory,
+    CategoryCount, ConsolidateResult, ContradictResult, DecayResult, EmbeddingStatus, EndTaskWithDecayResult,
+    FloppyConfig, Memory,
 };
 pub use types::{
     MemoryCategory, MemoryRecord, MemoryReportInput, MemoryReportType, MemoryStats, ReportCorrectionInput,

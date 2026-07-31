@@ -99,6 +99,7 @@ pub fn initial_weight(
         MemoryCategory::Insight => 1.0,
         MemoryCategory::Consolidated => 1.0, // caller sets avg of sources
         MemoryCategory::Discovery => 1.0,
+        MemoryCategory::Work => 1.0,
     }
 }
 
@@ -222,6 +223,7 @@ mod tests {
         assert_eq!(initial_weight(MemoryCategory::Insight, None, None, None), 1.0);
         assert_eq!(initial_weight(MemoryCategory::Consolidated, None, None, None), 1.0);
         assert_eq!(initial_weight(MemoryCategory::Discovery, None, None, None), 1.0);
+        assert_eq!(initial_weight(MemoryCategory::Work, None, None, None), 1.0);
     }
 
     #[test]

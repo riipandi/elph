@@ -169,6 +169,16 @@ impl MemoryStore {
         self.dimensions
     }
 
+    /// Active task id used to link new memories via `source_task`.
+    pub fn current_task_id(&self) -> Option<String> {
+        self.current_task_id.lock().unwrap().clone()
+    }
+
+    /// Align host-managed task lifecycle with the store (shared runtime).
+    pub fn set_current_task_id(&self, task_id: Option<String>) {
+        *self.current_task_id.lock().unwrap() = task_id;
+    }
+
     pub(crate) fn vector_fn(&self) -> &'static str {
         match self.vector_type {
             VectorType::Vector32 => "vector32",

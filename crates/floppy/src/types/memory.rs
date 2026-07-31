@@ -53,6 +53,15 @@ pub struct DecayResult {
     pub deleted: u32,
 }
 
+/// Result of near-duplicate consolidation.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ConsolidateResult {
+    /// Number of consolidated memories written.
+    pub merged: u32,
+    /// Number of source memories deleted.
+    pub deleted: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryStats {
     pub total_memories: u32,

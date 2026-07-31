@@ -318,6 +318,71 @@ async fn decay_and_purge_maintenance() {
 }
 
 #[tokio::test]
+async fn decay_drops_work_faster_than_user() {
+    let ctx = TestCtx::new();
+    let store = ctx.store();
+
+    store
+        .insert_raw_memory("work note", MemoryCategory::Work, 2.0)
+        .await
+        .expect("work");
+    store
+        .insert_raw_memory("user preference", MemoryCategory::User, 2.0)
+        .await
+        .expect("user");
+
+    store.decay().await.expect("decay");
+
+    let all = store.list_memories(None).await.expect("list");
+    let work_w = all
+        .iter()
+        .find(|m| m.category == MemoryCategory::Work)
+        .map(|m| m.weight)
+        .expect("work");
+    let user_w = all
+        .iter()
+        .find(|m| m.category == MemoryCategory::User)
+        .map(|m| m.weight)
+        .expect("user");
+    assert!(
+        work_w < user_w,
+        "work weight {work_w} should decay faster than user {user_w}"
+    );
+}
+
+#[tokio::test]
+async fn consolidate_similar_merges_near_duplicates() {
+    let ctx = TestCtx::new();
+    let store = ctx.store();
+
+    // Same content ⇒ same mock embedding ⇒ distance ~0.
+    store
+        .insert_raw_memory("duplicate work path a.rs", MemoryCategory::Work, 1.0)
+        .await
+        .expect("a");
+    store
+        .insert_raw_memory("duplicate work path a.rs", MemoryCategory::Work, 1.0)
+        .await
+        .expect("b");
+    store.embed_pending().await.expect("embed");
+
+    let before = store.list_memories(None).await.expect("list").len();
+    assert_eq!(before, 2);
+
+    let result = store
+        .consolidate_similar(0.08, 10)
+        .await
+        .expect("consolidate");
+    assert_eq!(result.merged, 1);
+    assert_eq!(result.deleted, 2);
+
+    let after = store.list_memories(None).await.expect("list after");
+    assert_eq!(after.len(), 1);
+    assert_eq!(after[0].category, MemoryCategory::Consolidated);
+    assert!(after[0].content.contains("[consolidated]"));
+}
+
+#[tokio::test]
 async fn contradict_memory_deletes_and_optionally_replaces() {
     let ctx = TestCtx::new();
     let store = ctx.store();

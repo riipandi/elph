@@ -62,9 +62,15 @@ pub async fn create_coding_session_with_events(
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
-    // Wire floppy memory tools (memory_start_task, memory_end_task, etc.).
-    // Store initializes lazily on first tool call — no DB file check needed upfront.
-    tools.extend(crate::memory::tools::create_memory_tools(options.paths.clone()));
+    // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
+    let memory_opts =
+        crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
+    let memory_runtime = Arc::new(crate::memory::MemoryRuntime::with_options(
+        options.paths.clone(),
+        session_id.clone(),
+        memory_opts,
+    ));
+    tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
 
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -109,7 +115,7 @@ pub async fn create_coding_session_with_events(
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
-    let ctx = crate::memory::hooks::build_memories_context(options.paths)
+    let ctx = crate::memory::hooks::build_memories_context(memory_runtime.as_ref())
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
@@ -171,9 +177,11 @@ pub async fn create_coding_session_with_events(
     })
     .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    // Wire automatic memory hooks (per-turn recall, auto-correction, auto task lifecycle).
+    // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).
     // Runs best-effort: errors are logged and don't prevent session startup.
-    if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, options.paths).await {
+    if let Err(err) =
+        crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
+    {
         log::warn!("automatic memory hooks: {err:#}");
     }
 

@@ -47,6 +47,56 @@ impl MemoryStore {
         .await
     }
 
+    /// List most recent memories by `created_at`, optionally filtered by category.
+    pub async fn list_recent_memories(
+        &self,
+        limit: u32,
+        category: Option<MemoryCategory>,
+    ) -> Result<Vec<MemoryRecord>> {
+        self.init().await?;
+        let limit = limit.max(1) as i64;
+        let filter = category.map(super::super::util::category_str);
+        self.with_db(move |conn| async move {
+            let (sql, cat_param): (String, Option<String>) = if let Some(cat) = filter {
+                (
+                    "SELECT id, content, category, weight, retrieval_count, created_at, length(embedding) as emb_len \
+                     FROM memories WHERE category = ? ORDER BY created_at DESC LIMIT ?"
+                        .into(),
+                    Some(cat.to_string()),
+                )
+            } else {
+                (
+                    "SELECT id, content, category, weight, retrieval_count, created_at, length(embedding) as emb_len \
+                     FROM memories ORDER BY created_at DESC LIMIT ?"
+                        .into(),
+                    None,
+                )
+            };
+
+            let mut rows = if let Some(cat) = cat_param {
+                conn.query(&sql, params![cat.as_str(), limit]).await?
+            } else {
+                conn.query(&sql, params![limit]).await?
+            };
+
+            let mut out = Vec::new();
+            while let Some(row) = rows.next().await? {
+                out.push(MemoryRecord {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    category: category_from_str(&row.get::<String>(2)?),
+                    weight: row.get(3)?,
+                    retrieval_count: row.get(4)?,
+                    created_at: row.get(5)?,
+                    embedding_status: embedding_status(row.get::<Option<i64>>(6)?, self.dimensions()),
+                });
+            }
+            drain_rows(&mut rows).await?;
+            Ok(out)
+        })
+        .await
+    }
+
     /// Read-only semantic search — no task record, no retrieval side effects.
     pub async fn search_memories(&self, query: &str) -> Result<Vec<Memory>> {
         self.init().await?;

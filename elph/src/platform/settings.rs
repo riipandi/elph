@@ -257,6 +257,28 @@ pub struct MemorySettings {
     /// Prefer quantized model weights when a `*Q` variant exists (default: true).
     #[serde(default = "default_embed_quantized")]
     pub embed_quantized: bool,
+    /// Master switch for automatic memory hooks and bootstrap injection.
+    /// Agent tools can still open the store when disabled.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// Per-turn multi-source recall injection.
+    #[serde(default = "default_true")]
+    pub auto_recall: bool,
+    /// Auto-journal successful file mutations as work/change memories.
+    #[serde(default = "default_true")]
+    pub auto_capture_work: bool,
+    /// Auto-capture exploration into discovery / project-map memories.
+    #[serde(default = "default_true")]
+    pub auto_capture_exploration: bool,
+    /// Vector top-k for task retrieval (default: 5).
+    #[serde(default = "default_memory_top_k")]
+    pub top_k: u32,
+    /// Max characters for all injected memory XML blocks (default: 3000).
+    #[serde(default = "default_memory_context_budget")]
+    pub context_budget_chars: u32,
+    /// Minimum user prompt length to trigger auto-recall (default: 15).
+    #[serde(default = "default_memory_min_query_length")]
+    pub min_query_length: u32,
 }
 
 impl Default for MemorySettings {
@@ -264,6 +286,13 @@ impl Default for MemorySettings {
         Self {
             embed_model: default_embed_model(),
             embed_quantized: default_embed_quantized(),
+            enabled: true,
+            auto_recall: true,
+            auto_capture_work: true,
+            auto_capture_exploration: true,
+            top_k: default_memory_top_k(),
+            context_budget_chars: default_memory_context_budget(),
+            min_query_length: default_memory_min_query_length(),
         }
     }
 }
@@ -564,6 +593,18 @@ fn default_embed_quantized() -> bool {
     false
 }
 
+fn default_memory_top_k() -> u32 {
+    5
+}
+
+fn default_memory_context_budget() -> u32 {
+    3000
+}
+
+fn default_memory_min_query_length() -> u32 {
+    15
+}
+
 fn default_agent_mode() -> String {
     "build".to_string()
 }
@@ -759,6 +800,23 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
         let loaded = Settings::load(&paths).expect("load");
         assert_eq!(loaded.memory.embed_model, "AllMiniLML6V2");
+        // New knobs default when section/fields are missing.
+        assert!(loaded.memory.enabled);
+        assert!(loaded.memory.auto_recall);
+        assert!(loaded.memory.auto_capture_work);
+        assert!(loaded.memory.auto_capture_exploration);
+        assert_eq!(loaded.memory.top_k, 5);
+        assert_eq!(loaded.memory.context_budget_chars, 3000);
+        assert_eq!(loaded.memory.min_query_length, 15);
+    }
+
+    #[test]
+    fn memory_settings_partial_json_defaults() {
+        let raw = r#"{"embedModel":"AllMiniLML6V2","embedQuantized":false}"#;
+        let decoded: MemorySettings = serde_json::from_str(raw).expect("parse");
+        assert!(decoded.enabled);
+        assert!(decoded.auto_recall);
+        assert_eq!(decoded.top_k, 5);
     }
 
     #[test]

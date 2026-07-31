@@ -38,6 +38,7 @@ pub fn parse_category_filter(raw: &str) -> Option<MemoryCategory> {
         "user" => Some(MemoryCategory::User),
         "consolidated" => Some(MemoryCategory::Consolidated),
         "discovery" => Some(MemoryCategory::Discovery),
+        "work" => Some(MemoryCategory::Work),
         _ => None,
     }
 }
@@ -246,6 +247,7 @@ mod tests {
     #[test]
     fn parse_category_filter_accepts_known_values() {
         assert_eq!(parse_category_filter("user"), Some(MemoryCategory::User));
+        assert_eq!(parse_category_filter("work"), Some(MemoryCategory::Work));
         assert_eq!(parse_category_filter("nope"), None);
     }
 

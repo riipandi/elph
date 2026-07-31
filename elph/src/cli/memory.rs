@@ -21,7 +21,7 @@ pub enum MemoryCommands {
     Status,
     /// List all memories (optionally filter by category)
     List {
-        /// Filter: correction, user, insight, discovery, consolidated
+        /// Filter: correction, user, insight, discovery, work, consolidated
         category: Option<String>,
     },
     /// Show last N tasks with retrievals and outcomes
