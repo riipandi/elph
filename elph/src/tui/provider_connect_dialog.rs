@@ -193,9 +193,8 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
         return ProviderConfigStatus::Unconfigured;
     };
     if let Some(entry) = file.get_provider_credential(provider_id) {
-        if entry.starts_with(elph_agent::ENV_REF_PREFIX) {
-            let var_name = entry[elph_agent::ENV_REF_PREFIX.len()..].to_string();
-            return ProviderConfigStatus::EnvVarConfigured(var_name);
+        if let Some(var_name) = entry.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+            return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
         }
         // OAuth JSON blobs are long; short values are API keys.
         if entry.trim().starts_with('{') || entry.len() > 100 {

@@ -1552,13 +1552,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             let server_name = pending_mcp_auth.read().as_ref().and_then(|p| {
                                 get_filtered_mcp_server_at(&p.servers, &filter, selected).map(|s| s.name.clone())
                             });
-                            if let Some(name) = server_name {
-                                if let Err(err) = start_mcp_oauth_for_server(pending_mcp_auth, &paths, &name) {
-                                    if let Some(p) = pending_mcp_auth.write().as_mut() {
-                                        p.step = McpAuthStep::Failed;
-                                        p.status_message = err;
-                                    }
-                                }
+                            if let Some(name) = server_name
+                                && let Err(err) = start_mcp_oauth_for_server(pending_mcp_auth, &paths, &name)
+                                && let Some(p) = pending_mcp_auth.write().as_mut()
+                            {
+                                p.step = McpAuthStep::Failed;
+                                p.status_message = err;
                             }
                             return;
                         }

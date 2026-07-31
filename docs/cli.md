@@ -10,10 +10,24 @@ elph [OPTIONS] [COMMAND]
 
 ## Global options
 
-| Flag              | Description   |
-| ----------------- | ------------- |
-| `-V`, `--version` | Print version |
-| `-h`, `--help`    | Print help    |
+| Flag                         | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `-V`, `--version`            | Print version                                                               |
+| `-h`, `--help`               | Print help                                                                  |
+| `-c`, `--continue`           | Continue the **most recent session for this project** (CWD / `PROJECT_DIR`); does **not** start a new session |
+| `-r`, `--resume <SESSION_ID>` | Resume a **specific** session by ID                                         |
+
+### Default (no subcommand)
+
+```sh
+elph                      # new interactive session for this project
+elph --continue           # reopen last session for this project
+elph -c                   # same as --continue
+elph --resume <id>        # reopen a specific session
+elph -r <id>              # same as --resume
+```
+
+`--continue` and `--resume` are mutually exclusive. If this project has no prior sessions, `--continue` exits with an error (it will not invent a new session).
 
 ## Subcommands
 
@@ -38,9 +52,7 @@ elph [OPTIONS] [COMMAND]
 | `version`     | Print version                               |
 | `worktree`    | Git worktrees                               |
 
-### Default (no subcommand)
-
-Launch the interactive TUI. Design: full agent experience; current gap documented in [openwiki](../openwiki/quickstart.md).
+Launch without a subcommand starts the interactive TUI (see global `--continue` / `--resume` above).
 
 ### `version`
 
@@ -67,8 +79,8 @@ See [memory.md](./memory.md).
 | ---------------------- | --------------------------------- |
 | `-m`, `--model`        | Model (`provider/model`)          |
 | `--output-format`      | Output format (default `text`)    |
-| `-c`, `--continue`     | Continue recent session           |
-| `-s`, `--session`      | Resume by session ID              |
+| `-c`, `--continue`     | Continue last session for this project |
+| `-r`, `--resume`       | Resume by session ID (alias: `--session`) |
 | `--fork`               | Fork before continue              |
 | `-f`, `--file`         | Attach files (repeatable)         |
 | `-b`, `--brave`        | Auto-approve tools                |

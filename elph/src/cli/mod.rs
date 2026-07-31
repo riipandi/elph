@@ -15,6 +15,7 @@ mod provider;
 mod run;
 mod server;
 mod session;
+mod session_launch;
 mod stats;
 mod tools;
 mod update;
@@ -53,16 +54,21 @@ pub struct Cli {
     #[arg(short = 'V', long = "version", help = "Print version information")]
     pub version: bool,
 
-    /// Continue last session for the current working directory
+    /// Continue the most recent session for this project (CWD / PROJECT_DIR) — no new session
     #[arg(
         short = 'c',
         long = "continue",
-        help = "Continue last session for the current working directory"
+        help = "Continue last session for the current project (CWD/PROJECT_DIR); does not start a new session"
     )]
     pub continue_session: bool,
 
     /// Resume a specific session by ID (interactive TUI)
-    #[arg(long = "resume", value_name = "SESSION_ID")]
+    #[arg(
+        short = 'r',
+        long = "resume",
+        value_name = "SESSION_ID",
+        help = "Resume a specific session by ID"
+    )]
     pub resume: Option<String>,
 
     #[command(subcommand)]
@@ -188,7 +194,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
-        return default::handle(cli.resume.clone());
+        return default::handle(cli.continue_session, cli.resume.clone());
     };
 
     if command_needs_datastore(cmd)

@@ -52,16 +52,18 @@ impl SessionManager {
 
     pub async fn create(&self, resume_id: Option<&str>) -> Result<Session<TursoSessionStorage>> {
         if let Some(id) = resume_id {
-            let sessions = self.list().await?;
-            if let Some(meta) = sessions.into_iter().find(|s| s.id == id) {
+            if let Some(meta) = self.find_metadata(id).await? {
                 return self.open(&meta).await;
             }
+            anyhow::bail!(
+                "session not found: {id} (use `elph session list` or `elph --continue` for the latest in this project)"
+            );
         }
         let mut session = self
             .repo
             .create(TursoSessionRepoCreateOptions {
                 cwd: self.cwd.clone(),
-                id: resume_id.map(str::to_string),
+                id: None,
                 parent_session_id: None,
                 system_prompt: None,
                 ..Default::default()
@@ -77,6 +79,7 @@ impl SessionManager {
         Ok(session)
     }
 
+    /// Sessions for this manager's project cwd, newest `updated_at` first.
     pub async fn list(&self) -> Result<Vec<TursoSessionMetadata>> {
         self.repo
             .list(TursoSessionListOptions {
@@ -84,6 +87,24 @@ impl SessionManager {
             })
             .await
             .context("list sessions")
+    }
+
+    /// Most recently updated session id for this project, if any.
+    pub async fn latest_session_id(&self) -> Result<Option<String>> {
+        Ok(self.list().await?.into_iter().next().map(|m| m.id))
+    }
+
+    /// Find session metadata by id (this project first, then global).
+    pub async fn find_metadata(&self, session_id: &str) -> Result<Option<TursoSessionMetadata>> {
+        if let Some(meta) = self.list().await?.into_iter().find(|s| s.id == session_id) {
+            return Ok(Some(meta));
+        }
+        let all = self
+            .repo
+            .list(TursoSessionListOptions { cwd: None })
+            .await
+            .context("list all sessions")?;
+        Ok(all.into_iter().find(|s| s.id == session_id))
     }
 
     pub async fn open(&self, metadata: &TursoSessionMetadata) -> Result<Session<TursoSessionStorage>> {

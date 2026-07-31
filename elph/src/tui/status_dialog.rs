@@ -570,7 +570,7 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
             let selected_index = props
                 .provider_connect_selected
                 .or(props.approval_selected)
-                .map(|s| s.read().clone())
+                .map(|s| *s.read())
                 .unwrap_or(pending.selected);
             let filter = props
                 .provider_connect_filter

@@ -73,7 +73,8 @@ pub fn print_and_clear() {
 
 pub fn print_exit_summary(snapshot: &ExitSnapshot) {
     println_orange(format!("\n{}", pick_goodbye_message(&snapshot.session_id)));
-    println_white(format!("\nResume this session: elph --resume {}", snapshot.session_id));
+    println_white(format!("\nResume this session: elph -r {}", snapshot.session_id));
+    println_white("Continue last project session: elph -c");
     println_dim(format!("\nTotal cost            : ${:.4}", snapshot.cost_usd));
     println_dim(format!(
         "Total duration (API)  : {}",

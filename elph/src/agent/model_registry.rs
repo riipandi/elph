@@ -133,8 +133,7 @@ async fn load_credentials_from_auth_json(auth_store_path: Option<&Path>) -> Resu
             continue;
         };
 
-        if raw.starts_with(elph_agent::ENV_REF_PREFIX) {
-            let var_name = &raw[elph_agent::ENV_REF_PREFIX.len()..];
+        if let Some(var_name) = raw.strip_prefix(elph_agent::ENV_REF_PREFIX) {
             let mut env = ProviderEnv::new();
             env.insert(var_name.to_string(), var_name.to_string());
             let cred = Credential::ApiKey(ApiKeyCredential {
