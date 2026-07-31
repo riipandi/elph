@@ -386,6 +386,9 @@ pub fn coalesce_agent_ui_events(events: Vec<AgentUiEvent>) -> Vec<AgentUiEvent> 
 /// Max bytes kept in streaming tool output. Older bytes are dropped from the front so the
 /// card renders the tail without slowdown (matches shell_output.rs buffer cap).
 const TOOL_OUTPUT_STREAM_CAP: usize = 100 * 1024;
+/// Max bytes kept in a streaming assistant reply. Older bytes are dropped from the front
+/// so layout/render stays O(recent content), not O(full stream).
+const ASSISTANT_STREAM_CAP: usize = 200 * 1024;
 
 /// Applies streaming agent events to transcript messages.
 pub struct TranscriptEventApplier {
@@ -736,6 +739,12 @@ impl TranscriptEventApplier {
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Assistant
         {
+            let new_len = last.content.len().saturating_add(cleaned.len());
+            if new_len > ASSISTANT_STREAM_CAP && !last.content.is_empty() {
+                let drop = new_len.saturating_sub(ASSISTANT_STREAM_CAP / 2).min(last.content.len());
+                let prefix = "\n[...stream truncated...]\n";
+                last.content = format!("{}{}", prefix, &last.content[drop..]);
+            }
             last.content.push_str(&cleaned);
             return true;
         }
@@ -1352,5 +1361,20 @@ mod tests {
             AgentUiEvent::ThinkingDelta(s) => assert_eq!(s, "xy"),
             other => panic!("expected ThinkingDelta, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn assistant_stream_caps_content_and_preserves_tail() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        applier.apply(&mut messages, AgentUiEvent::TextDelta("start".into()));
+        let long_delta = "x".repeat(ASSISTANT_STREAM_CAP);
+        applier.apply(&mut messages, AgentUiEvent::TextDelta(long_delta.clone()));
+        // Content is bounded by cap + truncation prefix overhead.
+        let prefix = "\n[...stream truncated...]\n";
+        assert!(messages[0].content.len() < ASSISTANT_STREAM_CAP + prefix.len() + "start".len());
+        assert!(messages[0].content.contains("...stream truncated..."));
+        // Tail (most recent bytes) is preserved, not the head.
+        assert!(messages[0].content.ends_with(&long_delta[long_delta.len() / 2..]));
     }
 }

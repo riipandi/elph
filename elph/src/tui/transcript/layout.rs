@@ -16,6 +16,8 @@ pub struct IncrementalLayoutCache {
     fingerprints: Vec<u64>,
     /// Own bubble height (content + vertical pad), excluding inter-message margin.
     row_counts: Vec<u32>,
+    /// Cached start_row for each message so forward walks can resume from the first change.
+    start_rows: Vec<u32>,
 }
 
 impl IncrementalLayoutCache {
@@ -23,6 +25,7 @@ impl IncrementalLayoutCache {
         self.screen_width = 0;
         self.fingerprints.clear();
         self.row_counts.clear();
+        self.start_rows.clear();
     }
 }
 
@@ -47,15 +50,74 @@ pub fn layout_transcript_rows_cached(
 
     // Truncate / grow slot storage to match the message list.
     if messages.len() < cache.fingerprints.len() {
-        // History was rewritten shorter — drop stale slots.
         cache.fingerprints.truncate(messages.len());
         cache.row_counts.truncate(messages.len());
+        cache.start_rows.truncate(messages.len());
     } else if messages.len() > cache.fingerprints.len() {
         cache.fingerprints.resize(messages.len(), 0);
         cache.row_counts.resize(messages.len(), 0);
+        cache.start_rows.resize(messages.len(), 0);
     }
 
-    for (index, message) in messages.iter().enumerate() {
+    // Walk backward to find the first changed message (streaming usually appends at the tail).
+    let mut first_changed = messages.len();
+    for index in (0..messages.len()).rev() {
+        let message = &messages[index];
+        let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding())
+            .saturating_sub(message.style.content_chrome_cols())
+            .max(1);
+        let fingerprint = message_layout_fingerprint(message, wrap_width);
+        if cache.fingerprints[index] != fingerprint {
+            first_changed = index;
+            break;
+        }
+    }
+
+    // Nothing changed — reuse cached start_rows.
+    if first_changed == messages.len() {
+        return cache
+            .start_rows
+            .iter()
+            .zip(&cache.row_counts)
+            .enumerate()
+            .map(|(index, (&start_row, &row_count))| TranscriptRowLayout { start_row, row_count })
+            .collect();
+    }
+
+    // Recompute from first_changed - 1 because margin_bottom of the previous message
+    // depends on this message's style.
+    let start = first_changed.saturating_sub(1);
+    let mut cursor = if start == 0 {
+        0u32
+    } else if cache.start_rows[start - 1] == 0 && cache.row_counts[start - 1] == 0 {
+        // Prefix cache is stale (e.g. fresh cache or history rewrite) — walk from the beginning.
+        let mut c = 0u32;
+        for i in 0..start {
+            let row_count = cache.row_counts[i];
+            c = c.saturating_add(row_count);
+            if i + 1 < messages.len() {
+                c = c.saturating_add(messages[i].transcript_margin_bottom(messages.get(i + 1)) as u32);
+            }
+        }
+        c
+    } else {
+        cache.start_rows[start - 1]
+            .saturating_add(cache.row_counts[start - 1])
+            .saturating_add(messages[start - 1].transcript_margin_bottom(Some(&messages[start])) as u32)
+    };
+
+    let mut layouts = Vec::with_capacity(messages.len());
+
+    // Emit cached prefix (messages before `start`).
+    for index in 0..start {
+        layouts.push(TranscriptRowLayout {
+            start_row: cache.start_rows[index],
+            row_count: cache.row_counts[index],
+        });
+    }
+
+    // Emit recomputed suffix from `start`.
+    for (index, message) in messages.iter().enumerate().skip(start) {
         let wrap_width = transcript_bubble_inner_width(screen_width, message.style.horizontal_padding())
             .saturating_sub(message.style.content_chrome_cols())
             .max(1);
@@ -64,13 +126,8 @@ pub fn layout_transcript_rows_cached(
             cache.fingerprints[index] = fingerprint;
             cache.row_counts[index] = message_row_count(message, wrap_width);
         }
-    }
-
-    // start_row walk is O(n) but cheap (no wrap); margins depend on neighbors.
-    let mut layouts = Vec::with_capacity(messages.len());
-    let mut cursor = 0u32;
-    for (index, message) in messages.iter().enumerate() {
         let row_count = cache.row_counts[index];
+        cache.start_rows[index] = cursor;
         layouts.push(TranscriptRowLayout {
             start_row: cursor,
             row_count,
@@ -80,6 +137,7 @@ pub fn layout_transcript_rows_cached(
             cursor = cursor.saturating_add(message.transcript_margin_bottom(messages.get(index + 1)) as u32);
         }
     }
+
     layouts
 }
 

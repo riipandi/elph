@@ -57,6 +57,7 @@ struct TranscriptRenderCache {
     messages_revision: u64,
     markdown_layout_revision: u64,
     screen_width: u16,
+    streaming_content_fp: u64,
     row_layouts: Vec<elph_tui::TranscriptRowLayout>,
     is_sticky_prompt: Vec<bool>,
     /// Fingerprinted row-count slots — survives revision bumps for unchanged prefix messages.
@@ -144,10 +145,33 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
 
     let messages = messages_state.read();
     let messages_revision_value = props.messages_revision.map(|s| s.get()).unwrap_or(0);
-    let cache_key = (messages_revision_value, markdown_layout_revision.get(), props.screen_width);
+
+    // Streaming content changes every tick but `messages_revision` only updates at the
+    // publish interval. Detect in-place content growth (e.g. assistant/tool streaming)
+    // so the render cache invalidates before the next publish tick.
+    let streaming_content_fp = messages
+        .last()
+        .map(|m| {
+            if m.duration_secs.is_none() {
+                m.content.len() as u64
+            } else {
+                0
+            }
+        })
+        .unwrap_or(0);
+
+    let cache_key = (
+        messages_revision_value,
+        markdown_layout_revision.get(),
+        props.screen_width,
+        streaming_content_fp,
+    );
 
     if render_cache.read().as_ref().is_none_or(|c| {
-        c.messages_revision != cache_key.0 || c.markdown_layout_revision != cache_key.1 || c.screen_width != cache_key.2
+        c.messages_revision != cache_key.0
+            || c.markdown_layout_revision != cache_key.1
+            || c.screen_width != cache_key.2
+            || c.streaming_content_fp != cache_key.3
     }) {
         let mut layout_cache = render_cache
             .read()
@@ -160,6 +184,7 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
             messages_revision: cache_key.0,
             markdown_layout_revision: cache_key.1,
             screen_width: cache_key.2,
+            streaming_content_fp: cache_key.3,
             row_layouts,
             is_sticky_prompt,
             layout_cache,
@@ -203,15 +228,15 @@ pub fn TranscriptPanel(props: &TranscriptPanelProps, mut hooks: Hooks) -> impl I
         .map(|o| o as i32)
         .unwrap_or_else(|| handle.scroll_offset());
     // Only leave near_bottom when user has scrolled meaningfully away from bottom.
-    // Threshold: 10 rows above bottom (vs. previous 2).
-    let is_near = auto_pinned || raw_offset >= max_off.saturating_sub(10);
+    // Threshold: 6 rows (2 scroll steps) above bottom.
+    let is_near = auto_pinned || raw_offset >= max_off.saturating_sub(6);
     let near_bottom = if auto_pinned {
         near_bottom_sticky.set(true);
         true
     } else if is_near && *near_bottom_sticky.read() {
         // Stay near-bottom if was near-bottom (hysteresis hold).
         true
-    } else if raw_offset < max_off.saturating_sub(10) {
+    } else if raw_offset < max_off.saturating_sub(6) {
         near_bottom_sticky.set(false);
         false
     } else {
