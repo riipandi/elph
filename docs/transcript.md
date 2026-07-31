@@ -37,7 +37,7 @@ the State, any message written only to the State would disappear on the next age
 
 To prevent that loss, every State write must be mirrored into the arc first:
 
-- `push_transcript_message_synced()` — pushes to the shared arc *and* the State. Used for
+- `push_transcript_message_synced()` — pushes to the shared arc _and_ the State. Used for
   slash-command output, status notices, and error lines.
 - Bootstrap messages are synced from State back to the arc once the bootstrap event loop
   finishes, so the first agent event cannot wipe them.
@@ -92,7 +92,7 @@ Previously, pressing Up required 4 presses to unpin auto-scroll; now 2 presses s
 ### Measure–Paint Wrap Parity (word_wrap.rs)
 
 Transcript row measurement must predict exactly what iocraft paints, because auto-scroll pins
-the viewport bottom to the *measured* height. Text rendered with `TextWrap::Wrap` (markdown
+the viewport bottom to the _measured_ height. Text rendered with `TextWrap::Wrap` (markdown
 paragraphs/list items, plain-text cards, tool param values) is word-wrapped by iocraft on
 Unicode line-break opportunities; older measurement used a character-wrap layout that packs
 more characters per row, under-counting rows at narrow widths (e.g. width 36 → 55 measured vs
@@ -184,7 +184,7 @@ Event Loop                          Panel
            ▼
 ┌─────────────────────┐
 │  TranscriptCache    │  ← turso SQLite
-│  push_batch()       │    project/.elph/transcript.db
+│  push_batch()       │    project/.elph/metadata.db
 │  load_range()       │
 └─────────────────────┘
 ```
@@ -259,8 +259,8 @@ A sliding-window wrapper for future use (not yet wired as the primary message st
 ### Database Location
 
 ```
-<project>/.elph/transcript.db    // per-project transcript cache
-<project>/.elph/store.db          // existing floppy memory store
+<project>/.elph/metadata.db    // per-project transcript cache
+<project>/.elph/store.db       // existing floppy memory store
 ```
 
 The path is resolved via [`Paths::transcript_db_path()`] in `platform/paths.rs`.
