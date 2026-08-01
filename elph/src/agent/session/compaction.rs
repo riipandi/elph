@@ -4,6 +4,7 @@ use anyhow::Result;
 use elph_agent::compaction::{estimate_context_tokens, should_compact};
 use elph_agent::{CompactResult, build_session_context};
 use elph_ai::Model;
+use elph_ai::utils::estimate::count_tokens_text;
 
 use super::super::events::AgentUiEvent;
 use super::CodingAgentSession;
@@ -29,6 +30,10 @@ impl CodingAgentSession {
     }
 
     /// Estimate tokens the LLM would see on the active branch (after compaction transform).
+    ///
+    /// Mirrors the header's context-usage label (`tui/chrome/stats.rs`): the session-message
+    /// estimate plus the compiled system prompt, so the auto-compaction decision is made on
+    /// exactly the number the user sees in the chrome.
     pub async fn estimate_context_usage(&self) -> Result<(u64, u64)> {
         let model = self.harness.get_model().await;
         let window = model.context_window as u64;
@@ -39,7 +44,11 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         let context = build_session_context(&entries);
         let estimate = estimate_context_tokens(&context.messages);
-        Ok((estimate.tokens, window))
+        let mut tokens = estimate.tokens;
+        if let Some(sp) = self.cached_system_prompt() {
+            tokens += count_tokens_text(&sp);
+        }
+        Ok((tokens, window))
     }
 
     fn notice(&self, message: impl Into<String>) {
@@ -92,27 +101,64 @@ impl CodingAgentSession {
         Ok(result)
     }
 
-    /// Auto-compact after a successful turn when usage exceeds threshold.
+    /// Auto-compact when usage exceeds threshold. Returns `true` when a compaction ran.
     ///
     /// Always considered; threshold comes from settings. There is no host kill-switch.
-    pub(crate) async fn maybe_auto_compact(&self) {
+    pub(crate) async fn maybe_auto_compact(&self) -> bool {
         let settings = self.harness.compaction_settings();
         let Ok((used, window)) = self.estimate_context_usage().await else {
-            return;
+            return false;
         };
         if window == 0 || !should_compact(used, window, settings) {
-            return;
+            return false;
         }
         let pct = used.saturating_mul(100).checked_div(window).unwrap_or(0);
         let will = format!(
             "Auto-compaction: context ~{used}/{window} tokens ({pct}%) exceeds threshold — summarizing older history…"
         );
-        if let Err(err) = self
+        match self
             .run_compact_with_notices(CompactSource::Automatic, None, Some(will))
             .await
         {
-            log::warn!("auto-compact failed: {err}");
-            self.notice(format!("Compaction failed: {err}"));
+            Ok(result) => !result.is_noop(),
+            Err(err) => {
+                log::warn!("auto-compact failed: {err}");
+                self.notice(format!("Compaction failed: {err}"));
+                false
+            }
+        }
+    }
+
+    /// Recover from a turn that ended in a provider error: compact when the failure is a
+    /// context-limit error (or usage is already over threshold) so a retry has room.
+    ///
+    /// Returns `true` when a compaction actually ran — the caller may then auto-resume
+    /// the interrupted prompt exactly once.
+    pub(crate) async fn recover_from_turn_error(&self, error_text: &str) -> bool {
+        let settings = self.harness.compaction_settings();
+        if !settings.enabled {
+            return false;
+        }
+        let overflow_likely = looks_like_context_overflow(error_text);
+        let over_threshold = self
+            .estimate_context_usage()
+            .await
+            .map(|(used, window)| window > 0 && should_compact(used, window, settings))
+            .unwrap_or(false);
+        if !overflow_likely && !over_threshold {
+            return false;
+        }
+        let will = "Context may exceed the model limit — compacting history before retrying…".to_string();
+        match self
+            .run_compact_with_notices(CompactSource::Automatic, None, Some(will))
+            .await
+        {
+            Ok(result) => !result.is_noop(),
+            Err(err) => {
+                log::warn!("auto-compact after turn error failed: {err}");
+                self.notice(format!("Compaction failed: {err}"));
+                false
+            }
         }
     }
 
@@ -183,6 +229,26 @@ impl CodingAgentSession {
     }
 }
 
+/// Substrings (lowercased) that identify provider context-limit errors.
+const CONTEXT_OVERFLOW_MARKERS: &[&str] = &[
+    "context length",
+    "context_length",
+    "context window",
+    "max context",
+    "maximum context",
+    "prompt is too long",
+    "prompt too long",
+    "input is too long",
+    "token limit",
+    "maximum input token",
+];
+
+/// Heuristic: does the provider error text point at a context-window overflow?
+pub fn looks_like_context_overflow(error_text: &str) -> bool {
+    let lower = error_text.to_ascii_lowercase();
+    CONTEXT_OVERFLOW_MARKERS.iter().any(|marker| lower.contains(marker))
+}
+
 /// Resolve `inherit` / empty / `provider/model_id` against the session model.
 pub fn resolve_settings_model_ref(setting: &str, inherit: &Model) -> Result<Model> {
     let trimmed = setting.trim();
@@ -207,5 +273,34 @@ mod tests {
         let b = resolve_settings_model_ref("  ", &m).expect("ok");
         assert_eq!(a.id, m.id);
         assert_eq!(b.id, m.id);
+    }
+
+    #[test]
+    fn context_overflow_markers_match_provider_errors() {
+        for text in [
+            "400: maximum context length is 200000 tokens",
+            "prompt is too long (202001 > 200000)",
+            "messages: prompt is too long",
+            "This model's maximum context length is 128000 tokens",
+            "400: the input is too long",
+            "Error: context_length_exceeded",
+            "the request exceeds the model's context window",
+            "400: maximum input token limit reached",
+        ] {
+            assert!(looks_like_context_overflow(text), "expected match: {text}");
+        }
+    }
+
+    #[test]
+    fn context_overflow_markers_ignore_unrelated_errors() {
+        for text in [
+            "401: invalid api key",
+            "429: rate limited — too many requests",
+            "upstream connection error",
+            "500: internal server error",
+            "Request aborted",
+        ] {
+            assert!(!looks_like_context_overflow(text), "expected no match: {text}");
+        }
     }
 }

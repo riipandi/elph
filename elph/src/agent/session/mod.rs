@@ -7,6 +7,7 @@ use crate::types::AgentMode;
 use anyhow::Result;
 use elph_agent::{AgentHarness, AgentHarnessErrorCode, FileSystem};
 use elph_agent::{GoalRuntime, McpToolRegistry, PlanConfirmationChoice, TursoSessionStorage};
+use elph_ai::{AssistantMessage, StopReason};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -314,13 +315,22 @@ impl CodingAgentSession {
     /// Start a normal harness turn (blocks until idle, emits `RunCompleted`).
     async fn run_prompt_turn(&self, text: String) -> Result<()> {
         let _guard = self.turn_gate.lock().await;
+        // Pre-prompt guard: when history already exceeds the configured threshold, compact
+        // before sending so the request never runs into the hard context limit.
+        self.maybe_auto_compact().await;
+
         let started = Instant::now();
-        let result = self.harness.prompt(text, None).await.map(|_| ());
+        let result = self.harness.prompt(text.clone(), None).await;
         match &result {
-            Ok(()) => {
+            Ok(message) => {
                 self.finish_ui_turn(started).await;
+                // A provider error mid-turn (e.g. context overflow) ends the turn with an
+                // error message. Recover by compacting and resuming the same prompt once.
+                if message.stop_reason == StopReason::Error {
+                    self.recover_errored_turn(&text, message).await;
+                }
                 self.maybe_generate_session_title();
-                // Check auto-compaction after a successful turn.
+                // Check auto-compaction after every turn (successful or errored).
                 self.maybe_auto_compact().await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
@@ -330,9 +340,40 @@ impl CodingAgentSession {
                 self.finish_ui_turn(started).await;
                 let text = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
                 let _ = self.ui_tx.send(AgentUiEvent::Status(text));
+                // Free room after a harness-level failure too, when usage is already over threshold.
+                self.maybe_auto_compact().await;
             }
         }
-        result.map_err(|err| anyhow::anyhow!("{err}"))
+        result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
+    }
+
+    /// After a turn that ended with a provider error, compact when the failure points at a
+    /// context limit, then auto-resume the same prompt once so the interrupted task continues.
+    ///
+    /// Bounded: at most one retry, and only when a compaction actually ran.
+    async fn recover_errored_turn(&self, text: &str, message: &AssistantMessage) {
+        let error_text = message.error_message.as_deref().unwrap_or_default();
+        if !self.recover_from_turn_error(error_text).await {
+            return;
+        }
+        let retry_started = Instant::now();
+        match self.harness.prompt(text.to_string(), None).await {
+            Ok(retry_message) => {
+                self.finish_ui_turn(retry_started).await;
+                if retry_message.stop_reason == StopReason::Error
+                    && let Some(retry_error) = retry_message.error_message
+                {
+                    let display = crate::tui::api_error_display::format_user_facing_api_error(&retry_error);
+                    let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+                }
+            }
+            Err(err) => {
+                self.finish_ui_turn(retry_started).await;
+                log::warn!("auto-resume after compaction failed: {err}");
+                let display = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
+                let _ = self.ui_tx.send(AgentUiEvent::Status(display));
+            }
+        }
     }
 
     // maybe_auto_compact: see compaction.rs
