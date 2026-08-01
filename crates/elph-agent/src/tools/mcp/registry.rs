@@ -90,9 +90,14 @@ fn should_discover_server(global_strategy: McpLoadStrategy, server_strategy: Mcp
     global_strategy == McpLoadStrategy::Eager || server_strategy == McpLoadStrategy::Eager
 }
 
+fn should_auto_discover_on_startup(global_strategy: McpLoadStrategy, server_strategy: McpLoadStrategy) -> bool {
+    should_discover_server(global_strategy, server_strategy)
+}
+
 /// Registry of MCP servers, pooled sessions, and discovered catalogs.
 pub struct McpToolRegistry {
     config: McpConfig,
+    load_strategy: McpLoadStrategy,
     tools: RwLock<Vec<McpToolDescriptor>>,
     resources: RwLock<Vec<McpResourceDescriptor>>,
     prompts: RwLock<Vec<McpPromptDescriptor>>,
@@ -115,6 +120,7 @@ impl McpToolRegistry {
     pub fn empty() -> Self {
         Self {
             config: McpConfig::default(),
+            load_strategy: McpLoadStrategy::Lazy,
             tools: RwLock::new(Vec::new()),
             resources: RwLock::new(Vec::new()),
             prompts: RwLock::new(Vec::new()),
@@ -159,9 +165,9 @@ impl McpToolRegistry {
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = config.server_count().saturating_sub(enabled.len());
-        let should_discover_any = enabled
-            .iter()
-            .any(|(_, server_config)| should_discover_server(options.load_strategy, server_config.load_strategy()));
+        let should_discover_any = enabled.iter().any(|(_, server_config)| {
+            should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy())
+        });
 
         let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) = if should_discover_any
         {
@@ -172,7 +178,8 @@ impl McpToolRegistry {
             let total = enabled.len();
             let results: Vec<ServerDiscovery> = stream::iter(enabled.into_iter().enumerate())
                 .map(|(index, (name, server_config))| {
-                    let should_discover = should_discover_server(options.load_strategy, server_config.load_strategy());
+                    let should_discover =
+                        should_auto_discover_on_startup(options.load_strategy, server_config.load_strategy());
                     let discovery_timeout = options.discovery_timeout;
                     let pool = Arc::clone(&pool_for_discovery);
                     let progress_tx = progress_tx.clone();
@@ -238,6 +245,7 @@ impl McpToolRegistry {
 
         Ok(Self {
             config: config.clone(),
+            load_strategy: options.load_strategy,
             tools: RwLock::new(tools),
             resources: RwLock::new(resources),
             prompts: RwLock::new(prompts),
@@ -265,13 +273,25 @@ impl McpToolRegistry {
         if *discovered {
             return Ok(());
         }
+
         let enabled: Vec<(String, McpServerConfig)> = self
             .config
             .enabled_servers()
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = self.config.server_count().saturating_sub(enabled.len());
-        let results = stream::iter(enabled.into_iter().enumerate())
+        let pending: Vec<(String, McpServerConfig)> = enabled.into_iter().collect();
+
+        if pending.is_empty() {
+            *self.report.write() = McpLoadReport {
+                servers_skipped: skipped,
+                ..Default::default()
+            };
+            *discovered = true;
+            return Ok(());
+        }
+
+        let results = stream::iter(pending.into_iter().enumerate())
             .map(|(index, (name, server_config))| {
                 let pool = Arc::clone(&self.pool);
                 async move {
@@ -819,7 +839,7 @@ impl McpToolRegistry {
 
     /// Call a tool on a configured server (pooled connection).
     pub async fn call_tool(&self, server: &str, tool_name: &str, args: Value) -> Result<AgentToolResult> {
-        self.discover_tools().await?;
+        self.refresh_server(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -836,7 +856,7 @@ impl McpToolRegistry {
     }
 
     pub async fn read_resource(&self, server: &str, uri: &str) -> Result<AgentToolResult> {
-        self.discover_tools().await?;
+        self.refresh_server(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -854,7 +874,7 @@ impl McpToolRegistry {
         prompt_name: &str,
         arguments: Option<Value>,
     ) -> Result<AgentToolResult> {
-        self.discover_tools().await?;
+        self.refresh_server(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -1393,6 +1413,13 @@ mod tests {
         assert!(should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Eager));
         assert!(should_discover_server(McpLoadStrategy::Eager, McpLoadStrategy::Lazy));
         assert!(!should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Lazy));
+    }
+
+    #[test]
+    fn lazy_servers_skip_startup_discovery_until_requested() {
+        assert!(!should_auto_discover_on_startup(McpLoadStrategy::Lazy, McpLoadStrategy::Lazy));
+        assert!(should_auto_discover_on_startup(McpLoadStrategy::Lazy, McpLoadStrategy::Eager));
+        assert!(should_auto_discover_on_startup(McpLoadStrategy::Eager, McpLoadStrategy::Lazy));
     }
 
     #[test]
