@@ -23,6 +23,7 @@ use crate::utils::path::AppPaths;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
 
 /// Default auth store path under `CONFIG_DIR/auth.json` (same as [`crate::platform::Paths`]).
@@ -227,25 +228,43 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
     ProviderConfigStatus::Unconfigured
 }
 
+/// Cached provider options to avoid recomputing on every render.
+static CACHED_PROVIDER_OPTIONS: OnceLock<Vec<ProviderOption>> = OnceLock::new();
+
+/// Simple LRU cache for filtered providers (last 5 filter queries).
+struct FilterCache {
+    entries: Vec<(String, Vec<ProviderOption>)>,
+}
+static FILTER_CACHE: Mutex<FilterCache> = Mutex::new(FilterCache { entries: Vec::new() });
+
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
-    let oauth_provider_ids = builtin_oauth_provider_ids();
-    let api_key_provider_ids: HashSet<String> = builtin_providers()
-        .into_iter()
-        .filter(|provider| provider.auth.api_key.is_some())
-        .map(|provider| provider.id)
-        .collect();
+    CACHED_PROVIDER_OPTIONS.get_or_init(|| {
+        let oauth_provider_ids = builtin_oauth_provider_ids();
+        let api_key_provider_ids: HashSet<String> = builtin_providers()
+            .into_iter()
+            .filter(|provider| provider.auth.api_key.is_some())
+            .map(|provider| provider.id)
+            .collect();
 
-    get_builtin_providers()
-        .into_iter()
-        .map(|id| ProviderOption {
-            name: format_provider_name(&id),
-            supports_oauth: oauth_provider_ids.contains(&id.as_str()),
-            supports_api_key: api_key_provider_ids.contains(&id),
-            config_status: get_provider_config_status(&id),
-            id,
-        })
-        .collect()
+        get_builtin_providers()
+            .into_iter()
+            .map(|id| {
+                let name = format_provider_name(&id);
+                let supports_oauth = oauth_provider_ids.contains(&id.as_str());
+                let supports_api_key = api_key_provider_ids.contains(&id);
+                // Lazily compute config status only when needed (deferred to render time)
+                ProviderOption {
+                    name,
+                    supports_oauth,
+                    supports_api_key,
+                    config_status: ProviderConfigStatus::Unconfigured,
+                    id,
+                }
+            })
+            .collect()
+    })
+    .clone()
 }
 
 pub fn providers_for_auth_method(providers: &[ProviderOption], auth_method: ProviderAuthMethod) -> Vec<ProviderOption> {
@@ -328,14 +347,33 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
         return providers.to_vec();
     }
 
-    let mut scored: Vec<(ProviderOption, i32)> = providers
+    // Check cache first
+    if let Ok(cache) = FILTER_CACHE.lock() {
+        if let Some(entry) = cache.entries.iter().find(|(cached_query, _)| cached_query == query) {
+            return entry.1.clone();
+        }
+    }
+
+    // Compute filtered providers
+    let mut scored: Vec<(&ProviderOption, i32)> = providers
         .iter()
-        .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov.clone(), score)))
+        .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov, score)))
         .collect();
 
     scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.name.cmp(&right.0.name)));
 
-    scored.into_iter().map(|(prov, _)| prov).collect()
+    let result: Vec<ProviderOption> = scored.into_iter().map(|(prov, _)| prov.clone()).collect();
+
+    // Update cache (keep last 5 entries)
+    if let Ok(mut cache) = FILTER_CACHE.lock() {
+        cache.entries.retain(|(cached_query, _)| cached_query != query);
+        cache.entries.push((query.to_string(), result.clone()));
+        if cache.entries.len() > 5 {
+            cache.entries.remove(0);
+        }
+    }
+
+    result
 }
 
 // ── Dialog lifecycle functions ───────────────────────────────────────
@@ -747,8 +785,20 @@ fn render_select_provider_step(
     let providers = get_provider_options_for_auth_method(auth_method);
     let filtered = filtered_providers(&providers, &filter.read());
 
+    // Lazily compute config status only for filtered providers (performance optimization)
+    let filtered_with_status: Vec<ProviderOption> = filtered
+        .iter()
+        .map(|p| {
+            let config_status = get_provider_config_status(&p.id);
+            ProviderOption {
+                config_status,
+                ..p.clone()
+            }
+        })
+        .collect();
+
     let total_count = providers.len();
-    let visible_count = filtered.len();
+    let visible_count = filtered_with_status.len();
     let count_label = if visible_count < total_count {
         format!("{} of {} providers", visible_count, total_count)
     } else {
@@ -764,7 +814,7 @@ fn render_select_provider_step(
 
     // Map providers to ModelRow + custom_hints for ModelOptionList (same rendering
     // as the model selector — no "xx more" indicators, fixed viewport with overflow).
-    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered_with_status
         .iter()
         .map(|p| crate::tui::model_selector::ModelRow {
             value: p.id.clone(),
@@ -776,7 +826,7 @@ fn render_select_provider_step(
             images: false,
         })
         .collect();
-    let config_hints: Vec<String> = filtered
+    let config_hints: Vec<String> = filtered_with_status
         .iter()
         .map(|p| match &p.config_status {
             ProviderConfigStatus::Unconfigured => "unconfigured".into(),
