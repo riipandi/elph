@@ -3260,8 +3260,18 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
         }
-        (m, KeyCode::Esc) if m.is_empty() && shell_focus.get() == ShellFocus::Transcript => {
-            shell_focus.set(ShellFocus::Prompt);
+        (m, KeyCode::Esc) if m.is_empty() => {
+            // Escape cancels Shift-based text selection mode — the temporary Ctrl+S
+            // toggle (e.g. after Shift+↑/↓ redirected focus to the transcript). The
+            // persistent Ctrl+S toggle keeps its own mechanism and is never
+            // cancelled by Escape.
+            if shift_held.get() {
+                shift_held.set(false);
+                shift_last_pressed.set(None);
+            }
+            if shell_focus.get() == ShellFocus::Transcript {
+                shell_focus.set(ShellFocus::Prompt);
+            }
         }
         // Tab: toggle focus between prompt textarea and transcript.
         (m, KeyCode::Tab) if m.is_empty() && !status_dialog_open && !palette_tab_reserved => match shell_focus.get() {
