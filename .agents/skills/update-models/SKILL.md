@@ -35,7 +35,7 @@ Pricing prefers live provider APIs when keys/endpoints allow, then models.dev. E
 
 1. **Generate chat catalogs**
 
-```bash
+```sh
 cargo run -p elph-ai --bin generate-models -- chat
 # or
 make generate-models ARGS="chat"
@@ -51,13 +51,13 @@ Useful flags:
 
 2. **Optional full pass** (chat + image fixture path)
 
-```bash
+```sh
 cargo run -p elph-ai --bin generate-models -- all --no-live-pricing
 ```
 
 3. **Verify**
 
-```bash
+```sh
 cargo test -p elph-ai --test providers --lib models
 cargo check -p elph -p elph-ai
 ```

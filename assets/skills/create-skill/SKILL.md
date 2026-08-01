@@ -51,7 +51,7 @@ Show the draft and let the user approve or edit it.
 
 ## Step 3: Create the directory
 
-```bash
+```sh
 mkdir -p <SKILL_DIR>
 ```
 

@@ -217,7 +217,7 @@
 
 Each file split must pass:
 
-```bash
+```sh
 cargo check -p elph
 cargo clippy -p elph --all-targets -- -D warnings
 make check   # cargo check --workspace

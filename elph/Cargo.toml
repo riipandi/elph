@@ -69,6 +69,11 @@ elph-agent = { workspace = true, features = ["full"] }
 libc.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
+notify-rust = { workspace = true, features = ["tokio"] }
 
 [lints.rust]
 linker_messages = "allow"
+
+[[example]]
+name = "test_notifications"
+path = "examples/test_notifications.rs"
