@@ -213,6 +213,27 @@ mod tests {
         assert!(prompt.contains("focused changes to existing files"));
         assert!(prompt.contains("Use `diagnostics` after edits"));
         assert!(prompt.contains("Run independent tool calls in parallel"));
+        // Lean-reading directive is present and memory policy is not duplicated in the mode section.
+        assert!(prompt.contains("Read selectively: target the ranges or search hits you need"));
+        assert!(!prompt.contains("minimize redundant reads"));
+    }
+
+    #[test]
+    fn tool_calling_rules_have_clean_spacing() {
+        let prompt = build_coding_system_prompt(
+            Path::new("/tmp/project"),
+            &AgentHarnessResources::default(),
+            &["read_file", "grep", "list_dir", "edit_file", "write_file"].map(String::from),
+            None,
+            AgentMode::Build,
+            "",
+        )
+        .expect("prompt");
+
+        assert!(prompt.contains("`list_dir` to inspect"));
+        assert!(prompt.contains("with `read_file`"));
+        assert!(prompt.contains("Use `edit_file` for focused changes"));
+        assert!(prompt.contains("Use `write_file` for new files"));
     }
 
     #[test]
@@ -266,7 +287,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.len() < 8_000, "static prompt is {} bytes", prompt.len());
+        assert!(prompt.len() < 7_500, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]
