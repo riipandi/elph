@@ -115,7 +115,7 @@ pub fn format_model_capability_label(reasoning: bool, images: bool) -> Option<St
 }
 
 /// Options for building the model picker catalog.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelCatalogOptions {
     /// When true, only providers with stored credentials appear in All / Provider tabs.
     pub show_configured_only: bool,
@@ -126,15 +126,6 @@ pub struct ModelCatalogOptions {
 impl ModelCatalogOptions {
     /// Full builtin catalog (no auth filter). Used by unit tests and diagnostics.
     pub fn unfiltered() -> Self {
-        Self {
-            show_configured_only: false,
-            include_provider_ids: Vec::new(),
-        }
-    }
-}
-
-impl Default for ModelCatalogOptions {
-    fn default() -> Self {
         Self {
             show_configured_only: false,
             include_provider_ids: Vec::new(),

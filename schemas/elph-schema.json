@@ -32,6 +32,9 @@
         "models": {
             "$ref": "#/definitions/models"
         },
+        "promptEncoding": {
+            "$ref": "#/definitions/promptEncoding"
+        },
         "memory": {
             "$ref": "#/definitions/memory"
         },
@@ -258,6 +261,62 @@
                         "description": "provider/model_id entry (e.g. opencode/big-pickle)."
                     },
                     "description": "Models for Ctrl+P cycling and the Scoped tab. Edit via /scoped-models."
+                }
+            }
+        },
+        "promptEncoding": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Optional TOON prompt encoding for model-visible tool results. Absent/null falls back to ELPH_PROMPT_ENCODING* env vars.",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "default": "off",
+                    "enum": ["off", "toon", "auto"],
+                    "description": "When to apply TOON encoding: off (never), toon (all eligible structured payloads), auto (uniform tabular arrays only). Unknown values fall back to off."
+                },
+                "minBytes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 2048,
+                    "description": "Minimum JSON byte length before TOON encoding applies."
+                },
+                "minSavingsRatio": {
+                    "type": "number",
+                    "default": 1.0,
+                    "description": "Encode only when the TOON form is at most this ratio of the JSON size (1.0 = strictly smaller)."
+                },
+                "delimiter": {
+                    "type": "string",
+                    "default": "comma",
+                    "enum": ["comma", "tab", "pipe"],
+                    "description": "TOON delimiter for general payloads."
+                },
+                "tabularDelimiter": {
+                    "type": "string",
+                    "enum": ["comma", "tab", "pipe"],
+                    "description": "TOON delimiter for tabular arrays (default: tab)."
+                },
+                "targets": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Which tool-result surfaces TOON may rewrite (both default to true).",
+                    "properties": {
+                        "toolResultText": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Rewrite eligible tool-result text blocks."
+                        },
+                        "structuredDetails": {
+                            "type": "boolean",
+                            "default": true,
+                            "description": "Rewrite MCP structured_content details payloads."
+                        }
+                    }
+                },
+                "preamble": {
+                    "type": "string",
+                    "description": "Preamble above TOON fenced blocks. Defaults to the built-in TOON hint."
                 }
             }
         },

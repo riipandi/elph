@@ -64,7 +64,7 @@ The active tool list is rendered dynamically on every turn. Tool guidance names 
 3. Interactive tools: block until the user answers.
 4. Risky tools: approval dialog (unless brave / allow-for-session).
 5. Execute; stream shell output to the TUI when applicable.
-6. Optionally rewrite structured tool output as [TOON](https://github.com/toon-format/toon) before the model sees it (`ELPH_PROMPT_ENCODING` or harness config; default `off`).
+6. Optionally rewrite structured tool output as [TOON](https://github.com/toon-format/toon) before the model sees it (`settings.json` → `promptEncoding`, `ELPH_PROMPT_ENCODING`, or built-in default `off`).
 7. Append assistant + tool result messages to history.
 8. Repeat until no tool calls remain.
 
@@ -77,6 +77,12 @@ When enabled, the agent runtime may compress large JSON tool results (and MCP `s
 | `off`  | Default — tool results pass through unchanged |
 | `toon` | Encode eligible JSON ≥ size threshold         |
 | `auto` | Encode only uniform tabular JSON arrays       |
+
+**Configuration** — precedence (highest first):
+
+1. `settings.json` → `promptEncoding` group (host maps it into harness options; subagents inherit it). `null`/absent = skip to env.
+2. `ELPH_PROMPT_ENCODING`, `ELPH_PROMPT_ENCODING_MIN_BYTES`, `ELPH_PROMPT_ENCODING_DELIMITER`, `ELPH_PROMPT_ENCODING_TABULAR_DELIMITER` env vars.
+3. Built-in default (`off`, `minBytes` 2048).
 
 Implementation and examples: [`elph-agent` prompt-encoding.md](../crates/elph-agent/docs/prompt-encoding.md).
 

@@ -185,7 +185,13 @@ where
             before_tool_call,
             after_tool_call,
             stream_fn: Some(self.create_stream_fn(turn_state)),
-            prompt_encoding: PromptEncodingConfig::from_env(),
+            prompt_encoding: self
+                .shared
+                .prompt_encoding
+                .lock()
+                .unwrap()
+                .clone()
+                .unwrap_or_else(PromptEncodingConfig::from_env),
             tool_context,
         }
     }

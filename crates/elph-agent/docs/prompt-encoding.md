@@ -76,6 +76,24 @@ export ELPH_PROMPT_ENCODING_TABULAR_DELIMITER=tab     # comma | tab | pipe
 
 When `AgentOptions.prompt_encoding` is `None`, `Agent::new` resolves via `PromptEncodingConfig::from_env()`.
 
+### Host settings (settings.json)
+
+`PromptEncodingConfig` is `Serialize`/`Deserialize` with camelCase keys and per-field defaults, so hosts can parse it straight from a `settings.json` group (e.g. `promptEncoding`). The Elph host maps its `promptEncoding` group into the harness via [`AgentHarness::set_prompt_encoding`](../../../crates/elph-agent/src/agent/harness/setters.rs) — when the group is absent/`null`, the harness keeps the `ELPH_PROMPT_ENCODING*` env fallback. Subagents inherit the parent's config through `SubagentBootstrap.prompt_encoding`.
+
+```json
+{
+    "mode": "auto",
+    "minBytes": 2048,
+    "minSavingsRatio": 1.0,
+    "delimiter": "comma",
+    "tabularDelimiter": "tab",
+    "targets": { "toolResultText": true, "structuredDetails": true },
+    "preamble": "Data is in TOON format (2-space indent, arrays show length and fields)."
+}
+```
+
+Precedence: host-provided config (`set_prompt_encoding`) > `ELPH_PROMPT_ENCODING*` env vars > built-in defaults.
+
 ## Output format
 
 Encoded payloads are wrapped for the model:

@@ -123,6 +123,7 @@ use crate::agent::harness::hooks::HookRegistry as HookRegistryT;
 use crate::agent::harness::types::clone_stream_options;
 use crate::goals::GoalRuntime;
 use crate::messages::default_convert_to_llm_fn;
+use crate::prompt::encoding::PromptEncodingConfig;
 use crate::runtime::local_env::LocalExecutionEnv;
 
 use crate::agent::subagent::generate_agent_name;
@@ -199,6 +200,8 @@ where
     pending_prompt_meta: Mutex<Option<(String, String)>>,
     agent_control: Mutex<Arc<AgentControl>>,
     compaction_settings: CompactionSettings,
+    /// TOON prompt-encoding config; `None` falls back to `ELPH_PROMPT_ENCODING*` env vars.
+    prompt_encoding: std::sync::Mutex<Option<PromptEncodingConfig>>,
     goal_runtime: Option<Arc<GoalRuntime>>,
     subagent_bootstrap: Option<crate::agent::subagent::SubagentBootstrap>,
 }
@@ -332,6 +335,7 @@ where
                 pending_prompt_meta: Mutex::new(None),
                 agent_control: Mutex::new(agent_control),
                 compaction_settings: options.compaction_settings,
+                prompt_encoding: std::sync::Mutex::new(None),
                 goal_runtime: options.goal_runtime,
                 subagent_bootstrap: options.subagent_bootstrap,
                 steer_queue: Mutex::new(Vec::new()),

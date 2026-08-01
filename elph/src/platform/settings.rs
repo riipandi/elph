@@ -28,6 +28,7 @@
 //!     "showConfiguredOnly": false,
 //!     "scopedModels": []
 //!   },
+//!   "promptEncoding": null,
 //!   "memory": { ... },
 //!   "notifications": { ... },
 //!   "compaction": { ... }
@@ -96,6 +97,10 @@ pub struct Settings {
     /// Model catalog preferences and **new-session** defaults (not live session state).
     #[serde(default)]
     pub models: ModelsSettings,
+    /// Optional TOON prompt-encoding override for model-visible tool results.
+    /// Absent / `null` falls back to `ELPH_PROMPT_ENCODING*` environment variables.
+    #[serde(default)]
+    pub prompt_encoding: Option<elph_agent::PromptEncodingConfig>,
     /// Local embedding / floppy memory.
     #[serde(default)]
     pub memory: MemorySettings,
@@ -429,6 +434,7 @@ impl Settings {
             default_timeout: default_provider_timeout(),
             ui: UiSettings::default(),
             models: ModelsSettings::default(),
+            prompt_encoding: None,
             memory: MemorySettings::default(),
             notifications: NotificationSettings::default(),
             compaction: CompactionConfig::default(),
@@ -1005,6 +1011,45 @@ mod tests {
 
         let project_raw = std::fs::read_to_string(paths.project_settings_path()).expect("read project");
         assert!(project_raw.contains("false"));
+    }
+
+    #[test]
+    fn prompt_encoding_group_parses_from_settings_file() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = test_paths(&tmp);
+        Settings::ensure(&paths).expect("ensure");
+
+        let home = serde_json::json!({
+            "promptEncoding": {
+                "mode": "auto",
+                "minBytes": 4096,
+                "delimiter": "pipe",
+                "targets": { "structuredDetails": false }
+            }
+        });
+        std::fs::write(paths.settings_path(), serde_json::to_string_pretty(&home).expect("ser")).expect("write home");
+
+        let loaded = Settings::load(&paths).expect("load");
+        let config = loaded.prompt_encoding.expect("promptEncoding present");
+        assert_eq!(config.mode, elph_agent::PromptEncodingMode::Auto);
+        assert_eq!(config.min_bytes, 4096);
+        assert_eq!(config.delimiter, elph_agent::PromptEncodingDelimiter::Pipe);
+        // Field defaults fill the rest.
+        assert_eq!(config.min_savings_ratio, 1.0);
+        assert!(config.targets.tool_result_text);
+        assert!(!config.targets.structured_details);
+    }
+
+    #[test]
+    fn prompt_encoding_absent_or_null_stays_none() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = test_paths(&tmp);
+        Settings::ensure(&paths).expect("ensure");
+        assert!(Settings::load(&paths).expect("load").prompt_encoding.is_none());
+
+        let home = serde_json::json!({ "promptEncoding": null });
+        std::fs::write(paths.settings_path(), serde_json::to_string_pretty(&home).expect("ser")).expect("write home");
+        assert!(Settings::load(&paths).expect("load").prompt_encoding.is_none());
     }
 
     #[test]

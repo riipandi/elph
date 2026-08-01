@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::agent::harness::{AgentHarnessResources, AgentHarnessStreamOptions};
 use crate::agent::subagent::graph::AgentGraphStore;
+use crate::prompt::encoding::PromptEncodingConfig;
 use crate::types::AgentThinkingLevel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,5 +54,7 @@ pub struct SubagentBootstrap {
     pub resources: AgentHarnessResources,
     pub stream_options: AgentHarnessStreamOptions,
     pub thinking_level: AgentThinkingLevel,
+    /// TOON prompt-encoding config inherited from the parent; `None` falls back to env.
+    pub prompt_encoding: Option<PromptEncodingConfig>,
     pub agent_graph: Option<Arc<AgentGraphStore>>,
 }

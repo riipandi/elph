@@ -193,6 +193,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "showConfiguredOnly": false,
         "scopedModels": []
     },
+    "promptEncoding": null,
     "maxRetries": 2,
     "defaultTimeout": "120s",
     "memory": {
@@ -213,6 +214,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
 | **`ui`**                    | `theme`, `themes`, `showThinking`, …, `filePicker.*`                                                                                        | Appearance + transcript / chrome                                                                                                                    |
 | **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking                                                                        |
+| **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                 | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                           |
 | **`memory`**                | `embedModel`, `embedQuantized`, …                                                                                                           | Floppy / local embeddings                                                                                                                           |
 | **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
 
@@ -230,6 +232,37 @@ Naming is defensive by design:
 - Titles are sanitized: quotes, a leading `Title:`/`Session:` label, and trailing punctuation are stripped; generic placeholders (`"Chat"`, `"Conversation"`, …) are rejected.
 - If the naming model call fails or returns a generic title, the first user message (truncated to 60 characters) is used as a fallback, so sessions always end up named.
 - A failed attempt is retried on later turns (up to 3 tries). An invalid/unknown `sessionTitleModel` ref falls back to the session model instead of skipping naming.
+
+### Prompt encoding (`promptEncoding`)
+
+Optional [TOON](https://github.com/toon-format/toon) encoding compresses large structured JSON in **model-visible** tool results (and MCP `structured_content` details) before the model sees them, reducing input tokens on tabular payloads. See [agent-runtime.md](./agent-runtime.md#toon-prompt-encoding-optional) and [`crates/elph-agent/docs/prompt-encoding.md`](../crates/elph-agent/docs/prompt-encoding.md).
+
+The group is **optional**: when absent or `null`, the agent falls back to the `ELPH_PROMPT_ENCODING*` environment variables (and ultimately `off`). Set the group to override env vars explicitly.
+
+```json
+"promptEncoding": {
+    "mode": "auto",
+    "minBytes": 2048,
+    "minSavingsRatio": 1.0,
+    "delimiter": "comma",
+    "tabularDelimiter": "tab",
+    "targets": {
+        "toolResultText": true,
+        "structuredDetails": true
+    },
+    "preamble": "Data is in TOON format (2-space indent, arrays show length and fields)."
+}
+```
+
+| Field              | Type     | Default                              | Meaning                                                                              |
+| ------------------ | -------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `mode`             | `string` | `"off"`                              | `off` (never), `toon` (all eligible payloads), `auto` (uniform tabular arrays only). Unknown values fall back to `off`. |
+| `minBytes`         | `int`    | `2048`                               | Minimum JSON byte length before encoding applies.                                    |
+| `minSavingsRatio`  | `number` | `1.0`                                | Encode only when TOON is at most this ratio of the JSON size.                        |
+| `delimiter`        | `string` | `"comma"`                            | TOON delimiter for general payloads (`comma` / `tab` / `pipe`).                      |
+| `tabularDelimiter` | `string` | `"tab"`                              | TOON delimiter for tabular arrays.                                                   |
+| `targets`          | `object` | both `true`                          | Which surfaces may be rewritten (`toolResultText`, `structuredDetails`).             |
+| `preamble`         | `string` | built-in TOON hint                   | Preamble above TOON fenced blocks.                                                   |
 
 ### Theme (`ui.theme` / `ui.themes`)
 

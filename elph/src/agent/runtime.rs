@@ -124,6 +124,7 @@ pub async fn create_coding_session_with_events(
         resources: resources.clone(),
         stream_options: stream_options.clone(),
         thinking_level: thinking,
+        prompt_encoding: options.settings.prompt_encoding.clone(),
         agent_graph: Some(agent_graph),
     };
 
@@ -202,6 +203,8 @@ pub async fn create_coding_session_with_events(
     )
     .await
     .map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Host settings → harness prompt encoding (None keeps the env fallback).
+    harness.set_prompt_encoding(options.settings.prompt_encoding.clone());
 
     // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).
     // Runs best-effort: errors are logged and don't prevent session startup.

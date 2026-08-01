@@ -102,6 +102,7 @@ pub async fn spawn_subagent_harness(
         agent_control: Some(agent_control),
     })
     .map_err(|e: AgentHarnessError| e.to_string())?;
+    harness.set_prompt_encoding(bootstrap.prompt_encoding.clone());
 
     let info = SubagentInfo {
         id: agent_id.to_string(),
