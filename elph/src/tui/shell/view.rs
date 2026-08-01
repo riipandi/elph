@@ -1254,12 +1254,7 @@ pub(crate) fn build_shell_view(
                                 &mut ephemeral_banner,
                                 &mut ephemeral_banner_generation,
                                 &expire_tx,
-                                EphemeralBanner {
-                                    key: "transient:slash_busy",
-                                    text: "Agent is still responding — wait for the current turn to finish.".to_string(),
-                                    kind: EphemeralBannerKind::Warning,
-                                    expires_at: None,
-                                },
+                                slash_busy_banner(),
                             );
                             suppress_enter_newline.set(true);
                             return;
