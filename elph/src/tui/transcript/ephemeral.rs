@@ -237,7 +237,7 @@ pub fn model_set_notice_text(label: &str) -> String {
 
 /// Scoped cycle / catalog notice: `Model set to MODEL_ID (PROVIDER)`.
 ///
-/// `value` is `provider/model_id` (model_id may itself contain `/`, e.g. `kilo/kilo-auto/free`).
+/// `value` is `provider/model_id`; split on the first `/` so model ids that contain `/` still resolve.
 pub fn model_set_notice_from_value(value: &str) -> String {
     match value.split_once('/') {
         Some((provider, model_id)) if !provider.is_empty() && !model_id.is_empty() => {
@@ -451,12 +451,12 @@ mod tests {
     #[test]
     fn model_set_notice_from_value_uses_model_id_and_provider() {
         assert_eq!(
-            model_set_notice_from_value("opencode/big-pickle"),
-            "Model set to big-pickle (opencode)"
+            model_set_notice_from_value("openai/gpt-5.6-luna"),
+            "Model set to gpt-5.6-luna (openai)"
         );
         assert_eq!(
-            model_set_notice_from_value("kilo/kilo-auto/free"),
-            "Model set to kilo-auto/free (kilo)"
+            model_set_notice_from_value("provider/model/with-slash"),
+            "Model set to model/with-slash (provider)"
         );
         assert_eq!(model_set_notice_from_value("bare-id"), "Model set to bare-id");
     }

@@ -247,10 +247,10 @@ mod tests {
             model_id: "claude-sonnet-4".to_string(),
         };
         assert_eq!(
-            effective_model_ids(Some(&context_model), "opencode", "big-pickle"),
+            effective_model_ids(Some(&context_model), "openai", "gpt-5.6-luna"),
             ("anthropic", "claude-sonnet-4")
         );
-        assert_eq!(effective_model_ids(None, "opencode", "big-pickle"), ("opencode", "big-pickle"));
+        assert_eq!(effective_model_ids(None, "openai", "gpt-5.6-luna"), ("openai", "gpt-5.6-luna"));
     }
 
     #[test]

@@ -722,11 +722,11 @@ mod tests {
             .position(|tab| tab.id == "anthropic")
             .expect("anthropic provider");
         pending.set_provider_index(anthropic);
-        pending.filter = "big-pickle".to_string();
+        pending.filter = "gpt-5.6-luna".to_string();
         let filtered = pending.filtered_models();
         assert!(
-            filtered.iter().any(|row| row.model_id == "big-pickle"),
-            "expected global fuzzy search to find big-pickle from any provider tab"
+            filtered.iter().any(|row| row.model_id == "gpt-5.6-luna"),
+            "expected global fuzzy search to find gpt-5.6-luna from any provider tab"
         );
     }
 

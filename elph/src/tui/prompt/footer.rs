@@ -397,10 +397,10 @@ mod tests {
         assert_eq!(parts.model_thinking, "opencode/deepseek-v4-flash (xhigh)");
         assert_eq!(parts.img, " | IMG");
 
-        let no_img = split_footer_status_left(AgentMode::Build, "Build | opencode/big-pickle (high)");
+        let no_img = split_footer_status_left(AgentMode::Build, "Build | openai/gpt-5.6-luna (high)");
         assert_eq!(no_img.mode, "Build");
         assert_eq!(no_img.sep, " | ");
-        assert_eq!(no_img.model_thinking, "opencode/big-pickle (high)");
+        assert_eq!(no_img.model_thinking, "openai/gpt-5.6-luna (high)");
         assert!(no_img.img.is_empty());
 
         let mode_only = split_footer_status_left(AgentMode::Ask, "Ask");
@@ -477,7 +477,7 @@ mod tests {
             Footer(
                 screen_width: 100u16,
                 agent_mode: AgentMode::Build,
-                model_label: "opencode/big-pickle".to_string(),
+                model_label: "openai/gpt-5.6-luna".to_string(),
                 thinking_level: ThinkingLevel::High,
                 supports_images: false,
                 turn: 3u32,
@@ -505,7 +505,7 @@ mod tests {
             Footer(
                 screen_width: 100u16,
                 agent_mode: AgentMode::Build,
-                model_label: "opencode/big-pickle".to_string(),
+                model_label: "openai/gpt-5.6-luna".to_string(),
                 thinking_level: ThinkingLevel::High,
                 supports_images: false,
                 turn: 0u32,

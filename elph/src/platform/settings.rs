@@ -223,7 +223,7 @@ pub struct FilePickerSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelsSettings {
-    /// Optional `provider/model_id` seed for **new** sessions (e.g. `opencode/big-pickle`).
+    /// Optional `provider/model_id` seed for **new** sessions (e.g. `openai/gpt-5.6-luna`).
     /// Empty / omitted → no model until the user picks one (or env / CLI override).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_model: Option<String>,
@@ -859,7 +859,7 @@ mod tests {
             "footerTokenDisplay": "count",
             "coloredStatusFooter": false,
             "autoExpandThinking": true,
-            "scopedModelItems": ["opencode/big-pickle"],
+            "scopedModelItems": ["openai/gpt-5.6-luna"],
             "filePicker": { "showHiddenFiles": true },
             "session": { "agentMode": "plan", "thinkingLevel": "low", "preferredChatLanguage": "indonesian" },
             "provider": { "maxRetries": 4, "defaultTimeout": "90s" }
@@ -876,7 +876,7 @@ mod tests {
         assert!(!decoded.ui.colored_status_footer);
         assert!(decoded.ui.auto_expand_thinking);
         assert!(decoded.ui.file_picker.show_hidden_files);
-        assert_eq!(decoded.models.scoped_models, vec!["opencode/big-pickle".to_string()]);
+        assert_eq!(decoded.models.scoped_models, vec!["openai/gpt-5.6-luna".to_string()]);
         assert_eq!(decoded.models.default_thinking_level, "low");
         assert_eq!(decoded.preferred_chat_language, "indonesian");
         assert_eq!(decoded.max_retries, 4);
@@ -940,7 +940,7 @@ mod tests {
         let mut home = Settings::load_home(&paths).expect("load home");
         home.ui.show_thinking = true;
         home.ui.sticky_scroll = true;
-        home.models.default_model = Some("opencode/big-pickle".into());
+        home.models.default_model = Some("openai/gpt-5.6-luna".into());
         home.models.default_thinking_level = "high".into();
         Settings::save(&paths, &home).expect("save home");
 
@@ -959,7 +959,7 @@ mod tests {
         assert!(!merged.ui.show_thinking);
         assert!(merged.ui.sticky_scroll);
         assert_eq!(merged.models.default_thinking_level, "low");
-        assert_eq!(merged.models.default_model.as_deref(), Some("opencode/big-pickle"));
+        assert_eq!(merged.models.default_model.as_deref(), Some("openai/gpt-5.6-luna"));
     }
 
     #[test]
@@ -969,7 +969,7 @@ mod tests {
         Settings::ensure(&paths).expect("ensure");
 
         let mut home = Settings::load_home(&paths).expect("home");
-        home.models.default_model = Some("opencode/big-pickle".into());
+        home.models.default_model = Some("openai/gpt-5.6-luna".into());
         Settings::save(&paths, &home).expect("save home");
 
         let project = serde_json::json!({
@@ -1103,14 +1103,14 @@ mod tests {
         std::fs::create_dir_all(paths.config_dir()).expect("config");
         std::fs::write(
             paths.settings_path(),
-            r#"{"showThinking":false,"scopedModelItems":["opencode/big-pickle"],"session":{"agentMode":"ask","providerId":"opencode","modelId":"big-pickle","thinkingLevel":"medium","titleModel":"inherit","preferredChatLanguage":"english"}}"#,
+            r#"{"showThinking":false,"scopedModelItems":["openai/gpt-5.6-luna"],"session":{"agentMode":"ask","providerId":"openai","modelId":"gpt-5.6-luna","thinkingLevel":"medium","titleModel":"inherit","preferredChatLanguage":"english"}}"#,
         )
         .expect("seed");
 
         let loaded = Settings::load_home(&paths).expect("load");
         assert!(!loaded.ui.show_thinking);
-        assert_eq!(loaded.models.scoped_models, vec!["opencode/big-pickle".to_string()]);
-        assert_eq!(loaded.models.default_model.as_deref(), Some("opencode/big-pickle"));
+        assert_eq!(loaded.models.scoped_models, vec!["openai/gpt-5.6-luna".to_string()]);
+        assert_eq!(loaded.models.default_model.as_deref(), Some("openai/gpt-5.6-luna"));
         assert_eq!(loaded.models.default_thinking_level, "medium");
         assert_eq!(loaded.preferred_chat_language, "english");
 
@@ -1124,8 +1124,8 @@ mod tests {
         assert!(value.get("showThinking").is_none());
         assert!(value.get("session").is_none());
         assert_eq!(value["ui"]["showThinking"], false);
-        assert_eq!(value["models"]["scopedModels"][0], "opencode/big-pickle");
-        assert_eq!(value["models"]["defaultModel"], "opencode/big-pickle");
+        assert_eq!(value["models"]["scopedModels"][0], "openai/gpt-5.6-luna");
+        assert_eq!(value["models"]["defaultModel"], "openai/gpt-5.6-luna");
     }
 
     #[test]

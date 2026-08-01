@@ -1233,7 +1233,7 @@ fn MainShell(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 agent_mode: agent_mode.get(),
                 thinking_level: thinking_level.get(),
                 project_label: "~ elph [refactor-tui]".to_string(),
-                model_label: "opencode/big-pickle".to_string(),
+                model_label: "openai/gpt-5.6-luna".to_string(),
                 supports_images: false,
                 draft: Some(draft),
                 live_draft: Some(live_draft),

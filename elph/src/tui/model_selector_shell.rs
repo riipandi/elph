@@ -381,14 +381,14 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("repo"));
         Settings::ensure(&paths).expect("ensure");
         let mut scoped = Vec::new();
-        let msg = apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        let msg = apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Add);
         assert!(msg.unwrap().contains("Added"));
-        assert_eq!(scoped, vec!["opencode/big-pickle".to_string()]);
+        assert_eq!(scoped, vec!["openai/gpt-5.6-luna".to_string()]);
         let again =
-            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+            apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Add);
         assert!(again.unwrap().contains("Already"));
         let removed =
-            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Remove);
+            apply_model_scoped_action(&paths, &mut scoped, "openai/gpt-5.6-luna", ModelSelectorScopedAction::Remove);
         assert!(removed.unwrap().contains("Removed"));
         assert!(scoped.is_empty());
     }

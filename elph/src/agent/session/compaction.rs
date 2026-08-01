@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn inherit_and_empty_use_session_model() {
-        let m = elph_ai::get_builtin_model("opencode", "big-pickle").expect("model");
+        let m = elph_ai::get_builtin_model("openai", "gpt-5.6-luna").expect("model");
         let a = resolve_settings_model_ref("inherit", &m).expect("ok");
         let b = resolve_settings_model_ref("  ", &m).expect("ok");
         assert_eq!(a.id, m.id);

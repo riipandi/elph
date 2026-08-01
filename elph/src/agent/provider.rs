@@ -2,8 +2,8 @@
 
 use anyhow::Result;
 
-pub const DEFAULT_PROVIDER: &str = "opencode";
-pub const DEFAULT_MODEL_ID: &str = "big-pickle";
+pub const DEFAULT_PROVIDER: &str = "openai";
+pub const DEFAULT_MODEL_ID: &str = "gpt-5.6-luna";
 
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
@@ -151,7 +151,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "openai" => Some(ProviderConfig {
             label: "OpenAI",
             api_key_env_key: "OPENAI_API_KEY",
-            default_model: "gpt-4.1",
+            default_model: "gpt-5.6-luna",
         }),
         "openai-codex" => Some(ProviderConfig {
             label: "OpenAI Codex",

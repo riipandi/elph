@@ -225,8 +225,8 @@ mod tests {
             "Plan | opencode/deepseek-v4-flash (xhigh) | IMG"
         );
         assert_eq!(
-            footer_status_left_label(AgentMode::Build, "opencode/big-pickle", ThinkingLevel::High, false),
-            "Build | opencode/big-pickle (high)"
+            footer_status_left_label(AgentMode::Build, "openai/gpt-5.6-luna", ThinkingLevel::High, false),
+            "Build | openai/gpt-5.6-luna (high)"
         );
     }
 

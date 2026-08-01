@@ -453,7 +453,10 @@ mod tests {
 
     #[test]
     fn cycle_reads_settings_shaped_ids() {
-        let enabled = vec!["kilo/kilo-auto/free".to_string(), "opencode/big-pickle".to_string()];
+        let enabled = vec![
+            "anthropic/claude-haiku-4-5".to_string(),
+            "openai/gpt-5.6-luna".to_string(),
+        ];
         let all = catalog_model_values();
         let sanitized = sanitize_enabled_ids(&enabled, &all);
         assert_eq!(
@@ -464,20 +467,17 @@ mod tests {
                 .filter(|id| id.contains("kilo-auto") || id.contains("big-pickle"))
                 .collect::<Vec<_>>()
         );
-        // Forward from big-pickle → kilo (wrap).
-        let next = cycle_scoped_model(&enabled, Some(("opencode", "big-pickle")), false).expect("next");
-        assert_eq!(next, "kilo/kilo-auto/free");
-        // Reverse from big-pickle → kilo (wrap).
-        let prev = cycle_scoped_model(&enabled, Some(("opencode", "big-pickle")), true).expect("prev");
-        assert_eq!(prev, "kilo/kilo-auto/free");
-        // Forward from kilo → big-pickle (so rolling alternates when selection tracks).
-        let next2 = cycle_scoped_model(&enabled, Some(("kilo", "kilo-auto/free")), false).expect("next2");
-        assert_eq!(next2, "opencode/big-pickle");
+        // Forward from claude-haiku-4-5 → openai/gpt-5.6-luna.
+        let next = cycle_scoped_model(&enabled, Some(("anthropic", "claude-haiku-4-5")), false).expect("next");
+        assert_eq!(next, "openai/gpt-5.6-luna");
+        // Reverse from claude-haiku-4-5 → openai/gpt-5.6-luna (wrap).
+        let prev = cycle_scoped_model(&enabled, Some(("anthropic", "claude-haiku-4-5")), true).expect("prev");
+        assert_eq!(prev, "openai/gpt-5.6-luna");
         // Two consecutive cycles with updated "current" alternate (Ctrl+P rolling).
-        let a = cycle_scoped_model(&enabled, Some(("opencode", "big-pickle")), false).expect("a");
+        let a = cycle_scoped_model(&enabled, Some(("anthropic", "claude-haiku-4-5")), false).expect("a");
         let (pa, ma) = parse_model_value(&a).expect("parse a");
         let b = cycle_scoped_model(&enabled, Some((&pa, &ma)), false).expect("b");
-        assert_eq!(b, "opencode/big-pickle");
+        assert_eq!(b, "anthropic/claude-haiku-4-5");
         assert_ne!(a, b);
     }
 }
