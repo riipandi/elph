@@ -68,7 +68,7 @@ libc.workspace = true
 elph-agent = { workspace = true, features = ["full"] }
 libc.workspace = true
 tempfile.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
 
 [lints.rust]
 linker_messages = "allow"
