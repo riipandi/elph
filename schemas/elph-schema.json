@@ -222,9 +222,8 @@
             "description": "Model catalog preferences and seeds for new sessions (not live session state).",
             "properties": {
                 "defaultModel": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Optional provider/model_id seed for new sessions only (e.g. opencode/big-pickle). Live model is per-session."
+                    "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }],
+                    "description": "Optional provider/model_id seed for new sessions only (e.g. opencode/big-pickle). null/absent → no model until picked. Live model is per-session."
                 },
                 "sessionTitleModel": {
                     "type": "string",
@@ -265,60 +264,65 @@
             }
         },
         "promptEncoding": {
-            "type": "object",
-            "additionalProperties": false,
-            "description": "Optional TOON prompt encoding for model-visible tool results. Absent/null falls back to ELPH_PROMPT_ENCODING* env vars.",
-            "properties": {
-                "mode": {
-                    "type": "string",
-                    "default": "off",
-                    "enum": ["off", "toon", "auto"],
-                    "description": "When to apply TOON encoding: off (never), toon (all eligible structured payloads), auto (uniform tabular arrays only). Unknown values fall back to off."
-                },
-                "minBytes": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "default": 2048,
-                    "description": "Minimum JSON byte length before TOON encoding applies."
-                },
-                "minSavingsRatio": {
-                    "type": "number",
-                    "default": 1.0,
-                    "description": "Encode only when the TOON form is at most this ratio of the JSON size (1.0 = strictly smaller)."
-                },
-                "delimiter": {
-                    "type": "string",
-                    "default": "comma",
-                    "enum": ["comma", "tab", "pipe"],
-                    "description": "TOON delimiter for general payloads."
-                },
-                "tabularDelimiter": {
-                    "type": "string",
-                    "enum": ["comma", "tab", "pipe"],
-                    "description": "TOON delimiter for tabular arrays (default: tab)."
-                },
-                "targets": {
+            "oneOf": [
+                {
                     "type": "object",
                     "additionalProperties": false,
-                    "description": "Which tool-result surfaces TOON may rewrite (both default to true).",
+                    "description": "Optional TOON prompt encoding for model-visible tool results. Absent/null falls back to ELPH_PROMPT_ENCODING* env vars.",
                     "properties": {
-                        "toolResultText": {
-                            "type": "boolean",
-                            "default": true,
-                            "description": "Rewrite eligible tool-result text blocks."
+                        "mode": {
+                            "type": "string",
+                            "default": "off",
+                            "enum": ["off", "toon", "auto"],
+                            "description": "When to apply TOON encoding: off (never), toon (all eligible structured payloads), auto (uniform tabular arrays only). Unknown values fall back to off."
                         },
-                        "structuredDetails": {
-                            "type": "boolean",
-                            "default": true,
-                            "description": "Rewrite MCP structured_content details payloads."
+                        "minBytes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "default": 2048,
+                            "description": "Minimum JSON byte length before TOON encoding applies."
+                        },
+                        "minSavingsRatio": {
+                            "type": "number",
+                            "default": 1.0,
+                            "description": "Encode only when the TOON form is at most this ratio of the JSON size (1.0 = strictly smaller)."
+                        },
+                        "delimiter": {
+                            "type": "string",
+                            "default": "comma",
+                            "enum": ["comma", "tab", "pipe"],
+                            "description": "TOON delimiter for general payloads."
+                        },
+                        "tabularDelimiter": {
+                            "type": "string",
+                            "enum": ["comma", "tab", "pipe"],
+                            "description": "TOON delimiter for tabular arrays (default: tab)."
+                        },
+                        "targets": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "description": "Which tool-result surfaces TOON may rewrite (both default to true).",
+                            "properties": {
+                                "toolResultText": {
+                                    "type": "boolean",
+                                    "default": true,
+                                    "description": "Rewrite eligible tool-result text blocks."
+                                },
+                                "structuredDetails": {
+                                    "type": "boolean",
+                                    "default": true,
+                                    "description": "Rewrite MCP structured_content details payloads."
+                                }
+                            }
+                        },
+                        "preamble": {
+                            "type": "string",
+                            "description": "Preamble above TOON fenced blocks. Defaults to the built-in TOON hint."
                         }
                     }
                 },
-                "preamble": {
-                    "type": "string",
-                    "description": "Preamble above TOON fenced blocks. Defaults to the built-in TOON hint."
-                }
-            }
+                { "type": "null" }
+            ]
         },
         "memory": {
             "type": "object",

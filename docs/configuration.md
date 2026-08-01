@@ -198,7 +198,25 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
     "defaultTimeout": "120s",
     "memory": {
         "embedModel": "AllMiniLML6V2",
-        "embedQuantized": true
+        "embedQuantized": true,
+        "enabled": true,
+        "autoRecall": true,
+        "autoCaptureWork": true,
+        "autoCaptureExploration": true,
+        "topK": 5,
+        "contextBudgetChars": 3000,
+        "minQueryLength": 15
+    },
+    "notifications": {
+        "enabled": true,
+        "onTurnComplete": true,
+        "onToolPermission": true,
+        "onUserQuestion": true,
+        "onError": true,
+        "onTurnCancel": false,
+        "onStartupReady": true,
+        "minTurnDurationSecs": 5.0,
+        "appName": "Elph"
     },
     "compaction": {
         "thresholdPct": 80,
@@ -212,10 +230,11 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
 | **`preferredChatLanguage`** | (top-level)                                                                                                                                 | Language for user-facing chat prose                                                                                                                 |
 | **`maxRetries`**            | (top-level)                                                                                                                                 | LLM HTTP retries on 5xx / network errors                                                                                                            |
 | **`defaultTimeout`**        | (top-level)                                                                                                                                 | LLM stream inactivity / SSE stall limit (e.g. `120s`)                                                                                               |
-| **`ui`**                    | `theme`, `themes`, `showThinking`, …, `filePicker.*`                                                                                        | Appearance + transcript / chrome                                                                                                                    |
+| **`ui`**                    | `theme`, `themes`, `showThinking`, `autoExpandThinking`, `stickyScroll`, `footerTokenDisplay`, `coloredStatusFooter`, `allowModeChangeWhileBusy`, `filePicker.showHiddenFiles` | Appearance + transcript / chrome                                                                                                                    |
 | **`models`**                | `defaultModel`, `defaultThinkingLevel`, `sessionTitleModel`, `compactionModel`, `treeBranchSummaries`, `scopedModels`, `showConfiguredOnly` | Seeds for **new** sessions + catalog prefs. **Not** live model/mode/thinking                                                                        |
 | **`promptEncoding`**        | `mode`, `minBytes`, `minSavingsRatio`, `delimiter`, `tabularDelimiter`, `targets`, `preamble`                                                 | TOON encoding of model-visible tool results (optional; absent/`null` → `ELPH_PROMPT_ENCODING*` env vars)                                           |
 | **`memory`**                | `embedModel`, `embedQuantized`, `enabled`, `autoRecall`, `autoCaptureWork`, `autoCaptureExploration`, `topK`, `contextBudgetChars`, `minQueryLength` | Floppy memory hooks + retrieval (see [memory.md](./memory.md))                                                                                     |
+| **`notifications`**        | `enabled`, `onTurnComplete`, `onToolPermission`, `onUserQuestion`, `onError`, `onTurnCancel`, `onStartupReady`, `minTurnDurationSecs`, `appName` | Desktop notifications (see [notifications](#notifications-notifications))                                                                          |
 | **`compaction`**            | `thresholdPct`, `keepRecentTokens`                                                                                                          | Auto-compaction **thresholds** only (auto-compact is always available after turns when usage exceeds the threshold; `/compact` is always available) |
 
 Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root on load.
@@ -286,6 +305,22 @@ Supported color forms (→ iocraft `Color::Rgb` / named):
 | Named | `white`, `reset`, `darkgrey`, …               |
 
 Token keys (camelCase): `textPrimary`, `textSecondary`, `textMuted`, `textHint`, `accent`, `accentSoft`, `border`, `borderFocus`, `borderSubtle`, `shellBorder`, `shellBorderDimmed`, `surface`, `codeBlockBg`, `selectionBg`, `dialogSelectionBg`, `success`, `warning`, `error`.
+
+### Desktop notifications (`notifications`)
+
+Optional native OS notifications (macOS Notification Center, Linux D-Bus, Windows Toast). `enabled` is the master switch; individual `on*` flags select which events notify.
+
+| Field                | Type     | Default | Meaning                                                        |
+| -------------------- | -------- | ------- | -------------------------------------------------------------- |
+| `enabled`            | boolean  | `true`  | Master switch — disable all desktop notifications.            |
+| `onTurnComplete`     | boolean  | `true`  | Notify when the agent finishes a turn.                         |
+| `onToolPermission`   | boolean  | `true`  | Notify when the agent requests tool permission.                |
+| `onUserQuestion`     | boolean  | `true`  | Notify when the agent asks a question.                         |
+| `onError`            | boolean  | `true`  | Notify on errors (agent / MCP / bootstrap failure).            |
+| `onTurnCancel`       | boolean  | `false` | Notify when a running turn is canceled.                        |
+| `onStartupReady`     | boolean  | `true`  | Notify when bootstrap / startup completes.                     |
+| `minTurnDurationSecs`| number   | `5.0`   | Minimum turn duration (s) before a turn-complete notification. |
+| `appName`            | string   | `"Elph"`| App name shown in the notification banner.                     |
 
 ## Provider JSON
 

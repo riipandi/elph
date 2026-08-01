@@ -10,7 +10,7 @@ use crate::platform::Paths;
 
 /// Save plan text to `.elph/plans/plan-YYYYMMDD_HHmm.md` with YAML frontmatter.
 ///
-/// `session_id` is optional — when provided, it is stored in the `SessionID` field.
+/// `session_id` is optional — when provided, it is stored in the `Session` field.
 /// For plans created before a session is ready (e.g. `ImplementFresh`), pass `None`
 /// and update the field later via [`update_plan_frontmatter`].
 ///
@@ -27,7 +27,7 @@ pub fn save_plan_to_disk(plan_text: &str, paths: &Paths, session_id: Option<&str
 
     let session_line = session_id
         .filter(|s| !s.trim().is_empty())
-        .map(|sid| format!("SessionID: {sid}\n"))
+        .map(|sid| format!("Session: {sid}\n"))
         .unwrap_or_default();
     let frontmatter = format!(
         "---\nSubject: {subject}\n{session_line}Status: planned\nCreated: {}\nUpdated: {}\n---\n\n",
@@ -48,7 +48,7 @@ pub fn save_plan_to_disk(plan_text: &str, paths: &Paths, session_id: Option<&str
     Ok(canonical.to_string_lossy().to_string())
 }
 
-/// Update `Status`, `Updated`, and optionally `SessionID` fields in a saved plan file's YAML frontmatter.
+/// Update `Status`, `Updated`, and optionally `Session` fields in a saved plan file's YAML frontmatter.
 ///
 /// Parses the frontmatter (delimited by `---` lines), replaces the target fields,
 /// and writes the file back preserving the body content.
@@ -96,9 +96,9 @@ pub fn update_plan_frontmatter(
                 updated_found = true;
             }
             if let Some(sid) = session_id.filter(|s| !s.trim().is_empty())
-                && lines[i].starts_with("SessionID:")
+                && lines[i].starts_with("Session:")
             {
-                lines[i] = format!("SessionID: {sid}");
+                lines[i] = format!("Session: {sid}");
                 session_id_found = true;
             }
         }
@@ -118,7 +118,7 @@ pub fn update_plan_frontmatter(
     if let Some(sid) = session_id.filter(|s| !s.trim().is_empty())
         && !session_id_found
     {
-        insertions.push(format!("SessionID: {sid}"));
+        insertions.push(format!("Session: {sid}"));
     }
     if !insertions.is_empty() {
         for (j, line) in insertions.into_iter().enumerate() {
@@ -280,7 +280,7 @@ mod tests {
 
         let contents = fs::read_to_string(saved_path).expect("read");
         assert!(contents.contains("Subject: Test Plan"));
-        assert!(contents.contains("SessionID: sess-abc123"));
+        assert!(contents.contains("Session: sess-abc123"));
         assert!(contents.contains("Status: planned"));
         assert!(contents.contains("Created:"));
         assert!(contents.contains("Updated:"));
@@ -301,7 +301,7 @@ mod tests {
         let contents = fs::read_to_string(saved_path).expect("read");
         assert!(contents.contains("Subject: No Session Plan"));
         assert!(contents.contains("Status: planned"));
-        assert!(!contents.contains("SessionID:")); // No SessionID line
+        assert!(!contents.contains("Session:")); // No session id line
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod tests {
         let updated = fs::read_to_string(&path).expect("read");
         assert!(updated.contains("Status: in_progress"));
         assert!(updated.contains("Updated: 2026-07-28 23:30"));
-        assert!(updated.contains("SessionID: sess-xyz"));
+        assert!(updated.contains("Session: sess-xyz"));
         assert!(updated.contains("Subject: Test")); // unchanged
         assert!(updated.contains("Created: 2026-07-28 23:00")); // unchanged
         assert!(updated.contains("## Step 1")); // body preserved
@@ -343,7 +343,7 @@ mod tests {
         let content = concat!(
             "---\n",
             "Subject: Test\n",
-            "SessionID: old-session\n",
+            "Session: old-session\n",
             "Status: planned\n",
             "Created: 2026-07-28 23:00\n",
             "Updated: 2026-07-28 23:00\n",
@@ -355,8 +355,8 @@ mod tests {
         update_plan_frontmatter(&path_str, "completed", "2026-07-29 00:00", Some("new-session-id")).expect("update");
 
         let updated = fs::read_to_string(&path).expect("read");
-        assert!(updated.contains("SessionID: new-session-id"));
-        assert!(!updated.contains("SessionID: old-session"));
+        assert!(updated.contains("Session: new-session-id"));
+        assert!(!updated.contains("Session: old-session"));
     }
 
     #[test]

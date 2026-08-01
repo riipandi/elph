@@ -29,6 +29,8 @@ const GOODBYE_MESSAGES: &[&str] = &[
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExitSnapshot {
     pub session_id: String,
+    /// Display title (memorable id or renamed title), when one exists.
+    pub session_title: Option<String>,
     pub cost_usd: f64,
     pub api_duration_secs: f64,
     pub wall_duration_secs: f64,
@@ -71,23 +73,40 @@ pub fn print_and_clear() {
     print_exit_summary(&snapshot);
 }
 
-pub fn print_exit_summary(snapshot: &ExitSnapshot) {
-    println_orange(format!("\n{}", pick_goodbye_message(&snapshot.session_id)));
-    println_white(format!("\nResume this session: elph -r {}", snapshot.session_id));
-    println_white("Continue last project session: elph -c");
-    println_dim(format!("\nTotal cost            : ${:.4}", snapshot.cost_usd));
-    println_dim(format!(
+/// Raw exit-summary text, one string per terminal row (no ANSI).
+pub fn exit_summary_lines(snapshot: &ExitSnapshot) -> Vec<String> {
+    let mut lines = vec![
+        pick_goodbye_message(&snapshot.session_id).to_string(),
+        format!("Resume this session: elph -r {}", snapshot.session_id),
+        String::new(), // separator before the stats block
+    ];
+    if let Some(title) = snapshot.session_title.as_deref().filter(|t| !t.trim().is_empty()) {
+        lines.push(format!("Session: {title}"));
+    }
+    lines.push(format!("Total cost            : ${:.4}", snapshot.cost_usd));
+    lines.push(format!(
         "Total duration (API)  : {}",
         format_duration_secs(snapshot.api_duration_secs)
     ));
-    println_dim(format!(
+    lines.push(format!(
         "Total duration (wall) : {}",
         format_duration_secs(snapshot.wall_duration_secs)
     ));
-    println_dim(format!(
-        "Total code changes    : {} lines added, {} lines removed\n",
+    lines.push(format!(
+        "Total code changes    : {} lines added, {} lines removed",
         snapshot.lines_added, snapshot.lines_removed
     ));
+    lines.push(String::new()); // trailing blank
+    lines
+}
+
+pub fn print_exit_summary(snapshot: &ExitSnapshot) {
+    let lines = exit_summary_lines(snapshot);
+    println_orange(format!("\n{}", lines[0]));
+    println_white(format!("\n{}", lines[1]));
+    for line in &lines[2..] {
+        println_dim(line);
+    }
 }
 
 pub fn pick_goodbye_message(session_id: &str) -> &'static str {
@@ -234,6 +253,7 @@ mod tests {
     fn prints_codex_style_exit_block() {
         let snapshot = ExitSnapshot {
             session_id: "00000012abc01w01".to_string(),
+            session_title: Some("Lorem ipsum bala bala".to_string()),
             cost_usd: 0.1548,
             api_duration_secs: 10.0,
             wall_duration_secs: 17.0,
@@ -242,5 +262,49 @@ mod tests {
             usage: UsageTotals::default(),
         };
         print_exit_summary(&snapshot);
+    }
+
+    fn sample_snapshot() -> ExitSnapshot {
+        ExitSnapshot {
+            session_id: "00000012abc01w01".to_string(),
+            session_title: Some("Lorem ipsum bala bala".to_string()),
+            cost_usd: 0.1548,
+            api_duration_secs: 10.0,
+            wall_duration_secs: 17.0,
+            lines_added: 12,
+            lines_removed: 3,
+            usage: UsageTotals::default(),
+        }
+    }
+
+    #[test]
+    fn exit_summary_prints_session_title_before_totals() {
+        let lines = exit_summary_lines(&sample_snapshot());
+        let session_pos = lines
+            .iter()
+            .position(|l| l == "Session: Lorem ipsum bala bala")
+            .expect("session line present");
+        assert_eq!(lines[session_pos + 1], "Total cost            : $0.1548");
+        assert_eq!(lines[session_pos - 1], ""); // separator blank before Session
+        assert_eq!(lines[1], "Resume this session: elph -r 00000012abc01w01");
+        assert_eq!(lines[3], "Session: Lorem ipsum bala bala");
+    }
+
+    #[test]
+    fn exit_summary_omits_session_line_when_untitled() {
+        let mut snapshot = sample_snapshot();
+        snapshot.session_title = None;
+        let lines = exit_summary_lines(&snapshot);
+        assert!(!lines.iter().any(|l| l.starts_with("Session:")));
+        assert_eq!(lines[3], "Total cost            : $0.1548");
+        assert_eq!(lines.last().map(String::as_str), Some(""));
+    }
+
+    #[test]
+    fn exit_summary_omits_empty_or_whitespace_title() {
+        let mut snapshot = sample_snapshot();
+        snapshot.session_title = Some("  ".to_string());
+        let lines = exit_summary_lines(&snapshot);
+        assert!(!lines.iter().any(|l| l.starts_with("Session:")));
     }
 }
