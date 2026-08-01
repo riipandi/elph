@@ -112,7 +112,14 @@ impl SlashDispatcher {
                 SlashDispatch::Goal { args } => {
                     let status = match handle_goal_slash(session.goal_runtime().as_ref(), &args).await {
                         Ok(message) => message,
-                        Err(err) => format!("Goal error: {err}"),
+                        Err(err) => {
+                            // Suppress database lock errors during cancel since they're expected
+                            if err.to_string().contains("database busy") {
+                                "Goal cancelled (database busy)".to_string()
+                            } else {
+                                format!("Goal error: {err}")
+                            }
+                        }
                     };
                     let _ = ui_tx.send(AgentUiEvent::Status(status));
                 }

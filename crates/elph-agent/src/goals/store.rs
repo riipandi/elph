@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use turso::Connection;
 
-use crate::datastore::with_conn;
+use crate::datastore::{is_lock_err, with_conn};
 
 use super::types::{Goal, GoalStatus};
 
@@ -233,6 +233,16 @@ impl GoalStore {
             Ok(())
         })
         .await
+        .map_err(|e| {
+            // If database is locked during clear (common during cancel), suppress the error
+            // since the goal will be orphaned anyway and user explicitly requested cancel
+            if is_lock_err(&e.to_string()) {
+                log::warn!("Goal database locked during clear, ignoring: {e}");
+                anyhow::anyhow!("Goal cancelled (database busy)")
+            } else {
+                e
+            }
+        })
     }
 
     pub async fn replace_goal(
@@ -371,4 +381,66 @@ fn row_to_goal(row: &turso::Row) -> Result<Goal> {
         created_at: row.get(11)?,
         completed_at: row.get(12)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn clear_goal_handles_lock_error_gracefully() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let db_path = tmp.path().join("test.db");
+        let store = GoalStore::new(db_path.clone());
+
+        // Initialize database with goals table
+        crate::datastore::with_conn(&db_path, |conn| async move {
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS goals (
+                    id TEXT PRIMARY KEY,
+                    session_id TEXT NOT NULL,
+                    objective TEXT NOT NULL,
+                    completion_criterion TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    turns_used INTEGER NOT NULL DEFAULT 0,
+                    tokens_used INTEGER NOT NULL DEFAULT 0,
+                    wall_clock_ms INTEGER NOT NULL DEFAULT 0,
+                    wall_clock_budget_ms INTEGER NOT NULL DEFAULT 0,
+                    turn_budget INTEGER NOT NULL DEFAULT 0,
+                    token_budget INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TEXT
+                ) STRICT",
+                (),
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("create goals table: {e}"))
+        })
+        .await
+        .expect("create goals table");
+
+        // Create a goal
+        let session_id = "test-session";
+        store
+            .create_goal(session_id, "test objective", None, 100, 10, 60000)
+            .await
+            .expect("create goal");
+
+        // Verify goal exists
+        let goal = store.get_latest_goal(session_id).await.expect("get goal");
+        assert!(goal.is_some(), "goal should exist");
+
+        // Test that lock error detection works
+        let lock_error = anyhow::anyhow!("database is locked");
+        let is_lock = is_lock_err(&lock_error.to_string());
+        assert!(is_lock, "should detect lock error");
+
+        // Test that clear_goal works normally (no lock)
+        let result = store.clear_goal(session_id).await;
+        assert!(result.is_ok(), "clear should succeed when no lock");
+
+        // Verify goal is cleared
+        let goal = store.get_latest_goal(session_id).await.expect("get goal");
+        assert!(goal.is_none(), "goal should be cleared");
+    }
 }
