@@ -335,6 +335,44 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Prefer quantized ONNX weights when a *Q variant exists."
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Master switch for automatic memory hooks and bootstrap injection. Agent tools can still open the store when disabled."
+                },
+                "autoRecall": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Per-turn multi-source recall injection."
+                },
+                "autoCaptureWork": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Auto-journal successful file mutations as work/change memories."
+                },
+                "autoCaptureExploration": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Auto-capture exploration into discovery / project-map memories."
+                },
+                "topK": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 5,
+                    "description": "Vector top-k for task retrieval."
+                },
+                "contextBudgetChars": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 3000,
+                    "description": "Max characters for all injected memory XML blocks."
+                },
+                "minQueryLength": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 15,
+                    "description": "Minimum user prompt length to trigger auto-recall."
                 }
             }
         },
