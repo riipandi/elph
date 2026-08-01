@@ -246,7 +246,7 @@
                 },
                 "showConfiguredOnly": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "When true, the model picker All list and Provider tabs only show providers with credentials in auth.json."
                 },
                 "scopedModels": {

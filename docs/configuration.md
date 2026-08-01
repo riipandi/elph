@@ -190,7 +190,7 @@ Project overrides **per nested key** (deep merge). Runtime saves write **home on
         "compactionModel": "inherit",
         "treeBranchSummaries": "inherit",
         "defaultThinkingLevel": "high",
-        "showConfiguredOnly": true,
+        "showConfiguredOnly": false,
         "scopedModels": []
     },
     "maxRetries": 2,

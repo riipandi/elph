@@ -398,7 +398,7 @@ When the agent is busy, an activity line shows between the content area and inpu
 | `Enter`            | Confirm model for this session                                             |
 | `[` / `]`          | Cycle scope tabs (All · Scoped · Provider)                                 |
 
-By default (`settings.models.showConfiguredOnly: true`), the **All** list and **Provider** tabs only include providers that already have credentials in `auth.json` (API key, OAuth, or env ref). Set `showConfiguredOnly` to `false` to browse every builtin provider. The active session provider is always included so you can re-select its models.
+By default (`settings.models.showConfiguredOnly: false`), the **All** list and **Provider** tabs include every builtin provider. Set `showConfiguredOnly` to `true` to only show providers that already have credentials in `auth.json` (API key, OAuth, or env ref). The active session provider is always included so you can re-select its models.
 
 ## Scoped models
 

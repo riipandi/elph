@@ -25,7 +25,7 @@
 //!     "compactionModel": "inherit",
 //!     "treeBranchSummaries": "inherit",
 //!     "defaultThinkingLevel": "high",
-//!     "showConfiguredOnly": true,
+//!     "showConfiguredOnly": false,
 //!     "scopedModels": []
 //!   },
 //!   "memory": { ... },
@@ -252,7 +252,7 @@ impl Default for ModelsSettings {
             compaction_model: default_inherit_model(),
             tree_branch_summaries: default_inherit_model(),
             default_thinking_level: default_thinking_level(),
-            show_configured_only: true,
+            show_configured_only: false,
             scoped_models: Vec::new(),
         }
     }

@@ -136,7 +136,7 @@ impl ModelCatalogOptions {
 impl Default for ModelCatalogOptions {
     fn default() -> Self {
         Self {
-            show_configured_only: true,
+            show_configured_only: false,
             include_provider_ids: Vec::new(),
         }
     }
