@@ -63,6 +63,7 @@ pub use slash_commands::{
 pub use slash_commands::{confetti_mode_from_args, dispatch_slash_command, format_help_message};
 pub use system_prompt_slash::system_prompt_slash_message;
 pub use tool_policy::agent_mode_from_setting;
+pub use tool_policy::from_agent_thinking;
 pub use tool_policy::thinking_level_from_setting;
 pub use tool_policy::to_agent_thinking;
 pub use tools_slash::tools_slash_message;

@@ -99,6 +99,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
         mut ui_events_slot,
         mut user_shell_abort,
         mut user_shell_channel,
+        mut thinking_level,
         ..
     } = ctx;
     loop {
@@ -180,7 +181,9 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     &mut ui_events_slot,
                     &mut messages,
                     &mut prompt_history,
-                );
+                    &mut thinking_level,
+                )
+                .await;
                 chrome_full_redraw_pending.set(true);
                 publish_transcript_now(&mut messages_revision, &mut transcript_pending, &mut last_transcript_publish);
             }
