@@ -1,11 +1,21 @@
 //! MCP tool registry — discover remote tools/resources/prompts and bridge them into the agent harness.
 //!
 //! Production path:
-//! 1. [`McpToolRegistry::load`] / [`load_with_options`] discovers catalogs (fail-open by default).
+//! 1. [`McpToolRegistry::load`] / [`load_with_options`] validates config and optionally discovers catalogs.
 //! 2. Sessions are pooled so tool calls reuse stdio processes / HTTP sessions.
-//! 3. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools.
-//! 4. Policy filters deny-listed tools; approval is enforced via [`crate::tools::mcp::policy`].
-//! 5. `tools/list_changed` (and resource/prompt variants) can refresh catalogs in place.
+//! 3. Lazy discovery: [`McpToolRegistry::ensure_server_discovered`] fires discovery exactly once per
+//!    server on first `call_tool`/`read_resource`/`get_prompt`. Results are merged into the catalog —
+//!    other servers' tools are preserved.
+//! 4. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools.
+//! 5. Policy filters deny-listed tools; approval is enforced via [`crate::tools::mcp::policy`].
+//! 6. `tools/list_changed` (and resource/prompt variants) can refresh catalogs in place.
+//!
+//! ## Call flow (fix for "Requires HTTP transport")
+//!
+//! `call_tool_on_client` uses `call_tool_once` (non-MRTR) instead of the MRTR-aware `call_tool`.
+//! The MRTR variant requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`.
+//! Since the agent harness does not support interactive MRTR rounds (policy: `Decline`), `call_tool_once`
+//! is the correct choice for all transports. Task handles (SEP-2663) are still surfaced via `tasks_get`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -362,14 +372,48 @@ impl McpToolRegistry {
             .buffer_unordered(concurrency)
             .collect()
             .await;
-        let (_tools, _resources, _prompts, _resource_capable, _prompt_capable, _task_capable, report) =
+        let (new_tools, new_resources, new_prompts, new_resource_capable, new_prompt_capable, new_task_capable, report) =
             build_catalogs_from_results(self.config.clone(), results, skipped, continue_on_error)?;
-        *self.tools.write() = _tools;
-        *self.resources.write() = _resources;
-        *self.prompts.write() = _prompts;
-        *self.resource_capable.write() = _resource_capable;
-        *self.prompt_capable.write() = _prompt_capable;
-        *self.task_capable.write() = _task_capable;
+
+        // Merge newly discovered items into existing catalogs (preserve prior discoveries).
+        {
+            let mut tools = self.tools.write();
+            for tool in &new_tools {
+                tools.retain(|t| t.server_name != tool.server_name);
+            }
+            tools.extend(new_tools);
+        }
+        // Resources: retain entries for servers not in the newly discovered set.
+        {
+            let mut resources = self.resources.write();
+            resources.retain(|r| !new_resource_capable.contains(&r.server_name));
+            resources.extend(new_resources);
+        }
+        {
+            let mut prompts = self.prompts.write();
+            prompts.retain(|p| !new_prompt_capable.contains(&p.server_name));
+            prompts.extend(new_prompts);
+        }
+        // Capabilities: add new, avoid duplicates.
+        for server in &new_resource_capable {
+            let mut caps = self.resource_capable.write();
+            if !caps.contains(server) {
+                caps.push(server.clone());
+            }
+        }
+        for server in &new_prompt_capable {
+            let mut caps = self.prompt_capable.write();
+            if !caps.contains(server) {
+                caps.push(server.clone());
+            }
+        }
+        for server in &new_task_capable {
+            let mut caps = self.task_capable.write();
+            if !caps.contains(server) {
+                caps.push(server.clone());
+            }
+        }
+        // Update total report counts.
         *self.report.write() = report;
         *discovered = true;
         Ok(())
@@ -378,13 +422,15 @@ impl McpToolRegistry {
     /// Discover a single server on-demand (lazy mode friendly).
     ///
     /// This is useful when you want to expose tools for one specific server
-    /// without waiting for the full batch discovery.
+    /// without waiting for the full batch discovery. Results are merged into
+    /// the existing catalog (other servers' tools are preserved).
     pub async fn discover_server(&self, server_name: &str) -> Result<()> {
-        let mut discovered = self.discovered_servers.write();
-        if discovered.contains(&server_name.to_string()) {
-            return Ok(());
+        {
+            let discovered = self.discovered_servers.read();
+            if discovered.contains(&server_name.to_string()) {
+                return Ok(());
+            }
         }
-        drop(discovered);
 
         let Some(server_config) = self.config.servers.get(server_name).cloned() else {
             anyhow::bail!("MCP server \"{server_name}\" not configured");
@@ -400,18 +446,69 @@ impl McpToolRegistry {
         drop(options);
 
         let result = discover_one(&self.pool, server_name, server_config, discovery_timeout, discover_rp).await;
-        let mut discovered = self.discovered_servers.write();
-        discovered.push(server_name.to_string());
 
-        let (_tools, _resources, _prompts, _resource_capable, _prompt_capable, _task_capable, report) =
-            build_catalogs_from_results(self.config.clone(), vec![result], 0, true)?;
-        *self.tools.write() = _tools;
-        *self.resources.write() = _resources;
-        *self.prompts.write() = _prompts;
-        *self.resource_capable.write() = _resource_capable;
-        *self.prompt_capable.write() = _prompt_capable;
-        *self.task_capable.write() = _task_capable;
-        *self.report.write() = report;
+        // Merge discovered items into existing catalogs (preserve other servers).
+        let (
+            new_tools,
+            new_resources,
+            new_prompts,
+            new_resource_capable,
+            new_prompt_capable,
+            new_task_capable,
+            _report,
+        ) = build_catalogs_from_results(self.config.clone(), vec![result], 0, true)?;
+
+        {
+            let mut discovered = self.discovered_servers.write();
+            discovered.push(server_name.to_string());
+        }
+        {
+            let mut tools = self.tools.write();
+            tools.retain(|t| t.server_name != server_name);
+            tools.extend(new_tools);
+        }
+        {
+            let mut resources = self.resources.write();
+            resources.retain(|r| r.server_name != server_name);
+            resources.extend(new_resources);
+        }
+        {
+            let mut prompts = self.prompts.write();
+            prompts.retain(|p| p.server_name != server_name);
+            prompts.extend(new_prompts);
+        }
+        {
+            let mut caps = self.resource_capable.write();
+            if new_resource_capable.contains(&server_name.to_string()) {
+                if !caps.contains(&server_name.to_string()) {
+                    caps.push(server_name.to_string());
+                }
+            }
+        }
+        {
+            let mut caps = self.prompt_capable.write();
+            if new_prompt_capable.contains(&server_name.to_string()) {
+                if !caps.contains(&server_name.to_string()) {
+                    caps.push(server_name.to_string());
+                }
+            }
+        }
+        {
+            let mut caps = self.task_capable.write();
+            if new_task_capable.contains(&server_name.to_string()) {
+                if !caps.contains(&server_name.to_string()) {
+                    caps.push(server_name.to_string());
+                }
+            }
+        }
+        // Update total report counts.
+        {
+            let mut report = self.report.write();
+            report.servers_ok = report.servers_ok.saturating_add(1);
+            report.tools_loaded = self.tools.read().len();
+            report.resources_loaded = self.resources.read().len();
+            report.prompts_loaded = self.prompts.read().len();
+        }
         Ok(())
     }
 
@@ -965,9 +1062,21 @@ impl McpToolRegistry {
         )
     }
 
+    /// Ensure a specific server is discovered before tool call.
+    ///
+    /// Unlike `refresh_server()` (which re-discovers and replaces the session),
+    /// this only triggers discovery if the server has not yet been discovered.
+    /// This is called from the tool/resource/prompt call paths.
+    async fn ensure_server_discovered(&self, server_name: &str) -> Result<()> {
+        if self.is_server_discovered(server_name) {
+            return Ok(());
+        }
+        self.discover_server(server_name).await
+    }
+
     /// Call a tool on a configured server (pooled connection).
     pub async fn call_tool(&self, server: &str, tool_name: &str, args: Value) -> Result<AgentToolResult> {
-        self.refresh_server(server).await?;
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -984,7 +1093,7 @@ impl McpToolRegistry {
     }
 
     pub async fn read_resource(&self, server: &str, uri: &str) -> Result<AgentToolResult> {
-        self.refresh_server(server).await?;
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };
@@ -1002,7 +1111,7 @@ impl McpToolRegistry {
         prompt_name: &str,
         arguments: Option<Value>,
     ) -> Result<AgentToolResult> {
-        self.refresh_server(server).await?;
+        self.ensure_server_discovered(server).await?;
         let Some(server_config) = self.config.servers.get(server).cloned() else {
             anyhow::bail!("MCP server \"{server}\" not configured");
         };

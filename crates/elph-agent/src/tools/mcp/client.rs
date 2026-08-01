@@ -382,42 +382,32 @@ pub async fn call_tool_on_client(client: &McpClient, tool_name: &str, args: Valu
     if let Value::Object(map) = args {
         params = params.with_arguments(map);
     }
-    // Prefer high-level call_tool (MRTR). If the server returns a task handle,
-    // rmcp surfaces UnexpectedResponse — recover via call_tool_once.
-    match client.call_tool(params.clone()).await {
-        Ok(result) => Ok(result),
-        Err(err) => {
-            let msg = err.to_string();
-            if msg.contains("Unexpected") || msg.contains("unexpected") {
-                match client.call_tool_once(params).await.context("call MCP tool once")? {
-                    CallToolResponse::Complete(result) => Ok(result),
-                    CallToolResponse::Task(task) => {
-                        let payload = serde_json::json!({
-                            "resultType": "task",
-                            "taskId": task.task.task_id,
-                            "status": format!("{:?}", task.task.status),
-                            "statusMessage": task.task.status_message,
-                            "pollIntervalMs": task.task.poll_interval_ms,
-                            "hint": "Poll with mcp_{server}__tasks_get using taskId",
-                        });
-                        let mut result = CallToolResult::success(vec![ContentBlock::text(payload.to_string())]);
-                        result.structured_content = Some(payload);
-                        Ok(result)
-                    }
-                    CallToolResponse::InputRequired(_) => {
-                        // Should have been driven by call_tool; surface clear error.
-                        Err(anyhow::anyhow!(
-                            "MCP tool returned input_required without completing MRTR rounds: {tool_name}"
-                        ))
-                    }
-                    _ => Err(anyhow::anyhow!(
-                        "MCP tool returned an unexpected call response shape: {tool_name}"
-                    )),
-                }
-            } else {
-                Err(err).context("call MCP tool")
-            }
+    // Use call_tool_once (non-MRTR) which works with all transports (stdio, HTTP, SSE).
+    // The MRTR-aware call_tool() requires HTTP transport and fails on stdio with
+    // "Requires HTTP transport (--port)". Since we don't support interactive MRTR
+    // rounds in the agent harness (MrtrElicitationPolicy::Decline), call_tool_once
+    // is the correct choice for all transports.
+    match client.call_tool_once(params).await.context("call MCP tool")? {
+        CallToolResponse::Complete(result) => Ok(result),
+        CallToolResponse::Task(task) => {
+            let payload = serde_json::json!({
+                "resultType": "task",
+                "taskId": task.task.task_id,
+                "status": format!("{:?}", task.task.status),
+                "statusMessage": task.task.status_message,
+                "pollIntervalMs": task.task.poll_interval_ms,
+                "hint": "Poll with mcp_{server}__tasks_get using taskId",
+            });
+            let mut result = CallToolResult::success(vec![ContentBlock::text(payload.to_string())]);
+            result.structured_content = Some(payload);
+            Ok(result)
         }
+        CallToolResponse::InputRequired(_) => Err(anyhow::anyhow!(
+            "MCP tool returned input_required; use HTTP transport for interactive MRTR rounds: {tool_name}"
+        )),
+        _ => Err(anyhow::anyhow!(
+            "MCP tool returned an unexpected call response shape: {tool_name}"
+        )),
     }
 }
 
