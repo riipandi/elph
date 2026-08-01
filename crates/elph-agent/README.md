@@ -78,7 +78,7 @@ config.servers.insert(
     ]),
 );
 let registry = Arc::new(McpToolRegistry::load(config).await?);
-let mcp_tools = registry.create_agent_tools(); // names: mcp_fs__...
+let mcp_tools = registry.create_agent_tools().await; // names: mcp_fs__...
 ```
 
 Supports **stdio** and **streamable HTTP**, connection pooling with reconnect, and fail-open discovery. Details: [docs/mcp.md](./docs/mcp.md).

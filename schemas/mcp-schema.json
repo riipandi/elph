@@ -14,13 +14,8 @@
             "type": "object",
             "description": "Named MCP server definitions. Keys are stable server ids used for tool namespacing and CLI management.",
             "default": {},
-            "propertyNames": {
-                "type": "string",
-                "minLength": 1
-            },
-            "additionalProperties": {
-                "$ref": "#/definitions/mcpServer"
-            }
+            "propertyNames": { "type": "string", "minLength": 1 },
+            "additionalProperties": { "$ref": "#/definitions/mcpServer" }
         },
         "policy": {
             "$ref": "#/definitions/policy",
@@ -50,6 +45,12 @@
             "default": "decline",
             "description": "How the client answers SEP-2322 MRTR elicitation during tool calls. 'decline' (default) declines interactive input; 'error' fails the elicitation with a clear message. Full TUI elicitation is not implemented."
         },
+        "loadStrategy": {
+            "type": "string",
+            "enum": ["eager", "lazy"],
+            "default": "lazy",
+            "description": "Tool discovery strategy. 'eager' lists all tools at load time; 'lazy' defers discovery until tools are first needed (reduces startup cost and isolates slow MCP servers)."
+        },
         "policyAction": {
             "type": "string",
             "enum": ["allow", "requireApproval", "deny"],
@@ -60,10 +61,7 @@
             "additionalProperties": false,
             "description": "Tool allow/deny/approval policy. Patterns support exact names, prefix* and *suffix globs.",
             "properties": {
-                "default": {
-                    "$ref": "#/definitions/policyAction",
-                    "default": "requireApproval"
-                },
+                "default": { "$ref": "#/definitions/policyAction", "default": "requireApproval" },
                 "allow": {
                     "type": "array",
                     "items": { "type": "string", "minLength": 1 },
@@ -98,46 +96,33 @@
             "additionalProperties": false,
             "required": ["type", "command"],
             "properties": {
-                "type": {
-                    "type": "string",
-                    "const": "stdio"
-                },
+                "type": { "type": "string", "const": "stdio" },
                 "command": {
                     "type": "string",
                     "minLength": 1,
                     "description": "Executable to spawn (absolute path or PATH lookup)."
                 },
-                "args": {
-                    "type": "array",
-                    "default": [],
-                    "items": { "type": "string" }
-                },
+                "args": { "type": "array", "default": [], "items": { "type": "string" } },
                 "env": {
                     "type": "object",
                     "default": {},
                     "additionalProperties": { "type": "string" }
                 },
-                "cwd": {
-                    "type": "string",
-                    "minLength": 1
-                },
+                "cwd": { "type": "string", "minLength": 1 },
                 "timeoutMs": { "$ref": "#/definitions/timeoutMs" },
                 "enable": { "$ref": "#/definitions/enable" },
                 "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "mrtrElicitation": { "$ref": "#/definitions/mrtrElicitation" },
+                "loadStrategy": { "$ref": "#/definitions/loadStrategy" },
                 "policy": { "$ref": "#/definitions/policy" }
             }
         },
         "httpServer": {
             "type": "object",
-            "additionalProperties": false,
             "description": "Remote MCP over streamable HTTP (preferred remote transport for MCP 2026-07-28).",
             "required": ["type", "url"],
             "properties": {
-                "type": {
-                    "type": "string",
-                    "enum": ["http"]
-                },
+                "type": { "type": "string", "enum": ["http"] },
                 "url": {
                     "type": "string",
                     "minLength": 1,
@@ -169,6 +154,7 @@
                 "enable": { "$ref": "#/definitions/enable" },
                 "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "mrtrElicitation": { "$ref": "#/definitions/mrtrElicitation" },
+                "loadStrategy": { "$ref": "#/definitions/loadStrategy" },
                 "oauth": {
                     "type": "boolean",
                     "default": false,
@@ -212,14 +198,10 @@
         },
         "sseServer": {
             "type": "object",
-            "additionalProperties": false,
             "description": "DEPRECATED: Legacy MCP HTTP+SSE transport (2024-11-05). Prefer type=http (Streamable HTTP). Kept for the MCP 12-month deprecation offramp.",
             "required": ["type", "url"],
             "properties": {
-                "type": {
-                    "type": "string",
-                    "const": "sse"
-                },
+                "type": { "type": "string", "const": "sse" },
                 "url": {
                     "type": "string",
                     "minLength": 1,
@@ -242,15 +224,9 @@
                 "enable": { "$ref": "#/definitions/enable" },
                 "lifecycle": { "$ref": "#/definitions/lifecycle" },
                 "mrtrElicitation": { "$ref": "#/definitions/mrtrElicitation" },
-                "oauth": {
-                    "type": "boolean",
-                    "default": false
-                },
-                "oauthScopes": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "default": []
-                },
+                "loadStrategy": { "$ref": "#/definitions/loadStrategy" },
+                "oauth": { "type": "boolean", "default": false },
+                "oauthScopes": { "type": "array", "items": { "type": "string" }, "default": [] },
                 "oauthClientName": { "type": "string", "minLength": 1 },
                 "oauthClientId": { "type": "string", "minLength": 1 },
                 "oauthClientSecret": { "type": "string", "minLength": 1 },
@@ -260,11 +236,7 @@
                     "format": "uri",
                     "description": "CIMD URL (Client ID Metadata Document)."
                 },
-                "oauthRedirectPort": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 65535
-                },
+                "oauthRedirectPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
                 "policy": { "$ref": "#/definitions/policy" }
             }
         }

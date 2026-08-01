@@ -589,6 +589,7 @@ pub fn parse_stdio_config(command: String, args: Vec<String>, env: BTreeMap<Stri
         lifecycle: Default::default(),
         mrtr_elicitation: Default::default(),
         policy: None,
+        load_strategy: Default::default(),
     }
 }
 

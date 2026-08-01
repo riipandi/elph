@@ -84,7 +84,7 @@ pub async fn create_coding_session_with_events(
         (Arc::new(McpToolRegistry::empty()), Vec::new())
     } else {
         let (registry, warnings) = discover_mcp_registry(options.paths).await;
-        tools.extend(registry.create_agent_tools());
+        tools.extend(registry.create_agent_tools().await);
         (registry, warnings)
     };
 

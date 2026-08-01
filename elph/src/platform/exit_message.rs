@@ -77,7 +77,7 @@ pub fn print_and_clear() {
 pub fn exit_summary_lines(snapshot: &ExitSnapshot) -> Vec<String> {
     let mut lines = vec![
         pick_goodbye_message(&snapshot.session_id).to_string(),
-        format!("Resume this session: elph -r {}", snapshot.session_id),
+        format!("Resume this session: elph --resume {}", snapshot.session_id),
         String::new(), // separator before the stats block
     ];
     if let Some(title) = snapshot.session_title.as_deref().filter(|t| !t.trim().is_empty()) {
@@ -286,7 +286,7 @@ mod tests {
             .expect("session line present");
         assert_eq!(lines[session_pos + 1], "Total cost            : $0.1548");
         assert_eq!(lines[session_pos - 1], ""); // separator blank before Session
-        assert_eq!(lines[1], "Resume this session: elph -r 00000012abc01w01");
+        assert_eq!(lines[1], "Resume this session: elph --resume 00000012abc01w01");
         assert_eq!(lines[3], "Session: Lorem ipsum bala bala");
     }
 

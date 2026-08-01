@@ -16,6 +16,34 @@ use tokio::sync::mpsc;
 
 use super::policy::McpPolicyConfig;
 
+/// MCP tool discovery strategy.
+///
+/// Controls when the client connects to servers and lists their tools.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum McpLoadStrategy {
+    /// Discover all tools from all enabled servers during registry load.
+    #[serde(rename = "eager")]
+    Eager,
+    /// Defer tool discovery until tools are first requested (e.g. `create_agent_tools` or `call_tool`).
+    #[serde(rename = "lazy")]
+    #[default]
+    Lazy,
+}
+
+impl McpLoadStrategy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Eager => "eager",
+            Self::Lazy => "lazy",
+        }
+    }
+}
+
+fn is_default_lazy(s: &McpLoadStrategy) -> bool {
+    *s == McpLoadStrategy::Lazy
+}
+
 /// Default per-operation timeout when a server does not override it.
 pub const DEFAULT_OPERATION_TIMEOUT_SECS: u64 = 60;
 
@@ -112,6 +140,7 @@ impl McpServerConfig {
             lifecycle: McpLifecycleMode::Auto,
             mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
+            load_strategy: McpLoadStrategy::default(),
         })
     }
 
@@ -207,6 +236,14 @@ impl McpServerConfig {
             Self::Stdio(_) => &[],
         }
     }
+
+    /// Tool discovery strategy for this server.
+    pub fn load_strategy(&self) -> McpLoadStrategy {
+        match self {
+            Self::Stdio(c) => c.load_strategy,
+            Self::Http(c) | Self::Sse(c) => c.load_strategy,
+        }
+    }
 }
 
 /// Stdio (child process) server configuration.
@@ -241,6 +278,9 @@ pub struct McpStdioConfig {
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
+    /// Tool discovery strategy for this server. Defaults to `lazy`.
+    #[serde(default, skip_serializing_if = "is_default_lazy")]
+    pub load_strategy: McpLoadStrategy,
 }
 
 /// OAuth client metadata used by `mcp auth` and token-aware transports.
@@ -413,6 +453,9 @@ pub struct McpHttpConfig {
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
+    /// Tool discovery strategy for this server. Defaults to `lazy`.
+    #[serde(default, skip_serializing_if = "is_default_lazy")]
+    pub load_strategy: McpLoadStrategy,
 }
 
 fn is_default_auth_conflict(p: &McpAuthConflictPolicy) -> bool {
@@ -439,6 +482,7 @@ impl McpHttpConfig {
             lifecycle: McpLifecycleMode::Auto,
             mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
+            load_strategy: McpLoadStrategy::default(),
         }
     }
 
@@ -507,6 +551,8 @@ pub struct McpLoadOptions {
     pub response_cache: McpResponseCacheConfig,
     /// Optional channel for per-server discovery progress (started / finished).
     pub progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+    /// Tool discovery strategy (default `lazy`).
+    pub load_strategy: McpLoadStrategy,
 }
 
 impl Default for McpLoadOptions {
@@ -520,6 +566,7 @@ impl Default for McpLoadOptions {
             enable_list_changed: true,
             response_cache: McpResponseCacheConfig::default(),
             progress_tx: None,
+            load_strategy: McpLoadStrategy::default(),
         }
     }
 }
@@ -585,6 +632,7 @@ mod tests {
                 lifecycle: McpLifecycleMode::Auto,
                 mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
                 policy: None,
+                load_strategy: McpLoadStrategy::default(),
             }),
         );
         assert_eq!(cfg.enabled_count(), 0);
@@ -625,6 +673,37 @@ mod tests {
         let opts = McpLoadOptions::default();
         assert!(opts.response_cache.enabled);
         assert!(opts.response_cache.default_ttl_ms.is_none());
+    }
+
+    #[test]
+    fn load_strategy_defaults_lazy() {
+        let json = r#"{
+            "mcpServers": {
+                "fs": {
+                    "type": "stdio",
+                    "command": "npx",
+                    "args": ["-y", "x"]
+                }
+            }
+        }"#;
+        let cfg: McpConfig = serde_json::from_str(json).expect("parse");
+        assert_eq!(cfg.servers.get("fs").unwrap().load_strategy(), McpLoadStrategy::Lazy);
+        assert_eq!(McpLoadOptions::default().load_strategy, McpLoadStrategy::Lazy);
+    }
+
+    #[test]
+    fn load_strategy_eager() {
+        let json = r#"{
+            "mcpServers": {
+                "fs": {
+                    "type": "stdio",
+                    "command": "npx",
+                    "loadStrategy": "eager"
+                }
+            }
+        }"#;
+        let cfg: McpConfig = serde_json::from_str(json).expect("parse");
+        assert_eq!(cfg.servers.get("fs").unwrap().load_strategy(), McpLoadStrategy::Eager);
     }
 
     #[test]

@@ -196,7 +196,7 @@ impl CodingAgentSession {
 
     /// Late-bind MCP tools discovered after the TUI is visible.
     pub async fn attach_mcp_registry(&self, registry: Arc<McpToolRegistry>) -> Result<()> {
-        let mcp_tools = registry.create_agent_tools();
+        let mcp_tools = registry.create_agent_tools().await;
         let mut kept: Vec<_> = self
             .harness
             .get_tools()

@@ -120,7 +120,7 @@ async fn apply_mcp_tools_to_harness(
     harness: &elph_agent::AgentHarness<elph_agent::TursoSessionStorage>,
     registry: &Arc<McpToolRegistry>,
 ) -> Result<()> {
-    let mcp_tools = registry.create_agent_tools();
+    let mcp_tools = registry.create_agent_tools().await;
     let mut kept: Vec<_> = harness
         .get_tools()
         .await

@@ -259,7 +259,7 @@ Tasks panel above input; per-session snapshot persistence.
 `create_coding_session_with_events` in `elph/src/agent/runtime.rs` assembles the harness tool list:
 
 1. `BuiltinToolsBuilder::all(env)` — every built-in tool enabled by `elph-agent`’s `builtin-tools` feature
-2. MCP tools from `McpToolRegistry::create_agent_tools()`
+2. MCP tools from `McpToolRegistry::create_agent_tools().await`
 3. Goal tools from `create_goal_tools()`
 
 Multi-agent tools are injected by `AgentHarness` when `tools-multi-agent` is enabled and the default active-tool set is used.

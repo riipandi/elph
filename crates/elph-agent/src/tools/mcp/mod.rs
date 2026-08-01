@@ -136,7 +136,7 @@ pub use config::McpServerConfig;
 #[cfg(feature = "mcp")]
 pub use config::McpStdioConfig;
 #[cfg(feature = "mcp")]
-pub use config::{McpLoadOptions, McpServerLoadProgress};
+pub use config::{McpLoadOptions, McpLoadStrategy, McpServerLoadProgress};
 #[cfg(feature = "mcp")]
 pub use crypto::Aes256Key;
 #[cfg(feature = "mcp")]

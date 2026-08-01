@@ -41,16 +41,16 @@ JSON file (Elph product: `~/.elph/mcp.json`):
 }
 ```
 
-| Field | Transports | Description |
-| ----- | ---------- | ----------- |
-| `type` | all | `stdio`, `http` (preferred remote), or deprecated `sse` |
-| `command` / `args` / `env` / `cwd` | stdio | Child process |
-| `url` / `headers` / `authToken` / `authTokenEnv` | http/sse | Remote endpoint |
-| `oauth` / `oauthScopes` / `oauthClientMetadataUrl` | http/sse | OAuth 2.1 + PKCE; CIMD URL preferred over DCR |
-| `timeoutMs` | all | Per list/call timeout (default 60s) |
-| `enable` | all | Skip when false |
-| `lifecycle` | all | `auto` (default), `legacy`, or `discover` (2026-07-28). Set `legacy` for servers that reject unknown methods with non-standard errors. |
-| `mrtrElicitation` | all | `decline` (default) or `error` for SEP-2322 elicitation during tool calls |
+| Field                                              | Transports | Description                                                                                                                            |
+| -------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                                             | all        | `stdio`, `http` (preferred remote), or deprecated `sse`                                                                                |
+| `command` / `args` / `env` / `cwd`                 | stdio      | Child process                                                                                                                          |
+| `url` / `headers` / `authToken` / `authTokenEnv`   | http/sse   | Remote endpoint                                                                                                                        |
+| `oauth` / `oauthScopes` / `oauthClientMetadataUrl` | http/sse   | OAuth 2.1 + PKCE; CIMD URL preferred over DCR                                                                                          |
+| `timeoutMs`                                        | all        | Per list/call timeout (default 60s)                                                                                                    |
+| `enable`                                           | all        | Skip when false                                                                                                                        |
+| `lifecycle`                                        | all        | `auto` (default), `legacy`, or `discover` (2026-07-28). Set `legacy` for servers that reject unknown methods with non-standard errors. |
+| `mrtrElicitation`                                  | all        | `decline` (default) or `error` for SEP-2322 elicitation during tool calls                                                              |
 
 ## API surface
 
@@ -96,7 +96,7 @@ let registry = Arc::new(
     McpToolRegistry::load_with_options(config, McpLoadOptions::default()).await?,
 );
 let mut tools = elph_agent::BuiltinToolsBuilder::new(env).without_web().build();
-tools.extend(registry.create_agent_tools());
+tools.extend(registry.create_agent_tools().await);
 // pass tools into AgentHarness / AgentLoop
 ```
 
@@ -113,11 +113,11 @@ Legacy cleartext stores are not migrated; re-authenticate providers/MCP.
 
 Still available for ad-hoc secrets (optional key file via `Aes256Key::load_or_create`).
 
-| Function | Role |
-| -------- | ---- |
-| `load_or_create_master_key` / `set_process_master_key_for_tests` | Auth-store master key |
-| `encrypt_string_async` / `decrypt_string_async` | UTF-8 string round-trip |
-| `is_encrypted_value` | Detect `enc:` prefix |
+| Function                                                         | Role                    |
+| ---------------------------------------------------------------- | ----------------------- |
+| `load_or_create_master_key` / `set_process_master_key_for_tests` | Auth-store master key   |
+| `encrypt_string_async` / `decrypt_string_async`                  | UTF-8 string round-trip |
+| `is_encrypted_value`                                             | Detect `enc:` prefix    |
 
 ```rust
 use std::sync::Arc;
@@ -162,19 +162,19 @@ Covers: unicode/empty/long strings, nonce uniqueness, wrong key, tamper detectio
 
 ## MCP 2026-07-28 client surface
 
-| Spec area | Elph status |
-| --------- | ----------- |
-| Lifecycle `server/discover` + preferred `2026-07-28` | Yes (`lifecycle` auto/legacy/discover) |
-| Streamable HTTP + stdio | Yes |
-| SSE (deprecated) | Yes, with doctor warnings; OAuth token re-resolved on reconnect |
-| Auth SEPs (iss, application_type, issuer-bound DCR) | Via rmcp ≥ 3.0.1 |
-| CIMD (`oauthClientMetadataUrl`) | Config + OAuth flow hook |
-| Sealed `auth.json` `{providers,mcp}` | Yes |
-| List cache SEP-2549 | Yes (`McpLoadOptions.response_cache`) |
-| MRTR elicitation | Policy decline/error (no full TUI) |
-| Tasks extension bridges | Yes when server advertises tasks |
-| Resource/prompt bridges | Yes |
-| MCP Apps / EMA / server role | Out of scope |
+| Spec area                                            | Elph status                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| Lifecycle `server/discover` + preferred `2026-07-28` | Yes (`lifecycle` auto/legacy/discover)                          |
+| Streamable HTTP + stdio                              | Yes                                                             |
+| SSE (deprecated)                                     | Yes, with doctor warnings; OAuth token re-resolved on reconnect |
+| Auth SEPs (iss, application_type, issuer-bound DCR)  | Via rmcp ≥ 3.0.1                                                |
+| CIMD (`oauthClientMetadataUrl`)                      | Config + OAuth flow hook                                        |
+| Sealed `auth.json` `{providers,mcp}`                 | Yes                                                             |
+| List cache SEP-2549                                  | Yes (`McpLoadOptions.response_cache`)                           |
+| MRTR elicitation                                     | Policy decline/error (no full TUI)                              |
+| Tasks extension bridges                              | Yes when server advertises tasks                                |
+| Resource/prompt bridges                              | Yes                                                             |
+| MCP Apps / EMA / server role                         | Out of scope                                                    |
 
 ## Limitations
 
