@@ -39,7 +39,6 @@ iocraft.workspace = true
 log.workspace = true
 logforth.workspace = true
 memorable-ids.workspace = true
-notify-rust = { workspace = true, features = ["tokio"] }
 parking_lot.workspace = true
 rand.workspace = true
 regex.workspace = true
@@ -69,7 +68,6 @@ elph-agent = { workspace = true, features = ["full"] }
 libc.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "sync"] }
-notify-rust = { workspace = true, features = ["tokio"] }
 
 [lints.rust]
 linker_messages = "allow"

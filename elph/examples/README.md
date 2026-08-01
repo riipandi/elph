@@ -4,9 +4,9 @@ This directory contains example programs to test and demonstrate Elph functional
 
 ## test_notifications.rs
 
-Test program for Elph's notification system. This example demonstrates:
+Test program for Elph's notification system using OSC escape sequences. This example demonstrates:
 
-- Basic notification sending
+- Basic notification sending via terminal escape sequences
 - Rate limiting and deduplication
 - Different notification types (turn complete, tool permission, user question, error, startup ready)
 - Settings-based filtering (master switch, per-type toggles, duration thresholds)
@@ -22,7 +22,7 @@ cargo run -p elph --example test_notifications
 
 The program will:
 
-1. Send 6 desktop notifications to your OS notification center
+1. Send 6 terminal notifications via OSC escape sequences
 2. Demonstrate rate limiting (immediate duplicates are blocked)
 3. Show different notification types with appropriate messages
 4. Test settings-based filtering (fast turns, disabled types, master switch)
@@ -47,10 +47,21 @@ The program prints detailed output showing:
 
 ### Platform Support
 
-This example works on:
+This example uses terminal escape sequences (OSC 99, OSC 9, OSC 777) which work on:
 
-- **macOS**: Notification Center
-- **Linux**: D-Bus (XDG Desktop Notifications)
-- **Windows**: Toast notifications
+**Supported Terminals:**
+- **Kitty** (OSC 99) - Full notification support with title and body
+- **iTerm2** (OSC 9) - Basic notifications
+- **WezTerm** (OSC 777) - Basic notifications
+- **Ghostty** (OSC 777) - Basic notifications
+- **Windows Terminal** (OSC 9) - Basic notifications
+- **VTE-based terminals** (OSC 777) - GNOME Terminal, etc.
 
-On headless or CI environments, notifications will fail silently and log a warning.
+**Advantages of OSC escape sequences:**
+- Works via SSH, tmux, screen
+- No external dependencies required
+- Graceful degradation on unsupported terminals
+- More reliable for CLI/TUI applications than desktop notifications
+
+**Terminal Compatibility:**
+Terminals that don't support these sequences will simply ignore them, making this a safe fallback approach. The notification system is designed to work gracefully in all environments.

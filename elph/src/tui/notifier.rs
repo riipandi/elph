@@ -1,19 +1,23 @@
-//! Desktop notification dispatcher.
+//! Terminal notification dispatcher using OSC escape sequences.
 //!
-//! Thin wrapper around `notify-rust` gated by [`NotificationSettings`].
-//! Errors are non-fatal — logged at `warn` level and swallowed so the
-//! TUI never crashes due to a notification failure.
+//! Sends notifications via terminal escape sequences (OSC 99, OSC 9, OSC 777)
+//! which are handled by the terminal emulator. This approach works via SSH,
+//! tmux/screen, and is more reliable for CLI/TUI applications than desktop
+//! notifications.
 //!
 //! # Platform support
 //!
-//! | Platform | Mechanism                          |
-//! |----------|------------------------------------|
-//! | macOS    | Notification Center (UNUserNotification) |
-//! | Linux    | D-Bus (XDG Desktop Notifications)  |
-//! | Windows  | Toast notifications                |
+//! | Terminal    | Sequence  | Notes                     |
+//! |-------------|-----------|---------------------------|
+//! | Kitty       | OSC 99    | Full notification support  |
+//! | iTerm2      | OSC 9     | Basic notifications        |
+//! | WezTerm     | OSC 777   | Basic notifications        |
+//! | Ghostty     | OSC 777   | Basic notifications        |
+//! | Windows Terminal | OSC 9 | Basic notifications        |
+//! | VTE (GNOME Terminal) | OSC 777 | Basic notifications |
 //!
-//! On headless / CI environments `notify-rust` will fail silently and
-//! the `warn` log entry is the only trace.
+//! Terminals that don't support these sequences will simply ignore them,
+//! making this a graceful degradation approach.
 
 use crate::platform::NotificationSettings;
 use std::sync::Arc;
@@ -77,11 +81,11 @@ fn get_notifier_queue() -> &'static NotifierQueue {
     NOTIFIER_QUEUE.get_or_init(NotifierQueue::new)
 }
 
-/// Send a desktop notification if the event type is enabled in settings.
+/// Send a terminal notification if the event type is enabled in settings.
 ///
-/// Spawns a blocking task as fire-and-forget so the notification never
-/// stalls the TUI tick loop, even though `notify-rust`'s `show()` is
-/// synchronous.
+/// Uses OSC escape sequences (OSC 99, OSC 9, OSC 777) to send notifications
+/// to the terminal emulator. This approach works via SSH, tmux/screen, and
+/// gracefully degrades on terminals that don't support these sequences.
 pub fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
     if !settings.enabled {
         return;
@@ -91,7 +95,6 @@ pub fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
     }
 
     let (summary, body) = kind.message();
-    let app_name = settings.app_name.clone();
     let kind_key = kind.key();
 
     // Check rate limiting asynchronously
@@ -104,19 +107,54 @@ pub fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
             return;
         }
 
-        // Fire-and-forget: spawn a blocking task so the sync `show()` call
-        // never stalls the tokio runtime / tick loop.
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = notify_rust::Notification::new()
-                .summary(&summary)
-                .body(&body)
-                .appname(&app_name)
-                .timeout(notify_rust::Timeout::Milliseconds(8000))
-                .show()
-                .inspect_err(|e| log::warn!("desktop notification failed: {e}"));
-        })
-        .await;
+        // Send OSC escape sequence notification
+        send_osc_notification(&summary, &body);
     });
+}
+
+/// Send notification using OSC escape sequences.
+///
+/// Tries multiple OSC sequences for maximum terminal compatibility:
+/// - OSC 99 (Kitty, most feature-rich)
+/// - OSC 9 (iTerm2, Windows Terminal)
+/// - OSC 777 (WezTerm, Ghostty, VTE-based terminals)
+///
+/// Terminals that don't support these sequences will simply ignore them.
+fn send_osc_notification(summary: &str, body: &str) {
+    // OSC 99 (Kitty) - most feature-rich, supports title and body
+    let osc_99 = format!(
+        "\x1b]99;title={};body={}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_99);
+
+    // OSC 9 (iTerm2, Windows Terminal) - simpler format
+    let osc_9 = format!("\x1b]9;{}\x1b\\", escape_osc_string(&format!("{}: {}", summary, body)));
+    print!("{}", osc_9);
+
+    // OSC 777 (WezTerm, Ghostty, VTE) - notify protocol
+    let osc_777 = format!(
+        "\x1b]777;notify;{};{}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_777);
+
+    // Flush to ensure the escape sequences are sent immediately
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
+/// Escape special characters for OSC sequences.
+///
+/// OSC sequences have specific escaping requirements to avoid interference
+/// with terminal parsing. This function escapes potentially problematic characters.
+fn escape_osc_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
 }
 
 /// All notification event kinds.

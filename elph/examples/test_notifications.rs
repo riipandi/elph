@@ -1,12 +1,21 @@
 //! Example program to test Elph's notification system.
 //!
 //! This example demonstrates how to use the notification queue system
-//! and tests various notification types with rate limiting.
+//! and tests various notification types with rate limiting using OSC escape sequences.
 //!
 //! Run with:
 //! ```sh
-//! cargo run --example test_notifications
+//! cargo run -p elph --example test_notifications
 //! ```
+//!
+//! The notifications will be sent via terminal escape sequences (OSC 99, OSC 9, OSC 777)
+//! which are handled by your terminal emulator. Supported terminals include:
+//! - Kitty (OSC 99)
+//! - iTerm2 (OSC 9)
+//! - WezTerm (OSC 777)
+//! - Ghostty (OSC 777)
+//! - Windows Terminal (OSC 9)
+//! - VTE-based terminals like GNOME Terminal (OSC 777)
 
 use std::time::Duration;
 use tokio::time::sleep;
@@ -22,6 +31,7 @@ struct MockNotificationSettings {
     on_turn_cancel: bool,
     on_startup_ready: bool,
     min_turn_duration_secs: f64,
+    #[allow(dead_code)]
     app_name: String,
 }
 
@@ -161,7 +171,7 @@ impl Default for MockNotifierQueue {
     }
 }
 
-/// Send a mock desktop notification.
+/// Send a mock desktop notification using OSC escape sequences.
 async fn send_mock_notification(settings: &MockNotificationSettings, kind: MockNotifKind<'_>) {
     if !settings.enabled {
         println!("❌ Notifications disabled in settings");
@@ -179,14 +189,43 @@ async fn send_mock_notification(settings: &MockNotificationSettings, kind: MockN
     println!("   Summary: {}", summary);
     println!("   Body: {}", body);
 
-    // Simulate the actual notification
-    let _ = notify_rust::Notification::new()
-        .summary(&summary)
-        .body(&body)
-        .appname(&settings.app_name)
-        .timeout(notify_rust::Timeout::Milliseconds(8000))
-        .show()
-        .inspect_err(|e| eprintln!("❌ Desktop notification failed: {e}"));
+    // Send OSC escape sequence notification
+    send_osc_notification(&summary, &body);
+}
+
+/// Send notification using OSC escape sequences.
+fn send_osc_notification(summary: &str, body: &str) {
+    // OSC 99 (Kitty) - most feature-rich, supports title and body
+    let osc_99 = format!(
+        "\x1b]99;title={};body={}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_99);
+
+    // OSC 9 (iTerm2, Windows Terminal) - simpler format
+    let osc_9 = format!("\x1b]9;{}\x1b\\", escape_osc_string(&format!("{}: {}", summary, body)));
+    print!("{}", osc_9);
+
+    // OSC 777 (WezTerm, Ghostty, VTE) - notify protocol
+    let osc_777 = format!(
+        "\x1b]777;notify;{};{}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_777);
+
+    // Flush to ensure the escape sequences are sent immediately
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
+/// Escape special characters for OSC sequences.
+fn escape_osc_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
 }
 
 #[tokio::main]
@@ -306,11 +345,14 @@ async fn main() {
     println!("===================================");
     println!("✅ All notification tests completed!");
     println!();
-    println!("You should have received 5 desktop notifications:");
+    println!("You should have received 6 terminal notifications via OSC escape sequences:");
     println!("  1. Turn complete (10s)");
     println!("  2. Tool permission request");
     println!("  3. User question");
     println!("  4. Error message");
     println!("  5. Startup ready");
     println!("  6. Turn complete (after rate limit expiration)");
+    println!();
+    println!("Note: Terminal notifications depend on your terminal emulator support.");
+    println!("Supported terminals: Kitty, iTerm2, WezTerm, Ghostty, Windows Terminal, VTE-based terminals");
 }
