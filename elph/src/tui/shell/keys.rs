@@ -3114,8 +3114,8 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 }
             }
         }
-        // Ctrl+R — play confetti rain (if no overlays open).
-        (m, KeyCode::Char('r')) | (m, KeyCode::Char('R'))
+        // Ctrl+H — play confetti rain (if no overlays open).
+        (m, KeyCode::Char('h')) | (m, KeyCode::Char('H'))
             if m.contains(KeyModifiers::CONTROL)
                 && !m.contains(KeyModifiers::ALT)
                 && !m.contains(KeyModifiers::META)
