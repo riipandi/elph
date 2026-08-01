@@ -222,8 +222,10 @@ mod tests {
     fn serde_partial_object_uses_field_defaults() {
         let decoded: PromptEncodingConfig =
             serde_json::from_value(serde_json::json!({ "mode": "auto" })).expect("deserialize partial");
-        let mut expected = PromptEncodingConfig::default();
-        expected.mode = PromptEncodingMode::Auto;
+        let expected = PromptEncodingConfig {
+            mode: PromptEncodingMode::Auto,
+            ..Default::default()
+        };
         assert_eq!(decoded, expected);
     }
 
