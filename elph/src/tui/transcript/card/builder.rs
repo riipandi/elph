@@ -302,11 +302,11 @@ mod tests {
             .last()
             .map(|l| l.start_row.saturating_add(l.row_count))
             .unwrap_or(0);
-        
+
         // Simulate user scrolling to middle of transcript
         let view_start = total_rows / 2;
         let bubbles = build_transcript_bubbles_windowed(80, &messages, &layouts, view_start, 10, None, None);
-        
+
         // Should always show at least some bubbles, never empty
         assert!(!bubbles.is_empty(), "windowed build should never return empty bubbles");
     }
@@ -323,11 +323,11 @@ mod tests {
             .last()
             .map(|l| l.start_row.saturating_add(l.row_count))
             .unwrap_or(0);
-        
+
         // Test with scroll position beyond content
         let view_start = total_rows.saturating_add(1000);
         let bubbles = build_transcript_bubbles_windowed(80, &messages, &layouts, view_start, 10, None, None);
-        
+
         // Should still show at least the last message
         assert!(!bubbles.is_empty(), "should show content even with extreme scroll position");
     }

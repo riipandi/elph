@@ -195,21 +195,19 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
         Ok(f) => f,
         Err(_) => {
             // Fallback: try to read as plain JSON (for manually created auth.json files)
-            if let Ok(content) = std::fs::read_to_string(auth_store_path) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(providers) = json.get("providers").and_then(|v| v.as_object()) {
-                        if let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str()) {
-                            if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
-                                return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
-                            }
-                            // OAuth JSON blobs are long; short values are API keys.
-                            if credential.trim().starts_with('{') || credential.len() > 100 {
-                                return ProviderConfigStatus::OAuthConfigured;
-                            }
-                            return ProviderConfigStatus::ApiKeyConfigured;
-                        }
-                    }
+            if let Ok(content) = std::fs::read_to_string(auth_store_path)
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str())
+            {
+                if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+                    return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
                 }
+                // OAuth JSON blobs are long; short values are API keys.
+                if credential.trim().starts_with('{') || credential.len() > 100 {
+                    return ProviderConfigStatus::OAuthConfigured;
+                }
+                return ProviderConfigStatus::ApiKeyConfigured;
             }
             return ProviderConfigStatus::Unconfigured;
         }
@@ -233,32 +231,33 @@ static CACHED_PROVIDER_OPTIONS: OnceLock<Vec<ProviderOption>> = OnceLock::new();
 
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
-    CACHED_PROVIDER_OPTIONS.get_or_init(|| {
-        let oauth_provider_ids = builtin_oauth_provider_ids();
-        let api_key_provider_ids: HashSet<String> = builtin_providers()
-            .into_iter()
-            .filter(|provider| provider.auth.api_key.is_some())
-            .map(|provider| provider.id)
-            .collect();
+    CACHED_PROVIDER_OPTIONS
+        .get_or_init(|| {
+            let oauth_provider_ids = builtin_oauth_provider_ids();
+            let api_key_provider_ids: HashSet<String> = builtin_providers()
+                .into_iter()
+                .filter(|provider| provider.auth.api_key.is_some())
+                .map(|provider| provider.id)
+                .collect();
 
-        get_builtin_providers()
-            .into_iter()
-            .map(|id| {
-                let name = format_provider_name(&id);
-                let supports_oauth = oauth_provider_ids.contains(&id.as_str());
-                let supports_api_key = api_key_provider_ids.contains(&id);
-                // Lazily compute config status only when needed (deferred to render time)
-                ProviderOption {
-                    name,
-                    supports_oauth,
-                    supports_api_key,
-                    config_status: ProviderConfigStatus::Unconfigured,
-                    id,
-                }
-            })
-            .collect()
-    })
-    .clone()
+            get_builtin_providers()
+                .into_iter()
+                .map(|id| {
+                    let name = format_provider_name(&id);
+                    let supports_oauth = oauth_provider_ids.contains(&id.as_str());
+                    let supports_api_key = api_key_provider_ids.contains(&id);
+                    // Lazily compute config status only when needed (deferred to render time)
+                    ProviderOption {
+                        name,
+                        supports_oauth,
+                        supports_api_key,
+                        config_status: ProviderConfigStatus::Unconfigured,
+                        id,
+                    }
+                })
+                .collect()
+        })
+        .clone()
 }
 
 pub fn providers_for_auth_method(providers: &[ProviderOption], auth_method: ProviderAuthMethod) -> Vec<ProviderOption> {

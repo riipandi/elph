@@ -56,12 +56,11 @@ pub fn has_provider_credential(auth_store_path: &Path, provider_id: &str) -> boo
         Ok(file) => file.get_provider_credential(provider_id).is_some(),
         Err(_) => {
             // Fallback: try to read as plain JSON (for manually created auth.json files)
-            if let Ok(content) = std::fs::read_to_string(auth_store_path) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(providers) = json.get("providers").and_then(|v| v.as_object()) {
-                        return providers.get(provider_id).is_some();
-                    }
-                }
+            if let Ok(content) = std::fs::read_to_string(auth_store_path)
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+            {
+                return providers.get(provider_id).is_some();
             }
             false
         }
@@ -79,21 +78,20 @@ pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &st
 
     if encrypted_load.is_err() {
         // Fallback: try to read as plain JSON (for manually created auth.json files)
-        if let Ok(content) = std::fs::read_to_string(auth_store_path) {
-            if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(providers) = json.get_mut("providers").and_then(|v| v.as_object_mut()) {
-                    let removed = providers.remove(provider_id).is_some();
-                    if removed {
-                        log::debug!("Removed credential for provider (plain JSON): {provider_id}");
-                        // Write back as plain JSON
-                        let updated = serde_json::to_string_pretty(&json)
-                            .map_err(|e| anyhow::anyhow!("serialize auth store: {e}"))?;
-                        tokio::fs::write(auth_store_path, updated)
-                            .await
-                            .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
-                        return Ok(true);
-                    }
-                }
+        if let Ok(content) = std::fs::read_to_string(auth_store_path)
+            && let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content)
+            && let Some(providers) = json.get_mut("providers").and_then(|v| v.as_object_mut())
+        {
+            let removed = providers.remove(provider_id).is_some();
+            if removed {
+                log::debug!("Removed credential for provider (plain JSON): {provider_id}");
+                // Write back as plain JSON
+                let updated =
+                    serde_json::to_string_pretty(&json).map_err(|e| anyhow::anyhow!("serialize auth store: {e}"))?;
+                tokio::fs::write(auth_store_path, updated)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("write auth store: {e}"))?;
+                return Ok(true);
             }
         }
         return Ok(false);
@@ -126,14 +124,13 @@ pub fn list_providers_with_credentials(auth_store_path: &Path) -> Vec<String> {
         Ok(f) => f,
         Err(_) => {
             // Fallback: try to read as plain JSON (for manually created auth.json files)
-            if let Ok(content) = std::fs::read_to_string(auth_store_path) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
-                    if let Some(providers) = json.get("providers").and_then(|v| v.as_object()) {
-                        let mut ids: Vec<String> = providers.keys().cloned().collect();
-                        ids.sort();
-                        return ids;
-                    }
-                }
+            if let Ok(content) = std::fs::read_to_string(auth_store_path)
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+            {
+                let mut ids: Vec<String> = providers.keys().cloned().collect();
+                ids.sort();
+                return ids;
             }
             return Vec::new();
         }

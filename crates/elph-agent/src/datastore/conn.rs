@@ -142,8 +142,12 @@ pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
     }
 
     let db_path_str = path.to_string_lossy();
-    let shm_path = format!("{}-shm", db_path_str);
-    let tshm_path = format!("{}-tshm", db_path_str);
+    let mut shm_path = String::with_capacity(db_path_str.len() + 4);
+    shm_path.push_str(&db_path_str);
+    shm_path.push_str("-shm");
+    let mut tshm_path = String::with_capacity(db_path_str.len() + 5);
+    tshm_path.push_str(&db_path_str);
+    tshm_path.push_str("-tshm");
 
     // Check if database is locked by any process
     if is_database_locked(path) {
@@ -185,16 +189,16 @@ fn is_database_locked(path: &Path) -> bool {
     let path_str = path.to_string_lossy();
 
     // Check if the WAL file exists and is recent
-    let wal_path = format!("{}-wal", path_str);
-    if Path::new(&wal_path).exists() {
-        // If WAL file exists and is recent (within last 30 seconds), assume locked
-        if let Ok(metadata) = std::fs::metadata(&wal_path) {
-            if let Ok(modified) = metadata.modified() {
-                let elapsed = modified.elapsed().unwrap_or(Duration::from_secs(60));
-                if elapsed < Duration::from_secs(30) {
-                    return true;
-                }
-            }
+    let mut wal_path = String::with_capacity(path_str.len() + 4);
+    wal_path.push_str(&path_str);
+    wal_path.push_str("-wal");
+    if Path::new(&wal_path).exists()
+        && let Ok(metadata) = std::fs::metadata(&wal_path)
+        && let Ok(modified) = metadata.modified()
+    {
+        let elapsed = modified.elapsed().unwrap_or(Duration::from_secs(60));
+        if elapsed < Duration::from_secs(30) {
+            return true;
         }
     }
 
