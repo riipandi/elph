@@ -129,6 +129,25 @@ pub fn should_compact(context_tokens: u64, context_window: u64, settings: Compac
     context_tokens > threshold
 }
 
+/// Combine a message-level context estimate with the compiled system prompt.
+///
+/// The system prompt is added only when the estimate did **not** reuse provider
+/// usage (`last_usage_index == None`) — i.e. an empty/early history, or a history
+/// rewritten by a compaction summary. Provider `usage.total_tokens` for an
+/// assistant turn already includes the system prompt that was sent with that
+/// request, so adding it again double-counts and inflates the displayed usage
+/// (it can even read past 100% of the context window while the real next request
+/// still fits). When usage is reused we take the provider number as-is.
+pub fn estimate_tokens_with_system_prompt(estimate: ContextUsageEstimate, system_prompt: Option<&str>) -> u64 {
+    let mut tokens = estimate.tokens;
+    if estimate.last_usage_index.is_none()
+        && let Some(sp) = system_prompt
+    {
+        tokens += count_tokens_text(sp);
+    }
+    tokens
+}
+
 // Image tokens estimated separately — not subject to the char-based heuristic.
 const ESTIMATED_IMAGE_TOKENS: u64 = 1200;
 
@@ -281,5 +300,43 @@ pub fn find_cut_point(
         first_kept_entry_index: cut_index,
         turn_start_index,
         is_split_turn: !is_user_message && turn_start_index.is_some(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn estimate(tokens: u64, last_usage_index: Option<usize>) -> ContextUsageEstimate {
+        ContextUsageEstimate {
+            tokens,
+            usage_tokens: if last_usage_index.is_some() { tokens } else { 0 },
+            trailing_tokens: if last_usage_index.is_some() { 0 } else { tokens },
+            last_usage_index,
+        }
+    }
+
+    #[test]
+    fn system_prompt_not_double_counted_when_usage_is_reused() {
+        // Provider usage already includes the system prompt; adding it again must not happen.
+        let estimate = estimate(203_211, Some(42));
+        let total = estimate_tokens_with_system_prompt(estimate, Some("system prompt text"));
+        assert_eq!(total, 203_211);
+    }
+
+    #[test]
+    fn system_prompt_added_when_no_usage_reused() {
+        // Empty history / post-compaction prefix: no provider usage, count system prompt once.
+        let estimate = estimate(500, None);
+        let total = estimate_tokens_with_system_prompt(estimate, Some("system prompt text"));
+        assert!(total > 500, "system prompt should be added on top of the heuristic estimate");
+    }
+
+    #[test]
+    fn no_system_prompt_leaves_estimate_unchanged() {
+        let est = estimate(1234, Some(7));
+        assert_eq!(estimate_tokens_with_system_prompt(est, None), 1234);
+        let est = estimate(1234, None);
+        assert_eq!(estimate_tokens_with_system_prompt(est, None), 1234);
     }
 }

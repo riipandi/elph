@@ -1,10 +1,9 @@
 //! Compaction UX: lifecycle notices, auto-compact, model-switch fit, model refs.
 
 use anyhow::Result;
-use elph_agent::compaction::{estimate_context_tokens, should_compact};
+use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt, should_compact};
 use elph_agent::{CompactResult, build_session_context};
 use elph_ai::Model;
-use elph_ai::utils::estimate::count_tokens_text;
 
 use super::super::events::AgentUiEvent;
 use super::CodingAgentSession;
@@ -32,8 +31,8 @@ impl CodingAgentSession {
     /// Estimate tokens the LLM would see on the active branch (after compaction transform).
     ///
     /// Mirrors the header's context-usage label (`tui/chrome/stats.rs`): the session-message
-    /// estimate plus the compiled system prompt, so the auto-compaction decision is made on
-    /// exactly the number the user sees in the chrome.
+    /// estimate plus the compiled system prompt — counted once — so the auto-compaction
+    /// decision is made on exactly the number the user sees in the chrome.
     pub async fn estimate_context_usage(&self) -> Result<(u64, u64)> {
         let model = self.harness.get_model().await;
         let window = model.context_window as u64;
@@ -44,10 +43,7 @@ impl CodingAgentSession {
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         let context = build_session_context(&entries);
         let estimate = estimate_context_tokens(&context.messages);
-        let mut tokens = estimate.tokens;
-        if let Some(sp) = self.cached_system_prompt() {
-            tokens += count_tokens_text(&sp);
-        }
+        let tokens = estimate_tokens_with_system_prompt(estimate, self.cached_system_prompt().as_deref());
         Ok((tokens, window))
     }
 

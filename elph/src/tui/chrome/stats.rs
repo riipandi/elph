@@ -4,9 +4,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use elph_agent::SessionTreeEntry;
-use elph_agent::{build_session_context, estimate_context_tokens};
+use elph_agent::{build_session_context, estimate_context_tokens, estimate_tokens_with_system_prompt};
 use elph_ai::get_builtin_model;
-use elph_ai::utils::estimate::count_tokens_text;
 
 use crate::agent::CodingAgentSession;
 use crate::platform::exit_message::aggregate_usage_from_entries;
@@ -124,15 +123,10 @@ pub async fn refresh_chrome_stats(
         fallback_supports_images,
     );
 
-    // Include compiled system prompt for accurate context usage display,
-    // especially on new sessions where no messages exist yet.
-    let tokens_used = {
-        let mut t = estimate.tokens;
-        if let Some(sp) = session.cached_system_prompt() {
-            t += count_tokens_text(&sp);
-        }
-        t
-    };
+    // Include the compiled system prompt for accurate context usage display — counted
+    // once. When the estimate reused provider usage the system prompt is already part
+    // of it; adding it again would double-count (see estimate_tokens_with_system_prompt).
+    let tokens_used = estimate_tokens_with_system_prompt(estimate, session.cached_system_prompt().as_deref());
     let context_pct = if context_limit > 0 {
         (tokens_used as f64 / context_limit as f64) * 100.0
     } else {

@@ -113,7 +113,7 @@ Configured via `settings.compaction` (`thresholdPct`, `keepRecentTokens`) mapped
 
 | Path | Behavior |
 | ---- | -------- |
-| **Auto** | If context usage exceeds the threshold — checked **before** sending a new prompt and **after** every turn (successful or errored) — Elph compacts history and posts sticky transcript notices (will / running / done or failed). The estimate matches the header context label (session messages + compiled system prompt), so `thresholdPct` fires exactly when the chrome shows that percentage. |
+| **Auto** | If context usage exceeds the threshold — checked **before** sending a new prompt and **after** every turn (successful or errored) — Elph compacts history and posts sticky transcript notices (will / running / done or failed). The estimate matches the header context label (session messages + compiled system prompt, counted once), so `thresholdPct` fires exactly when the chrome shows that percentage. The system prompt is only added on top of the message estimate when provider usage is not reused, so the label never double-counts it and cannot read above 100% of the window for a request that actually fits. |
 | **Turn-error recovery** | When a turn ends in a provider error that indicates a context-limit overflow (or usage is already over threshold), Elph compacts automatically and **re-runs the same prompt once** so the interrupted task continues. The retry is bounded to a single attempt. |
 | **Manual** | `/compact` (or `/c`) — same lifecycle notices; noop when nothing to summarize. |
 | **Model switch** | Switching to a **smaller** context window checks whether history still fits; if not, compact (up to two passes) with notices before the next turn. |

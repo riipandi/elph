@@ -179,6 +179,7 @@ pub use compaction::compute_file_lists;
 pub use compaction::create_file_ops;
 pub use compaction::estimate_context_tokens;
 pub use compaction::estimate_tokens;
+pub use compaction::estimate_tokens_with_system_prompt;
 pub use compaction::extract_file_ops_from_message;
 pub use compaction::find_cut_point;
 pub use compaction::find_turn_start_index;
