@@ -4,7 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{DateTime, Local, Timelike, Utc};
-use elph_agent::{FileSystem, Skill, build_session_context, estimate_context_tokens};
+use elph_agent::{
+    FileSystem, Skill, build_session_context, estimate_context_tokens, estimate_tokens_with_system_prompt,
+};
 
 use super::CodingAgentSession;
 use crate::tui::chrome::count_user_turns;
@@ -101,7 +103,7 @@ pub async fn format_session_info(session: &CodingAgentSession, skills: Option<&[
             let context = build_session_context(&entries);
             let estimate = estimate_context_tokens(&context.messages);
             let limit = session.context_window().max(1) as u64;
-            let used = estimate.tokens;
+            let used = estimate_tokens_with_system_prompt(estimate, session.cached_system_prompt().as_deref());
             let pct = if limit > 0 {
                 ((used as f64 / limit as f64) * 100.0).round() as u64
             } else {

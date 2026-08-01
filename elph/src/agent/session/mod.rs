@@ -317,7 +317,7 @@ impl CodingAgentSession {
         let _guard = self.turn_gate.lock().await;
         // Pre-prompt guard: when history already exceeds the configured threshold, compact
         // before sending so the request never runs into the hard context limit.
-        self.maybe_auto_compact().await;
+        self.maybe_auto_compact(Some(&text)).await;
 
         let started = Instant::now();
         let result = self.harness.prompt(text.clone(), None).await;
@@ -331,7 +331,7 @@ impl CodingAgentSession {
                 }
                 self.maybe_generate_session_title();
                 // Check auto-compaction after every turn (successful or errored).
-                self.maybe_auto_compact().await;
+                self.maybe_auto_compact(None).await;
             }
             Err(err) if err.code == AgentHarnessErrorCode::Busy => {
                 self.finish_ui_turn_rejected_busy(format!("Error: {err}")).await;
@@ -341,7 +341,7 @@ impl CodingAgentSession {
                 let text = crate::tui::api_error_display::format_user_facing_api_error(&err.to_string());
                 let _ = self.ui_tx.send(AgentUiEvent::Status(text));
                 // Free room after a harness-level failure too, when usage is already over threshold.
-                self.maybe_auto_compact().await;
+                self.maybe_auto_compact(None).await;
             }
         }
         result.map(|_| ()).map_err(|err| anyhow::anyhow!("{err}"))
@@ -357,6 +357,13 @@ impl CodingAgentSession {
             return;
         }
         let retry_started = Instant::now();
+        if !self.retry_fits_after_compaction(text).await {
+            let _ = self.ui_tx.send(AgentUiEvent::Status(
+                "Context still exceeds limit after compaction — use /compact or a shorter prompt.".to_string(),
+            ));
+            self.finish_ui_turn(retry_started).await;
+            return;
+        }
         match self.harness.prompt(text.to_string(), None).await {
             Ok(retry_message) => {
                 self.finish_ui_turn(retry_started).await;

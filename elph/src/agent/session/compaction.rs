@@ -2,11 +2,36 @@
 
 use anyhow::Result;
 use elph_agent::compaction::{estimate_context_tokens, estimate_tokens_with_system_prompt, should_compact};
-use elph_agent::{CompactResult, build_session_context};
+use elph_agent::{CompactResult, CompactionSettings, build_session_context};
 use elph_ai::Model;
+use elph_ai::utils::estimate::count_tokens_text;
 
 use super::super::events::AgentUiEvent;
 use super::CodingAgentSession;
+
+/// Build the auto-compaction notice, distinguishing "history alone" from "history + prompt".
+pub(crate) fn auto_compact_will_message(
+    used: u64,
+    window: u64,
+    prompt_tokens: u64,
+    settings: CompactionSettings,
+) -> String {
+    let threshold = match settings.threshold_pct {
+        Some(pct) => window * (pct as u64) / 100,
+        None => window.saturating_sub(settings.reserve_tokens),
+    };
+    let history_over = used > threshold;
+    let pct = used.saturating_mul(100).checked_div(window).unwrap_or(0);
+    if !history_over && prompt_tokens > 0 {
+        format!(
+            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) + prompt ~{prompt_tokens} tokens would exceed threshold — summarizing older history…"
+        )
+    } else {
+        format!(
+            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) exceeds threshold — summarizing older history…"
+        )
+    }
+}
 
 /// Why compaction was requested (affects notice copy and pass limits).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,18 +125,17 @@ impl CodingAgentSession {
     /// Auto-compact when usage exceeds threshold. Returns `true` when a compaction ran.
     ///
     /// Always considered; threshold comes from settings. There is no host kill-switch.
-    pub(crate) async fn maybe_auto_compact(&self) -> bool {
+    pub(crate) async fn maybe_auto_compact(&self, prompt_text: Option<&str>) -> bool {
         let settings = self.harness.compaction_settings();
         let Ok((used, window)) = self.estimate_context_usage().await else {
             return false;
         };
-        if window == 0 || !should_compact(used, window, settings) {
+        let prompt_tokens = prompt_text.map(count_tokens_text).unwrap_or(0);
+        let total = used.saturating_add(prompt_tokens);
+        if window == 0 || !should_compact(total, window, settings) {
             return false;
         }
-        let pct = used.saturating_mul(100).checked_div(window).unwrap_or(0);
-        let will = format!(
-            "Auto-compaction: context ~{used}/{window} tokens ({pct}%) exceeds threshold — summarizing older history…"
-        );
+        let will = auto_compact_will_message(used, window, prompt_tokens, settings);
         match self
             .run_compact_with_notices(CompactSource::Automatic, None, Some(will))
             .await
@@ -156,6 +180,17 @@ impl CodingAgentSession {
                 false
             }
         }
+    }
+
+    /// After compaction in `recover_errored_turn`, verify the retry has room. If the prompt
+    /// itself is so large that even an empty history wouldn't fit, retrying would just fail
+    /// again — surface a clear message instead.
+    pub(crate) async fn retry_fits_after_compaction(&self, prompt_text: &str) -> bool {
+        let Ok((used_after, window)) = self.estimate_context_usage().await else {
+            return true;
+        };
+        let prompt_tokens = count_tokens_text(prompt_text);
+        window == 0 || used_after.saturating_add(prompt_tokens) <= window
     }
 
     /// After switching to a smaller context window, compact until history fits (or max 2 passes).
@@ -237,6 +272,12 @@ const CONTEXT_OVERFLOW_MARKERS: &[&str] = &[
     "input is too long",
     "token limit",
     "maximum input token",
+    "too many tokens",
+    "reduce the length",
+    "maximum length",
+    "reduce your prompt",
+    "prompt length",
+    "token count",
 ];
 
 /// Heuristic: does the provider error text point at a context-window overflow?
@@ -298,5 +339,46 @@ mod tests {
         ] {
             assert!(!looks_like_context_overflow(text), "expected no match: {text}");
         }
+    }
+
+    #[test]
+    fn context_overflow_markers_match_additional_provider_errors() {
+        for text in [
+            "400: too many tokens in prompt",
+            "reduce the length of your prompt",
+            "maximum length exceeded",
+            "prompt length is over the limit",
+            "token count exceeds maximum",
+        ] {
+            assert!(looks_like_context_overflow(text), "expected match: {text}");
+        }
+    }
+
+    #[test]
+    fn auto_compact_will_message_history_only() {
+        let settings = CompactionSettings {
+            enabled: true,
+            reserve_tokens: 16_384,
+            threshold_pct: Some(80),
+            keep_recent_tokens: 20_000,
+        };
+        // History over threshold → normal message.
+        let msg = auto_compact_will_message(180_000, 200_000, 0, settings);
+        assert!(msg.contains("180000/200000 tokens (90%) exceeds threshold"), "{msg}");
+        assert!(!msg.contains("+ prompt"), "{msg}");
+    }
+
+    #[test]
+    fn auto_compact_will_message_prompt_pushes_over_threshold() {
+        let settings = CompactionSettings {
+            enabled: true,
+            reserve_tokens: 16_384,
+            threshold_pct: Some(80),
+            keep_recent_tokens: 20_000,
+        };
+        // History under threshold, but history + prompt over → mention prompt.
+        let msg = auto_compact_will_message(150_000, 200_000, 20_000, settings);
+        assert!(msg.contains("150000/200000 tokens (75%)"), "{msg}");
+        assert!(msg.contains("+ prompt ~20000 tokens would exceed threshold"), "{msg}");
     }
 }
