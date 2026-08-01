@@ -78,6 +78,20 @@ pub fn build_transcript_bubbles_windowed(
         last_visible = messages.len().saturating_sub(1);
     }
 
+    // Ensure we always show at least some content, even if windowing logic fails
+    if messages.is_empty() {
+        return Vec::new();
+    }
+    // Defensive: ensure indices are valid and at least one message is shown
+    let max_idx = messages.len().saturating_sub(1);
+    first_visible = first_visible.min(max_idx);
+    last_visible = last_visible.max(first_visible).min(max_idx);
+    // Final safety: ensure we always show at least the last message if everything else fails
+    if first_visible >= messages.len() || last_visible >= messages.len() || first_visible > last_visible {
+        first_visible = max_idx;
+        last_visible = max_idx;
+    }
+
     // Expand to whole flush pairs so thinking+response stay together.
     while first_visible > 0
         && messages[first_visible.saturating_sub(1)]
@@ -271,5 +285,50 @@ mod tests {
             messages.len()
         );
         assert!(!bubbles.is_empty());
+    }
+
+    #[test]
+    fn windowed_build_always_shows_content_with_large_scroll() {
+        let mut messages = Vec::new();
+        for i in 0..100 {
+            messages.push(TranscriptMessage::text(
+                format!("log line {i} with some content to make it multiline and test scrolling behavior"),
+                TranscriptStyle::StatusSuccess,
+            ));
+        }
+
+        let layouts = layout_transcript_rows(&messages, 80);
+        let total_rows = layouts
+            .last()
+            .map(|l| l.start_row.saturating_add(l.row_count))
+            .unwrap_or(0);
+        
+        // Simulate user scrolling to middle of transcript
+        let view_start = total_rows / 2;
+        let bubbles = build_transcript_bubbles_windowed(80, &messages, &layouts, view_start, 10, None, None);
+        
+        // Should always show at least some bubbles, never empty
+        assert!(!bubbles.is_empty(), "windowed build should never return empty bubbles");
+    }
+
+    #[test]
+    fn windowed_build_with_extreme_scroll_position() {
+        let messages = vec![
+            TranscriptMessage::text("user prompt", TranscriptStyle::User),
+            TranscriptMessage::assistant_markdown("response"),
+        ];
+
+        let layouts = layout_transcript_rows(&messages, 80);
+        let total_rows = layouts
+            .last()
+            .map(|l| l.start_row.saturating_add(l.row_count))
+            .unwrap_or(0);
+        
+        // Test with scroll position beyond content
+        let view_start = total_rows.saturating_add(1000);
+        let bubbles = build_transcript_bubbles_windowed(80, &messages, &layouts, view_start, 10, None, None);
+        
+        // Should still show at least the last message
+        assert!(!bubbles.is_empty(), "should show content even with extreme scroll position");
     }
 }
