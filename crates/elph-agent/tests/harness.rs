@@ -1368,7 +1368,7 @@ async fn harness_session_before_compact_overrides_custom_instructions() {
         })
         .await;
 
-    harness.compact(Some("original")).await.expect("compact");
+    harness.compact(Some("original"), None).await.expect("compact");
 
     let prompt = captured_prompt.lock().clone();
     assert!(
@@ -1557,4 +1557,90 @@ async fn harness_queue_remove_and_promote_follow_up_to_steer() {
     release.store(true, Ordering::SeqCst);
     let _ = harness.abort().await;
     let _ = first_prompt.await.expect("join first prompt");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn harness_restore_rehydrates_next_turn_queue() {
+    use elph_agent::{RestoreOptions, load_durable_state, reduce_durable_state};
+
+    let (_temp, env) = test_env();
+    let faux = faux_provider(Default::default());
+    let models = faux_models(&faux);
+    let model = faux.provider.get_models()[0].clone();
+
+    // Seed a session with a durable next-turn enqueue.
+    let mut session = Session::new(InMemorySessionStorage::new(None).expect("session"));
+    let msg = llm_message_to_agent(Message::User {
+        content: UserContent::Text("resume-me".into()),
+        timestamp: 0,
+    });
+    session
+        .append_custom_entry(
+            "harness.queue_enqueue",
+            Some(json!({
+                "queue_id": "q_restore_1",
+                "kind": "next_turn",
+                "message": msg,
+            })),
+        )
+        .await
+        .expect("enqueue");
+
+    // Open operation should be closed by restore/reconcile.
+    session
+        .append_custom_entry(
+            "harness.operation_started",
+            Some(json!({
+                "operation_id": "op_crashed",
+                "kind": "run",
+            })),
+        )
+        .await
+        .expect("op start");
+
+    let state_before = load_durable_state(&session).await;
+    assert_eq!(state_before.next_turn.len(), 1);
+    assert_eq!(state_before.open_operations.len(), 1);
+
+    let harness = AgentHarness::restore(
+        AgentHarnessOptions {
+            env,
+            session,
+            models,
+            tools: vec![],
+            resources: AgentHarnessResources::default(),
+            system_prompt: SystemPrompt::Static("You are helpful.".into()),
+            stream_options: Default::default(),
+            model,
+            thinking_level: AgentThinkingLevel::Off,
+            active_tool_names: vec![],
+            steering_mode: QueueMode::OneAtATime,
+            follow_up_mode: QueueMode::OneAtATime,
+            goal_runtime: None,
+            subagent_bootstrap: None,
+            compaction_settings: CompactionSettings::default(),
+            shared_registry: None,
+            agent_control: None,
+        },
+        RestoreOptions::default(),
+    )
+    .await
+    .expect("restore");
+
+    let peek = harness.peek_queues().await;
+    assert_eq!(peek.next_turn.len(), 1);
+    match peek.next_turn[0].as_llm() {
+        Some(Message::User {
+            content: UserContent::Text(t),
+            ..
+        }) => assert_eq!(t, "resume-me"),
+        _ => panic!("expected user text"),
+    }
+
+    // Open ops closed by reconcile (finished marker present in session tree).
+    let entries = harness.session_entries().await;
+    let state_after = reduce_durable_state(&entries);
+    assert!(state_after.open_operations.is_empty());
+    assert_eq!(state_after.next_turn.len(), 1);
+    assert_eq!(state_after.next_turn[0].0, "q_restore_1");
 }

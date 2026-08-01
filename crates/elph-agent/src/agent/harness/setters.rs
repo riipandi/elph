@@ -41,14 +41,11 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::ModelChange {
-                    provider: model.provider.clone(),
-                    model_id: model.id.clone(),
-                });
+            let write = PendingSessionWrite::ModelChange {
+                provider: model.provider.clone(),
+                model_id: model.id.clone(),
+            };
+            self.enqueue_pending_write(write).await?;
         }
         *self.shared.model.lock().await = model.clone();
         self.emit_own(AgentHarnessOwnEvent::ModelUpdate(
@@ -73,13 +70,10 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::ThinkingLevelChange {
-                    thinking_level: level_str,
-                });
+            let write = PendingSessionWrite::ThinkingLevelChange {
+                thinking_level: level_str,
+            };
+            self.enqueue_pending_write(write).await?;
         }
         *self.shared.thinking_level.lock().await = level;
         self.emit_own(AgentHarnessOwnEvent::ThinkingLevelUpdate(
@@ -113,13 +107,10 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::ActiveToolsChange {
-                    active_tool_names: next_active.clone(),
-                });
+            let write = PendingSessionWrite::ActiveToolsChange {
+                active_tool_names: next_active.clone(),
+            };
+            self.enqueue_pending_write(write).await?;
         }
 
         *self.shared.tools.lock().await = next_tools;
@@ -152,13 +143,10 @@ where
                 .await
                 .map_err(session_error)?;
         } else {
-            self.shared
-                .pending_session_writes
-                .lock()
-                .await
-                .push(PendingSessionWrite::ActiveToolsChange {
-                    active_tool_names: tool_names.clone(),
-                });
+            let write = PendingSessionWrite::ActiveToolsChange {
+                active_tool_names: tool_names.clone(),
+            };
+            self.enqueue_pending_write(write).await?;
         }
 
         *self.shared.active_tool_names.lock().await = tool_names.clone();

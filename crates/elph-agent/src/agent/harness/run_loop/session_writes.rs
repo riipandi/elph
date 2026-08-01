@@ -10,10 +10,10 @@ where
     S: crate::session::types::SessionStorage + Clone + Send + Sync + 'static,
     S::Metadata: crate::session::types::HasSessionId + Send + Sync,
 {
-    pub(super) async fn flush_pending_session_writes(&self) -> HarnessOpResult<()> {
+    pub(in crate::agent::harness) async fn flush_pending_session_writes(&self) -> HarnessOpResult<()> {
         loop {
-            let write = self.shared.pending_session_writes.lock().await.first().cloned();
-            let Some(write) = write else { break };
+            let front = self.shared.pending_session_writes.lock().await.first().cloned();
+            let Some((write_id, write)) = front else { break };
             match write {
                 PendingSessionWrite::Message { message } => {
                     let prompt_meta = self.shared.pending_prompt_meta.lock().await.take();
@@ -115,6 +115,7 @@ where
                 }
                 PendingSessionWrite::Compaction { .. } | PendingSessionWrite::BranchSummary { .. } => {}
             }
+            let _ = self.journal_pending_write_applied(write_id).await;
             self.shared.pending_session_writes.lock().await.remove(0);
         }
         Ok(())

@@ -2,10 +2,10 @@
 
 use crate::utils::path::AppPaths;
 use anyhow::Result;
-use elph_agent::create_goal_tools;
+use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, SubagentBootstrap, SystemPrompt,
+    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -17,8 +17,9 @@ use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
 use super::session_manager::SessionManager;
-use super::tool_policy::{agent_mode_from_setting, thinking_level_from_setting, to_agent_thinking};
+use super::tool_policy::{thinking_level_from_setting, to_agent_thinking};
 use crate::platform::{Paths, Settings};
+use crate::types::AgentMode;
 pub struct CreateSessionOptions<'a> {
     pub paths: &'a Paths,
     pub settings: &'a Settings,
@@ -26,6 +27,9 @@ pub struct CreateSessionOptions<'a> {
     pub resume_id: Option<&'a str>,
     pub provider_override: Option<&'a str>,
     pub model_override: Option<&'a str>,
+    /// Host override for agent mode (e.g. `elph run --brave`). Default: `build`.
+    /// Not read from settings — mode is per-session.
+    pub agent_mode: Option<crate::types::AgentMode>,
     /// When set, skips a second [`load_resources`] pass during session bootstrap.
     pub preloaded_resources: Option<LoadResourcesResult>,
     /// When true, MCP discovery is skipped; use [`super::mcp_bootstrap`] to load later.
@@ -41,13 +45,13 @@ pub async fn create_coding_session_with_events(
     crate::platform::ensure_datastore(options.paths).await?;
 
     let env = Arc::new(LocalExecutionEnv::new(options.cwd));
-    let session_manager = SessionManager::new(options.paths, env.clone(), options.cwd)?;
+    let session_manager = SessionManager::new(options.paths, options.cwd)?;
     let session = session_manager.create(options.resume_id).await?;
     let session_id = {
         use elph_agent::session::types::HasSessionId;
         session.metadata().await.session_id().to_string()
     };
-    let selection = resolve_model(
+    let (selection, _overlay_stats) = resolve_model(
         options.settings,
         options.provider_override,
         options.model_override,
@@ -62,9 +66,14 @@ pub async fn create_coding_session_with_events(
     let mut tools = BuiltinToolsBuilder::all(env.clone()).build();
     tools.push(super::diagnostics::create_diagnostics_tool(&options.cwd.display().to_string()));
 
-    // Wire floppy memory tools (memory_start_task, memory_end_task, etc.).
-    // Store initializes lazily on first tool call — no DB file check needed upfront.
-    tools.extend(crate::memory::tools::create_memory_tools(options.paths.clone()));
+    // Shared memory runtime (tools + hooks + bootstrap use one store / task id).
+    let memory_opts = crate::memory::runtime::MemoryRuntimeOptions::from_settings(&options.settings.memory);
+    let memory_runtime = Arc::new(crate::memory::MemoryRuntime::with_options(
+        options.paths.clone(),
+        session_id.clone(),
+        memory_opts,
+    ));
+    tools.extend(crate::memory::tools::create_memory_tools(Arc::clone(&memory_runtime)));
 
     // Create shared UI event channel for ask_user tool and session.
     let (ui_tx, ui_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -81,27 +90,45 @@ pub async fn create_coding_session_with_events(
 
     let goal_store = Arc::new(GoalStore::new(options.paths.metadata_db_path()));
     let goal_runtime = Arc::new(GoalRuntime::new(goal_store.clone(), session_id.clone()));
-    tools.extend(create_goal_tools(goal_store, session_id.clone()));
+    // Goals bridge: terminal goal status → work memory for future recall.
+    let memory_for_goals = Arc::clone(&memory_runtime);
+    let goal_hook: Option<elph_agent::GoalStatusHook> = Some(Arc::new(move |goal| {
+        let runtime = Arc::clone(&memory_for_goals);
+        Box::pin(async move {
+            let status = goal.status.as_str();
+            if let Err(err) = runtime.record_goal_outcome(&goal.id, &goal.objective, status).await {
+                log::warn!("memory goals bridge: {err:#}");
+            } else {
+                log::debug!("memory.write kind=work source=goal id={} status={status}", goal.id);
+            }
+        })
+    }));
+    tools.extend(create_goal_tools_with_hook(goal_store, session_id.clone(), goal_hook));
 
-    let thinking = to_agent_thinking(thinking_level_from_setting(&options.settings.session.thinking_level));
+    // Clamp default thinking (new-session seed) to the resolved model catalog.
+    let thinking = {
+        let raw = thinking_level_from_setting(&options.settings.models.default_thinking_level);
+        let clamped = raw.clamp_for_model(&selection.model);
+        to_agent_thinking(clamped)
+    };
     let agent_graph = Arc::new(AgentGraphStore::new(options.paths.metadata_db_path()));
     // Map host settings → agnostic harness stream options (elph-agent never reads settings.json).
     let stream_options = AgentHarnessStreamOptions {
         timeout_ms: options.settings.provider_timeout_ms(),
-        max_retries: Some(options.settings.provider.max_retries),
+        max_retries: Some(options.settings.max_retries),
         ..AgentHarnessStreamOptions::default()
     };
     let subagent_bootstrap = SubagentBootstrap {
-        project_key: session_manager.project_key().to_string(),
         cwd: options.cwd.display().to_string(),
-        sessions_root: options.paths.sessions_dir().to_string_lossy().to_string(),
+        metadata_db_path: options.paths.metadata_db_path().to_string_lossy().to_string(),
         resources: resources.clone(),
         stream_options: stream_options.clone(),
         thinking_level: thinking,
         agent_graph: Some(agent_graph),
     };
 
-    let agent_mode = agent_mode_from_setting(&options.settings.session.agent_mode);
+    // Agent mode is per-session; default build unless the host overrides (e.g. --brave).
+    let agent_mode = options.agent_mode.unwrap_or(AgentMode::Build);
     let mode_state = Arc::new(Mutex::new(agent_mode));
     let cwd = options.cwd.to_path_buf();
     let agents_md = agents_md_for_cwd(options.cwd);
@@ -109,11 +136,11 @@ pub async fn create_coding_session_with_events(
 
     // Build memory context from top-weighted memories for the system prompt.
     // Lock errors are handled internally (logged + empty context returned).
-    let ctx = crate::memory::hooks::build_memories_context(options.paths)
+    let ctx = crate::memory::hooks::build_memories_context(memory_runtime.as_ref())
         .await
         .unwrap_or_default();
     let injected_memory = if ctx.is_empty() { None } else { Some(ctx) };
-    let preferred_chat_language = options.settings.session.preferred_chat_language.clone();
+    let preferred_chat_language = options.settings.preferred_chat_language.clone();
 
     let system_prompt = SystemPrompt::Dynamic(Arc::new(move |ctx| {
         let cwd = cwd.clone();
@@ -150,30 +177,36 @@ pub async fn create_coding_session_with_events(
     let model = selection.model.clone();
     let models = Arc::clone(&selection.models);
     let compaction_settings = options.settings.compaction.to_agent_settings();
-    let harness = AgentHarness::new(AgentHarnessOptions {
-        env,
-        session,
-        models,
-        tools,
-        resources,
-        system_prompt,
-        stream_options,
-        model,
-        thinking_level: thinking,
-        active_tool_names: vec![],
-        steering_mode: QueueMode::OneAtATime,
-        follow_up_mode: QueueMode::OneAtATime,
-        compaction_settings,
-        goal_runtime: Some(goal_runtime.clone()),
-        subagent_bootstrap: Some(subagent_bootstrap),
-        shared_registry: None,
-        agent_control: None,
-    })
+    // Prefer restore for semi-durable recovery (queues, ops, tool-result repair, config rehydrate).
+    let harness = AgentHarness::restore(
+        AgentHarnessOptions {
+            env,
+            session,
+            models,
+            tools,
+            resources,
+            system_prompt,
+            stream_options,
+            model,
+            thinking_level: thinking,
+            active_tool_names: vec![],
+            steering_mode: QueueMode::OneAtATime,
+            follow_up_mode: QueueMode::OneAtATime,
+            compaction_settings,
+            goal_runtime: Some(goal_runtime.clone()),
+            subagent_bootstrap: Some(subagent_bootstrap),
+            shared_registry: None,
+            agent_control: None,
+        },
+        RestoreOptions::default(),
+    )
+    .await
     .map_err(|e| anyhow::anyhow!("{e}"))?;
 
-    // Wire automatic memory hooks (per-turn recall, auto-correction, auto task lifecycle).
+    // Wire automatic memory hooks (per-turn recall, auto-correction, work capture, task lifecycle).
     // Runs best-effort: errors are logged and don't prevent session startup.
-    if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, options.paths).await {
+    if let Err(err) = crate::memory::hooks::register_automatic_memory_hooks(&harness, Arc::clone(&memory_runtime)).await
+    {
         log::warn!("automatic memory hooks: {err:#}");
     }
 
@@ -190,8 +223,9 @@ pub async fn create_coding_session_with_events(
         goal_runtime,
         mcp_registry: Some(Arc::clone(&mcp_registry)),
         ui_tx: ui_tx.clone(),
-        title_model: options.settings.session.title_model.clone(),
-        preferred_chat_language: options.settings.session.preferred_chat_language.clone(),
+        title_model: options.settings.models.session_title_model.clone(),
+        preferred_chat_language: options.settings.preferred_chat_language.clone(),
+        compaction_model_ref: options.settings.models.compaction_model.clone(),
     })
     .await?;
 

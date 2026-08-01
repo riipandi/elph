@@ -13,9 +13,9 @@ pub struct PathResolver {
     pub data_env: &'static str,
     /// Override env var for the project directory (e.g. `ELPH_PROJECT_DIR`).
     pub project_env: &'static str,
-    /// Config directory name under `$HOME` (e.g. `.elph`).
+    /// Config directory name under XDG config home (e.g. `elph` → `~/.config/elph`).
     pub config_dir_name: &'static str,
-    /// Data directory name under XDG data home (e.g. `elph`).
+    /// Data directory name under XDG data home (e.g. `elph` → `~/.local/share/elph`).
     pub data_dir_name: &'static str,
 }
 
@@ -41,7 +41,14 @@ impl PathResolver {
             return Ok(path);
         }
 
-        Ok(user_home()?.join(self.config_dir_name))
+        if let Ok(xdg) = std::env::var("XDG_CONFIG_HOME") {
+            let trimmed = xdg.trim();
+            if !trimmed.is_empty() {
+                return Ok(Path::new(trimmed).join(self.config_dir_name));
+            }
+        }
+
+        Ok(user_home()?.join(".config").join(self.config_dir_name))
     }
 
     fn data_dir(&self) -> Result<PathBuf> {
@@ -114,28 +121,50 @@ mod tests {
     }
 
     #[test]
-    fn config_dir_uses_home_when_no_env() {
+    fn config_dir_uses_xdg_config_default_when_no_env() {
         let _lock = ENV_LOCK.lock();
         let resolver = PathResolver {
             home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
             data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
             project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
-            config_dir_name: ".elph",
+            config_dir_name: "elph",
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
-        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
+        // SAFETY: guarded by ENV_LOCK — exclusive process-global env mutation for this test.
         unsafe {
             std::env::set_var("HOME", tmp.path());
+            std::env::remove_var("XDG_CONFIG_HOME");
         }
         let paths = resolver.resolve().expect("resolve");
-        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }
-        assert_eq!(paths.config_dir, tmp.path().join(".elph"));
+        assert_eq!(paths.config_dir, tmp.path().join(".config").join("elph"));
+    }
+
+    #[test]
+    fn xdg_config_home_fallback() {
+        let _lock = ENV_LOCK.lock();
+        let resolver = PathResolver {
+            home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
+            data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
+            project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
+            config_dir_name: "elph",
+            data_dir_name: "elph",
+        };
+        let tmp = tempfile::tempdir().expect("tempdir");
+        // SAFETY: guarded by ENV_LOCK.
+        unsafe {
+            std::env::set_var("HOME", tmp.path());
+            std::env::set_var("XDG_CONFIG_HOME", "/xdg/config");
+        }
+        let paths = resolver.resolve().expect("resolve");
+        unsafe {
+            std::env::remove_var("HOME");
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+        assert_eq!(paths.config_dir, PathBuf::from("/xdg/config/elph"));
     }
 
     #[test]
@@ -145,25 +174,18 @@ mod tests {
             home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
             data_env: "ELPH_TEST_DATA_DIR",
             project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
-            config_dir_name: ".elph",
+            config_dir_name: "elph",
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
-        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
+        // SAFETY: guarded by ENV_LOCK.
         unsafe {
             std::env::set_var("HOME", tmp.path());
-        }
-        unsafe {
             std::env::set_var("ELPH_TEST_DATA_DIR", "/custom/data");
         }
         let paths = resolver.resolve().expect("resolve");
-        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
-        }
-        unsafe {
             std::env::remove_var("ELPH_TEST_DATA_DIR");
         }
         assert_eq!(paths.data_dir, PathBuf::from("/custom/data"));
@@ -176,25 +198,18 @@ mod tests {
             home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
             data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
             project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
-            config_dir_name: ".elph",
+            config_dir_name: "elph",
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
-        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
+        // SAFETY: guarded by ENV_LOCK.
         unsafe {
             std::env::set_var("HOME", tmp.path());
-        }
-        unsafe {
             std::env::set_var("XDG_DATA_HOME", "/xdg/data");
         }
         let paths = resolver.resolve().expect("resolve");
-        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
-        }
-        unsafe {
             std::env::remove_var("XDG_DATA_HOME");
         }
         assert_eq!(paths.data_dir, PathBuf::from("/xdg/data/elph"));
@@ -207,18 +222,15 @@ mod tests {
             home_env: "ELPH_TEST_HOME_OVERRIDE_NONEXISTENT",
             data_env: "ELPH_TEST_DATA_OVERRIDE_NONEXISTENT",
             project_env: "ELPH_TEST_PROJECT_OVERRIDE_NONEXISTENT",
-            config_dir_name: ".elph",
+            config_dir_name: "elph",
             data_dir_name: "elph",
         };
         let tmp = tempfile::tempdir().expect("tempdir");
-        // SAFETY: std::env::set_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
+        // SAFETY: guarded by ENV_LOCK.
         unsafe {
             std::env::set_var("HOME", tmp.path());
         }
         let paths = resolver.resolve().expect("resolve");
-        // SAFETY: std::env::remove_var is thread-safe but modifies process-global state.
-        // In tests, we use ENV_LOCK to ensure exclusive access, making this safe.
         unsafe {
             std::env::remove_var("HOME");
         }

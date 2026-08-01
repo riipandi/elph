@@ -1,6 +1,14 @@
 # Durable AgentHarness and session design
 
-Design notes for semi-durable harness recovery. **Not yet implemented** in `elph-agent`; session backends exist but full recovery from in-flight operations is planned.
+Design notes for semi-durable harness recovery.
+
+**Implemented (minimal slice):**
+
+- On harness `new()`, rehydrate **model**, **thinking level**, **active tools**, and **collaboration mode** from session tree entries (host still supplies tool implementations).
+- On session open/resume, `repair_unanswered_tool_calls` appends synthetic error tool results for tool_use without tool_result (crash mid-tool batch).
+- Provider streams are **not** resumed; queues and pending writes remain process-local.
+
+**Still planned:** durable queue journal, operation start/finish entries, pending-write markers, optional RetryUnfinished policy.
 
 ## Framing
 

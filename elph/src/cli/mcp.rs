@@ -98,7 +98,7 @@ pub fn handle(args: &McpArgs) -> ExitCode {
             match mcp_runtime::parse_server_config(raw) {
                 Ok(server) => match mcp_runtime::upsert_server_in(&paths, scope, name, server) {
                     Ok(()) => {
-                        let _ = mcp_runtime::ensure_project_mcp_cache(&paths);
+                        let _ = mcp_runtime::ensure_mcp_cache(&paths, None);
                         println!(
                             "Saved MCP server '{name}' to {} ({})",
                             mcp_runtime::config_path(&paths, scope).display(),
@@ -439,22 +439,39 @@ fn handle_doctor(paths: &Paths) -> ExitCode {
             ok = false;
             continue;
         }
+        if server.is_sse() {
+            println!("{name}: warn [sse] [{source}] — type=sse is deprecated (MCP 2026-07-28); prefer type=http");
+        }
+        if server.is_sse() && server.wants_oauth() {
+            println!(
+                "{name}: warn [oauth+sse] [{source}] — OAuth on SSE refreshes only on reconnect; prefer type=http"
+            );
+        }
         let result = rt.block_on(probe_server_with_auth(name, server, Some(&auth_store_path)));
         let status = if result.ok { "ok" } else { "fail" };
         let auth = auth_report
             .as_ref()
             .map(|r| format!(" auth={}", r.status_label()))
             .unwrap_or_default();
+        let lifecycle = format!(" lifecycle={}", result.lifecycle);
+        let protocol = result
+            .protocol_version
+            .as_ref()
+            .map(|p| format!(" protocol={p}"))
+            .unwrap_or_default();
         // Never print tokens/headers — only transport + status.
-        println!("{name}: {status} [{}] [{source}]{auth} — {}", result.transport, result.message);
+        println!(
+            "{name}: {status} [{}] [{source}]{auth}{lifecycle}{protocol} — {}",
+            result.transport, result.message
+        );
         if !result.ok {
             ok = false;
         }
     }
 
-    if let Ok(cache) = mcp_runtime::project_mcp_cache_dir(paths) {
-        println!("Project MCP cache: {}", cache.display());
-    }
+    let cache = mcp_runtime::host_mcp_cache_dir(paths);
+    println!("Host MCP cache: {}", cache.display());
+    println!("Session MCP cache: APP_DATA/sessions/<SESSION_ID>/mcp_cache/");
 
     if ok { EXIT_SUCCESS } else { EXIT_ERROR }
 }

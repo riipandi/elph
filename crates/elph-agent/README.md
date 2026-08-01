@@ -629,7 +629,7 @@ let harness = AgentHarness::new(AgentHarnessOptions {
 
 harness.prompt("hello", None).await?;
 harness.on_context(|event| async move { Ok(None) }).await;
-harness.compact(None).await?;
+harness.compact(None, None).await?;
 harness.navigate_tree(target_entry_id, None).await?;
 ```
 

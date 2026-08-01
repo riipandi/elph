@@ -41,14 +41,16 @@ JSON file (Elph product: `~/.elph/mcp.json`):
 }
 ```
 
-| Field                                            | Transports | Description                          |
-| ------------------------------------------------ | ---------- | ------------------------------------ |
-| `type`                                           | both       | `stdio` or `http`                    |
-| `command` / `args` / `env` / `cwd`               | stdio      | Child process                        |
-| `url` / `headers` / `authToken` / `authTokenEnv` | http       | Streamable HTTP endpoint             |
-| `timeoutMs`                                      | both       | Per list/call timeout (default 60s)  |
-| `disabled`                                       | both       | Skip during discovery and calls      |
-| `lifecycle`                                      | both       | `auto` (default), `legacy`, or `discover`. Auto probes `server/discover` and falls back to `initialize`; `legacy` uses the old handshake only; `discover` requires 2026-07-28+. Set to `legacy` for servers (e.g. DeepWiki) that reject unknown methods with non-standard errors. |
+| Field | Transports | Description |
+| ----- | ---------- | ----------- |
+| `type` | all | `stdio`, `http` (preferred remote), or deprecated `sse` |
+| `command` / `args` / `env` / `cwd` | stdio | Child process |
+| `url` / `headers` / `authToken` / `authTokenEnv` | http/sse | Remote endpoint |
+| `oauth` / `oauthScopes` / `oauthClientMetadataUrl` | http/sse | OAuth 2.1 + PKCE; CIMD URL preferred over DCR |
+| `timeoutMs` | all | Per list/call timeout (default 60s) |
+| `enable` | all | Skip when false |
+| `lifecycle` | all | `auto` (default), `legacy`, or `discover` (2026-07-28). Set `legacy` for servers that reject unknown methods with non-standard errors. |
+| `mrtrElicitation` | all | `decline` (default) or `error` for SEP-2322 elicitation during tool calls |
 
 ## API surface
 
@@ -100,42 +102,30 @@ tools.extend(registry.create_agent_tools());
 
 Elph app wiring: `elph/src/agent/runtime.rs` loads `mcp.json` and extends the tool list.
 
-## String encryption (`enc:`)
+## Sealed auth store (zero-trust)
 
-AES-256-GCM helpers for at-rest secrets (MCP OAuth tokens in `auth.json`, or any string you store on disk).
+`auth.json` is an **AES-256-GCM envelope** (`v: 2`). Master key lives only in the **OS keychain**
+(`space.elph.auth` / `auth-store-master-v2`) — never `auth.key` on disk. No `auth.json.lock`.
 
-### Format
+Legacy cleartext stores are not migrated; re-authenticate providers/MCP.
 
-```
-enc: + URL-safe base64 (no pad) of (nonce 12 bytes || ciphertext+tag)
-```
+### String helpers (`enc:`)
 
-- Prefix: `ENC_PREFIX` (`"enc:"`)
-- Key file: 32 raw bytes (default next to auth store: `auth.json` → `auth.key`, mode `0600` on Unix)
-- Crypto work runs on `tokio::task::spawn_blocking` so the async runtime is not blocked
-- Encryption is **non-deterministic** (random nonce each call)
+Still available for ad-hoc secrets (optional key file via `Aes256Key::load_or_create`).
 
-### API
-
-| Function                                                   | Role                             |
-| ---------------------------------------------------------- | -------------------------------- |
-| `Aes256Key::generate` / `load` / `load_or_create` / `save` | Key lifecycle                    |
-| `default_auth_key_path`                                    | `auth.json` → `auth.key`         |
-| `is_encrypted_value`                                       | Detect `enc:` prefix             |
-| `encrypt_string_async` / `decrypt_string_async`            | UTF-8 string round-trip          |
-| `encrypt_string_sync` / `decrypt_string_sync`              | Sync helpers (tests / non-async) |
-| `encrypt_json_async` / `decrypt_json_async`                | Serde JSON blob                  |
-| `encrypt_async` / `decrypt_async`                          | Raw bytes                        |
+| Function | Role |
+| -------- | ---- |
+| `load_or_create_master_key` / `set_process_master_key_for_tests` | Auth-store master key |
+| `encrypt_string_async` / `decrypt_string_async` | UTF-8 string round-trip |
+| `is_encrypted_value` | Detect `enc:` prefix |
 
 ```rust
 use std::sync::Arc;
-use elph_agent::{
-    Aes256Key, encrypt_string_async, decrypt_string_async, is_encrypted_value,
-};
+use elph_agent::{Aes256Key, encrypt_string_async, decrypt_string_async, is_encrypted_value};
 
-let key = Arc::new(Aes256Key::load_or_create("secrets.key").await?);
+let key = Arc::new(Aes256Key::generate());
 let cipher = encrypt_string_async(Arc::clone(&key), "my-secret-token").await?;
-assert!(is_encrypted_value(&cipher)); // starts with "enc:"
+assert!(is_encrypted_value(&cipher));
 let plain = decrypt_string_async(key, cipher).await?;
 assert_eq!(plain, "my-secret-token");
 ```
@@ -170,9 +160,24 @@ cargo test -p elph-agent --features mcp --test encrypt_string
 
 Covers: unicode/empty/long strings, nonce uniqueness, wrong key, tamper detection, key reload from disk, JSON blobs, sync API.
 
+## MCP 2026-07-28 client surface
+
+| Spec area | Elph status |
+| --------- | ----------- |
+| Lifecycle `server/discover` + preferred `2026-07-28` | Yes (`lifecycle` auto/legacy/discover) |
+| Streamable HTTP + stdio | Yes |
+| SSE (deprecated) | Yes, with doctor warnings; OAuth token re-resolved on reconnect |
+| Auth SEPs (iss, application_type, issuer-bound DCR) | Via rmcp ≥ 3.0.1 |
+| CIMD (`oauthClientMetadataUrl`) | Config + OAuth flow hook |
+| Sealed `auth.json` `{providers,mcp}` | Yes |
+| List cache SEP-2549 | Yes (`McpLoadOptions.response_cache`) |
+| MRTR elicitation | Policy decline/error (no full TUI) |
+| Tasks extension bridges | Yes when server advertises tasks |
+| Resource/prompt bridges | Yes |
+| MCP Apps / EMA / server role | Out of scope |
+
 ## Limitations
 
 - MCP **server** role (hosting tools for other clients) is out of scope.
-- OAuth browser login for remote MCP is not fully productized (token via `authToken` / `authTokenEnv`).
-- Resource/prompt MCP surfaces are not yet mapped to agent tools (tools only).
-- Tasks and Apps (2026-07-28 Extensions framework) are not yet exposed.
+- Interactive TUI for MRTR elicitation is not implemented (`mrtrElicitation` only).
+- MCP Apps and Enterprise Managed Authorization (EMA) are not exposed.

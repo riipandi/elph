@@ -304,6 +304,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let store_path = dir.path().join("auth.json");
         let key = Aes256Key::generate();
+        crate::tools::mcp::key_provider::set_process_master_key_for_tests(key.clone());
         let store = FileCredentialStore::with_key(&store_path, "svc", key);
         store
             .save(StoredCredentials::new("cid".into(), None, vec![], Some(1)))
@@ -328,6 +329,7 @@ mod tests {
         }
 
         unsafe { std::env::remove_var(env_name) };
+        crate::tools::mcp::key_provider::clear_process_master_key_for_tests();
     }
 
     #[tokio::test]
@@ -355,11 +357,20 @@ mod tests {
         let dir = tempdir().unwrap();
         let store_path = dir.path().join("auth.json");
         let key = Aes256Key::generate();
-        let store = FileCredentialStore::with_key(&store_path, "svc", key);
+        // has_stored_credentials loads with the process/keychain master key.
+        // Keep the override for the whole test body (other tests share the process slot).
+        crate::tools::mcp::key_provider::set_process_master_key_for_tests(key.clone());
+        let store = FileCredentialStore::with_key(&store_path, "svc", key.clone());
         store
             .save(StoredCredentials::new("cid".into(), None, vec![], Some(1)))
             .await
             .unwrap();
+        // Re-assert override (parallel tests may clear it).
+        crate::tools::mcp::key_provider::set_process_master_key_for_tests(key);
+        assert!(
+            has_stored_credentials(&store_path, "svc"),
+            "oauth entry must be visible under process master key"
+        );
 
         let mut cfg = base_config();
         cfg.auth_token = Some("inline-token".into());
@@ -368,6 +379,7 @@ mod tests {
         let msg = err.to_string();
         assert!(msg.contains("conflicting"), "{msg}");
         assert!(msg.contains("preferEnv") || msg.contains("preferOauth"), "{msg}");
+        crate::tools::mcp::key_provider::clear_process_master_key_for_tests();
     }
 
     #[test]

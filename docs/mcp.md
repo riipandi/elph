@@ -84,11 +84,34 @@ elph mcp remove --all name    # both layers
 
 ### Transports
 
-| `type`                                        | Meaning                                   |
-| --------------------------------------------- | ----------------------------------------- |
-| `stdio`                                       | Local child process                       |
-| `http`                                            | Streamable HTTP (current remote standard) |
-| `sse`                                             | HTTP+SSE (2024-11-05 protocol)            |
+| `type` | Meaning |
+| ------ | ------- |
+| `stdio` | Local child process |
+| `http` | Streamable HTTP (preferred remote transport; MCP 2026-07-28) |
+| `sse` | **Deprecated** HTTP+SSE (2024-11-05). Prefer `http`. Kept for the 12-month offramp. |
+
+### Protocol lifecycle (MCP 2026-07-28)
+
+Per-server field `lifecycle` (default `auto`):
+
+| Value | Behavior |
+| ----- | -------- |
+| `auto` | Prefer `server/discover` with protocol `2026-07-28`, fall back to legacy `initialize` |
+| `legacy` | Always use `initialize` / `notifications/initialized` |
+| `discover` | Require `server/discover` only (fails on legacy-only servers) |
+
+Client identity advertises name `elph`, protocol preference `2026-07-28`, form elicitation, and the Tasks extension. List responses use the rmcp SEP-2549 client cache (configurable via `McpLoadOptions.response_cache`).
+
+### MRTR elicitation (SEP-2322)
+
+`mrtrElicitation` (default `decline`):
+
+| Value | Behavior |
+| ----- | -------- |
+| `decline` | Decline server elicitation during tool calls |
+| `error` | Fail elicitation with a clear error for the agent |
+
+Interactive TUI elicitation is not implemented; use `decline`/`error` for deterministic agent runs.
 
 ### Auth
 
@@ -100,17 +123,30 @@ elph mcp auth remote
 elph mcp logout remote
 ```
 
-Credentials: shared file `~/.elph/auth.json` (keyed by server name under `mcp`, mode `0600` on Unix).
+Auth SEPs from MCP 2026-07-28 (RFC 9207 `iss`, `application_type`, issuer-bound DCR credentials) are enforced by **rmcp ≥ 3.0.1**. Prefer **CIMD** when you have a public client metadata URL:
 
-Each server entry is **AES-256-GCM** encrypted with prefix `enc:` (URL-safe base64 of
-`nonce || ciphertext`). The 32-byte key lives next to the store as `auth.key` (also `0600`),
-or can be supplied via `FileCredentialStore::with_key` / builder. Crypto runs on
-`spawn_blocking` so the async runtime is not blocked.
+```json
+{
+  "type": "http",
+  "url": "https://example.com/mcp",
+  "oauth": true,
+  "oauthClientMetadataUrl": "https://your.app/.well-known/oauth-client"
+}
+```
 
-Legacy plaintext objects are still readable and re-encrypted on the next save.
+DCR remains available for backward compatibility (spec-deprecated, still supported).
 
-The library does not hardcode this path — hosts pass it via `AuthStorePathBuilder` /
-`McpLoadOptions.auth_store_path` (default filename `auth.json`).
+Credentials: sealed file `CONFIG_DIR/auth.json` (default `~/.config/elph/auth.json`).
+
+The entire document is an **AES-256-GCM envelope** (`v: 2`). The master key lives only in the
+**OS keychain** (zero-trust) — never as `auth.key` beside the store, and no `auth.json.lock`
+sidecar. Logical payload holds MCP OAuth JSON objects and provider API keys / `env:VAR` refs.
+
+CI/tests may inject a key via `set_process_master_key_for_tests` or `ELPH_AUTH_MASTER_KEY_B64`.
+
+Legacy cleartext stores are **not** migrated — re-run `elph provider connect` / `mcp auth`.
+
+Hosts pass the path via `AuthStorePathBuilder` / `McpLoadOptions.auth_store_path`.
 
 ### Config validation
 
@@ -129,6 +165,38 @@ clear multi-error message instead of being half-applied.
 | `elph mcp auth <name>`             | OAuth browser flow                  |
 | `elph mcp logout <name>`           | Clear OAuth tokens                  |
 
+## TUI slash commands
+
+Same sealed `auth.json` store as the CLI / `/provider connect`.
+
+| Command | Behavior |
+| ------- | -------- |
+| `/mcp` or `/mcp list` | List merged servers (home + project) + OAuth status |
+| `/mcp auth` | Open MCP OAuth dialog — pick a remote server |
+| `/mcp auth figma` | Prefill/filter; **auto-starts** OAuth when the name matches uniquely |
+| `/mcp login` / `/mcp connect` | Aliases for `auth` |
+| `/mcp logout <name>` | Clear OAuth tokens for that server |
+
+Example Figma entry in `~/.config/elph/mcp.json` (or project `.elph/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp",
+      "oauth": true,
+      "oauthScopes": ["mcp:connect"],
+      "oauthClientName": "Elph MCP Client"
+    }
+  }
+}
+```
+
+Then in the TUI: `/mcp auth figma` → browser PKCE → tokens sealed under `auth.json` → `mcp.figma`.
+
+**OAuth discovery:** the client loads protected-resource + authorization-server metadata (RFC 9728 / 8414) and installs it on the OAuth manager before dynamic registration (DCR). If DCR is rejected (some hosts only allowlist known clients), set `oauthClientId` / `oauthClientSecret` or `oauthClientMetadataUrl` (CIMD).
+
 ## Agent surface
 
 Tools are named `mcp_{server}__{tool}` (sanitized).
@@ -139,6 +207,12 @@ Bridge tools (when the server supports the capability):
 - `mcp_{server}__read_resource`
 - `mcp_{server}__list_prompts`
 - `mcp_{server}__get_prompt`
+- **Tasks (SEP-2663)** when the server advertises `io.modelcontextprotocol/tasks`:
+  - `mcp_{server}__tasks_get` — poll task by `taskId`
+  - `mcp_{server}__tasks_update` — deliver `inputResponses`
+  - `mcp_{server}__tasks_cancel` — cancel task
+
+If a tool call returns `resultType: "task"`, the agent result includes `taskId` and a hint to poll with `tasks_get`.
 
 ### Policy
 

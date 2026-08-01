@@ -484,9 +484,15 @@ fn create_mistral_tool_call_id_normalizer() -> impl Fn(&str) -> String {
 }
 
 fn uses_reasoning_effort(model: &Model) -> bool {
+    // Catalog ids for models that take `reasoning_effort` instead of `prompt_mode`.
+    // `mistral-medium-2604` is marketed as "Mistral Medium 3.5"; keep legacy alias for overlays.
     matches!(
         model.id.as_str(),
-        "mistral-small-2603" | "mistral-small-latest" | "mistral-medium-3.5"
+        "mistral-small-2603"
+            | "mistral-small-latest"
+            | "mistral-medium-3.5"
+            | "mistral-medium-2604"
+            | "mistral-medium-latest"
     )
 }
 

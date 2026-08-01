@@ -12,6 +12,11 @@ use crate::platform::{Paths, Settings};
 /// (downloading model weights on first use). When false, a noop embedder is used
 /// for read-only operations (status, list, tasks, timeline, purge).
 pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
+    open_store_with_session(paths, needs_embed, "elph-cli")
+}
+
+/// Open a store with an explicit session id (coding session attribution).
+pub fn open_store_with_session(paths: &Paths, needs_embed: bool, session_id: &str) -> Result<MemoryStore> {
     std::fs::create_dir_all(paths.project_elph_dir())
         .with_context(|| format!("create {}", paths.project_elph_dir().display()))?;
 
@@ -21,8 +26,17 @@ pub fn open_store(paths: &Paths, needs_embed: bool) -> Result<MemoryStore> {
         .map(|m| embedding_dims(&m))
         .unwrap_or(DEFAULT_EMBEDDING_DIMS);
 
-    let mut builder = FloppyBuilder::new(paths.memory_db_path().to_string_lossy().into_owned(), "elph-cli")
+    let session = if session_id.trim().is_empty() {
+        "elph-cli"
+    } else {
+        session_id
+    };
+
+    let top_k = settings.memory.top_k.max(1);
+
+    let mut builder = FloppyBuilder::new(paths.memory_db_path().to_string_lossy().into_owned(), session)
         .dimensions(dims)
+        .top_k(top_k)
         .apply_migrations(true);
 
     if needs_embed {

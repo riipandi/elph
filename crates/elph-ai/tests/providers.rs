@@ -38,6 +38,33 @@ fn builtin_models_registers_every_builtin_provider() {
     }
 }
 
+#[test]
+fn catalog_providers_match_builtin_providers() {
+    use std::collections::BTreeSet;
+
+    let catalog: BTreeSet<String> = elph_ai::get_builtin_providers().into_iter().collect();
+    let registered: BTreeSet<String> = builtin_providers().into_iter().map(|p| p.id).collect();
+    assert_eq!(
+        catalog,
+        registered,
+        "catalog providers must equal builtin_providers() ids\n  only_in_catalog: {:?}\n  only_registered: {:?}",
+        catalog.difference(&registered).collect::<Vec<_>>(),
+        registered.difference(&catalog).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn openai_openai_codex_and_xai_are_registered() {
+    let models = builtin_models(None);
+    for id in ["openai", "openai-codex", "xai"] {
+        assert!(
+            models.get_provider(id).is_some(),
+            "expected {id} in builtin_models runtime collection"
+        );
+        assert!(!models.get_models(Some(id)).is_empty(), "{id} has no models");
+    }
+}
+
 #[tokio::test]
 async fn anthropic_auth_prefers_oauth_token_env() {
     let mut models = create_models(Some(CreateModelsOptions {

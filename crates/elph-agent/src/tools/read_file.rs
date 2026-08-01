@@ -46,12 +46,12 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Path to a single file to read (relative or absolute)"
+                        "description": "Path to a single file to read (relative or absolute). Use one of: path, paths, or ranges."
                     },
                     "paths": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Multiple file paths to read in one call. Mutually exclusive with 'path'."
+                        "description": "Multiple file paths to read in one call. Mutually exclusive with path/ranges."
                     },
                     "offset": {
                         "type": "number",
@@ -72,14 +72,11 @@ pub fn create_read_file_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                             },
                             "required": ["path"]
                         },
-                        "description": "Multiple specific file ranges to read. Each entry specifies a path and optional offset/limit."
+                        "description": "Multiple specific file ranges to read. Each entry specifies a path and optional offset/limit. Mutually exclusive with path/paths."
                     }
-                },
-                "oneOf": [
-                    { "required": ["path"] },
-                    { "required": ["paths"] },
-                    { "required": ["ranges"] }
-                ]
+                }
+                // No root oneOf: xAI rejects oneOf branches that only list `required`
+                // without `"type":"object"`. Mutual exclusivity is enforced at runtime.
             }),
         },
         "read_file",

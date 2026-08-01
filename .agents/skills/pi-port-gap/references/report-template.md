@@ -78,7 +78,7 @@ line instead of an empty section: `No undocumented drift since <commit>.`
 ```markdown
 ## Elph implementation delta
 
-### MCP (`crates/elph-agent/src/mcp/`)
+### MCP (`crates/elph-agent/src/tools/mcp/`)
 
 **In pi:** no MCP client in pi-agent-core.
 
@@ -89,18 +89,31 @@ Streamable HTTP / SSE, OAuth + AES-256 `auth.json` (`enc:`), project merge
 **Implications:** product wiring in `elph/` CLI/runtime; unrelated to model
 catalog regen; pi-agent drift rarely touches this area.
 
-### Hyper provider (`crates/elph-ai`)
+### Hyper / gateway providers (`crates/elph-ai`)
 
-**In pi:** no such provider.
+**In pi:** no Hyper / TokenRouter / OpenGateway / Kilo product catalogs as in Elph.
 
-**In Elph:** `models/hyper.json` + provider/OAuth; must re-add after
-`generate-models` if wiped.
+**In Elph:** gateway catalogs under `models/*.json` + factories in
+`builtin_providers()`; `generate-models chat` (models.dev origin) **preserves**
+gateway route ids and enriches from models.dev. Skill: `update-models`.
+No manual “re-add after wipe” ritual unless the provider was dropped from
+`provider_sources` / `builtin_providers`.
 
-**Implications:** Elph-only unless upstream adds it; document on every
-catalog regen step.
+**Implications:** catalog data work is Elph-owned (not a pi port); runtime
+gaps for these providers (compat flags, OAuth, tool-schema sanitize) stay in
+`src/api/*` and auth modules.
 ```
 
 Per feature: **In pi** → **In Elph** → **Implications** (port risk, maintenance, coupling).
+
+For **catalog/model list** bullets in Upstream gap, prefer:
+
+```markdown
+- **[N/A]** New models / catalog regen in pi
+  Data: covered by Elph models.dev pipeline (`/update-models`). Confirm via
+  `generate-models chat` if a specific model id is still missing.
+  Runtime still needed only if: missing factory, wrong adapter, auth, stream flag.
+```
 
 ---
 
@@ -132,11 +145,14 @@ mismatch — or call out split-brain if present.
 
 ## 6. Port priorities
 
+Each priority line should name **gap intent** + **Elph landing zone** (not a pi path to copy).
+
 ```markdown
 ## Port priorities
 
-1. **[P1]** … — because …
-2. **[P2]** … — watch until …
+1. **[P1]** … — _intent:_ …; _Elph:_ `crates/elph-ai/src/…` — because …
+2. **[P2]** … — _intent:_ …; _Elph:_ `crates/elph-agent/src/…` — watch until …
+3. **Catalog-only** … — not a port; run `/update-models` if models.dev lags
 ```
 
 ---

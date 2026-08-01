@@ -1,13 +1,4 @@
-//! Agent-callable memory tools wrapping the floppy store.
-//!
-//! These tools mirror the memelord MCP tools so the agent can persist and retrieve
-//! project-specific memories across sessions:
-//!
-//! - `memory_start_task` — retrieve relevant memories via vector search
-//! - `memory_end_task` — rate retrieved memories, record task outcome
-//! - `memory_report` — store a correction, user input, or insight
-//! - `memory_contradict` — flag a retrieved memory as wrong and delete it
-//! - `memory_status` — show memory system stats
+//! Agent-callable memory tools wrapping the shared [`MemoryRuntime`].
 
 use std::sync::Arc;
 
@@ -15,73 +6,43 @@ use anyhow::{Context, Result};
 use elph_agent::{AgentTool, AgentToolResult};
 use elph_ai::Tool;
 use serde_json::{Value, json};
-use tokio::sync::OnceCell;
-
-use super::store::open_store;
-use crate::platform::Paths;
 
 use floppy::{
-    MemoryReportInput, ReportCorrectionInput, ReportUserInput, SelfReportEntry, StartTaskResult, TaskEndInput,
-    UserInputSource,
+    MemoryCategory, MemoryReportInput, ReportCorrectionInput, ReportUserInput, SelfReportEntry, StartTaskResult,
+    TaskEndInput, UserInputSource,
 };
 
-/// Shared state for memory tools: a lazily-initialized [`floppy::MemoryStore`].
-struct MemoryToolState {
-    store: OnceCell<floppy::MemoryStore>,
-    paths: Paths,
-}
+use super::runtime::MemoryRuntime;
 
-impl MemoryToolState {
-    fn new(paths: Paths) -> Self {
-        Self {
-            store: OnceCell::new(),
-            paths,
-        }
-    }
-
-    async fn get_or_init(&self) -> Result<&floppy::MemoryStore> {
-        self.store
-            .get_or_try_init(|| async {
-                let store = open_store(&self.paths, true).context("initialize memory store for tools")?;
-                store.init().await.context("initialize memory store tables")?;
-                Ok(store)
-            })
-            .await
-    }
-}
-
-/// Create all memory tools wired to the given project paths.
-pub fn create_memory_tools(paths: Paths) -> Vec<AgentTool> {
-    let state = Arc::new(MemoryToolState::new(paths));
-
+/// Create all memory tools wired to the shared runtime.
+pub fn create_memory_tools(runtime: Arc<MemoryRuntime>) -> Vec<AgentTool> {
     vec![
-        create_start_task_tool(Arc::clone(&state)),
-        create_end_task_tool(Arc::clone(&state)),
-        create_report_tool(Arc::clone(&state)),
-        create_contradict_tool(Arc::clone(&state)),
-        create_memory_status_tool(Arc::clone(&state)),
+        create_start_task_tool(Arc::clone(&runtime)),
+        create_end_task_tool(Arc::clone(&runtime)),
+        create_report_tool(Arc::clone(&runtime)),
+        create_contradict_tool(Arc::clone(&runtime)),
+        create_memory_status_tool(Arc::clone(&runtime)),
+        create_search_tool(Arc::clone(&runtime)),
+        create_recent_tool(runtime),
     ]
 }
 
-// ---------------------------------------------------------------------------
-// memory_start_task
-// ---------------------------------------------------------------------------
-
-fn create_start_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
+fn create_start_task_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_start_task".into(),
             constrained_sampling: None,
-            description: "Retrieve relevant memories for a task description via vector search. \
-                          Call this at the start of every significant task to surface \
-                          lessons from previous sessions."
+            description: "Retrieve memories for a *new* subtask description via vector search. \
+                          Automatic per-turn recall already ran for the user message — call this \
+                          only when pivoting to a substantially different subtask. Prefer \
+                          `memory_search` / `memory_recent` for historical questions."
                 .into(),
             parameters: json!({
                 "type": "object",
                 "properties": {
                     "description": {
                         "type": "string",
-                        "description": "A concise description of the current task"
+                        "description": "A concise description of the subtask pivot"
                     }
                 },
                 "required": ["description"]
@@ -89,13 +50,13 @@ fn create_start_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
         },
         "memory_start_task",
         move |_, args| {
-            let state = Arc::clone(&state);
-            Box::pin(async move { execute_start_task(state, args).await })
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_start_task(runtime, args).await })
         },
     )
 }
 
-async fn execute_start_task(state: Arc<MemoryToolState>, args: Value) -> Result<AgentToolResult> {
+async fn execute_start_task(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
     let description = args
         .get("description")
         .and_then(Value::as_str)
@@ -103,8 +64,7 @@ async fn execute_start_task(state: Arc<MemoryToolState>, args: Value) -> Result<
         .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("`description` is required"))?;
 
-    let store = state.get_or_init().await?;
-    let StartTaskResult { task_id, memories } = store.start_task(description).await?;
+    let StartTaskResult { task_id, memories } = runtime.start_task(description).await?;
 
     let memory_list: Vec<Value> = memories
         .iter()
@@ -135,14 +95,16 @@ async fn execute_start_task(state: Arc<MemoryToolState>, args: Value) -> Result<
         let lines: Vec<String> = memories
             .iter()
             .map(|m| {
-                let preview = if m.content.len() > 200 {
-                    format!("{}...", &m.content[..200])
+                let preview = if m.content.chars().count() > 200 {
+                    let t: String = m.content.chars().take(200).collect();
+                    format!("{t}...")
                 } else {
                     m.content.clone()
                 };
                 format!(
-                    "- [{}] score={:.2}, weight={:.2}\n  {}",
+                    "- [{}] id={} score={:.2}, weight={:.2}\n  {}",
                     format!("{:?}", m.category).to_lowercase(),
+                    m.id,
                     m.score,
                     m.weight,
                     preview,
@@ -165,19 +127,14 @@ async fn execute_start_task(state: Arc<MemoryToolState>, args: Value) -> Result<
     })
 }
 
-// ---------------------------------------------------------------------------
-// memory_end_task
-// ---------------------------------------------------------------------------
-
-fn create_end_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
+fn create_end_task_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_end_task".into(),
             constrained_sampling: None,
-            description: "Rate the retrieved memories and record the task outcome. \
-                          Call this when a task is complete, failed, or abandoned. \
-                          This updates memory weights so helpful memories survive \
-                          and irrelevant ones decay."
+            description: "Rate retrieved memories and record task outcome. Usually automatic at \
+                          turn end — use only for advanced manual close of a task started with \
+                          memory_start_task."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -232,13 +189,13 @@ fn create_end_task_tool(state: Arc<MemoryToolState>) -> AgentTool {
         },
         "memory_end_task",
         move |_, args| {
-            let state = Arc::clone(&state);
-            Box::pin(async move { execute_end_task(state, args).await })
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_end_task(runtime, args).await })
         },
     )
 }
 
-async fn execute_end_task(state: Arc<MemoryToolState>, args: Value) -> Result<AgentToolResult> {
+async fn execute_end_task(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
     let task_id = args
         .get("taskId")
         .and_then(Value::as_str)
@@ -286,25 +243,22 @@ async fn execute_end_task(state: Arc<MemoryToolState>, args: Value) -> Result<Ag
         self_report,
     };
 
-    let store = state.get_or_init().await?;
-    store.end_task(&task_id, input).await?;
+    runtime.end_task(&task_id, input).await?;
 
     Ok(AgentToolResult::text(format!(
         "Task {task_id} recorded: completed={completed}, tokens={tokens_used}, errors={errors}, corrections={user_corrections}"
     )))
 }
 
-// ---------------------------------------------------------------------------
-// memory_report
-// ---------------------------------------------------------------------------
-
-fn create_report_tool(state: Arc<MemoryToolState>) -> AgentTool {
+fn create_report_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_report".into(),
             constrained_sampling: None,
-            description: "Store a correction, user input, or insight into persistent memory. \
-                          This helps future sessions learn from this session's experience."
+            description: "Store a durable correction, user preference, or insight into persistent \
+                          memory. Use for lessons auto-capture would miss (architectural decisions, \
+                          style preferences). Successful file edits are auto-journaled as work \
+                          memories — do not re-report routine edits."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -341,13 +295,13 @@ fn create_report_tool(state: Arc<MemoryToolState>) -> AgentTool {
         },
         "memory_report",
         move |_, args| {
-            let state = Arc::clone(&state);
-            Box::pin(async move { execute_report(state, args).await })
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_report(runtime, args).await })
         },
     )
 }
 
-async fn execute_report(state: Arc<MemoryToolState>, args: Value) -> Result<AgentToolResult> {
+async fn execute_report(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
     let report_type = args
         .get("type")
         .and_then(Value::as_str)
@@ -359,8 +313,6 @@ async fn execute_report(state: Arc<MemoryToolState>, args: Value) -> Result<Agen
         .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("`lesson` is required"))?
         .to_string();
-
-    let store = state.get_or_init().await?;
 
     match report_type {
         "correction" => {
@@ -376,7 +328,7 @@ async fn execute_report(state: Arc<MemoryToolState>, args: Value) -> Result<Agen
                 .to_string();
             let tokens_wasted = args.get("tokensWasted").and_then(Value::as_u64).map(|n| n as u32);
 
-            let id = store
+            let id = runtime
                 .report_correction(ReportCorrectionInput {
                     lesson: lesson.clone(),
                     what_failed,
@@ -395,13 +347,13 @@ async fn execute_report(state: Arc<MemoryToolState>, args: Value) -> Result<Agen
                 _ => UserInputSource::UserInput,
             };
 
-            let id = store.report_user_input(ReportUserInput { lesson, source }).await?;
+            let id = runtime.report_user_input(ReportUserInput { lesson, source }).await?;
 
             Ok(AgentToolResult::text(format!("User input stored (id={id})")))
         }
         "insight" => {
             let input = MemoryReportInput::insight(lesson.clone());
-            let id = store.report(input).await?;
+            let id = runtime.report(input).await?;
 
             Ok(AgentToolResult::text(format!("Insight stored (id={id}): \"{lesson}\"")))
         }
@@ -411,18 +363,13 @@ async fn execute_report(state: Arc<MemoryToolState>, args: Value) -> Result<Agen
     }
 }
 
-// ---------------------------------------------------------------------------
-// memory_contradict
-// ---------------------------------------------------------------------------
-
-fn create_contradict_tool(state: Arc<MemoryToolState>) -> AgentTool {
+fn create_contradict_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_contradict".into(),
             constrained_sampling: None,
-            description: "Flag a retrieved memory as wrong and delete it. \
-                          Optionally provide a correction that replaces it. \
-                          Use when you find that a memory contains incorrect information."
+            description: "Flag a retrieved memory as wrong and delete it. Optionally provide a \
+                          correction that replaces it. Prefer this over silently ignoring bad recalls."
                 .into(),
             parameters: json!({
                 "type": "object",
@@ -441,13 +388,13 @@ fn create_contradict_tool(state: Arc<MemoryToolState>) -> AgentTool {
         },
         "memory_contradict",
         move |_, args| {
-            let state = Arc::clone(&state);
-            Box::pin(async move { execute_contradict(state, args).await })
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_contradict(runtime, args).await })
         },
     )
 }
 
-async fn execute_contradict(state: Arc<MemoryToolState>, args: Value) -> Result<AgentToolResult> {
+async fn execute_contradict(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
     let memory_id = args
         .get("memoryId")
         .and_then(Value::as_str)
@@ -455,8 +402,7 @@ async fn execute_contradict(state: Arc<MemoryToolState>, args: Value) -> Result<
         .to_string();
     let correction = args.get("correction").and_then(Value::as_str).map(str::to_string);
 
-    let store = state.get_or_init().await?;
-    let (deleted, correction_id) = store.contradict_memory(&memory_id, correction.as_deref()).await?;
+    let (deleted, correction_id) = runtime.contradict_memory(&memory_id, correction.as_deref()).await?;
 
     if deleted {
         let mut msg = format!("Memory {memory_id} deleted.");
@@ -471,11 +417,7 @@ async fn execute_contradict(state: Arc<MemoryToolState>, args: Value) -> Result<
     }
 }
 
-// ---------------------------------------------------------------------------
-// memory_status
-// ---------------------------------------------------------------------------
-
-fn create_memory_status_tool(state: Arc<MemoryToolState>) -> AgentTool {
+fn create_memory_status_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
     elph_agent::simple_tool(
         Tool {
             name: "memory_status".into(),
@@ -490,15 +432,14 @@ fn create_memory_status_tool(state: Arc<MemoryToolState>) -> AgentTool {
         },
         "memory_status",
         move |_, _args| {
-            let state = Arc::clone(&state);
-            Box::pin(async move { execute_memory_status(state).await })
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_memory_status(runtime).await })
         },
     )
 }
 
-async fn execute_memory_status(state: Arc<MemoryToolState>) -> Result<AgentToolResult> {
-    let store = state.get_or_init().await?;
-    let stats = store.get_stats().await?;
+async fn execute_memory_status(runtime: Arc<MemoryRuntime>) -> Result<AgentToolResult> {
+    let stats = runtime.get_stats().await.context("get memory stats")?;
 
     let text = format!(
         "Memory store status:\n\
@@ -513,8 +454,9 @@ async fn execute_memory_status(state: Arc<MemoryToolState>) -> Result<AgentToolR
             .top_memories
             .iter()
             .map(|m| {
-                let preview = if m.content.len() > 80 {
-                    format!("{}...", &m.content[..80])
+                let preview = if m.content.chars().count() > 80 {
+                    let t: String = m.content.chars().take(80).collect();
+                    format!("{t}...")
                 } else {
                     m.content.clone()
                 };
@@ -525,4 +467,153 @@ async fn execute_memory_status(state: Arc<MemoryToolState>) -> Result<AgentToolR
     );
 
     Ok(AgentToolResult::text(text))
+}
+
+fn create_search_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
+    elph_agent::simple_tool(
+        Tool {
+            name: "memory_search".into(),
+            constrained_sampling: None,
+            description: "Semantic search across persistent memories without creating a task. \
+                          Prefer this over re-scanning the filesystem for historical decisions, \
+                          past work, or known layout lessons."
+                .into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query"
+                    }
+                },
+                "required": ["query"]
+            }),
+        },
+        "memory_search",
+        move |_, args| {
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_search(runtime, args).await })
+        },
+    )
+}
+
+async fn execute_search(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
+    let query = args
+        .get("query")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("`query` is required"))?;
+
+    let memories = runtime.search_memories(query).await?;
+    if memories.is_empty() {
+        return Ok(AgentToolResult::text(format!("No memories matched query: {query}")));
+    }
+
+    let lines: Vec<String> = memories
+        .iter()
+        .map(|m| {
+            let preview = if m.content.chars().count() > 240 {
+                let t: String = m.content.chars().take(240).collect();
+                format!("{t}...")
+            } else {
+                m.content.clone()
+            };
+            format!(
+                "- [{}] id={} score={:.2} w={:.2}\n  {}",
+                format!("{:?}", m.category).to_lowercase(),
+                m.id,
+                m.score,
+                m.weight,
+                preview
+            )
+        })
+        .collect();
+
+    Ok(AgentToolResult::text(format!(
+        "Search results for \"{query}\" ({}):\n\n{}",
+        memories.len(),
+        lines.join("\n")
+    )))
+}
+
+fn create_recent_tool(runtime: Arc<MemoryRuntime>) -> AgentTool {
+    elph_agent::simple_tool(
+        Tool {
+            name: "memory_recent".into(),
+            constrained_sampling: None,
+            description: "List the most recent memories (optionally by category). Use for \
+                          \"what did we just change\" without semantic search. Category \
+                          `work` holds auto-captured edit footprints."
+                .into(),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max entries (default 10)",
+                        "minimum": 1,
+                        "maximum": 50
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Optional filter: correction, user, insight, discovery, work, consolidated",
+                        "enum": ["correction", "user", "insight", "discovery", "work", "consolidated"]
+                    }
+                }
+            }),
+        },
+        "memory_recent",
+        move |_, args| {
+            let runtime = Arc::clone(&runtime);
+            Box::pin(async move { execute_recent(runtime, args).await })
+        },
+    )
+}
+
+async fn execute_recent(runtime: Arc<MemoryRuntime>, args: Value) -> Result<AgentToolResult> {
+    let limit = args
+        .get("limit")
+        .and_then(Value::as_u64)
+        .map(|n| n.clamp(1, 50) as u32)
+        .unwrap_or(10);
+    let category = args.get("category").and_then(Value::as_str).and_then(|s| match s {
+        "correction" => Some(MemoryCategory::Correction),
+        "user" => Some(MemoryCategory::User),
+        "insight" => Some(MemoryCategory::Insight),
+        "discovery" => Some(MemoryCategory::Discovery),
+        "work" => Some(MemoryCategory::Work),
+        "consolidated" => Some(MemoryCategory::Consolidated),
+        _ => None,
+    });
+
+    let records = runtime.list_recent_memories(limit, category).await?;
+    if records.is_empty() {
+        return Ok(AgentToolResult::text("No recent memories found."));
+    }
+
+    let lines: Vec<String> = records
+        .iter()
+        .map(|m| {
+            let preview = if m.content.chars().count() > 200 {
+                let t: String = m.content.chars().take(200).collect();
+                format!("{t}...")
+            } else {
+                m.content.clone()
+            };
+            format!(
+                "- [{}] id={} w={:.2}\n  {}",
+                format!("{:?}", m.category).to_lowercase(),
+                m.id,
+                m.weight,
+                preview
+            )
+        })
+        .collect();
+
+    Ok(AgentToolResult::text(format!(
+        "Recent memories ({}):\n\n{}",
+        records.len(),
+        lines.join("\n")
+    )))
 }

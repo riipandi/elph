@@ -87,14 +87,14 @@ pub fn sync_scoped_filter(pending: &mut PendingScopedModels, filter: &str) {
     pending.set_filter(filter.to_string());
 }
 
-/// Resolve the live Ctrl+P cycle list: prefer in-session edits, else `settings.models.scoped`.
+/// Resolve the live Ctrl+P cycle list: prefer in-session edits, else `settings.models.scoped_models`.
 ///
 /// When `session_scoped` is empty, reloads merged home/project settings so
-/// `settings.json` `models.scoped` is the source of truth (and seeds the session list).
+/// `settings.json` `models.scopedModels` is the source of truth (and seeds the session list).
 pub fn resolve_scoped_cycle_list(paths: &Paths, session_scoped: &mut Vec<String>) -> Vec<String> {
     if session_scoped.is_empty() {
         *session_scoped = Settings::load(paths)
-            .map(|settings| settings.models.scoped)
+            .map(|settings| settings.models.scoped_models)
             .unwrap_or_default();
     }
     session_scoped.clone()
@@ -160,14 +160,14 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
         std::fs::create_dir_all(paths.config_dir()).expect("config dir");
         let mut settings = Settings::defaults();
-        settings.models.scoped = vec!["opencode/big-pickle".into(), "kilo/kilo-auto/free".into()];
+        settings.models.scoped_models = vec!["opencode/big-pickle".into(), "kilo/kilo-auto/free".into()];
         Settings::save(&paths, &settings).expect("save settings");
 
         let mut session = Vec::new();
         let list = resolve_scoped_cycle_list(&paths, &mut session);
-        assert_eq!(list, settings.models.scoped);
+        assert_eq!(list, settings.models.scoped_models);
         // Session is seeded so subsequent cycles / Scoped tab share the list.
-        assert_eq!(session, settings.models.scoped);
+        assert_eq!(session, settings.models.scoped_models);
     }
 
     #[test]
@@ -176,7 +176,7 @@ mod tests {
         let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("project"));
         std::fs::create_dir_all(paths.config_dir()).expect("config dir");
         let mut settings = Settings::defaults();
-        settings.models.scoped = vec!["opencode/big-pickle".into()];
+        settings.models.scoped_models = vec!["opencode/big-pickle".into()];
         Settings::save(&paths, &settings).expect("save settings");
 
         let mut session = vec!["kilo/kilo-auto/free".into()];

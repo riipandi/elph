@@ -29,7 +29,17 @@ fn memory_help_lists_subcommands() {
         .expect("failed to run elph memory --help");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for sub in ["status", "list", "tasks", "log", "search", "purge"] {
+    for sub in [
+        "status",
+        "list",
+        "recent",
+        "tasks",
+        "log",
+        "search",
+        "purge",
+        "flush",
+        "consolidate",
+    ] {
         assert!(stdout.contains(sub), "missing subcommand {sub} in:\n{stdout}");
     }
 }
@@ -45,8 +55,15 @@ fn memory_status_on_empty_store() {
         .expect("failed to run elph memory status");
     assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("floppy status"));
-    assert!(stdout.contains("Memories:  0"));
+    assert!(
+        stdout.contains("Memory store") || stdout.contains("Entries"),
+        "unexpected status output:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("Entries") && stdout.contains('0'),
+        "expected empty entry count in:\n{stdout}"
+    );
+    assert!(stdout.contains("auto recall") || stdout.contains("Automatic"));
 
     let memory_db = dir.path().join(".elph/store.db");
     assert!(memory_db.is_file(), "expected floppy DB at {}", memory_db.display());

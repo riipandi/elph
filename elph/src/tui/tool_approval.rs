@@ -97,6 +97,48 @@ pub fn choice_at_index(index: usize) -> Option<ToolApprovalChoice> {
     }
 }
 
+// ── Memory flush dialog (confirm wipe) ────────────────────────────────
+
+/// Pending `/memory flush` confirmation in the TUI.
+#[derive(Debug, Clone)]
+pub struct PendingMemoryFlush {
+    pub memory_count: u32,
+    pub task_count: u32,
+}
+
+/// Select-list rows for the memory flush dialog.
+pub fn memory_flush_select_options() -> Vec<SelectOption> {
+    [
+        ("Flush store", "Permanently delete all memories and tasks"),
+        ("Cancel", "Keep the memory store as-is"),
+    ]
+    .into_iter()
+    .map(|(name, detail)| SelectOption::new(name, detail))
+    .collect()
+}
+
+/// Footer hint for the memory flush dialog.
+pub fn memory_flush_footer_hint() -> String {
+    "↑↓ move · Enter/y flush · n/Esc cancel".to_string()
+}
+
+/// Map shortcut keys to memory-flush list indices.
+///
+/// | Index | Choice | Keys    |
+/// |-------|--------|---------|
+/// | 0     | Flush  | `y` `1` |
+/// | 1     | Cancel | `n` `2` |
+pub fn pick_memory_flush_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> Option<usize> {
+    if !modifiers.is_empty() {
+        return None;
+    }
+    match code {
+        KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Char('1') => Some(0),
+        KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Char('2') => Some(1),
+        _ => None,
+    }
+}
+
 // ── Mode-change dialog (simple approve/deny) ──────────────────────────
 
 /// Pending mode-change request retained in shell state until the user responds.

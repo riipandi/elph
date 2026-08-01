@@ -10,8 +10,8 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.3
         },
@@ -42,8 +42,8 @@
         },
         "contextWindow": 131000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.017,
             "output": 0.112
         },
@@ -52,7 +52,16 @@
         "maxTokens": 131000,
         "name": "Granite 4.0 H Micro",
         "provider": "cloudflare-workers-ai",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
         "api": "openai-completions",
@@ -65,8 +74,8 @@
         },
         "contextWindow": 24000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.293,
             "output": 2.253
         },
@@ -75,7 +84,16 @@
         "maxTokens": 24000,
         "name": "Llama 3.3 70B Instruct fp8 Fast",
         "provider": "cloudflare-workers-ai",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/meta/llama-4-scout-17b-16e-instruct": {
         "api": "openai-completions",
@@ -88,8 +106,8 @@
         },
         "contextWindow": 131000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.27,
             "output": 0.85
         },
@@ -98,7 +116,16 @@
         "maxTokens": 16384,
         "name": "Llama 4 Scout 17B 16E Instruct",
         "provider": "cloudflare-workers-ai",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/mistralai/mistral-small-3.1-24b-instruct": {
         "api": "openai-completions",
@@ -111,8 +138,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.351,
             "output": 0.555
         },
@@ -121,7 +148,16 @@
         "maxTokens": 128000,
         "name": "Mistral Small 3.1 24B Instruct",
         "provider": "cloudflare-workers-ai",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/moonshotai/kimi-k2.6": {
         "api": "openai-completions",
@@ -135,9 +171,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.16,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "@cf/moonshotai/kimi-k2.6",
         "input": ["text", "image"],
@@ -167,9 +203,9 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.19,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.95,
-            "output": 4
+            "output": 4.0
         },
         "id": "@cf/moonshotai/kimi-k2.7-code",
         "input": ["text", "image"],
@@ -198,8 +234,8 @@
         },
         "contextWindow": 256000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.5,
             "output": 1.5
         },
@@ -230,8 +266,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.35,
             "output": 0.75
         },
@@ -262,8 +298,8 @@
         },
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.2,
             "output": 0.3
         },
@@ -272,7 +308,16 @@
         "maxTokens": 16384,
         "name": "GPT OSS 20B",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/qwen/qwen3-30b-a3b-fp8": {
         "api": "openai-completions",
@@ -285,8 +330,8 @@
         },
         "contextWindow": 32768,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.0509,
             "output": 0.335
         },
@@ -295,7 +340,16 @@
         "maxTokens": 32768,
         "name": "Qwen3 30B A3b fp8",
         "provider": "cloudflare-workers-ai",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "@cf/zai-org/glm-4.7-flash": {
         "api": "openai-completions",
@@ -308,8 +362,8 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
             "input": 0.0605,
             "output": 0.4
         },
@@ -341,7 +395,7 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.26,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.4,
             "output": 4.4
         },

@@ -9,14 +9,15 @@ impl MemoryStore {
     pub async fn get_status(&self) -> Result<StoreStatus> {
         self.init().await?;
         self.with_db(|conn| async move {
-            let (total_memories, completed_tasks, total_tasks, avg_score) = {
+            let (total_memories, completed_tasks, total_tasks, avg_score, pending_embeddings) = {
                 let mut rows = conn
                     .query(
                         "SELECT
                             (SELECT COUNT(*) FROM memories),
                             (SELECT COUNT(*) FROM tasks WHERE finished_at IS NOT NULL),
                             (SELECT COUNT(*) FROM tasks),
-                            (SELECT AVG(task_score) FROM tasks WHERE task_score IS NOT NULL)",
+                            (SELECT AVG(task_score) FROM tasks WHERE task_score IS NOT NULL),
+                            (SELECT COUNT(*) FROM memories WHERE embedding IS NULL)",
                         (),
                     )
                     .await?;
@@ -26,6 +27,7 @@ impl MemoryStore {
                     row.get::<i64>(1)?,
                     row.get::<i64>(2)?,
                     row.get::<Option<f64>>(3)?.unwrap_or(0.0),
+                    row.get::<i64>(4)?,
                 );
                 drain_rows(&mut rows).await?;
                 stats
@@ -69,6 +71,7 @@ impl MemoryStore {
                 avg_task_score: avg_score,
                 categories,
                 top_memories,
+                pending_embeddings: pending_embeddings as u32,
             })
         })
         .await

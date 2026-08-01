@@ -5,18 +5,48 @@ code; the list grows over time. These are **not** port gaps.
 
 For each item found, write **In pi / In Elph / Implications** — not a one-line badge.
 
+When a future pi feature **converges** with an item here, reclassify toward
+`[Partial]` / `[Parity]` under **Parity and nuance**, and implement on **Elph
+architecture** (see SKILL.md **Porting doctrine** + **Architecture invariants**).
+
 ---
 
-## elph-ai (usually no pi equivalent)
+## elph-ai — catalog & providers (often no 1:1 pi path)
 
-- **Hyper** — `models/hyper.json`, provider + OAuth; re-add after `generate-models`
+### Model catalogs (settled divergence)
+
+- **Origin = models.dev**, not pi `packages/ai` data scripts / npm `generate-models`.
+- Generator: `crates/elph-ai/bin/generate_models/`
+    - `models_dev.rs` — fetch/cache `https://models.dev/api.json`
+    - `provider_sources.rs` — Elph provider id ↔ models.dev keys, defaults, gateway flags
+    - `normalize.rs` / `thinking_map.rs` / `pricing.rs` / `chat.rs`
+- Output: `models/*.json`, `models/index.json`, `src/models/catalog.rs` (`define_catalog!`)
+- Skill: **`update-models`** (`.agents/skills/update-models/SKILL.md`)
+- **Every model** has full `thinkingLevelMap` (keys: `off|minimal|low|medium|high|xhigh|max`)
+- Registration gate: catalog provider ids ⊆ `builtin_providers()` (generator fails if missing)
+- Forward-looking override schema: `schemas/provider-schema.json` (runtime merge later)
+
+**Implications for porting:** pi CHANGELOG “new models / regenerate catalog” → run Elph
+`generate-models chat` / `/update-models`, adjust `provider_sources` or overlays — do **not**
+copy pi JSON or reintroduce `--catalog-dir` / pi npm chat generation.
+
+### Elph-only or heavily customized providers
+
+- **Hyper** — `models/hyper.json`, OAuth + completions
+- **Kilo / TokenRouter / OpenGateway / Sumopod / Baseten / Neuralwatt / Ollama Cloud** — gateway-style catalogs; preserve route ids, enrich from models.dev
 - **Faux provider** — deterministic tests (`faux_*`)
-- **Catalog tooling** — `bin/generate_models`, `define_catalog!` macros
+- **OpenAI-compat gateway hardening** — `src/api/openai_compat.rs` non-standard defaults; tool schema sanitize (`src/utils/tool_schema.rs`) for xAI/etc.
+- **Thinking wire maps** — `map_thinking_level_for_api`, clamp/cycle for product TUI (elph crate)
+
+### Other elph-ai
+
 - **Session resource cleanup** — `src/session_resources.rs` (confirm vs pi if later shared)
+- **Resilience** — circuit breaker / rate limit stack under `src/resilience/`
+- **OAuth set** — Anthropic, GitHub Copilot, OpenAI Codex, OpenRouter, Hyper, Kimi, xAI, … (`src/auth/oauth/`)
 
 ## elph-agent (product / runtime extensions)
 
-- **MCP client** — `src/mcp/`
+- **MCP client** — `src/tools/mcp/`
     - config merge (home + project), schema validate
     - transports: stdio, streamable HTTP, SSE
     - auth: env/token vs OAuth store, conflict policy
@@ -34,6 +64,12 @@ For each item found, write **In pi / In Elph / Implications** — not a one-line
 - **Harness extras** — richer than pi-agent-core (session hooks, compaction wiring)
 - **Skills / prompt templates** — `src/skills/`, `src/prompt_templates/`
 
+## elph product (only if scope expands to coding-agent)
+
+- Model picker: configured-only filter (`settings.models.showConfiguredOnly`), search grouped by provider
+- Thinking Ctrl+. / footer: catalog-driven cycle + clamp on model switch
+- Provider connect CLI/TUI + auth.json credential store
+
 ## How to confirm “missing in pi”
 
 ```sh
@@ -45,7 +81,11 @@ rg -n "mcp|MCP" packages/agent packages/ai --glob '!**/node_modules/**' | head
 # From elph
 ls crates/elph-agent/src
 rg -n "pub mod" crates/elph-agent/src/lib.rs
+# Catalog path (Elph, not pi)
+ls crates/elph-ai/bin/generate_models
+head -20 crates/elph-ai/bin/generate_models/main.rs
 ```
 
-If pi later adds a similar concept (e.g. native MCP), reclassify from
-`[Elph delta]` toward `[Partial]` / convergence notes under **Parity and nuance**.
+If pi later adds a similar concept (e.g. native MCP, or a different catalog host), reclassify from
+`[Elph delta]` toward `[Partial]` / convergence notes under **Parity and nuance** — and still
+implement on Elph’s modules, not by importing pi’s generator.

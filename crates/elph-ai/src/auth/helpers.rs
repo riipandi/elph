@@ -6,6 +6,14 @@ use super::types::{ApiKeyAuth, ApiKeyCredential, AuthLoginCallbacks, AuthModel, 
 use super::types::{ModelAuth, OAuthAuth};
 
 pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) -> ApiKeyAuth {
+    let owned: Vec<String> = env_vars.into_iter().map(str::to_string).collect();
+    flexible_api_key_auth(name, owned)
+}
+
+/// API-key auth with runtime-owned env var names (for disk-only / custom providers).
+///
+/// Resolution order: stored credential key → credential env map → process env vars.
+pub fn flexible_api_key_auth(name: impl Into<String>, env_vars: Vec<String>) -> ApiKeyAuth {
     let name = name.into();
     ApiKeyAuth {
         name: name.clone(),
@@ -41,7 +49,7 @@ pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) ->
                         }
                     }
                 }
-                for var in env_vars {
+                for var in &env_vars {
                     if let Some(value) = input.ctx.env(var).await {
                         return Some(AuthResult {
                             auth: ModelAuth {
@@ -50,7 +58,7 @@ pub fn env_api_key_auth(name: impl Into<String>, env_vars: Vec<&'static str>) ->
                                 base_url: None,
                             },
                             env: None,
-                            source: Some(var.to_string()),
+                            source: Some(var.clone()),
                         });
                     }
                 }

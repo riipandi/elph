@@ -19,18 +19,20 @@ pub struct RunModeOptions<'a> {
 }
 
 pub async fn run_non_interactive(options: RunModeOptions<'_>) -> Result<()> {
-    let mut settings = options.settings.clone();
-    if options.brave {
-        settings.session.agent_mode = "brave".into();
-    }
+    let agent_mode = if options.brave {
+        Some(crate::types::AgentMode::Brave)
+    } else {
+        None
+    };
 
     let session = create_coding_session(CreateSessionOptions {
         paths: options.paths,
-        settings: &settings,
+        settings: options.settings,
         cwd: options.cwd,
         resume_id: options.resume_id,
         provider_override: None,
         model_override: options.model,
+        agent_mode,
         preloaded_resources: None,
         defer_mcp_load: false,
     })

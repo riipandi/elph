@@ -4,7 +4,7 @@
 //!
 //! | Layer   | Path                         | Role                                      |
 //! |---------|------------------------------|-------------------------------------------|
-//! | Home    | `~/.elph/mcp.json`           | Global servers (CLI default write target) |
+//! | Home    | `CONFIG_DIR/mcp.json`        | Global servers (CLI default write target) |
 //! | Project | `<project>/.elph/mcp.json`   | Override / add servers for this repo      |
 //!
 //! Runtime load merges **home ← project** (project wins on same server name).
@@ -21,7 +21,7 @@ use super::paths::Paths;
 /// Which config file to read/write for CLI mutations.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum McpConfigScope {
-    /// `~/.elph/mcp.json` (default for `mcp add` / `remove`).
+    /// `CONFIG_DIR/mcp.json` (default for `mcp add` / `remove`).
     #[default]
     Home,
     /// `<project>/.elph/mcp.json`.
@@ -176,15 +176,38 @@ pub fn server_sources(paths: &Paths) -> Result<std::collections::BTreeMap<String
     Ok(out)
 }
 
-/// Project-local MCP cache directory: `~/.elph/projects/<key>/mcps/`.
-pub fn project_mcp_cache_dir(paths: &Paths) -> Result<std::path::PathBuf> {
-    Ok(paths.project_data_dir()?.join("mcps"))
+/// Session-scoped MCP response cache: `APP_DATA/sessions/<SESSION_ID>/mcp_cache/`.
+pub fn session_mcp_cache_dir(paths: &Paths, session_id: &str) -> std::path::PathBuf {
+    paths.session_mcp_cache_dir(session_id)
 }
 
-pub fn ensure_project_mcp_cache(paths: &Paths) -> Result<std::path::PathBuf> {
-    let dir = project_mcp_cache_dir(paths)?;
+/// Host-level MCP cache when no session is active (CLI): `APP_DATA/mcp_cache/`.
+pub fn host_mcp_cache_dir(paths: &Paths) -> std::path::PathBuf {
+    paths.host_mcp_cache_dir()
+}
+
+/// Resolve MCP cache for a session, or the host cache when `session_id` is `None`.
+pub fn mcp_cache_dir(paths: &Paths, session_id: Option<&str>) -> std::path::PathBuf {
+    match session_id {
+        Some(id) => session_mcp_cache_dir(paths, id),
+        None => host_mcp_cache_dir(paths),
+    }
+}
+
+pub fn ensure_mcp_cache(paths: &Paths, session_id: Option<&str>) -> Result<std::path::PathBuf> {
+    let dir = mcp_cache_dir(paths, session_id);
     std::fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
     Ok(dir)
+}
+
+/// @deprecated Prefer [`ensure_mcp_cache`]. Host-level ensure for CLI.
+pub fn ensure_project_mcp_cache(paths: &Paths) -> Result<std::path::PathBuf> {
+    ensure_mcp_cache(paths, None)
+}
+
+/// @deprecated Prefer [`mcp_cache_dir`].
+pub fn project_mcp_cache_dir(paths: &Paths) -> Result<std::path::PathBuf> {
+    Ok(host_mcp_cache_dir(paths))
 }
 
 pub fn parse_server_config(raw: &str) -> Result<McpServerConfig> {

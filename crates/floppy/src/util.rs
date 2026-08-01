@@ -25,6 +25,7 @@ pub fn category_str(c: MemoryCategory) -> &'static str {
         MemoryCategory::User => "user",
         MemoryCategory::Consolidated => "consolidated",
         MemoryCategory::Discovery => "discovery",
+        MemoryCategory::Work => "work",
     }
 }
 
@@ -35,6 +36,7 @@ pub fn category_from_str(s: &str) -> MemoryCategory {
         "user" => MemoryCategory::User,
         "consolidated" => MemoryCategory::Consolidated,
         "discovery" => MemoryCategory::Discovery,
+        "work" => MemoryCategory::Work,
         _ => MemoryCategory::Discovery,
     }
 }

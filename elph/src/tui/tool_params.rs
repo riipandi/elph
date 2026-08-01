@@ -260,8 +260,8 @@ fn title_case_snake(name: &str) -> String {
 /// Inside the project directory, leading path components are abbreviated to
 /// their first character so the project context is clear with minimal space:
 ///
-/// - `/Users/ariss/Developer/github.com/riipandi/elph/src/tui/shell.rs`
-///   → `/U/a/d/g/r/elph/src/tui/shell.rs`
+/// - `/Users/ariss/Developer/github.com/riipandi/elph/src/tui/shell/mod.rs`
+///   → `/U/a/d/g/r/elph/src/tui/shell/mod.rs`
 ///
 /// Outside the project directory the path is shown in full with `~` for home:
 ///

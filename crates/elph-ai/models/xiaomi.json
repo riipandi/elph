@@ -9,7 +9,7 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
@@ -18,7 +18,16 @@
         "maxTokens": 65536,
         "name": "MiMo-V2-Flash",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2-omni": {
         "api": "openai-completions",
@@ -30,16 +39,25 @@
         "contextWindow": 262144,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
         "id": "mimo-v2-omni",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video", "pdf"],
         "maxTokens": 131072,
         "name": "MiMo-V2-Omni",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2-pro": {
         "api": "openai-completions",
@@ -51,7 +69,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0036,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
@@ -60,7 +78,16 @@
         "maxTokens": 131072,
         "name": "MiMo-V2-Pro",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5": {
         "api": "openai-completions",
@@ -72,16 +99,25 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0028,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.14,
             "output": 0.28
         },
         "id": "mimo-v2.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -93,7 +129,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0036,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.435,
             "output": 0.87
         },
@@ -102,7 +138,16 @@
         "maxTokens": 131072,
         "name": "MiMo-V2.5-Pro",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5-pro-ultraspeed": {
         "api": "openai-completions",
@@ -114,7 +159,7 @@
         "contextWindow": 1048576,
         "cost": {
             "cacheRead": 0.0108,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.305,
             "output": 2.61
         },
@@ -123,6 +168,15 @@
         "maxTokens": 131072,
         "name": "MiMo-V2.5-Pro-UltraSpeed",
         "provider": "xiaomi",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

@@ -129,7 +129,15 @@ where
         ))
     }
 
-    pub async fn compact(&self, custom_instructions: Option<&str>) -> HarnessOpResult<CompactResult> {
+    /// Compact session history.
+    ///
+    /// `model_override`, when set, is used only for summarization LLM calls and does **not**
+    /// change the harness session model (footer / subsequent turns).
+    pub async fn compact(
+        &self,
+        custom_instructions: Option<&str>,
+        model_override: Option<&elph_ai::Model>,
+    ) -> HarnessOpResult<CompactResult> {
         if self.phase_async().await != AgentHarnessPhase::Idle {
             return Err(AgentHarnessError::new(
                 AgentHarnessErrorCode::Busy,
@@ -137,13 +145,32 @@ where
             ));
         }
         *self.shared.phase.lock().await = AgentHarnessPhase::Compaction;
-        let result = self.compact_inner(custom_instructions).await;
+        let op_id = self
+            .journal_operation_started(crate::session::durability::OperationKind::Compaction)
+            .await
+            .unwrap_or_else(|_| crate::session::durability::new_id("op"));
+        let result = self.compact_inner(custom_instructions, model_override).await;
+        let outcome = if result.is_ok() {
+            crate::session::durability::OperationOutcome::Completed
+        } else {
+            crate::session::durability::OperationOutcome::Failed
+        };
+        let _ = self
+            .journal_operation_finished(op_id, outcome, result.as_ref().err().map(|e| e.to_string()))
+            .await;
         *self.shared.phase.lock().await = AgentHarnessPhase::Idle;
         result
     }
 
-    async fn compact_inner(&self, custom_instructions: Option<&str>) -> HarnessOpResult<CompactResult> {
-        let model = self.shared.model.lock().await.clone();
+    async fn compact_inner(
+        &self,
+        custom_instructions: Option<&str>,
+        model_override: Option<&elph_ai::Model>,
+    ) -> HarnessOpResult<CompactResult> {
+        let model = match model_override {
+            Some(m) => m.clone(),
+            None => self.shared.model.lock().await.clone(),
+        };
         let branch_entries = self
             .shared
             .session

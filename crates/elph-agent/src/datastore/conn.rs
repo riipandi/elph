@@ -12,15 +12,30 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use rand::RngExt;
+use tokio::time::timeout;
 use turso::{Builder, Connection, Database};
 
 const MAX_RETRIES: u32 = 10;
 const BASE_DELAY_MS: u64 = 50;
+const DB_OPEN_TIMEOUT_MS: u64 = 10000; // 10 seconds timeout for database open
 
 /// Open a local Turso database with multiprocess WAL enabled.
 ///
 /// Retries on lock errors with jittered exponential backoff (capped at 5x).
+/// Includes a timeout to prevent indefinite hangs.
 pub async fn open_local(path: &Path) -> Result<Database> {
+    let db_path = path.to_path_buf();
+    timeout(Duration::from_millis(DB_OPEN_TIMEOUT_MS), open_local_with_retry(&db_path))
+        .await
+        .map_err(|_| anyhow::anyhow!("database open timeout after {}ms", DB_OPEN_TIMEOUT_MS))?
+}
+
+async fn open_local_with_retry(path: &Path) -> Result<Database> {
+    // Try cleanup before first attempt if stale files exist
+    if path.exists() {
+        let _ = cleanup_stale_shared_memory(path);
+    }
+
     let mut attempt = 0u32;
     loop {
         let build = Builder::new_local(&path.to_string_lossy())
@@ -28,11 +43,19 @@ pub async fn open_local(path: &Path) -> Result<Database> {
             .build()
             .await;
         match build {
-            Ok(db) => return Ok(db),
+            Ok(db) => {
+                if attempt > 0 {
+                    log::info!("Database opened successfully after {} retry attempts", attempt);
+                }
+                return Ok(db);
+            }
             Err(e) => {
-                if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
+                let error_msg = e.to_string();
+                if attempt >= MAX_RETRIES || !is_lock_err(&error_msg) {
+                    log::error!("Failed to open database after {} attempts: {}", attempt, error_msg);
                     return Err(e).context("open_local: build failed");
                 }
+                log::warn!("Database open attempt {} failed with lock error: {}", attempt + 1, error_msg);
             }
         }
         let jitter: f64 = rand::rng().random();
@@ -54,6 +77,10 @@ pub async fn connect(db: &Database) -> Result<Connection> {
                 if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
                     return Err(e).context("connect: connection failed");
                 }
+                log::warn!(
+                    "Database connection attempt {} failed with lock error, retrying...",
+                    attempt + 1
+                );
             }
         }
         let jitter: f64 = rand::rng().random();
@@ -61,7 +88,13 @@ pub async fn connect(db: &Database) -> Result<Connection> {
         tokio::time::sleep(Duration::from_millis(delay as u64)).await;
         attempt += 1;
     };
-    conn.execute("PRAGMA busy_timeout = 5000", ()).await?;
+
+    // Set busy timeout with error handling
+    if let Err(e) = conn.execute("PRAGMA busy_timeout = 5000", ()).await {
+        log::warn!("Failed to set busy_timeout: {e}");
+        // Continue anyway - this is not critical
+    }
+
     Ok(conn)
 }
 
@@ -95,6 +128,81 @@ where
 /// common `SQLITE_BUSY` case at the SQLite level before it reaches Rust.
 pub fn is_lock_err(msg: &str) -> bool {
     msg.contains("locked") || msg.contains("Locking") || msg.contains("busy")
+}
+
+/// Clean up stale SQLite shared memory files that can cause hangs.
+///
+/// Removes `-shm` and `-tshm` files if they exist but the main database file
+/// is not currently locked by any process. This prevents hangs from leftover
+/// shared memory files after crashes or improper shutdowns.
+pub fn cleanup_stale_shared_memory(path: &Path) -> Result<()> {
+    if !path.exists() {
+        // Database doesn't exist yet, nothing to clean up
+        return Ok(());
+    }
+
+    let db_path_str = path.to_string_lossy();
+    let mut shm_path = String::with_capacity(db_path_str.len() + 4);
+    shm_path.push_str(&db_path_str);
+    shm_path.push_str("-shm");
+    let mut tshm_path = String::with_capacity(db_path_str.len() + 5);
+    tshm_path.push_str(&db_path_str);
+    tshm_path.push_str("-tshm");
+
+    // Check if database is locked by any process
+    if is_database_locked(path) {
+        log::debug!("Database is currently in use, skipping cleanup");
+        return Ok(());
+    }
+
+    // Remove stale shared memory files
+    let mut cleaned = false;
+    if Path::new(&shm_path).exists() {
+        if let Err(e) = std::fs::remove_file(&shm_path) {
+            log::warn!("Failed to remove stale -shm file: {e}");
+        } else {
+            log::debug!("Removed stale shared memory file: {}", shm_path);
+            cleaned = true;
+        }
+    }
+
+    if Path::new(&tshm_path).exists() {
+        if let Err(e) = std::fs::remove_file(&tshm_path) {
+            log::warn!("Failed to remove stale -tshm file: {e}");
+        } else {
+            log::debug!("Removed stale shared memory file: {}", tshm_path);
+            cleaned = true;
+        }
+    }
+
+    if cleaned {
+        log::info!("Cleaned up stale SQLite shared memory files");
+    }
+
+    Ok(())
+}
+
+/// Check if a database file is currently locked by any process.
+///
+/// Uses a heuristic based on WAL file modification time to detect if the database is in use.
+fn is_database_locked(path: &Path) -> bool {
+    let path_str = path.to_string_lossy();
+
+    // Check if the WAL file exists and is recent
+    let mut wal_path = String::with_capacity(path_str.len() + 4);
+    wal_path.push_str(&path_str);
+    wal_path.push_str("-wal");
+    if Path::new(&wal_path).exists()
+        && let Ok(metadata) = std::fs::metadata(&wal_path)
+        && let Ok(modified) = metadata.modified()
+    {
+        let elapsed = modified.elapsed().unwrap_or(Duration::from_secs(60));
+        if elapsed < Duration::from_secs(30) {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[cfg(test)]

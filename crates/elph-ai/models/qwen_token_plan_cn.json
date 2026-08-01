@@ -9,17 +9,26 @@
         },
         "contextWindow": 196608,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.03,
+            "cacheWrite": 0.375,
+            "input": 0.3,
+            "output": 1.2
         },
         "id": "MiniMax-M2.5",
         "input": ["text"],
-        "maxTokens": 32768,
+        "maxTokens": 24576,
         "name": "MiniMax-M2.5",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "deepseek-v3.2": {
         "api": "openai-completions",
@@ -31,17 +40,26 @@
         },
         "contextWindow": 131072,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.58,
+            "output": 1.68
         },
         "id": "deepseek-v3.2",
         "input": ["text"],
         "maxTokens": 65536,
         "name": "DeepSeek V3.2",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "deepseek-v4-flash": {
         "api": "openai-completions",
@@ -54,10 +72,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
         },
         "id": "deepseek-v4-flash",
         "input": ["text"],
@@ -70,7 +88,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "deepseek-v4-pro": {
@@ -84,10 +104,10 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.003625,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "deepseek-v4-pro",
         "input": ["text"],
@@ -100,7 +120,9 @@
             "low": null,
             "max": "max",
             "medium": null,
-            "minimal": null
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "glm-5": {
@@ -113,17 +135,26 @@
         },
         "contextWindow": 202752,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.2,
+            "cacheWrite": 0.43,
+            "input": 0.86,
+            "output": 2.784
         },
         "id": "glm-5",
         "input": ["text"],
         "maxTokens": 16384,
         "name": "GLM-5",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.1": {
         "api": "openai-completions",
@@ -133,19 +164,28 @@
             "supportsStore": false,
             "thinkingFormat": "qwen"
         },
-        "contextWindow": 202752,
+        "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.1",
         "input": ["text"],
-        "maxTokens": 128000,
+        "maxTokens": 131072,
         "name": "GLM-5.1",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "glm-5.2": {
         "api": "openai-completions",
@@ -157,17 +197,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.26,
+            "cacheWrite": 0.0,
+            "input": 1.4,
+            "output": 4.4
         },
         "id": "glm-5.2",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "GLM-5.2",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": "max",
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "kimi-k2.5": {
         "api": "openai-completions",
@@ -179,17 +228,26 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.08,
+            "cacheWrite": 0.0,
+            "input": 0.5,
+            "output": 2.8
         },
         "id": "kimi-k2.5",
-        "input": ["text", "image"],
-        "maxTokens": 98304,
+        "input": ["text", "image", "video"],
+        "maxTokens": 262144,
         "name": "Kimi K2.5",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.6": {
         "api": "openai-completions",
@@ -201,17 +259,26 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.16,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
         },
         "id": "kimi-k2.6",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 262144,
         "name": "Kimi K2.6",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "kimi-k2.7-code": {
         "api": "openai-completions",
@@ -223,17 +290,26 @@
         },
         "contextWindow": 262144,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.19,
+            "cacheWrite": 0.0,
+            "input": 0.95,
+            "output": 4.0
         },
         "id": "kimi-k2.7-code",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 262144,
         "name": "Kimi K2.7 Code",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.6-flash": {
         "api": "openai-completions",
@@ -245,17 +321,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.234375,
+            "input": 0.1875,
+            "output": 1.125
         },
         "id": "qwen3.6-flash",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.6 Flash",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.6-plus": {
         "api": "openai-completions",
@@ -267,17 +352,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.05,
+            "cacheWrite": 0.625,
+            "input": 0.5,
+            "output": 3.0
         },
         "id": "qwen3.6-plus",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.6 Plus",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.7-max": {
         "api": "openai-completions",
@@ -289,17 +383,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.5,
+            "cacheWrite": 3.125,
+            "input": 2.5,
+            "output": 7.5
         },
         "id": "qwen3.7-max",
         "input": ["text"],
-        "maxTokens": 131072,
+        "maxTokens": 65536,
         "name": "Qwen3.7 Max",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.7-plus": {
         "api": "openai-completions",
@@ -311,17 +414,26 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.05,
+            "cacheWrite": 0.625,
+            "input": 0.5,
+            "output": 3.0
         },
         "id": "qwen3.7-plus",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 65536,
         "name": "Qwen3.7 Plus",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "qwen3.8-max-preview": {
         "api": "openai-completions",
@@ -333,16 +445,25 @@
         },
         "contextWindow": 1000000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 0.0,
+            "output": 0.0
         },
         "id": "qwen3.8-max-preview",
-        "input": ["text", "image"],
+        "input": ["text", "image", "video"],
         "maxTokens": 131072,
         "name": "Qwen3.8 Max Preview",
         "provider": "qwen-token-plan-cn",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": "xhigh"
+        }
     }
 }

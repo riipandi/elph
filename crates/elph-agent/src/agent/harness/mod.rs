@@ -2,6 +2,7 @@
 
 mod accessors;
 mod compaction_ops;
+mod durability_ops;
 pub mod generic_on;
 mod helpers;
 mod hook_registration;
@@ -62,6 +63,7 @@ pub use types::FileOperations;
 pub use types::FileSystem;
 pub use types::HarnessHookResult;
 pub use types::HarnessResult;
+pub use types::MissingActiveToolsPolicy;
 pub use types::ModelUpdateEvent;
 pub use types::ModelUpdateSource;
 pub use types::NavigateTreeResult;
@@ -69,8 +71,10 @@ pub use types::PendingSessionWrite;
 pub use types::PromptTemplate;
 pub use types::QueueUpdateEvent;
 pub use types::ReadTextLinesOptions;
+pub use types::RecoveryPolicy;
 pub use types::RemoveOptions;
 pub use types::ResourcesUpdateEvent;
+pub use types::RestoreOptions;
 pub use types::Result;
 pub use types::SavePointEvent;
 pub use types::SessionBeforeCompactEvent;
@@ -127,7 +131,7 @@ use crate::collaboration::CollaborationMode;
 use crate::collaboration::filter_active_tools;
 use crate::runtime::try_block_on;
 use crate::session::tree::Session;
-use crate::session::types::{HasSessionId, SessionStorage, SessionTreeEntry};
+use crate::session::types::{HasSessionId, SessionStorage};
 #[cfg(feature = "tools-collaboration")]
 use crate::tools::create_collaboration_tools;
 use crate::types::{AgentMessage, AgentThinkingLevel, AgentTool, ConvertToLlmFn, QueueMode, StreamFn};
@@ -170,7 +174,8 @@ where
     models: Arc<Models>,
     phase: Mutex<AgentHarnessPhase>,
     active_run: Mutex<Option<ActiveRun>>,
-    pending_session_writes: Mutex<Vec<crate::agent::harness::types::PendingSessionWrite>>,
+    /// Pending session writes with durable journal ids: `(write_id, write)`.
+    pending_session_writes: Mutex<Vec<(String, crate::agent::harness::types::PendingSessionWrite)>>,
     model: Mutex<Model>,
     thinking_level: Mutex<AgentThinkingLevel>,
     system_prompt: Mutex<SystemPrompt<S>>,
@@ -178,11 +183,12 @@ where
     resources: Mutex<AgentHarnessResources>,
     tools: Mutex<HashMap<String, AgentTool>>,
     active_tool_names: Mutex<Vec<String>>,
-    steer_queue: Mutex<Vec<AgentMessage>>,
+    /// Queues with durable journal ids: `(queue_id, message)`.
+    steer_queue: Mutex<Vec<(String, AgentMessage)>>,
     steering_queue_mode: Mutex<QueueMode>,
-    follow_up_queue: Mutex<Vec<AgentMessage>>,
+    follow_up_queue: Mutex<Vec<(String, AgentMessage)>>,
     follow_up_queue_mode: Mutex<QueueMode>,
-    next_turn_queue: Mutex<Vec<AgentMessage>>,
+    next_turn_queue: Mutex<Vec<(String, AgentMessage)>>,
     hooks: HookRegistryT,
     convert_to_llm: ConvertToLlmFn,
     collaboration_mode: Mutex<CollaborationMode>,
@@ -221,17 +227,20 @@ where
             tools_map.insert(tool.name().to_string(), tool);
         }
 
-        let collaboration_mode = try_block_on(async {
+        // Rehydrate durable harness config from session entries (semi-durable restore).
+        let (restored_thinking, restored_model, restored_active_tools, collaboration_mode) = try_block_on(async {
             let entries = options.session.entries().await;
-            let mut mode = CollaborationMode::Default;
-            for entry in &entries {
-                if let SessionTreeEntry::CollaborationModeChange { mode: m, .. } = entry {
-                    mode = *m;
-                }
-            }
-            mode
+            crate::session::derive_session_context_state(&entries)
         })
-        .unwrap_or(CollaborationMode::Default);
+        .unwrap_or((None, None, None, CollaborationMode::Default));
+
+        let restored_model = restored_model.and_then(|r| options.models.get_model(&r.provider, &r.model_id));
+        let model = restored_model.unwrap_or(options.model);
+        // Only apply session thinking when an explicit ThinkingLevelChange exists.
+        let thinking_level = restored_thinking
+            .as_deref()
+            .and_then(parse_agent_thinking_level)
+            .unwrap_or(options.thinking_level);
 
         let metadata = try_block_on(async { options.session.metadata().await }).map_err(|_| {
             AgentHarnessError::new(
@@ -262,7 +271,7 @@ where
                 Arc::new(AgentControl::new(
                     SubagentSpawnConfig {
                         env: options.env.clone(),
-                        model: options.model.clone(),
+                        model: model.clone(),
                         system_prompt: String::new(),
                         base_tools: base_tools.clone(),
                         stream_fn,
@@ -284,7 +293,16 @@ where
             }
         }
 
-        let baseline_active_tool_names: Vec<String> = if options.active_tool_names.is_empty() {
+        // Constructor-supplied active tools must stay strict (validate missing names).
+        // Restored session names may reference tools the host no longer registers — drop those.
+        let baseline_active_tool_names: Vec<String> = if let Some(names) = restored_active_tools {
+            let filtered: Vec<String> = names.into_iter().filter(|n| tools_map.contains_key(n)).collect();
+            if filtered.is_empty() {
+                tools_map.keys().cloned().collect()
+            } else {
+                filtered
+            }
+        } else if options.active_tool_names.is_empty() {
             tools_map.keys().cloned().collect()
         } else {
             options.active_tool_names
@@ -301,8 +319,8 @@ where
                 phase: Mutex::new(AgentHarnessPhase::Idle),
                 active_run: Mutex::new(None),
                 pending_session_writes: Mutex::new(Vec::new()),
-                model: Mutex::new(options.model),
-                thinking_level: Mutex::new(options.thinking_level),
+                model: Mutex::new(model),
+                thinking_level: Mutex::new(thinking_level),
                 system_prompt: Mutex::new(options.system_prompt),
                 stream_options: Mutex::new(clone_stream_options(&options.stream_options)),
                 resources: Mutex::new(options.resources),
@@ -325,5 +343,61 @@ where
                 convert_to_llm: default_convert_to_llm_fn(),
             }),
         })
+    }
+
+    /// Open a harness with full semi-durable recovery (reconcile + rehydrate queues/pending writes).
+    ///
+    /// Prefer this over [`Self::new`] when resuming an existing session after process restart.
+    pub async fn restore(
+        mut options: AgentHarnessOptions<S>,
+        restore: crate::agent::harness::types::RestoreOptions,
+    ) -> HarnessOpResult<Self> {
+        // 1) Repair tree (tool results) + close open operations as interrupted.
+        let _ = crate::session::recovery::reconcile_session(&mut options.session).await;
+        let _ = restore.recovery; // RetryUnfinished reserved; MarkInterrupted is default path.
+
+        // 2) Fail if required restored tools missing (policy) — check before `new` drops them.
+        if matches!(
+            restore.missing_active_tools,
+            crate::agent::harness::types::MissingActiveToolsPolicy::Fail
+        ) {
+            let entries = try_block_on(async { options.session.entries().await }).unwrap_or_default();
+            let (_, _, restored_active, _) = crate::session::derive_session_context_state(&entries);
+            if let Some(names) = restored_active {
+                let registered: std::collections::HashSet<String> =
+                    options.tools.iter().map(|t| t.name().to_string()).collect();
+                for name in &names {
+                    if !registered.contains(name) {
+                        return Err(AgentHarnessError::new(
+                            crate::agent::harness::types::AgentHarnessErrorCode::InvalidArgument,
+                            format!("Restored active tool `{name}` is not registered by the host"),
+                        ));
+                    }
+                }
+            }
+        }
+
+        // 3) Construct harness (rehydrates model/thinking/tools/collab from session).
+        let harness = Self::new(options)?;
+
+        // 4) Rehydrate durable queues + pending writes; apply pending immediately if idle.
+        harness.apply_durable_state().await?;
+        if harness.phase_async().await == AgentHarnessPhase::Idle {
+            let _ = harness.flush_pending_session_writes().await;
+        }
+        Ok(harness)
+    }
+}
+
+fn parse_agent_thinking_level(s: &str) -> Option<AgentThinkingLevel> {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "off" => Some(AgentThinkingLevel::Off),
+        "minimal" => Some(AgentThinkingLevel::Minimal),
+        "low" => Some(AgentThinkingLevel::Low),
+        "medium" => Some(AgentThinkingLevel::Medium),
+        "high" => Some(AgentThinkingLevel::High),
+        "xhigh" => Some(AgentThinkingLevel::Xhigh),
+        "max" => Some(AgentThinkingLevel::Max),
+        _ => None,
     }
 }

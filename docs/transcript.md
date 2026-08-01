@@ -264,7 +264,7 @@ The path is resolved via [`Paths::transcript_db_path()`] in `platform/paths.rs`.
 | `elph/src/tui/transcript/markdown/`       | Streaming markdown buffer + parse workers                 |
 | `elph/src/tui/tool_params.rs`             | Tool display labels + MCP server names                    |
 | `elph/src/tui/agent_bridge.rs`            | Event applier + streaming content caps                    |
-| `elph/src/tui/shell.rs`                   | Event loop + archive trigger                              |
+| `elph/src/tui/shell/`                      | Shell component (`mod.rs`), event loop (`tick.rs`), key handling (`keys.rs`), view builder (`view.rs`) |
 | `elph/src/tui/platform/paths.rs`          | `transcript_db_path()`                                    |
 
 [`TranscriptMessage`]: https://github.com/riipandi/elph/blob/main/elph/src/tui/transcript/types.rs

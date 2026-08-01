@@ -66,6 +66,14 @@ pub fn is_open_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
     modifiers.is_empty() && code == KeyCode::Up
 }
 
+/// Whether an Arrow Up press is spaced far enough from the previous one to
+/// treat as a deliberate keypress (not a mouse-wheel burst).
+///
+/// Call with the gap measured **before** updating the last-up timestamp.
+pub fn is_deliberate_arrow_up(since_last_up: std::time::Duration) -> bool {
+    since_last_up >= std::time::Duration::from_millis(50)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,5 +124,13 @@ mod tests {
             resolve_key_action(&s, 0, KeyCode::Esc, KeyModifiers::NONE),
             Some(PromptHistoryKeyAction::Dismiss)
         );
+    }
+
+    #[test]
+    fn deliberate_arrow_up_rejects_burst_gap() {
+        assert!(!is_deliberate_arrow_up(std::time::Duration::from_millis(0)));
+        assert!(!is_deliberate_arrow_up(std::time::Duration::from_millis(49)));
+        assert!(is_deliberate_arrow_up(std::time::Duration::from_millis(50)));
+        assert!(is_deliberate_arrow_up(std::time::Duration::from_secs(2)));
     }
 }

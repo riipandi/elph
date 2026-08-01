@@ -12,6 +12,7 @@ mod file_picker;
 mod focus;
 mod inline_dialog;
 pub(crate) mod labels;
+pub(crate) mod mcp_auth_dialog;
 mod model_option_list;
 mod model_selector;
 mod model_selector_bar;
@@ -54,11 +55,10 @@ use elph_agent::LocalExecutionEnv;
 use elph_ai::get_builtin_model;
 use elph_tui::install_theme_config;
 
-use crate::agent::agent_mode_from_setting;
 use crate::agent::{load_resources, resolve_provider_and_model, slash_commands_for_palette};
 use crate::extensions::ExtensionHost;
 use crate::platform::{Paths, Settings};
-use crate::types::ThinkingLevel;
+use crate::types::{AgentMode, ThinkingLevel};
 
 use chrome::read_git_footer_info;
 use labels::model_footer_label;
@@ -90,17 +90,16 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
     let bootstrap_resources = load_resources(&paths, &cwd, &env).await;
     let prompt_templates = bootstrap_resources.resources.prompt_templates.clone();
     let skills = bootstrap_resources.resources.skills.clone();
-    let skill_conflicts = bootstrap_resources.skill_conflicts.clone();
     let slash_commands =
         slash_commands_for_palette(Some(&extension_host.registry().read()), Some(&prompt_templates), Some(&skills));
 
     let session_id = options.resume_id.clone().unwrap_or_else(|| "starting…".to_string());
-    let (boot_provider, boot_model_id) = resolve_provider_and_model(
-        None,
-        None,
-        settings.session.provider_id.as_deref(),
-        settings.session.model_id.as_deref(),
-    )?;
+    let (default_provider, default_model_id) = match settings.models.default_provider_and_model() {
+        Some((p, m)) => (Some(p), Some(m)),
+        None => (None, None),
+    };
+    let (boot_provider, boot_model_id) =
+        resolve_provider_and_model(None, None, default_provider.as_deref(), default_model_id.as_deref())?;
     let boot_model = get_builtin_model(&boot_provider, &boot_model_id);
     let context_limit = boot_model
         .as_ref()
@@ -110,13 +109,13 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         .as_ref()
         .map(|model| model.input.iter().any(|cap| cap == "image"))
         .unwrap_or(false);
+    let startup_messages = initial_startup_messages(&bootstrap_resources);
     let bootstrap_config = TuiBootstrapConfig {
         paths: paths.clone(),
         settings: settings.clone(),
         resume_id: options.resume_id.clone(),
         preloaded_resources: bootstrap_resources,
     };
-    let startup_messages = initial_startup_messages(&skill_conflicts);
 
     let model_label = model_footer_label(Some(&boot_provider), Some(&boot_model_id));
     let git_footer = read_git_footer_info(paths.project_dir());
@@ -129,8 +128,16 @@ pub async fn run_tui(options: TuiOptions) -> Result<()> {
         session_id: session_id,
         startup_messages: startup_messages,
         bootstrap: Some(bootstrap_config),
-        initial_agent_mode: agent_mode_from_setting(&settings.session.agent_mode),
-        initial_thinking_level: ThinkingLevel::from_setting(&settings.session.thinking_level),
+        // Live agent mode is per-session; new sessions always start in build.
+        initial_agent_mode: AgentMode::Build,
+        initial_thinking_level: {
+            let raw = ThinkingLevel::from_setting(&settings.models.default_thinking_level);
+            if let Some(model) = boot_model.as_ref() {
+                raw.clamp_for_model(model)
+            } else {
+                raw
+            }
+        },
         model_label: model_label,
         context_limit: context_limit,
         supports_images: supports_images,

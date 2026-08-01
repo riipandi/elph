@@ -1,27 +1,91 @@
-//! Desktop notification dispatcher.
+//! Terminal notification dispatcher using OSC escape sequences.
 //!
-//! Thin wrapper around `notify-rust` gated by [`NotificationSettings`].
-//! Errors are non-fatal — logged at `warn` level and swallowed so the
-//! TUI never crashes due to a notification failure.
+//! Sends notifications via terminal escape sequences (OSC 99, OSC 9, OSC 777)
+//! which are handled by the terminal emulator. This approach works via SSH,
+//! tmux/screen, and is more reliable for CLI/TUI applications than desktop
+//! notifications.
 //!
 //! # Platform support
 //!
-//! | Platform | Mechanism                          |
-//! |----------|------------------------------------|
-//! | macOS    | Notification Center (UNUserNotification) |
-//! | Linux    | D-Bus (XDG Desktop Notifications)  |
-//! | Windows  | Toast notifications                |
+//! | Terminal    | Sequence  | Notes                     |
+//! |-------------|-----------|---------------------------|
+//! | Kitty       | OSC 99    | Full notification support  |
+//! | iTerm2      | OSC 9     | Basic notifications        |
+//! | WezTerm     | OSC 777   | Basic notifications        |
+//! | Ghostty     | OSC 777   | Basic notifications        |
+//! | Windows Terminal | OSC 9 | Basic notifications        |
+//! | VTE (GNOME Terminal) | OSC 777 | Basic notifications |
 //!
-//! On headless / CI environments `notify-rust` will fail silently and
-//! the `warn` log entry is the only trace.
+//! Terminals that don't support these sequences will simply ignore them,
+//! making this a graceful degradation approach.
 
 use crate::platform::NotificationSettings;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 
-/// Send a desktop notification if the event type is enabled in settings.
+/// Notification queue with deduplication and rate limiting.
+#[derive(Clone)]
+pub struct NotifierQueue {
+    /// Last notification timestamp for each kind (deduplication).
+    last_sent: Arc<RwLock<std::collections::HashMap<String, Instant>>>,
+    /// Rate limit duration (same notification type can't be sent within this window).
+    rate_limit: Duration,
+}
+
+impl NotifierQueue {
+    /// Create a new notification queue with default rate limit (1 second).
+    pub fn new() -> Self {
+        Self {
+            last_sent: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            rate_limit: Duration::from_secs(1),
+        }
+    }
+
+    /// Create a new notification queue with custom rate limit.
+    #[cfg(test)]
+    pub(crate) fn with_rate_limit(rate_limit: Duration) -> Self {
+        Self {
+            last_sent: Arc::new(RwLock::new(std::collections::HashMap::new())),
+            rate_limit,
+        }
+    }
+
+    /// Check if a notification of this kind should be sent (rate limit + deduplication).
+    async fn should_send(&self, kind_key: &str) -> bool {
+        let mut last_sent = self.last_sent.write().await;
+        let now = Instant::now();
+
+        if let Some(&last) = last_sent.get(kind_key)
+            && now.duration_since(last) < self.rate_limit
+        {
+            return false; // Rate limited
+        }
+
+        last_sent.insert(kind_key.to_string(), now);
+        true
+    }
+}
+
+impl Default for NotifierQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Global notification queue instance.
+static NOTIFIER_QUEUE: std::sync::OnceLock<NotifierQueue> = std::sync::OnceLock::new();
+
+/// Get or create the global notification queue.
+fn get_notifier_queue() -> &'static NotifierQueue {
+    NOTIFIER_QUEUE.get_or_init(NotifierQueue::new)
+}
+
+/// Send a terminal notification if the event type is enabled in settings.
 ///
-/// Spawns a blocking task as fire-and-forget so the notification never
-/// stalls the TUI tick loop, even though `notify-rust`'s `show()` is
-/// synchronous.
+/// Uses OSC escape sequences (OSC 99, OSC 9, OSC 777) to send notifications
+/// to the terminal emulator. This approach works via SSH, tmux/screen, and
+/// gracefully degrades on terminals that don't support these sequences.
 pub fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
     if !settings.enabled {
         return;
@@ -31,21 +95,66 @@ pub fn notify(settings: &NotificationSettings, kind: NotifKind<'_>) {
     }
 
     let (summary, body) = kind.message();
-    let app_name = settings.app_name.clone();
-    // Fire-and-forget: spawn a blocking task so the sync `show()` call
-    // never stalls the tokio runtime / tick loop.
+    let kind_key = kind.key();
+
+    // Check rate limiting asynchronously
+    let queue = get_notifier_queue().clone();
+    let kind_key = kind_key.to_string();
+
     tokio::spawn(async move {
-        let _ = tokio::task::spawn_blocking(move || {
-            let _ = notify_rust::Notification::new()
-                .summary(&summary)
-                .body(&body)
-                .appname(&app_name)
-                .timeout(notify_rust::Timeout::Milliseconds(8000))
-                .show()
-                .inspect_err(|e| log::warn!("desktop notification failed: {e}"));
-        })
-        .await;
+        if !queue.should_send(&kind_key).await {
+            log::debug!("Notification rate-limited: {}", kind_key);
+            return;
+        }
+
+        // Send OSC escape sequence notification
+        send_osc_notification(&summary, &body);
     });
+}
+
+/// Send notification using OSC escape sequences.
+///
+/// Tries multiple OSC sequences for maximum terminal compatibility:
+/// - OSC 99 (Kitty, most feature-rich)
+/// - OSC 9 (iTerm2, Windows Terminal)
+/// - OSC 777 (WezTerm, Ghostty, VTE-based terminals)
+///
+/// Terminals that don't support these sequences will simply ignore them.
+fn send_osc_notification(summary: &str, body: &str) {
+    // OSC 99 (Kitty) - most feature-rich, supports title and body
+    let osc_99 = format!(
+        "\x1b]99;title={};body={}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_99);
+
+    // OSC 9 (iTerm2, Windows Terminal) - simpler format
+    let osc_9 = format!("\x1b]9;{}\x1b\\", escape_osc_string(&format!("{}: {}", summary, body)));
+    print!("{}", osc_9);
+
+    // OSC 777 (WezTerm, Ghostty, VTE) - notify protocol
+    let osc_777 = format!(
+        "\x1b]777;notify;{};{}\x1b\\",
+        escape_osc_string(summary),
+        escape_osc_string(body)
+    );
+    print!("{}", osc_777);
+
+    // Flush to ensure the escape sequences are sent immediately
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
+/// Escape special characters for OSC sequences.
+///
+/// OSC sequences have specific escaping requirements to avoid interference
+/// with terminal parsing. This function escapes potentially problematic characters.
+fn escape_osc_string(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(';', "\\;")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
 }
 
 /// All notification event kinds.
@@ -100,6 +209,18 @@ impl NotifKind<'_> {
                 ("Turn canceled".into(), format!("Active turn was canceled · {dur}"))
             }
             Self::StartupReady => ("Elph is ready".into(), "Agent and MCP servers are initialized.".into()),
+        }
+    }
+
+    /// Unique key for rate limiting and deduplication.
+    fn key(&self) -> &str {
+        match self {
+            Self::TurnComplete { .. } => "turn_complete",
+            Self::ToolPermission { .. } => "tool_permission",
+            Self::UserQuestion { .. } => "user_question",
+            Self::Error { .. } => "error",
+            Self::TurnCancel { .. } => "turn_cancel",
+            Self::StartupReady => "startup_ready",
         }
     }
 }
@@ -163,5 +284,49 @@ mod tests {
         assert_eq!(format_duration_secs(1.0), "1s");
         assert_eq!(format_duration_secs(110.0), "1m50s");
         assert_eq!(format_duration_secs(3661.0), "61m1s");
+    }
+
+    #[test]
+    fn notif_kind_keys_are_unique() {
+        let kinds = [
+            NotifKind::TurnComplete { elapsed_secs: 1.0 },
+            NotifKind::ToolPermission { tool_name: "test" },
+            NotifKind::UserQuestion { summary: "test".into() },
+            NotifKind::Error { message: "test" },
+            NotifKind::TurnCancel { elapsed_secs: 1.0 },
+            NotifKind::StartupReady,
+        ];
+
+        let keys: Vec<&str> = kinds.iter().map(|k| k.key()).collect();
+        let unique_keys: std::collections::HashSet<_> = keys.iter().collect();
+
+        assert_eq!(keys.len(), unique_keys.len(), "All notification kind keys should be unique");
+    }
+
+    #[tokio::test]
+    async fn notifier_queue_rate_limits() {
+        let queue = NotifierQueue::with_rate_limit(Duration::from_millis(100));
+
+        // First send should succeed
+        assert!(queue.should_send("test").await);
+
+        // Immediate second send should be rate-limited
+        assert!(!queue.should_send("test").await);
+
+        // Wait for rate limit to expire
+        tokio::time::sleep(Duration::from_millis(150)).await;
+
+        // Should succeed again
+        assert!(queue.should_send("test").await);
+    }
+
+    #[tokio::test]
+    async fn notifier_queue_different_keys_independent() {
+        let queue = NotifierQueue::with_rate_limit(Duration::from_millis(100));
+
+        // Different keys should not interfere with each other
+        assert!(queue.should_send("key1").await);
+        assert!(queue.should_send("key2").await);
+        assert!(queue.should_send("key3").await);
     }
 }

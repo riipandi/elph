@@ -7,7 +7,9 @@ use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
 #[derive(Parser, Default)]
 #[command(
     name = "memory",
-    about = "Agent memory store (floppy) — persistent lessons across sessions",
+    about = "Project memory (floppy) — lessons, work log, and auto-recall",
+    long_about = "Inspect and maintain the project-local agent memory store (.elph/store.db).\n\
+                  Auto recall and work capture are enabled by default (settings.memory.*).",
     color = clap::ColorChoice::Auto
 )]
 pub struct MemoryArgs {
@@ -17,14 +19,25 @@ pub struct MemoryArgs {
 
 #[derive(Subcommand)]
 pub enum MemoryCommands {
-    /// Overview: counts, categories, top memories
+    /// Overview: counts, categories, top memories, and auto-feature flags
     Status,
-    /// List all memories (optionally filter by category)
+    /// List memories (newest first when unfiltered)
     List {
-        /// Filter: correction, user, insight, discovery, consolidated
+        /// Filter: correction, user, insight, discovery, work, consolidated
         category: Option<String>,
+        /// Max entries to show
+        #[arg(short = 'n', long, default_value_t = 50)]
+        limit: u32,
     },
-    /// Show last N tasks with retrievals and outcomes
+    /// Newest memories first (optional category)
+    Recent {
+        /// Filter: correction, user, insight, discovery, work, consolidated
+        category: Option<String>,
+        /// Max entries
+        #[arg(short = 'n', long, default_value_t = 10)]
+        limit: u32,
+    },
+    /// Show recent recall tasks with retrievals
     Tasks {
         /// Number of tasks to show (default: 10)
         #[arg(default_value_t = 10)]
@@ -32,22 +45,26 @@ pub enum MemoryCommands {
     },
     /// Compact timeline of tasks and memory events
     Log {
-        /// Number of events per kind to include (default: 20)
+        /// Number of events per kind (default: 20)
         #[arg(default_value_t = 20)]
         limit: u32,
     },
-    /// Semantic search across memories (creates a task record)
+    /// Semantic search (read-only; does not create a training task)
     Search {
         /// Search query
         #[arg(required = true)]
         query: Vec<String>,
     },
-    /// Delete memories below weight threshold
+    /// Delete memories below a weight threshold
     Purge {
-        /// Weight threshold (default: 0.5)
+        /// Weight threshold (default: 0.5, range 0–5)
         #[arg(default_value_t = 0.5)]
         threshold: f64,
     },
+    /// Wipe the entire memory store (all memories + tasks; requires confirmation)
+    Flush,
+    /// Merge near-duplicate memories (maintenance)
+    Consolidate,
 }
 
 pub fn handle(args: &MemoryArgs) -> ExitCode {

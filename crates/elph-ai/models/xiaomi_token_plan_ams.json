@@ -8,17 +8,26 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "mimo-v2-pro",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiMo-V2-Pro",
         "provider": "xiaomi-token-plan-ams",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5": {
         "api": "openai-completions",
@@ -29,17 +38,26 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0028,
+            "cacheWrite": 0.0,
+            "input": 0.14,
+            "output": 0.28
         },
         "id": "mimo-v2.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio", "video"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5",
         "provider": "xiaomi-token-plan-ams",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "mimo-v2.5-pro": {
         "api": "openai-completions",
@@ -50,16 +68,25 @@
         },
         "contextWindow": 1048576,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 0,
-            "output": 0
+            "cacheRead": 0.0036,
+            "cacheWrite": 0.0,
+            "input": 0.435,
+            "output": 0.87
         },
         "id": "mimo-v2.5-pro",
         "input": ["text"],
         "maxTokens": 131072,
         "name": "MiMo-V2.5-Pro",
         "provider": "xiaomi-token-plan-ams",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

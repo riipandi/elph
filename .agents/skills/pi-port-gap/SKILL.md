@@ -4,11 +4,13 @@ description: >-
     Analyze pi → elph porting gaps and Elph-specific implementation differences.
     Compare upstream pi-ai / pi-agent-core CHANGELOGs and source against elph-ai /
     elph-agent: (1) what upstream has that elph still lacks, (2) how Elph-only
-    features diverge in design and wiring. Prefer reverse-chronological timeline
-    prose over tables. Persisted docs are always English; in-chat reports follow
-    the user's current language. Use for port gap audit, upstream drift, parity
-    check, Elph extension diff, implementation delta, changelog walk, selisih
-    implementasi, or /pi-port-gap.
+    features diverge in design and wiring. Porting doctrine: adopt only true
+    gaps (intent/behavior from pi), implement on Elph architecture — catalogs
+    are models.dev via update-models, never pi seed. Prefer reverse-chronological
+    timeline prose over tables. Persisted docs are always English; in-chat
+    reports follow the user's current language. Use for port gap audit, upstream
+    drift, parity check, Elph extension diff, implementation delta, changelog
+    walk, selisih implementasi, or /pi-port-gap.
 ---
 
 # Pi Port Gap Analysis
@@ -47,6 +49,49 @@ Not an empty checklist. Deliver **changelog-style drift** plus **design/implemen
 **Default scope:** `@earendil-works/pi-ai` → `crates/elph-ai`, `@earendil-works/pi-agent-core` → `crates/elph-agent`.
 **Expand only if asked:** `pi-coding-agent` → `elph/`.
 
+### Porting doctrine (mandatory)
+
+Elph is a **port of intent**, not a line-by-line TypeScript rewrite. When
+**analyzing** gaps _or later implementing_ them (only if the user asks to port):
+
+1. **Adopt the gap, not the pi shape** — Take the _behavior_, protocol, flag,
+   type, test intent, or error-handling rule from pi. Do **not** copy pi’s file
+   layout, package graph, TypeScript catalog scripts, or generator assumptions.
+2. **Implement on Elph architecture** — Wire into existing elph-ai / elph-agent
+   modules, factories, auth, and product surfaces (`elph/` only when
+   product-facing). Prefer current Elph patterns (Rust modules, `builtin_providers`,
+   harness/runtime split, MCP under `tools/mcp/`, etc.) over reintroducing
+   pi-only paths.
+3. **Catalog / models are Elph-owned** — Chat model catalogs are **not**
+   generated from pi. Origin is **[models.dev](https://models.dev)** via
+   `cargo run -p elph-ai --bin generate-models -- chat` (skill
+   **`update-models`**). See **Architecture invariants** below.
+4. **Classify correctly** — pi catalog/script changes that Elph already covers
+   via models.dev + `generate-models` are usually **`[N/A]`** or
+   **parity-by-other-means**, not “re-run pi generate-models”. Gaps remain only
+   where Elph still lacks the _runtime_ behavior (API adapter, auth, stream
+   flag, tool schema, agent-loop hook, etc.).
+5. **Only true gaps get ported** — If Elph already has equivalent behavior under
+   a different name/module, mark **[Parity]** / **[Partial]** with a nuance note;
+   do not open a second implementation path “because pi looks different”.
+
+#### Implementation checklist (when user explicitly asks to port)
+
+Use this after a gap audit, not during a read-only `/pi-port-gap` run:
+
+| Step               | Do                                                                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Scope           | Port only the agreed gap(s). No drive-by refactors, no “while we’re here” catalog rewrite.                                                               |
+| 2. Map             | Name the Elph target module(s) first (`src/api/…`, `builtin.rs`, harness, tools). Read existing neighbors before adding files.                           |
+| 3. Shape           | Translate types/flags into Rust idioms already used in the crate (enums, `Option`, error types). Do not invent parallel TS-shaped APIs.                  |
+| 4. Catalog data    | If the gap is “new model / pricing / context window” → **`/update-models`** or `generate-models chat`. Never seed from `packages/ai/src/providers/data`. |
+| 5. Runtime gap     | Adapter/auth/stream/tool/loop changes go in Elph source; add/adjust unit tests next to the code.                                                         |
+| 6. Product surface | Only touch `elph/` when the gap is user-visible (picker, slash, TUI key). Keep library behavior in crates.                                               |
+| 7. Verify          | `cargo test -p elph-ai` / `elph-agent` for touched crates; catalog registration test if providers changed.                                               |
+| 8. Docs            | Significant behavior → update `docs/` (and timeline in `docs/porting/*` if this was a port pass). English for persisted docs.                            |
+
+**Out of scope unless user asks:** runtime merge of `~/.elph/providers` JSON (schema exists; merge not required), reintroducing `--from-pi` / `--catalog-dir` for chat, dual catalog SSOT.
+
 ---
 
 ## Smart formatting (readability first, timeline spine)
@@ -83,9 +128,35 @@ Pick shape by content (smart, not rigid):
     - `packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md` for the documented trail
     - `packages/ai/src/`, `packages/agent/src/` for the actual current implementation (source is the ground truth, CHANGELOG is the index)
 3. Elph: `crates/elph-ai/`, `crates/elph-agent/` (+ public API in `src/lib.rs`)
-4. Extension scan hints: [`references/elph-extensions.md`](references/elph-extensions.md)
-5. Output shapes: [`references/report-template.md`](references/report-template.md)
-6. If clone missing: DeepWiki / GitHub `earendil-works/pi` for CHANGELOG + structure
+4. **Elph catalog / generator (post models.dev cutover)** — not pi’s `packages/ai` data scripts:
+    - `crates/elph-ai/bin/generate_models/` (`models_dev`, `provider_sources`, `normalize`, `thinking_map`, `pricing`, `chat`)
+    - `crates/elph-ai/models/*.json`, `src/models/catalog.rs`, `src/providers/builtin.rs`
+    - Skill [`update-models`](../update-models/SKILL.md); schema contract [`schemas/provider-schema.json`](../../../schemas/provider-schema.json)
+5. Extension scan hints: [`references/elph-extensions.md`](references/elph-extensions.md)
+6. Output shapes: [`references/report-template.md`](references/report-template.md)
+7. If clone missing: DeepWiki / GitHub `earendil-works/pi` for CHANGELOG + structure
+
+### Architecture invariants (do not regress when porting)
+
+These are **settled Elph design**. Porting must **not** reintroduce pi-centric alternatives without an explicit user decision.
+
+| Area                              | Elph rule                                                                                                                                           |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Chat model catalogs               | Origin = **models.dev** (`api.json`). **No** pi clone / `--from-pi` / npm `generate-models` for chat.                                               |
+| Regenerating catalogs             | `generate-models chat` or `/update-models`. Every model has full **`thinkingLevelMap`** (7 keys).                                                   |
+| Provider registration             | Every catalog provider id must exist in `builtin_providers()`; generator verifies this.                                                             |
+| Pricing enrichment                | Live provider API when available → models.dev → previous non-zero.                                                                                  |
+| Elph-only / gateway catalogs      | Preserve model **ids** (gateway routes); enrich from models.dev by id/fuzzy match. Do not wipe Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, etc. |
+| Wire `api` / `baseUrl` / `compat` | Owned by Elph factory + overlays — **not** invented from models.dev alone.                                                                          |
+| Thinking UI / API                 | `get_supported_thinking_levels` + `map_thinking_level_for_api`; Ctrl+. / footer clamp to catalog maps.                                              |
+| User provider JSON                | Schema prepared in `schemas/provider-schema.json`; **runtime override merge not required** unless user asks.                                        |
+| OpenAI-compat gateways            | Non-standard detection in `src/api/openai_compat.rs` (no `store` / `developer` / etc. by default).                                                  |
+
+**When pi CHANGELOG says “regenerated models” / “new model X”:**
+
+- Prefer: run Elph **`update-models`** / `generate-models chat` and confirm models.dev already has the model; add/adjust `provider_sources` or overlays if needed.
+- Only treat as a **runtime gap** if Elph still cannot call the model (missing factory, wrong API adapter, auth, stream flag, tool schema).
+- Do **not** instruct agents to re-seed from `packages/ai/src/providers/data/*.json`.
 
 ---
 
@@ -110,18 +181,30 @@ For each material bullet (skip pure docs/chore noise unless the user wants a ful
 3. **Classify** — `[Parity]` | `[Partial]` | `[Gap Pn]` | `[N/A]`.
 4. For Partial/Gap — state the **concrete missing piece** (type, hook, flag, provider branch, test), not a vague “not implemented”.
 
-**elph-ai map:** `src/types/`, `src/api/`, `src/providers/`, `src/auth/`, `models/`, `src/utils/deferred_tools.rs`, `src/utils/diagnostics.rs`, `src/utils/estimate.rs`, `src/session_resources.rs`
+**elph-ai map:** `src/types/`, `src/api/`, `src/providers/` (incl. `builtin.rs`), `src/auth/`, `models/` + `bin/generate_models/`, `src/utils/` (tool_schema, deferred_tools, diagnostics, estimate), `src/session_resources.rs`
 
 **elph-agent map:** `src/agent/` (incl. `harness/`, `subagent/`), `src/runtime/` (engine loop + env + proxy), `src/tools/` (incl. `mcp/`), `src/types/` (global enums), `src/collaboration/`, `src/session/`, `src/compaction/`, `src/messages/`, `src/prompt/encoding/`
 (product modules belong under Phase 3 — not “gaps”)
 
-After any model-catalog port work:
+#### Catalog / provider bullets in pi CHANGELOG
+
+For each models/catalog/provider-list bullet:
+
+1. Decide whether it is **data** (model list, pricing, context windows) vs **runtime** (new API surface, auth, stream quirk).
+2. **Data** → map to Elph’s models.dev pipeline (`provider_sources`, overlays, `/update-models`). Usually **not** a hand-port of pi JSON.
+3. **Runtime** → port into `src/api/*`, `builtin.rs` factory, auth/oauth, compat flags — following existing Elph patterns.
+4. After catalog work (if any):
 
 ```sh
-cargo run -p elph-ai --bin generate-models -- chat \
-  --catalog-dir /path/to/pi/packages/ai --skip-scripts
-# Re-add Hyper (Elph-only) if generate-models wiped it.
+# Elph catalog origin — NOT pi
+cargo run -p elph-ai --bin generate-models -- chat
+# or offline after a prior fetch:
+cargo run -p elph-ai --bin generate-models -- chat --offline --no-live-pricing
+# verify registration + load
+cargo test -p elph-ai --test providers catalog_providers_match_builtin_providers
 ```
+
+Do **not** use obsolete flags/paths (`--catalog-dir`, pi `packages/ai` npm generate for chat). Gateways/Elph-only providers are preserved by the generator; no manual “re-add Hyper” ritual unless the provider was dropped from `provider_sources` or `builtin_providers`.
 
 Priority heuristic when tagging gaps:
 
@@ -152,7 +235,7 @@ Scan what Elph has that pi does **not** (or solves differently):
 
 Do **not** collapse extensions into a single “[Elph-only]” bullet. The goal is **implementation difference**, not a status badge.
 
-Depth targets when present: MCP (+ auth/crypto), goals, subagent, plugins, built-in tools, mode/plan, sandbox, datastore/Turso, TOON `prompt_encoding`, Hyper, skills, harness extras.
+Depth targets when present: MCP (+ auth/crypto), goals, subagent, plugins, built-in tools, mode/plan, sandbox, datastore/Turso, TOON `prompt_encoding`, Hyper/Kilo/TokenRouter/OpenGateway (gateway stack), models.dev catalog generator, thinkingLevelMap + Ctrl+. clamp, skills, harness extras.
 
 ### Phase 4 — Cross-crate and parity nuance
 
@@ -172,7 +255,17 @@ Always ship in this order in-chat, in the user's current language (paths/commits
 3. **Elph implementation delta** — In pi / In Elph / Implications per module
 4. **Parity and nuance**
 5. **Cross-crate**
-6. **Port priorities** — numbered
+6. **Port priorities** — numbered; each item = **intent from pi** + **Elph landing zone** (crate path/module). Catalog-only items point to `/update-models`, not “copy pi JSON”.
+7. If the user asks to implement next — follow **Implementation checklist** under Porting doctrine; stay read-only otherwise.
+
+### Cross-skill handoff
+
+| Need                                                         | Skill / command                                                      |
+| ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Refresh model lists, pricing, thinkingLevelMap, `catalog.rs` | **`update-models`** / `generate-models chat`                         |
+| Gap audit vs pi (this skill)                                 | **`pi-port-gap`** — read-only by default                             |
+| Implement a runtime gap after audit                          | Explicit user ask → map to Elph modules; do not re-open catalog SSOT |
+| Build quality after a port                                   | **`rust-verify-harden`**                                             |
 
 ---
 
@@ -195,11 +288,15 @@ cargo test -p elph-agent --lib
 - **Two lenses always** — upstream gap **and** Elph implementation delta; never only one.
 - **Timeline-first** — changelog walk is the spine of the gap section.
 - **Readable reports** — short sections, tagged bullets; no status/audit/gap tables.
-- **Tables minimized** — prose/timeline by default; table only if clearly denser and intentional (almost never for this skill).
+- **Tables minimized** — prose/timeline by default; table only if clearly denser and intentional (almost never for this skill). Architecture invariant tables in this skill file are for agents, not for report output.
 - **Evidence** — path, symbol, or changelog line per claim.
 - **Gap ≠ Elph extension** — gaps are pi→elph debt; extensions get design/implementation analysis.
+- **Adopt gap intent, implement Elph shape** — when recommending or doing a port, map to Elph modules/architecture; do not reintroduce pi catalog generators or dual SSOT for models.
+- **Only real gaps** — skip items Elph already covers under a different shape; document as Parity/nuance instead of inventing a second path.
+- **Catalog SSOT = models.dev (+ Elph overlays)** — never direct agents to regenerate chat catalogs from pi data scripts. Obsolete: `--catalog-dir`, `--from-pi`, “re-add Hyper after generate-models”.
+- **Port priorities name Elph landing zones** — never “copy `packages/ai/src/...` into elph”.
 - **Read-only** on the pi clone unless the user asks to port.
-- **No drive-by ports** unless the user explicitly asks to implement.
+- **No drive-by ports** unless the user explicitly asks to implement; then use the Implementation checklist.
 - **Be honest about Partial** — better than false Parity.
 - **`main` HEAD, not just tags/CHANGELOG** — CHANGELOG is curated after the fact; Phase 2b's direct source diff is what catches drift the doc hasn't caught up to yet.
 - **Args override defaults, never scope** — `path=`/`branch=`/`since=`/`scope=`/`module=`/`depth=`/`persist=`/`lang=` adjust _how_ the run happens; they never skip Phase 3 (Elph delta) or the two-lenses rule.

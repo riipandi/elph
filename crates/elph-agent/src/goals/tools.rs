@@ -13,11 +13,23 @@ use crate::goals::types::{Goal, GoalStatus};
 use crate::tools::simple_tool;
 use crate::types::{AgentTool, AgentToolResult};
 
+/// Optional host hook after a terminal goal status change (`complete` / `blocked`).
+pub type GoalStatusHook = Arc<dyn Fn(Goal) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
 pub fn create_goal_tools(store: Arc<GoalStore>, session_id: String) -> Vec<AgentTool> {
+    create_goal_tools_with_hook(store, session_id, None)
+}
+
+/// Same as [`create_goal_tools`], with an optional status-change hook (e.g. memory bridge).
+pub fn create_goal_tools_with_hook(
+    store: Arc<GoalStore>,
+    session_id: String,
+    on_status: Option<GoalStatusHook>,
+) -> Vec<AgentTool> {
     vec![
         create_goal_tool(store.clone(), session_id.clone()),
         get_goal_tool(store.clone(), session_id.clone()),
-        update_goal_tool(store.clone(), session_id.clone()),
+        update_goal_tool(store.clone(), session_id.clone(), on_status),
         set_goal_budget_tool(store, session_id),
     ]
 }
@@ -76,7 +88,7 @@ fn get_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
     )
 }
 
-fn update_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
+fn update_goal_tool(store: Arc<GoalStore>, session_id: String, on_status: Option<GoalStatusHook>) -> AgentTool {
     simple_tool(
         elph_ai::Tool {
             name: "update_goal".into(),
@@ -95,7 +107,7 @@ fn update_goal_tool(store: Arc<GoalStore>, session_id: String) -> AgentTool {
             }),
         },
         "Update goal",
-        move |_, args| update_goal_exec(store.clone(), session_id.clone(), args),
+        move |_, args| update_goal_exec(store.clone(), session_id.clone(), on_status.clone(), args),
     )
 }
 
@@ -165,6 +177,7 @@ fn get_goal_exec(
 fn update_goal_exec(
     store: Arc<GoalStore>,
     session_id: String,
+    on_status: Option<GoalStatusHook>,
     args: Value,
 ) -> Pin<Box<dyn Future<Output = Result<AgentToolResult>> + Send>> {
     Box::pin(async move {
@@ -179,6 +192,9 @@ fn update_goal_exec(
         };
 
         let goal = store.update_goal_status(&session_id, status).await?;
+        if let Some(hook) = on_status {
+            hook(goal.clone()).await;
+        }
         Ok(AgentToolResult::text(goal_to_json(&goal)?.to_string()))
     })
 }

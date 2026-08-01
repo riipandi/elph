@@ -27,11 +27,11 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
                 "properties": {
                     "question": {
                         "type": "string",
-                        "description": "Single-step question text (legacy; use `questions` for multi-step)"
+                        "description": "Single-step question text (legacy). Provide either `question` or `questions` (not both required at schema level)."
                     },
                     "questions": {
                         "type": "array",
-                        "description": "Ordered list of question steps shown one at a time",
+                        "description": "Ordered multi-step questions (preferred). Provide either `questions` or legacy `question`.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -141,11 +141,10 @@ pub fn create_ask_user_tool(ui_tx: mpsc::UnboundedSender<AgentUiEvent>) -> Agent
                         "type": "string",
                         "description": "Legacy single-step header tab label"
                     }
-                },
-                "anyOf": [
-                    { "required": ["question"] },
-                    { "required": ["questions"] }
-                ]
+                }
+                // No root anyOf/oneOf: xAI (and some OpenAI-compat APIs) reject
+                // `anyOf: [{required:…}]` branches without `"type":"object"`.
+                // Mutual exclusivity is enforced in `parse_question_steps`.
             }),
         },
         "ask_user_question",

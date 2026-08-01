@@ -2,11 +2,14 @@
 //!
 //! # Features
 //!
-//! - **stdio**, **streamable HTTP**, and **SSE** transports (SSE: 2024-11-05 protocol)
-//! - **OAuth 2.1** (PKCE) for remote servers via `mcp auth`
-//! - **AES-256-GCM** credential encryption (`enc:` prefix) in shared `auth.json`
+//! - **stdio**, **streamable HTTP**, and **SSE** transports (SSE deprecated; prefer HTTP)
+//! - **MCP 2026-07-28** lifecycle (`server/discover` auto/legacy/discover)
+//! - **OAuth 2.1** (PKCE) for remote servers via `mcp auth`; CIMD via `oauthClientMetadataUrl`
+//! - **AES-256-GCM** sealed `auth.json` envelope; master key in OS keychain only
 //! - **JSON Schema + semantic** config validation
-//! - **Resources** and **prompts** bridge tools
+//! - **Resources**, **prompts**, and **Tasks** bridge tools
+//! - **MRTR** elicitation policy (`mrtrElicitation`: decline/error)
+//! - **SEP-2549** list-response client cache
 //! - **Tool policy** (allow / deny / requireApproval)
 //! - **Session pool** — reuse connections across tool calls
 //! - **Hot reload** on `tools/list_changed` (and resource/prompt variants)
@@ -27,7 +30,11 @@ mod config;
 #[cfg(feature = "mcp")]
 mod crypto;
 #[cfg(feature = "mcp")]
+mod envelope;
+#[cfg(feature = "mcp")]
 mod events;
+#[cfg(feature = "mcp")]
+mod key_provider;
 #[cfg(feature = "mcp")]
 mod policy;
 #[cfg(feature = "mcp")]
@@ -119,7 +126,11 @@ pub use config::McpHttpConfig;
 #[cfg(feature = "mcp")]
 pub use config::McpLifecycleMode;
 #[cfg(feature = "mcp")]
+pub use config::McpMrtrElicitationPolicy;
+#[cfg(feature = "mcp")]
 pub use config::McpOAuthClientMeta;
+#[cfg(feature = "mcp")]
+pub use config::McpResponseCacheConfig;
 #[cfg(feature = "mcp")]
 pub use config::McpServerConfig;
 #[cfg(feature = "mcp")]
@@ -129,6 +140,8 @@ pub use config::{McpLoadOptions, McpServerLoadProgress};
 #[cfg(feature = "mcp")]
 pub use crypto::Aes256Key;
 #[cfg(feature = "mcp")]
+pub use crypto::ENC_PREFIX;
+#[cfg(feature = "mcp")]
 pub use crypto::decrypt_async;
 #[cfg(feature = "mcp")]
 pub use crypto::decrypt_json_async;
@@ -136,8 +149,6 @@ pub use crypto::decrypt_json_async;
 pub use crypto::decrypt_string_async;
 #[cfg(feature = "mcp")]
 pub use crypto::decrypt_string_sync;
-#[cfg(feature = "mcp")]
-pub use crypto::default_auth_key_path;
 #[cfg(feature = "mcp")]
 pub use crypto::encrypt_async;
 #[cfg(feature = "mcp")]
@@ -149,9 +160,13 @@ pub use crypto::encrypt_string_sync;
 #[cfg(feature = "mcp")]
 pub use crypto::is_encrypted_value;
 #[cfg(feature = "mcp")]
-pub use crypto::{DEFAULT_AUTH_KEY_FILE_NAME, ENC_PREFIX};
-#[cfg(feature = "mcp")]
 pub use events::{McpClientService, McpEventBus, McpServerEvent};
+#[cfg(feature = "mcp")]
+pub use key_provider::load_or_create_master_key;
+#[cfg(feature = "mcp")]
+pub use key_provider::{
+    KEYCHAIN_ACCOUNT, KEYCHAIN_SERVICE, clear_process_master_key_for_tests, set_process_master_key_for_tests,
+};
 #[cfg(feature = "mcp")]
 pub use policy::{McpPolicyAction, McpPolicyConfig};
 #[cfg(feature = "mcp")]

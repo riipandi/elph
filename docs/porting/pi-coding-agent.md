@@ -63,11 +63,11 @@ Removed dead wrapper functions that were part of the WIP wiring but never called
 
 **Credential store** (`elph/src/tui/provider_credential_store.rs`):
 
-Removed three dead credential helpers (`load_provider_credential`, `load_all_provider_credentials`, `remove_provider_credential`) that were only reachable through the dead wrapper chain. `save_provider_credential` retained — used from OAuth flow in `shell.rs`.
+Removed three dead credential helpers (`load_provider_credential`, `load_all_provider_credentials`, `remove_provider_credential`) that were only reachable through the dead wrapper chain. `save_provider_credential` retained — used from OAuth flow in `shell/mod.rs`.
 
-**Plan confirmation** (`elph/src/tui/tool_approval.rs`, `status_dialog.rs`, `shell.rs`):
+**Plan confirmation** (`elph/src/tui/tool_approval.rs`, `status_dialog.rs`, `shell/mod.rs`):
 
-- `PendingPlanConfirmation.plan_id` — stored but never read. Removed from struct, `From` impl, and `shell.rs` constructor.
+- `PendingPlanConfirmation.plan_id` — stored but never read. Removed from struct, `From` impl, and `shell/mod.rs` constructor.
 - `StatusDialogKind::PlanConfirmation.plan_id` — same; removed from variant and builder.
 - `MODE_CHANGE_DEFAULT_INDEX` — dead constant removed.
 

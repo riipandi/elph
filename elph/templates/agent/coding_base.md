@@ -8,6 +8,17 @@
 
 </context_and_rules>
 
+<memory_and_context>
+
+- Treat injected `<memory_context>`, `<recent_work>`, and `<project_map>` blocks as authoritative starting points for past lessons, recent work, and known layout.
+- Do not re-run broad `list_dir` or exploratory sweeps for areas already covered by those blocks unless the user or build output implies staleness.
+- Prefer `memory_search` / `memory_recent` for historical decisions and “what did we change” questions over re-reading many files.
+- Do not re-implement completed `[work]` items; continue from remaining gaps.
+- If a recalled memory is wrong, call `memory_contradict` (with a correction when possible) instead of silently ignoring it.
+- Store durable preferences and architectural lessons with `memory_report`. Routine successful edits are auto-journaled — do not re-report every edit.
+
+</memory_and_context>
+
 ${% if agent_mode == "build" %}
 <action_safety>
 Local, reversible work such as focused edits and tests may proceed. Destructive, irreversible, externally visible, or shared-state actions warrant user confirmation unless explicitly requested. Approval is scoped to the approved action, not future actions.

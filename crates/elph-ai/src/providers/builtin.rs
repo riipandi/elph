@@ -532,6 +532,8 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["OLLAMA_API_KEY"], "Ollama API key")
         ),
+        openai_provider(),
+        openai_codex_provider(),
         hyper_provider(),
         // Kilo AI Gateway — OpenAI-compatible (https://kilo.ai/docs/gateway).
         // Base URL: https://api.kilo.ai/api/gateway · key: KILO_API_KEY
@@ -623,6 +625,7 @@ pub fn builtin_providers() -> Vec<Provider> {
             openai_completions_api,
             (vec!["VERCEL_AI_GATEWAY_API_KEY"], "Vercel AI Gateway API key")
         ),
+        xai_provider(),
         simple_provider!(
             "xiaomi",
             "Xiaomi MiMo",
@@ -676,4 +679,4 @@ pub fn builtin_models(options: Option<CreateModelsOptions>) -> MutableModels {
     models
 }
 
-pub use crate::models::catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};
+pub use crate::models::{get_builtin_model, get_builtin_models, get_builtin_providers};

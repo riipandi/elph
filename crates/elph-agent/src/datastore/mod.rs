@@ -24,17 +24,10 @@ use std::path::Path;
 
 use anyhow::Result;
 
-/// One versioned SQL migration applied to a local database.
-pub struct Migration {
-    pub version: i64,
-    pub name: &'static str,
-    pub up: &'static str,
-}
-
-pub use conn::is_lock_err;
+pub use conn::{cleanup_stale_shared_memory, is_lock_err};
 pub(crate) use conn::{connect, open_connection, open_local, with_conn};
 pub use lazy::ensure_databases_once;
-pub use migrations::run as run_migrations;
+pub use migrations::{Migration, run as run_migrations};
 
 /// A local database file and its pending migrations.
 pub struct DatabaseSpec<'a> {

@@ -18,10 +18,11 @@ use elph_agent::ensure_database;
 use elph_ai::{FauxResponseStep, StopReason};
 use elph_ai::{faux_assistant_message, faux_text};
 
-const GRAPH_MIGRATION: &[Migration] = &[Migration {
-    version: 7,
-    name: "create_agent_spawn_edges_table",
-    up: "CREATE TABLE IF NOT EXISTS agent_spawn_edges (
+const PLATFORM_LIKE: &[Migration] = &[
+    Migration {
+        version: 7,
+        name: "create_agent_spawn_edges_table",
+        up: "CREATE TABLE IF NOT EXISTS agent_spawn_edges (
             parent_session_id TEXT NOT NULL,
             child_session_id TEXT NOT NULL,
             agent_path TEXT NOT NULL,
@@ -30,10 +31,16 @@ const GRAPH_MIGRATION: &[Migration] = &[Migration {
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (parent_session_id, child_session_id)
         ) STRICT;",
-}];
+    },
+    Migration {
+        version: 100,
+        name: "session_tree_pi_schema",
+        up: elph_agent::SESSION_TREE_MIGRATIONS[0].up,
+    },
+];
 
 #[tokio::test(flavor = "multi_thread")]
-async fn spawn_and_list_subagents_with_session_dir() {
+async fn spawn_and_list_subagents_with_turso_sessions() {
     let temp = tempfile::TempDir::new().expect("tempdir");
     let env = Arc::new(LocalExecutionEnv::new(temp.path()));
     let (faux, models) = common::new_faux();
@@ -44,18 +51,14 @@ async fn spawn_and_list_subagents_with_session_dir() {
     let stream_fn = common::faux_stream_fn(&faux);
     let tools = create_search_tools(env.clone());
 
-    let sessions_root = temp.path().join("sessions").to_string_lossy().to_string();
-    std::fs::create_dir_all(&sessions_root).expect("sessions root");
-
     let graph_db = temp.path().join("metadata.db");
-    ensure_database(&graph_db, GRAPH_MIGRATION)
+    ensure_database(&graph_db, PLATFORM_LIKE)
         .await
-        .expect("graph migrate");
+        .expect("platform migrate");
 
     let bootstrap = SubagentBootstrap {
-        project_key: "testproj".into(),
         cwd: temp.path().to_string_lossy().to_string(),
-        sessions_root,
+        metadata_db_path: graph_db.to_string_lossy().to_string(),
         resources: AgentHarnessResources::default(),
         stream_options: AgentHarnessStreamOptions::default(),
         thinking_level: Default::default(),
@@ -105,6 +108,11 @@ async fn spawn_and_list_subagents_with_session_dir() {
         SubagentStatus::Done | SubagentStatus::Idle | SubagentStatus::Running
     ));
 
-    let child_dir = temp.path().join("sessions/testproj");
-    assert!(child_dir.exists(), "project session dir should exist");
+    // Child session is durable in the shared Turso DB (not SessionDir).
+    let child_session_id = agents[0].session_id.clone();
+    let opened = elph_agent::TursoSessionRepo::new(&graph_db)
+        .open(&child_session_id)
+        .await
+        .expect("open child session from metadata.db");
+    assert_eq!(opened.metadata().await.id, child_session_id);
 }

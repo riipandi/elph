@@ -27,8 +27,19 @@ where
     S::Metadata: crate::session::types::HasSessionId + Send + Sync,
 {
     pub async fn abort(&self) -> HarnessOpResult<AbortResult> {
-        let cleared_steer: Vec<AgentMessage> = self.shared.steer_queue.lock().await.drain(..).collect();
-        let cleared_follow_up: Vec<AgentMessage> = self.shared.follow_up_queue.lock().await.drain(..).collect();
+        let cleared_steer_items: Vec<(String, AgentMessage)> = self.shared.steer_queue.lock().await.drain(..).collect();
+        let cleared_follow_up_items: Vec<(String, AgentMessage)> =
+            self.shared.follow_up_queue.lock().await.drain(..).collect();
+        let steer_ids: Vec<String> = cleared_steer_items.iter().map(|(id, _)| id.clone()).collect();
+        let follow_ids: Vec<String> = cleared_follow_up_items.iter().map(|(id, _)| id.clone()).collect();
+        let cleared_steer: Vec<AgentMessage> = cleared_steer_items.into_iter().map(|(_, m)| m).collect();
+        let cleared_follow_up: Vec<AgentMessage> = cleared_follow_up_items.into_iter().map(|(_, m)| m).collect();
+        let _ = self
+            .journal_queue_consume(crate::session::durability::QueueKind::Steer, steer_ids, None)
+            .await;
+        let _ = self
+            .journal_queue_consume(crate::session::durability::QueueKind::FollowUp, follow_ids, None)
+            .await;
         let control = self.shared.agent_control.lock().await.clone();
         control.abort_all_running().await;
         self.cancel_active_run().await?;
@@ -109,10 +120,11 @@ where
     }
 
     pub(in crate::agent::harness) async fn emit_queue_update(&self) -> HarnessOpResult<()> {
+        let (steer, follow_up, next_turn) = self.queue_messages_snapshot().await;
         self.emit_own(AgentHarnessOwnEvent::QueueUpdate(QueueUpdateEvent {
-            steer: self.shared.steer_queue.lock().await.clone(),
-            follow_up: self.shared.follow_up_queue.lock().await.clone(),
-            next_turn: self.shared.next_turn_queue.lock().await.clone(),
+            steer,
+            follow_up,
+            next_turn,
         }))
         .await
     }

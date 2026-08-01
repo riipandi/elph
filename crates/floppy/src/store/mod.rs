@@ -169,6 +169,16 @@ impl MemoryStore {
         self.dimensions
     }
 
+    /// Active task id used to link new memories via `source_task`.
+    pub fn current_task_id(&self) -> Option<String> {
+        self.current_task_id.lock().unwrap().clone()
+    }
+
+    /// Align host-managed task lifecycle with the store (shared runtime).
+    pub fn set_current_task_id(&self, task_id: Option<String>) {
+        *self.current_task_id.lock().unwrap() = task_id;
+    }
+
     pub(crate) fn vector_fn(&self) -> &'static str {
         match self.vector_type {
             VectorType::Vector32 => "vector32",
@@ -200,7 +210,21 @@ impl MemoryStore {
         const MAX_RETRIES: u32 = 10;
         const BASE_DELAY_MS: u64 = 50;
 
+        // Parent dir must exist; Turso creates `store.db` on first open but not parents.
+        if let Some(parent) = std::path::Path::new(&self.db_path).parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("create memory store directory {}", parent.display()))?;
+        }
+
+        // Drop empty/truncated WAL sidecars *before* first open — a 0-byte
+        // `store.db-wal` makes Turso fail with "short read on WAL frame" even
+        // when `store.db` itself is healthy (or when the main file is missing).
+        clear_broken_wal_sidecars(&self.db_path);
+
         let mut attempt = 0u32;
+        let mut cleared_wal = false;
         loop {
             let build = Builder::new_local(&self.db_path)
                 .experimental_multiprocess_wal(true)
@@ -209,8 +233,21 @@ impl MemoryStore {
             match build {
                 Ok(db) => return Ok(db),
                 Err(e) => {
-                    if attempt >= MAX_RETRIES || !is_lock_err(&e.to_string()) {
-                        return Err(e).context("build failed");
+                    let msg = e.to_string();
+                    // One recovery pass for corrupt / truncated WAL leftovers.
+                    if !cleared_wal && is_wal_io_err(&msg) {
+                        clear_broken_wal_sidecars(&self.db_path);
+                        cleared_wal = true;
+                        attempt = 0;
+                        continue;
+                    }
+                    if attempt >= MAX_RETRIES || !is_lock_err(&msg) {
+                        return Err(e).with_context(|| {
+                            format!(
+                                "open memory store at {} (create an empty store by running any memory command once the path is writable)",
+                                self.db_path
+                            )
+                        });
                     }
                 }
             }
@@ -294,7 +331,47 @@ impl MemoryStore {
 /// Detects `SQLITE_LOCKED` (`"locked"`, `"Locking"`) and `SQLITE_BUSY`
 /// (`"busy"`) error messages.
 fn is_lock_err(msg: &str) -> bool {
-    msg.contains("locked") || msg.contains("Locking") || msg.contains("busy")
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("locked") || lower.contains("locking") || lower.contains("busy")
+}
+
+/// WAL / I/O failures that are often fixed by removing sidecar files.
+fn is_wal_io_err(msg: &str) -> bool {
+    let lower = msg.to_ascii_lowercase();
+    lower.contains("short read on wal")
+        || lower.contains("wal frame")
+        || lower.contains("database disk image is malformed")
+        || lower.contains("file is not a database")
+        || (lower.contains("i/o error") && lower.contains("wal"))
+        || lower.contains("unable to open database file")
+}
+
+/// Remove empty or leftover WAL/SHM sidecars next to `db_path`.
+///
+/// Safe when the main `store.db` is missing: only deletes known sidecar names
+/// (`store.db-wal`, `store.db-shm`, `store.db-tshm`). An empty `*-wal` (0 bytes)
+/// must go — Turso still tries to read frames from it and fails with
+/// "short read on WAL frame".
+fn clear_broken_wal_sidecars(db_path: &str) {
+    for suffix in ["-wal", "-shm", "-tshm"] {
+        let sidecar = format!("{db_path}{suffix}");
+        let p = std::path::Path::new(&sidecar);
+        if !p.exists() {
+            continue;
+        }
+        // Always drop empty/truncated WAL; drop SHM/TSHM whenever present (recreated on open).
+        let should_remove = if suffix == "-wal" {
+            match std::fs::metadata(p) {
+                Ok(m) => m.len() < 32, // empty or shorter than a WAL header
+                Err(_) => true,
+            }
+        } else {
+            true
+        };
+        if should_remove {
+            let _ = std::fs::remove_file(p);
+        }
+    }
 }
 
 #[cfg(test)]

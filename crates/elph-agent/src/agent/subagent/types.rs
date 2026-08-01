@@ -47,9 +47,9 @@ impl Default for SubagentLimits {
 /// Shared bootstrap data for spawning child session harnesses.
 #[derive(Clone)]
 pub struct SubagentBootstrap {
-    pub project_key: String,
     pub cwd: String,
-    pub sessions_root: String,
+    /// Shared platform/session database (`APP_DATA/metadata.db` in the product).
+    pub metadata_db_path: String,
     pub resources: AgentHarnessResources,
     pub stream_options: AgentHarnessStreamOptions,
     pub thinking_level: AgentThinkingLevel,

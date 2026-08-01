@@ -20,25 +20,48 @@ use super::agent_bridge::SlashDispatcher;
 ///
 /// Memory operations are async (Turso DB). The result is delivered as a
 /// `MemoryResult` UI event so the shell can open a ScrollTextDialog.
+///
+/// `flush` is special: it opens a confirmation dialog instead of running
+/// immediately (see [`SlashOutcome::OpenMemoryFlushConfirm`]).
 fn handle_memory_slash(ctx: SlashContext<'_>, args: &str) -> SlashOutcome {
     let Some(paths) = ctx.paths else {
         return SlashOutcome::Status("Project directory required for memory commands.".into());
     };
+
+    // Destructive wipe — confirm in the status-zone dialog first.
+    if let Ok(crate::memory::ops::MemoryOp::Flush) = crate::memory::ops::MemoryOp::parse_slash(args) {
+        let (memory_count, task_count) = match elph_agent::try_block_on(crate::memory::flush_preview(paths)) {
+            Ok(counts) => counts,
+            Err(err) => return SlashOutcome::Status(format!("Memory error: {err:#}")),
+        };
+        return SlashOutcome::OpenMemoryFlushConfirm {
+            memory_count,
+            task_count,
+        };
+    }
+
     let paths = paths.clone();
     let args = args.to_string();
     let ui_tx = ctx.agent_session.as_ref().map(|s| s.ui_event_sender());
 
-    tokio::spawn(async move {
-        let output = match crate::memory::slash_run(&paths, &args).await {
-            Ok(text) => text,
-            Err(err) => format!("memory error: {err}"),
-        };
-        if let Some(tx) = ui_tx {
+    // Prefer async + dialog when the session UI channel exists.
+    if let Some(tx) = ui_tx {
+        tokio::spawn(async move {
+            let output = match crate::memory::slash_run(&paths, &args).await {
+                Ok(text) => text,
+                Err(err) => format!("Memory error: {err}"),
+            };
             let _ = tx.send(crate::agent::AgentUiEvent::MemoryResult(output));
-        }
-    });
+        });
+        return SlashOutcome::BackgroundTask;
+    }
 
-    SlashOutcome::BackgroundTask
+    // Fallback: run inline so output is never silently dropped.
+    match elph_agent::try_block_on(crate::memory::slash_run(&paths, &args)) {
+        Ok(Ok(text)) => SlashOutcome::OpenMemoryResultDialog { text },
+        Ok(Err(err)) => SlashOutcome::Status(format!("Memory error: {err}")),
+        Err(err) => SlashOutcome::Status(format!("Memory error: {err:#}")),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +94,11 @@ pub enum SlashOutcome {
     OpenMemoryResultDialog {
         text: String,
     },
+    /// Confirm wiping the entire memory store before executing flush.
+    OpenMemoryFlushConfirm {
+        memory_count: u32,
+        task_count: u32,
+    },
     /// Rename session inline text dialog (prefilled title).
     OpenRenameDialog {
         initial: String,
@@ -87,6 +115,10 @@ pub enum SlashOutcome {
     /// Open provider disconnect dialog to remove stored credentials.
     OpenProviderDisconnectDialog {
         provider_id: Option<String>,
+    },
+    /// Open MCP OAuth dialog (`/mcp auth [name]`).
+    OpenMcpAuthDialog {
+        server_name: Option<String>,
     },
 }
 
@@ -147,6 +179,29 @@ pub fn handle_slash_submit(ctx: SlashContext<'_>) -> SlashOutcome {
         SlashDispatch::ProviderList => SlashOutcome::OpenProviderListDialog {
             text: provider_list_slash_message(),
         },
+        SlashDispatch::McpAuth { server_name } => SlashOutcome::OpenMcpAuthDialog { server_name },
+        SlashDispatch::McpLogout { server_name } => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /mcp logout.".into());
+            };
+            match server_name {
+                Some(name) => match crate::tui::mcp_auth_dialog::logout_mcp_server(paths, &name) {
+                    Ok(msg) => SlashOutcome::Status(msg),
+                    Err(msg) => SlashOutcome::Status(msg),
+                },
+                None => SlashOutcome::Status(
+                    "Usage: /mcp logout <server> — e.g. /mcp logout figma\nList servers: /mcp list".into(),
+                ),
+            }
+        }
+        SlashDispatch::McpList => {
+            let Some(paths) = ctx.paths else {
+                return SlashOutcome::Status("Paths required for /mcp list.".into());
+            };
+            SlashOutcome::OpenProviderListDialog {
+                text: crate::tui::mcp_auth_dialog::mcp_list_slash_message(paths),
+            }
+        }
         // Handled by early return above — unreachable here.
         SlashDispatch::Memory { .. } => unreachable!(),
         SlashDispatch::Unimplemented(command) => SlashOutcome::Unimplemented(slash_unimplemented_message(&command)),
@@ -228,6 +283,7 @@ pub fn slash_outcome_is_ui_only(outcome: &SlashOutcome) -> bool {
             | SlashOutcome::OpenProviderConnectDialog { .. }
             | SlashOutcome::OpenProviderDisconnectDialog { .. }
             | SlashOutcome::OpenProviderListDialog { .. }
+            | SlashOutcome::OpenMcpAuthDialog { .. }
             | SlashOutcome::OpenMemoryResultDialog { .. }
     )
 }

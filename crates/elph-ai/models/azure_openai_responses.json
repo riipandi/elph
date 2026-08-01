@@ -4,34 +4,52 @@
         "baseUrl": "",
         "contextWindow": 8192,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 30,
-            "output": 60
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 30.0,
+            "output": 60.0
         },
         "id": "gpt-4",
         "input": ["text"],
         "maxTokens": 8192,
         "name": "GPT-4",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4-turbo": {
         "api": "azure-openai-responses",
         "baseUrl": "",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 10,
-            "output": 30
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 10.0,
+            "output": 30.0
         },
         "id": "gpt-4-turbo",
         "input": ["text", "image"],
         "maxTokens": 4096,
         "name": "GPT-4 Turbo",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4.1": {
         "api": "azure-openai-responses",
@@ -39,16 +57,25 @@
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 8
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 8.0
         },
         "id": "gpt-4.1",
         "input": ["text", "image"],
         "maxTokens": 32768,
         "name": "GPT-4.1",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4.1-mini": {
         "api": "azure-openai-responses",
@@ -56,7 +83,7 @@
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.1,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.4,
             "output": 1.6
         },
@@ -65,7 +92,16 @@
         "maxTokens": 32768,
         "name": "GPT-4.1 mini",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4.1-nano": {
         "api": "azure-openai-responses",
@@ -73,7 +109,7 @@
         "contextWindow": 1047576,
         "cost": {
             "cacheRead": 0.025,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.1,
             "output": 0.4
         },
@@ -82,7 +118,16 @@
         "maxTokens": 32768,
         "name": "GPT-4.1 nano",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4o": {
         "api": "azure-openai-responses",
@@ -90,33 +135,51 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.5,
-            "output": 10
+            "output": 10.0
         },
         "id": "gpt-4o",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4o-2024-05-13": {
         "api": "azure-openai-responses",
         "baseUrl": "",
         "contextWindow": 128000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 5,
-            "output": 15
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 15.0
         },
         "id": "gpt-4o-2024-05-13",
         "input": ["text", "image"],
         "maxTokens": 4096,
         "name": "GPT-4o (2024-05-13)",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4o-2024-08-06": {
         "api": "azure-openai-responses",
@@ -124,16 +187,25 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.5,
-            "output": 10
+            "output": 10.0
         },
         "id": "gpt-4o-2024-08-06",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o (2024-08-06)",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4o-2024-11-20": {
         "api": "azure-openai-responses",
@@ -141,16 +213,25 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 1.25,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.5,
-            "output": 10
+            "output": 10.0
         },
         "id": "gpt-4o-2024-11-20",
         "input": ["text", "image"],
         "maxTokens": 16384,
         "name": "GPT-4o (2024-11-20)",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-4o-mini": {
         "api": "azure-openai-responses",
@@ -158,7 +239,7 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.075,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.15,
             "output": 0.6
         },
@@ -167,7 +248,16 @@
         "maxTokens": 16384,
         "name": "GPT-4o mini",
         "provider": "azure-openai-responses",
-        "reasoning": false
+        "reasoning": false,
+        "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "gpt-5": {
         "api": "azure-openai-responses",
@@ -177,10 +267,10 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
+            "cacheRead": 0.13,
+            "cacheWrite": 0.0,
             "input": 1.25,
-            "output": 10
+            "output": 10.0
         },
         "id": "gpt-5",
         "input": ["text", "image"],
@@ -189,7 +279,13 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-chat-latest": {
@@ -198,21 +294,27 @@
         "compat": {
             "supportsOpenAIGrammarTools": true
         },
-        "contextWindow": 128000,
+        "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.125,
-            "cacheWrite": 0,
-            "input": 1.25,
-            "output": 10
+            "cacheRead": 0.12500000000000003,
+            "cacheWrite": 0.0,
+            "input": 1.125,
+            "output": 9.0
         },
         "id": "gpt-5-chat-latest",
         "input": ["text", "image"],
-        "maxTokens": 16384,
-        "name": "GPT-5 Chat Latest",
+        "maxTokens": 128000,
+        "name": "gpt-5-chat-latest",
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-mini": {
@@ -223,10 +325,10 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.025,
-            "cacheWrite": 0,
+            "cacheRead": 0.03,
+            "cacheWrite": 0.0,
             "input": 0.25,
-            "output": 2
+            "output": 2.0
         },
         "id": "gpt-5-mini",
         "input": ["text", "image"],
@@ -235,7 +337,13 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-nano": {
@@ -246,8 +354,8 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.005,
-            "cacheWrite": 0,
+            "cacheRead": 0.01,
+            "cacheWrite": 0.0,
             "input": 0.05,
             "output": 0.4
         },
@@ -258,7 +366,13 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5-pro": {
@@ -269,19 +383,25 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 15,
-            "output": 120
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 15.0,
+            "output": 120.0
         },
         "id": "gpt-5-pro",
         "input": ["text", "image"],
-        "maxTokens": 128000,
+        "maxTokens": 272000,
         "name": "GPT-5 Pro",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.1": {
@@ -293,18 +413,24 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.125,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.25,
-            "output": 10
+            "output": 10.0
         },
         "id": "gpt-5.1",
-        "input": ["text", "image"],
+        "input": ["text", "image", "audio"],
         "maxTokens": 128000,
         "name": "GPT-5.1",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
-            "off": null
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
+            "off": null,
+            "xhigh": null
         }
     },
     "gpt-5.2": {
@@ -315,10 +441,10 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0.175,
-            "cacheWrite": 0,
+            "cacheRead": 0.125,
+            "cacheWrite": 0.0,
             "input": 1.75,
-            "output": 14
+            "output": 14.0
         },
         "id": "gpt-5.2",
         "input": ["text", "image"],
@@ -327,6 +453,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -340,9 +471,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.75,
-            "output": 14
+            "output": 14.0
         },
         "id": "gpt-5.2-chat-latest",
         "input": ["text", "image"],
@@ -351,6 +482,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -363,10 +499,10 @@
         },
         "contextWindow": 400000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 21,
-            "output": 168
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 21.0,
+            "output": 168.0
         },
         "id": "gpt-5.2-pro",
         "input": ["text", "image"],
@@ -375,6 +511,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -388,9 +529,9 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.75,
-            "output": 14
+            "output": 14.0
         },
         "id": "gpt-5.3-chat-latest",
         "input": ["text", "image"],
@@ -399,8 +540,13 @@
         "provider": "azure-openai-responses",
         "reasoning": false,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
-            "xhigh": "xhigh"
+            "xhigh": null
         }
     },
     "gpt-5.3-codex": {
@@ -412,9 +558,9 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.175,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.75,
-            "output": 14
+            "output": 14.0
         },
         "id": "gpt-5.3-codex",
         "input": ["text", "image"],
@@ -423,6 +569,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -436,17 +587,22 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.175,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.75,
-            "output": 14
+            "output": 14.0
         },
         "id": "gpt-5.3-codex-spark",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 32000,
         "name": "GPT-5.3 Codex Spark",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -460,17 +616,22 @@
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.25,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 2.5,
-            "output": 15
+            "output": 15.0
         },
         "id": "gpt-5.4",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.4",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -484,17 +645,22 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.075,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.75,
             "output": 4.5
         },
         "id": "gpt-5.4-mini",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "GPT-5.4 mini",
+        "name": "GPT-5.4 Mini",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -508,17 +674,22 @@
         "contextWindow": 400000,
         "cost": {
             "cacheRead": 0.02,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 0.2,
             "output": 1.25
         },
         "id": "gpt-5.4-nano",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
-        "name": "GPT-5.4 nano",
+        "name": "GPT-5.4 Nano",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -531,10 +702,10 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 30,
-            "output": 180
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 30.0,
+            "output": 180.0
         },
         "id": "gpt-5.4-pro",
         "input": ["text", "image"],
@@ -543,6 +714,11 @@
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -556,17 +732,22 @@
         "contextWindow": 1050000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0,
-            "input": 5,
-            "output": 30
+            "cacheWrite": 0.0,
+            "input": 5.0,
+            "output": 30.0
         },
         "id": "gpt-5.5",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.5",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
+            "max": null,
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -579,19 +760,22 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 30,
-            "output": 180
+            "cacheRead": 30.0,
+            "cacheWrite": 0.0,
+            "input": 30.0,
+            "output": 180.0
         },
         "id": "gpt-5.5-pro",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.5 Pro",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
             "low": null,
+            "max": null,
+            "medium": null,
             "minimal": null,
             "off": null,
             "xhigh": "xhigh"
@@ -605,19 +789,23 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.1,
+            "cacheRead": 0.02,
             "cacheWrite": 1.25,
-            "input": 1,
-            "output": 6
+            "input": 0.2,
+            "output": 1.2
         },
         "id": "gpt-5.6-luna",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Luna",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -632,17 +820,21 @@
         "cost": {
             "cacheRead": 0.5,
             "cacheWrite": 6.25,
-            "input": 5,
-            "output": 30
+            "input": 5.0,
+            "output": 30.0
         },
         "id": "gpt-5.6-sol",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Sol",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -655,19 +847,23 @@
         },
         "contextWindow": 1050000,
         "cost": {
-            "cacheRead": 0.25,
+            "cacheRead": 0.2,
             "cacheWrite": 3.125,
-            "input": 2.5,
-            "output": 15
+            "input": 2.0,
+            "output": 12.0
         },
         "id": "gpt-5.6-terra",
-        "input": ["text", "image"],
+        "input": ["text", "image", "pdf"],
         "maxTokens": 128000,
         "name": "GPT-5.6 Terra",
         "provider": "azure-openai-responses",
         "reasoning": true,
         "thinkingLevelMap": {
+            "high": null,
+            "low": null,
             "max": "max",
+            "medium": null,
+            "minimal": null,
             "off": null,
             "xhigh": "xhigh"
         }
@@ -678,16 +874,25 @@
         "contextWindow": 128000,
         "cost": {
             "cacheRead": 0.4,
-            "cacheWrite": 0,
-            "input": 4,
-            "output": 24
+            "cacheWrite": 0.0,
+            "input": 4.0,
+            "output": 24.0
         },
         "id": "gpt-realtime-2.1",
-        "input": ["text", "image"],
+        "input": ["text", "audio", "image"],
         "maxTokens": 32000,
         "name": "GPT-Realtime-2.1",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": "minimal",
+            "off": null,
+            "xhigh": "xhigh"
+        }
     },
     "o1": {
         "api": "azure-openai-responses",
@@ -695,33 +900,51 @@
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 7.5,
-            "cacheWrite": 0,
-            "input": 15,
-            "output": 60
+            "cacheWrite": 0.0,
+            "input": 15.0,
+            "output": 60.0
         },
         "id": "o1",
         "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o1",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o1-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 150,
-            "output": 600
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 150.0,
+            "output": 600.0
         },
         "id": "o1-pro",
         "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o1-pro",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3": {
         "api": "azure-openai-responses",
@@ -729,16 +952,25 @@
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.5,
-            "cacheWrite": 0,
-            "input": 2,
-            "output": 8
+            "cacheWrite": 0.0,
+            "input": 2.0,
+            "output": 8.0
         },
         "id": "o3",
         "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o3",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-mini": {
         "api": "azure-openai-responses",
@@ -746,7 +978,7 @@
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.55,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.1,
             "output": 4.4
         },
@@ -755,24 +987,42 @@
         "maxTokens": 100000,
         "name": "o3-mini",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o3-pro": {
         "api": "azure-openai-responses",
         "baseUrl": "",
         "contextWindow": 200000,
         "cost": {
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "input": 20,
-            "output": 80
+            "cacheRead": 0.0,
+            "cacheWrite": 0.0,
+            "input": 20.0,
+            "output": 80.0
         },
         "id": "o3-pro",
         "input": ["text", "image"],
         "maxTokens": 100000,
         "name": "o3-pro",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     },
     "o4-mini": {
         "api": "azure-openai-responses",
@@ -780,7 +1030,7 @@
         "contextWindow": 200000,
         "cost": {
             "cacheRead": 0.275,
-            "cacheWrite": 0,
+            "cacheWrite": 0.0,
             "input": 1.1,
             "output": 4.4
         },
@@ -789,6 +1039,15 @@
         "maxTokens": 100000,
         "name": "o4-mini",
         "provider": "azure-openai-responses",
-        "reasoning": true
+        "reasoning": true,
+        "thinkingLevelMap": {
+            "high": "high",
+            "low": "low",
+            "max": null,
+            "medium": "medium",
+            "minimal": null,
+            "off": null,
+            "xhigh": null
+        }
     }
 }

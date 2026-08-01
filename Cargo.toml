@@ -57,6 +57,7 @@ inquire = "0.9.4"
 iocraft = "0.8.4"
 jsonschema = "0.49.2"
 kalid = "0.1.0"
+keyring = "3.6.3"
 libc = "0.2.189"
 linkify = "0.11.0"
 log = "0.4.33"
@@ -73,7 +74,6 @@ logforth = { version = "0.30.1", features = [
 memchr = "2.8.3"
 memorable-ids = "0.1.1"
 minijinja = "2.10.2"
-notify-rust = { version = "4.18.0", features = ["tokio"] }
 obscura = { version = "0.1" }
 parking_lot = "0.12"
 pulldown-cmark = { version = "0.13.4", default-features = false, features = ["simd"] }
@@ -83,7 +83,7 @@ rayon = "1.12.0"
 regex = "1.13.1"
 reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "stream"] }
 serde_urlencoded = "0.7.1"
-rmcp = { version = "3.0.0", features = [
+rmcp = { version = "3.0.1", features = [
   "auth",
   "client",
   "transport-child-process",

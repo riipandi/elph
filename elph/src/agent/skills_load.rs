@@ -35,11 +35,19 @@ fn skill_dir_entries(paths: &Paths) -> Vec<(String, String)> {
     let project = paths.project_dir();
     let project_display = project.display();
     vec![
+        // Built-ins unpacked from the binary (CONFIG_DIR/bundled/skills).
+        (
+            paths.bundled_dir().join("skills").to_string_lossy().to_string(),
+            "~/.config/elph/bundled/skills".to_string(),
+        ),
         (
             home.join(".agents/skills").to_string_lossy().to_string(),
             "~/.agents/skills".to_string(),
         ),
-        (paths.skills_dir().to_string_lossy().to_string(), "~/.elph/skills".to_string()),
+        (
+            paths.skills_dir().to_string_lossy().to_string(),
+            "~/.config/elph/skills".to_string(),
+        ),
         (
             project.join(".agents/skills").to_string_lossy().to_string(),
             format!("{project_display}/.agents/skills"),
@@ -80,18 +88,10 @@ pub async fn load_workspace_skills(env: &LocalExecutionEnv, paths: &Paths) -> Wo
 }
 
 /// Transcript notice when duplicate skill names were resolved by directory priority.
+///
+/// Delegates to the unified conflict formatter (skills-only section).
 pub fn format_skill_conflict_notice(conflicts: &[SkillConflict]) -> Option<String> {
-    if conflicts.is_empty() {
-        return None;
-    }
-    let mut lines = vec!["Skill name conflicts resolved (last directory wins):".to_string()];
-    for conflict in conflicts {
-        lines.push(format!(
-            "  • {}: {} → {}",
-            conflict.name, conflict.overridden_label, conflict.winner_label
-        ));
-    }
-    Some(lines.join("\n"))
+    super::conflict_notice::format_name_conflicts(conflicts, &[], &[], &[])
 }
 
 /// Legacy slash prefix: `/skill:review fix this` (backward-compat; skills now dispatch by raw name).
@@ -142,11 +142,13 @@ mod tests {
         let notice = format_skill_conflict_notice(&[SkillConflict {
             name: "debug".into(),
             overridden_label: "~/.agents/skills".into(),
-            winner_label: "~/.elph/skills".into(),
+            winner_label: "~/.config/elph/skills".into(),
         }]);
         let text = notice.expect("notice");
+        // Unified formatter uses the shared "Resource name conflicts" header.
+        assert!(text.contains("Skills:"));
         assert!(text.contains("debug"));
         assert!(text.contains("~/.agents/skills"));
-        assert!(text.contains("~/.elph/skills"));
+        assert!(text.contains("~/.config/elph/skills"));
     }
 }

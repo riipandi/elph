@@ -73,10 +73,11 @@ fn uses_prompt_mode_for_magistral_reasoning_models() {
 
 #[test]
 fn uses_reasoning_effort_for_mistral_medium_3_5() {
+    // Catalog id for "Mistral Medium 3.5" is mistral-medium-2604 (legacy id mistral-medium-3.5).
     let payload = payload_field(
-        "mistral-medium-3.5",
+        "mistral-medium-2604",
         mistral_options_from_simple(
-            &get_builtin_model("mistral", "mistral-medium-3.5").expect("model"),
+            &get_builtin_model("mistral", "mistral-medium-2604").expect("model"),
             &sample_context(),
             Some(&SimpleStreamOptions {
                 base: StreamOptions::default(),
@@ -92,9 +93,9 @@ fn uses_reasoning_effort_for_mistral_medium_3_5() {
 #[test]
 fn omits_reasoning_controls_for_mistral_medium_3_5_when_thinking_is_off() {
     let payload = payload_field(
-        "mistral-medium-3.5",
+        "mistral-medium-2604",
         mistral_options_from_simple(
-            &get_builtin_model("mistral", "mistral-medium-3.5").expect("model"),
+            &get_builtin_model("mistral", "mistral-medium-2604").expect("model"),
             &sample_context(),
             None,
         ),

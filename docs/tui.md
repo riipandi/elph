@@ -284,7 +284,9 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 
 ### Thinking Level → Color
 
-Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`):
+Soft but readable strata aligned with `elph-ai` (`off` is TUI-only; rest matches provider levels through `max`).
+
+**Ctrl+.** and the footer model segment (`provider/model (level)`) only cycle/show levels supported by the **active model catalog** (`thinkingLevelMap` / `get_supported_thinking_levels`). Unsupported values from settings are clamped when the model changes or on boot. Example: xAI Grok 4.5 → `off` · `low` · `high` · `max` only.
 
 | Level   | Color            | Hex       |
 | ------- | ---------------- | --------- |
@@ -362,7 +364,7 @@ Until a full refresh runs, `[+N -N]` may show stale values while the branch name
 | Click header/footer       | Expand/collapse that specific block                                                                |
 | `:q` / `:q!`              | Quit (vim-style)                                                                                   |
 
-Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Modes are persisted in `~/.elph/settings.json` but do not change runtime tool or prompt behavior yet — see [agent-runtime.md](./agent-runtime.md).
+Agent modes (`build`, `plan`, `ask`, `brave`) are also clickable in the footer. Mode is **per-session** (default `build` for new sessions) and is not written to shared `settings.json` — see [agent-runtime.md](./agent-runtime.md).
 
 ## Message timestamps
 
@@ -386,7 +388,17 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 ## Model selector
 
-`Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models`.
+`Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models` or quick keys in this picker.
+
+| Key (list focused) | Action                                                                     |
+| ------------------ | -------------------------------------------------------------------------- |
+| `+`                | Add highlighted model to scoped list (`models.scopedModels`, Ctrl+P cycle) |
+| `-`                | Remove highlighted model from scoped list                                  |
+| letters / `/`      | Seed / focus the filter (not `+`/`-`, digits, or space)                    |
+| `Enter`            | Confirm model for this session                                             |
+| `[` / `]`          | Cycle scope tabs (All · Scoped · Provider)                                 |
+
+By default (`settings.models.showConfiguredOnly: true`), the **All** list and **Provider** tabs only include providers that already have credentials in `auth.json` (API key, OAuth, or env ref). Set `showConfiguredOnly` to `false` to browse every builtin provider. The active session provider is always included so you can re-select its models.
 
 ## Scoped models
 
@@ -400,7 +412,7 @@ When the agent is busy, an activity line shows between the content area and inpu
 | `Ctrl+X`                 | Clear all (or clear matching the filter)            |
 | `Ctrl+P`                 | Toggle every model for the selected item's provider |
 | `Alt+↑` / `Alt+↓`        | Reorder enabled models (cycle order)                |
-| `Ctrl+S`                 | Save to home `settings.models.scoped`               |
+| `Ctrl+S`                 | Save to home `settings.models.scopedModels`         |
 | `Esc`                    | Cancel without saving                               |
 
 Edits are **session-only** until **Ctrl+S** (footer shows `(unsaved)`). Cancel restores the list from when the editor opened.
@@ -411,7 +423,7 @@ Elph does not pick a default model at startup. The footer shows **No model selec
 
 ### Missing API key
 
-If the provider JSON has no resolved `apiKey`, confirming a model still **saves** `session.providerId` / `session.modelId` to `~/.elph/settings.json` and updates the footer. Chat remains blocked until credentials work; the status message points at `~/.elph/providers/<id>.json` or the referenced environment variable.
+If the provider JSON has no resolved `apiKey`, confirming a model still updates the **session** footer and live selection (it does **not** write shared `settings.json`). Chat remains blocked until credentials work; the status message points at `~/.elph/providers/<id>.json` or the referenced environment variable.
 
 ### Draft preservation
 

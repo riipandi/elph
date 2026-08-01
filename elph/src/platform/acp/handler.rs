@@ -6,12 +6,11 @@ use agent_client_protocol::schema::v1::{PromptRequest, SessionId};
 use agent_client_protocol::{Client, ConnectionTo};
 use parking_lot::Mutex;
 
+use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
+use super::{AcpAgentState, lookup_session};
 use crate::agent::{
     SlashDispatch, dispatch_slash_command, format_help_message, system_prompt_slash_message, tools_slash_message,
 };
-
-use super::util::{extract_prompt_text, send_text_chunks, stream_ui_events};
-use super::{AcpAgentState, lookup_session};
 
 /// Handle an incoming `session/prompt` request.
 ///
@@ -98,8 +97,15 @@ async fn handle_acp_slash_command(
                 let guard = state.lock();
                 guard.paths.clone()
             };
-            session.reload_resources(&paths, &cwd).await?;
-            send_text_chunks(connection, session_id, "Resources reloaded.").await
+            let report = session
+                .reload_workspace(crate::agent::WorkspaceReloadRequest {
+                    paths: &paths,
+                    cwd: &cwd,
+                })
+                .await;
+            let mut parts = vec![report.summary_text()];
+            parts.extend(report.notices);
+            send_text_chunks(connection, session_id, &parts.join("\n\n")).await
         }
         Some(SlashDispatch::Goal { args }) => {
             let (session, _, _) = lookup_session(state, &key)?;
@@ -146,6 +152,29 @@ async fn handle_acp_slash_command(
         )),
         Some(SlashDispatch::ProviderList) => {
             let message = crate::tui::slash_handler::provider_list_slash_message();
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::McpAuth { .. }) => Err(anyhow::anyhow!(
+            "Command '/mcp auth' opens a TUI OAuth dialog and is not available via ACP. Use `elph mcp auth <name>`."
+        )),
+        Some(SlashDispatch::McpLogout { server_name }) => {
+            let Some(name) = server_name else {
+                return Err(anyhow::anyhow!("Usage: /mcp logout <server>"));
+            };
+            let paths = {
+                let guard = state.lock();
+                guard.paths.clone()
+            };
+            let message =
+                crate::tui::mcp_auth_dialog::logout_mcp_server(&paths, &name).map_err(|e| anyhow::anyhow!("{e}"))?;
+            send_text_chunks(connection, session_id, &message).await
+        }
+        Some(SlashDispatch::McpList) => {
+            let paths = {
+                let guard = state.lock();
+                guard.paths.clone()
+            };
+            let message = crate::tui::mcp_auth_dialog::mcp_list_slash_message(&paths);
             send_text_chunks(connection, session_id, &message).await
         }
         Some(SlashDispatch::Unimplemented(cmd)) => {

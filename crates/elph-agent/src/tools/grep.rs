@@ -48,12 +48,12 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                 "properties": {
                     "pattern": {
                         "type": "string",
-                        "description": "Single regex or literal pattern to search for"
+                        "description": "Single regex or literal pattern to search for. Provide pattern or patterns."
                     },
                     "patterns": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Multiple patterns combined with OR logic. Mutually exclusive with 'pattern'."
+                        "description": "Multiple patterns combined with OR logic. Mutually exclusive with pattern."
                     },
                     "path": {
                         "type": "string",
@@ -105,10 +105,8 @@ pub fn create_grep_tool(env: Arc<LocalExecutionEnv>) -> AgentTool {
                         "description": "Maximum total matches to return (default: 200)"
                     }
                 },
-                "anyOf": [
-                    { "required": ["pattern"] },
-                    { "required": ["patterns"] }
-                ]
+                // No root anyOf: xAI rejects anyOf branches that only list `required`
+                // without `"type":"object"`. Require pattern or patterns at runtime.
             }),
         },
         "grep",

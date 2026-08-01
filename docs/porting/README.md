@@ -24,7 +24,7 @@ Upstream projects move quickly. Each page records:
 
 ## Baseline (pi libraries)
 
-Last documented **2026-07-29T19:50:00Z**.
+Last documented **2026-07-29T19:50:00Z** (pi snapshot). Catalog SSOT note updated **2026-08-01**.
 
 - **Upstream:** https://github.com/earendil-works/pi
 - **Local clone (analysis):** `/Users/ariss/Developer/github.com/earendil-works/pi`
@@ -33,6 +33,7 @@ Last documented **2026-07-29T19:50:00Z**.
 - **Mapping:** `packages/ai` → `elph-ai`, `packages/agent` → `elph-agent`, `packages/coding-agent` → `elph/`
 - **Last library implementation pass:** 2026-07-29 — Sprint 7: remaining P2 gap port (Kimi OAuth, OpenRouter OAuth, Radius OAuth, pi-messages, JsonlSessionStorage, file mutation queue, image tool)
 - **Last product gap audit:** 2026-07-29 — dead code cleanup + clippy hardening across `elph/` TUI modules
+- **Catalog SSOT (settled):** chat models from **models.dev** via `elph-ai` `generate-models` / skill `update-models` — **not** from pi `packages/ai` data. Port gap analysis skill: `pi-port-gap` (adopt intent, implement Elph shape).
 
 ## Status tags
 
@@ -48,20 +49,38 @@ Use these inline in prose (not table cells):
 
 ### Pi → elph crates
 
-1. Update the local pi clone: `git pull` in the clone path.
-2. Read upstream changelogs (`packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md`).
-3. Diff against the timeline / remaining sections in this folder (prose, not tables).
-4. Port + regenerate catalogs when needed:
+**Doctrine:** adopt **gap intent** from pi; implement on **Elph architecture**.
+Do not copy pi’s TypeScript layout or catalog scripts. Agent skill:
+[`.agents/skills/pi-port-gap`](../../.agents/skills/pi-port-gap/SKILL.md).
+
+1. Update the local pi clone: `git pull` on `main` in the clone path.
+2. Read upstream changelogs (`packages/ai/CHANGELOG.md`, `packages/agent/CHANGELOG.md`) and, if needed, `git diff` of `packages/ai/src` / `packages/agent/src` vs last audit (CHANGELOG lags).
+3. Diff against the timeline / remaining sections in this folder (prose, not tables). Classify each item as **runtime gap** vs **catalog data** vs **already covered by Elph**.
+4. **Catalog / model lists** are **not** seeded from pi. Origin is [models.dev](https://models.dev):
 
     ```sh
-    # Catalog path is fixed: ../../earendil-works/pi/packages/ai (from elph workspace root)
-    cargo run -p elph-ai --bin generate-models -- chat --skip-scripts
-    # Then re-add Elph-only providers (Hyper, OpenGateway, Kilo, …) if wiped.
+    # Elph catalog SSOT — skill: .agents/skills/update-models
+    cargo run -p elph-ai --bin generate-models -- chat
+    # offline after a prior fetch:
+    cargo run -p elph-ai --bin generate-models -- chat --offline --no-live-pricing
+    cargo test -p elph-ai --test providers catalog_providers_match_builtin_providers
     ```
 
-5. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).
+    Gateways (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …) are **preserved** by the generator; do not use obsolete `--catalog-dir` / pi npm `generate-models` for chat.
+
+5. **Runtime gaps** (API adapter, auth, stream flag, tool schema, agent loop) → implement in `crates/elph-ai` / `crates/elph-agent` following existing modules — not by importing pi packages.
+6. Append a **Timeline** entry with ISO timestamp + pi commit/version (bullet prose).
 
 ### Timeline
+
+### 2026-08-01 — Catalog SSOT cutover + porting doctrine
+
+**Scope:** `elph-ai` generator + agent skills / porting docs (not a pi version bump).
+
+- Chat catalogs: origin **models.dev** (`generate-models chat`); full `thinkingLevelMap` on every model; live pricing preferred when available
+- Gateways preserved (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …); registration gate vs `builtin_providers()`
+- Skills: **`update-models`** for catalog regen; **`pi-port-gap`** doctrine = adopt pi *gaps only*, implement on Elph architecture (no pi JSON seed, no dual SSOT)
+- Obsolete for chat: `--catalog-dir` / pi npm generate / “re-add Hyper after wipe”
 
 ### 2026-07-29 — Sprint 5: pi-ai gap port (7 features)
 

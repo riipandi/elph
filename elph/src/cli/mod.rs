@@ -7,7 +7,7 @@ mod export;
 mod extensions;
 mod help;
 mod import;
-mod interactive;
+pub(crate) mod interactive;
 mod mcp;
 mod memory;
 mod models;
@@ -15,6 +15,7 @@ mod provider;
 mod run;
 mod server;
 mod session;
+mod session_launch;
 mod stats;
 mod tools;
 mod update;
@@ -53,16 +54,21 @@ pub struct Cli {
     #[arg(short = 'V', long = "version", help = "Print version information")]
     pub version: bool,
 
-    /// Continue last session for the current working directory
+    /// Continue the most recent session for this project (CWD / PROJECT_DIR) — no new session
     #[arg(
         short = 'c',
         long = "continue",
-        help = "Continue last session for the current working directory"
+        help = "Continue last session for the current project"
     )]
     pub continue_session: bool,
 
-    /// Resume a specific session by ID (interactive TUI)
-    #[arg(long = "resume", value_name = "SESSION_ID")]
+    /// Resume a specific session by session ID (interactive TUI)
+    #[arg(
+        short = 'r',
+        long = "resume",
+        value_name = "SESSION_ID",
+        help = "Resume a specific session by session ID"
+    )]
     pub resume: Option<String>,
 
     #[command(subcommand)]
@@ -164,7 +170,7 @@ pub fn run(cli: &Cli) -> ExitCode {
 
     let _log_guard = match crate::platform::Paths::resolve() {
         Ok(paths) => {
-            // Panic → ~/.local/share/elph/logs/crash.log (or $ELPH_DATA_DIR/logs/crash.log).
+            // Panic → APP_DATA/logs/crash.log-YYYYMMDD
             elph_agent::logger::install_panic_hook(paths.logs_dir());
             let init = agent_builder.logs_dir(paths.logs_dir()).build();
             elph_agent::logger::init(init.logging)
@@ -188,7 +194,7 @@ pub fn run(cli: &Cli) -> ExitCode {
         if let Err(code) = init_datastore(&paths) {
             return code;
         }
-        return default::handle(cli.resume.clone());
+        return default::handle(cli.continue_session, cli.resume.clone());
     };
 
     if command_needs_datastore(cmd)

@@ -12,6 +12,7 @@ mod model;
 
 pub use component::PromptHistoryPalette;
 pub use keyboard::PromptHistoryKeyAction;
+pub use keyboard::is_deliberate_arrow_up;
 pub use keyboard::is_open_key;
 pub use keyboard::resolve_key_action;
 pub use model::PromptHistorySnapshot;

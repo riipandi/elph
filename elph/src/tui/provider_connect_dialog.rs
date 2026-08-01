@@ -19,15 +19,31 @@ use crate::tui::slash_palette::list_viewport_cap;
 use crate::tui::focus::ShellFocus;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::slash_palette::fuzzy::{field_score, max_score};
+use crate::utils::path::AppPaths;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::Instant;
 
-/// Default auth store path under `~/.elph/auth.json`.
-fn default_auth_store_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    PathBuf::from(home).join(".elph").join("auth.json")
+/// Default auth store path under `CONFIG_DIR/auth.json` (same as [`crate::platform::Paths`]).
+///
+/// Resolves via `ELPH_HOME` / XDG (`~/.config/elph/auth.json`). Never hardcodes `~/.elph/`.
+pub fn default_auth_store_path() -> PathBuf {
+    match crate::platform::Paths::resolve() {
+        Ok(paths) => paths.auth_store_path(),
+        Err(_) => {
+            // Last-resort fallback aligned with PathResolver defaults (not ~/.elph/).
+            let base = std::env::var_os("ELPH_HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("XDG_CONFIG_HOME").map(|p| PathBuf::from(p).join("elph")))
+                .unwrap_or_else(|| {
+                    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                    PathBuf::from(home).join(".config").join("elph")
+                });
+            base.join("auth.json")
+        }
+    }
 }
 
 // ── Data types ───────────────────────────────────────────────────────
@@ -164,57 +180,84 @@ pub fn provider_auth_method_from_index(index: usize) -> ProviderAuthMethod {
 /// Only consults `auth.json` — providers not registered there are treated as
 /// unconfigured even if an env var is set in the process environment.
 /// Register env-var providers with: `elph provider connect <id> --env <VAR>`.
+///
+/// An `env:VAR` entry counts as configured for picker filtering even when the
+/// process currently lacks that env var (the API call will fail later with a
+/// clear error). Presence in `auth.json` is the source of truth for "configured".
 fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
-    let auth_store_path = default_auth_store_path();
+    get_provider_config_status_at(&default_auth_store_path(), provider_id)
+}
 
-    if let Ok(bytes) = std::fs::read(&auth_store_path)
-        && let Ok(file) = serde_json::from_slice::<elph_agent::AuthStoreFile>(&bytes)
-    {
-        if let Some(entry) = file.get_provider_credential(provider_id) {
-            // env ref entries are stored as plaintext "env:VAR_NAME" (not encrypted)
-            if entry.starts_with(elph_agent::ENV_REF_PREFIX) && !entry.starts_with(elph_agent::ENC_PREFIX) {
-                let var_name = &entry[elph_agent::ENV_REF_PREFIX.len()..];
-                if std::env::var(var_name).is_ok() {
+/// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
+pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
+    // Try loading the encrypted auth store first
+    let file = match elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) {
+        Ok(f) => f,
+        Err(_) => {
+            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            if let Ok(content) = std::fs::read_to_string(auth_store_path)
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str())
+            {
+                if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
                     return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
                 }
-                return ProviderConfigStatus::Unconfigured;
+                // OAuth JSON blobs are long; short values are API keys.
+                if credential.trim().starts_with('{') || credential.len() > 100 {
+                    return ProviderConfigStatus::OAuthConfigured;
+                }
+                return ProviderConfigStatus::ApiKeyConfigured;
             }
-
-            if entry.len() > 100 {
-                return ProviderConfigStatus::OAuthConfigured;
-            }
-            return ProviderConfigStatus::ApiKeyConfigured;
+            return ProviderConfigStatus::Unconfigured;
         }
+    };
 
-        // Check legacy prefixed key
-        let prefixed = format!("oauth:{provider_id}");
-        if let Some(_enc) = file.get_provider_credential(&prefixed) {
+    if let Some(entry) = file.get_provider_credential(provider_id) {
+        if let Some(var_name) = entry.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+            return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
+        }
+        // OAuth JSON blobs are long; short values are API keys.
+        if entry.trim().starts_with('{') || entry.len() > 100 {
             return ProviderConfigStatus::OAuthConfigured;
         }
+        return ProviderConfigStatus::ApiKeyConfigured;
     }
-
     ProviderConfigStatus::Unconfigured
 }
 
+/// Cached provider options to avoid recomputing on every render.
+static CACHED_PROVIDER_OPTIONS: OnceLock<Vec<ProviderOption>> = OnceLock::new();
+
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
-    let oauth_provider_ids = builtin_oauth_provider_ids();
-    let api_key_provider_ids: HashSet<String> = builtin_providers()
-        .into_iter()
-        .filter(|provider| provider.auth.api_key.is_some())
-        .map(|provider| provider.id)
-        .collect();
+    CACHED_PROVIDER_OPTIONS
+        .get_or_init(|| {
+            let oauth_provider_ids = builtin_oauth_provider_ids();
+            let api_key_provider_ids: HashSet<String> = builtin_providers()
+                .into_iter()
+                .filter(|provider| provider.auth.api_key.is_some())
+                .map(|provider| provider.id)
+                .collect();
 
-    get_builtin_providers()
-        .into_iter()
-        .map(|id| ProviderOption {
-            id: id.to_string(),
-            name: format_provider_name(id),
-            supports_oauth: oauth_provider_ids.contains(&id),
-            supports_api_key: api_key_provider_ids.contains(id),
-            config_status: get_provider_config_status(id),
+            get_builtin_providers()
+                .into_iter()
+                .map(|id| {
+                    let name = format_provider_name(&id);
+                    let supports_oauth = oauth_provider_ids.contains(&id.as_str());
+                    let supports_api_key = api_key_provider_ids.contains(&id);
+                    // Lazily compute config status only when needed (deferred to render time)
+                    ProviderOption {
+                        name,
+                        supports_oauth,
+                        supports_api_key,
+                        config_status: ProviderConfigStatus::Unconfigured,
+                        id,
+                    }
+                })
+                .collect()
         })
-        .collect()
+        .clone()
 }
 
 pub fn providers_for_auth_method(providers: &[ProviderOption], auth_method: ProviderAuthMethod) -> Vec<ProviderOption> {
@@ -233,55 +276,37 @@ pub fn get_provider_options_for_auth_method(auth_method: ProviderAuthMethod) -> 
 }
 
 /// Format provider name for display.
+///
+/// Prefer the live factory label from `builtin_providers()` so new providers do not
+/// need a separate hard-coded display map. Fall back to curated labels / title-case.
 pub fn format_provider_name(id: &str) -> String {
-    match id {
-        "amazon-bedrock" => "Amazon Bedrock".to_string(),
-        "anthropic" => "Anthropic".to_string(),
-        "azure-openai-responses" => "Azure OpenAI".to_string(),
-        "baseten" => "Baseten".to_string(),
-        "cerebras" => "Cerebras".to_string(),
-        "cloudflare-ai-gateway" => "Cloudflare AI Gateway".to_string(),
-        "cloudflare-workers-ai" => "Cloudflare Workers AI".to_string(),
-        "deepseek" => "DeepSeek".to_string(),
-        "fireworks" => "Fireworks".to_string(),
-        "faux" => "Faux".to_string(),
-        "github-copilot" => "GitHub Copilot".to_string(),
-        "google" => "Google".to_string(),
-        "google-vertex" => "Google Vertex AI".to_string(),
-        "groq" => "Groq".to_string(),
-        "huggingface" => "Hugging Face".to_string(),
-        "hyper" => "Hyper".to_string(),
-        "kilo" => "Kilo Gateway".to_string(),
-        "kimi-coding" => "Kimi Coding".to_string(),
-        "minimax" => "MiniMax".to_string(),
-        "minimax-cn" => "MiniMax (China)".to_string(),
-        "mistral" => "Mistral".to_string(),
-        "moonshotai" => "Moonshot AI".to_string(),
-        "moonshotai-cn" => "Moonshot AI (China)".to_string(),
-        "neuralwatt" => "Neuralwatt".to_string(),
-        "nvidia" => "NVIDIA NIM".to_string(),
-        "ollama-cloud" => "Ollama Cloud".to_string(),
-        "openai" => "OpenAI".to_string(),
-        "openai-codex" => "OpenAI Codex".to_string(),
-        "opencode" => "OpenCode Zen".to_string(),
-        "opencode-go" => "OpenCode Go".to_string(),
-        "opengateway" => "OpenGateway".to_string(),
-        "openrouter" => "OpenRouter".to_string(),
-        "qwen-token-plan" => "Qwen Token Plan".to_string(),
-        "qwen-token-plan-cn" => "Qwen Token Plan (China)".to_string(),
-        "sumopod" => "Sumopod".to_string(),
-        "tokenrouter" => "TokenRouter".to_string(),
-        "together" => "Together AI".to_string(),
-        "vercel-ai-gateway" => "Vercel AI Gateway".to_string(),
-        "xai" => "xAI".to_string(),
-        "xiaomi" => "Xiaomi".to_string(),
-        "xiaomi-token-plan-ams" => "Xiaomi Token Plan (AMS)".to_string(),
-        "xiaomi-token-plan-cn" => "Xiaomi Token Plan (CN)".to_string(),
-        "xiaomi-token-plan-sgp" => "Xiaomi Token Plan (SGP)".to_string(),
-        "zai" => "ZAI".to_string(),
-        "zai-coding-cn" => "ZAI Coding Plan (China)".to_string(),
-        _ => id.replace(['-', '_'], " "),
+    if let Some(provider) = builtin_providers().into_iter().find(|p| p.id == id)
+        && !provider.name.is_empty()
+        && provider.name != provider.id
+    {
+        return provider.name;
     }
+    if let Some(cfg) = crate::agent::provider::provider_config(id) {
+        return cfg.label.to_string();
+    }
+    match id {
+        "faux" => "Faux".to_string(),
+        _ => title_case_provider_id(id),
+    }
+}
+
+fn title_case_provider_id(id: &str) -> String {
+    id.split(['-', '_'])
+        .filter(|s| !s.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Check if provider supports OAuth.
@@ -315,14 +340,14 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
         return providers.to_vec();
     }
 
-    let mut scored: Vec<(ProviderOption, i32)> = providers
+    let mut scored: Vec<(&ProviderOption, i32)> = providers
         .iter()
-        .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov.clone(), score)))
+        .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov, score)))
         .collect();
 
     scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.name.cmp(&right.0.name)));
 
-    scored.into_iter().map(|(prov, _)| prov).collect()
+    scored.into_iter().map(|(prov, _)| prov.clone()).collect()
 }
 
 // ── Dialog lifecycle functions ───────────────────────────────────────
@@ -734,8 +759,20 @@ fn render_select_provider_step(
     let providers = get_provider_options_for_auth_method(auth_method);
     let filtered = filtered_providers(&providers, &filter.read());
 
+    // Lazily compute config status only for filtered providers (performance optimization)
+    let filtered_with_status: Vec<ProviderOption> = filtered
+        .iter()
+        .map(|p| {
+            let config_status = get_provider_config_status(&p.id);
+            ProviderOption {
+                config_status,
+                ..p.clone()
+            }
+        })
+        .collect();
+
     let total_count = providers.len();
-    let visible_count = filtered.len();
+    let visible_count = filtered_with_status.len();
     let count_label = if visible_count < total_count {
         format!("{} of {} providers", visible_count, total_count)
     } else {
@@ -751,7 +788,7 @@ fn render_select_provider_step(
 
     // Map providers to ModelRow + custom_hints for ModelOptionList (same rendering
     // as the model selector — no "xx more" indicators, fixed viewport with overflow).
-    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered
+    let model_rows: Vec<crate::tui::model_selector::ModelRow> = filtered_with_status
         .iter()
         .map(|p| crate::tui::model_selector::ModelRow {
             value: p.id.clone(),
@@ -763,7 +800,7 @@ fn render_select_provider_step(
             images: false,
         })
         .collect();
-    let config_hints: Vec<String> = filtered
+    let config_hints: Vec<String> = filtered_with_status
         .iter()
         .map(|p| match &p.config_status {
             ProviderConfigStatus::Unconfigured => "unconfigured".into(),
@@ -1057,6 +1094,54 @@ mod tests {
             supports_api_key,
             config_status: ProviderConfigStatus::Unconfigured,
         }
+    }
+
+    #[test]
+    fn default_auth_store_path_uses_config_elph_not_dot_elph() {
+        let path = default_auth_store_path();
+        let s = path.to_string_lossy();
+        // Must not use the legacy ~/.elph/auth.json location.
+        assert!(!s.ends_with("/.elph/auth.json"), "legacy path still used: {s}");
+        assert!(s.ends_with("auth.json"), "expected auth.json suffix, got {s}");
+    }
+
+    #[test]
+    fn env_ref_in_auth_counts_as_configured_even_without_env() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let auth_path = dir.path().join("auth.json");
+        let key = elph_agent::Aes256Key::generate();
+        elph_agent::set_process_master_key_for_tests(key);
+        let mut file = elph_agent::AuthStoreFile::default();
+        file.set_provider_credential(
+            "opencode",
+            format!("{}{}", elph_agent::ENV_REF_PREFIX, "OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ"),
+        );
+        elph_agent::try_block_on(async {
+            // Uses process master key override for this test process.
+            file.save_to_path(&auth_path).await.unwrap();
+        })
+        .expect("save sealed auth");
+        // SAFETY: test-only env mutation; single-threaded unit test.
+        unsafe {
+            std::env::remove_var("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ");
+        }
+        let status = get_provider_config_status_at(&auth_path, "opencode");
+        elph_agent::clear_process_master_key_for_tests();
+        assert_eq!(
+            status,
+            ProviderConfigStatus::EnvVarConfigured("OPENCODE_API_KEY_DOES_NOT_EXIST_XYZ".into())
+        );
+        assert!(!matches!(status, ProviderConfigStatus::Unconfigured));
+    }
+
+    #[test]
+    fn missing_auth_file_is_unconfigured() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let auth_path = dir.path().join("missing-auth.json");
+        assert_eq!(
+            get_provider_config_status_at(&auth_path, "opencode"),
+            ProviderConfigStatus::Unconfigured
+        );
     }
 
     #[test]

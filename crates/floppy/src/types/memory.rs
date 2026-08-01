@@ -53,6 +53,24 @@ pub struct DecayResult {
     pub deleted: u32,
 }
 
+/// Result of near-duplicate consolidation.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct ConsolidateResult {
+    /// Number of consolidated memories written.
+    pub merged: u32,
+    /// Number of source memories deleted.
+    pub deleted: u32,
+}
+
+/// Result of wiping the entire store (`flush`).
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct FlushResult {
+    /// Memories deleted.
+    pub memories: u32,
+    /// Tasks deleted.
+    pub tasks: u32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryStats {
     pub total_memories: u32,
@@ -72,4 +90,7 @@ pub struct StoreStatus {
     pub avg_task_score: f64,
     pub categories: Vec<CategoryCount>,
     pub top_memories: Vec<TopMemory>,
+    /// Memories with missing or invalid (e.g. all-zero) embeddings.
+    #[serde(default)]
+    pub pending_embeddings: u32,
 }

@@ -159,6 +159,18 @@ pub fn confirm_overwrite(provider_name: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Confirm wiping the entire project memory store (`elph memory flush`).
+pub fn confirm_memory_flush(memory_count: u32, task_count: u32) -> bool {
+    let prompt = format!("Permanently delete all memory data ({memory_count} memories, {task_count} tasks)?");
+    Confirm::new(&prompt)
+        .with_default(false)
+        .with_help_message("This cannot be undone · y/N")
+        .prompt_skippable()
+        .ok()
+        .flatten()
+        .unwrap_or(false)
+}
+
 // ── OAuth callbacks (CLI) ────────────────────────────────────────────
 
 /// Open a URL in the default browser.

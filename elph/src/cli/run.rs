@@ -5,6 +5,7 @@ use clap::Args;
 use crate::agent::RunModeOptions;
 use crate::agent::run_non_interactive;
 use crate::cli::help;
+use crate::cli::session_launch::SessionLaunchMode;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths, Settings};
 
 #[derive(Args, Default)]
@@ -21,15 +22,15 @@ pub struct RunArgs {
     #[arg(long = "output-format", value_name = "FORMAT", default_value = "text")]
     pub output_format: String,
 
-    /// Continue the most recent session for the current working directory
-    #[arg(short, long)]
+    /// Continue the most recent session for the current project (CWD/PROJECT_DIR)
+    #[arg(short = 'c', long = "continue")]
     pub r#continue: bool,
 
-    /// Resume a specific session by ID
-    #[arg(short, long, value_name = "SESSION_ID")]
+    /// Resume a specific session by session ID
+    #[arg(short = 'r', long = "resume", value_name = "SESSION_ID", visible_alias = "session")]
     pub session: Option<String>,
 
-    /// Fork the session before continuing (requires --continue or --session)
+    /// Fork the session before continuing (requires --continue or --resume)
     #[arg(long)]
     pub fork: bool,
 
@@ -82,9 +83,23 @@ pub fn handle(args: &RunArgs) -> ExitCode {
             return EXIT_ERROR;
         }
     };
-    let cwd = env::current_dir().unwrap_or_else(|_| ".".into());
+    let project_dir = paths.project_dir().clone();
+    let cwd = env::current_dir().unwrap_or_else(|_| project_dir.clone());
 
-    let resume_id = if args.r#continue { None } else { args.session.as_deref() };
+    let mode = match SessionLaunchMode::from_flags(args.r#continue, args.session.clone()) {
+        Ok(m) => m,
+        Err(err) => {
+            help::cli_error(err);
+            return EXIT_ERROR;
+        }
+    };
+    let resume_id = match elph_agent::block_on(mode.resolve_resume_id(&paths, &project_dir)) {
+        Ok(id) => id,
+        Err(err) => {
+            help::cli_error(err);
+            return EXIT_ERROR;
+        }
+    };
 
     if args.fork {
         eprintln!("--fork is not yet implemented; continuing without fork");
@@ -102,7 +117,7 @@ pub fn handle(args: &RunArgs) -> ExitCode {
         cwd: &cwd,
         prompt: &prompt,
         model: args.model.as_deref(),
-        resume_id,
+        resume_id: resume_id.as_deref(),
         brave: args.brave,
     }));
 

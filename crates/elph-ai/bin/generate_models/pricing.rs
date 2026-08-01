@@ -1,27 +1,61 @@
-//! Optional pricing enrichment from models.dev and live provider APIs.
-//!
-//! After generating/merging model catalogs, this module can optionally update
-//! zero-priced models with actual pricing data from:
-//! - [`models.dev/api.json`](https://models.dev/api.json) — curated pricing DB
-//! - Live provider `/v1/models` endpoints (OpenAI-compatible with metadata)
+//! Live provider pricing probes (preferred) + models.dev cost helpers.
 
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::env;
 
-use anyhow::{Context, Result};
 use serde_json::Value;
 
-// ---------------------------------------------------------------------------
-// provider-specific API pricing fetchers
-// ---------------------------------------------------------------------------
+use super::models_dev::{ModelsDevRoot, find_model, find_model_fuzzy};
+use super::provider_sources::{ProviderSource, all_provider_sources};
+use super::term;
 
-/// Try to fetch pricing from a provider's OpenAI-compatible `/v1/models` endpoint.
-///
-/// Returns a map of model_id → (input, output, cache_read).
-fn fetch_live_provider_pricing(_provider_id: &str, base_url: &str) -> HashMap<String, (f64, f64, f64)> {
-    let url = format!("{}/v1/models", base_url.trim_end_matches('/'));
-    let Ok(resp) = reqwest::blocking::get(&url) else {
+pub type PriceTriple = (f64, f64, f64); // input, output, cache_read
+
+/// Try live OpenAI-compatible `/models` pricing for providers with base URL + env key set.
+pub fn fetch_all_live_pricing(skip: bool) -> HashMap<String, HashMap<String, PriceTriple>> {
+    let mut out = HashMap::new();
+    if skip {
+        term::note("Skipping live pricing probes (--no-live-pricing)");
+        return out;
+    }
+    for src in all_provider_sources() {
+        let Some(base) = src.live_pricing_base else {
+            continue;
+        };
+        // Only probe when key is available (avoids noisy 401s).
+        if let Some(var) = src.live_pricing_env
+            && env::var(var).is_err()
+        {
+            continue;
+        }
+        let prices = fetch_live_provider_pricing(src, base);
+        if !prices.is_empty() {
+            term::live_pricing(src.id, prices.len());
+            out.insert(src.id.to_string(), prices);
+        }
+    }
+    out
+}
+
+fn fetch_live_provider_pricing(src: &ProviderSource, base_url: &str) -> HashMap<String, PriceTriple> {
+    let url = if base_url.ends_with("/models") {
+        base_url.to_string()
+    } else {
+        format!("{}/models", base_url.trim_end_matches('/'))
+    };
+    let Ok(client) = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+    else {
+        return HashMap::new();
+    };
+    let mut req = client.get(&url);
+    if let Some(var) = src.live_pricing_env
+        && let Ok(key) = env::var(var)
+    {
+        req = req.bearer_auth(key);
+    }
+    let Ok(resp) = req.send() else {
         return HashMap::new();
     };
     if !resp.status().is_success() {
@@ -38,7 +72,6 @@ fn fetch_live_provider_pricing(_provider_id: &str, base_url: &str) -> HashMap<St
                 Some(id) => id.to_string(),
                 None => continue,
             };
-            // Try extended format: metadata.pricing.{input,output}_per_million
             if let Some(pricing) = entry.get("metadata").and_then(|m| m.get("pricing")) {
                 let inp = pricing.get("input_per_million").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let outp = pricing
@@ -47,6 +80,7 @@ fn fetch_live_provider_pricing(_provider_id: &str, base_url: &str) -> HashMap<St
                     .unwrap_or(0.0);
                 let cached = pricing
                     .get("cached_input_per_million")
+                    .or_else(|| pricing.get("cache_read_per_million"))
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0);
                 if inp > 0.0 || outp > 0.0 {
@@ -58,223 +92,85 @@ fn fetch_live_provider_pricing(_provider_id: &str, base_url: &str) -> HashMap<St
     out
 }
 
-/// Providers whose `/v1/models` endpoint returns `metadata.pricing`.
-const LIVE_PRICING_PROVIDERS: &[(&str, &str)] = &[("neuralwatt", "https://api.neuralwatt.com/v1")];
-
-// ---------------------------------------------------------------------------
-// enrichment logic
-// ---------------------------------------------------------------------------
-
-/// Check if a model cost object is all zeros.
-fn is_zero_priced(cost: &Value) -> bool {
-    let input = cost.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let output = cost.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let cache_read = cost.get("cacheRead").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    input == 0.0 && output == 0.0 && cache_read == 0.0
-}
-
-/// Write a model JSON file with updated pricing for one model.
-fn update_model_cost(
-    path: &Path,
+/// Resolve best price: live → models.dev → previous non-zero.
+/// Returns (input, output, cache_read, cache_write, source).
+pub fn resolve_cost(
+    provider: &ProviderSource,
     model_id: &str,
-    input_price: f64,
-    output_price: f64,
-    cache_read: f64,
-    source: &str,
-) -> Result<bool> {
-    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-    let mut json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
+    models_dev: &ModelsDevRoot,
+    live: &HashMap<String, HashMap<String, PriceTriple>>,
+    previous_cost: Option<&Value>,
+) -> (f64, f64, f64, f64, &'static str) {
+    if let Some(map) = live.get(provider.id)
+        && let Some(&(i, o, c)) = map.get(model_id)
+        && (i > 0.0 || o > 0.0)
+    {
+        let cw = previous_cost
+            .and_then(|p| p.get("cacheWrite").and_then(|v| v.as_f64()))
+            .unwrap_or(0.0);
+        return (i, o, c, cw, "live-api");
+    }
 
-    let Some(model_obj) = json.get_mut(model_id) else {
-        return Ok(false);
+    if let Some(m) = find_model(models_dev, provider.models_dev_keys, model_id)
+        && let Some((i, o, cr, cw)) = cost_from_mdev(m)
+    {
+        return (i, o, cr, cw, "models.dev");
+    }
+
+    if let Some((_, m)) = find_model_fuzzy(models_dev, model_id)
+        && let Some((i, o, cr, cw)) = cost_from_mdev(&m)
+    {
+        return (i, o, cr, cw, "models.dev");
+    }
+
+    if let Some(c) = previous_cost {
+        let i = c.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let o = c.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let cr = c.get("cacheRead").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let cw = c.get("cacheWrite").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        return (i, o, cr, cw, "previous");
+    }
+    (0.0, 0.0, 0.0, 0.0, "none")
+}
+
+fn cost_from_mdev(m: &Value) -> Option<(f64, f64, f64, f64)> {
+    let c = m.get("cost")?;
+    let i = c.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let o = c.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let cr = c
+        .get("cache_read")
+        .or_else(|| c.get("cacheRead"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let cw = c
+        .get("cache_write")
+        .or_else(|| c.get("cacheWrite"))
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    if i > 0.0 || o > 0.0 { Some((i, o, cr, cw)) } else { None }
+}
+
+/// Apply resolved cost onto a model entry JSON (prefer non-zero).
+pub fn apply_cost(entry: &mut Value, i: f64, o: f64, cr: f64, cw: f64) {
+    let Some(obj) = entry.as_object_mut() else {
+        return;
     };
-    let Some(cost) = model_obj.get_mut("cost") else {
-        return Ok(false);
-    };
-
-    if !is_zero_priced(cost) {
-        return Ok(false);
-    }
-
-    cost["input"] = json_num(input_price);
-    cost["output"] = json_num(output_price);
-    cost["cacheRead"] = json_num(cache_read);
-
-    let pretty = serde_json::to_string_pretty(&json).with_context(|| format!("serialize {}", path.display()))?;
-    fs::write(path, format!("{pretty}\n")).with_context(|| format!("write {}", path.display()))?;
-
-    println!("  ✓ {model_id}: ${input_price}/in ${output_price}/out ${cache_read}/cache ({source})");
-    Ok(true)
-}
-
-fn json_num(v: f64) -> Value {
-    serde_json::Number::from_f64(v)
-        .map(Value::Number)
-        .unwrap_or(Value::Null)
-}
-
-/// Look up model pricing in the models.dev dataset.
-fn lookup_models_dev(
-    model_id: &str,
-    provider_id: &str,
-    models_dev: &HashMap<String, Value>,
-) -> Option<(f64, f64, f64)> {
-    let candidates = provider_candidates(provider_id);
-
-    for key in &candidates {
-        if let Some(prov) = models_dev.get(*key)
-            && let Some(models) = prov.get("models").and_then(|m| m.as_object())
-            && let Some(model) = models.get(model_id)
-            && let Some(cost) = model.get("cost")
-        {
-            let inp = cost.get("input").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let outp = cost.get("output").and_then(|v| v.as_f64()).unwrap_or(0.0);
-            let cached = cost
-                .get("cache_read")
-                .or_else(|| cost.get("cacheRead"))
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.0);
-            if inp > 0.0 || outp > 0.0 {
-                return Some((inp, outp, cached));
-            }
+    let cost = obj
+        .entry("cost".to_string())
+        .or_insert_with(|| serde_json::json!({ "input": 0.0, "output": 0.0, "cacheRead": 0.0, "cacheWrite": 0.0 }));
+    if let Value::Object(c) = cost {
+        set_if_positive(c, "input", i);
+        set_if_positive(c, "output", o);
+        set_if_positive(c, "cacheRead", cr);
+        set_if_positive(c, "cacheWrite", cw);
+        for k in ["input", "output", "cacheRead", "cacheWrite"] {
+            c.entry(k.to_string()).or_insert(serde_json::json!(0.0));
         }
-    }
-    None
-}
-
-/// Map our provider IDs to models.dev provider keys.
-fn provider_candidates(ours: &str) -> Vec<&'static str> {
-    match ours {
-        "deepseek" => vec!["deepseek"],
-        "fireworks" => vec!["fireworks-ai", "fireworks"],
-        "google" => vec!["google"],
-        "groq" => vec!["groq"],
-        "mistral" => vec!["mistral"],
-        "moonshotai" | "moonshotai-cn" => vec!["moonshotai", "moonshot"],
-        "openai" | "openai-codex" => vec!["openai"],
-        "together" => vec!["together"],
-        "nvidia" => vec!["nvidia"],
-        "xai" => vec!["x-ai", "xai"],
-        "xiaomi" | "xiaomi-token-plan-ams" | "xiaomi-token-plan-cn" | "xiaomi-token-plan-sgp" => {
-            vec!["xiaomi"]
-        }
-        "zai" | "zai-coding-cn" => vec!["zhipuai", "zai"],
-        "neuralwatt" => vec![],
-        _ => vec![],
     }
 }
 
-// ---------------------------------------------------------------------------
-// main entry point
-// ---------------------------------------------------------------------------
-
-/// Enrich all model JSON files in `models_dir` with real pricing.
-pub fn run_enrich(models_dir: &Path) -> Result<()> {
-    println!("\n=== Enriching model pricing ===");
-
-    // 1. Fetch models.dev pricing database
-    let models_dev = fetch_models_dev()?;
-
-    // 2. Fetch live provider pricing
-    let mut live_pricing: HashMap<String, HashMap<String, (f64, f64, f64)>> = HashMap::new();
-    for (provider_id, base_url) in LIVE_PRICING_PROVIDERS {
-        let prices = fetch_live_provider_pricing(provider_id, base_url);
-        if !prices.is_empty() {
-            println!("  Fetched {} prices from {provider_id} live API", prices.len());
-            live_pricing.insert(provider_id.to_string(), prices);
-        }
+fn set_if_positive(c: &mut serde_json::Map<String, Value>, key: &str, new: f64) {
+    if new > 0.0 {
+        c.insert(key.into(), serde_json::json!(new));
     }
-
-    // 3. Enrich each file
-    let mut total_updated = 0usize;
-    let mut total_files = 0usize;
-
-    for entry in fs::read_dir(models_dir).context("read models directory")? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-            continue;
-        };
-        if !name.ends_with(".json") || name == "index.json" {
-            continue;
-        }
-
-        let rust_mod = name.strip_suffix(".json").unwrap_or(name);
-        let provider_id = rust_mod.replace('_', "-");
-
-        let n = enrich_file(&path, &models_dev, &live_pricing, &provider_id)?;
-        if n > 0 {
-            println!("  {}: enriched {n} models", provider_id);
-            total_updated += n;
-            total_files += 1;
-        }
-    }
-
-    if total_updated > 0 {
-        println!("\n✅ Enriched {total_updated} models across {total_files} provider files");
-    } else {
-        println!("\n📋 No zero-priced models found to enrich");
-    }
-
-    Ok(())
-}
-
-/// Enrich zero-priced models in a single provider catalog file.
-fn enrich_file(
-    path: &Path,
-    models_dev: &HashMap<String, Value>,
-    live_pricing: &HashMap<String, HashMap<String, (f64, f64, f64)>>,
-    provider_id: &str,
-) -> Result<usize> {
-    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-    let json: Value = serde_json::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
-
-    let Some(models) = json.as_object() else {
-        return Ok(0);
-    };
-
-    let mut updated = 0usize;
-    for model_id in models.keys() {
-        let cost = &models[model_id]["cost"];
-        if !is_zero_priced(cost) {
-            continue;
-        }
-
-        // 1. Try models.dev pricing
-        if let Some((inp, outp, cached)) = lookup_models_dev(model_id, provider_id, models_dev)
-            && update_model_cost(path, model_id, inp, outp, cached, "models.dev")?
-        {
-            updated += 1;
-            continue;
-        }
-
-        // 2. Try live provider pricing
-        if let Some(prices) = live_pricing.get(provider_id)
-            && let Some(&(inp, outp, cached)) = prices.get(model_id)
-            && update_model_cost(path, model_id, inp, outp, cached, "live API")?
-        {
-            updated += 1;
-        }
-    }
-
-    Ok(updated)
-}
-
-fn fetch_models_dev() -> Result<HashMap<String, Value>> {
-    let url = "https://models.dev/api.json";
-    println!("  Fetching {url}...");
-
-    let resp = reqwest::blocking::get(url).context("fetch models.dev/api.json")?;
-    if !resp.status().is_success() {
-        anyhow::bail!("{url} returned {}", resp.status());
-    }
-
-    let text = resp.text().context("read models.dev/api.json body")?;
-    let root: HashMap<String, Value> = serde_json::from_str(&text).context("parse models.dev/api.json")?;
-
-    println!("  Got {} providers from models.dev", root.len());
-    Ok(root)
 }

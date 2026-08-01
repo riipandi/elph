@@ -21,6 +21,8 @@ pub enum MemoryCategory {
     User,
     Consolidated,
     Discovery,
+    /// Operational work/change footprint (ephemeral relative to lessons).
+    Work,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

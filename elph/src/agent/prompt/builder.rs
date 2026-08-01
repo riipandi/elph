@@ -94,6 +94,8 @@ mod tests {
         assert!(prompt.contains("Mode: Build"));
         assert!(prompt.contains("<available_tools>"));
         assert!(prompt.contains("<tool>read_file</tool>"));
+        assert!(prompt.contains("<memory_and_context>"));
+        assert!(prompt.contains("memory_search"));
     }
 
     #[test]
@@ -264,7 +266,7 @@ mod tests {
         )
         .expect("prompt");
 
-        assert!(prompt.len() < 7_000, "static prompt is {} bytes", prompt.len());
+        assert!(prompt.len() < 8_000, "static prompt is {} bytes", prompt.len());
     }
 
     #[test]

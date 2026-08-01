@@ -110,6 +110,7 @@ impl McpServerConfig {
             timeout_ms: None,
             enable: true,
             lifecycle: McpLifecycleMode::Auto,
+            mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
         })
     }
@@ -140,6 +141,19 @@ impl McpServerConfig {
             Self::Stdio(c) => c.lifecycle,
             Self::Http(c) | Self::Sse(c) => c.lifecycle,
         }
+    }
+
+    /// MRTR elicitation policy for this server.
+    pub fn mrtr_elicitation(&self) -> McpMrtrElicitationPolicy {
+        match self {
+            Self::Stdio(c) => c.mrtr_elicitation,
+            Self::Http(c) | Self::Sse(c) => c.mrtr_elicitation,
+        }
+    }
+
+    /// True when this is the deprecated HTTP+SSE transport (2024-11-05).
+    pub fn is_sse(&self) -> bool {
+        matches!(self, Self::Sse(_))
     }
 
     pub fn operation_timeout(&self) -> Duration {
@@ -221,6 +235,9 @@ pub struct McpStdioConfig {
     /// handshake exclusively; `"discover"` requires 2026-07-28+.
     #[serde(default, skip_serializing_if = "is_default_lifecycle")]
     pub lifecycle: McpLifecycleMode,
+    /// MRTR elicitation policy for this server (SEP-2322).
+    #[serde(default, skip_serializing_if = "is_default_mrtr_elicitation")]
+    pub mrtr_elicitation: McpMrtrElicitationPolicy,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
@@ -263,6 +280,58 @@ pub enum McpLifecycleMode {
 
 fn is_default_lifecycle(m: &McpLifecycleMode) -> bool {
     *m == McpLifecycleMode::Auto
+}
+
+/// How the client answers SEP-2322 MRTR elicitation (`input_required`) rounds.
+///
+/// Full interactive TUI elicitation is out of scope for the agent tool path;
+/// these policies keep tool calls deterministic.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum McpMrtrElicitationPolicy {
+    /// Decline elicitation (rmcp default behaviour); tool may continue or fail server-side.
+    #[default]
+    Decline,
+    /// Fail the elicitation request with a clear method error so the agent sees why.
+    Error,
+}
+
+impl McpMrtrElicitationPolicy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Decline => "decline",
+            Self::Error => "error",
+        }
+    }
+}
+
+fn is_default_mrtr_elicitation(p: &McpMrtrElicitationPolicy) -> bool {
+    *p == McpMrtrElicitationPolicy::Decline
+}
+
+/// Client-side list-response cache (SEP-2549 `ttlMs` / `cacheScope`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpResponseCacheConfig {
+    /// When false, disables rmcp response cache reads/writes.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// TTL used when a server omits `ttlMs` (milliseconds). Default: 0 (immediately stale).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_ttl_ms: Option<u64>,
+    /// Stable partition key for private-scoped responses (auth principal).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub private_partition: Option<String>,
+}
+
+impl Default for McpResponseCacheConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            default_ttl_ms: None,
+            private_partition: None,
+        }
+    }
 }
 
 /// How to resolve competing credentials (env/inline bearer vs `auth.json` OAuth).
@@ -338,6 +407,9 @@ pub struct McpHttpConfig {
     /// handshake exclusively; `"discover"` requires 2026-07-28+.
     #[serde(default, skip_serializing_if = "is_default_lifecycle")]
     pub lifecycle: McpLifecycleMode,
+    /// MRTR elicitation policy for this server (SEP-2322).
+    #[serde(default, skip_serializing_if = "is_default_mrtr_elicitation")]
+    pub mrtr_elicitation: McpMrtrElicitationPolicy,
     /// Optional per-server tool policy overlay.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy: Option<McpPolicyConfig>,
@@ -365,6 +437,7 @@ impl McpHttpConfig {
             oauth_redirect_port: None,
             auth_conflict: McpAuthConflictPolicy::Error,
             lifecycle: McpLifecycleMode::Auto,
+            mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
             policy: None,
         }
     }
@@ -430,6 +503,8 @@ pub struct McpLoadOptions {
     pub discover_resources_and_prompts: bool,
     /// When true (default), listen for tools/list_changed and refresh catalogs.
     pub enable_list_changed: bool,
+    /// Client list-response cache (SEP-2549). Applied after each connect.
+    pub response_cache: McpResponseCacheConfig,
     /// Optional channel for per-server discovery progress (started / finished).
     pub progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
 }
@@ -443,6 +518,7 @@ impl Default for McpLoadOptions {
             auth_store_path: None,
             discover_resources_and_prompts: true,
             enable_list_changed: true,
+            response_cache: McpResponseCacheConfig::default(),
             progress_tx: None,
         }
     }
@@ -507,6 +583,7 @@ mod tests {
                 timeout_ms: None,
                 enable: false,
                 lifecycle: McpLifecycleMode::Auto,
+                mrtr_elicitation: McpMrtrElicitationPolicy::Decline,
                 policy: None,
             }),
         );
@@ -518,6 +595,36 @@ mod tests {
         let json = r#"{"type":"streamableHttp","url":"http://localhost:8080/mcp"}"#;
         let result: Result<McpServerConfig, _> = serde_json::from_str(json);
         assert!(result.is_err(), "streamableHttp should no longer be accepted");
+    }
+
+    #[test]
+    fn deserializes_lifecycle_and_mrtr_elicitation() {
+        let json = r#"{
+            "mcpServers": {
+                "modern": {
+                    "type": "http",
+                    "url": "https://example.com/mcp",
+                    "lifecycle": "discover",
+                    "mrtrElicitation": "error",
+                    "oauthClientMetadataUrl": "https://app.example/oauth-client.json"
+                }
+            }
+        }"#;
+        let cfg: McpConfig = serde_json::from_str(json).expect("parse");
+        let server = cfg.servers.get("modern").unwrap();
+        assert_eq!(server.lifecycle_mode(), McpLifecycleMode::Discover);
+        assert_eq!(server.mrtr_elicitation(), McpMrtrElicitationPolicy::Error);
+        assert_eq!(
+            server.oauth_meta().unwrap().client_metadata_url.as_deref(),
+            Some("https://app.example/oauth-client.json")
+        );
+    }
+
+    #[test]
+    fn response_cache_defaults_enabled() {
+        let opts = McpLoadOptions::default();
+        assert!(opts.response_cache.enabled);
+        assert!(opts.response_cache.default_ttl_ms.is_none());
     }
 
     #[test]

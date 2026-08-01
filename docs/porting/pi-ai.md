@@ -69,11 +69,7 @@ Covering changelog entries from v0.80.7 through v0.82.1 (14 releases). See [READ
 
 ### 2026-07-29 @ `4c18610` (v0.80.6 + Unreleased)
 
-**Test fix: no direct `openai` provider in catalog.**
-
-Two `elph-agent` integration tests used `get_model("openai", "gpt-4o-mini")` which no longer resolves — the model catalog restructured so that `openai` is no longer a directly-registered provider. OpenAI models are now exposed through gateway providers (`kilo`, `sumopod`, `cloudflare-ai-gateway`, `azure-openai-responses`). Tests updated to pick the first available model via `get_models(None).next()`.
-
-No library-level functionality changed — this is a catalog reshape that happened between Sprints 1–4 and now. The `openai.json` model file still exists but the provider registration path changed. If `generate-models chat` is re-run, verify OpenAI registration logic.
+**Historical note (superseded):** tests briefly avoided a direct `openai` provider after a catalog reshape. **Current state:** `openai`, `openai-codex`, and `xai` ship catalog models **and** are registered in `builtin_providers()` so stream/auth work end-to-end. `generate-models chat` verifies catalog ids match `builtin_providers()` and fails if a factory is missing.
 
 ### 2026-07-11T11:23:28Z @ `4c18610` (v0.80.6 + Unreleased)
 
@@ -128,14 +124,16 @@ Initial gap audit.
 
 ## Remaining / watch
 
-- After every `generate-models chat`, re-add **Hyper** (`define_catalog!(HYPER_MODELS, …)` + `index.json`) — not in pi.
-- **[Catalog]** The `openai` provider is no longer directly registered in the catalog. OpenAI models are served through gateway providers (`kilo`, `sumopod`, etc.). Verify `generate-models` still produces correct provider routing when re-run.
-- OpenRouter context windows from top provider (#6481) — re-run catalog regen from latest pi.
+- **[Catalog SSOT]** Chat catalogs origin = **models.dev** via `generate-models chat` / skill **`update-models`**. Not pi `packages/ai` data scripts. Gateways (Hyper, Kilo, TokenRouter, OpenGateway, Sumopod, …) are preserved by the generator — no manual re-add after regen unless dropped from `provider_sources` / `builtin_providers`.
+- **[Catalog]** `openai`, `openai-codex`, and `xai` ship catalog models **and** register in `builtin_providers()`; generator fails if a catalog provider lacks a factory.
+- OpenRouter / gateway context windows and pricing — refresh with `/update-models` (live pricing when keys allow), not pi JSON seed.
 - OpenAI Completions does not use native deferred tool search (same as pi).
-- **[P2]** New OAuth providers: Kimi Code subscription, OpenRouter PKCE, Radius pi-messages gateway — implement when provider integration is needed.
+- **[P2]** OAuth providers already implemented for Kimi / OpenRouter / Radius — watch for upstream protocol drift, not re-port from scratch.
 - **[P2]** `uuidv7` utility — elph uses `ulid`; pi moved to `uuidv7`. Align if cross-compat needed.
 - **[P2]** `toolChoice` for OpenAI/Codex Responses (required + named tool selection) — types exist, provider adapters need wiring.
 
 ## Elph-only
 
 - Hyper provider + OAuth (`providers/`, `models/hyper.json`, `auth/oauth/hyper.rs`)
+- models.dev catalog pipeline (`bin/generate_models/`: `models_dev`, `provider_sources`, `thinking_map`, …)
+- OpenAI-compat gateway hardening + tool schema sanitize for non-standard gateways

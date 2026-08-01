@@ -1,6 +1,6 @@
 //! Provider resolution for the Elph coding agent.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 pub const DEFAULT_PROVIDER: &str = "opencode";
 pub const DEFAULT_MODEL_ID: &str = "big-pickle";
@@ -36,7 +36,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "anthropic" => Some(ProviderConfig {
             label: "Anthropic",
             api_key_env_key: "ANTHROPIC_API_KEY",
-            default_model: "claude-sonnet-4-20250514",
+            default_model: "claude-sonnet-4-6",
         }),
         "azure-openai-responses" => Some(ProviderConfig {
             label: "Azure OpenAI",
@@ -61,7 +61,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "deepseek" => Some(ProviderConfig {
             label: "DeepSeek",
             api_key_env_key: "DEEPSEEK_API_KEY",
-            default_model: "deepseek-chat",
+            default_model: "deepseek-v4-flash",
         }),
         "fireworks" => Some(ProviderConfig {
             label: "Fireworks",
@@ -211,7 +211,7 @@ pub fn provider_config(provider: &str) -> Option<ProviderConfig> {
         "xai" => Some(ProviderConfig {
             label: "xAI",
             api_key_env_key: "XAI_API_KEY",
-            default_model: "grok-3",
+            default_model: "grok-4.5",
         }),
         "xiaomi" => Some(ProviderConfig {
             label: "Xiaomi MiMo",
@@ -251,15 +251,45 @@ pub fn resolve_configured_provider() -> &'static str {
     DEFAULT_PROVIDER
 }
 
+/// Whether `id` is a known builtin catalog provider (`elph-ai` SSOT).
+pub fn is_known_provider(id: &str) -> bool {
+    elph_ai::get_builtin_providers().iter().any(|p| *p == id)
+}
+
+fn unknown_provider_error(id: &str) -> anyhow::Error {
+    let known = elph_ai::get_builtin_providers();
+    let preview: Vec<&str> = known.iter().map(String::as_str).take(12).collect();
+    let more = known.len().saturating_sub(preview.len());
+    let list = if more > 0 {
+        format!("{}… (+{more} more)", preview.join(", "))
+    } else {
+        preview.join(", ")
+    };
+    anyhow::anyhow!("Unknown provider: {id}. Known providers: {list}")
+}
+
 pub fn resolve_model_id_for_provider(provider: &str) -> String {
-    provider_config(provider)
-        .map(|c| c.default_model.to_string())
-        .unwrap_or_else(|| DEFAULT_MODEL_ID.to_string())
+    // Prefer curated default when it still exists in the catalog.
+    if let Some(cfg) = provider_config(provider)
+        && elph_ai::get_builtin_model(provider, cfg.default_model).is_some()
+    {
+        return cfg.default_model.to_string();
+    }
+    // Fall back to a stable catalog model (sorted by id) so resolve never points at a removed id.
+    let mut models = elph_ai::get_builtin_models(provider);
+    models.sort_by(|a, b| a.id.cmp(&b.id));
+    if let Some(first) = models.into_iter().next() {
+        return first.id;
+    }
+    DEFAULT_MODEL_ID.to_string()
 }
 
 pub fn parse_model_override(value: &str) -> Option<(String, String)> {
     let (provider, model) = value.split_once('/')?;
-    provider_config(provider).map(|_| (provider.to_string(), model.to_string()))
+    if !is_known_provider(provider) {
+        return None;
+    }
+    Some((provider.to_string(), model.to_string()))
 }
 
 pub fn resolve_provider_and_model(
@@ -271,7 +301,9 @@ pub fn resolve_provider_and_model(
     if let Some(value) = model_override
         && let Some((provider, model)) = parse_model_override(value)
     {
-        provider_config(&provider).with_context(|| format!("Unknown provider: {provider}"))?;
+        if !is_known_provider(&provider) {
+            return Err(unknown_provider_error(&provider));
+        }
         return Ok((provider, model));
     }
 
@@ -281,7 +313,9 @@ pub fn resolve_provider_and_model(
         .or_else(|| settings_provider.map(str::to_string))
         .unwrap_or_else(|| resolve_configured_provider().to_string());
 
-    provider_config(&provider).with_context(|| format!("Unknown provider: {provider}"))?;
+    if !is_known_provider(&provider) {
+        return Err(unknown_provider_error(&provider));
+    }
 
     let model_id = model_override
         .map(str::to_string)
@@ -346,7 +380,7 @@ mod tests {
     #[test]
     fn all_elph_ai_providers_are_known() {
         for id in elph_ai::get_builtin_providers() {
-            let cfg = provider_config(id).unwrap_or_else(|| panic!("missing provider config for {id}"));
+            let cfg = provider_config(&id).unwrap_or_else(|| panic!("missing provider config for {id}"));
             assert!(!cfg.label.is_empty(), "empty label for {id}");
             assert!(!cfg.api_key_env_key.is_empty(), "empty api_key_env_key for {id}");
             assert!(!cfg.default_model.is_empty(), "empty default_model for {id}");

@@ -9,9 +9,9 @@ use crate::tui::chrome::StatusRow;
 use crate::tui::inline_dialog::{InlineDialogShell, OPTIONS_LIST_TOP_GAP, inline_body_width};
 use crate::tui::provider_connect_dialog::{PendingProviderApiKeyDialog, ProviderConnectFocus, ProviderConnectStep};
 use crate::tui::tool_approval::{
-    PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, mode_change_footer_hint,
-    mode_change_select_options, plan_confirmation_footer_hint, plan_confirmation_select_options,
-    tool_approval_footer_hint, tool_approval_select_options,
+    PendingModeChange, PendingToolApproval, feedback_footer_hint, feedback_select_options, memory_flush_footer_hint,
+    memory_flush_select_options, mode_change_footer_hint, mode_change_select_options, plan_confirmation_footer_hint,
+    plan_confirmation_select_options, tool_approval_footer_hint, tool_approval_select_options,
 };
 use crate::tui::tool_params::{format_tool_approval_summary, tool_approval_summary_row_count_for_summary};
 
@@ -330,6 +330,11 @@ pub enum StatusDialogKind {
     PlanConfirmation {
         plan_text: String,
     },
+    /// Confirm wiping the entire memory store (`/memory flush`).
+    MemoryFlush {
+        memory_count: u32,
+        task_count: u32,
+    },
     /// Feedback dialog (Report a Bug / Join Community).
     Feedback,
     /// Provider connection dialog with OAuth or API key input.
@@ -357,6 +362,10 @@ pub enum StatusDialogKind {
     /// Provider disconnect dialog (remove stored credentials).
     ProviderDisconnect {
         provider_ids: Vec<String>,
+    },
+    /// MCP OAuth dialog (`/mcp auth`).
+    McpAuth {
+        pending: crate::tui::mcp_auth_dialog::PendingMcpAuthDialog,
     },
     /// Numbered prompt queue — rendered **above** StatusRow.
     PromptQueue {
@@ -505,6 +514,10 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
         Some(StatusDialogKind::PlanConfirmation { plan_text, .. }) => {
             Some(render_plan_confirmation_dialog(props, &plan_text))
         }
+        Some(StatusDialogKind::MemoryFlush {
+            memory_count,
+            task_count,
+        }) => Some(render_memory_flush_dialog(props, memory_count, task_count)),
         Some(StatusDialogKind::Feedback) => Some(render_feedback_dialog(props)),
         Some(StatusDialogKind::ProviderConnect {
             provider_id,
@@ -551,6 +564,25 @@ pub fn StatusZone(props: &mut StatusZoneProps, hooks: Hooks) -> impl Into<AnyEle
                 props.approval_has_focus,
                 provider_ids,
                 selected_index,
+            ))
+        }
+        Some(StatusDialogKind::McpAuth { pending }) => {
+            let selected_index = props
+                .provider_connect_selected
+                .or(props.approval_selected)
+                .map(|s| *s.read())
+                .unwrap_or(pending.selected);
+            let filter = props
+                .provider_connect_filter
+                .map(|s| s.read().clone())
+                .unwrap_or_else(|| pending.filter.clone());
+            Some(crate::tui::mcp_auth_dialog::render_mcp_auth_dialog(
+                props.screen_width,
+                props.screen_height,
+                props.approval_has_focus,
+                selected_index,
+                &filter,
+                &pending,
             ))
         }
         _ => None,
@@ -715,6 +747,75 @@ pub fn build_feedback_dialog_kind(active: bool) -> Option<StatusDialogKind> {
     if active { Some(StatusDialogKind::Feedback) } else { None }
 }
 
+/// Build the memory flush confirmation dialog when pending.
+pub fn build_memory_flush_dialog_kind(
+    pending: Option<&crate::tui::tool_approval::PendingMemoryFlush>,
+) -> Option<StatusDialogKind> {
+    let pending = pending?;
+    Some(StatusDialogKind::MemoryFlush {
+        memory_count: pending.memory_count,
+        task_count: pending.task_count,
+    })
+}
+
+fn render_memory_flush_dialog(props: &mut StatusZoneProps, memory_count: u32, task_count: u32) -> AnyElement<'static> {
+    let theme = UiTheme::default();
+    let body_width = inline_body_width(props.screen_width);
+    let options = memory_flush_select_options();
+    let summary = format!(
+        "This permanently deletes {memory_count} memor{} and {task_count} task{}.\n\
+         Unlike purge, every entry is removed — not only weak weights.\n\
+         This cannot be undone.",
+        if memory_count == 1 { "y" } else { "ies" },
+        if task_count == 1 { "" } else { "s" },
+    );
+
+    element! {
+        InlineDialogShell(
+            screen_width: props.screen_width,
+            title: "Flush memory store?".to_string(),
+            has_focus: props.approval_has_focus,
+            footer_hint: Some(memory_flush_footer_hint()),
+        ) {
+            View(
+                width: body_width,
+                flex_direction: FlexDirection::Column,
+                gap: 1,
+                flex_shrink: 0f32,
+            ) {
+                View(
+                    width: body_width,
+                    flex_shrink: 0f32,
+                    overflow: Overflow::Hidden,
+                ) {
+                    Text(
+                        content: summary,
+                        color: theme.text_secondary,
+                        wrap: TextWrap::Wrap,
+                    )
+                }
+                View(
+                    width: body_width,
+                    padding_top: OPTIONS_LIST_TOP_GAP,
+                    flex_shrink: 0f32,
+                ) {
+                    SelectList(
+                        width: body_width,
+                        height: 4u16,
+                        options: options,
+                        selected_index: props.approval_selected,
+                        has_focus: props.approval_has_focus,
+                        show_description: true,
+                        compact: true,
+                        theme: Some(theme),
+                    )
+                }
+            }
+        }
+    }
+    .into()
+}
+
 /// Build the provider connect dialog when pending.
 // TODO(refactor): group args into a parameter struct; WIP feature, suppress for now.
 #[allow(clippy::too_many_arguments)]
@@ -752,6 +853,17 @@ pub fn build_provider_connect_dialog_kind(
     } else {
         None
     }
+}
+
+/// Build the MCP OAuth dialog when pending.
+pub fn build_mcp_auth_dialog_kind(
+    pending: Option<&crate::tui::mcp_auth_dialog::PendingMcpAuthDialog>,
+    has_focus: bool,
+) -> Option<StatusDialogKind> {
+    if !has_focus {
+        return None;
+    }
+    pending.cloned().map(|pending| StatusDialogKind::McpAuth { pending })
 }
 
 /// Build the dedicated API key input dialog when pending.

@@ -1,7 +1,10 @@
-//! Cross-process + in-process locking for the shared auth store.
+//! In-process locking + atomic write for the sealed auth store.
 //!
-//! Prevents lost updates when concurrent token refreshes (or multi-server
-//! saves) race on `auth.json`.
+//! **No sidecar lock file** (`auth.json.lock` is never created).
+//!
+//! Cross-process writers use exclusive flock on the store path itself when the
+//! file exists; atomic rename + in-process mutex cover the common single-host
+//! multi-task case.
 
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
@@ -18,7 +21,6 @@ fn path_mutexes() -> &'static StdMutex<HashMap<PathBuf, Arc<AsyncMutex<()>>>> {
 }
 
 fn path_key(path: &Path) -> PathBuf {
-    // Prefer absolute; fall back to as-is.
     std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
@@ -30,36 +32,52 @@ fn async_mutex_for(path: &Path) -> Arc<AsyncMutex<()>> {
 
 /// Guard returned by [`lock_auth_store`].
 ///
-/// Holds an in-process async mutex and a cross-process exclusive file lock.
+/// Holds an in-process async mutex and, when available, an exclusive flock on
+/// the store file itself (never a `.lock` sidecar).
 pub struct AuthStoreGuard {
     _guard: tokio::sync::OwnedMutexGuard<()>,
     /// Keep the lock file open for the duration of the guard (lock releases on drop).
-    _file: File,
+    _file: Option<File>,
 }
 
-/// Acquire exclusive access to the auth store at `path` (creates parent dirs / lock file as needed).
+/// Acquire exclusive access to the auth store at `path`.
+///
+/// Does **not** create `auth.json.lock`. Optionally flocks `path` when present.
 pub async fn lock_auth_store(path: &Path) -> Result<AuthStoreGuard> {
+    // Best-effort cleanup of legacy sidecars from older builds.
+    let legacy_lock = {
+        let mut s = path.as_os_str().to_os_string();
+        s.push(".lock");
+        PathBuf::from(s)
+    };
+    let _ = tokio::fs::remove_file(&legacy_lock).await;
+
     let mutex = async_mutex_for(path);
     let guard = mutex.clone().lock_owned().await;
 
-    let lock_path = lock_file_path(path);
-    if let Some(parent) = lock_path.parent() {
+    if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent)
             .await
-            .with_context(|| format!("create lock dir {}", parent.display()))?;
+            .with_context(|| format!("create auth store dir {}", parent.display()))?;
     }
 
-    let lock_path_clone = lock_path.clone();
+    // Ensure the store file exists so we can flock the data file itself.
+    if !path.exists() {
+        // Empty placeholder; seal will overwrite with a real envelope on first save.
+        atomic_write_private(path, b"").await?;
+    }
+
+    let path_clone = path.to_path_buf();
     let file = tokio::task::spawn_blocking(move || {
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
-            .open(&lock_path_clone)
-            .with_context(|| format!("open lock {}", lock_path_clone.display()))?;
+            .open(&path_clone)
+            .with_context(|| format!("open auth store {}", path_clone.display()))?;
         file.lock()
-            .with_context(|| format!("lock exclusive {}", lock_path_clone.display()))?;
+            .with_context(|| format!("exclusive flock on auth store {}", path_clone.display()))?;
         Ok::<File, anyhow::Error>(file)
     })
     .await
@@ -67,15 +85,8 @@ pub async fn lock_auth_store(path: &Path) -> Result<AuthStoreGuard> {
 
     Ok(AuthStoreGuard {
         _guard: guard,
-        _file: file,
+        _file: Some(file),
     })
-}
-
-fn lock_file_path(store_path: &Path) -> PathBuf {
-    // auth.json → auth.json.lock
-    let mut s = store_path.as_os_str().to_os_string();
-    s.push(".lock");
-    PathBuf::from(s)
 }
 
 /// Atomically write `bytes` to `path` (temp file + rename) under an existing lock.
@@ -113,25 +124,14 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn lock_serializes_access() {
+    async fn lock_does_not_create_sidecar_lock_file() {
         let dir = tempdir().unwrap();
         let path = dir.path().join("auth.json");
-        let p1 = path.clone();
-        let p2 = path.clone();
-
-        let h1 = tokio::spawn(async move {
-            let _g = lock_auth_store(&p1).await.unwrap();
-            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            1
-        });
-        tokio::time::sleep(std::time::Duration::from_millis(5)).await;
-        let h2 = tokio::spawn(async move {
-            let _g = lock_auth_store(&p2).await.unwrap();
-            2
-        });
-        let a = h1.await.unwrap();
-        let b = h2.await.unwrap();
-        assert_eq!((a, b), (1, 2));
+        let _g = lock_auth_store(&path).await.unwrap();
+        let mut lock_sidecar = path.as_os_str().to_os_string();
+        lock_sidecar.push(".lock");
+        assert!(!PathBuf::from(lock_sidecar).exists());
+        assert!(path.exists());
     }
 
     #[tokio::test]

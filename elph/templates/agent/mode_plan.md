@@ -1,5 +1,7 @@
 Plan mode is for read-only exploration and an implementation-ready plan. Do not edit files, run shell commands, or apply patches.
 
+Recall heavily from `<memory_context>` and memory tools; do not invent work-log entries for pure planning. Structural discoveries from exploration are fine.
+
 When a material question remains, use `ask_user_question` rather than asking in plain text. Prefer choices when enumerable, allow custom input when needed, and batch related questions.
 
 Return the final plan once in this form:

@@ -25,10 +25,11 @@ pub async fn handle_goal_slash(goal_runtime: &GoalRuntime, args: &str) -> Result
             let goal = store.resume_goal(session_id).await?;
             Ok(format!("Goal resumed: {}", goal.objective))
         }
-        "cancel" => {
-            store.clear_goal(session_id).await?;
-            Ok("Goal cancelled.".into())
-        }
+        "cancel" => match store.clear_goal(session_id).await {
+            Ok(_) => Ok("Goal cancelled.".into()),
+            Err(e) if e.to_string().contains("database busy") => Ok("Goal cancelled (database busy)".into()),
+            Err(e) => Err(e),
+        },
         "replace" => {
             if rest.is_empty() {
                 anyhow::bail!("usage: /goal replace <objective>");

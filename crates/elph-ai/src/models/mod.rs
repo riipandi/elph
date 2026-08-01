@@ -1,9 +1,30 @@
 pub mod catalog;
+pub mod disk_catalog;
+pub mod embedded_json;
 
 mod collection;
 
-pub use catalog::{get_builtin_model, get_builtin_models, get_builtin_providers};
 pub use collection::*;
+pub use disk_catalog::{
+    disk_catalog_overrides, load_provider_catalogs_dir, merge_model_lists, merged_get_model,
+    merged_models_for_provider, merged_providers, parse_provider_catalog_json, set_disk_catalog_overrides,
+};
+pub use embedded_json::embedded_provider_json;
+
+/// Model lookup with optional process-wide disk overrides (see [`set_disk_catalog_overrides`]).
+pub fn get_builtin_model(provider: &str, id: &str) -> Option<crate::types::Model> {
+    disk_catalog::merged_get_model(provider, id)
+}
+
+/// Models for a provider with disk overrides merged over the embedded catalog.
+pub fn get_builtin_models(provider: &str) -> Vec<crate::types::Model> {
+    disk_catalog::merged_models_for_provider(provider)
+}
+
+/// Provider ids from embedded catalogs ∪ installed disk overrides (sorted).
+pub fn get_builtin_providers() -> Vec<String> {
+    disk_catalog::merged_providers()
+}
 
 use crate::types::{Model, ModelCostRates, ThinkingLevel, Usage};
 
@@ -51,6 +72,20 @@ pub fn thinking_level_to_str(level: ThinkingLevel) -> &'static str {
         ThinkingLevel::Xhigh => "xhigh",
         ThinkingLevel::Max => "max",
     }
+}
+
+/// Map a UI/agent thinking level to the wire string for this model.
+///
+/// Uses [`clamp_thinking_level`] then `thinkingLevelMap` when present so providers
+/// that only accept a subset of values (e.g. xAI: `low` | `high` | `max`) never
+/// receive unsupported effort names like `medium` or `minimal`.
+pub fn map_thinking_level_for_api(model: &Model, level: ThinkingLevel) -> Option<String> {
+    let clamped = clamp_thinking_level(model, level);
+    let key = thinking_level_to_str(clamped);
+    if let Some(map) = &model.thinking_level_map {
+        return map.get(key).cloned().flatten();
+    }
+    Some(key.to_string())
 }
 
 #[cfg(test)]
@@ -109,5 +144,25 @@ mod tests {
     #[test]
     fn thinking_level_max_stringifies() {
         assert_eq!(thinking_level_to_str(ThinkingLevel::Max), "max");
+    }
+
+    #[test]
+    fn map_thinking_level_for_api_uses_catalog_map() {
+        use crate::get_builtin_model;
+        let Some(model) = get_builtin_model("xai", "grok-4.5") else {
+            return;
+        };
+        assert_eq!(
+            map_thinking_level_for_api(&model, ThinkingLevel::Medium).as_deref(),
+            Some("high"),
+            "medium should clamp to a supported xAI effort"
+        );
+        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Low).as_deref(), Some("low"));
+        assert_eq!(map_thinking_level_for_api(&model, ThinkingLevel::Max).as_deref(), Some("max"));
+        let wire = map_thinking_level_for_api(&model, ThinkingLevel::High).unwrap();
+        assert!(
+            matches!(wire.as_str(), "low" | "high" | "max"),
+            "wire effort must be xAI-legal: {wire}"
+        );
     }
 }

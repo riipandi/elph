@@ -53,6 +53,34 @@ async fn get_status_includes_categories() {
 }
 
 #[tokio::test]
+async fn list_recent_memories_limits_and_filters() {
+    let ctx = TestCtx::new();
+    ctx.store
+        .insert_raw_memory("older work", MemoryCategory::Work, 1.0)
+        .await
+        .expect("insert");
+    // Ensure distinct created_at ordering across inserts.
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    ctx.store
+        .insert_raw_memory("newer work", MemoryCategory::Work, 1.0)
+        .await
+        .expect("insert");
+    ctx.store
+        .insert_raw_memory("insight", MemoryCategory::Insight, 1.0)
+        .await
+        .expect("insert");
+
+    let recent = ctx
+        .store
+        .list_recent_memories(2, Some(MemoryCategory::Work))
+        .await
+        .expect("list_recent");
+    assert_eq!(recent.len(), 2);
+    assert_eq!(recent[0].content, "newer work");
+    assert_eq!(recent[0].category, MemoryCategory::Work);
+}
+
+#[tokio::test]
 async fn list_memories_filters_category() {
     let ctx = TestCtx::new();
     ctx.store

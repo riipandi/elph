@@ -75,7 +75,7 @@ Automatically retries transient failures with exponential backoff + jitter.
 
 All settings are configurable via environment variables:
 
-```bash
+```sh
 # Per-provider rate limiting
 ELPH_RATE_LIMIT_<PROVIDER>_RPS=10       # requests per second
 ELPH_RATE_LIMIT_<PROVIDER>_BURST=5      # burst size
@@ -105,7 +105,7 @@ Provider names are uppercased with hyphens replaced by underscores. Examples:
 
 The `run` subcommand accepts flags to override resilience defaults:
 
-```bash
+```sh
 elph run --max-retries 5 --max-backoff-ms 60000 "fix the bug"
 elph run --circuit-threshold 3 --circuit-timeout-ms 60000 "refactor"
 ```

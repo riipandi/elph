@@ -75,6 +75,7 @@ pub use agent::harness::GREP_MAX_LINE_LENGTH;
 pub use agent::harness::HarnessHookResult;
 pub use agent::harness::HarnessOpResult;
 pub use agent::harness::HarnessResult;
+pub use agent::harness::MissingActiveToolsPolicy;
 pub use agent::harness::ModelUpdateEvent;
 pub use agent::harness::ModelUpdateSource;
 pub use agent::harness::NavigateTreeOptions;
@@ -83,8 +84,10 @@ pub use agent::harness::PendingSessionWrite;
 pub use agent::harness::PromptTemplate;
 pub use agent::harness::QueueUpdateEvent;
 pub use agent::harness::ReadTextLinesOptions;
+pub use agent::harness::RecoveryPolicy;
 pub use agent::harness::RemoveOptions;
 pub use agent::harness::ResourcesUpdateEvent;
+pub use agent::harness::RestoreOptions;
 pub use agent::harness::Result as HarnessTypedResult;
 pub use agent::harness::SavePointEvent;
 pub use agent::harness::SessionBeforeCompactEvent;
@@ -192,8 +195,8 @@ pub use datastore::Migration;
 pub use datastore::{ensure_database, ensure_databases, ensure_databases_once};
 pub use elph_ai::{OnPayloadCallback, OnResponseCallback};
 pub use fs::{ensure_dirs, write_file_if_missing, write_json_file, write_private_file};
-pub use goals::create_goal_tools;
 pub use goals::{Goal, GoalRuntime, GoalStatus, GoalStore};
+pub use goals::{GoalStatusHook, create_goal_tools, create_goal_tools_with_hook};
 pub use logger::{LogRotation, LoggingOptions};
 pub use messages::CustomMessageContent;
 pub use messages::create_branch_summary_message;
@@ -271,7 +274,11 @@ pub use session::SessionMetadata;
 pub use session::SessionModelRef;
 pub use session::SessionStorage;
 pub use session::SessionTreeEntry;
+pub use session::TursoSessionCreateOptions;
+pub use session::TursoSessionListOptions;
 pub use session::TursoSessionMetadata;
+pub use session::TursoSessionRepo;
+pub use session::TursoSessionRepoCreateOptions;
 pub use session::TursoSessionStorage;
 pub use session::build_context_entries;
 pub use session::build_session_context;
@@ -279,10 +286,16 @@ pub use session::build_session_context_with_options;
 pub use session::create_session_id;
 pub use session::create_timestamp;
 pub use session::default_context_entry_transform;
+pub use session::derive_session_context_state;
 pub use session::get_entries_to_fork;
 pub use session::id::create_kalid;
+pub use session::load_durable_state;
 pub use session::load_session_metadata;
+pub use session::reconcile_session;
+pub use session::reduce_durable_state;
+pub use session::repair_unanswered_tool_calls;
 pub use session::to_session;
+pub use session::{DurableHarnessState, OperationKind, OperationOutcome, QueueKind, RecoveryReport};
 pub use session::{EVENTS_FILE, SESSION_TREE_MIGRATIONS, SUMMARY_FILE};
 pub use skills::LoadSkillsResult;
 pub use skills::LoadSourcedSkillsResult;
@@ -342,8 +355,6 @@ pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::DEFAULT_AUTH_KEY_FILE_NAME;
-#[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_STRUCTURED_DETAIL_CHARS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_TOOL_RESULT_CHARS;
@@ -384,6 +395,8 @@ pub use tools::mcp::McpLifecycleMode;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpLoadReport;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::McpMrtrElicitationPolicy;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::McpOAuthClientMeta;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpOAuthFlowOptions;
@@ -399,6 +412,8 @@ pub use tools::mcp::McpProbeResult;
 pub use tools::mcp::McpPromptDescriptor;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpResourceDescriptor;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::McpResponseCacheConfig;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::McpServerConfig;
 #[cfg(feature = "mcp")]
@@ -426,6 +441,8 @@ pub use tools::mcp::call_tool_for_server;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::clear_credentials;
 #[cfg(feature = "mcp")]
+pub use tools::mcp::clear_process_master_key_for_tests;
+#[cfg(feature = "mcp")]
 pub use tools::mcp::connect;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::connect_http;
@@ -441,8 +458,6 @@ pub use tools::mcp::decrypt_json_async;
 pub use tools::mcp::decrypt_string_async;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::decrypt_string_sync;
-#[cfg(feature = "mcp")]
-pub use tools::mcp::default_auth_key_path;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::encrypt_async;
 #[cfg(feature = "mcp")]
@@ -461,6 +476,8 @@ pub use tools::mcp::is_encrypted_value;
 pub use tools::mcp::list_tools;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::list_tools_for_server;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::load_or_create_master_key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::lock_auth_store;
 #[cfg(feature = "mcp")]
@@ -495,6 +512,8 @@ pub use tools::mcp::resolve_remote_auth;
 pub use tools::mcp::run_oauth_flow;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::run_oauth_flow_with_scopes;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::set_process_master_key_for_tests;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::shutdown_client;
 #[cfg(feature = "mcp")]

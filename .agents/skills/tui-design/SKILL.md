@@ -1,20 +1,23 @@
 ---
 name: tui-design
 description: >-
-    Guide terminal UI development with iocraft: component mental model, flex layout, scroll regions,
-    overlap decoration, state/hooks, input handling, accessibility, and common layout pitfalls.
-    Use when building or refactoring a TUI, fixing scroll/focus/layout bugs, choosing iocraft patterns,
-    improving keyboard/contrast/screen-reader ergonomics, or the user mentions iocraft, terminal UI,
-    TUI components, accessibility, a11y, or runs /tui-design.
+    Guide terminal UI development with iocraft (components, flex layout, scroll, a11y) and CLI/slash
+    command UX: anstyle coloring, readable structured output, TTY/NO_COLOR rules, and dialog-safe plain text.
+    Use when building or refactoring a TUI, CLI subcommands, slash commands, colored terminal output,
+    fixing scroll/focus/layout bugs, improving keyboard/contrast ergonomics, or the user mentions iocraft,
+    terminal UI, CLI colors, anstyle, command UX, accessibility, a11y, or runs /tui-design.
 ---
 
-# TUI Design (iocraft)
+# TUI & Terminal UX Design
 
 ## Objective
 
-Help implement and refine terminal UIs using **iocraft** with a clear mental model and repeatable patterns — not tied to any single product layout or design doc.
+Help implement and refine:
 
-Read existing TUI code in the repo first; apply the principles below to match local conventions.
+1. **Interactive TUIs** with **iocraft** — mental model, layout, hooks, a11y.
+2. **CLI / slash command output** — structured, scannable text with optional **ANSI color** (`anstyle`), good defaults, and safe behavior when color is off or output is not a TTY.
+
+Read existing TUI and CLI code in the repo first; match local conventions (e.g. `elph/src/cli/*`, `elph/src/memory/format.rs`, provider/interactive styles).
 
 ## Mental model
 
@@ -265,9 +268,168 @@ View(position: Relative, height: 100pct) {
 
 Do not invent product-specific copy, palettes, or zone layouts unless the user or existing code defines them.
 
+---
+
+## CLI & slash command UX (structured + colored output)
+
+When implementing **`elph <cmd>` subcommands** or **slash commands** that print reports (status, lists, help, search), treat the terminal as a **readable document**, not a dump of raw structs. Prefer patterns already used in this repo (`elph/src/cli/interactive.rs`, `cli/provider.rs`, `memory/format.rs`).
+
+### Goals
+
+- **Scannable** — titles, sections, aligned key/value rows, clear empty states.
+- **Semantic color** — roles (title, label, value, success, warn, error, muted, category accents), not rainbow decoration.
+- **Safe defaults** — color only when appropriate; never break pipes, logs, or TUI dialogs with raw escapes.
+- **Shared logic** — one formatter + one execute path for CLI and slash; differ only by **style** (color on/off).
+
+### When to enable ANSI color
+
+| Context                                | Color?         | Rationale                             |
+| -------------------------------------- | -------------- | ------------------------------------- |
+| CLI stdout is a TTY, `NO_COLOR` unset  | **Yes**        | Interactive reading                   |
+| Piped / redirected stdout              | **No**         | Avoid escape pollution in logs/files  |
+| `NO_COLOR` set (any value)             | **No**         | Standard user preference              |
+| Slash result in scroll/text **dialog** | **No (plain)** | Dialogs often show escapes as garbage |
+| Unit tests asserting content           | **Plain**      | Stable, portable assertions           |
+
+Style handle pattern (name may vary: `MemoryStyle`, `CliStyle`, …):
+
+```rust
+use anstyle::{AnsiColor, Color, Style};
+use std::io::IsTerminal;
+
+#[derive(Clone, Copy)]
+pub struct CliStyle { enabled: bool }
+
+impl CliStyle {
+    pub fn plain() -> Self { Self { enabled: false } }
+
+    pub fn auto_stdout() -> Self {
+        Self {
+            enabled: std::env::var_os("NO_COLOR").is_none()
+                && std::io::stdout().is_terminal(),
+        }
+    }
+
+    pub fn paint(self, style: Style, text: impl std::fmt::Display) -> String {
+        if !self.enabled {
+            return text.to_string();
+        }
+        format!("{}{}{}", style.render(), text, style.render_reset())
+    }
+}
+```
+
+Wire explicitly:
+
+```text
+CLI path:    execute_with_style(..., CliStyle::auto_stdout())
+Slash path:  execute_with_style(..., CliStyle::plain())
+Tests:       plain() for content; optional forced(true) for ANSI smoke only
+```
+
+**Do not** hardcode `\x1b[` — use **`anstyle`** (workspace dependency in Elph).
+
+### Semantic style roles (keep the set small)
+
+| Role            | Typical style                   | Use for                                    |
+| --------------- | ------------------------------- | ------------------------------------------ |
+| Title           | Bold cyan                       | Section headers                            |
+| Rule            | Dim                             | Underline under titles (`────`)            |
+| Label           | Bold blue                       | Key column (`Entries`, `enabled`)          |
+| Value           | Bold                            | Counts, scores                             |
+| Muted / tip     | Bright black                    | Timestamps, ids, secondary hints           |
+| Success         | Bold green                      | `on`, successful maintenance, high match % |
+| Warn            | Bold yellow                     | Pending embeddings, weak search, notes     |
+| Error           | Bold red                        | Failed status, truncated embed             |
+| Accent          | Cyan                            | Index numbers, example commands            |
+| Category / kind | Distinct hue **plus** text name | Domain tags (`work`, `correction`, …)      |
+
+**Category tags:** stable color per enum (e.g. work=green, correction=red, user=magenta, discovery=blue) **and** always print the text tag (`[work]`) — never color alone.
+
+### Readable document structure
+
+1. **Title + rule** — what this report is.
+2. **Empty state first** — friendly message + next action.
+3. **Sections** — not one undifferentiated blob.
+4. **Aligned rows** — fixed-width label column + value.
+5. **List cards** — **headline first** (scannable), then one muted meta line (category · sparse stats · time), then optional short detail bullets. Never dump raw JSON, full IDs, or default weight/embed-ok noise.
+6. **Presentation layer** — when stored content is machine-oriented (tool args, consolidated merges), parse into human lines (`present_*`) before `write_*`. Same path for list + search + previews.
+7. **Notes** — after main body (repairs, “embedded N pending”), warn style.
+8. **Tip / examples** — how to dig deeper (CLI **and** slash forms when both exist).
+
+```text
+Memory store
+────────────
+  Entries            12
+  Tasks              4 completed / 6 total
+
+By category
+  work             5  Work / change
+  correction       3  Correction
+
+Tip: memory recent · memory search <q>
+     (slash: /memory … · CLI: elph memory …)
+```
+
+```text
+2 memories
+──────────
+
+1.  Tool `edit_file` failed
+   Correction · weight 1.5 · 4m ago
+   · path  elph/src/memory/format.rs
+
+2.  Merged 2 related memories
+   Consolidated · 4m ago
+   · Tool `edit_file` failed
+   · Tool `update_goal` failed · status=complete
+```
+
+### Shared CLI + slash architecture
+
+```text
+parse (clap | slash tokens)
+    → Op / Command enum
+    → execute_with_style(paths, op, style)
+    → write_*(&mut String, …, style)
+    → print! (CLI)  |  dialog / UI event (slash, plain style)
+```
+
+- Parse slash with aliases and flexible token order (`recent 5 work` / `recent work 5`).
+- Validate early with human-readable errors; clamp limits.
+- Prefer **read-only** APIs for human inspect commands (e.g. search without creating training tasks) unless writes are intentional and documented.
+
+### Command UX checklist (before merge)
+
+| Check        | Pass criteria                                          |
+| ------------ | ------------------------------------------------------ |
+| Empty states | Clear message + how to proceed                         |
+| Structure    | Title, sections, tips — not raw `Debug`                |
+| Color safe   | TTY + no `NO_COLOR`; plain for pipes and slash dialogs |
+| Color + text | Status/category always readable without color          |
+| Shared path  | CLI and slash call the same formatter/execute          |
+| Help         | Subcommands, categories, examples for both surfaces    |
+| Side effects | Documented; inspect commands avoid surprise writes     |
+| Encoding     | Char-safe truncation (no `&s[..n]` on UTF-8)           |
+| Tests        | Plain content tests; optional forced-color ANSI smoke  |
+
+### CLI / slash anti-patterns
+
+- Always-on ANSI regardless of TTY / `NO_COLOR`
+- Coloring slash dialog payloads that do not interpret ANSI
+- Rainbow every line (no hierarchy)
+- Color-only categories or success/failure
+- Divergent CLI vs slash formatters for the same command
+- Surprise model downloads or DB writes on `status` / `list`
+- Silent background slash work with no UI channel (result never shown)
+- **Raw storage dumps** in list/search (JSON tool args, `embed ready`, full ULID every row)
+- **Meta before meaning** — leading with weight/id instead of a human headline
+
+---
+
 ## Workflow
 
-When implementing or fixing a TUI:
+When implementing or fixing a **TUI**:
 
 1. **Locate** existing shell/components in the repo; follow naming and file placement already in use.
 2. **Sketch** the zone split (fixed vs growing) before writing `element!` trees.
@@ -282,6 +444,16 @@ When implementing or fixing a TUI:
     ```
 8. **Change only what the task needs** — no drive-by refactors across unrelated widgets.
 
+When implementing or fixing a **CLI / slash command report**:
+
+1. **Locate** existing formatters and CLI style helpers; reuse `anstyle` patterns.
+2. **Define** a command enum + shared `execute_with_style` (or equivalent).
+3. **Write** structured `write_*` helpers that take an explicit style handle.
+4. **CLI** → `auto_stdout()`; **slash / dialog** → `plain()`.
+5. **Empty states, tips, and help** before polish.
+6. **Run the command UX checklist**; assert plain output in unit tests.
+7. **Smoke** interactive: TTY color on, `NO_COLOR=1` off, pipe off.
+
 ## Decision guide
 
 | Need                                  | Pattern                                           |
@@ -295,6 +467,11 @@ When implementing or fixing a TUI:
 | Modal / overlay (future)              | Absolute full-size `View` above siblings          |
 | Keyboard-only scroll                  | `Shift+Arrow` or `PageUp`/`PageDown` on panel     |
 | Accessible mode/status                | Text label + color (not color alone)              |
+| CLI report with color                 | `anstyle` + `CliStyle::auto_stdout()`             |
+| Slash / dialog report                 | Same formatter, `plain()` style                   |
+| Pipe-safe CLI                         | No color when not a TTY or `NO_COLOR` set         |
+| Shared CLI + slash                    | One op enum + `execute_with_style`                |
+| Empty command result                  | Friendly message + next-step tip                  |
 
 ## Anti-patterns
 
@@ -310,3 +487,6 @@ When implementing or fixing a TUI:
 - **Low-contrast** grey-on-grey for primary transcript or input text
 - **Hidden shortcuts** — power features with no footer/help mention
 - **Focus loss on re-render** — controlled `TextInput` round-trips that reset cursor; prefer a single buffer + direct render for multiline editors
+- **Always-on ANSI** in CLI without TTY / `NO_COLOR` checks
+- **ANSI in plain dialogs** that cannot render styles
+- **Divergent** CLI vs slash formatters for the same command

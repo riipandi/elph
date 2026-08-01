@@ -229,7 +229,7 @@ Compaction and tree navigation are structural session mutations.
 They are allowed only while idle and are not queued. They operate on persisted session state. The next prompt creates a fresh turn snapshot.
 
 ```rust
-harness.compact(None).await?;
+harness.compact(None, None).await?;
 harness.navigate_tree(target_entry_id, None).await?;
 ```
 

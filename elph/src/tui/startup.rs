@@ -8,10 +8,9 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
 
-use crate::agent::SkillConflict;
 use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
-use crate::agent::{create_coding_session_with_events, format_skill_conflict_notice};
+use crate::agent::{create_coding_session_with_events, format_resource_conflict_notice, format_resource_load_warnings};
 use crate::platform::{Paths, Settings};
 use crate::tui::transcript::markdown::AssistantMarkdownBuffer;
 use crate::tui::transcript::markdown::parse_markdown_on_worker;
@@ -112,14 +111,21 @@ fn upsert_startup_line(
 }
 
 /// Opening transcript lines before async bootstrap begins.
-pub fn initial_startup_messages(skill_conflicts: &[SkillConflict]) -> Vec<TranscriptMessage> {
+pub fn initial_startup_messages(loaded: &LoadResourcesResult) -> Vec<TranscriptMessage> {
     let mut messages = vec![TranscriptMessage::startup_status(
         STARTUP_KEY_PHASE,
         format!("Preparing workspace{STARTUP_ELLIPSIS}"),
         TranscriptStyle::StatusRunning,
     )];
-    if let Some(notice) = format_skill_conflict_notice(skill_conflicts) {
-        messages.push(TranscriptMessage::text(notice, TranscriptStyle::Meta));
+    if let Some(notice) = format_resource_conflict_notice(loaded) {
+        let mut msg = TranscriptMessage::text(notice, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
+    }
+    if let Some(warn) = format_resource_load_warnings(loaded) {
+        let mut msg = TranscriptMessage::text(warn, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
     }
     messages
 }
@@ -329,7 +335,8 @@ pub struct AgentBootstrap {
 
 /// Create the agent session without blocking on MCP discovery.
 pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<AgentBootstrap> {
-    let cwd = std::env::current_dir().map_err(|e| anyhow::anyhow!("{e}"))?;
+    // Match SessionManager / `--continue` listing: always the resolved project dir.
+    let cwd = config.paths.project_dir().clone();
 
     let (session, ui_rx) = create_coding_session_with_events(CreateSessionOptions {
         paths: &config.paths,
@@ -338,6 +345,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         resume_id: config.resume_id.as_deref(),
         provider_override: None,
         model_override: None,
+        agent_mode: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,
     })
@@ -345,15 +353,26 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
 
     let session = Arc::new(session);
     let session_id = session.session_id().to_string();
+    let is_resume = config.resume_id.is_some();
 
-    // Give the session a memorable ID as an initial human-friendly name.
-    // This gets replaced by the LLM-generated title after the first turn.
-    if let Ok(memorable_id) = memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
+    // Human-friendly title only for brand-new sessions. On resume/continue, keep the
+    // stored name so we don't rewrite metadata (or scramble "latest" ordering).
+    if !is_resume && let Ok(memorable_id) = memorable_ids::generate(memorable_ids::GenerateOptions::default()) {
         let _ = session.harness().set_session_name(&memorable_id).await;
     }
 
-    // Load persisted chat history from the session branch (for --resume).
+    // Load persisted chat history from the session branch (for --resume / --continue).
     let history_messages = load_chat_history(session.as_ref()).await;
+    if is_resume && history_messages.is_empty() {
+        log::warn!(
+            "resumed session {session_id} has no reconstructable transcript entries (empty tree or missing snapshot)"
+        );
+    } else if is_resume {
+        log::info!(
+            "restored {} transcript message(s) for session {session_id}",
+            history_messages.len()
+        );
+    }
 
     Ok(AgentBootstrap {
         session,
@@ -855,7 +874,7 @@ mod tests {
 
     #[test]
     fn phase_line_upserts_in_place() {
-        let mut messages = initial_startup_messages(&[]);
+        let mut messages = initial_startup_messages(&LoadResourcesResult::default());
         assert_eq!(messages[0].content, "Preparing workspace…");
         begin_agent_startup(&mut messages);
         assert_eq!(messages.len(), 1);

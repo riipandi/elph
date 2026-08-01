@@ -12,8 +12,7 @@ use crate::platform::{Paths, Settings};
 use crate::tui::chrome::ChromeStats;
 use crate::tui::focus::ShellFocus;
 use crate::tui::labels::{model_display_label, model_footer_label};
-use crate::tui::model_selector::{ModelSelectorFocus, PendingModelSelector};
-use crate::tui::session_prefs::persist_model_selection;
+use crate::tui::model_selector::{ModelCatalogOptions, ModelSelectorFocus, PendingModelSelector};
 
 /// Arguments for [`open_model_selector`].
 pub struct OpenModelSelectorArgs<'a> {
@@ -43,20 +42,23 @@ pub fn open_model_selector(args: OpenModelSelectorArgs<'_>) {
         args.live_draft.set(String::new());
     }
 
-    let scoped_from_settings = Settings::load(args.paths)
-        .map(|settings| settings.models.scoped)
-        .unwrap_or_default();
+    let settings = Settings::load(args.paths).unwrap_or_else(|_| Settings::defaults());
     // Prefer non-empty session list (unsaved /scoped-models edits); else settings.json.
     let scoped_model_items = match args.session_scoped {
         Some(items) if !items.is_empty() => items,
-        _ => scoped_from_settings.as_slice(),
+        _ => settings.models.scoped_models.as_slice(),
     };
-    let selector = PendingModelSelector::open_with_selection(
+    let catalog_options = ModelCatalogOptions {
+        show_configured_only: settings.models.show_configured_only,
+        include_provider_ids: args.provider_id.map(|id| vec![id.to_string()]).unwrap_or_default(),
+    };
+    let selector = PendingModelSelector::open_with_selection_options(
         args.initial_filter,
         stashed,
         scoped_model_items,
         args.provider_id,
         args.model_id,
+        &catalog_options,
     );
     args.provider_index.set(selector.provider_index);
     args.model_index.set(selector.model_index);
@@ -145,23 +147,87 @@ pub enum ModelSelectorFilterSeed {
     Append(char),
 }
 
-/// Plain alphabet, digit, space, or `/` — refocus filter and optionally seed the first keystroke.
+/// Letters or `/` only — refocus filter and optionally seed the first keystroke.
 ///
-/// `h` / `j` / `k` / `l` are reserved for vim-style list navigation.
+/// Digits, space, `+`, `-`, and other punctuation never seed the filter from list focus.
+/// Reserved on the list (not filter seeds):
+/// - `h` / `j` / `k` / `l` — vim-style navigation
+/// - `+` / `-` — add / remove from scoped models
 pub fn model_selector_filter_seed(modifiers: KeyModifiers, code: KeyCode) -> Option<ModelSelectorFilterSeed> {
-    if !modifiers.is_empty() {
+    // Allow Shift (caps); reject Ctrl/Alt/Meta. Never seed on +/−/=/_.
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
         return None;
     }
     match code {
         KeyCode::Char('/') => Some(ModelSelectorFilterSeed::FocusOnly),
-        KeyCode::Char(' ') => Some(ModelSelectorFilterSeed::Append(' ')),
-        KeyCode::Char(c)
-            if (c.is_ascii_alphabetic() || c.is_ascii_digit())
-                && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') =>
-        {
+        KeyCode::Char(c) if c.is_ascii_alphabetic() && !matches!(c, 'h' | 'j' | 'k' | 'l' | 'H' | 'J' | 'K' | 'L') => {
             Some(ModelSelectorFilterSeed::Append(c))
         }
+        // Digits, space, +/−, punctuation: never seed filter from list focus.
         _ => None,
+    }
+}
+
+/// Scoped-list shortcut while the model list is focused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ModelSelectorScopedAction {
+    /// Add the highlighted model to `models.scopedModels` / Ctrl+P cycle list.
+    Add,
+    /// Remove the highlighted model from the scoped list.
+    Remove,
+}
+
+pub fn model_selector_scoped_action(modifiers: KeyModifiers, code: KeyCode) -> Option<ModelSelectorScopedAction> {
+    // `+` is often Shift+'=' on US keyboards — allow Shift, reject Ctrl/Alt/Meta.
+    if modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::META) {
+        return None;
+    }
+    match code {
+        // `+` (with or without Shift), and bare `=` as a fallback on some terminals.
+        KeyCode::Char('+') | KeyCode::Char('=') => Some(ModelSelectorScopedAction::Add),
+        // `-` is unshifted on most layouts; `_` is Shift+'-' — both remove.
+        KeyCode::Char('-') | KeyCode::Char('_') => Some(ModelSelectorScopedAction::Remove),
+        _ => None,
+    }
+}
+
+/// Apply add/remove to the live scoped list and persist to home settings.
+///
+/// Returns a short status line when the list changed, or `None` if already present/missing.
+pub fn apply_model_scoped_action(
+    paths: &Paths,
+    session_scoped: &mut Vec<String>,
+    model_value: &str,
+    action: ModelSelectorScopedAction,
+) -> Option<String> {
+    // Seed from settings when the session list is still empty (picker may have used settings only).
+    if session_scoped.is_empty() {
+        *session_scoped = Settings::load(paths)
+            .map(|s| s.models.scoped_models)
+            .unwrap_or_default();
+    }
+    let value = model_value.trim();
+    if value.is_empty() || !value.contains('/') {
+        return None;
+    }
+    match action {
+        ModelSelectorScopedAction::Add => {
+            if session_scoped.iter().any(|v| v == value) {
+                return Some(format!("Already in scoped models: {value}"));
+            }
+            session_scoped.push(value.to_string());
+            crate::tui::session_prefs::persist_scoped_model_items(paths, session_scoped);
+            Some(format!("Added to scoped models: {value}"))
+        }
+        ModelSelectorScopedAction::Remove => {
+            let before = session_scoped.len();
+            session_scoped.retain(|v| v != value);
+            if session_scoped.len() == before {
+                return Some(format!("Not in scoped models: {value}"));
+            }
+            crate::tui::session_prefs::persist_scoped_model_items(paths, session_scoped);
+            Some(format!("Removed from scoped models: {value}"))
+        }
     }
 }
 
@@ -217,9 +283,8 @@ pub fn apply_model_selector_filter_seed(
     }
 }
 
-pub fn apply_model_selection_locally(value: &str, paths: &Paths, chrome_stats: &mut ChromeStats) -> Result<String> {
+pub fn apply_model_selection_locally(value: &str, _paths: &Paths, chrome_stats: &mut ChromeStats) -> Result<String> {
     let (provider_id, model_id) = parse_model_value(value)?;
-    persist_model_selection(paths, &provider_id, &model_id);
     chrome_stats.model_label = model_footer_label(Some(&provider_id), Some(&model_id));
     chrome_stats.supports_images = get_builtin_model(&provider_id, &model_id)
         .map(|model| model.input.iter().any(|cap| cap == "image"))
@@ -227,10 +292,25 @@ pub fn apply_model_selection_locally(value: &str, paths: &Paths, chrome_stats: &
     Ok(model_display_label(&provider_id, &model_id))
 }
 
-pub fn spawn_runtime_model_switch(session: Arc<CodingAgentSession>, value: String) {
+/// Clamp UI/settings thinking level to the selected model's catalog map (footer + Ctrl+. stay in sync).
+pub fn clamp_thinking_for_model_value(level: crate::types::ThinkingLevel, value: &str) -> crate::types::ThinkingLevel {
+    match parse_model_value(value) {
+        Ok((provider, model_id)) => level.clamp_for_provider_model(&provider, &model_id),
+        Err(_) => level,
+    }
+}
+
+pub fn spawn_runtime_model_switch(
+    session: Arc<CodingAgentSession>,
+    value: String,
+    thinking: crate::types::ThinkingLevel,
+) {
     tokio::spawn(async move {
         if let Err(err) = session.set_model_from_value(&value).await {
             log::warn!("failed to switch runtime model: {err}");
+        }
+        if let Err(err) = session.set_thinking_level(thinking).await {
+            log::warn!("failed to sync thinking level after model switch: {err}");
         }
     });
 }
@@ -241,7 +321,7 @@ mod tests {
     use crate::tui::model_selector::ModelScopeMode;
 
     #[test]
-    fn filter_seed_accepts_alphabet_digits_space_and_slash() {
+    fn filter_seed_accepts_alphabet_and_slash_only() {
         assert_eq!(
             model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('/')),
             Some(ModelSelectorFilterSeed::FocusOnly)
@@ -251,13 +331,14 @@ mod tests {
             Some(ModelSelectorFilterSeed::Append('c'))
         );
         assert_eq!(
-            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('4')),
-            Some(ModelSelectorFilterSeed::Append('4'))
+            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('a')),
+            Some(ModelSelectorFilterSeed::Append('a'))
         );
-        assert_eq!(
-            model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char(' ')),
-            Some(ModelSelectorFilterSeed::Append(' '))
-        );
+        // Digits, space, +/− never seed filter.
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('4')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char(' ')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('+')), None);
+        assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('-')), None);
     }
 
     #[test]
@@ -265,6 +346,51 @@ mod tests {
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('j')), None);
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('l')), None);
         assert_eq!(model_selector_filter_seed(KeyModifiers::empty(), KeyCode::Char('H')), None);
+    }
+
+    #[test]
+    fn scoped_action_maps_plus_and_minus() {
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('+')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        // Shift+'+' / Shift+'=' (US keyboard) must still add.
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('+')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('=')),
+            Some(ModelSelectorScopedAction::Add)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('-')),
+            Some(ModelSelectorScopedAction::Remove)
+        );
+        assert_eq!(
+            model_selector_scoped_action(KeyModifiers::SHIFT, KeyCode::Char('_')),
+            Some(ModelSelectorScopedAction::Remove)
+        );
+        assert_eq!(model_selector_scoped_action(KeyModifiers::empty(), KeyCode::Char('a')), None);
+        assert_eq!(model_selector_scoped_action(KeyModifiers::CONTROL, KeyCode::Char('+')), None);
+    }
+
+    #[test]
+    fn apply_scoped_add_remove_round_trip() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let paths = Paths::from_dirs(tmp.path().join("config"), tmp.path().join("data"), tmp.path().join("repo"));
+        Settings::ensure(&paths).expect("ensure");
+        let mut scoped = Vec::new();
+        let msg = apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        assert!(msg.unwrap().contains("Added"));
+        assert_eq!(scoped, vec!["opencode/big-pickle".to_string()]);
+        let again =
+            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Add);
+        assert!(again.unwrap().contains("Already"));
+        let removed =
+            apply_model_scoped_action(&paths, &mut scoped, "opencode/big-pickle", ModelSelectorScopedAction::Remove);
+        assert!(removed.unwrap().contains("Removed"));
+        assert!(scoped.is_empty());
     }
 
     #[test]

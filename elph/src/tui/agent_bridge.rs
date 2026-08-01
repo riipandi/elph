@@ -5,14 +5,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::agent::format_skill_conflict_notice;
 use crate::agent::goal_slash::handle_goal_slash;
 use crate::agent::{AgentUiEvent, CodingAgentSession, QueuedPromptItem, QueuedPromptKind};
 use crate::agent::{SlashDispatch, SubagentUiPhase};
-use crate::agent::{resolve_model, thinking_level_from_setting, to_agent_thinking};
 use crate::extensions::ExtensionHost;
-use crate::platform::{Paths, Settings};
-use crate::utils::path::AppPaths;
+use crate::platform::Paths;
 
 use super::activity::normalize_agent_status;
 use super::chrome::format_elapsed_secs;
@@ -107,86 +104,49 @@ impl SlashDispatcher {
             let ui_tx = session.ui_event_sender();
             match dispatch {
                 SlashDispatch::Compact => {
-                    let status = match session.compact().await {
-                        Ok(_) => "History compacted.".into(),
-                        Err(err) => format!("Compact failed: {err}"),
-                    };
-                    let _ = ui_tx.send(AgentUiEvent::Status(status));
+                    // Lifecycle notices are emitted by CodingAgentSession::compact.
+                    if let Err(err) = session.compact().await {
+                        let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(format!("Compaction failed: {err}")));
+                    }
                 }
                 SlashDispatch::Goal { args } => {
                     let status = match handle_goal_slash(session.goal_runtime().as_ref(), &args).await {
                         Ok(message) => message,
-                        Err(err) => format!("Goal error: {err}"),
+                        Err(err) => {
+                            // Suppress database lock errors during cancel since they're expected
+                            if err.to_string().contains("database busy") {
+                                "Goal cancelled (database busy)".to_string()
+                            } else {
+                                format!("Goal error: {err}")
+                            }
+                        }
                     };
                     let _ = ui_tx.send(AgentUiEvent::Status(status));
                 }
                 SlashDispatch::Reload => {
-                    let mut messages = Vec::new();
+                    let mut report = if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
+                        session
+                            .reload_workspace(crate::agent::WorkspaceReloadRequest { paths, cwd })
+                            .await
+                    } else {
+                        let mut empty = crate::agent::WorkspaceReloadReport::default();
+                        empty.push_summary("Reload unavailable.");
+                        empty
+                    };
 
-                    // ── Reload and apply Settings ──────────────────────────
-                    if let Some(paths) = paths.as_ref() {
-                        let settings = Settings::load(paths);
-                        if let Ok(settings) = settings {
-                            let auth_path = paths.auth_store_path();
-                            match resolve_model(&settings, None, None, Some(&auth_path)).await {
-                                Ok(selection) => {
-                                    let _ = session.harness().set_model(selection.model).await;
-
-                                    let thinking = to_agent_thinking(thinking_level_from_setting(
-                                        &settings.session.thinking_level,
-                                    ));
-                                    let _ = session.harness().set_thinking_level(thinking).await;
-
-                                    session
-                                        .harness()
-                                        .set_stream_options(elph_agent::AgentHarnessStreamOptions {
-                                            timeout_ms: settings.provider_timeout_ms(),
-                                            max_retries: Some(settings.provider.max_retries),
-                                            ..elph_agent::AgentHarnessStreamOptions::default()
-                                        })
-                                        .await;
-
-                                    let mode = crate::agent::agent_mode_from_setting(&settings.session.agent_mode);
-                                    *session.mode_state().lock().await = mode;
-
-                                    messages.push("Settings reloaded.".into());
-                                }
-                                Err(err) => {
-                                    messages.push(format!("Settings reload (model resolve) failed: {err}"));
-                                }
-                            }
-                        } else if let Err(err) = settings {
-                            messages.push(format!("Settings reload failed: {err}"));
-                        }
-                    }
-
-                    // ── Reload Resources (skills, templates) ───────────────
-                    if let (Some(paths), Some(cwd)) = (paths.as_ref(), cwd.as_ref()) {
-                        match session.reload_resources(paths, cwd).await {
-                            Ok(loaded) => {
-                                messages.push("Resources reloaded.".into());
-                                if let Some(notice) = format_skill_conflict_notice(&loaded.skill_conflicts) {
-                                    messages.push(notice);
-                                }
-                            }
-                            Err(err) => messages.push(format!("Resource reload failed: {err}")),
-                        }
-                    }
-
-                    // ── Reload Extensions ───────────────────────────────────
                     if let Some(host) = extension_host.as_ref()
                         && let Some(paths) = paths.as_ref()
                     {
                         match host.reload(paths, true) {
-                            Ok(_) => messages.push("Extensions reloaded.".into()),
-                            Err(err) => messages.push(format!("Extension reload failed: {err}")),
+                            Ok(_) => report.push_summary("Extensions reloaded."),
+                            Err(err) => report.push_summary(format!("Extension reload failed: {err}")),
                         }
                     }
 
-                    if messages.is_empty() {
-                        messages.push("Reload unavailable.".into());
+                    let _ = ui_tx.send(AgentUiEvent::Status(report.summary_text()));
+                    for notice in report.notices {
+                        let _ = ui_tx.send(AgentUiEvent::TranscriptNotice(notice));
                     }
-                    let _ = ui_tx.send(AgentUiEvent::Status(messages.join("\n\n")));
                 }
                 SlashDispatch::Extension { name, args } => {
                     let status = if let Some(host) = extension_host.as_ref() {
@@ -223,6 +183,9 @@ impl SlashDispatcher {
                 | SlashDispatch::ProviderConnect { .. }
                 | SlashDispatch::ProviderDisconnect { .. }
                 | SlashDispatch::ProviderList
+                | SlashDispatch::McpAuth { .. }
+                | SlashDispatch::McpLogout { .. }
+                | SlashDispatch::McpList
                 | SlashDispatch::Unimplemented(_)
                 | SlashDispatch::OverlayNeeded(_)
                 | SlashDispatch::Memory { .. } => {}
@@ -509,6 +472,7 @@ impl TranscriptEventApplier {
                 }
             }
             AgentUiEvent::Status(message) => self.push_status(messages, message.trim()),
+            AgentUiEvent::TranscriptNotice(message) => self.push_transcript_notice(messages, message.trim()),
             // SubagentOutput is NOT pushed to the transcript — it's stored in a
             // shared output buffer in the shell and displayed in the SubagentOutputDialog.
             // Returning false here prevents the transcript from being flooded with
@@ -541,12 +505,29 @@ impl TranscriptEventApplier {
         }
         if let Some(last) = messages.last_mut()
             && last.style == TranscriptStyle::Meta
+            && !last.sticky_meta
         {
             last.content = line.to_string();
             return true;
         }
         self.begin_meta(messages);
         messages.push(TranscriptMessage::text(line, TranscriptStyle::Meta));
+        true
+    }
+
+    /// Always **append** a sticky Meta transcript card (resource conflicts, reload details).
+    ///
+    /// Unlike [`Self::push_status`], never collapses into the previous Meta line and is not
+    /// overwritten by later ephemeral status updates.
+    fn push_transcript_notice(&mut self, messages: &mut Vec<TranscriptMessage>, line: &str) -> bool {
+        let line = line.trim();
+        if line.is_empty() {
+            return false;
+        }
+        self.begin_meta(messages);
+        let mut msg = TranscriptMessage::text(line, TranscriptStyle::Meta);
+        msg.sticky_meta = true;
+        messages.push(msg);
         true
     }
 
@@ -1074,6 +1055,22 @@ mod tests {
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].style, TranscriptStyle::Meta);
         assert_eq!(messages[0].content, "History compacted.");
+    }
+
+    #[test]
+    fn transcript_notice_is_sticky_and_not_replaced_by_status() {
+        let mut messages = Vec::new();
+        let mut applier = TranscriptEventApplier::new(false, false);
+        assert!(applier.apply(
+            &mut messages,
+            AgentUiEvent::TranscriptNotice("Resource name conflicts resolved:\n  • review: a → b".into()),
+        ));
+        assert_eq!(messages.len(), 1);
+        assert!(messages[0].sticky_meta);
+        assert!(applier.apply(&mut messages, AgentUiEvent::Status("History compacted.".into())));
+        assert_eq!(messages.len(), 2, "status must not overwrite sticky conflict notice");
+        assert!(messages[0].content.contains("conflicts"));
+        assert_eq!(messages[1].content, "History compacted.");
     }
 
     #[test]

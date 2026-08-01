@@ -75,22 +75,35 @@ where
         turn_state: AgentHarnessTurnState,
         text: String,
         options: Option<AgentHarnessPromptOptions>,
+        operation_id: String,
     ) -> HarnessOpResult<AssistantMessage> {
         let images = options.as_ref().and_then(|o| o.images.clone());
         let mut messages = vec![create_user_message(text.clone(), images.clone())];
+        let mut consumed_queue_ids = Vec::new();
 
         if !self.shared.next_turn_queue.lock().await.is_empty() {
-            let queued = self.shared.next_turn_queue.lock().await.drain(..).collect::<Vec<_>>();
+            let queued_items = self.shared.next_turn_queue.lock().await.drain(..).collect::<Vec<_>>();
             if let Err(error) = self.emit_queue_update().await {
-                *self.shared.next_turn_queue.lock().await = queued;
+                *self.shared.next_turn_queue.lock().await = queued_items;
                 return Err(error);
             }
+            let ids: Vec<String> = queued_items.iter().map(|(id, _)| id.clone()).collect();
+            let queued: Vec<_> = queued_items.into_iter().map(|(_, m)| m).collect();
+            let _ = self
+                .journal_queue_consume(crate::session::durability::QueueKind::NextTurn, ids.clone(), None)
+                .await;
+            consumed_queue_ids = ids;
             let prompt = messages.pop().expect("prompt message");
             messages = queued;
             messages.push(prompt);
         }
 
-        let before_result = self
+        let turn_id = self
+            .journal_turn_started(operation_id.clone(), consumed_queue_ids)
+            .await
+            .unwrap_or_else(|_| crate::session::durability::new_id("turn"));
+
+        let before_result = match self
             .shared
             .hooks
             .emit_before_agent_start(&BeforeAgentStartEvent {
@@ -99,7 +112,16 @@ where
                 system_prompt: turn_state.system_prompt.clone(),
                 resources: turn_state.resources.clone(),
             })
-            .await?;
+            .await
+        {
+            Ok(r) => r,
+            Err(error) => {
+                let _ = self
+                    .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
+                    .await;
+                return Err(error);
+            }
+        };
 
         if let Some(extra) = before_result.as_ref().and_then(|r| r.messages.clone()) {
             messages.extend(extra);
@@ -118,9 +140,23 @@ where
             match goal_runtime.start_turn(mode).await {
                 Ok(GoalTurnStart::Ok) => {}
                 Ok(GoalTurnStart::Blocked(message)) => {
+                    let _ = self
+                        .journal_turn_finished(
+                            turn_id,
+                            operation_id,
+                            crate::session::durability::OperationOutcome::Failed,
+                        )
+                        .await;
                     return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, message));
                 }
                 Err(error) => {
+                    let _ = self
+                        .journal_turn_finished(
+                            turn_id,
+                            operation_id,
+                            crate::session::durability::OperationOutcome::Failed,
+                        )
+                        .await;
                     return Err(AgentHarnessError::new(AgentHarnessErrorCode::InvalidState, error.to_string()));
                 }
             }
@@ -148,13 +184,27 @@ where
             Ok(messages) => messages,
             Err(error) => {
                 let model = turn_state.lock().expect("turn state lock").model.clone();
+                let outcome = if abort_token.is_cancelled() {
+                    crate::session::durability::OperationOutcome::Interrupted
+                } else {
+                    crate::session::durability::OperationOutcome::Failed
+                };
+                let _ = self.journal_turn_finished(turn_id, operation_id, outcome).await;
                 return self
                     .emit_run_failure(&model, &error, abort_token.is_cancelled(), &emit)
                     .await;
             }
         };
 
-        self.flush_pending_session_writes().await?;
+        if let Err(error) = self.flush_pending_session_writes().await {
+            let _ = self
+                .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Failed)
+                .await;
+            return Err(error);
+        }
+        let _ = self
+            .journal_turn_finished(turn_id, operation_id, crate::session::durability::OperationOutcome::Completed)
+            .await;
 
         for message in run_result.into_iter().rev() {
             if let Some(assistant) = message.as_llm()
@@ -165,25 +215,27 @@ where
                     match goal_runtime.finish_turn(mode, Some(&assistant.usage)).await {
                         Ok(GoalTurnFinish::BudgetLimited(goal)) => {
                             let steering = GoalRuntime::budget_steering(&goal);
-                            self.shared
-                                .next_turn_queue
-                                .lock()
-                                .await
-                                .push(llm_message_to_agent(Message::User {
-                                    content: UserContent::Text(steering),
-                                    timestamp: now_ms(),
-                                }));
+                            let _ = self
+                                .push_durable_queue(
+                                    crate::session::durability::QueueKind::NextTurn,
+                                    llm_message_to_agent(Message::User {
+                                        content: UserContent::Text(steering),
+                                        timestamp: now_ms(),
+                                    }),
+                                )
+                                .await;
                         }
                         Ok(GoalTurnFinish::Continuation(goal)) => {
                             let steering = GoalRuntime::continuation_steering(&goal);
-                            self.shared
-                                .next_turn_queue
-                                .lock()
-                                .await
-                                .push(llm_message_to_agent(Message::User {
-                                    content: UserContent::Text(steering),
-                                    timestamp: now_ms(),
-                                }));
+                            let _ = self
+                                .push_durable_queue(
+                                    crate::session::durability::QueueKind::NextTurn,
+                                    llm_message_to_agent(Message::User {
+                                        content: UserContent::Text(steering),
+                                        timestamp: now_ms(),
+                                    }),
+                                )
+                                .await;
                         }
                         Ok(GoalTurnFinish::None) => {}
                         Err(error) => {

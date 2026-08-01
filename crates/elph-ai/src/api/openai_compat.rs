@@ -22,6 +22,7 @@ pub struct ResolvedOpenAICompletionsCompat {
 pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
     let provider = model.provider.as_str();
     let base_url = model.base_url.as_str();
+    let model_id = model.id.as_str();
 
     let is_zai = provider == "zai"
         || provider == "zai-coding-cn"
@@ -36,6 +37,23 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         provider == "cloudflare-ai-gateway" || base_url.contains("gateway.ai.cloudflare.com");
     let is_nvidia = provider == "nvidia" || base_url.contains("integrate.api.nvidia.com");
     let is_ant_ling = provider == "ant-ling" || base_url.contains("api.ant-ling.com");
+    // Multi-vendor OpenAI-compatible gateways (Elph-local + shared). Treat as non-standard so we
+    // never send OpenAI-only fields (`store`, `max_completion_tokens`, `developer`, `strict`).
+    let is_gateway = matches!(
+        provider,
+        "tokenrouter" | "opengateway" | "baseten" | "kilo" | "sumopod" | "hyper" | "huggingface" | "vercel-ai-gateway"
+    ) || base_url.contains("tokenrouter.com")
+        || base_url.contains("api.kilo.ai")
+        || base_url.contains("opengateway")
+        || base_url.contains("baseten.co")
+        || base_url.contains("api.hyper.")
+        || base_url.contains("huggingface.co")
+        || base_url.contains("ai-gateway.vercel.sh");
+
+    // Vendor routes on gateways (id like `moonshotai/kimi-k3-free`).
+    let gateway_moonshot = is_gateway && model_id.starts_with("moonshotai/");
+    let gateway_deepseek = is_gateway && (model_id.starts_with("deepseek/") || model_id.starts_with("deepseek-ai/"));
+    let is_moonshot_route = is_moonshot || gateway_moonshot;
 
     let is_non_standard = is_nvidia
         || provider == "cerebras"
@@ -51,20 +69,22 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         || base_url.contains("opencode.ai")
         || is_cloudflare_workers_ai
         || is_cloudflare_ai_gateway
-        || is_ant_ling;
+        || is_ant_ling
+        || is_gateway;
 
     let use_max_tokens = base_url.contains("chutes.ai")
-        || is_moonshot
+        || is_moonshot_route
         || is_cloudflare_ai_gateway
         || is_together
         || is_nvidia
-        || is_ant_ling;
+        || is_ant_ling
+        || is_gateway;
 
     let is_xai = provider == "xai" || base_url.contains("api.x.ai");
-    let is_deepseek = provider == "deepseek" || base_url.contains("deepseek.com");
+    let is_deepseek = provider == "deepseek" || base_url.contains("deepseek.com") || gateway_deepseek;
     let is_openrouter_developer_role_model =
-        is_openrouter && (model.id.starts_with("anthropic/") || model.id.starts_with("openai/"));
-    let cache_control_format = if provider == "openrouter" && model.id.starts_with("anthropic/") {
+        is_openrouter && (model_id.starts_with("anthropic/") || model_id.starts_with("openai/"));
+    let cache_control_format = if provider == "openrouter" && model_id.starts_with("anthropic/") {
         Some("anthropic".to_string())
     } else {
         None
@@ -84,16 +104,19 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         "openai"
     };
 
+    // Gateways: conservative defaults (no OpenAI-only fields). Moonshot routes may accept effort.
+    let supports_reasoning_effort = if gateway_moonshot {
+        true
+    } else if is_gateway {
+        false
+    } else {
+        !is_xai && !is_zai && !is_moonshot && !is_together && !is_cloudflare_ai_gateway && !is_nvidia && !is_ant_ling
+    };
+
     ResolvedOpenAICompletionsCompat {
         supports_store: !is_non_standard,
         supports_developer_role: is_openrouter_developer_role_model || (!is_non_standard && !is_openrouter),
-        supports_reasoning_effort: !is_xai
-            && !is_zai
-            && !is_moonshot
-            && !is_together
-            && !is_cloudflare_ai_gateway
-            && !is_nvidia
-            && !is_ant_ling,
+        supports_reasoning_effort,
         supports_usage_in_streaming: true,
         max_tokens_field: if use_max_tokens {
             "max_tokens".to_string()
@@ -103,17 +126,22 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         requires_tool_result_name: false,
         requires_assistant_after_tool_result: false,
         requires_thinking_as_text: false,
-        requires_reasoning_content_on_assistant_messages: is_deepseek,
+        requires_reasoning_content_on_assistant_messages: is_deepseek || gateway_moonshot,
         thinking_format: thinking_format.to_string(),
         zai_tool_stream: false,
-        supports_strict_mode: !is_moonshot && !is_together && !is_cloudflare_ai_gateway && !is_nvidia,
+        supports_strict_mode: !is_moonshot_route
+            && !is_together
+            && !is_cloudflare_ai_gateway
+            && !is_nvidia
+            && !is_gateway,
         cache_control_format,
         send_session_affinity_headers: false,
         supports_long_cache_retention: !(is_together
             || is_cloudflare_workers_ai
             || is_cloudflare_ai_gateway
             || is_nvidia
-            || is_ant_ling),
+            || is_ant_ling
+            || is_gateway),
     }
 }
 
