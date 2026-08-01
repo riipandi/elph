@@ -24,6 +24,19 @@ pub struct ModelSelection {
     pub display_name: String,
 }
 
+pub(crate) fn selection_from_model(model: &Model, models: Arc<Models>) -> ModelSelection {
+    let provider = model.provider.clone();
+    let model_id = model.id.clone();
+    let display_name = model.name.clone();
+    ModelSelection {
+        provider: provider.clone(),
+        model_id: model_id.clone(),
+        model: model.clone(),
+        models,
+        display_name,
+    }
+}
+
 pub async fn resolve_model(
     settings: &Settings,
     provider_override: Option<&str>,
@@ -108,6 +121,23 @@ pub async fn resolve_model(
         },
         overlay_stats,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_from_model_preserves_model_identity() {
+        let model = get_builtin_model("openai", "gpt-5.6-luna").expect("builtin model should exist");
+        let models = elph_ai::builtin_models(None).into_arc();
+        let selection = selection_from_model(&model, models);
+
+        assert_eq!(selection.provider, model.provider);
+        assert_eq!(selection.model_id, model.id);
+        assert_eq!(selection.display_name, model.name);
+        assert_eq!(selection.model.id, model.id);
+    }
 }
 
 /// Load provider credentials from `auth.json` into an in-memory credential store.

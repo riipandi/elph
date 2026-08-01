@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::mcp_bootstrap::{discover_mcp_registry, start_mcp_notifications};
-use super::model_registry::resolve_model;
+use super::model_registry::{resolve_model, selection_from_model};
 use super::prompt::{agents_md_for_cwd, build_coding_system_prompt};
 use super::resource_loader::{LoadResourcesResult, load_resources};
 use super::session::{CodingAgentSession, CodingAgentSessionParams};
@@ -214,12 +214,16 @@ pub async fn create_coding_session_with_events(
     }
 
     let harness = Arc::new(harness);
+    let restored_selection = {
+        let restored_model = harness.get_model().await;
+        selection_from_model(&restored_model, Arc::clone(&selection.models))
+    };
 
     let session = CodingAgentSession::new(CodingAgentSessionParams {
         harness: harness.clone(),
         session_manager,
         session_id,
-        selection,
+        selection: restored_selection,
         agent_mode,
         mode_state: Arc::clone(&mode_state),
         show_thinking: options.settings.ui.show_thinking,
