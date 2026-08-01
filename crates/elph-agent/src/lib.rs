@@ -341,8 +341,6 @@ pub use tools::create_move_path_tool;
 pub use tools::create_read_file_tool;
 #[cfg(feature = "tools-search")]
 pub use tools::create_search_tools;
-#[cfg(feature = "tools-shell-exec")]
-pub use tools::create_shell_exec_tool;
 #[cfg(feature = "tools-write-file")]
 pub use tools::create_write_file_tool;
 #[cfg(feature = "mcp")]
@@ -531,6 +529,8 @@ pub use tools::mcp::validate_server_config;
 pub use tools::mcp::{McpLoadOptions, McpServerLoadProgress};
 #[cfg(feature = "tools-web")]
 pub use tools::{WebSearchEngine, WebSearchResult};
+#[cfg(feature = "tools-shell-exec")]
+pub use tools::{create_shell_exec_tool, normalize_shell_exec_args, strip_redundant_cd_prefix};
 #[cfg(feature = "tools-web")]
 pub use tools::{create_web_fetch_tool, create_web_search_tool, create_web_tools};
 pub use tools::{echo_tool, simple_tool};

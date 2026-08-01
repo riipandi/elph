@@ -1,10 +1,8 @@
 //! Harness event wiring and UI event mapping.
 
 use anyhow::Result;
-use elph_agent::{
-    AgentEvent, AgentHarnessEvent, AgentHarnessOwnEvent, SubagentEventForwarder, SubagentInfo, ToolCallEvent,
-    ToolCallHookResult,
-};
+use elph_agent::{AgentEvent, AgentHarnessEvent, AgentHarnessOwnEvent, FileSystem};
+use elph_agent::{SubagentEventForwarder, SubagentInfo, ToolCallEvent, ToolCallHookResult};
 use elph_ai::AssistantMessageEvent;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -19,17 +17,23 @@ impl CodingAgentSession {
         let harness = self.harness.clone();
         let policy = self.policy.clone();
         let show_thinking = self.show_thinking;
+        let cwd = self.harness().env().cwd().to_string();
 
         harness
             .on_tool_call({
                 let ui_tx = ui_tx.clone();
                 let policy = Arc::clone(&policy);
+                let cwd = cwd.clone();
                 move |event: &ToolCallEvent| {
                     let ui_tx = ui_tx.clone();
                     let policy = Arc::clone(&policy);
+                    let cwd = cwd.clone();
                     let tool_call_id = event.tool_call_id.clone();
                     let tool_name = event.tool_name.clone();
-                    let args_summary = serde_json::to_string(&event.input).unwrap_or_default();
+                    let mut args_summary = serde_json::to_string(&event.input).unwrap_or_default();
+                    if tool_name == "shell_exec" {
+                        args_summary = elph_agent::normalize_shell_exec_args(&args_summary, &cwd);
+                    }
                     Box::pin(async move {
                         let policy = policy.lock().await;
                         if !policy.needs_approval(&tool_name) {
@@ -57,11 +61,13 @@ impl CodingAgentSession {
         harness
             .subscribe({
                 let ui_tx = ui_tx.clone();
+                let cwd = cwd.clone();
                 move |event, _| {
                     let ui_tx = ui_tx.clone();
+                    let cwd = cwd.clone();
                     Box::pin(async move {
                         if let AgentHarnessEvent::Agent(agent_event) = event {
-                            map_agent_event(&ui_tx, agent_event, show_thinking);
+                            map_agent_event(&ui_tx, agent_event, show_thinking, &cwd);
                         } else if let AgentHarnessEvent::Own(AgentHarnessOwnEvent::QueueUpdate(update)) = event {
                             let items = map_queue_update(&update);
                             let _ = ui_tx.send(AgentUiEvent::QueueUpdate { items });
@@ -250,7 +256,7 @@ impl CodingAgentSession {
     }
 }
 
-fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEvent, show_thinking: bool) {
+fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEvent, show_thinking: bool, cwd: &str) {
     match event {
         AgentEvent::MessageStart { message } => {
             // User messages injected mid-run (drained follow-up / steer). Shell may skip if it
@@ -283,7 +289,10 @@ fn map_agent_event(ui_tx: &mpsc::UnboundedSender<AgentUiEvent>, event: AgentEven
             args,
             ..
         } => {
-            let args_summary = serde_json::to_string(&args).unwrap_or_default();
+            let mut args_summary = serde_json::to_string(&args).unwrap_or_default();
+            if tool_name == "shell_exec" {
+                args_summary = elph_agent::normalize_shell_exec_args(&args_summary, cwd);
+            }
             let _ = ui_tx.send(AgentUiEvent::ToolStart {
                 id: tool_call_id,
                 name: tool_name,

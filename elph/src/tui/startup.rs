@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use elph_agent::{McpLoadReport, McpServerLoadProgress};
+use elph_agent::{FileSystem, McpLoadReport, McpServerLoadProgress};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
@@ -397,7 +397,8 @@ async fn load_chat_history(session: &CodingAgentSession) -> Vec<TranscriptMessag
         return messages;
     }
 
-    reconstruct_transcript_from_llm_entries(&entries)
+    let cwd = session.harness().env().cwd().to_string();
+    reconstruct_transcript_from_llm_entries(&entries, &cwd)
 }
 
 /// Latest full transcript snapshot written after each completed turn.
@@ -417,7 +418,10 @@ fn load_transcript_snapshot_from_entries(entries: &[elph_agent::SessionTreeEntry
 }
 
 /// Reconstruct transcript cards from the LLM session tree (fallback path).
-fn reconstruct_transcript_from_llm_entries(entries: &[elph_agent::SessionTreeEntry]) -> Vec<TranscriptMessage> {
+fn reconstruct_transcript_from_llm_entries(
+    entries: &[elph_agent::SessionTreeEntry],
+    cwd: &str,
+) -> Vec<TranscriptMessage> {
     use elph_ai::{AssistantContentBlock, ContentBlock, Message, UserContent};
     use std::collections::HashMap;
 
@@ -546,7 +550,10 @@ fn reconstruct_transcript_from_llm_entries(entries: &[elph_agent::SessionTreeEnt
                         AssistantContentBlock::ToolCall(tc) => {
                             has_visible = true;
                             // Same raw JSON args as live ToolStart (not pretty-formatted).
-                            let args_summary = serde_json::to_string(&tc.arguments).unwrap_or_default();
+                            let mut args_summary = serde_json::to_string(&tc.arguments).unwrap_or_default();
+                            if tc.name == "shell_exec" {
+                                args_summary = elph_agent::normalize_shell_exec_args(&args_summary, cwd);
+                            }
 
                             let mut msg = TranscriptMessage::tool_call(
                                 tc.name.clone(),
