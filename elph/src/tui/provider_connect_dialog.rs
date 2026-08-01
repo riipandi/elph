@@ -23,7 +23,7 @@ use crate::utils::path::AppPaths;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::Instant;
 
 /// Default auth store path under `CONFIG_DIR/auth.json` (same as [`crate::platform::Paths`]).
@@ -231,12 +231,6 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
 /// Cached provider options to avoid recomputing on every render.
 static CACHED_PROVIDER_OPTIONS: OnceLock<Vec<ProviderOption>> = OnceLock::new();
 
-/// Simple LRU cache for filtered providers (last 5 filter queries).
-struct FilterCache {
-    entries: Vec<(String, Vec<ProviderOption>)>,
-}
-static FILTER_CACHE: Mutex<FilterCache> = Mutex::new(FilterCache { entries: Vec::new() });
-
 /// Get list of all providers with OAuth support info and configuration status.
 pub fn get_provider_options() -> Vec<ProviderOption> {
     CACHED_PROVIDER_OPTIONS.get_or_init(|| {
@@ -347,14 +341,6 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
         return providers.to_vec();
     }
 
-    // Check cache first
-    if let Ok(cache) = FILTER_CACHE.lock() {
-        if let Some(entry) = cache.entries.iter().find(|(cached_query, _)| cached_query == query) {
-            return entry.1.clone();
-        }
-    }
-
-    // Compute filtered providers
     let mut scored: Vec<(&ProviderOption, i32)> = providers
         .iter()
         .filter_map(|prov| provider_match_score(prov, query).map(|score| (prov, score)))
@@ -362,18 +348,7 @@ pub fn filtered_providers(providers: &[ProviderOption], filter: &str) -> Vec<Pro
 
     scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.name.cmp(&right.0.name)));
 
-    let result: Vec<ProviderOption> = scored.into_iter().map(|(prov, _)| prov.clone()).collect();
-
-    // Update cache (keep last 5 entries)
-    if let Ok(mut cache) = FILTER_CACHE.lock() {
-        cache.entries.retain(|(cached_query, _)| cached_query != query);
-        cache.entries.push((query.to_string(), result.clone()));
-        if cache.entries.len() > 5 {
-            cache.entries.remove(0);
-        }
-    }
-
-    result
+    scored.into_iter().map(|(prov, _)| prov.clone()).collect()
 }
 
 // ── Dialog lifecycle functions ───────────────────────────────────────

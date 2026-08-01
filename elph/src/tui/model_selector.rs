@@ -1,7 +1,6 @@
 //! Model picker state, catalog snapshot, and fuzzy filtering.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Mutex;
 
 use elph_ai::Model;
 use elph_ai::{get_builtin_model, get_builtin_models, get_builtin_providers};
@@ -16,22 +15,6 @@ use super::slash_palette::list_viewport_cap;
 const NAME_WEIGHT: i32 = 4;
 const ID_WEIGHT: i32 = 3;
 const DESCRIPTION_WEIGHT: i32 = 1;
-
-/// Simple cache for model filter results (last 10 queries).
-/// Cleared when the model catalog is rebuilt to ensure model actuality.
-struct ModelFilterCache {
-    entries: Vec<(String, Vec<ModelRow>)>,
-}
-static MODEL_FILTER_CACHE: Mutex<ModelFilterCache> = Mutex::new(ModelFilterCache {
-    entries: Vec::new(),
-});
-
-/// Clear the filter cache when the model catalog changes.
-pub fn clear_model_filter_cache() {
-    if let Ok(mut cache) = MODEL_FILTER_CACHE.lock() {
-        cache.entries.clear();
-    }
-}
 
 /// Synthetic provider id for the aggregate "All" tab (index 0).
 pub const ALL_PROVIDERS_TAB_ID: &str = "__all__";
@@ -189,8 +172,8 @@ impl ModelCatalogSnapshot {
     }
 
     pub fn build_with_options(scoped_model_items: &[String], options: &ModelCatalogOptions) -> Self {
-        // Clear filter cache when catalog is rebuilt to ensure model actuality
-        clear_model_filter_cache();
+        // Don't clear cache here - cache key includes models.len() so stale entries won't match
+        // Cache is only cleared when explicitly needed (e.g., manual refresh)
         let allowed: Option<HashSet<String>> = if options.show_configured_only {
             let mut set = configured_provider_ids();
             for id in &options.include_provider_ids {
@@ -707,15 +690,6 @@ pub fn filter_models_fuzzy(models: &[ModelRow], query: &str) -> Vec<ModelRow> {
         return models.to_vec();
     }
 
-    // Check cache first
-    let cache_key = format!("{}:{}:{}", query.len(), query, models.len());
-    if let Ok(cache) = MODEL_FILTER_CACHE.lock() {
-        if let Some(entry) = cache.entries.iter().find(|(cached_query, _)| cached_query == &cache_key) {
-            return entry.1.clone();
-        }
-    }
-
-    // Compute filtered models
     let mut scored: Vec<(&ModelRow, i32)> = models
         .iter()
         .filter_map(|row| model_row_match_score(row, query).map(|score| (row, score)))
@@ -730,18 +704,7 @@ pub fn filter_models_fuzzy(models: &[ModelRow], query: &str) -> Vec<ModelRow> {
             .then_with(|| left.0.name.cmp(&right.0.name))
             .then_with(|| left.0.model_id.cmp(&right.0.model_id))
     });
-    let result: Vec<ModelRow> = scored.into_iter().map(|(row, _)| row.clone()).collect();
-
-    // Update cache (keep last 10 entries)
-    if let Ok(mut cache) = MODEL_FILTER_CACHE.lock() {
-        cache.entries.retain(|(cached_query, _)| cached_query != &cache_key);
-        cache.entries.push((cache_key, result.clone()));
-        if cache.entries.len() > 10 {
-            cache.entries.remove(0);
-        }
-    }
-
-    result
+    scored.into_iter().map(|(row, _)| row.clone()).collect()
 }
 
 #[cfg(test)]
@@ -756,70 +719,6 @@ mod tests {
     fn format_provider_label_title_cases_hyphens() {
         assert_eq!(format_provider_label("amazon-bedrock"), "Amazon Bedrock");
         assert_eq!(format_provider_label("anthropic"), "Anthropic");
-    }
-
-    #[test]
-    fn filter_cache_works() {
-        clear_model_filter_cache();
-        let models = vec![
-            ModelRow {
-                value: "test/model1".to_string(),
-                name: "Model One".to_string(),
-                provider_id: "test".to_string(),
-                model_id: "model1".to_string(),
-                context_k: 128,
-                reasoning: false,
-                images: false,
-            },
-            ModelRow {
-                value: "test/model2".to_string(),
-                name: "Model Two".to_string(),
-                provider_id: "test".to_string(),
-                model_id: "model2".to_string(),
-                context_k: 128,
-                reasoning: false,
-                images: false,
-            },
-        ];
-
-        // First call - should compute
-        let result1 = filter_models_fuzzy(&models, "one");
-        assert_eq!(result1.len(), 1);
-
-        // Second call with same query - should use cache
-        let result2 = filter_models_fuzzy(&models, "one");
-        assert_eq!(result2.len(), 1);
-        assert_eq!(result1[0].value, result2[0].value);
-
-        // Different query - should recompute
-        let result3 = filter_models_fuzzy(&models, "two");
-        assert_eq!(result3.len(), 1);
-    }
-
-    #[test]
-    fn filter_cache_cleared_on_catalog_rebuild() {
-        clear_model_filter_cache();
-        let models = vec![
-            ModelRow {
-                value: "test/model1".to_string(),
-                name: "Model One".to_string(),
-                provider_id: "test".to_string(),
-                model_id: "model1".to_string(),
-                context_k: 128,
-                reasoning: false,
-                images: false,
-            },
-        ];
-
-        // Populate cache
-        let _ = filter_models_fuzzy(&models, "one");
-
-        // Rebuild catalog (simulated)
-        ModelCatalogSnapshot::build_with_options(&[], &ModelCatalogOptions::unfiltered());
-
-        // Cache should be cleared, so this will recompute
-        let result = filter_models_fuzzy(&models, "one");
-        assert_eq!(result.len(), 1);
     }
 
     #[test]
