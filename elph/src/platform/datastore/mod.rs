@@ -20,9 +20,38 @@ pub async fn ensure(paths: &Paths) -> Result<()> {
 
     let progress = InitProgress::new(DATASTORE_STEPS).with_quiet_env("ELPH_QUIET");
     progress.advance("Initializing databases");
-    ensure_databases_once(&specs).await?;
-    progress.finish();
-    Ok(())
+
+    match ensure_databases_once(&specs).await {
+        Ok(_) => {
+            progress.finish();
+            Ok(())
+        }
+        Err(e) => {
+            progress.finish();
+            let error_msg = format!("Database initialization failed: {e}");
+
+            // Provide helpful hints for common errors
+            if error_msg.contains("timeout") {
+                anyhow::bail!(
+                    "{}\n\nThis may be caused by:\n\
+                    • Stale shared memory files from a previous crash\n\
+                    • Another process holding the database lock\n\
+                    • Corrupted database file\n\n\
+                    Try: rm ~/.local/share/elph/metadata.db*",
+                    error_msg
+                );
+            } else if error_msg.contains("locked") || error_msg.contains("busy") {
+                anyhow::bail!(
+                    "{}\n\nAnother process may be using the database.\n\
+                    If no other elph instance is running, try:\n\
+                    rm ~/.local/share/elph/metadata.db*",
+                    error_msg
+                );
+            } else {
+                anyhow::bail!("{}", error_msg);
+            }
+        }
+    }
 }
 
 /// Blocking wrapper for CLI commands that need persistence.

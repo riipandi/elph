@@ -1,7 +1,11 @@
 use anyhow::Result;
 use turso::Connection;
 
-use super::Migration;
+pub struct Migration {
+    pub version: i64,
+    pub name: &'static str,
+    pub up: &'static str,
+}
 
 pub async fn run(conn: &Connection, migrations: &[Migration]) -> Result<()> {
     conn.execute(
