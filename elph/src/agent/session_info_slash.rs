@@ -89,6 +89,7 @@ pub async fn format_session_info(session: &CodingAgentSession, skills: Option<&[
     let provider = session.model_provider();
     let model_id = session.model_id();
     let api_backend = format_api_backend(&session.model_api());
+    let title_model = session.title_model();
     let last_activity = {
         let meta = session.harness().session_metadata().await;
         format_session_timestamp(&meta.updated_at)
@@ -123,6 +124,7 @@ pub async fn format_session_info(session: &CodingAgentSession, skills: Option<&[
          Session ID: {session_id}\n\
          Working directory: {cwd}\n\
          Model: {provider}/{model_id}\n\
+         Title model: {title_model}\n\
          API Backend: {api_backend}\n\
          Last activity: {last_activity}\n\
          {mcp_line}\
@@ -275,6 +277,7 @@ mod tests {
 Session ID: abc\n\
 Working directory: /tmp\n\
 Model: openai/gpt-4o\n\
+Title model: inherit\n\
 API Backend: Responses\n\
 Last activity: 2026-07-27 12:00\n\
 MCP:\n\
@@ -290,6 +293,7 @@ Turn: 15";
             "Session ID:",
             "Working directory:",
             "Model:",
+            "Title model:",
             "API Backend:",
             "Last activity:",
             "MCP:",

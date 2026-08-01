@@ -220,6 +220,17 @@ Legacy nested `provider: { maxRetries, defaultTimeout }` is lifted to the root o
 
 **Per-session state** (active model, thinking level, agent mode) lives on the coding session / Turso session tree so concurrent Elph instances do not race on `settings.json`. New sessions start in agent mode **`build`**. Switching to a model with a smaller context window may auto-compact history so it fits.
 
+### Session titles (`models.sessionTitleModel`)
+
+Sessions get an automatic title after the first user turn, generated in the background by the model in `models.sessionTitleModel` — `"inherit"` (default) uses the session's active model; set it to a `provider/model_id` (e.g. `anthropic/claude-haiku-4-5`) to use a different, usually cheaper, model for naming. Rename manually anytime with `/rename`.
+
+Naming is defensive by design:
+
+- The conversation excerpt keeps the first and most recent user messages (tool results and assistant output are omitted), capped at a small character budget — long sessions don't inflate the naming call.
+- Titles are sanitized: quotes, a leading `Title:`/`Session:` label, and trailing punctuation are stripped; generic placeholders (`"Chat"`, `"Conversation"`, …) are rejected.
+- If the naming model call fails or returns a generic title, the first user message (truncated to 60 characters) is used as a fallback, so sessions always end up named.
+- A failed attempt is retried on later turns (up to 3 tries). An invalid/unknown `sessionTitleModel` ref falls back to the session model instead of skipping naming.
+
 ### Theme (`ui.theme` / `ui.themes`)
 
 | Mode             | Behavior                                                               |

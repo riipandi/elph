@@ -218,6 +218,7 @@ pub use prompt::PromptTemplateDiagnosticCode;
 pub use prompt::SourcedPromptTemplate;
 pub use prompt::SourcedPromptTemplateDiagnostic;
 pub use prompt::builtin::session_name::extract_conversation_for_naming;
+pub use prompt::builtin::session_name::sanitize_session_name;
 pub use prompt::encoding::PromptEncodingConfig;
 pub use prompt::encoding::PromptEncodingDelimiter;
 pub use prompt::encoding::PromptEncodingMode;
