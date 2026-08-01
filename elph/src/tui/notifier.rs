@@ -52,10 +52,10 @@ impl NotifierQueue {
         let mut last_sent = self.last_sent.write().await;
         let now = Instant::now();
 
-        if let Some(&last) = last_sent.get(kind_key) {
-            if now.duration_since(last) < self.rate_limit {
-                return false; // Rate limited
-            }
+        if let Some(&last) = last_sent.get(kind_key)
+            && now.duration_since(last) < self.rate_limit
+        {
+            return false; // Rate limited
         }
 
         last_sent.insert(kind_key.to_string(), now);
@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn notif_kind_keys_are_unique() {
-        let kinds = vec![
+        let kinds = [
             NotifKind::TurnComplete { elapsed_secs: 1.0 },
             NotifKind::ToolPermission { tool_name: "test" },
             NotifKind::UserQuestion { summary: "test".into() },
