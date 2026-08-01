@@ -28,7 +28,7 @@ use std::time::Instant;
 /// Default auth store path under `CONFIG_DIR/auth.json` (same as [`crate::platform::Paths`]).
 ///
 /// Resolves via `ELPH_HOME` / XDG (`~/.config/elph/auth.json`). Never hardcodes `~/.elph/`.
-fn default_auth_store_path() -> PathBuf {
+pub fn default_auth_store_path() -> PathBuf {
     match crate::platform::Paths::resolve() {
         Ok(paths) => paths.auth_store_path(),
         Err(_) => {
@@ -189,9 +189,31 @@ fn get_provider_config_status(provider_id: &str) -> ProviderConfigStatus {
 
 /// Like [`get_provider_config_status`] but uses an explicit auth store path (tests / hosts).
 pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) -> ProviderConfigStatus {
-    let Ok(file) = elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) else {
-        return ProviderConfigStatus::Unconfigured;
+    // Try loading the encrypted auth store first
+    let file = match elph_agent::AuthStoreFile::load_from_path_sync(auth_store_path) {
+        Ok(f) => f,
+        Err(_) => {
+            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            if let Ok(content) = std::fs::read_to_string(auth_store_path) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+                    if let Some(providers) = json.get("providers").and_then(|v| v.as_object()) {
+                        if let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str()) {
+                            if let Some(var_name) = credential.strip_prefix(elph_agent::ENV_REF_PREFIX) {
+                                return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
+                            }
+                            // OAuth JSON blobs are long; short values are API keys.
+                            if credential.trim().starts_with('{') || credential.len() > 100 {
+                                return ProviderConfigStatus::OAuthConfigured;
+                            }
+                            return ProviderConfigStatus::ApiKeyConfigured;
+                        }
+                    }
+                }
+            }
+            return ProviderConfigStatus::Unconfigured;
+        }
     };
+
     if let Some(entry) = file.get_provider_credential(provider_id) {
         if let Some(var_name) = entry.strip_prefix(elph_agent::ENV_REF_PREFIX) {
             return ProviderConfigStatus::EnvVarConfigured(var_name.to_string());
