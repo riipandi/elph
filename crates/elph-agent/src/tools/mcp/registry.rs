@@ -9,6 +9,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use elph_ai::Tool;
@@ -114,6 +115,10 @@ pub struct McpToolRegistry {
     event_rx: RwLock<Option<mpsc::UnboundedReceiver<McpServerEvent>>>,
     /// True once tools (and resources/prompts) have been discovered for this registry.
     tools_discovered: RwLock<bool>,
+    /// Options used for deferred discovery (lazy mode).
+    load_options: RwLock<Option<McpLoadOptions>>,
+    /// Servers that have already been individually discovered (even if full batch discovery is pending).
+    discovered_servers: RwLock<Vec<String>>,
 }
 
 impl McpToolRegistry {
@@ -133,6 +138,8 @@ impl McpToolRegistry {
             auth_store_path: None,
             event_rx: RwLock::new(None),
             tools_discovered: RwLock::new(false),
+            load_options: RwLock::new(None),
+            discovered_servers: RwLock::new(Vec::new()),
         }
     }
 
@@ -150,14 +157,13 @@ impl McpToolRegistry {
         let pool = McpSessionPool::new()
             .with_auth_store_path(options.auth_store_path.clone())
             .with_response_cache(options.response_cache.clone());
-        let (event_tx, event_rx) = if options.enable_list_changed {
+        let (_event_tx, event_rx) = if options.enable_list_changed {
             let (tx, rx) = mpsc::unbounded_channel();
             pool.set_event_sender(tx.clone());
             (Some(tx), Some(rx))
         } else {
             (None, None)
         };
-        let _ = event_tx;
         let pool = Arc::new(pool);
 
         let enabled: Vec<(String, McpServerConfig)> = config
@@ -255,9 +261,11 @@ impl McpToolRegistry {
             pool,
             report: RwLock::new(report),
             policy: config.policy.clone(),
-            auth_store_path: options.auth_store_path,
+            auth_store_path: options.auth_store_path.clone(),
             event_rx: RwLock::new(event_rx),
             tools_discovered: RwLock::new(should_discover_any),
+            load_options: RwLock::new(Some(options)),
+            discovered_servers: RwLock::new(Vec::new()),
         })
     }
 
@@ -266,6 +274,27 @@ impl McpToolRegistry {
     /// For `lazy`-loaded registries, this triggers the deferred discovery.
     /// Subsequent calls are no-ops.
     pub async fn discover_tools(&self) -> Result<()> {
+        self.discover_tools_with_options(None, None, None, None).await
+    }
+
+    /// Discover tools with an optional progress reporter override.
+    ///
+    /// This is useful for deferred/bootstrap discovery where the caller wants
+    /// progress events without having preconfigured `McpLoadOptions`.
+    pub async fn discover_tools_with_progress(
+        &self,
+        progress_tx: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+    ) -> Result<()> {
+        self.discover_tools_with_options(progress_tx, None, None, None).await
+    }
+
+    async fn discover_tools_with_options(
+        &self,
+        progress_override: Option<mpsc::UnboundedSender<McpServerLoadProgress>>,
+        concurrency_override: Option<usize>,
+        continue_on_error_override: Option<bool>,
+        timeout_override: Option<Duration>,
+    ) -> Result<()> {
         if *self.tools_discovered.read() {
             return Ok(());
         }
@@ -280,7 +309,10 @@ impl McpToolRegistry {
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = self.config.server_count().saturating_sub(enabled.len());
-        let pending: Vec<(String, McpServerConfig)> = enabled.into_iter().collect();
+        let pending: Vec<(String, McpServerConfig)> = enabled
+            .into_iter()
+            .filter(|(n, _)| !self.is_server_discovered(n))
+            .collect();
 
         if pending.is_empty() {
             *self.report.write() = McpLoadReport {
@@ -291,19 +323,47 @@ impl McpToolRegistry {
             return Ok(());
         }
 
-        let results = stream::iter(pending.into_iter().enumerate())
+        let options = self.load_options.read();
+        let opts = options.as_ref();
+        let concurrency = concurrency_override.unwrap_or_else(|| opts.map_or(4, |o| o.max_concurrency.max(1)));
+        let continue_on_error =
+            continue_on_error_override.unwrap_or_else(|| opts.map_or(true, |o| o.continue_on_error));
+        let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
+        let progress_tx = progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone()));
+        let discovery_timeout = timeout_override.unwrap_or_else(|| {
+            opts.and_then(|o| o.discovery_timeout)
+                .unwrap_or_else(|| Duration::from_secs(0))
+        });
+        drop(options);
+
+        let total = pending.len();
+        let results: Vec<ServerDiscovery> = stream::iter(pending.into_iter().enumerate())
             .map(|(index, (name, server_config))| {
                 let pool = Arc::clone(&self.pool);
+                let progress_tx = progress_tx.clone();
                 async move {
-                    let _ = index;
-                    discover_one(&pool, &name, server_config, None, true).await
+                    if let Some(ref tx) = progress_tx {
+                        let _ = tx.send(McpServerLoadProgress::Started {
+                            name: name.clone(),
+                            index: index + 1,
+                            total,
+                        });
+                    }
+                    let result = discover_one(&pool, &name, server_config, Some(discovery_timeout), discover_rp).await;
+                    if let Some(ref tx) = progress_tx {
+                        let _ = tx.send(server_discovery_progress(&result));
+                    }
+                    if matches!(result, ServerDiscovery::Ok { .. }) {
+                        self.discovered_servers.write().push(name.clone());
+                    }
+                    result
                 }
             })
-            .buffer_unordered(4)
+            .buffer_unordered(concurrency)
             .collect()
             .await;
         let (_tools, _resources, _prompts, _resource_capable, _prompt_capable, _task_capable, report) =
-            build_catalogs_from_results(self.config.clone(), results, skipped, true)?;
+            build_catalogs_from_results(self.config.clone(), results, skipped, continue_on_error)?;
         *self.tools.write() = _tools;
         *self.resources.write() = _resources;
         *self.prompts.write() = _prompts;
@@ -313,6 +373,74 @@ impl McpToolRegistry {
         *self.report.write() = report;
         *discovered = true;
         Ok(())
+    }
+
+    /// Discover a single server on-demand (lazy mode friendly).
+    ///
+    /// This is useful when you want to expose tools for one specific server
+    /// without waiting for the full batch discovery.
+    pub async fn discover_server(&self, server_name: &str) -> Result<()> {
+        let mut discovered = self.discovered_servers.write();
+        if discovered.contains(&server_name.to_string()) {
+            return Ok(());
+        }
+        drop(discovered);
+
+        let Some(server_config) = self.config.servers.get(server_name).cloned() else {
+            anyhow::bail!("MCP server \"{server_name}\" not configured");
+        };
+        if server_config.is_disabled() {
+            anyhow::bail!("MCP server \"{server_name}\" is disabled");
+        }
+
+        let options = self.load_options.read();
+        let opts = options.as_ref();
+        let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
+        let discovery_timeout = opts.and_then(|o| o.discovery_timeout);
+        drop(options);
+
+        let result = discover_one(&self.pool, server_name, server_config, discovery_timeout, discover_rp).await;
+        let mut discovered = self.discovered_servers.write();
+        discovered.push(server_name.to_string());
+
+        let (_tools, _resources, _prompts, _resource_capable, _prompt_capable, _task_capable, report) =
+            build_catalogs_from_results(self.config.clone(), vec![result], 0, true)?;
+        *self.tools.write() = _tools;
+        *self.resources.write() = _resources;
+        *self.prompts.write() = _prompts;
+        *self.resource_capable.write() = _resource_capable;
+        *self.prompt_capable.write() = _prompt_capable;
+        *self.task_capable.write() = _task_capable;
+        *self.report.write() = report;
+        Ok(())
+    }
+
+    /// Check whether a specific server has already been discovered.
+    pub fn is_server_discovered(&self, server_name: &str) -> bool {
+        self.discovered_servers.read().contains(&server_name.to_string())
+    }
+
+    /// Count enabled servers that have not yet been discovered.
+    pub fn pending_server_count(&self) -> usize {
+        self.config
+            .enabled_servers()
+            .filter(|(n, _)| !self.is_server_discovered(n))
+            .count()
+    }
+
+    /// Whether the full tool catalog has been discovered at least once.
+    pub fn is_tools_discovered(&self) -> bool {
+        *self.tools_discovered.read()
+    }
+
+    /// Load strategy used by this registry.
+    pub fn load_strategy(&self) -> McpLoadStrategy {
+        self.load_strategy
+    }
+
+    /// Stored load options (if any).
+    pub fn load_options(&self) -> Option<McpLoadOptions> {
+        self.load_options.read().clone()
     }
 
     pub fn config(&self) -> &McpConfig {
@@ -1456,5 +1584,42 @@ mod tests {
         assert!(text.contains("truncated"));
         assert!(text.chars().count() < 50_000);
         assert_eq!(agent.details.get("truncated"), Some(&json!(true)));
+    }
+
+    #[test]
+    fn empty_registry_is_lazy_and_undiscovered() {
+        let registry = McpToolRegistry::empty();
+        assert_eq!(registry.load_strategy(), McpLoadStrategy::Lazy);
+        assert!(!registry.is_tools_discovered());
+        assert_eq!(registry.pending_server_count(), 0);
+        assert!(registry.load_options().is_none());
+    }
+
+    #[test]
+    fn pending_count_reflects_individual_discovery() {
+        let mut registry = McpToolRegistry::empty();
+        assert_eq!(registry.pending_server_count(), 0);
+
+        registry.discovered_servers.write().push("fs".to_string());
+        assert_eq!(registry.pending_server_count(), 0);
+
+        // Simulate a configured but not-yet-discovered server.
+        registry
+            .config
+            .servers
+            .insert("web".into(), McpServerConfig::stdio("echo", vec![]));
+        assert_eq!(registry.pending_server_count(), 1);
+
+        registry.discovered_servers.write().push("web".to_string());
+        assert_eq!(registry.pending_server_count(), 0);
+    }
+
+    #[test]
+    fn is_server_discovered_tracks_individual_servers() {
+        let registry = McpToolRegistry::empty();
+        assert!(!registry.is_server_discovered("fs"));
+        registry.discovered_servers.write().push("fs".to_string());
+        assert!(registry.is_server_discovered("fs"));
+        assert!(!registry.is_server_discovered("other"));
     }
 }

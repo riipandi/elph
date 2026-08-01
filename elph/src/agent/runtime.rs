@@ -5,7 +5,7 @@ use anyhow::Result;
 use elph_agent::create_goal_tools_with_hook;
 use elph_agent::{
     AgentGraphStore, AgentHarness, AgentHarnessOptions, AgentHarnessStreamOptions, BuiltinToolsBuilder, GoalRuntime,
-    GoalStore, LocalExecutionEnv, McpToolRegistry, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
+    GoalStore, LocalExecutionEnv, QueueMode, RestoreOptions, SubagentBootstrap, SystemPrompt,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -81,7 +81,8 @@ pub async fn create_coding_session_with_events(
     tools.push(super::mode_change::create_mode_change_tool(ui_tx.clone()));
 
     let (mcp_registry, mcp_config_warnings) = if options.defer_mcp_load {
-        (Arc::new(McpToolRegistry::empty()), Vec::new())
+        let (registry, warnings) = discover_mcp_registry(options.paths).await;
+        (registry, warnings)
     } else {
         let (registry, warnings) = discover_mcp_registry(options.paths).await;
         tools.extend(registry.create_agent_tools().await);
@@ -236,9 +237,7 @@ pub async fn create_coding_session_with_events(
     })
     .await?;
 
-    if !options.defer_mcp_load {
-        start_mcp_notifications(&session, mcp_registry, mcp_config_warnings);
-    }
+    start_mcp_notifications(&session, Arc::clone(&mcp_registry), mcp_config_warnings);
 
     Ok((session, ui_rx))
 }

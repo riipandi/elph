@@ -8,7 +8,6 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
 use chrono::{DateTime, Utc};
 
-use crate::agent::mcp_bootstrap::{discover_mcp_registry_with_progress, wire_mcp_into_session};
 use crate::agent::{AgentUiEvent, CodingAgentSession, CreateSessionOptions, LoadResourcesResult};
 use crate::agent::{create_coding_session_with_events, format_resource_conflict_notice, format_resource_load_warnings};
 use crate::platform::{Paths, Settings};
@@ -705,22 +704,32 @@ pub enum McpBootstrapUpdate {
 /// Discover MCP servers and attach tools to a running session (after the TUI is visible).
 pub async fn bootstrap_mcp_for_session(
     session: &CodingAgentSession,
-    paths: &Paths,
+    _paths: &Paths,
     mut on_update: impl FnMut(McpBootstrapUpdate),
 ) -> Result<()> {
+    let registry = session
+        .mcp_registry()
+        .ok_or_else(|| anyhow::anyhow!("MCP registry not available"))?;
+
     let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
-    let paths = paths.clone();
-    let load = tokio::spawn(async move { discover_mcp_registry_with_progress(&paths, Some(progress_tx)).await });
+    let registry_for_discovery = Arc::clone(&registry);
+    let load = tokio::spawn(async move {
+        registry_for_discovery
+            .discover_tools_with_progress(Some(progress_tx))
+            .await
+    });
 
     while let Some(event) = progress_rx.recv().await {
         on_update(McpBootstrapUpdate::Server(event));
     }
 
-    let (registry, config_warnings) = load.await.map_err(|e| anyhow::anyhow!("{e}"))?;
-    for line in format_mcp_load_footer(&registry.load_report(), &config_warnings) {
+    let result = load.await.map_err(|e| anyhow::anyhow!("{e}"))?;
+    result?;
+    let report = registry.load_report();
+    for line in format_mcp_load_footer(&report, &[]) {
         on_update(McpBootstrapUpdate::TranscriptLine(line));
     }
-    wire_mcp_into_session(session, registry, config_warnings).await?;
+    session.attach_mcp_registry(registry).await?;
     Ok(())
 }
 
