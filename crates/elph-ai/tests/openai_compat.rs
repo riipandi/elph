@@ -3,6 +3,26 @@ use elph_ai::api::openai_completions::{OpenAICompletionsOptions, build_openai_co
 use elph_ai::get_builtin_model;
 use elph_ai::types::{Context, StreamOptions};
 
+fn build_test_model(provider: &str) -> elph_ai::types::Model {
+    elph_ai::types::Model {
+        id: format!("{provider}/test-model"),
+        name: "Test Model".into(),
+        api: "openai-compatible".into(),
+        provider: provider.into(),
+        base_url: "https://example.test/v1".into(),
+        reasoning: false,
+        thinking_level_map: None,
+        input: vec!["text".into()],
+        cost: elph_ai::types::ModelCost::default(),
+        context_window: 128_000,
+        max_tokens: 8_192,
+        headers: None,
+        openai_completions_compat: None,
+        openai_responses_compat: None,
+        anthropic_compat: None,
+    }
+}
+
 #[test]
 fn detect_compat_matches_elph_ai_defaults() {
     let model = get_builtin_model("deepseek", "deepseek-v4-flash").expect("model exists");
@@ -47,6 +67,16 @@ fn tokenrouter_gateway_avoids_openai_only_fields() {
     assert_eq!(params["max_tokens"], 1024);
     let messages = params["messages"].as_array().expect("messages");
     assert_eq!(messages[0]["role"], "system");
+}
+
+#[test]
+fn kimi_models_require_tool_result_names() {
+    let model = build_test_model("kimi-coding");
+    let compat = detect_compat(&model);
+    assert!(
+        compat.requires_tool_result_name,
+        "Kimi-compatible OpenAI routes need tool result names"
+    );
 }
 
 #[test]

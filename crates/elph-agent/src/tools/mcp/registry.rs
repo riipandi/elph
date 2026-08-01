@@ -86,6 +86,10 @@ pub struct McpLoadReport {
     pub servers_skipped: usize,
 }
 
+fn should_discover_server(global_strategy: McpLoadStrategy, server_strategy: McpLoadStrategy) -> bool {
+    global_strategy == McpLoadStrategy::Eager || server_strategy == McpLoadStrategy::Eager
+}
+
 /// Registry of MCP servers, pooled sessions, and discovered catalogs.
 pub struct McpToolRegistry {
     config: McpConfig,
@@ -155,64 +159,71 @@ impl McpToolRegistry {
             .map(|(n, c)| (n.to_string(), c.clone()))
             .collect();
         let skipped = config.server_count().saturating_sub(enabled.len());
+        let should_discover_any = enabled
+            .iter()
+            .any(|(_, server_config)| should_discover_server(options.load_strategy, server_config.load_strategy()));
 
-        let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) =
-            if options.load_strategy == McpLoadStrategy::Eager {
-                let concurrency = options.max_concurrency.max(1);
-                let pool_for_discovery = Arc::clone(&pool);
-                let discover_rp = options.discover_resources_and_prompts;
-                let progress_tx = options.progress_tx.clone();
-                let total = enabled.len();
-                let results: Vec<ServerDiscovery> = stream::iter(enabled.into_iter().enumerate())
-                    .map(|(index, (name, server_config))| {
-                        let discovery_timeout = options.discovery_timeout;
-                        let pool = Arc::clone(&pool_for_discovery);
-                        let progress_tx = progress_tx.clone();
-                        async move {
-                            if let Some(ref tx) = progress_tx {
-                                let _ = tx.send(McpServerLoadProgress::Started {
-                                    name: name.clone(),
-                                    index: index + 1,
-                                    total,
-                                });
-                            }
-                            let result =
-                                discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
-                            if let Some(ref tx) = progress_tx {
-                                let _ = tx.send(server_discovery_progress(&result));
-                            }
-                            result
+        let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) = if should_discover_any
+        {
+            let concurrency = options.max_concurrency.max(1);
+            let pool_for_discovery = Arc::clone(&pool);
+            let discover_rp = options.discover_resources_and_prompts;
+            let progress_tx = options.progress_tx.clone();
+            let total = enabled.len();
+            let results: Vec<ServerDiscovery> = stream::iter(enabled.into_iter().enumerate())
+                .map(|(index, (name, server_config))| {
+                    let should_discover = should_discover_server(options.load_strategy, server_config.load_strategy());
+                    let discovery_timeout = options.discovery_timeout;
+                    let pool = Arc::clone(&pool_for_discovery);
+                    let progress_tx = progress_tx.clone();
+                    async move {
+                        if !should_discover {
+                            return None;
                         }
-                    })
-                    .buffer_unordered(concurrency)
-                    .collect()
-                    .await;
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(McpServerLoadProgress::Started {
+                                name: name.clone(),
+                                index: index + 1,
+                                total,
+                            });
+                        }
+                        let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
+                        if let Some(ref tx) = progress_tx {
+                            let _ = tx.send(server_discovery_progress(&result));
+                        }
+                        Some(result)
+                    }
+                })
+                .buffer_unordered(concurrency)
+                .filter_map(|result| async move { result })
+                .collect()
+                .await;
 
-                let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) =
-                    build_catalogs_from_results(config.clone(), results, skipped, options.continue_on_error)?;
-                (
-                    tools,
-                    resources,
-                    prompts,
-                    resource_capable,
-                    prompt_capable,
-                    task_capable,
-                    report,
-                )
-            } else {
-                (
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    McpLoadReport {
-                        servers_skipped: skipped,
-                        ..Default::default()
-                    },
-                )
-            };
+            let (tools, resources, prompts, resource_capable, prompt_capable, task_capable, report) =
+                build_catalogs_from_results(config.clone(), results, skipped, options.continue_on_error)?;
+            (
+                tools,
+                resources,
+                prompts,
+                resource_capable,
+                prompt_capable,
+                task_capable,
+                report,
+            )
+        } else {
+            (
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                McpLoadReport {
+                    servers_skipped: skipped,
+                    ..Default::default()
+                },
+            )
+        };
 
         log::info!(
             "MCP registry loaded: tools={} resources={} prompts={} ok={} failed={} skipped={} strategy={}",
@@ -238,7 +249,7 @@ impl McpToolRegistry {
             policy: config.policy.clone(),
             auth_store_path: options.auth_store_path,
             event_rx: RwLock::new(event_rx),
-            tools_discovered: RwLock::new(options.load_strategy == McpLoadStrategy::Eager),
+            tools_discovered: RwLock::new(should_discover_any),
         })
     }
 
@@ -1375,6 +1386,13 @@ mod tests {
         let name = expose_tool_name("fs", "read_file");
         assert_eq!(parse_exposed_tool_name(&name), Some(("fs", "read_file")));
         assert_eq!(parse_exposed_tool_name("not_mcp"), None);
+    }
+
+    #[test]
+    fn eager_server_strategy_discover_is_honored() {
+        assert!(should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Eager));
+        assert!(should_discover_server(McpLoadStrategy::Eager, McpLoadStrategy::Lazy));
+        assert!(!should_discover_server(McpLoadStrategy::Lazy, McpLoadStrategy::Lazy));
     }
 
     #[test]

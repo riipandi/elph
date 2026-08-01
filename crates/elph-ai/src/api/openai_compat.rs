@@ -82,6 +82,7 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
 
     let is_xai = provider == "xai" || base_url.contains("api.x.ai");
     let is_deepseek = provider == "deepseek" || base_url.contains("deepseek.com") || gateway_deepseek;
+    let requires_tool_result_name = is_moonshot_route || provider == "kimi-coding" || base_url.contains("kimi.com");
     let is_openrouter_developer_role_model =
         is_openrouter && (model_id.starts_with("anthropic/") || model_id.starts_with("openai/"));
     let cache_control_format = if provider == "openrouter" && model_id.starts_with("anthropic/") {
@@ -123,7 +124,7 @@ pub fn detect_compat(model: &Model) -> ResolvedOpenAICompletionsCompat {
         } else {
             "max_completion_tokens".to_string()
         },
-        requires_tool_result_name: false,
+        requires_tool_result_name,
         requires_assistant_after_tool_result: false,
         requires_thinking_as_text: false,
         requires_reasoning_content_on_assistant_messages: is_deepseek || gateway_moonshot,
