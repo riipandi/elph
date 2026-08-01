@@ -1790,9 +1790,9 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                             pending.oauth_url.clear();
                             pending.oauth_provider_name.clear();
                             pending.done = false;
-                            pending.input_focus = ProviderConnectFocus::List;
+                            pending.input_focus = ProviderConnectFocus::Search;
                             pending.fresh_open = false;
-                            provider_connect_input_focus.set(ProviderConnectFocus::List);
+                            provider_connect_input_focus.set(ProviderConnectFocus::Search);
                             provider_connect_selected.set(0);
                             provider_connect_filter.set(String::new());
                             provider_connect_api_key.set(String::new());
