@@ -18,6 +18,7 @@ pub fn wire_input_shortcuts(
     has_focus: bool,
     mut value: State<String>,
     input_handle: Ref<TextInputHandle>,
+    external: Option<State<String>>,
 ) {
     let pending_esc = hooks.use_ref(|| false);
 
@@ -34,7 +35,11 @@ pub fn wire_input_shortcuts(
                 let cursor = input_handle.read().cursor_offset();
                 let (text, cursor) = apply_paste_at_cursor(&prev, cursor, &data);
                 input_handle.write().set_cursor_offset(cursor);
-                value.set(text);
+                value.set(text.clone());
+                // Sync to external parent state so the dialog's State<String> is updated
+                if let Some(mut ext) = external {
+                    ext.set(text);
+                }
                 return;
             }
 

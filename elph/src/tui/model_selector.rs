@@ -7,7 +7,7 @@ use elph_ai::{get_builtin_model, get_builtin_models, get_builtin_providers};
 use elph_tui::components::{DialogChrome, UiTheme, dialog_max_content_height};
 
 use crate::agent::parse_model_value;
-use crate::tui::provider_connect_dialog::{ProviderConfigStatus, get_provider_options};
+use crate::utils::path::AppPaths;
 
 use super::slash_palette::fuzzy::{field_score, max_score};
 use super::slash_palette::list_viewport_cap;
@@ -159,11 +159,14 @@ impl ModelCatalogOptions {
 
 /// Provider ids that already have credentials in `auth.json`.
 pub fn configured_provider_ids() -> HashSet<String> {
-    get_provider_options()
-        .into_iter()
-        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
-        .map(|p| p.id)
-        .collect()
+    // Use paths resolve to find auth.json and read directly from file.
+    // Cannot use get_provider_options() because its config_status is cached as Unconfigured.
+    if let Ok(paths) = crate::platform::Paths::resolve() {
+        let ids = crate::tui::provider_credential_store::list_providers_with_credentials(&paths.auth_store_path());
+        ids.into_iter().collect()
+    } else {
+        HashSet::new()
+    }
 }
 
 /// Built-in model catalog for the picker UI.

@@ -123,6 +123,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
         code, kind, modifiers, ..
     }) = event
     else {
+        // Non-Key events (e.g. Paste) must propagate to child hooks. Do not consume.
         return;
     };
     if kind == KeyEventKind::Release {
@@ -2339,12 +2340,12 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
                 return;
             }
 
-            // Character typing / backspace: owned by DialogUserInputContent → TextInput
+            // Character typing, backspace, paste: owned by DialogUserInputContent → TextInput
             // (shared `provider_connect_api_key` State). Do not also push/pop here —
             // that double-applied each keystroke (`ad` → `adad`).
-            if !shell_global_shortcut(modifiers, code) {
-                return;
-            }
+            // Let all keystrokes through to the Input component. Only Ctrl+C/Ctrl+D
+            // are intercepted by the shell global shortcut handler above.
+            return;
         }
 
         let option_nav = {

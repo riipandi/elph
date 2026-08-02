@@ -13,7 +13,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use serde::{Deserialize, Serialize};
 
 use super::crypto::Aes256Key;
-use super::crypto::{decrypt_sync_bytes, encrypt_sync_bytes};
+use super::crypto::decrypt_sync_bytes;
 
 /// On-disk envelope version.
 pub const AUTH_STORE_FORMAT_VERSION: u32 = 2;
@@ -29,17 +29,6 @@ pub struct AuthStoreEnvelope {
     pub nonce: String,
     /// URL-safe base64 (no pad) of ciphertext+tag.
     pub ciphertext: String,
-}
-
-/// Seal logical store JSON bytes into a v2 envelope document.
-pub fn seal_store(key: &Aes256Key, plaintext_json: &[u8]) -> Result<AuthStoreEnvelope> {
-    let (nonce, ciphertext) = encrypt_sync_bytes(key, plaintext_json)?;
-    Ok(AuthStoreEnvelope {
-        v: AUTH_STORE_FORMAT_VERSION,
-        alg: ALG.to_string(),
-        nonce: URL_SAFE_NO_PAD.encode(nonce),
-        ciphertext: URL_SAFE_NO_PAD.encode(ciphertext),
-    })
 }
 
 /// Unseal a v2 envelope into logical store JSON bytes.

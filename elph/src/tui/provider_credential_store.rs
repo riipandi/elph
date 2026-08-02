@@ -109,10 +109,12 @@ pub fn has_provider_credential(auth_store_path: &Path, provider_id: &str) -> boo
     match AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(file) => file.get_provider_credential(provider_id).is_some(),
         Err(_) => {
-            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(providers) = json.get("provider")
+                    .or_else(|| json.get("providers"))
+                    .and_then(|v| v.as_object())
             {
                 return providers.get(provider_id).is_some();
             }
@@ -131,10 +133,15 @@ pub async fn delete_provider_credential(auth_store_path: &Path, provider_id: &st
     let encrypted_load = AuthStoreFile::load_from_path(auth_store_path).await;
 
     if encrypted_load.is_err() {
-        // Fallback: try to read as plain JSON (for manually created auth.json files)
+        // Fallback: try to read as plain JSON
         if let Ok(content) = std::fs::read_to_string(auth_store_path)
             && let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content)
-            && let Some(providers) = json.get_mut("providers").and_then(|v| v.as_object_mut())
+            && let Some(providers) = (if json.get("provider").is_some() {
+                json.get_mut("provider")
+            } else {
+                json.get_mut("providers")
+            })
+            .and_then(|v| v.as_object_mut())
         {
             let removed = providers.remove(provider_id).is_some();
             if removed {
@@ -177,10 +184,12 @@ pub fn list_providers_with_credentials(auth_store_path: &Path) -> Vec<String> {
     let file = match AuthStoreFile::load_from_path_sync(auth_store_path) {
         Ok(f) => f,
         Err(_) => {
-            // Fallback: try to read as plain JSON (for manually created auth.json files)
+            // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("providers").and_then(|v| v.as_object())
+                && let Some(providers) = json.get("provider")
+                    .or_else(|| json.get("providers"))
+                    .and_then(|v| v.as_object())
             {
                 let mut ids: Vec<String> = providers.keys().cloned().collect();
                 ids.sort();
