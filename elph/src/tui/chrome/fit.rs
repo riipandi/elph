@@ -1,7 +1,7 @@
 //! Progressive chrome fitting — drops or truncates rightmost segments first.
 
 use crate::tui::labels::{
-    FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, FOOTER_IMG_INDICATOR, GitFooterInfo, context_pct_limit_label,
+    FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, GitFooterInfo, context_pct_limit_label,
     editor_border_project_label, footer_mode_label, footer_model_name, footer_model_thinking_label,
     footer_status_left_label, footer_status_right_label, footer_status_right_label_with_select, format_token_count,
     session_header_segments, session_label,
@@ -177,7 +177,10 @@ pub fn fit_footer_status_left(
     candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_label));
     // 4. Drop provider: MODE · model (thinking) ◐
     if supports_images {
-        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_id_thinking, FOOTER_IMG_INDICATOR));
+        candidates.push(format!(
+            "{}{}{} {}",
+            mode_s, FOOTER_SEP, model_id_thinking, FOOTER_IMG_INDICATOR
+        ));
     }
     candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_id_thinking));
     // 5. Drop thinking + provider + ◐: MODE · model (always last non-truncated)

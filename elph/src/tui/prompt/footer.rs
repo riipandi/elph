@@ -7,8 +7,10 @@ use crate::tui::chrome::{
     footer_mode_model_width,
 };
 use crate::tui::labels::GitFooterInfo;
-use crate::tui::labels::{FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, FOOTER_IMG_INDICATOR, footer_mode_label};
-use crate::tui::theme::{FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, QUIT_BUSY_NOTICE_FG, rgb_color};
+use crate::tui::labels::{FOOTER_IMG_INDICATOR, FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, footer_mode_label};
+use crate::tui::theme::{
+    FOOTER_DIM_FG, FOOTER_GIT_ADD_FG, FOOTER_GIT_DEL_FG, FOOTER_IMG_INDICATOR_FG, QUIT_BUSY_NOTICE_FG, rgb_color,
+};
 use crate::types::{AgentMode, ThinkingLevel};
 
 #[derive(Clone, Default, Props)]
@@ -33,11 +35,11 @@ pub struct FooterProps {
 struct FooterLeftParts {
     /// Agent mode (`Build`, `Plan`, …) — mode color.
     mode: String,
-    /// ` · ` separator between mode and model — neutral white.
+    /// ` · ` separator between mode and model — dimmed grey.
     sep: String,
     /// `provider/model (thinking)` — thinking-level color (no leading separator).
     model_thinking: String,
-    /// ` · ◎` — always dimmed (includes leading separator when present).
+    /// ` ◐` — dimmed when uncolored, blue when colored (includes leading space).
     img: String,
 }
 
@@ -249,7 +251,11 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
     } else {
         FOOTER_DIM_FG
     };
-    let img_color = if colored { FOOTER_IMG_INDICATOR_FG } else { FOOTER_DIM_FG };
+    let img_color = if colored {
+        FOOTER_IMG_INDICATOR_FG
+    } else {
+        FOOTER_DIM_FG
+    };
     let git_add_color = if colored { FOOTER_GIT_ADD_FG } else { FOOTER_DIM_FG };
     let git_del_color = if colored { FOOTER_GIT_DEL_FG } else { FOOTER_DIM_FG };
     // Select badge always uses the warm accent so it stays visible even with dimmed footers.
@@ -290,10 +296,10 @@ pub fn Footer(props: &FooterProps) -> impl Into<AnyElement<'static>> {
                     .into()
                 }))
                 #( (!parts.sep.is_empty()).then(|| -> AnyElement<'static> {
-                    // Separator stays neutral white, independent of agent mode or thinking color.
+                    // Separator stays dimmed grey, independent of agent mode or thinking color.
                     element! {
                         Text(
-                            color: if colored { Color::White } else { FOOTER_DIM_FG },
+                            color: FOOTER_DIM_FG,
                             wrap: TextWrap::NoWrap,
                             content: parts.sep.clone(),
                         )
@@ -462,7 +468,7 @@ mod tests {
             "left missing: {rendered:?}"
         );
         assert!(rendered.contains("turn:"), "right missing: {rendered:?}");
-        assert!(rendered.contains("(xhigh)") || rendered.contains("◎"), "{rendered:?}");
+        assert!(rendered.contains("(xhigh)") || rendered.contains("◐"), "{rendered:?}");
     }
 
     #[test]
