@@ -340,9 +340,8 @@ impl McpToolRegistry {
             continue_on_error_override.unwrap_or_else(|| opts.map_or(true, |o| o.continue_on_error));
         let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
         let progress_tx = progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone()));
-        let discovery_timeout = timeout_override.unwrap_or_else(|| {
+        let discovery_timeout = timeout_override.or_else(|| {
             opts.and_then(|o| o.discovery_timeout)
-                .unwrap_or_else(|| Duration::from_secs(0))
         });
         drop(options);
 
@@ -359,7 +358,7 @@ impl McpToolRegistry {
                             total,
                         });
                     }
-                    let result = discover_one(&pool, &name, server_config, Some(discovery_timeout), discover_rp).await;
+                    let result = discover_one(&pool, &name, server_config, discovery_timeout, discover_rp).await;
                     if let Some(ref tx) = progress_tx {
                         let _ = tx.send(server_discovery_progress(&result));
                     }
