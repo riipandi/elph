@@ -28,7 +28,13 @@ Per-server field `loadStrategy` (default `lazy`):
 | `lazy`  | **(default)** Skip `tools/list` (and resources/prompts discovery) at load time. Tools are discovered on-demand per-server: first `create_agent_tools`, `call_tool`, `read_resource`, or `get_prompt` triggers discovery only for that server. Results are merged into the catalog — other servers stay untouched. |
 | `eager` | Legacy behavior — list all catalogs during `McpToolRegistry::load`.                                                                                                                                                      |
 
-**Key fix:** lazy-loaded servers now correctly discover on their first tool call. The old code called `refresh_server()` (which drops and re-creates the session) on every tool invocation — this was both wasteful and destructive. Now `ensure_server_discovered()` fires discovery exactly once per server, after which the pooled session handles all subsequent calls.
+**Key improvements:** lazy-loaded servers now correctly discover on their first tool call:
+
+- **Graceful degradation:** `create_agent_tools()` returns already-discovered tools even when discovery has errors — never returns empty.
+- **Retry:** `ensure_server_discovered()` retries once on transient failure before giving up.
+- **Merge, not replace:** `discover_server()` and `discover_tools_with_options()` merge results into the existing catalog instead of replacing all tools.
+- **Partial attach:** TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when some servers fail — partial results are better than no tools.
+- **No stale refresh:** The old code called `refresh_server()` (drops and re-creates the session) on every tool invocation. Now `ensure_server_discovered()` fires discovery exactly once per server, after which the pooled session handles all subsequent calls.
 
 **Transport note:** `call_tool` now uses `call_tool_once` (non-MRTR) internally, which works with all transports (stdio, HTTP, SSE). The MRTR-aware `call_tool()` requires HTTP transport and fails on stdio with `"Requires HTTP transport (--port)"`. Since the agent harness doesn't support interactive MRTR rounds (the default `MrtrElicitationPolicy::Decline` declines all elicitation), `call_tool_once` is the correct choice.
 

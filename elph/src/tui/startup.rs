@@ -188,15 +188,6 @@ pub fn apply_mcp_startup_summary_line(messages: &mut Vec<TranscriptMessage>, sum
     upsert_startup_line(messages, STARTUP_KEY_MCP_LOAD, summary, TranscriptStyle::StatusSuccess);
 }
 
-pub fn mark_mcp_startup_failed(messages: &mut Vec<TranscriptMessage>, err: &str) {
-    upsert_startup_line(
-        messages,
-        STARTUP_KEY_MCP_LOAD,
-        format!("MCP failed{STARTUP_SEP}{err}"),
-        TranscriptStyle::StatusFailed,
-    );
-}
-
 /// Append a dim configuration warning under the MCP block.
 pub fn append_startup_warning(messages: &mut Vec<TranscriptMessage>, warning: &str) {
     let warning = warning.trim();
@@ -702,6 +693,8 @@ pub enum McpBootstrapUpdate {
 }
 
 /// Discover MCP servers and attach tools to a running session (after the TUI is visible).
+///
+/// Always attaches tools even if some servers fail — graceful degradation.
 pub async fn bootstrap_mcp_for_session(
     session: &CodingAgentSession,
     _paths: &Paths,
@@ -723,12 +716,17 @@ pub async fn bootstrap_mcp_for_session(
         on_update(McpBootstrapUpdate::Server(event));
     }
 
-    let result = load.await.map_err(|e| anyhow::anyhow!("{e}"))?;
-    result?;
+    // Always attach tools even if discovery had errors — partial results are better than none.
+    match load.await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => log::warn!("MCP discovery partial failure (tools already attached): {e}"),
+        Err(e) => log::warn!("MCP discovery task panicked: {e}"),
+    }
     let report = registry.load_report();
     for line in format_mcp_load_footer(&report, &[]) {
         on_update(McpBootstrapUpdate::TranscriptLine(line));
     }
+    // Attach whatever tools we have (even if discovery partially failed).
     session.attach_mcp_registry(registry).await?;
     Ok(())
 }
@@ -741,7 +739,6 @@ pub enum BootstrapUiEvent {
     McpServer(McpServerLoadProgress),
     McpTranscriptLine(String),
     McpComplete,
-    McpFailed(String),
 }
 
 /// Run agent + MCP bootstrap off the UI thread; progress arrives on the returned channel.
@@ -776,20 +773,23 @@ async fn run_bootstrap_worker(config: TuiBootstrapConfig, paths: Paths, tx: Unbo
     }
 
     let tx_progress = tx.clone();
-    match bootstrap_mcp_for_session(session.as_ref(), &paths, move |update| {
+    let mcp_result = bootstrap_mcp_for_session(session.as_ref(), &paths, move |update| {
         let event = match update {
             McpBootstrapUpdate::Server(progress) => BootstrapUiEvent::McpServer(progress),
             McpBootstrapUpdate::TranscriptLine(line) => BootstrapUiEvent::McpTranscriptLine(line),
         };
         let _ = tx_progress.send(event);
     })
-    .await
-    {
+    .await;
+
+    // Always complete the bootstrap — tools were already attached even on partial failure.
+    match mcp_result {
         Ok(()) => {
             let _ = tx.send(BootstrapUiEvent::McpComplete);
         }
         Err(err) => {
-            let _ = tx.send(BootstrapUiEvent::McpFailed(err.to_string()));
+            log::warn!("MCP bootstrap partial failure (tools already attached): {err}");
+            let _ = tx.send(BootstrapUiEvent::McpComplete);
         }
     }
 }

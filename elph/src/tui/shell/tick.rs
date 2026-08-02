@@ -155,7 +155,7 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                             notifier::notify(&settings.notifications, notifier::NotifKind::StartupReady);
                         }
                     }
-                    BootstrapUiEvent::AgentFailed(msg) | BootstrapUiEvent::McpFailed(msg) => {
+                    BootstrapUiEvent::AgentFailed(msg) => {
                         if let Ok(settings) = Settings::load(&paths.read().clone()) {
                             notifier::notify(
                                 &settings.notifications,

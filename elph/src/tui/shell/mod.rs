@@ -103,7 +103,7 @@ use crate::tui::startup::{
     BootstrapPhase, BootstrapUiEvent, McpFooterLineKind, TuiBootstrapConfig, append_startup_warning,
     apply_mcp_server_progress, apply_mcp_startup_summary_line, begin_agent_startup, begin_mcp_startup,
     bootstrap_activity_label, bootstrap_is_active, classify_mcp_footer_line, mark_agent_startup_failed,
-    mark_agent_startup_ready, mark_mcp_startup_failed, mcp_server_status_label, spawn_bootstrap_worker,
+    mark_agent_startup_ready, mcp_server_status_label, spawn_bootstrap_worker,
 };
 use crate::tui::status_dialog::{
     PromptQueueAction, StatusDialogKind, StatusZone, build_feedback_dialog_kind, build_mcp_auth_dialog_kind,

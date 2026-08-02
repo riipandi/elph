@@ -640,15 +640,5 @@ pub(crate) async fn apply_bootstrap_ui_event(
             chrome_refresh_pending.set(true);
             palette_refresh_pending.set(true);
         }
-        BootstrapUiEvent::McpFailed(err) => {
-            log::warn!("MCP bootstrap failed: {err}");
-            {
-                let mut msgs = messages.write();
-                mark_mcp_startup_failed(&mut msgs, &err);
-            }
-            bootstrap_phase.set(BootstrapPhase::Done);
-            busy.set(false);
-            activity_label.set(String::new());
-        }
     }
 }

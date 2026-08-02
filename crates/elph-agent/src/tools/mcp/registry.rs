@@ -4,11 +4,14 @@
 //! 1. [`McpToolRegistry::load`] / [`load_with_options`] validates config and optionally discovers catalogs.
 //! 2. Sessions are pooled so tool calls reuse stdio processes / HTTP sessions.
 //! 3. Lazy discovery: [`McpToolRegistry::ensure_server_discovered`] fires discovery exactly once per
-//!    server on first `call_tool`/`read_resource`/`get_prompt`. Results are merged into the catalog —
-//!    other servers' tools are preserved.
-//! 4. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools.
+//!    server (with 1 retry on transient failure) on first `call_tool`/`read_resource`/`get_prompt`.
+//!    Results are merged into the catalog — other servers' tools are preserved.
+//! 4. [`McpToolRegistry::create_agent_tools`] exposes `mcp_{server}__{tool}` agent tools. On failure,
+//!    already-discovered tools are still returned (graceful degradation).
 //! 5. Policy filters deny-listed tools; approval is enforced via [`crate::tools::mcp::policy`].
 //! 6. `tools/list_changed` (and resource/prompt variants) can refresh catalogs in place.
+//! 7. The TUI bootstrap (`bootstrap_mcp_for_session`) always attaches tools even when discovery
+//!    has partial failures — partial results are better than no tools.
 //!
 //! ## Call flow (fix for "Requires HTTP transport")
 //!
@@ -340,9 +343,7 @@ impl McpToolRegistry {
             continue_on_error_override.unwrap_or_else(|| opts.map_or(true, |o| o.continue_on_error));
         let discover_rp = opts.map_or(true, |o| o.discover_resources_and_prompts);
         let progress_tx = progress_override.or_else(|| opts.and_then(|o| o.progress_tx.clone()));
-        let discovery_timeout = timeout_override.or_else(|| {
-            opts.and_then(|o| o.discovery_timeout)
-        });
+        let discovery_timeout = timeout_override.or_else(|| opts.and_then(|o| o.discovery_timeout));
         drop(options);
 
         let total = pending.len();
@@ -747,10 +748,12 @@ impl McpToolRegistry {
     /// Convert discovered MCP tools (+ resource/prompt bridge tools) into harness [`AgentTool`]s.
     ///
     /// For lazy-loaded registries, this triggers deferred discovery on first call.
+    /// If discovery fails, already-discovered tools are still returned (graceful degradation).
     pub async fn create_agent_tools(self: &Arc<Self>) -> Vec<AgentTool> {
+        // Try discovery, but don't let errors wipe out previously discovered tools.
         if let Err(error) = self.discover_tools().await {
-            log::warn!("MCP lazy discovery failed; exposing no tools: {error}");
-            return Vec::new();
+            log::warn!("MCP lazy discovery failed; using already-discovered tools: {error}");
+            // Continue with whatever tools we already have — don't return empty.
         }
         let mut out = Vec::new();
 
@@ -1066,11 +1069,30 @@ impl McpToolRegistry {
     /// Unlike `refresh_server()` (which re-discovers and replaces the session),
     /// this only triggers discovery if the server has not yet been discovered.
     /// This is called from the tool/resource/prompt call paths.
+    ///
+    /// Retries once on transient failures before giving up.
     async fn ensure_server_discovered(&self, server_name: &str) -> Result<()> {
         if self.is_server_discovered(server_name) {
             return Ok(());
         }
-        self.discover_server(server_name).await
+        let max_attempts = 2;
+        for attempt in 1..=max_attempts {
+            match self.discover_server(server_name).await {
+                Ok(()) => return Ok(()),
+                Err(error) if attempt < max_attempts => {
+                    log::warn!(
+                        "MCP server discovery failed; retrying: server={server_name} attempt={attempt}/{max_attempts} error={error}"
+                    );
+                    tokio::time::sleep(Duration::from_millis(500 * 2u64.pow(attempt as u32 - 1))).await;
+                }
+                Err(error) => {
+                    return Err(error).context(format!(
+                        "MCP server \"{server_name}\" unreachable after {max_attempts} attempts"
+                    ));
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Call a tool on a configured server (pooled connection).
