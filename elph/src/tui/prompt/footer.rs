@@ -143,11 +143,11 @@ fn split_footer_status_right(right: &str) -> FooterRightParts {
     }
 }
 
-/// Split a fitted left footer line into mode / sep / model-thinking / ▣ for coloring.
+/// Split a fitted left footer line into mode / sep / model-thinking / ◐ for coloring.
 fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
     let mode_s = footer_mode_label(mode);
     let mode_prefix = format!("{mode_s}{}", FOOTER_SEP);
-    const VISION_SUFFIX: &str = "▣";
+    const VISION_SUFFIX: &str = " ◐";
 
     if left == mode_s {
         return FooterLeftParts {
@@ -160,7 +160,7 @@ fn split_footer_status_left(mode: AgentMode, left: &str) -> FooterLeftParts {
 
     if let Some(after_mode) = left.strip_prefix(&mode_prefix) {
         if after_mode == FOOTER_IMG_INDICATOR {
-            // Degenerate: mode + ▣ only (no model segment).
+            // Degenerate: mode + ◐ only (no model segment).
             return FooterLeftParts {
                 mode: mode_s,
                 sep: FOOTER_SEP.to_string(),
@@ -392,11 +392,11 @@ mod tests {
 
     #[test]
     fn split_footer_status_left_keeps_mode_model_and_dimmed_img() {
-        let parts = split_footer_status_left(AgentMode::Plan, "Plan · opencode/deepseek-v4-flash (xhigh)▣");
+        let parts = split_footer_status_left(AgentMode::Plan, "Plan · opencode/deepseek-v4-flash (xhigh) ◐");
         assert_eq!(parts.mode, "Plan");
         assert_eq!(parts.sep, " · ");
         assert_eq!(parts.model_thinking, "opencode/deepseek-v4-flash (xhigh)");
-        assert_eq!(parts.img, "▣");
+        assert_eq!(parts.img, " ◐");
 
         let no_img = split_footer_status_left(AgentMode::Build, "Build · openai/gpt-5.6-luna (high)");
         assert_eq!(no_img.mode, "Build");

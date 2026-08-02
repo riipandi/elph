@@ -1013,7 +1013,7 @@ struct FooterRightProps {
 #[component]
 fn FooterRight(props: &FooterRightProps) -> impl Into<AnyElement<'static>> {
     let footer_right = if props.supports_images {
-        format!("▣ · {} · {}", props.model_label, props.thinking_level.label())
+        format!("◐ · {} · {}", props.model_label, props.thinking_level.label())
     } else {
         format!("{} · {}", props.model_label, props.thinking_level.label())
     };

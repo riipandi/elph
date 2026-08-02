@@ -44,7 +44,7 @@
 ╭─────────────────────────────────────────────────────────────────╮
 │ PREFIX_SYMBOL                                                   │   <- INPUT_PROMPT (multiline with ctrl+j or shift+enter)
 ╰─────────────────────────────────────────────────── AGENT_MODE ──╯
-MODEL_NAME · PROVIDER · T: high ▣      $0.00 · 0k · 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
+MODEL_NAME · PROVIDER · T: high ◐      $0.00 · 0k · 0.0% (262k)   <- FOOTER / STATUSLINE (line-clamp if not enough width)
 PROJECT_DIR [abcd12345]                      turn: 0 · main [-N +N]      (PROJECT_DIR only name, not full path)
 ```
 
@@ -54,12 +54,12 @@ PROJECT_DIR [abcd12345]                      turn: 0 · main [-N +N]      (PROJE
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │ PREFIX_SYMBOL                                                                 │
 ╰──────────────────────────────────────────────────────────────── PROJECT_DIR ──╯
-Build · PROVIDER/MODEL_NAME (THINKING)▣                turn: 0 · [+0/0 -0/0]
+Build · PROVIDER/MODEL_NAME (THINKING) ◐                turn: 0 · [+0/0 -0/0]
 
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │ PREFIX                                                                        │
 ╰─────────────────────────────────────────── ~ my-app (feat/cool-new-feature) ──╯
-Plan · opencode/deepseek-v4-flash · xhigh▣             turn: 0 · [+0/0 -0/0]
+Plan · opencode/deepseek-v4-flash · xhigh ◐             turn: 0 · [+0/0 -0/0]
 ```
 
 ### Prefix Symbol
@@ -201,7 +201,7 @@ pending turn (up to **4** images). Files are saved under `~/.local/share/elph/at
 | ---------------- | --------------------------------------------------------------------------- |
 | Input suffix     | `[images: paste_….png, …]` on the prompt line                               |
 | Hint row         | Count + shortcuts; bullet list of relative paths                            |
-| Footer **▣**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
+| Footer **◐**   | Shown when `provider.SupportsImageInput(model.Input)` is true               |
 | Non-vision model | Paste blocked with a system message; switch model via **Ctrl+L** / `/model` |
 
 On submit, images are sent as `TurnOptions.UserImages` to the provider API. For non-vision models,
@@ -243,7 +243,7 @@ Paste collapse is always applied for long text payloads (no settings toggle).
 ### Structure (no border)
 
 ```
-MODEL_NAME · PROVIDER · T: level▣           $0.00 · 0.0% · 262k
+MODEL_NAME · PROVIDER · T: level ◐           $0.00 · 0.0% · 262k
 project_dir [session_id] mode               turn: 0 · branch [+N -N]
 ```
 
@@ -264,7 +264,7 @@ The footer is painted eagerly from the configured model and project snapshot. Du
 | Segment     | Color                    | Notes                    |
 | ----------- | ------------------------ | ------------------------ |
 | MODEL_NAME  | `ThinkingColor(level)`   | Adapts to thinking level |
-| `           · PROVIDER                 · T: level                ▣`                                                | `dimText` | **▣** when the active model supports image input (`provider.SupportsImageInput`) |
+| `           · PROVIDER                 · T: level                 ◐`                                                | `dimText` | **◐** when the active model supports image input (`provider.SupportsImageInput`) |
 | `$0.00`     | `ContextUsageColor(pct)` | Cost                     |
 | `X%` or `X% | 262k`or`262k`            | `ContextUsageColor(pct)` | Token usage (configurable via `footerTokenDisplay`) |
 

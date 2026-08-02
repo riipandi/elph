@@ -166,23 +166,23 @@ pub fn fit_footer_status_left(
 
     // Most complete → least optional; every candidate keeps MODE + model.
     let mut candidates = Vec::with_capacity(8);
-    // 1. Full: MODE · provider/model (thinking) [▣]
+    // 1. Full: MODE · provider/model (thinking) ◐
     candidates.push(footer_status_left_label(mode, model_label, thinking_level, supports_images));
-    // 2. Drop ▣, keep thinking + provider
+    // 2. Drop ◐, keep thinking + provider
     candidates.push(format!("{mode_s}{}{}", FOOTER_SEP, with_thinking));
-    // 3. Drop thinking: MODE · provider/model [▣]
+    // 3. Drop thinking: MODE · provider/model ◐
     if supports_images {
-        candidates.push(format!("{}{}{}{}", mode_s, FOOTER_SEP, model_label, FOOTER_IMG_INDICATOR));
+        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_label, FOOTER_IMG_INDICATOR));
     }
     candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_label));
-    // 4. Drop provider: MODE · model (thinking) [▣]
+    // 4. Drop provider: MODE · model (thinking) ◐
     if supports_images {
-        candidates.push(format!("{}{}{}{}", mode_s, FOOTER_SEP, model_id_thinking, FOOTER_IMG_INDICATOR));
+        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_id_thinking, FOOTER_IMG_INDICATOR));
     }
     candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_id_thinking));
-    // 5. Drop thinking + provider + ▣: MODE · model (always last non-truncated)
+    // 5. Drop thinking + provider + ◐: MODE · model (always last non-truncated)
     if supports_images {
-        candidates.push(format!("{}{}{}{}", mode_s, FOOTER_SEP, model_id, FOOTER_IMG_INDICATOR));
+        candidates.push(format!("{}{}{} {}", mode_s, FOOTER_SEP, model_id, FOOTER_IMG_INDICATOR));
     }
     candidates.push(format!("{}{}{}", mode_s, FOOTER_SEP, model_id));
     pick_fitting_label(&candidates, max_width)
@@ -282,7 +282,7 @@ mod tests {
     fn fit_footer_status_left_always_keeps_mode_and_model() {
         let wide =
             fit_footer_status_left(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true, 80);
-        assert!(wide.contains("▣"));
+        assert!(wide.contains("◐"));
         assert!(wide.contains("(xhigh)"));
         assert!(wide.contains("opencode/deepseek-v4-flash"));
         assert!(wide.starts_with("Plan"));

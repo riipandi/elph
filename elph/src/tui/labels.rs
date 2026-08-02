@@ -80,7 +80,7 @@ pub fn footer_status_left_label(
     let mode = footer_mode_label(mode);
     let model_thinking = footer_model_thinking_label(model_label, thinking_level);
     if supports_images {
-        format!("{}{}{}{}", mode, FOOTER_SEP, model_thinking, FOOTER_IMG_INDICATOR)
+        format!("{}{}{} {}", mode, FOOTER_SEP, model_thinking, FOOTER_IMG_INDICATOR)
     } else {
         format!("{}{}{}", mode, FOOTER_SEP, model_thinking)
     }
@@ -93,7 +93,7 @@ pub const FOOTER_SELECT_MODE_BADGE: &str = "sel";
 pub const FOOTER_SEP: &str = " · ";
 
 /// Footer image/vision indicator.
-pub const FOOTER_IMG_INDICATOR: &str = "▣";
+pub const FOOTER_IMG_INDICATOR: &str = "◐";
 
 /// Status footer right: `turn: N · [+A/B -C/D]` (single-digit counts).
 /// When fitting is tight, git yields before turn (see `fit_footer_status_right`).
@@ -228,7 +228,7 @@ mod tests {
     fn footer_status_left_includes_mode_model_thinking_and_optional_img() {
         assert_eq!(
             footer_status_left_label(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true),
-            "Plan · opencode/deepseek-v4-flash (xhigh)▣"
+            "Plan · opencode/deepseek-v4-flash (xhigh) ◐"
         );
         assert_eq!(
             footer_status_left_label(AgentMode::Build, "openai/gpt-5.6-luna", ThinkingLevel::High, false),
