@@ -220,11 +220,14 @@ pub(crate) async fn shell_tick_loop(ctx: ShellCtx) {
                     ));
                 }
 
-                // Create a fresh bootstrap config with no resume_id (forces a new session)
+                // Create a fresh bootstrap config with no resume_id (forces a new session).
+                // Boot on the model last used in this project, same as a fresh startup.
+                let boot = crate::tui::resolve_boot_model(&settings, &paths_for_load, &cwd_for_load, None).await;
                 let new_config = TuiBootstrapConfig {
                     paths: paths_for_load,
                     settings,
                     resume_id: None,
+                    model_override: boot.ok().map(|(provider, model_id)| format!("{provider}/{model_id}")),
                     preloaded_resources: loaded,
                 };
                 bootstrap_config.set(Some(new_config));

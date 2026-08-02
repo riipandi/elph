@@ -38,6 +38,10 @@ pub struct TuiBootstrapConfig {
     pub paths: Paths,
     pub settings: Settings,
     pub resume_id: Option<String>,
+    /// Full `provider/model` the new session should start on (resolved from last
+    /// session or settings default at startup). Ignored when `resume_id` is set —
+    /// the session restores its own model from the tree.
+    pub model_override: Option<String>,
     pub preloaded_resources: LoadResourcesResult,
 }
 
@@ -334,7 +338,7 @@ pub async fn bootstrap_agent_session(config: &TuiBootstrapConfig) -> Result<Agen
         cwd: &cwd,
         resume_id: config.resume_id.as_deref(),
         provider_override: None,
-        model_override: None,
+        model_override: config.model_override.as_deref(),
         agent_mode: None,
         preloaded_resources: Some(config.preloaded_resources.clone()),
         defer_mcp_load: true,

@@ -208,8 +208,7 @@ pub fn user_shell_activity_label(command: &str) -> String {
 
 /// Banner text when quit is requested while a turn is still running (fixed above StatusRow).
 pub fn format_quit_while_busy_transcript() -> String {
-    "Agent is still responding. Press y to quit (cancels the turn), n to keep waiting, or repeat /exit, :q, or Ctrl+D to confirm."
-        .to_string()
+    "Agent is still responding. Press y to quit, n to keep waiting, or Ctrl+D to force quit.".to_string()
 }
 
 /// Status-row suffix while quit confirmation is pending during an active turn.
@@ -541,8 +540,7 @@ mod tests {
     fn format_quit_while_busy_transcript_mentions_confirm_keys() {
         let notice = format_quit_while_busy_transcript();
         assert!(notice.contains("y"));
-        assert!(notice.contains("/exit"));
-        assert!(notice.contains(":q"));
+        assert!(notice.contains("n"));
         assert!(notice.contains("Ctrl+D"));
     }
 

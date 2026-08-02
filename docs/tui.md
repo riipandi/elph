@@ -253,6 +253,8 @@ When no actual token usage data is available (e.g., at startup before the first 
 
 The footer is painted eagerly from the configured model and project snapshot. During asynchronous agent and MCP bootstrap, Elph requests a full terminal redraw after each startup event so output written outside the canvas diff cannot leave the footer hidden until the first keyboard or model event.
 
+**Boot model:** when starting a new session (no `-c` / `--resume`), the footer starts on the model **last used in this project's most recent session** (restored from that session's tree), so a fresh session continues where the previous one left off. First run in a project (no saved sessions) or when the remembered model is no longer in the catalog falls back to `models.defaultModel` from settings; explicit `ELPH_PROVIDER`/`ELPH_MODEL` env vars always win. Resumed sessions restore their own model from the session tree.
+
 | Format       | Example | Description |
 | ------------ | ------- | ----------- |
 | `both`       | `$0.00  | 131k        | 0.0%  | 262k`                                     | Default — shows used tokens, percentage, and limit |

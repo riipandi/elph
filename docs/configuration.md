@@ -341,8 +341,10 @@ Per-model: `reasoning`, `thinkingLevelMap` (required), `compat`, `cost`, `contex
 Priority for **new** sessions:
 
 1. CLI / env (`ELPH_PROVIDER` + `ELPH_MODEL`, or model override)
-2. Merged `models.defaultModel` (`provider/model_id`; project overrides home when set)
-3. Provider fallback default when only a provider is known
+2. TUI only — model last used in the project's most recent session (when it still
+   exists in the catalog), so a fresh session continues where the previous one left off
+3. Merged `models.defaultModel` (`provider/model_id`; project overrides home when set)
+4. Provider fallback default when only a provider is known
 
 Fresh bootstrap leaves `models.defaultModel` and `models.scopedModels` **empty** — the TUI shows “No model selected” until the user picks one (`Ctrl+L` / `/model`). Changing the live model in a session does **not** write `defaultModel` (avoids multi-instance conflicts).
 

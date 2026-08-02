@@ -192,7 +192,7 @@ TypeID with prefix `sess` — shown in the footer.
 
 | Data                 | Location                                                                           |
 | -------------------- | ---------------------------------------------------------------------------------- |
-| Provider / model     | Per-session (tree + Turso row); new sessions seed from `models.defaultModel`       |
+| Provider / model     | Per-session (tree + Turso row); new sessions seed from the project's last used model, falling back to `models.defaultModel` (TUI) |
 | Mode / thinking      | Per-session (default mode `build`; thinking seed `models.defaultThinkingLevel`)    |
 | Conversation history | Turso session tree in `APP_DATA/metadata.db` (`session_entries`)                   |
 | Platform metadata    | Same DB: goals, spawn graph, session index                                         |

@@ -4,7 +4,7 @@ use crate::utils::path::AppPaths;
 use anyhow::{Context, Result};
 use elph_agent::{
     Session, TursoSessionListOptions, TursoSessionMetadata, TursoSessionRepo, TursoSessionRepoCreateOptions,
-    TursoSessionStorage, reconcile_session,
+    TursoSessionStorage, derive_session_context_state, reconcile_session,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -117,6 +117,22 @@ impl SessionManager {
         Ok(sessions.into_iter().next().map(|m| m.id))
     }
 
+    /// Model last used in the most recent session for this project, if any.
+    ///
+    /// Reads the last `ModelChange` / assistant model from the latest session's
+    /// tree entries — the same source used to restore the model on resume. Returns
+    /// `(provider, model_id)` when a session exists; `None` for a brand-new project
+    /// (no saved sessions yet) or when the latest session never recorded a model.
+    pub async fn last_used_model(&self) -> Result<Option<(String, String)>> {
+        let Some(id) = self.latest_session_id().await? else {
+            return Ok(None);
+        };
+        let session = self.repo.open(&id).await?;
+        let entries = session.entries().await;
+        let (_, model, _, _) = derive_session_context_state(&entries);
+        Ok(model.map(|m| (m.provider, m.model_id)))
+    }
+
     /// True when the session tree has at least one entry (user/assistant/tool/custom).
     pub async fn session_has_entries(&self, session_id: &str) -> Result<bool> {
         self.repo
@@ -185,4 +201,72 @@ fn cwd_matches(stored: &str, normalized: &str) -> bool {
         .canonicalize()
         .map(|p| p.display().to_string() == normalized)
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::platform::Paths;
+    use std::time::Duration;
+
+    fn test_paths(label: &str) -> Paths {
+        let root = std::env::temp_dir().join(format!(
+            "elph-session-manager-test-{label}-{}-{:?}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let config = root.join("config");
+        let data = root.join("data");
+        let project = root.join("project");
+        std::fs::create_dir_all(&project).expect("create project dir");
+        Paths::from_dirs(config, data, project)
+    }
+
+    #[tokio::test]
+    async fn last_used_model_returns_model_from_latest_session() {
+        let paths = test_paths("single");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut session = manager.create(None).await.expect("create session");
+        session
+            .append_model_change("openai", "gpt-5.6-luna")
+            .await
+            .expect("model change");
+
+        let model = manager.last_used_model().await.expect("read model");
+        assert_eq!(model, Some(("openai".to_string(), "gpt-5.6-luna".to_string())));
+    }
+
+    #[tokio::test]
+    async fn last_used_model_none_without_sessions() {
+        let paths = test_paths("empty");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let model = manager.last_used_model().await.expect("read model");
+        assert_eq!(model, None);
+    }
+
+    #[tokio::test]
+    async fn last_used_model_prefers_newest_session() {
+        let paths = test_paths("newest");
+        let cwd = paths.project_dir().clone();
+        let manager = SessionManager::new(&paths, &cwd).expect("manager");
+        let mut first = manager.create(None).await.expect("first session");
+        first
+            .append_model_change("anthropic", "claude-sonnet-4")
+            .await
+            .expect("model change");
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        let mut second = manager.create(None).await.expect("second session");
+        second
+            .append_model_change("openai", "gpt-5.6-luna")
+            .await
+            .expect("model change");
+
+        let model = manager.last_used_model().await.expect("read model");
+        assert_eq!(model, Some(("openai".to_string(), "gpt-5.6-luna".to_string())));
+    }
 }
