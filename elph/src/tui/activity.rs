@@ -198,6 +198,7 @@ const OVERDUE_THINKING_MESSAGES: &[&str] = &[
     "Did it forget the question?",
     "Is it thinking, or napping?",
     "Thinking at the speed of molasses...",
+    "I won't give up, sit tight...",
 ];
 
 /// Escalating witty label for a thinking phase that exceeds 10s.
@@ -513,8 +514,8 @@ mod tests {
         assert_eq!(thinking_overdue_label(19.9), Some("Hold on, still over thinking..."));
         assert_eq!(thinking_overdue_label(20.0), Some("Still over thinking... going deeper"));
         assert_eq!(thinking_overdue_label(30.0), Some("Thinking so hard it might overheat"));
-        // Long waits clamp to the final message.
         assert_eq!(thinking_overdue_label(3600.0), Some("Thinking at the speed of molasses..."));
+        assert_eq!(thinking_overdue_label(4200.0), Some("I won't give up, sit tight..."));
     }
 
     #[test]
