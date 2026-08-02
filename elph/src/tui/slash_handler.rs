@@ -106,7 +106,7 @@ pub enum SlashOutcome {
     PlayConfetti {
         mode: crate::tui::confetti::ConfettiMode,
     },
-    /// Open feedback dialog (Report a Bug / Join Community).
+    /// Open feedback dialog (Report a Bug / Join Community / Support).
     OpenFeedbackDialog,
     /// Open provider connection dialog with OAuth or API key input.
     OpenProviderConnectDialog {

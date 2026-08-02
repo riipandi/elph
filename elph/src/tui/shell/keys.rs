@@ -1483,7 +1483,7 @@ pub(crate) fn handle_shell_key(ctx: ShellCtx, event: TerminalEvent) {
             return;
         }
 
-        // ── Feedback dialog (Report a Bug / Join Community) ────────
+        // ── Feedback dialog (Report a Bug / Join Community / Support) ──
         if *pending_feedback.read() {
             if modifiers.is_empty() && code == KeyCode::Esc {
                 *pending_feedback.write() = false;

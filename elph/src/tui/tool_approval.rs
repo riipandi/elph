@@ -203,6 +203,11 @@ pub const FEEDBACK_OPTIONS: &[(&str, &str, &str)] = &[
         "Open Buzz community",
         "https://elph.communities.buzz.xyz/invite/v2.L0iCLgw6NSanQojj9em5j63xCRzuovvAljescKJ8drU",
     ),
+    (
+        "❤️ Support my works",
+        "Open GitHub Sponsors",
+        "https://github.com/sponsors/riipandi",
+    ),
 ];
 
 /// Select-list rows for the feedback dialog.
@@ -226,6 +231,7 @@ pub fn pick_feedback_index_from_key(modifiers: KeyModifiers, code: KeyCode) -> O
     match code {
         KeyCode::Char('1') => Some(0),
         KeyCode::Char('2') => Some(1),
+        KeyCode::Char('3') => Some(2),
         _ => None,
     }
 }

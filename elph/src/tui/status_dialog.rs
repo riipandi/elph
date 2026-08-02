@@ -882,7 +882,7 @@ pub fn build_provider_api_key_dialog_kind(
     }
 }
 
-/// Render the feedback dialog with Report a Bug and Join Community options.
+/// Render the feedback dialog with Report a Bug, Join Community, and Support options.
 fn render_feedback_dialog(props: &mut StatusZoneProps) -> AnyElement<'static> {
     let theme = UiTheme::default();
     let body_width = inline_body_width(props.screen_width);
