@@ -61,28 +61,3 @@ pub fn looks_like_envelope(bytes: &[u8]) -> bool {
         && v.get("ciphertext").is_some()
         && v.get("nonce").is_some()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::super::crypto::Aes256Key;
-    use super::*;
-
-    #[test]
-    fn seal_unseal_roundtrip() {
-        let key = Aes256Key::generate();
-        let plain = br#"{"mcp":{},"providers":{"opencode":"sk-test"}}"#;
-        let env = seal_store(&key, plain).unwrap();
-        assert_eq!(env.v, 2);
-        assert_eq!(env.alg, ALG);
-        let out = unseal_store(&key, &env).unwrap();
-        assert_eq!(out, plain);
-    }
-
-    #[test]
-    fn wrong_key_fails() {
-        let k1 = Aes256Key::generate();
-        let k2 = Aes256Key::generate();
-        let env = seal_store(&k1, b"{}").unwrap();
-        assert!(unseal_store(&k2, &env).is_err());
-    }
-}

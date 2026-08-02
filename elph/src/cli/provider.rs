@@ -9,7 +9,9 @@ use super::help;
 use super::interactive;
 use crate::agent::provider::provider_config;
 use crate::platform::{EXIT_ERROR, EXIT_SUCCESS, ExitCode, Paths};
-use crate::tui::provider_connect_dialog::{ProviderAuthMethod, ProviderConfigStatus, get_provider_options};
+use crate::tui::provider_connect_dialog::{
+    ProviderAuthMethod, ProviderConfigStatus, ProviderOption, get_provider_config_status_at, get_provider_options,
+};
 use crate::tui::provider_credential_store::save_provider_credential;
 use crate::tui::provider_credential_store::save_provider_env_ref;
 use crate::utils::path::AppPaths;
@@ -99,6 +101,16 @@ fn config_status_label(status: &ProviderConfigStatus) -> String {
     }
 }
 
+/// Resolve a human-readable provider name for CLI messages.
+///
+/// Priority: provider config label → `format_provider_name` → raw id.
+fn provider_display_name(id: &str) -> String {
+    if let Some(cfg) = crate::agent::provider::provider_config(id) {
+        return cfg.label.to_string();
+    }
+    crate::tui::provider_connect_dialog::format_provider_name(id)
+}
+
 fn handle_list(json: &bool) -> ExitCode {
     let paths = match resolve_paths() {
         Ok(p) => p,
@@ -119,47 +131,81 @@ fn handle_list(json: &bool) -> ExitCode {
     let all_providers = get_provider_options();
     let configured_count = provider_ids.len();
 
-    // Sort: configured (✓) first, then unconfigured, both ASC by ID
-    let mut sorted = all_providers;
-    sorted.sort_by(|a, b| {
-        let a_configured = !matches!(a.config_status, ProviderConfigStatus::Unconfigured);
-        let b_configured = !matches!(b.config_status, ProviderConfigStatus::Unconfigured);
-        b_configured.cmp(&a_configured).then_with(|| a.id.cmp(&b.id))
-    });
+    // Compute live config status for each provider (get_provider_options caches
+    // config_status as Unconfigured — we need to read the actual auth file).
+    let mut providers_with_status: Vec<ProviderOption> = all_providers
+        .into_iter()
+        .map(|mut p| {
+            p.config_status = crate::tui::provider_connect_dialog::get_provider_config_status_at(
+                &auth_store_path,
+                &p.id,
+            );
+            p
+        })
+        .collect();
+    providers_with_status.sort_by(|a, b| a.id.cmp(&b.id));
 
-    // Find the longest provider ID for alignment
-    let max_id_len = sorted.iter().map(|p| p.id.len()).max().unwrap_or(10);
+    // Group: configured first, then unconfigured
+    let configured: Vec<&ProviderOption> = providers_with_status
+        .iter()
+        .filter(|p| !matches!(p.config_status, ProviderConfigStatus::Unconfigured))
+        .collect();
+    let unconfigured: Vec<&ProviderOption> = providers_with_status
+        .iter()
+        .filter(|p| matches!(p.config_status, ProviderConfigStatus::Unconfigured))
+        .collect();
 
-    for provider in &sorted {
-        let status = config_status_label(&provider.config_status);
-        let is_configured = !matches!(provider.config_status, ProviderConfigStatus::Unconfigured);
+    // Find the longest provider name for alignment
+    let max_name_len = providers_with_status
+        .iter()
+        .map(|p| provider_display_name(&p.id).len())
+        .max()
+        .unwrap_or(10);
 
-        // Pad plain ID first, then wrap with ANSI styling
-        let padded_id = format!("{:<width$}", provider.id, width = max_id_len);
-        let id_display = if is_configured {
-            format!("{}{}{}", STYLE_BOLD.render(), padded_id, STYLE_BOLD.render_reset())
-        } else {
-            padded_id
-        };
-
-        let marker = if is_configured {
-            format!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset())
-        } else {
-            " ".to_string()
-        };
-
+    // ── Configured section ────────────────────────────────────────
+    if !configured.is_empty() {
+        println!();
         println!(
-            "  {} {}  {}{}{}",
-            marker,
-            id_display,
+            "{}{}Configured ({}):{}",
             STYLE_MUTED.render(),
-            status,
+            STYLE_BOLD.render(),
+            configured.len(),
+            STYLE_BOLD.render_reset(),
             STYLE_MUTED.render_reset(),
         );
+        for provider in &configured {
+            let status = config_status_label(&provider.config_status);
+            let display_name = provider_display_name(&provider.id);
+            let padded = format!("{:<width$}", display_name, width = max_name_len);
+            println!(
+                "  {} {}  {}{}{}",
+                format!("{}✓{}", STYLE_OK.render(), STYLE_OK.render_reset()),
+                format!("{}{}{}", STYLE_BOLD.render(), padded, STYLE_BOLD.render_reset()),
+                STYLE_MUTED.render(),
+                status,
+                STYLE_MUTED.render_reset(),
+            );
+        }
     }
 
-    if configured_count > 0 {
+    // ── Unconfigured section ──────────────────────────────────────
+    if !unconfigured.is_empty() {
         println!();
+        println!(
+            "{}Unconfigured ({}):{}",
+            STYLE_MUTED.render(),
+            unconfigured.len(),
+            STYLE_MUTED.render_reset()
+        );
+        for provider in &unconfigured {
+            let display_name = provider_display_name(&provider.id);
+            let padded = format!("{:<width$}", display_name, width = max_name_len);
+            println!("    {}", padded);
+        }
+    }
+
+    println!();
+    if configured_count > 0 {
         println!(
             "{}{}{}{} provider(s) with stored credentials{}",
             STYLE_MUTED.render(),
@@ -167,6 +213,12 @@ fn handle_list(json: &bool) -> ExitCode {
             configured_count,
             STYLE_BOLD.render_reset(),
             STYLE_MUTED.render_reset(),
+        );
+    } else {
+        println!(
+            "{}No configured providers. Use `elph provider connect` to sign in.{}",
+            STYLE_MUTED.render(),
+            STYLE_MUTED.render_reset()
         );
     }
     EXIT_SUCCESS
@@ -219,7 +271,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
         let auth_store = auth_store_path.clone();
         let pid_owned = pid.to_string();
         let env_owned = env_var_name.to_string();
-        let name = provider_config(pid).map(|c| c.label).unwrap_or(pid);
+        let name = provider_display_name(pid);
         match run_async(move || {
             let rt = new_rt();
             rt.block_on(save_provider_env_ref(&auth_store, &pid_owned, &env_owned))
@@ -232,7 +284,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                 return EXIT_SUCCESS;
             }
             Err(e) => {
-                eprintln!("{}", err(format!("Failed to register env ref for '{pid}': {e}")));
+                eprintln!("{}", err(format!("Failed to register env ref for '{name}': {e}")));
                 return EXIT_ERROR;
             }
         }
@@ -240,10 +292,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
 
     // If a specific provider was given, resolve it directly.
     let (selected_provider, auth_method) = if let Some(pid) = provider {
+        let name = provider_display_name(pid);
         match resolve_provider_by_id(&all_providers, pid) {
             Some(result) => result,
             None => {
-                eprintln!("{}", err(format!("Unknown provider: {pid}")));
+                eprintln!("{}", err(format!("Unknown provider: {name}")));
                 return EXIT_ERROR;
             }
         }
@@ -273,6 +326,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
 
             let callbacks = Arc::new(interactive::CliAuthCallbacks);
             let provider_id = selected_provider.id.clone();
+            let provider_name = selected_provider.name.clone();
             let auth_store = auth_store_path.clone();
 
             match run_async(move || {
@@ -284,11 +338,11 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                 Ok(credential)
             }) {
                 Ok(_) => {
-                    println!("{}", ok(format!("Signed in to {}.", selected_provider.name)));
+                    println!("{}", ok(format!("Signed in to {provider_name}.")));
                     EXIT_SUCCESS
                 }
                 Err(e) => {
-                    eprintln!("{}", err(format!("OAuth login failed: {e}")));
+                    eprintln!("{}", err(format!("OAuth login failed for {provider_name}: {e}")));
                     EXIT_ERROR
                 }
             }
@@ -328,7 +382,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                         EXIT_SUCCESS
                     }
                     Err(e) => {
-                        eprintln!("{}", err(format!("Failed to register env ref for '{pid}': {e}")));
+                        eprintln!("{}", err(format!("Failed to register env ref for {name}: {e}")));
                         EXIT_ERROR
                     }
                 }
@@ -342,7 +396,7 @@ fn handle_connect(provider: Option<&str>, env_var: Option<&str>) -> ExitCode {
                         EXIT_SUCCESS
                     }
                     Err(e) => {
-                        eprintln!("{}", err(format!("Failed to save API key for '{pid}': {e}")));
+                        eprintln!("{}", err(format!("Failed to save API key for {name}: {e}")));
                         EXIT_ERROR
                     }
                 }
@@ -384,11 +438,13 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
     let provider_ids = crate::tui::provider_credential_store::list_providers_with_credentials(&auth_store_path);
 
     if let Some(pid) = provider {
+        let name = provider_display_name(pid);
         if !provider_ids.contains(&pid.to_string()) {
-            println!("No stored credentials for provider '{pid}'.");
+            println!("No stored credentials for {name}.");
             return EXIT_SUCCESS;
         }
         let pid = pid.to_string();
+        let name_clone = name.clone();
         let auth_store = auth_store_path.clone();
         let pid_for_closure = pid.clone();
         match run_async(move || {
@@ -399,15 +455,15 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
             ))
         }) {
             Ok(true) => {
-                println!("{}", ok(format!("Signed out from {pid}.")));
+                println!("{}", ok(format!("Signed out from {name_clone}.")));
                 EXIT_SUCCESS
             }
             Ok(false) => {
-                println!("No stored credentials for provider '{pid}'.");
+                println!("No stored credentials for {name}.");
                 EXIT_SUCCESS
             }
             Err(e) => {
-                eprintln!("{}", err(format!("Failed to disconnect provider '{pid}': {e}")));
+                eprintln!("{}", err(format!("Failed to disconnect {name}: {e}")));
                 EXIT_ERROR
             }
         }
@@ -417,23 +473,33 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
             return EXIT_SUCCESS;
         }
 
-        // Show interactive selection
-        let display_items: Vec<&str> = provider_ids.iter().map(|s| s.as_str()).collect();
-        let selected = Select::new("Select provider to disconnect", display_items)
+        // Show interactive selection with human-readable names
+        let display_items: Vec<String> = provider_ids
+            .iter()
+            .map(|id| provider_display_name(id))
+            .collect();
+        let display_refs: Vec<&str> = display_items.iter().map(|s| s.as_str()).collect();
+        let selected_idx = Select::new("Select provider to disconnect", display_refs)
             .with_page_size(10)
             .with_help_message("↑↓ navigate · Enter confirm · Esc cancel")
             .prompt_skippable()
             .ok()
             .flatten();
 
-        let Some(pid) = selected else {
+        let Some(name) = selected_idx else {
+            println!("Cancelled.");
+            return EXIT_SUCCESS;
+        };
+
+        // Find the actual provider ID from the selected name
+        let Some(pid) = provider_ids.iter().find(|id| provider_display_name(id) == name).cloned() else {
             println!("Cancelled.");
             return EXIT_SUCCESS;
         };
 
         let auth_store = auth_store_path.clone();
-        let pid_str = pid.to_string();
-        let pid_for_closure = pid_str.clone();
+        let name_for_closure = name.clone();
+        let pid_for_closure = pid.clone();
         match run_async(move || {
             let rt = new_rt();
             rt.block_on(crate::tui::provider_credential_store::delete_provider_credential(
@@ -442,15 +508,15 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
             ))
         }) {
             Ok(true) => {
-                println!("{}", ok(format!("Signed out from {pid_str}.")));
+                println!("{}", ok(format!("Signed out from {name_for_closure}.")));
                 EXIT_SUCCESS
             }
             Ok(false) => {
-                println!("No stored credentials for provider '{pid_str}'.");
+                println!("No stored credentials for {name}.");
                 EXIT_SUCCESS
             }
             Err(e) => {
-                eprintln!("{}", err(format!("Failed to disconnect provider '{pid_str}': {e}")));
+                eprintln!("{}", err(format!("Failed to disconnect {name}: {e}")));
                 EXIT_ERROR
             }
         }

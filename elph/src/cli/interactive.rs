@@ -299,7 +299,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                 if let Some(instructions) = instructions {
                     eprintln!("{}{}", STYLE_DIM.render(), instructions);
                 }
-                eprintln!("{}  {}{}", STYLE_URL.render(), url, STYLE_URL.render_reset(),);
+                eprintln!("  {}", url);
                 match open_url(&url) {
                     Ok(()) => {
                         let line = styled(STYLE_SUCCESS, "✓", "Browser opened. Login in your browser.");
@@ -307,14 +307,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     }
                     Err(e) => {
                         eprintln!("{} Could not open browser: {e}", err_label());
-                        eprintln!(
-                            "{}  Open manually:{}{}{}{}",
-                            STYLE_DIM.render(),
-                            STYLE_DIM.render_reset(),
-                            STYLE_URL.render(),
-                            url,
-                            STYLE_URL.render_reset(),
-                        );
+                        eprintln!("  Open manually:  {}", url);
                     }
                 }
                 println!();
@@ -332,20 +325,12 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     STYLE_ACCENT.render_reset(),
                 );
                 eprintln!(
-                    "  {}Open:{}{}  {}{}",
-                    STYLE_LABEL.render(),
-                    STYLE_LABEL.render_reset(),
-                    STYLE_URL.render(),
+                    "  Open:  {}",
                     verification_uri,
-                    STYLE_URL.render_reset(),
                 );
                 eprintln!(
-                    "  {}Code:{}{}  {}{}",
-                    STYLE_LABEL.render(),
-                    STYLE_LABEL.render_reset(),
-                    STYLE_CODE.render(),
+                    "  Code:  {}",
                     user_code,
-                    STYLE_CODE.render_reset(),
                 );
                 match open_url(&verification_uri) {
                     Ok(()) => {
@@ -354,14 +339,7 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     }
                     Err(e) => {
                         eprintln!("{} Could not open browser: {e}", err_label());
-                        eprintln!(
-                            "{}  Open manually:{}{}{}{}",
-                            STYLE_DIM.render(),
-                            STYLE_DIM.render_reset(),
-                            STYLE_URL.render(),
-                            verification_uri,
-                            STYLE_URL.render_reset(),
-                        );
+                        eprintln!("  Open manually:  {}", verification_uri);
                     }
                 }
                 if let Some(interval) = interval_seconds {
