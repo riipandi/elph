@@ -196,8 +196,8 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                             padding: 0,
                         ) {
                             DotsScannerView(
-                                width: 6u16,
-                                accent: Some(props.accent),
+                                width: 4u16,
+                                accent: Some(rgb(0x5f, 0xc8, 0x5f)),
                                 active: true,
                                 theme: None,
                             )

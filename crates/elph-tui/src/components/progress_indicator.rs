@@ -163,7 +163,7 @@ pub struct DotsScannerViewProps {
 impl Default for DotsScannerViewProps {
     fn default() -> Self {
         Self {
-            width: 6,
+            width: 4,
             accent: None,
             active: true,
             theme: None,
@@ -256,7 +256,12 @@ fn dots_idle_cells(width: usize, accent: Color) -> Vec<LoaderCell> {
         g: (g as f64 * 0.18) as u8,
         b: (b as f64 * 0.18) as u8,
     };
-    (0..width).map(|_| LoaderCell { ch: ':', color: faded }).collect()
+    (0..width)
+        .map(|_| LoaderCell {
+            ch: '\u{25AA}',
+            color: faded,
+        })
+        .collect()
 }
 
 fn rgb_components(c: Color) -> (u8, u8, u8) {
