@@ -301,12 +301,6 @@ impl ModelCatalogSnapshot {
         self.provider_id(index) == Some(SCOPED_PROVIDERS_TAB_ID)
     }
 
-    pub fn shows_provider_in_hint(&self, provider_index: usize) -> bool {
-        self.is_all_providers_tab(provider_index)
-            || self.is_free_providers_tab(provider_index)
-            || self.is_scoped_providers_tab(provider_index)
-    }
-
     pub fn scope_mode(&self, provider_index: usize) -> ModelScopeMode {
         if self.is_all_providers_tab(provider_index) {
             ModelScopeMode::All
@@ -526,35 +520,24 @@ impl PendingModelSelector {
     }
 
     pub fn filtered_models(&self) -> Vec<ModelRow> {
-        if !self.filter.trim().is_empty() {
-            // When on Provider tab, restrict fuzzy search to that provider's models
-            let scope = self.catalog.scope_mode(self.provider_index);
-            let source = if matches!(scope, ModelScopeMode::Provider)
-                && !self.catalog.is_all_providers_tab(self.provider_index)
-            {
-                let provider = self.active_provider_id().unwrap_or("");
-                self.catalog
-                    .models_by_provider
-                    .get(provider)
-                    .cloned()
-                    .unwrap_or_default()
-            } else {
-                self.catalog.all_models.clone()
-            };
-            let mut result = filter_models_fuzzy(&source, &self.filter);
-            Self::apply_sort(&mut result, self.sort_order);
-            return result;
-        }
+        // Fuzzy search (and the empty-filter list) stay inside the active tab's category:
+        // All → every model, Free → free only, Scoped → scoped only, Provider → that provider.
         let provider = match self.active_provider_id() {
             Some(id) => id,
             None => return Vec::new(),
         };
-        let mut models = self
-            .catalog
-            .models_by_provider
-            .get(provider)
-            .cloned()
-            .unwrap_or_default();
+        let mut models = if provider == ALL_PROVIDERS_TAB_ID {
+            self.catalog.all_models.clone()
+        } else {
+            self.catalog
+                .models_by_provider
+                .get(provider)
+                .cloned()
+                .unwrap_or_default()
+        };
+        if !self.filter.trim().is_empty() {
+            models = filter_models_fuzzy(&models, &self.filter);
+        }
         Self::apply_sort(&mut models, self.sort_order);
         models
     }
@@ -844,6 +827,62 @@ mod tests {
             filtered.iter().all(|row| row.provider_id == "anthropic"),
             "expected fuzzy search to be restricted to anthropic on provider tab"
         );
+    }
+
+    #[test]
+    fn filter_on_free_tab_only_searches_free_models() {
+        let mut pending = PendingModelSelector::open(String::new(), None, &[]);
+        pending.set_provider_index(FREE_PROVIDERS_TAB_INDEX);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Free);
+
+        // A paid model must never surface through the Free tab filter.
+        if let Some(paid) = pending.catalog.all_models.iter().find(|row| !row.is_free) {
+            pending.filter = paid.model_id.clone();
+            let filtered = pending.filtered_models();
+            for row in &filtered {
+                assert!(row.is_free, "paid model leaked into Free tab filter: {}", row.value);
+            }
+        }
+
+        // A known free model is still findable on the Free tab.
+        if let Some(free_id) = pending
+            .catalog
+            .all_models
+            .iter()
+            .find(|row| row.is_free)
+            .map(|row| row.model_id.clone())
+        {
+            pending.filter = free_id;
+            let filtered = pending.filtered_models();
+            assert!(!filtered.is_empty());
+            assert!(filtered.iter().all(|row| row.is_free));
+        }
+    }
+
+    #[test]
+    fn filter_on_scoped_tab_only_searches_scoped_models() {
+        let base = ModelCatalogSnapshot::build(&[]);
+        let sample = base.all_models.first().expect("model").value.clone();
+        let mut pending = PendingModelSelector::open(String::new(), None, std::slice::from_ref(&sample));
+        pending.set_provider_index(SCOPED_PROVIDERS_TAB_INDEX);
+        assert_eq!(pending.scope_mode(), ModelScopeMode::Scoped);
+
+        let sample_id = sample.split('/').nth(1).expect("model id");
+        pending.filter = sample_id.to_string();
+        let filtered = pending.filtered_models();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].value, sample);
+
+        // A query matching a non-scoped model id must not pull it in.
+        if let Some(other) = base.all_models.iter().find(|row| row.value != sample) {
+            pending.filter = other.model_id.clone();
+            let filtered = pending.filtered_models();
+            assert!(
+                filtered.iter().all(|row| row.value == sample),
+                "scoped tab filter leaked non-scoped models: {:?}",
+                filtered.iter().map(|row| row.value.as_str()).collect::<Vec<_>>()
+            );
+        }
     }
 
     #[test]

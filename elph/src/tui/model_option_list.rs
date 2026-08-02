@@ -339,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn provider_tab_hints_omit_provider_column() {
+    fn tabular_hints_can_omit_provider_column() {
         let rows = vec![sample_row(
             "anthropic",
             "claude-opus-4",

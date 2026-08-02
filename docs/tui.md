@@ -390,6 +390,8 @@ When the agent is busy, an activity line shows between the content area and inpu
 
 `Ctrl+L` or `/model` opens a fuzzy overlay. Filter providers with arrow keys; select with Enter. Left/Right (with an empty filter) cycle provider groups. The **Scoped** tab lists models enabled via `/scoped-models` or quick keys in this picker.
 
+Every tab uses the same row layout: `MODEL_ID  PROVIDER  CONTEXT_LENGTH (think|img)` — the provider column stays visible on Provider tabs too, so columns never shift when switching tabs. Fuzzy filtering (and the unfiltered list) only searches the **active tab's category**: All searches every model, Free only free models, Scoped only scoped models, and a Provider tab only that provider's models.
+
 | Key (list focused) | Action                                                                     |
 | ------------------ | -------------------------------------------------------------------------- |
 | `+`                | Add highlighted model to scoped list (`models.scopedModels`, Ctrl+P cycle) |
