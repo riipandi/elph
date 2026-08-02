@@ -39,7 +39,9 @@ const TIPS: &[&str] = &[
     "While busy: Enter queues · Ctrl+Enter sends next queued · Ctrl+Q manages",
 ];
 
-use crate::tui::activity::{format_activity_busy_line, format_session_busy_right_line, format_session_idle_right_line};
+use crate::tui::activity::{
+    format_activity_busy_line_dynamic, format_session_busy_right_line, format_session_idle_right_line,
+};
 /// Props for [`StatusRow`].
 ///
 /// Pass wall-clock start instants; this component owns spinner frames and elapsed display.
@@ -144,7 +146,7 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         .idle_notice
         .clone()
         .unwrap_or_else(|| TIPS[tip_index.get() % TIPS.len()].to_string());
-    let activity_line = format_activity_busy_line(&props.activity_label, activity_elapsed_secs);
+    let activity_line = format_activity_busy_line_dynamic(&props.activity_label, activity_elapsed_secs);
     let busy_right_line =
         format_session_busy_right_line(props.session_elapsed_secs, turn_elapsed_secs, props.quit_confirm_pending);
     let idle_right_line = format_session_idle_right_line(IDLE_ACTION_HINT);
