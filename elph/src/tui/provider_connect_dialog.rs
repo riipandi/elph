@@ -197,7 +197,8 @@ pub fn get_provider_config_status_at(auth_store_path: &Path, provider_id: &str) 
             // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("provider")
+                && let Some(providers) = json
+                    .get("provider")
                     .or_else(|| json.get("providers"))
                     .and_then(|v| v.as_object())
                 && let Some(credential) = providers.get(provider_id).and_then(|v| v.as_str())

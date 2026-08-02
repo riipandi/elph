@@ -58,8 +58,6 @@ pub use auth::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use auth::ENV_REF_PREFIX;
 #[cfg(feature = "mcp")]
-pub use envelope::looks_like_envelope;
-#[cfg(feature = "mcp")]
 pub use auth::FileCredentialStore;
 pub use auth::FileCredentialStoreBuilder;
 #[cfg(feature = "mcp")]
@@ -160,6 +158,8 @@ pub use crypto::encrypt_string_async;
 pub use crypto::encrypt_string_sync;
 #[cfg(feature = "mcp")]
 pub use crypto::is_encrypted_value;
+#[cfg(feature = "mcp")]
+pub use envelope::looks_like_envelope;
 #[cfg(feature = "mcp")]
 pub use events::{McpClientService, McpEventBus, McpServerEvent};
 #[cfg(feature = "mcp")]

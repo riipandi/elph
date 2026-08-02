@@ -324,14 +324,9 @@ impl AuthLoginCallbacks for CliAuthCallbacks {
                     STYLE_ACCENT.render(),
                     STYLE_ACCENT.render_reset(),
                 );
-                eprintln!(
-                    "  Open:  {}",
-                    verification_uri,
-                );
-                eprintln!(
-                    "  Code:  {}",
-                    user_code,
-                );
+                eprintln!("  Open:  {}", verification_uri,);
+                eprintln!("  Code:  {}", user_code,);
+                println!();
                 match open_url(&verification_uri) {
                     Ok(()) => {
                         let line = styled(STYLE_SUCCESS, "✓", "Browser opened.");

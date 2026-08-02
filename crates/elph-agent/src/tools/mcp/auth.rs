@@ -331,8 +331,7 @@ impl AuthStoreFile {
     /// Set provider credential (API key plaintext or `env:VAR`). Caller must hold the lock.
     /// Secrets are encrypted at the field level when written to disk.
     pub fn set_provider_credential(&mut self, provider_id: &str, credential: String) {
-        self.provider
-            .insert(provider_id.to_string(), Value::String(credential));
+        self.provider.insert(provider_id.to_string(), Value::String(credential));
     }
 
     /// Get provider credential string (API key or `env:VAR`).

@@ -27,10 +27,7 @@ async fn load_auth_file_with_fallback(path: &Path) -> anyhow::Result<AuthStoreFi
             // the caller saves.
             if let Ok(content) = tokio::fs::read_to_string(path).await {
                 if !elph_agent::looks_like_envelope(content.as_bytes()) {
-                    log::warn!(
-                        "auth store sealed load failed ({}): {e}; trying plain JSON",
-                        path.display()
-                    );
+                    log::warn!("auth store sealed load failed ({}): {e}; trying plain JSON", path.display());
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
                         let mut file = AuthStoreFile::default();
                         // Try nested format: "provider" (camelCase) or "providers" (snake_case)
@@ -50,7 +47,12 @@ async fn load_auth_file_with_fallback(path: &Path) -> anyhow::Result<AuthStoreFi
                                 for (pid, val) in obj {
                                     if let Some(s) = val.as_str() {
                                         // Skip known meta keys that aren't provider IDs
-                                        if pid != "mcp" && pid != "v" && pid != "alg" && pid != "nonce" && pid != "ciphertext" {
+                                        if pid != "mcp"
+                                            && pid != "v"
+                                            && pid != "alg"
+                                            && pid != "nonce"
+                                            && pid != "ciphertext"
+                                        {
                                             file.set_provider_credential(pid, s.to_string());
                                         }
                                     }
@@ -112,7 +114,8 @@ pub fn has_provider_credential(auth_store_path: &Path, provider_id: &str) -> boo
             // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("provider")
+                && let Some(providers) = json
+                    .get("provider")
                     .or_else(|| json.get("providers"))
                     .and_then(|v| v.as_object())
             {
@@ -187,7 +190,8 @@ pub fn list_providers_with_credentials(auth_store_path: &Path) -> Vec<String> {
             // Fallback: try to read as plain JSON
             if let Ok(content) = std::fs::read_to_string(auth_store_path)
                 && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-                && let Some(providers) = json.get("provider")
+                && let Some(providers) = json
+                    .get("provider")
                     .or_else(|| json.get("providers"))
                     .and_then(|v| v.as_object())
             {

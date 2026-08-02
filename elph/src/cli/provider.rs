@@ -136,10 +136,8 @@ fn handle_list(json: &bool) -> ExitCode {
     let mut providers_with_status: Vec<ProviderOption> = all_providers
         .into_iter()
         .map(|mut p| {
-            p.config_status = crate::tui::provider_connect_dialog::get_provider_config_status_at(
-                &auth_store_path,
-                &p.id,
-            );
+            p.config_status =
+                crate::tui::provider_connect_dialog::get_provider_config_status_at(&auth_store_path, &p.id);
             p
         })
         .collect();
@@ -166,12 +164,10 @@ fn handle_list(json: &bool) -> ExitCode {
     if !configured.is_empty() {
         println!();
         println!(
-            "{}{}Configured ({}):{}",
+            "{}Configured ({}):{}",
             STYLE_MUTED.render(),
-            STYLE_BOLD.render(),
             configured.len(),
-            STYLE_BOLD.render_reset(),
-            STYLE_MUTED.render_reset(),
+            STYLE_MUTED.render_reset()
         );
         for provider in &configured {
             let status = config_status_label(&provider.config_status);
@@ -474,10 +470,7 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
         }
 
         // Show interactive selection with human-readable names
-        let display_items: Vec<String> = provider_ids
-            .iter()
-            .map(|id| provider_display_name(id))
-            .collect();
+        let display_items: Vec<String> = provider_ids.iter().map(|id| provider_display_name(id)).collect();
         let display_refs: Vec<&str> = display_items.iter().map(|s| s.as_str()).collect();
         let selected_idx = Select::new("Select provider to disconnect", display_refs)
             .with_page_size(10)
@@ -492,7 +485,11 @@ fn handle_disconnect(provider: Option<&str>) -> ExitCode {
         };
 
         // Find the actual provider ID from the selected name
-        let Some(pid) = provider_ids.iter().find(|id| provider_display_name(id) == name).cloned() else {
+        let Some(pid) = provider_ids
+            .iter()
+            .find(|id| provider_display_name(id) == name)
+            .cloned()
+        else {
             println!("Cancelled.");
             return EXIT_SUCCESS;
         };

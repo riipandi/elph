@@ -355,8 +355,6 @@ pub use tools::mcp::AuthStorePathBuilder;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_AUTH_FILE_NAME;
 #[cfg(feature = "mcp")]
-pub use tools::mcp::looks_like_envelope;
-#[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_STRUCTURED_DETAIL_CHARS;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::DEFAULT_MAX_TOOL_RESULT_CHARS;
@@ -482,6 +480,8 @@ pub use tools::mcp::list_tools_for_server;
 pub use tools::mcp::load_or_create_master_key;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::lock_auth_store;
+#[cfg(feature = "mcp")]
+pub use tools::mcp::looks_like_envelope;
 #[cfg(feature = "mcp")]
 pub use tools::mcp::mcp_result_to_agent;
 #[cfg(feature = "mcp")]
