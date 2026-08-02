@@ -178,6 +178,33 @@ impl AuthStoreFile {
         if bytes.is_empty() {
             return Ok(Self::default());
         }
+
+        // Check if the file is a sealed v2 envelope (legacy format from before the
+        // per-field enc: migration). If so, unseal it and parse the inner JSON.
+        if let Ok(top) = serde_json::from_slice::<serde_json::Value>(bytes) {
+            if top.get("v").and_then(|x| x.as_u64()) == Some(2)
+                && top.get("ciphertext").is_some()
+                && top.get("nonce").is_some()
+            {
+                let envelope: super::envelope::AuthStoreEnvelope = serde_json::from_slice(bytes)
+                    .map_err(|e| AuthError::InternalError(format!("parse auth envelope: {e}")))?;
+                let plain = super::envelope::unseal_store(key, &envelope)
+                    .map_err(|e| AuthError::InternalError(format!("unseal legacy auth store: {e}")))?;
+                let mut json: serde_json::Value = serde_json::from_slice(&plain)
+                    .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")))?;
+                // Normalize "providers" (plural, legacy) to "provider" (singular, camelCase)
+                if json.get("providers").is_some() && json.get("provider").is_none() {
+                    if let Some(obj) = json.as_object_mut() {
+                        if let Some(v) = obj.remove("providers") {
+                            obj.insert("provider".to_string(), v);
+                        }
+                    }
+                }
+                return serde_json::from_value(json)
+                    .map_err(|e| AuthError::InternalError(format!("parse unsealed auth payload: {e}")));
+            }
+        }
+
         let mut json: serde_json::Value =
             serde_json::from_slice(bytes).map_err(|e| AuthError::InternalError(format!("parse auth JSON: {e}")))?;
 

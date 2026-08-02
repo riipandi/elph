@@ -1,0 +1,5 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://elph.space/auth-schema.json",
+    "title": "Elph AI provider authentication store"
+}
