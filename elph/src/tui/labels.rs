@@ -70,7 +70,7 @@ pub fn footer_model_thinking_label(model_label: &str, thinking_level: ThinkingLe
     format!("{model_label} ({})", thinking_level.label())
 }
 
-/// Status footer left: `MODE | provider/model (thinking) [| IMG]`.
+/// Status footer left: `MODE · provider/model (thinking) [▣]`.
 pub fn footer_status_left_label(
     mode: AgentMode,
     model_label: &str,
@@ -80,19 +80,25 @@ pub fn footer_status_left_label(
     let mode = footer_mode_label(mode);
     let model_thinking = footer_model_thinking_label(model_label, thinking_level);
     if supports_images {
-        format!("{mode} | {model_thinking} | IMG")
+        format!("{}{}{}{}", mode, FOOTER_SEP, model_thinking, FOOTER_IMG_INDICATOR)
     } else {
-        format!("{mode} | {model_thinking}")
+        format!("{}{}{}", mode, FOOTER_SEP, model_thinking)
     }
 }
 
 /// Compact badge when native text-selection mode is active (`Ctrl+S`).
 pub const FOOTER_SELECT_MODE_BADGE: &str = "sel";
 
-/// Status footer right: `turn: N | [+A/B -C/D]` (single-digit counts).
+/// Footer separator (middle dot).
+pub const FOOTER_SEP: &str = " · ";
+
+/// Footer image/vision indicator.
+pub const FOOTER_IMG_INDICATOR: &str = "▣";
+
+/// Status footer right: `turn: N · [+A/B -C/D]` (single-digit counts).
 /// When fitting is tight, git yields before turn (see `fit_footer_status_right`).
 ///
-/// With select mode: `sel | turn: N | [+A/B -C/D]`.
+/// With select mode: `sel · turn: N · [+A/B -C/D]`.
 pub fn footer_status_right_label(turn: u32, git: Option<&GitFooterInfo>) -> String {
     footer_status_right_label_with_select(turn, git, false)
 }
@@ -101,11 +107,11 @@ pub fn footer_status_right_label(turn: u32, git: Option<&GitFooterInfo>) -> Stri
 pub fn footer_status_right_label_with_select(turn: u32, git: Option<&GitFooterInfo>, select_mode: bool) -> String {
     let turn_s = format!("turn: {turn}");
     let base = match footer_git_stats_label(git) {
-        Some(stats) => format!("{turn_s} | {stats}"),
+        Some(stats) => format!("{}{}{}", turn_s, FOOTER_SEP, stats),
         None => turn_s,
     };
     if select_mode {
-        format!("{FOOTER_SELECT_MODE_BADGE} | {base}")
+        format!("{}{}{}", FOOTER_SELECT_MODE_BADGE, FOOTER_SEP, base)
     } else {
         base
     }
@@ -222,11 +228,11 @@ mod tests {
     fn footer_status_left_includes_mode_model_thinking_and_optional_img() {
         assert_eq!(
             footer_status_left_label(AgentMode::Plan, "opencode/deepseek-v4-flash", ThinkingLevel::Xhigh, true),
-            "Plan | opencode/deepseek-v4-flash (xhigh) | IMG"
+            "Plan · opencode/deepseek-v4-flash (xhigh)▣"
         );
         assert_eq!(
             footer_status_left_label(AgentMode::Build, "openai/gpt-5.6-luna", ThinkingLevel::High, false),
-            "Build | openai/gpt-5.6-luna (high)"
+            "Build · openai/gpt-5.6-luna (high)"
         );
     }
 
@@ -258,14 +264,14 @@ mod tests {
             files_deleted: 0,
             lines_deleted: 0,
         };
-        assert_eq!(footer_status_right_label(0, Some(&git)), "turn: 0 | [+0/0 -0/0]");
+        assert_eq!(footer_status_right_label(0, Some(&git)), "turn: 0 · [+0/0 -0/0]");
         assert_eq!(footer_status_right_label(3, None), "turn: 3");
-        assert_eq!(footer_status_right_label(12, Some(&git)), "turn: 12 | [+0/0 -0/0]");
+        assert_eq!(footer_status_right_label(12, Some(&git)), "turn: 12 · [+0/0 -0/0]");
         assert_eq!(
             footer_status_right_label_with_select(0, Some(&git), true),
-            "sel | turn: 0 | [+0/0 -0/0]"
+            "sel · turn: 0 · [+0/0 -0/0]"
         );
-        assert_eq!(footer_status_right_label_with_select(3, None, true), "sel | turn: 3");
+        assert_eq!(footer_status_right_label_with_select(3, None, true), "sel · turn: 3");
     }
 
     #[test]
