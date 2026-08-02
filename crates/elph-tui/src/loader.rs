@@ -253,6 +253,127 @@ fn apply_fade(color: Color, fade: f64) -> Color {
 }
 
 // ---------------------------------------------------------------------------
+// Dots scanner — a simple left-to-right repeating scan bar.
+// Renders a row of `:` characters where a bright head moves from left to right
+// with a fading trail behind it, then wraps.
+// ---------------------------------------------------------------------------
+
+/// A left-to-right repeating dots scanner for the status row.
+///
+/// Renders a bar of `:` characters where a bright "head" moves left to right
+/// followed by a dimming trail, then wraps from the start. The trail extends
+/// behind the head (to the left) so it looks like a comet scanning across.
+#[derive(Debug, Clone)]
+pub struct DotsScanner {
+    width: usize,
+    frame_index: usize,
+    total_frames: usize,
+    accent: Color,
+}
+
+impl DotsScanner {
+    pub fn new() -> Self {
+        Self::with_config(
+            6,
+            Color::Rgb {
+                r: 0xfa,
+                g: 0xb2,
+                b: 0x83,
+            },
+        )
+    }
+
+    pub fn with_config(width: usize, accent: Color) -> Self {
+        Self {
+            width,
+            frame_index: 0,
+            total_frames: width,
+            accent,
+        }
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn accent(&self) -> Color {
+        self.accent
+    }
+
+    pub fn set_accent(&mut self, accent: Color) {
+        self.accent = accent;
+    }
+
+    pub fn total_frames(&self) -> usize {
+        self.total_frames
+    }
+
+    pub fn frame_index(&self) -> usize {
+        self.frame_index
+    }
+
+    pub fn tick(&mut self) {
+        self.frame_index = (self.frame_index + 1) % self.total_frames;
+    }
+
+    /// Reset to frame 0 (head at position 0).
+    pub fn reset(&mut self) {
+        self.frame_index = 0;
+    }
+
+    /// Produce rendered cells for the given render width.
+    ///
+    /// The head position cycles 0..width. Cells to the left of the head get a
+    /// fading trail; cells to the right are dimmed inactive.
+    pub fn into_cells(&self, render_width: usize) -> Vec<LoaderCell> {
+        let w = self.width.min(render_width);
+        if w == 0 {
+            return Vec::new();
+        }
+
+        let head = self.frame_index % self.width;
+        let (r, g, b) = rgb_components(self.accent);
+
+        // Three-step trail: head (brightest), trail-1, trail-2 (dimmest).
+        let trail_colors = [
+            self.accent,
+            Color::Rgb {
+                r: (r as f64 * 0.7) as u8,
+                g: (g as f64 * 0.7) as u8,
+                b: (b as f64 * 0.7) as u8,
+            },
+            Color::Rgb {
+                r: (r as f64 * 0.45) as u8,
+                g: (g as f64 * 0.45) as u8,
+                b: (b as f64 * 0.45) as u8,
+            },
+        ];
+        let inactive = Color::Rgb {
+            r: (r as f64 * 0.18) as u8,
+            g: (g as f64 * 0.18) as u8,
+            b: (b as f64 * 0.18) as u8,
+        };
+
+        (0..w)
+            .map(|i| {
+                let dist = head as i32 - i as i32;
+                if dist >= 0 && (dist as usize) < trail_colors.len() {
+                    LoaderCell {
+                        ch: ':',
+                        color: trail_colors[dist as usize],
+                    }
+                } else {
+                    LoaderCell {
+                        ch: ':',
+                        color: inactive,
+                    }
+                }
+            })
+            .collect()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Braille spinner frames — Unicode Braille Patterns (U+280B…), one cell each.
 // Pairs with static process glyph `◌` (U+25CC) when animation is off.
 // ---------------------------------------------------------------------------

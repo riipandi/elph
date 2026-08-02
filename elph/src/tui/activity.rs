@@ -28,6 +28,7 @@ pub fn braille_spinner_glyph(tick: u32) -> &'static str {
 }
 
 /// Live braille frame from wall clock — skips frames under load (no slow-mo / fake freeze).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn braille_spinner_glyph_now() -> &'static str {
     SpinnerLoader::glyph_now()
 }

@@ -5,6 +5,7 @@
 
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use elph_tui::components::DotsScannerView;
 use elph_tui::rgb;
 use iocraft::prelude::*;
 
@@ -38,10 +39,7 @@ const TIPS: &[&str] = &[
     "While busy: Enter queues · Ctrl+Enter sends next queued · Ctrl+Q manages",
 ];
 
-use crate::tui::activity::{
-    braille_spinner_glyph_now, format_activity_busy_line, format_session_busy_right_line,
-    format_session_idle_right_line,
-};
+use crate::tui::activity::{format_activity_busy_line, format_session_busy_right_line, format_session_idle_right_line};
 /// Props for [`StatusRow`].
 ///
 /// Pass wall-clock start instants; this component owns spinner frames and elapsed display.
@@ -134,9 +132,9 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
         }
     });
 
-    // Depend on local paint token so we re-draw; glyph phase is wall-clock (skips lag).
+    // Depend on local paint token so we re-draw; elapsed timer is wall-clock
+    // (dots scanner has its own internal animation tick).
     let _paint = status_frame.get();
-    let spinner_glyph = if props.busy { braille_spinner_glyph_now() } else { " " };
 
     let activity_elapsed_secs = props.activity_started_at.map(format_elapsed_secs).unwrap_or(0.0);
     let turn_elapsed_secs = props.busy_started_at.map(format_elapsed_secs).unwrap_or(0.0);
@@ -197,10 +195,11 @@ pub fn StatusRow(props: &StatusRowProps, mut hooks: Hooks) -> impl Into<AnyEleme
                             gap: 1,
                             padding: 0,
                         ) {
-                            Text(
-                                color: props.accent,
-                                wrap: TextWrap::NoWrap,
-                                content: spinner_glyph.to_string(),
+                            DotsScannerView(
+                                width: 6u16,
+                                accent: Some(props.accent),
+                                active: true,
+                                theme: None,
                             )
                             Text(
                                 color: left_fg,

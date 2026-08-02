@@ -5,7 +5,7 @@ use std::time::Duration;
 use iocraft::prelude::*;
 
 use crate::components::theme::{UiTheme, resolve_ui_theme};
-use crate::loader::{KittScanner, KittScannerConfig, LoaderCell, SpinnerLoader};
+use crate::loader::{DotsScanner, KittScanner, KittScannerConfig, LoaderCell, SpinnerLoader};
 
 /// Props for [`KittScannerView`].
 #[derive(Clone, Copy, Props)]
@@ -151,6 +151,90 @@ pub fn SpinnerLoaderView(props: &SpinnerLoaderViewProps, mut hooks: Hooks) -> im
     }
 }
 
+/// Props for [`DotsScannerView`].
+#[derive(Clone, Copy, Props)]
+pub struct DotsScannerViewProps {
+    pub width: u16,
+    pub accent: Option<Color>,
+    pub active: bool,
+    pub theme: Option<UiTheme>,
+}
+
+impl Default for DotsScannerViewProps {
+    fn default() -> Self {
+        Self {
+            width: 6,
+            accent: None,
+            active: true,
+            theme: None,
+        }
+    }
+}
+
+/// Renders a left-to-right repeating dots scanner (`::::::` with a fading head).
+///
+/// The head is a bright `:` that moves left to right with a dimming trail behind
+/// it. Dimmed dots trail ahead. On idle, all dots are uniformly dimmed.
+///
+/// Frame is **wall-clock based** so laggy event loops skip frames instead of slowing
+/// the scan (avoids "about to freeze" UX).
+#[component]
+pub fn DotsScannerView(props: &DotsScannerViewProps, mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
+    let theme = resolve_ui_theme(&hooks, props.theme);
+    let accent = props.accent.unwrap_or(theme.warning);
+    let mut scanner =
+        hooks.use_ref(|| DotsScanner::with_config(if props.width > 0 { props.width as usize } else { 6 }, accent));
+    let mut frame_tick = hooks.use_state(|| 0u32);
+    let mut active = hooks.use_ref(|| props.active);
+    active.set(props.active);
+
+    hooks.use_future(async move {
+        loop {
+            tokio::time::sleep(Duration::from_millis(120)).await;
+            if !active.get() {
+                continue;
+            }
+            scanner.write().tick();
+            frame_tick.set(frame_tick.get().wrapping_add(1));
+        }
+    });
+
+    if accent != scanner.read().accent() {
+        scanner.write().set_accent(accent);
+    }
+
+    let _tick = frame_tick.get();
+    let render_width = props.width.max(1) as usize;
+    let cells: Vec<LoaderCell> = if props.active {
+        scanner.read().into_cells(render_width)
+    } else {
+        dots_idle_cells(render_width, accent)
+    };
+
+    let cell_elements: Vec<_> = cells
+        .into_iter()
+        .map(|cell| {
+            element! {
+                Text(
+                    color: cell.color,
+                    wrap: TextWrap::NoWrap,
+                    content: cell.ch.to_string(),
+                )
+            }
+        })
+        .collect();
+
+    element! {
+        View(
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            flex_shrink: 0f32,
+        ) {
+            #(cell_elements)
+        }
+    }
+}
+
 fn idle_cells(width: usize, accent: Color) -> Vec<LoaderCell> {
     let (r, g, b) = rgb_components(accent);
     let faded = Color::Rgb {
@@ -163,6 +247,16 @@ fn idle_cells(width: usize, accent: Color) -> Vec<LoaderCell> {
             ch: '⬝', color: faded
         })
         .collect()
+}
+
+fn dots_idle_cells(width: usize, accent: Color) -> Vec<LoaderCell> {
+    let (r, g, b) = rgb_components(accent);
+    let faded = Color::Rgb {
+        r: (r as f64 * 0.18) as u8,
+        g: (g as f64 * 0.18) as u8,
+        b: (b as f64 * 0.18) as u8,
+    };
+    (0..width).map(|_| LoaderCell { ch: ':', color: faded }).collect()
 }
 
 fn rgb_components(c: Color) -> (u8, u8, u8) {
